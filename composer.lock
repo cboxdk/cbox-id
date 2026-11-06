@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "83964eae3c32b6e01eaf9593eb424c13",
+    "content-hash": "ca60762801804419987dfbb8e537a9fd",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -1310,7 +1310,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../laravel-signals-client",
-                "reference": "e674331ca0efc53cb7429e9d427bcf20520c02a9"
+                "reference": "454786bc445423f123aec2358bd4c7e6b7381e06"
             },
             "require": {
                 "cboxdk/laravel-webhook-signature": "^0.1",
@@ -1460,16 +1460,16 @@
         },
         {
             "name": "cboxdk/laravel-telemetry",
-            "version": "v3.9.1",
+            "version": "v3.9.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-telemetry.git",
-                "reference": "d56aa4f5a0601a17d883e8bcc196d3026f869515"
+                "reference": "5894f69c9db8b5b6fc9eda172ee20c9a810323b7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-telemetry/zipball/d56aa4f5a0601a17d883e8bcc196d3026f869515",
-                "reference": "d56aa4f5a0601a17d883e8bcc196d3026f869515",
+                "url": "https://api.github.com/repos/cboxdk/laravel-telemetry/zipball/5894f69c9db8b5b6fc9eda172ee20c9a810323b7",
+                "reference": "5894f69c9db8b5b6fc9eda172ee20c9a810323b7",
                 "shasum": ""
             },
             "require": {
@@ -1558,7 +1558,7 @@
                 "issues": "https://github.com/cboxdk/laravel-telemetry/issues",
                 "source": "https://github.com/cboxdk/laravel-telemetry"
             },
-            "time": "2026-11-06T13:40:15+00:00"
+            "time": "2026-11-06T17:50:35+00:00"
         },
         {
             "name": "cboxdk/laravel-webhook-signature",
