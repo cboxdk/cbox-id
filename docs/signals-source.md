@@ -68,3 +68,19 @@ the first remaining position, so a hole never hides a valid earlier row.
 Maintenance also visits paused environments with only unpublished outbox data.
 It expires raw facts and their subject index in bounded passes, preserves the
 independent erasure journal, and never marks paused capture as healthy.
+
+## Existing memberships
+
+After every old application/worker instance has drained, enable live capture for
+an owner environment, then run `php artisan signals:source-memberships ENV --limit=500`.
+Continue with the returned `next` value in `--after` while `has_more` is true.
+Each invocation reads at most 1000 active memberships, with one short owner-row
+transaction per membership; rerunning a page emits no duplicate assertion.
+
+The snapshot records membership from the observation time, never `created_at` or
+an inferred earlier date. It does not grant a current team access to older owner
+activity. A subsequent leave/removal retracts that same observed interval. Owner
+row locks serialize observation with deletion; source privacy locks and retained
+tombstones prevent an erased subject from returning. Inactive members and other
+environments are excluded. A bounded scan's end is not proof of historical
+completeness, and overall source coverage remains partial until its doors qualify.
