@@ -5,12 +5,14 @@ declare(strict_types=1);
 use Cbox\Id\AccessControl\Manifest\ManifestParser;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
+use Cbox\Id\OAuthServer\Models\AccessToken;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    AccessToken::query()->create(['jti' => 'manifest-fixture', 'client_id' => 'app_billing', 'scopes' => ['apps.manifest'], 'expires_at' => now()->addMinutes(5)]);
     // Fake introspector: opaque test tokens → a client id + scopes, so the real
     // auth path runs without minting signed JWTs.
     $this->app->instance(TokenIntrospector::class, new class implements TokenIntrospector
@@ -18,8 +20,8 @@ beforeEach(function (): void {
         public function introspect(string $token): Introspection
         {
             return match ($token) {
-                'manifest-tok' => Introspection::active(null, 'app_billing', ['apps.manifest'], []),
-                'noscope-tok' => Introspection::active(null, 'app_billing', [], []),
+                'manifest-tok' => Introspection::active('app_billing', 'app_billing', ['apps.manifest'], ['jti' => 'manifest-fixture']),
+                'noscope-tok' => Introspection::active('app_billing', 'app_billing', [], []),
                 default => Introspection::inactive(),
             };
         }

@@ -15,12 +15,14 @@ use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\DB;
 
 beforeEach(function (): void {
@@ -174,6 +176,14 @@ it('rechecks the displayed role version after a concurrent direct grant commits'
             unlink($file);
         }
         rmdir($directory);
+        // The fork needed committed fixtures; rolling back a new transaction cannot
+        // remove them. Rebuild this worker's test database before its next fixture.
+        RefreshDatabaseState::$migrated = false;
         DB::beginTransaction();
     }
 })->skip(fn (): bool => DB::connection()->getDriverName() !== 'pgsql' || ! function_exists('pcntl_fork'), 'needs PostgreSQL and pcntl');
+
+it('does not retain committed fixtures from the preceding concurrency check', function (): void {
+    $table = (new Client)->getTable();
+    expect(DB::table($table)->where('name', 'Sites')->count())->toBe(1);
+});

@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use Cbox\Id\AccessControl\Contracts\AppManifests;
 use Cbox\Id\AccessControl\Exceptions\InvalidManifest;
 use Cbox\Id\AccessControl\Manifest\ManifestParser;
+use Cbox\Id\OAuthServer\Models\AccessToken;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,6 +32,17 @@ final class AppManifestController
                 401,
                 ['WWW-Authenticate' => 'Bearer error="invalid_token"'],
             );
+        }
+
+        // A login client may also hold this machine scope. A person (including a
+        // support actor) must never publish its application catalog through that client.
+        $jti = $token->claims['jti'] ?? null;
+        $machine = is_string($jti) && $jti !== '' && AccessToken::query()
+            ->where('jti', $jti)->where('client_id', $token->clientId)
+            ->whereNull('user_id')->whereNull('support_session_id')
+            ->whereNull('revoked_at')->where('expires_at', '>', now())->exists();
+        if (! $machine || $token->subject !== $token->clientId || array_key_exists('act', $token->claims)) {
+            return new JsonResponse(['error' => 'machine_token_required', 'message' => 'Publishing an app manifest requires its own client-credentials token.'], 403);
         }
 
         try {
