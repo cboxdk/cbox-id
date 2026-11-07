@@ -103,12 +103,12 @@ enum PortalIntent: string
     public function label(): string
     {
         return match ($this) {
-            self::Sso => 'Enterprise SSO',
-            self::Dsync => 'Directory Sync',
-            self::DomainVerification => 'Domain verification',
-            self::LogStreams => 'Log streams',
-            self::CertificateRenewal => 'SAML certificate renewal',
-            self::AuditLogs => 'Audit logs (read-only)',
+            self::Sso => __('console.enterprise_sso_0f8d7e8e'),
+            self::Dsync => __('console.directory_sync_ea18bba8'),
+            self::DomainVerification => __('console.domain_verification_7a2e2d53'),
+            self::LogStreams => __('console.log_streams_aff03056'),
+            self::CertificateRenewal => __('console.saml_certificate_renewal_480dd7ca'),
+            self::AuditLogs => __('console.audit_logs_read_only_cb357f9c'),
         };
     }
 
@@ -116,12 +116,12 @@ enum PortalIntent: string
     public function description(): string
     {
         return match ($this) {
-            self::Sso => 'Connect their identity provider (SAML or OIDC) and prove the email domains that route to it.',
-            self::Dsync => 'Provision and deprovision their people over SCIM from their directory, or from their HR system.',
-            self::DomainVerification => 'Prove the email domains they own with a DNS TXT record.',
-            self::LogStreams => 'Stream their organization\'s audit trail to their own SIEM.',
-            self::CertificateRenewal => 'Upload their identity provider\'s new SAML signing certificate before the old one expires.',
-            self::AuditLogs => 'Read the audit events your app sent about their organization, and export them as CSV.',
+            self::Sso => __('console.connect_their_identity_provider_saml_or_oidc_and_prove_b1d4888e'),
+            self::Dsync => __('console.provision_and_deprovision_their_people_over_scim_from_t_150caa32'),
+            self::DomainVerification => __('console.prove_the_email_domains_they_own_with_a_dns_txt_record_f579bd8c'),
+            self::LogStreams => __('console.stream_their_organization_s_audit_trail_to_their_own_si_e68bad26'),
+            self::CertificateRenewal => __('console.upload_their_identity_provider_s_new_saml_signing_certi_485794d7'),
+            self::AuditLogs => __('console.read_the_audit_events_your_app_sent_about_their_organiz_ff9cd685'),
         };
     }
 

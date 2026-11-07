@@ -488,12 +488,14 @@ it('opens the organization\'s audit logs in the Admin Portal only under a link t
     sendAuditEvents($key, [auditEvent($acme, ['action' => 'acme.only']), auditEvent($globex, ['action' => 'globex.only'])])->assertCreated();
 
     // A link for SSO opens no audit logs.
+    grantFeature($acme, 'cbox-id-sso');
     $sso = app(AdminPortal::class)->generate($acme, PortalScope::only(PortalIntent::Sso), 'sub_creator');
     $this->post(route('portal.enter.store', $sso))->assertRedirect(route('portal.setup'));
     $this->get(route('portal.audit-logs'))->assertForbidden();
     $this->get(route('portal.audit-logs.export'))->assertForbidden();
 
     // A link for the audit logs lands on them, with this organization's events alone.
+    grantFeature($acme, 'cbox-id-audit-logs');
     $logs = app(AdminPortal::class)->generate($acme, PortalScope::only(PortalIntent::AuditLogs), 'sub_creator');
     $this->post(route('portal.enter.store', $logs))->assertRedirect(route('portal.setup'));
     $this->get(route('portal.setup'))->assertRedirect(route('portal.audit-logs'));
@@ -512,6 +514,7 @@ it('opens the organization\'s audit logs in the Admin Portal only under a link t
 it('mints an audit-logs portal link over the API', function (): void {
     $key = app(EnvironmentApiKeys::class)->issue('env_test', 'Portal', ['portal_links:write'])->plaintext;
     $acme = auditOrg('acme-portal-api');
+    grantFeature($acme, 'cbox-id-audit-logs');
 
     $this->withToken($key)->postJson("/api/v1/organizations/{$acme}/portal-links", ['intents' => ['audit_logs']])
         ->assertCreated()

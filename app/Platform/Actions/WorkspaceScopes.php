@@ -63,14 +63,14 @@ final class WorkspaceScopes
             'capability' => 'manage-environments',
         ],
         'billing:write' => [
-            'label' => 'Manage billing details and cards',
-            'description' => 'Update invoice details and manage existing payment methods. Paid plan consent remains in the browser.',
+            'label' => 'Manage billing',
+            'description' => 'Update billing details and manage stored payment methods for this workspace.',
             'capability' => 'manage-billing',
         ],
         'settings:write' => [
             'label' => 'Change workspace settings',
             'description' => 'Rename the workspace.',
-            'capability' => 'manage-members',
+            'capability' => 'own-organization',
         ],
     ];
 
@@ -101,7 +101,7 @@ final class WorkspaceScopes
      */
     public static function roleAllows(MembershipRole $role, string $scope): bool
     {
-        return self::knows($scope) && self::holds(OrganizationCapabilities::of($role), self::capability($scope));
+        return self::knows($scope) && self::holds(OrganizationCapabilities::forMachineRole($role), self::capability($scope));
     }
 
     /**
@@ -114,6 +114,8 @@ final class WorkspaceScopes
     {
         return match ($capability) {
             null => true,
+            'read-environments' => $can->canReadEnvironments(),
+            'own-organization' => $can->isOwner(),
             'manage-environments' => $can->canManageEnvironments(),
             'manage-members' => $can->canManageMembers(),
             'read-members' => $can->canReadMembers(),

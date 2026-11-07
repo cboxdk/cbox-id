@@ -6,6 +6,7 @@ namespace App\Actions\LegacyLogin;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -55,11 +56,11 @@ final readonly class ProbeLegacyLogin implements Action
         $email = trim($context->string('email'));
 
         if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
-            throw ActionRefused::because('invalid_email', 'Enter an address that exists in your old system.', 'email');
+            throw ActionRefused::because('invalid_email', new ActionMessage('console.enter_an_address_that_exists_in_your_old_system_59edc713'), 'email');
         }
 
         $declaration = $this->approvals->current()
-            ?? throw ActionRefused::because('no_declaration', 'No app has declared an endpoint to probe.', 'email');
+            ?? throw ActionRefused::because('no_declaration', new ActionMessage('console.no_app_has_declared_an_endpoint_to_probe_d074e9df'), 'email');
 
         $result = $this->probe->describe($declaration, $email);
 

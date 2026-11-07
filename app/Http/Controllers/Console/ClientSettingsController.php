@@ -91,9 +91,7 @@ final readonly class ClientSettingsController extends ConsoleController
             SetAppTokenLifetime::class,
             ['id' => $model->id, 'access_token_ttl' => $request->seconds()],
             'minutes',
-            $request->seconds() === null
-                ? __('console.access_tokens_for_this_app_now_live_for_the__29920738')
-                : __('console.access_tokens_for_this_app_now_live_for_c5b4321a').intdiv((int) $request->seconds(), 60).' minutes.',
+            $request->seconds() === null ? __('console.access_tokens_for_this_app_now_live_for_the_default_tim_29920738') : __('console.access_tokens_for_this_app_now_live_for_part1_minutes_0ceb40ac', ['part1' => intdiv((int) $request->seconds(), 60)]),
         );
     }
 
@@ -104,7 +102,7 @@ final readonly class ClientSettingsController extends ConsoleController
         // Said before the action is asked, on the switch and without the form's input —
         // the action refuses the same app in the same words, which is the guard.
         if ($model->type !== ClientType::Confidential) {
-            return back()->withErrors(['enabled' => __('console.only_an_app_that_holds_a_secret_or_its_own_k_b8912c8c')]);
+            return back()->withErrors(['enabled' => __('console.only_an_app_that_holds_a_secret_or_its_own_keys_can_exc_b8912c8c')]);
         }
 
         return $this->save(
@@ -123,9 +121,7 @@ final readonly class ClientSettingsController extends ConsoleController
             SetAppBackchannelLogout::class,
             ['id' => $model->id, 'uri' => $request->logoutUri(), 'session_required' => $request->sessionRequired()],
             'uri',
-            $request->logoutUri() === null
-                ? __('console.this_app_is_no_longer_told_when_somebody_sig_f18570ba')
-                : __('console.saved_this_app_is_told_when_somebody_signs_o_d0d7f618'),
+            $request->logoutUri() === null ? __('console.this_app_is_no_longer_told_when_somebody_signs_out_f18570ba') : __('console.saved_this_app_is_told_when_somebody_signs_out_d0d7f618'),
         );
     }
 
@@ -140,9 +136,7 @@ final readonly class ClientSettingsController extends ConsoleController
             SetAppApiKeyPrefix::class,
             ['id' => $model->id, 'prefix' => $prefix],
             'prefix',
-            $prefix === null
-                ? __('console.api_keys_turned_off_for_this_app_keys_alread_d0c591df')
-                : "API keys turned on for this app. New keys start with {$prefix}_.",
+            $prefix === null ? __('console.api_keys_turned_off_for_this_app_keys_already_created_k_d0c591df') : __('console.api_keys_turned_on_for_this_app_new_keys_start_with_par_a7496e97', ['part1' => $prefix.'_']),
         );
     }
 
@@ -157,29 +151,9 @@ final readonly class ClientSettingsController extends ConsoleController
         $result = $this->attempt($action, $input, fallback: $field);
 
         if ($result instanceof ActionRefused) {
-            return back()->withInput()->withErrors([$field => self::plain($result->getMessage())]);
+            return back()->withInput()->withErrors([$field => $result->getMessage()]);
         }
 
         return back()->with('status', $status);
-    }
-
-    /**
-     * The registry's refusal with its field names said the way this page says them.
-     */
-    private static function plain(string $message): string
-    {
-        $message = strtr($message, [
-            'backchannel_logout_uri' => __('console.the_logout_uri_ec20fe60'),
-            'access_token_ttl' => __('console.the_access_token_lifetime_15671af5'),
-            'api_key_prefix' => __('console.the_key_prefix_29613943'),
-        ]);
-
-        // "…is already declared by another app in this environment; import with another
-        // prefix (or none)" — an import is not what happened on this page.
-        if (str_contains($message, __('console.already_declared_by_another_app_35fc0ae9'))) {
-            return __('console.another_app_in_this_environment_already_uses_e8f83cff');
-        }
-
-        return ucfirst($message);
     }
 }

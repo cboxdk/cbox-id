@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Actions\Roles\ActivateRoleDefinition;
 use App\Actions\Roles\CreateRole;
 use App\Actions\Roles\DeleteRole;
 use App\Actions\Roles\GrantRolePermission;
@@ -15,9 +16,7 @@ use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveRoleRequest;
 use App\Http\Requests\Console\StoreRoleRequest;
 use App\Platform\Console\ConsolePlane;
-use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\RoleSource;
@@ -124,7 +123,7 @@ final readonly class RoleController extends ConsoleController
             : [];
         $people = $this->scope->peopleRoute();
 
-        return $this->page('console/roles/index', ConsoleStrings::text(Vocabulary::ROLES), [
+        return $this->page('console/roles/index', __('console.roles_c2533705'), [
             'help' => HelpProps::for(HelpTopic::Roles),
             'roles' => array_map(fn (Role $role): array => [
                 'id' => $role->id,
@@ -229,7 +228,7 @@ final readonly class RoleController extends ConsoleController
              */
             if ($this->scope->plane() !== ConsolePlane::Environment) {
                 return back()->withInput()->withErrors([
-                    'environmentWide' => __('console.only_an_environment_administrator_may_define_392ab459'),
+                    'environmentWide' => __('console.only_an_environment_administrator_may_define_a_role_for_392ab459'),
                 ]);
             }
 
@@ -256,7 +255,7 @@ final readonly class RoleController extends ConsoleController
         $role = $result->value;
 
         return to_route($this->scope->routeName('roles.show'), $role->id)
-            ->with('status', 'Role "'.$role->name.'" created.');
+            ->with('status', __('console.role_part1_created_807ed7a3', ['part1' => $role->name]));
     }
 
     public function show(string $role, Subjects $subjects): Response
@@ -291,6 +290,15 @@ final readonly class RoleController extends ConsoleController
             // the environment does.
             'readOnly' => $readOnly,
             'declaredByApp' => $declaredByApp,
+            'pendingDefinition' => $model->pending_definition_version === null ? null : [
+                'version' => $model->pending_definition_version,
+                'permissions' => $model->pending_permission_keys ?? [],
+                'tenantAssignable' => $model->pending_tenant_assignable,
+                'currentTenantAssignable' => $model->tenant_assignable,
+                'currentPermissions' => Permission::query()->whereIn('id', $granted)->orderBy('name')->pluck('name')->all(),
+                'activateUrl' => $this->scope->administersEnvironment()
+                    ? $this->url('roles.definition.activate', $model->id) : null,
+            ],
             'catalog' => $readOnly
                 ? $this->catalogProps($catalog->whereIn('id', $granted), $appNames)
                 : $this->catalogProps($catalog, $appNames),
@@ -326,6 +334,18 @@ final readonly class RoleController extends ConsoleController
         ], ['name' => 'name', 'description' => 'description'], 'name');
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.role_updated_0c33aa24'));
+    }
+
+    public function activateDefinition(Request $request, string $role): RedirectResponse
+    {
+        $this->scope->assertAdministersEnvironment();
+        $request->validate(['version' => ['required', 'string', 'size:64']]);
+        $result = $this->act(ActivateRoleDefinition::class, [
+            'id' => $role,
+            'version' => $request->string('version')->toString(),
+        ], fallback: 'version', asEnvironment: true);
+
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.role_definition_activated_existing_holders_now_use_thes_381596d2'));
     }
 
     /**

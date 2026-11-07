@@ -44,7 +44,10 @@ function setupKey(array $scopes = ['sso:read', 'sso:write']): string
 
 function setupOrg(): string
 {
-    return app(Organizations::class)->create(new NewOrganization('Acme', 'acme-setup-'.Str::lower(Str::random(4))))->id;
+    $id = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-setup-'.Str::lower(Str::random(4))))->id;
+    grantFeature($id, 'cbox-id-sso');
+
+    return $id;
 }
 
 /** The provider's discovery document — with a key set, unless $jwks is false. */
@@ -107,13 +110,13 @@ function oidcWithoutKey(string $key, string $org): string
  */
 function oidcSignInInProgress(string $connection, Closure $idToken, array $jwks): string
 {
-    $started = test()->get("/sso/oidc/{$connection}/redirect")->assertRedirect();
-    $location = (string) $started->headers->get('Location');
+    $response = test()->get("/sso/oidc/{$connection}/redirect")->assertRedirect();
+    $location = (string) $response->headers->get('Location');
     parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
 
     expect($location)->toStartWith('https://idp.setup.example/authorize?');
 
-    $cookie = collect($started->headers->getCookies())->first(fn ($entry): bool => str_starts_with($entry->getName(), '__Host-cbox_fed_'));
+    $cookie = collect($response->headers->getCookies())->first(fn ($entry): bool => str_starts_with($entry->getName(), '__Host-cbox_fed_'));
 
     expect($cookie)->not->toBeNull('the authorization redirect sets the browser flow cookie');
     test()->withUnencryptedCookie($cookie->getName(), (string) $cookie->getValue());
@@ -227,6 +230,7 @@ it('takes an OIDC connection without a signing key from the console form', funct
     // The console's form: the key is no longer a required field.
     crudSetup();
     FormOrganization::$id = app(Organizations::class)->create(new NewOrganization('Form Co', 'form-co-oidc'))->id;
+    grantFeature(FormOrganization::$id, 'cbox-id-sso');
     fakeIdpDiscovery();
 
     createConnection([

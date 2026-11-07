@@ -6,11 +6,13 @@ namespace App\Actions\Apps;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -76,20 +78,20 @@ final readonly class RevokeAppSecret implements Action
         $target = array_values(array_filter($live, static fn (ClientSecretSummary $secret): bool => $secret->id === $secretId));
 
         if ($target === []) {
-            throw ActionRefused::because('secret_not_live', self::NOT_LIVE, 'secret_id');
+            throw ActionRefused::because('secret_not_live', new ActionMessage('console.that_secret_is_no_longer_live_it_has_already_run_out_or_26673767'), 'secret_id');
         }
 
         if (count($live) <= 1) {
-            throw ActionRefused::because('last_live_secret', self::LAST_LIVE, 'secret_id');
+            throw ActionRefused::because('last_live_secret', new ActionMessage('console.this_is_the_app_s_only_live_secret_rotate_it_to_replace_70716789'), 'secret_id');
         }
 
         try {
             $this->clients->revokeSecret($client, $secretId, $context->actor());
         } catch (ClientSecretRefused $refused) {
             throw match ($refused->reason) {
-                ClientSecretRefusal::LastLiveSecret => ActionRefused::because('last_live_secret', self::LAST_LIVE, 'secret_id'),
-                ClientSecretRefusal::UnknownSecret => ActionRefused::because('secret_not_live', self::NOT_LIVE, 'secret_id'),
-                default => ActionRefused::because($refused->reason->value, $refused->getMessage(), 'secret_id'),
+                ClientSecretRefusal::LastLiveSecret => ActionRefused::because('last_live_secret', new ActionMessage('console.this_is_the_app_s_only_live_secret_rotate_it_to_replace_70716789'), 'secret_id'),
+                ClientSecretRefusal::UnknownSecret => ActionRefused::because('secret_not_live', new ActionMessage('console.that_secret_is_no_longer_live_it_has_already_run_out_or_26673767'), 'secret_id'),
+                default => ActionRefused::because($refused->reason->value, FrameworkMessage::from($refused), 'secret_id'),
             };
         }
 

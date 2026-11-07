@@ -10,6 +10,7 @@ use App\Models\Radar\RadarSettings;
 use App\Platform\Radar\Enums\RadarAction;
 use App\Platform\Radar\Enums\RadarBuiltin;
 use App\Platform\Radar\Enums\RadarMode;
+use Cbox\Id\Kernel\Presentation\ValueObjects\SourceMessage;
 use Illuminate\Support\Carbon;
 
 /**
@@ -35,7 +36,7 @@ final class RadarPolicy
     {
         $stored = $this->stored()?->mode;
 
-        return is_string($stored) ? (RadarMode::tryFrom($stored) ?? self::deploymentMode()) : self::deploymentMode();
+        return is_string($stored) ? RadarMode::tryFrom($stored) ?? self::deploymentMode() : self::deploymentMode();
     }
 
     /** Whether the mode is the deployment's default rather than the environment's own choice. */
@@ -62,14 +63,11 @@ final class RadarPolicy
     {
         $before = $this->mode();
         $inherited = $this->modeInherited();
-
         if ($before === $mode && ! $inherited) {
             return [];
         }
-
         $settings = $this->stored() ?? new RadarSettings;
         $settings->forceFill(['mode' => $mode->value])->save();
-
         $changes = $before === $mode ? [] : ['mode' => ['from' => $before->value, 'to' => $mode->value]];
 
         return $inherited ? [...$changes, 'mode_inherited' => ['from' => true, 'to' => false]] : $changes;
@@ -84,22 +82,14 @@ final class RadarPolicy
     {
         $stored = $this->stored()->builtin_rules ?? [];
         $builtins = self::defaultBuiltins();
-
         foreach ($builtins as $key => $default) {
             $own = $stored[$key] ?? null;
-
             if (! is_array($own)) {
                 continue;
             }
-
             $action = is_string($own['action'] ?? null) ? RadarAction::tryFrom($own['action']) : null;
             $threshold = $own['threshold'] ?? null;
-
-            $builtins[$key] = [
-                'enabled' => is_bool($own['enabled'] ?? null) ? $own['enabled'] : $default['enabled'],
-                'action' => $action ?? $default['action'],
-                'threshold' => $default['threshold'] !== null && is_int($threshold) ? $threshold : $default['threshold'],
-            ];
+            $builtins[$key] = ['enabled' => is_bool($own['enabled'] ?? null) ? $own['enabled'] : $default['enabled'], 'action' => $action ?? $default['action'], 'threshold' => $default['threshold'] !== null && is_int($threshold) ? $threshold : $default['threshold']];
         }
 
         return $builtins;
@@ -111,13 +101,8 @@ final class RadarPolicy
     public static function defaultBuiltins(): array
     {
         $defaults = [];
-
         foreach (RadarBuiltin::cases() as $rule) {
-            $defaults[$rule->value] = [
-                'enabled' => $rule->defaultEnabled(),
-                'action' => $rule->defaultAction(),
-                'threshold' => $rule->defaultThreshold(),
-            ];
+            $defaults[$rule->value] = ['enabled' => $rule->defaultEnabled(), 'action' => $rule->defaultAction(), 'threshold' => $rule->defaultThreshold()];
         }
 
         return $defaults;
@@ -136,86 +121,57 @@ final class RadarPolicy
     {
         $current = $this->builtins();
         $next = $current;
-
         foreach ($changes as $key => $change) {
             $rule = is_string($key) ? RadarBuiltin::tryFrom($key) : null;
-
             if ($rule === null) {
-                throw new RadarRuleInvalid('`'.$key.'` is not a built-in rule. The built-in rules are '.implode(', ', RadarBuiltin::values()).'.');
+                throw (new RadarRuleInvalid('`'.$key.'` is not a built-in rule. The built-in rules are '.implode(', ', RadarBuiltin::values()).'.'))->withSourceMessage(new SourceMessage('`:key` is not a built-in rule. The built-in rules are :value2.', ['key' => $key, 'value2' => implode(', ', RadarBuiltin::values())]));
             }
-
             if (! is_array($change)) {
-                throw new RadarRuleInvalid("`{$rule->value}` takes an object of enabled, action and threshold.");
+                throw (new RadarRuleInvalid("`{$rule->value}` takes an object of enabled, action and threshold."))->withSourceMessage(new SourceMessage('`:value1` takes an object of enabled, action and threshold.', ['value1' => $rule->value]));
             }
-
             $setting = $next[$rule->value];
-
             if (array_key_exists('enabled', $change)) {
                 if (! is_bool($change['enabled'])) {
-                    throw new RadarRuleInvalid("`{$rule->value}.enabled` is true or false.");
+                    throw (new RadarRuleInvalid("`{$rule->value}.enabled` is true or false."))->withSourceMessage(new SourceMessage('`:value1.enabled` is true or false.', ['value1' => $rule->value]));
                 }
-
                 $setting['enabled'] = $change['enabled'];
             }
-
             if (array_key_exists('action', $change)) {
                 $action = is_string($change['action']) ? RadarAction::tryFrom($change['action']) : null;
-
                 if ($action === null) {
-                    throw new RadarRuleInvalid("`{$rule->value}.action` is one of ".implode(', ', RadarAction::values()).'.');
+                    throw (new RadarRuleInvalid("`{$rule->value}.action` is one of ".implode(', ', RadarAction::values()).'.'))->withSourceMessage(new SourceMessage('`:value1.action` is one of :value2.', ['value1' => $rule->value, 'value2' => implode(', ', RadarAction::values())]));
                 }
-
                 $setting['action'] = $action;
             }
-
             if (array_key_exists('threshold', $change) && $change['threshold'] !== null) {
                 $bounds = $rule->thresholdBounds();
-
                 if ($bounds === null) {
-                    throw new RadarRuleInvalid("`{$rule->value}` has no threshold.");
+                    throw (new RadarRuleInvalid("`{$rule->value}` has no threshold."))->withSourceMessage(new SourceMessage('`:value1` has no threshold.', ['value1' => $rule->value]));
                 }
-
                 $threshold = $change['threshold'];
-
                 if (! is_int($threshold) || $threshold < $bounds[0] || $threshold > $bounds[1]) {
-                    throw new RadarRuleInvalid("`{$rule->value}.threshold` is a whole number from {$bounds[0]} to {$bounds[1]} ({$rule->thresholdUnit()}).");
+                    throw (new RadarRuleInvalid("`{$rule->value}.threshold` is a whole number from {$bounds[0]} to {$bounds[1]} ({$rule->thresholdUnit()})."))->withSourceMessage(new SourceMessage('`:value1.threshold` is a whole number from :value2 to :value3 (:value4).', ['value1' => $rule->value, 'value2' => $bounds[0], 'value3' => $bounds[1], 'value4' => new SourceMessage($rule->thresholdUnit() ?? '')]));
                 }
-
                 $setting['threshold'] = $threshold;
             }
-
             $next[$rule->value] = $setting;
         }
-
         $diff = [];
-
         foreach ($next as $key => $setting) {
             foreach ($setting as $name => $value) {
                 $before = $current[$key][$name];
-
                 if ($before !== $value) {
-                    $diff[$key][$name] = [
-                        'from' => $before instanceof RadarAction ? $before->value : $before,
-                        'to' => $value instanceof RadarAction ? $value->value : $value,
-                    ];
+                    $diff[$key][$name] = ['from' => $before instanceof RadarAction ? $before->value : $before, 'to' => $value instanceof RadarAction ? $value->value : $value];
                 }
             }
         }
-
         if ($diff === []) {
             return [];
         }
-
         $stored = [];
-
         foreach ($next as $key => $setting) {
-            $stored[$key] = [
-                'enabled' => $setting['enabled'],
-                'action' => $setting['action']->value,
-                'threshold' => $setting['threshold'],
-            ];
+            $stored[$key] = ['enabled' => $setting['enabled'], 'action' => $setting['action']->value, 'threshold' => $setting['threshold']];
         }
-
         $settings = $this->stored() ?? new RadarSettings;
         $settings->forceFill(['builtin_rules' => $stored])->save();
 
@@ -228,24 +184,11 @@ final class RadarPolicy
     public function snapshot(): RadarPolicySnapshot
     {
         $rules = [];
-
         foreach (RadarRule::query()->where('enabled', true)->orderBy('position')->orderBy('id')->limit(RadarRule::MAX_RULES)->get() as $rule) {
-            $rules[] = [
-                'id' => $rule->id,
-                'name' => $rule->name,
-                'scope' => $rule->applies_to,
-                'action' => $rule->action,
-                'conditions' => array_values(array_filter($rule->conditions, 'is_array')),
-            ];
+            $rules[] = ['id' => $rule->id, 'name' => $rule->name, 'scope' => $rule->applies_to, 'action' => $rule->action, 'conditions' => array_values(array_filter($rule->conditions, 'is_array'))];
         }
-
         $entries = [];
-
-        $active = RadarListEntry::query()
-            ->where(static fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', Carbon::now()))
-            ->limit(RadarListEntry::MAX_ENTRIES)
-            ->get();
-
+        $active = RadarListEntry::query()->where(static fn ($query) => $query->whereNull('expires_at')->orWhere('expires_at', '>', Carbon::now()))->limit(RadarListEntry::MAX_ENTRIES)->get();
         foreach ($active as $entry) {
             $entries[] = ['list' => $entry->list, 'kind' => $entry->kind, 'value' => $entry->value];
         }

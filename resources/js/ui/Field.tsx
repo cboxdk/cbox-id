@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { createContext, type ReactNode, useContext, useId, useMemo } from 'react';
 import { cn } from '@/lib/cn';
 
@@ -102,8 +102,7 @@ export function Field({
     className,
     children,
 }: FieldProps) {
-    const { t: tc } = useUiTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const generated = useId();
     const id = statedId ?? generated;
     const controlId = statedId ?? `${id}-control`;
@@ -143,7 +142,7 @@ export function Field({
                                     *
                                 </span>
                                 <span className="sr-only">
-                                    {tc('console.required_89db19f6', '(required)')}
+                                    {consoleT('console._required_89db19f6')}
                                 </span>
                             </>
                         )}
@@ -151,7 +150,7 @@ export function Field({
                             <>
                                 {' '}
                                 <span style={{ color: 'var(--faint)', fontWeight: 400 }}>
-                                    {tc('console.optional_0059798b', '(optional)')}
+                                    {consoleT('console._optional_0059798b')}
                                 </span>
                             </>
                         )}

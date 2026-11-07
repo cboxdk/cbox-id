@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { Command } from 'cmdk';
 import { Fragment, type ReactNode, useMemo, useState } from 'react';
@@ -40,14 +40,13 @@ export interface ContextSwitcherProps {
  * menu makes the common move the deepest.
  */
 export function ContextSwitcher({ context, onNavigate = defaultNavigate }: ContextSwitcherProps) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const workspace = context.workspaces.find((option) => option.current) ?? context.workspaces[0];
     const project = context.projects.find((candidate) => candidate.current);
     const environment = project?.environments.find((candidate) => candidate.current);
 
     return (
-        <nav className="cbx-ctx" aria-label={tc('console.context_a6e600a1')}>
+        <nav className="cbx-ctx" aria-label={consoleT('console.context_a6e600a1')}>
             {workspace !== undefined && (
                 <WorkspaceCrumb
                     noun={context.noun}
@@ -116,6 +115,9 @@ function WorkspaceCrumb({
     switchUrl: string | null;
     onNavigate: (href: string) => void;
 }) {
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
+
     // A menu that cannot change anything is a control that lies about what it does. With
     // one workspace and no link out, the crumb is a label.
     const actionable = workspaces.length > 1 || current.openHref !== null;
@@ -137,8 +139,11 @@ function WorkspaceCrumb({
 
     return (
         <ContextMenu
-            heading={`Switch ${noun.toLowerCase()}`}
-            ariaLabel={`${noun}: ${current.label}. Switch ${noun.toLowerCase()}`}
+            heading={consoleFinalText('console.switch_context_selection')}
+            ariaLabel={consoleFinalText('console.context_selection_label', {
+                context: noun,
+                name: current.label,
+            })}
             trigger={
                 <>
                     {tile}
@@ -174,7 +179,7 @@ function WorkspaceCrumb({
             ]}
             footnote={
                 switchUrl === null && workspaces.length > 1
-                    ? `Opens the ${noun.toLowerCase()} console, where you switch.`
+                    ? consoleAttributeText('console.open_console_to_switch')
                     : null
             }
         />
@@ -197,13 +202,15 @@ function ProjectCrumb({
     projects: ContextProject[];
     onNavigate: (href: string) => void;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { t: consoleFinalText, choice } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
     if (projects.length <= 1) {
         return (
             <span
                 className="cbx-ctx-static"
-                title={tc('console.project_value0_ee41fd3d', { value0: current.name })}
+                title={consoleFinalText('console.project_part1_72ed8011', { part1: current.name })}
             >
                 <span className="cbx-ctx-label">{current.name}</span>
             </span>
@@ -212,8 +219,10 @@ function ProjectCrumb({
 
     return (
         <ContextMenu
-            heading={tc('console.switch_project_47da8344')}
-            ariaLabel={`Project: ${current.name}. Switch project`}
+            heading={consoleUiText('console.switch_project_47da8344')}
+            ariaLabel={consoleAttributeText('console.project_part1_switch_project_34edd108', {
+                part1: current.name,
+            })}
             trigger={<span className="cbx-ctx-label">{current.name}</span>}
             groups={[
                 {
@@ -222,7 +231,7 @@ function ProjectCrumb({
                     items: projects.map((project) => ({
                         key: project.id,
                         label: project.name,
-                        hint: `${project.environments.length} environment${project.environments.length === 1 ? '' : 's'}`,
+                        hint: choice('console.count_environments', project.environments.length),
                         current: project.current,
                         onSelect: () => {
                             if (project.current) {
@@ -264,8 +273,10 @@ function EnvironmentCrumb({
     project: ContextProject;
     onNavigate: (href: string) => void;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
     const label = (
         <>
             <span className="cbx-ctx-label">{current.name}</span>
@@ -277,7 +288,9 @@ function EnvironmentCrumb({
         return (
             <span
                 className="cbx-ctx-static"
-                title={tc('console.environment_value0_62bc377a', { value0: current.name })}
+                title={consoleFinalText('console.environment_part1_1b13b6cc', {
+                    part1: current.name,
+                })}
             >
                 {label}
             </span>
@@ -286,8 +299,19 @@ function EnvironmentCrumb({
 
     return (
         <ContextMenu
-            heading={tc('console.switch_environment_e8b05cf8')}
-            ariaLabel={`Environment: ${current.name} (${current.type}). Switch environment`}
+            heading={consoleUiText('console.switch_environment_e8b05cf8')}
+            ariaLabel={consoleAttributeText(
+                'console.environment_part1_part2_switch_environment_c86f12f3',
+                {
+                    part1: current.name,
+                    part2:
+                        current.type === 'production'
+                            ? consoleAttributeText('console.production_13a7c655')
+                            : current.type === 'sandbox'
+                              ? consoleAttributeText('console.sandbox_67fc6249')
+                              : current.type,
+                },
+            )}
             trigger={label}
             groups={[
                 {
@@ -298,7 +322,9 @@ function EnvironmentCrumb({
                     ),
                 },
             ]}
-            footnote={tc('console.opens_the_same_page_in_the_environment_you_c_8ff939a0')}
+            footnote={consoleUiText(
+                'console.opens_the_same_page_in_the_environment_you_choose_8ff939a0',
+            )}
         />
     );
 }
@@ -314,15 +340,15 @@ function OpenEnvironmentCrumb({
     projects: ContextProject[];
     onNavigate: (href: string) => void;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <ContextMenu
-            heading={tc('console.open_an_environment_f1c3e193')}
-            ariaLabel={tc('console.open_an_environment_f1c3e193')}
+            heading={consoleUiText('console.open_an_environment_f1c3e193')}
+            ariaLabel={consoleUiText('console.open_an_environment_f1c3e193')}
             trigger={
                 <span className="cbx-ctx-label cbx-ctx-placeholder">
-                    {tc('console.environments_07437cd6')}
+                    {consoleT('console.environments_07437cd6')}
                 </span>
             }
             groups={projects.map((project) => ({
@@ -391,8 +417,10 @@ function ContextMenu({
     groups: MenuGroup[];
     footnote?: string | null;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [open, setOpen] = useState(false);
     const total = useMemo(
         () => groups.reduce((sum, group) => sum + group.items.length, 0),
@@ -424,9 +452,9 @@ function ContextMenu({
                         <div className="cbx-combobox-search">
                             <Icon name="search" className="w-4 h-4 shrink-0" />
                             <Command.Input
-                                placeholder={tc('console.search_7336265a')}
-                                aria-label={tc('console.search_value0_b4569c56', {
-                                    value0: heading,
+                                placeholder={consoleUiText('console.search_7336265a')}
+                                aria-label={consoleFinalText('console.search_part1_c30c9bb3', {
+                                    part1: heading,
                                 })}
                             />
                         </div>
@@ -436,7 +464,7 @@ function ContextMenu({
 
                     <Command.List>
                         <Command.Empty className="cbx-combobox-empty">
-                            {tc('console.nothing_matches_that_291c6b6d')}
+                            {consoleT('console.nothing_matches_that_291c6b6d')}
                         </Command.Empty>
 
                         {groups.map((group) => {

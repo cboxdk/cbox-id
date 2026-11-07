@@ -26,7 +26,7 @@ it('is empty when nothing has claimed the deployment', function (): void {
 it('is empty with only a bare default environment', function (): void {
     // A migrated image, or a deployment the framework's own bootstrap got halfway
     // through. Refusing here would leave it with no supported way forward at all.
-    platformRootEnvironment();
+    platformRootEnvironment(publishNativeCatalog: false);
 
     expect(app(PlatformInstaller::class)->isEmpty())->toBeTrue();
 });

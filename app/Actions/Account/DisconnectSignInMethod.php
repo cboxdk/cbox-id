@@ -7,6 +7,7 @@ namespace App\Actions\Account;
 use App\Platform\AccountLinking\SignInIdentities;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
@@ -73,7 +74,7 @@ final readonly class DisconnectSignInMethod implements Action
         if (! $identity->removable) {
             throw ActionRefused::because(
                 'managed_by_organization',
-                $identity->label.' is your organization\'s single sign-on. It is how your organization knows you, so it cannot be disconnected here.',
+                new ActionMessage('console._part1_is_your_organization_s_single_sign_on_it_is_how_a02887f1', ['part1' => (string) ($identity->label)]),
                 'identity_id',
             );
         }
@@ -81,7 +82,7 @@ final readonly class DisconnectSignInMethod implements Action
         if ($this->identities->isLastWayIn($subjectId, $identity->id)) {
             throw ActionRefused::because(
                 'last_sign_in_method',
-                $identity->label.' is your only way to sign in. Set a password or add a passkey first, then disconnect it.',
+                new ActionMessage('console._part1_is_your_only_way_to_sign_in_set_a_password_or_ad_968a0fd3', ['part1' => (string) ($identity->label)]),
                 'identity_id',
             );
         }

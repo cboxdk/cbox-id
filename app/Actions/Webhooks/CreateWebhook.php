@@ -7,6 +7,7 @@ namespace App\Actions\Webhooks;
 use App\Http\Resources\Environment\WebhookResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -113,7 +114,7 @@ final readonly class CreateWebhook implements Action, Preflight
                 ? $this->webhooks->registerForEnvironmentWithScheme($url, $eventTypes, $scheme)
                 : $this->webhooks->registerWithScheme($organizationId, $url, $eventTypes, $scheme);
         } catch (UnsafeWebhookUrl) {
-            throw ActionRefused::because('unsafe_url', 'That URL is not allowed — it must be a public HTTPS endpoint.', 'url');
+            throw ActionRefused::because('unsafe_url', new ActionMessage('console.that_url_is_not_allowed_it_must_be_a_public_https_endpo_2ba3a3f0'), 'url');
         }
 
         // Read back, so the columns the database defaulted (health, sequence) are real.

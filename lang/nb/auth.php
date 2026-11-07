@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-// Norwegian Bokmål: the sign-in group (pages/auth/*).
 return [
     'common' => [
         'email' => 'E-post',
@@ -19,13 +18,11 @@ return [
         'could_not_process' => 'Vi kunne ikke behandle denne forespørselen. Prøv igjen senere.',
         'code_incorrect' => 'Koden er feil eller har utløpt.',
     ],
-
     'password_field' => [
         'show' => 'Vis passord',
         'hide' => 'Skjul passord',
         'policy' => 'Minst :count tegn',
     ],
-
     'login' => [
         'title' => 'Logg inn',
         'purpose' => [
@@ -60,8 +57,6 @@ return [
         'forgot_password' => 'Glemt passordet?',
         'or' => 'ELLER',
         'continue_with' => 'Fortsett med :provider',
-        // The badge on the sign-in method this device used last, and what it means said in full
-        // for a screen reader.
         'last_used' => 'Sist brukt',
         'last_used_hint' => 'Slik logget du inn sist på denne enheten.',
         'magic_link' => 'Send meg en innloggingslenke',
@@ -69,7 +64,7 @@ return [
         'passkey_failed' => 'Innlogging med passnøkkel mislyktes.',
         'new_organization' => 'Ny organisasjon?',
         'create_one' => 'Opprett en',
-        'invalid_credentials' => 'Innloggingsopplysningene samsvarer ikke med det vi har registrert.',
+        'invalid_credentials' => 'E-postadressen eller passordet er feil.',
         'passkey_errors' => [
             'challenge_expired' => 'Innloggingsforespørselen har utløpt. Prøv igjen.',
             'not_registered' => 'Denne passnøkkelen er ikke registrert.',
@@ -77,13 +72,11 @@ return [
             'unverified' => 'Passnøkkelen kunne ikke bekreftes.',
             'failed' => 'Noe gikk galt under innloggingen.',
         ],
-        // Answered by a passkey or magic-link door the environment has switched off.
         'method_off' => [
             'passkeys' => 'Passnøkler er slått av her. Logg inn på en annen måte.',
             'magic_link' => 'Innloggingslenker på e-post er slått av her. Logg inn på en annen måte.',
         ],
     ],
-
     'signup' => [
         'title' => 'Kom i gang',
         'heading' => [
@@ -121,7 +114,6 @@ return [
             'closed' => 'Registrering er stengt for øyeblikket.',
         ],
     ],
-
     'forgot_password' => [
         'title' => 'Tilbakestill passord',
         'heading' => 'Tilbakestill passordet ditt',
@@ -131,7 +123,6 @@ return [
         'remembered' => 'Husker du det likevel?',
         'throttled' => 'For mange forsøk. Vent noen minutter, og prøv igjen.',
     ],
-
     'reset_password' => [
         'title' => 'Velg et nytt passord',
         'lead' => 'Velg et sterkt passord på minst :count tegn.',
@@ -140,14 +131,12 @@ return [
         'invalid_link' => 'Denne tilbakestillingslenken er ugyldig eller har utløpt. Be om en ny.',
         'done' => 'Passordet ditt er tilbakestilt – logg inn med det nye passordet.',
     ],
-
     'change_password' => [
         'title' => 'Velg et nytt passord',
         'lead' => 'Passordet du logget inn med, ble angitt av en administrator. Velg et passord som bare du kjenner, før du fortsetter.',
         'submit' => 'Oppdater passord',
         'mismatch' => 'Passordene er ikke like.',
     ],
-
     'mfa' => [
         'title' => 'Tofaktorautentisering',
         'code' => [
@@ -176,7 +165,6 @@ return [
             'unavailable' => 'SMS-koder er ikke tilgjengelige for denne kontoen.',
         ],
     ],
-
     'otp_step_up' => [
         'title' => 'Ekstra bekreftelse',
         'lead' => 'Denne innloggingen så uvanlig ut, så vi har sendt en engangskode til :email. Skriv den inn for å fortsette.',
@@ -187,20 +175,17 @@ return [
         'resent' => 'Vi har sendt en ny kode til :email.',
         'too_many_codes' => 'Du har bedt om for mange koder. Vent litt, og prøv igjen.',
     ],
-
     'accounts' => [
         'title' => 'Bytt bruker',
         'lead' => 'Alle som er logget inn på denne enheten. Velg én, eller logg inn som en annen.',
         'active' => 'Aktiv',
         'add' => 'Logg inn som en annen',
     ],
-
     'signed_out' => [
         'title' => 'Logget ut',
         'heading' => 'Du er logget ut',
         'lead' => 'Du er logget ut på denne enheten, også fra alle konsollene du åpnet fra denne innloggingen. Logg inn igjen for å fortsette.',
     ],
-
     'accept_invite' => [
         'title' => 'Godta invitasjon',
         'heading' => 'Godta invitasjonen',
@@ -214,7 +199,6 @@ return [
         'invalid' => 'Invitasjonen er ugyldig eller har utløpt.',
         'not_completed' => 'Invitasjonen kunne ikke fullføres.',
     ],
-
     'confirm_email' => [
         'title' => 'Bekreft e-postadressen',
         'heading' => 'Bekreft e-postadressen din',
@@ -224,7 +208,6 @@ return [
         'verified_sign_in' => 'E-postadressen er bekreftet – logg inn for å åpne miljøet ditt.',
         'verified' => 'E-postadressen din er bekreftet – du kan logge inn.',
     ],
-
     'confirm_sign_in' => [
         'title' => 'Logg inn',
         'heading' => 'Fullfør innloggingen',
@@ -233,10 +216,9 @@ return [
         'note' => 'Lenken virker bare én gang. Hvis du ikke har bedt om å logge inn, lukker du denne siden – ingenting skjer før du trykker på knappen.',
         'invalid' => 'Innloggingslenken er ugyldig eller har utløpt.',
     ],
-
     'first_run' => [
         'title' => 'Sett opp Cbox ID',
-        'lead' => 'Denne installasjonen er tom. Gjør krav på den én gang, fra maskinen den kjører på.',
+        'lead' => 'Denne installasjonen er ikke satt opp ennå. Gjør det første oppsettet fra maskinen den kjører på.',
         'unmigrated' => [
             'title' => 'Databasen til denne installasjonen har ikke noe skjema ennå.',
             'body' => 'Kjør :migrate på serveren (eller :install, som migrerer og installerer i ett steg), og last deretter inn denne siden på nytt.',
@@ -256,7 +238,7 @@ return [
         'name_placeholder' => 'Kari Nordmann',
         'email_label' => 'E-postadressen din',
         'environment_label' => 'Gi det første miljøet ditt et navn',
-        'environment_hint' => 'Et miljø er den harde isolasjonsgrensen – med egne brukere, nøkler og utsteder.',
+        'environment_hint' => 'Et miljø har egne brukere, nøkler og utsteder, og er fullstendig isolert fra andre miljøer.',
         'environment_default' => 'Produksjon',
         'organization_label' => 'Organisasjonsnavn',
         'organization_hint' => 'Denne installasjonen er konfigurert for flere leietakere, så installasjonen oppretter også det første arbeidsområdet – organisasjonen som eier miljøer og fakturering.',
@@ -264,7 +246,6 @@ return [
         'submit' => 'Fullfør installasjonen',
         'token_mismatch' => 'Oppsettstokenet samsvarer ikke med installasjonens, eller det har utløpt. Skriv ut et nytt med php artisan cbox-id:setup-token.',
     ],
-
     'join_organization' => [
         'title' => 'Bli med i :organization',
         'heading' => 'Bli med i :organization?',
@@ -283,7 +264,6 @@ return [
         ],
         'invalid' => 'Invitasjonen er ugyldig eller har utløpt.',
     ],
-
     'federation' => [
         'this_provider' => 'identitetsleverandøren',
         'expired' => 'Påloggingen tok for lang tid eller er allerede brukt. Logg på igjen.',
@@ -292,7 +272,7 @@ return [
         'cancelled' => 'Påloggingen med :provider ble avbrutt eller ble ikke fullført. Prøv igjen.',
         'unavailable' => ':provider kan ikke nås akkurat nå. Prøv igjen om litt, eller logg på på en annen måte.',
         'incomplete' => 'Svaret fra :provider var ufullstendig. Start på nytt hos identitetsleverandøren din.',
-        'unverified' => ':provider har ikke bekreftet at :email er din, så vi kan ikke koble den til kontoen som bruker den adressen. Logg på på en annen måte, og koble deretter til :provider under My account › Sign-in methods.',
+        'unverified' => ':provider har ikke bekreftet at :email tilhører deg, så vi kan ikke koble den til kontoen som bruker adressen. Logg inn på en annen måte og koble deretter til :provider under Min konto › Påloggingsmetoder.',
         'already_linked' => 'Den :provider-kontoen er allerede koblet til en annen konto her.',
         'account_disabled' => 'Denne kontoen er deaktivert. Kontakt administratoren din.',
         'link_expired' => 'Forespørselen om å koble til :provider har utløpt eller er allerede brukt. Logg på med :provider igjen for å starte på nytt.',
@@ -300,7 +280,6 @@ return [
         'refused' => 'Vi kunne ikke behandle denne påloggingen. Prøv igjen senere.',
         'connect_session_changed' => 'Du ble logget av eller logget på som noen andre mens du koblet til :provider, så ingenting ble koblet til. Logg på og prøv igjen.',
     ],
-
     'link_account' => [
         'title' => 'Koble til :provider-kontoen din',
         'heading' => 'Koble :provider-kontoen din til :email?',
@@ -328,7 +307,6 @@ return [
         'linked' => ':provider er nå koblet til kontoen din. Du kan logge på med den fra nå av.',
         'cancelled' => 'Ingenting ble koblet til. Kontoen din er akkurat som før.',
     ],
-
     'open_portal_setup' => [
         'title' => 'Administratoroppsett',
         'heading' => 'Konfigurer innlogging for organisasjonen din',
@@ -336,7 +314,6 @@ return [
         'action' => 'Åpne oppsett',
         'note' => 'Lenken virker bare én gang, og oppsettsøkten den åpner, utløper. Åpne den når du er klar til å fullføre.',
     ],
-
     'connected_services' => [
         'title' => 'Tilkoblede tjenester',
         'heading' => 'Tilkoblede tjenester',
@@ -360,7 +337,6 @@ return [
         'failed' => ':provider kunne ikke kobles til. Prøv igjen.',
         'disconnected' => ':provider er koblet fra.',
     ],
-
     'connect_service' => [
         'title' => 'Koble til :provider',
         'heading' => 'Koble til :provider-kontoen din',

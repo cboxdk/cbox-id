@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Platform\OAuth\MachineTokenAuthority;
 use Cbox\Id\AccessControl\Contracts\AppManifests;
 use Cbox\Id\AccessControl\Exceptions\InvalidManifest;
 use Cbox\Id\AccessControl\Manifest\ManifestParser;
@@ -33,6 +34,12 @@ final class AppManifestController
             );
         }
 
+        // A login client may also hold this machine scope. A person (including a
+        // support actor) must never publish its application catalog through that client.
+        if (! MachineTokenAuthority::issued($token)) {
+            return new JsonResponse(['error' => 'machine_token_required', 'message' => 'Publishing an app manifest requires its own client-credentials token.'], 403);
+        }
+
         try {
             $manifest = $parser->parse($request->json()->all());
         } catch (InvalidManifest $e) {
@@ -44,6 +51,9 @@ final class AppManifestController
         $result = $manifests->sync($token->clientId, $manifest);
 
         return new JsonResponse([
+            'client_id' => $token->clientId,
+            'version' => $manifest->version,
+            'checksum' => $manifest->checksum(),
             'unchanged' => $result->unchanged,
             'roles_declared' => $result->rolesDeclared,
             'permissions_declared' => $result->permissionsDeclared,

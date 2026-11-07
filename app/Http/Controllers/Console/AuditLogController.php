@@ -19,9 +19,7 @@ use App\Platform\AuditLogs\AuditLogFilters;
 use App\Platform\AuditLogs\AuditLogPolicy;
 use App\Platform\AuditLogs\AuditLogQuery;
 use App\Platform\Console\ConsolePlane;
-use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -84,7 +82,7 @@ final readonly class AuditLogController extends ConsoleController
             ->limit(5)
             ->get();
 
-        return $this->page('console/audit-logs/index', ConsoleStrings::text(Vocabulary::APP_AUDIT_LOGS), [
+        return $this->page('console/audit-logs/index', __('console.app_audit_logs_1e678e3e'), [
             'help' => HelpProps::for(HelpTopic::AuditLogs),
             'events' => array_map(fn (AuditLogEvent $event): array => $this->row($event, $names), $page['events']),
             'filters' => [
@@ -146,7 +144,7 @@ final readonly class AuditLogController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', __('console.export_started_it_appears_below_when_it_is_r_4ba82014'));
+            : back()->with('status', __('console.export_started_it_appears_below_when_it_is_ready_to_dow_4ba82014'));
     }
 
     /** The environment's schemas, the actions seen lately without one, and its settings. */
@@ -224,7 +222,7 @@ final readonly class AuditLogController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route('environment.audit-logs.schemas.edit', $request->string('action')->toString())->with('status', __('console.schema_saved_events_of_this_action_are_check_8215a899'));
+            : to_route('environment.audit-logs.schemas.edit', $request->string('action')->toString())->with('status', __('console.schema_saved_events_of_this_action_are_checked_against_8215a899'));
     }
 
     public function edit(string $action): Response

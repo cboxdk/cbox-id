@@ -1,4 +1,5 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     type FontStacks,
@@ -72,12 +73,12 @@ const IMAGE_RULES: Record<ImageKind, { maxBytes: number; types: string[]; format
     logo: {
         maxBytes: 1024 * 1024,
         types: ['image/png', 'image/jpeg', 'image/webp'],
-        formats: 'PNG, JPEG or WebP',
+        formats: 'PNG / JPEG / WebP',
     },
     favicon: {
         maxBytes: 256 * 1024,
         types: ['image/png', 'image/webp', 'image/x-icon', 'image/vnd.microsoft.icon'],
-        formats: 'PNG, ICO or WebP',
+        formats: 'PNG / ICO / WebP',
     },
 };
 
@@ -106,8 +107,12 @@ export function ThemeEditor({
     imagesAccepted = true,
     onChange,
 }: ThemeEditorProps) {
-    const { t: tc } = useUiTranslator();
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [draft, setDraft] = useState<Theme>(value);
     const [images, setImages] = useState<ImageChanges>({});
 
@@ -236,20 +241,18 @@ export function ThemeEditor({
                 >
                     <Icon name="warning" className="w-4 h-4 mt-0.5 shrink-0" />
                     <span>
-                        <b>
-                            {tc(
-                                'console.upload_your_logo_remote_logo_urls_are_no_lon_8077b388',
-                                'Upload your logo — remote logo URLs are no longer shown.',
-                            )}
-                        </b>
-                        {tc(
-                            'console.a_logo_linked_from_another_site_told_that_si_0864dc5e',
-                            ' A logo linked from another site told that site about every person who opened your sign-in page, so hosted pages now draw only images uploaded here. Upload it under ',
-                        )}
-                        <i>{tc('console.logo_amp_favicon_c342dcb5', 'Logo &amp; favicon')}</i>
-                        {tc(
-                            'console.below_or_remove_it_to_stop_this_notice_f33a72e8',
-                            ' below, or remove it to stop this notice.',
+                        {consoleRich(
+                            'console._part1_a_logo_linked_from_another_site_told_that_site_a_dcac9b85',
+                            {
+                                part1: (
+                                    <b>
+                                        {consoleT(
+                                            'console.upload_your_logo_remote_logo_urls_are_no_longer_shown_8077b388',
+                                        )}
+                                    </b>
+                                ),
+                                part2: <i>{consoleT('console.logo_favicon_13a23ce8')}</i>,
+                            },
                         )}
                     </span>
                 </output>
@@ -258,9 +261,7 @@ export function ThemeEditor({
             <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_1fr] items-start">
                 <div className="space-y-5 lg:sticky lg:top-6">
                     <section className="card p-4">
-                        <p className="cbx-nav-group mb-3">
-                            {tc('console.presets_954f93fe', 'Presets')}
-                        </p>
+                        <p className="cbx-nav-group mb-3">{consoleT('console.presets_954f93fe')}</p>
                         <div className="grid grid-cols-2 gap-2">
                             {Object.entries(presets).map(([id, preset]) => (
                                 <button
@@ -271,7 +272,9 @@ export function ThemeEditor({
                                     // Named explicitly: the swatch beside the label is
                                     // aria-hidden, so without this the button's name is
                                     // whatever survives of the visible text.
-                                    aria-label={`${preset.label} preset`}
+                                    aria-label={consoleFinalText('console._part1_preset_5d1debef', {
+                                        part1: preset.label,
+                                    })}
                                     className="group flex items-center gap-2.5 rounded-lg border p-2 text-left transition"
                                     style={
                                         draft.preset === id
@@ -311,7 +314,7 @@ export function ThemeEditor({
                     <section className="card p-4">
                         <div className="flex items-center justify-between mb-3">
                             <p className="cbx-nav-group" style={{ margin: 0 }}>
-                                {tc('console.colours_88f20221', 'Colours')}
+                                {consoleT('console.colours_88f20221')}
                             </p>
                             <fieldset
                                 className="inline-flex rounded-lg p-0.5"
@@ -322,10 +325,7 @@ export function ThemeEditor({
                                 }}
                             >
                                 <legend className="sr-only">
-                                    {tc(
-                                        'console.which_mode_to_edit_1359ffa8',
-                                        'Which mode to edit',
-                                    )}
+                                    {consoleT('console.which_mode_to_edit_1359ffa8')}
                                 </legend>
                                 {(['light', 'dark'] as const).map((candidate) => (
                                     <button
@@ -370,10 +370,7 @@ export function ThemeEditor({
                                 className="text-[12px]"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                {tc(
-                                    'console.contrast_primary_background_138e6edf',
-                                    'Contrast (primary · background)',
-                                )}
+                                {consoleT('console.contrast_primary_background_138e6edf')}
                             </span>
                             <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold">
                                 <span className="mono">{aa.ratio}:1</span>
@@ -385,14 +382,14 @@ export function ThemeEditor({
                     <section className="card p-4 space-y-4">
                         <div>
                             <p className="cbx-nav-group mb-2">
-                                {tc('console.corners_1d3cc47e', 'Corners')}
+                                {consoleT('console.corners_1d3cc47e')}
                             </p>
                             <fieldset
                                 className="flex flex-wrap gap-1.5"
                                 style={{ border: 0, padding: 0 }}
                             >
                                 <legend className="sr-only">
-                                    {tc('console.corners_1d3cc47e', 'Corners')}
+                                    {consoleT('console.corners_1d3cc47e')}
                                 </legend>
                                 {radii.map((radius) => (
                                     <button
@@ -424,7 +421,7 @@ export function ThemeEditor({
 
                         <div>
                             <p className="cbx-nav-group mb-2">
-                                {tc('console.typeface_3a8c1076', 'Typeface')}
+                                {consoleT('console.typeface_3a8c1076')}
                             </p>
                             {/*
                                 Each option is drawn IN its face, so the choice is made by
@@ -437,7 +434,7 @@ export function ThemeEditor({
                                 style={{ border: 0, padding: 0 }}
                             >
                                 <legend className="sr-only">
-                                    {tc('console.typeface_3a8c1076', 'Typeface')}
+                                    {consoleT('console.typeface_3a8c1076')}
                                 </legend>
                                 {Object.entries(fonts).map(([key, stack]) => (
                                     <button
@@ -462,7 +459,7 @@ export function ThemeEditor({
                                             aria-hidden="true"
                                             className="text-[17px] leading-none"
                                         >
-                                            {tc('console.aa_81acaafb', 'Aa')}
+                                            {consoleT('console.aa_81acaafb')}
                                         </span>
                                         <span className="truncate">{nameOf(key)}</span>
                                     </button>
@@ -478,16 +475,15 @@ export function ThemeEditor({
                     */}
                     <section className="card p-4 space-y-4" aria-labelledby="theme-images">
                         <p id="theme-images" className="cbx-nav-group" style={{ margin: 0 }}>
-                            {tc('console.logo_amp_favicon_c342dcb5', 'Logo &amp; favicon')}
+                            {consoleT('console.logo_favicon_13a23ce8')}
                         </p>
                         {imagesAccepted ? (
                             <>
                                 <ImagePicker
                                     kind="logo"
-                                    label={tc('console.logo_d707dc2f', 'Logo')}
-                                    hint={tc(
-                                        'console.shown_above_the_sign_in_form_and_in_emails_p_a92637fe',
-                                        'Shown above the sign-in form and in emails. PNG, JPEG or WebP, up to 1 MB. A wide image about 36px tall reads best.',
+                                    label={consoleT('console.logo_d707dc2f')}
+                                    hint={consoleT(
+                                        'console.shown_above_the_sign_in_form_and_in_emails_png_jpeg_or_a92637fe',
                                     )}
                                     value={draft.logo}
                                     error={imageErrors.logo}
@@ -495,10 +491,9 @@ export function ThemeEditor({
                                 />
                                 <ImagePicker
                                     kind="favicon"
-                                    label={tc('console.favicon_42955289', 'Favicon')}
-                                    hint={tc(
-                                        'console.the_browser_tab_icon_on_your_sign_in_pages_a_04f6f405',
-                                        'The browser-tab icon on your sign-in pages. A square PNG, ICO or WebP, up to 256 KB.',
+                                    label={consoleT('console.favicon_42955289')}
+                                    hint={consoleT(
+                                        'console.the_browser_tab_icon_on_your_sign_in_pages_a_square_png_04f6f405',
                                     )}
                                     value={draft.favicon}
                                     error={imageErrors.favicon}
@@ -507,9 +502,8 @@ export function ThemeEditor({
                             </>
                         ) : (
                             <p className="text-[13px]" style={{ color: 'var(--muted-foreground)' }}>
-                                {tc(
-                                    'console.image_uploads_need_the_white_label_module_wh_4c170783',
-                                    'Image uploads need the white-label module, which is not enabled on this install.',
+                                {consoleT(
+                                    'console.image_uploads_need_the_white_label_module_which_is_not_4c170783',
                                 )}
                             </p>
                         )}
@@ -517,18 +511,18 @@ export function ThemeEditor({
 
                     <section className="card p-4">
                         <p className="cbx-nav-group mb-3">
-                            {tc('console.export_amp_reset_6914d5e2', 'Export &amp; reset')}
+                            {consoleT('console.export_reset_28cd7936')}
                         </p>
                         <div className="grid grid-cols-2 gap-2">
                             <Button size="sm" icon="copy" onClick={() => copy('css')}>
                                 {copied === 'css'
-                                    ? tc('console.copied_8d525e5f', 'Copied')
-                                    : tc('console.copy_css_cd5fa760', 'Copy CSS')}
+                                    ? consoleText('console.copied_8d525e5f')
+                                    : consoleText('console.copy_css_cd5fa760')}
                             </Button>
                             <Button size="sm" icon="copy" onClick={() => copy('json')}>
                                 {copied === 'json'
-                                    ? tc('console.copied_8d525e5f', 'Copied')
-                                    : tc('console.copy_json_7708c6e2', 'Copy JSON')}
+                                    ? consoleText('console.copied_8d525e5f')
+                                    : consoleText('console.copy_json_7708c6e2')}
                             </Button>
                         </div>
                         <Button
@@ -538,8 +532,9 @@ export function ThemeEditor({
                             style={{ color: 'var(--muted-foreground)' }}
                             onClick={() => applyPreset(draft.preset)}
                         >
-                            {tc('console.reset_to_39146227', 'Reset to ')}
-                            {presets[draft.preset]?.label ?? draft.preset}
+                            {consoleRich('console.reset_to_part1_0e701612', {
+                                part1: presets[draft.preset]?.label ?? draft.preset,
+                            })}
                         </Button>
                     </section>
                 </div>
@@ -548,12 +543,12 @@ export function ThemeEditor({
                 <div className="lg:sticky lg:top-6">
                     <div className="flex items-center justify-between mb-2">
                         <p className="cbx-nav-group" style={{ margin: 0 }}>
-                            {tc('console.live_preview_f65ddc1f', 'Live preview')}
+                            {consoleT('console.live_preview_f65ddc1f')}
                         </p>
                         <span className="text-[11px]" style={{ color: 'var(--faint)' }}>
-                            {tc('console.editing_the_8aa39c55', 'Editing the ')}
-                            {mode}
-                            {tc('console.theme_ac06016a', ' theme')}
+                            {consoleRich('console.editing_the_part1_theme_fd4c9579', {
+                                part1: mode,
+                            })}
                         </span>
                     </div>
 
@@ -593,17 +588,19 @@ export function ThemeEditor({
                                     border: '1px solid var(--border)',
                                 }}
                             >
-                                {draft.favicon !== '' ? (
-                                    <img
-                                        src={draft.favicon}
-                                        alt=""
-                                        className="w-3 h-3 object-contain"
-                                    />
-                                ) : (
-                                    <Icon name="shield" className="w-3 h-3" />
-                                )}
-                                {host}
-                                {tc('console.cboxid_com_59f8b474', '.cboxid.com')}
+                                {consoleRich('console._part1_part2_cboxid_com_e4bea547', {
+                                    part1:
+                                        draft.favicon !== '' ? (
+                                            <img
+                                                src={draft.favicon}
+                                                alt=""
+                                                className="w-3 h-3 object-contain"
+                                            />
+                                        ) : (
+                                            <Icon name="shield" className="w-3 h-3" />
+                                        ),
+                                    part2: host,
+                                })}
                             </span>
                         </div>
 
@@ -615,12 +612,16 @@ export function ThemeEditor({
                             line above it instead.
                         */}
                         <p className="sr-only">
-                            {tc(
-                                'console.live_preview_of_your_hosted_sign_in_screen_i_c411efbb',
-                                'Live preview of your hosted sign-in screen, in ',
+                            {consoleRich(
+                                'console.live_preview_of_your_hosted_sign_in_screen_in_part1_mod_805f3e24',
+                                {
+                                    part1: consoleT(
+                                        mode === 'dark'
+                                            ? 'console.dark_60acc53f'
+                                            : 'console.light_dbcd5e7b',
+                                    ),
+                                },
                             )}
-                            {mode}
-                            {tc('console.mode_aaf88d02', ' mode.')}
                         </p>
                         <div
                             className="p-8 sm:p-12 transition-colors"
@@ -662,7 +663,7 @@ export function ThemeEditor({
                                             {(draft.name || 'A').charAt(0).toUpperCase()}
                                         </span>
                                         <span className="font-semibold">
-                                            {draft.name || tc('console.acme_37036cd8', 'Acme')}
+                                            {draft.name || tc('console.acme_37036cd8')}
                                         </span>
                                     </div>
                                 )}
@@ -672,16 +673,16 @@ export function ThemeEditor({
                                         className="text-xl font-bold tracking-tight"
                                         style={{ fontFamily: 'var(--font-display)' }}
                                     >
-                                        {tc('console.sign_in_to_f5e5226a', 'Sign in to ')}
-                                        {draft.name || tc('console.acme_37036cd8', 'Acme')}
+                                        {consoleRich('console.sign_in_to_part1_de5fd86c', {
+                                            part1: draft.name || 'Acme',
+                                        })}
                                     </h2>
                                     <p
                                         className="mt-1 text-sm"
                                         style={{ color: 'var(--muted-foreground)' }}
                                     >
-                                        {tc(
+                                        {consoleT(
                                             'console.welcome_back_please_sign_in_to_continue_c8c5c82c',
-                                            'Welcome back — please sign in to continue.',
                                         )}
                                     </p>
 
@@ -690,10 +691,13 @@ export function ThemeEditor({
                                             className="btn btn-secondary w-full"
                                             style={{ justifyContent: 'center' }}
                                         >
-                                            <Icon name="shield" className="w-4 h-4" />
-                                            {tc(
-                                                'console.continue_with_sso_aa60655c',
-                                                'Continue with SSO',
+                                            {consoleRich(
+                                                'console._part1_continue_with_sso_bf7d0a7c',
+                                                {
+                                                    part1: (
+                                                        <Icon name="shield" className="w-4 h-4" />
+                                                    ),
+                                                },
                                             )}
                                         </span>
                                     </div>
@@ -702,44 +706,55 @@ export function ThemeEditor({
                                         className="my-5 flex items-center gap-3 text-[11px] uppercase tracking-wide"
                                         style={{ color: 'var(--faint)' }}
                                     >
-                                        <span
-                                            className="h-px flex-1"
-                                            style={{ background: 'var(--border)' }}
-                                        />
-                                        {tc('console.or_7175517a', 'or')}
-                                        <span
-                                            className="h-px flex-1"
-                                            style={{ background: 'var(--border)' }}
-                                        />
+                                        {consoleRich('console._part1_or_part2_ee970dec', {
+                                            part1: (
+                                                <span
+                                                    className="h-px flex-1"
+                                                    style={{ background: 'var(--border)' }}
+                                                />
+                                            ),
+                                            part2: (
+                                                <span
+                                                    className="h-px flex-1"
+                                                    style={{ background: 'var(--border)' }}
+                                                />
+                                            ),
+                                        })}
                                     </div>
 
                                     <p className="label">
-                                        {tc('console.email_address_f2488fd4', 'Email address')}
+                                        {consoleT('console.email_address_f2488fd4')}
                                     </p>
-                                    <span className="input block">you@company.com</span>
+                                    <span className="input block">
+                                        {consoleT('console.you_company_com_652740e1')}
+                                    </span>
                                     <span
                                         className="btn btn-primary w-full mt-4"
                                         style={{ justifyContent: 'center' }}
                                     >
-                                        {tc('console.continue_31fbef16', 'Continue')}
+                                        {consoleT('console.continue_31fbef16')}
                                     </span>
 
                                     <p
                                         className="mt-6 text-center text-[13px]"
                                         style={{ color: 'var(--muted-foreground)' }}
                                     >
-                                        {tc(
-                                            'console.don_t_have_an_account_1b545b23',
-                                            "Don't have an account?",
-                                        )}{' '}
-                                        <span
-                                            style={{
-                                                color: 'var(--accent-strong)',
-                                                fontWeight: 600,
-                                            }}
-                                        >
-                                            {tc('console.sign_up_5e2b8e96', 'Sign up')}
-                                        </span>
+                                        {consoleRich(
+                                            'console.don_t_have_an_account_part1_part2_e9168424',
+                                            {
+                                                part1: ' ',
+                                                part2: (
+                                                    <span
+                                                        style={{
+                                                            color: 'var(--accent-strong)',
+                                                            fontWeight: 600,
+                                                        }}
+                                                    >
+                                                        {consoleT('console.sign_up_5e2b8e96')}
+                                                    </span>
+                                                ),
+                                            },
+                                        )}
                                     </p>
                                 </div>
 
@@ -747,11 +762,9 @@ export function ThemeEditor({
                                     className="mt-8 flex items-center gap-1.5 text-[11px]"
                                     style={{ color: 'var(--faint)' }}
                                 >
-                                    <Icon name="shield" className="w-3 h-3" />
-                                    {tc(
-                                        'console.secured_by_cbox_id_825b849f',
-                                        'Secured by Cbox ID',
-                                    )}
+                                    {consoleRich('console._part1_secured_by_cbox_id_19c3ee96', {
+                                        part1: <Icon name="shield" className="w-3 h-3" />,
+                                    })}
                                 </div>
                             </div>
                         </div>
@@ -759,18 +772,15 @@ export function ThemeEditor({
 
                     <p className="mt-3 text-[12px]" style={{ color: 'var(--faint)' }}>
                         {scope === 'environment'
-                            ? tc(
-                                  'console.this_is_your_environment_s_default_sign_in_a_d17d58dd',
-                                  "This is your environment's default sign-in. An organization can override it with its own theme.",
+                            ? consoleText(
+                                  'console.this_is_your_environment_s_default_sign_in_an_organizat_d17d58dd',
                               )
                             : scope === 'organization'
-                              ? tc(
-                                    'console.this_overrides_your_environment_s_default_fo_41bfb686',
-                                    "This overrides your environment's default for your organization's sign-in.",
+                              ? consoleText(
+                                    'console.this_overrides_your_environment_s_default_for_your_orga_41bfb686',
                                 )
-                              : tc(
-                                    'console.this_is_exactly_how_your_sign_in_renders_the_a4878600',
-                                    'This is exactly how your sign-in renders — the preview shares the resolver that themes the live page.',
+                              : consoleText(
+                                    'console.this_is_exactly_how_your_sign_in_renders_the_preview_sh_a4878600',
                                 )}
                     </p>
                 </div>
@@ -801,8 +811,8 @@ function ImagePicker({
     error?: string;
     onChange: (next: string | null) => void;
 }) {
-    const { t: tc } = useUiTranslator();
-
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const input = useRef<HTMLInputElement>(null);
     const [problem, setProblem] = useState<string | null>(null);
     const rules = IMAGE_RULES[kind];
@@ -817,8 +827,8 @@ function ImagePicker({
         if (!rules.types.includes(file.type)) {
             setProblem(
                 file.type.includes('svg')
-                    ? `SVG is not accepted — it can carry a script. Use a ${rules.formats} image.`
-                    : `Use a ${rules.formats} image.`,
+                    ? consoleT('console.image_svg_not_allowed', { formats: rules.formats })
+                    : consoleT('console.image_allowed_formats', { formats: rules.formats }),
             );
 
             return;
@@ -826,7 +836,9 @@ function ImagePicker({
 
         if (file.size > rules.maxBytes) {
             setProblem(
-                `That file is larger than ${rules.maxBytes / 1024 >= 1024 ? '1 MB' : `${rules.maxBytes / 1024} KB`}.`,
+                consoleT('console.image_file_too_large', {
+                    limit: rules.maxBytes / 1024 >= 1024 ? '1 MB' : `${rules.maxBytes / 1024} KB`,
+                }),
             );
 
             return;
@@ -860,7 +872,7 @@ function ImagePicker({
                     {value !== '' ? (
                         <img
                             src={value}
-                            alt={`Current ${label.toLowerCase()}`}
+                            alt={label}
                             className="max-w-full max-h-full object-contain"
                         />
                     ) : (
@@ -875,8 +887,8 @@ function ImagePicker({
                         onClick={() => input.current?.click()}
                     >
                         {value !== ''
-                            ? tc('console.replace_95e15439', 'Replace')
-                            : tc('console.upload_865e89de', 'Upload')}
+                            ? consoleText('console.replace_95e15439')
+                            : consoleText('console.upload_865e89de')}
                     </Button>
                     {value !== '' && (
                         <Button
@@ -887,7 +899,7 @@ function ImagePicker({
                                 onChange(null);
                             }}
                         >
-                            {tc('console.remove_c3812fc4', 'Remove')}
+                            {consoleT('console.remove_c3812fc4')}
                         </Button>
                     )}
                 </div>
@@ -933,6 +945,8 @@ function ColorRow({
     value: string;
     onChange: (next: string) => void;
 }) {
+    const { t: consoleFinalText } = useConsoleTranslator();
+
     const [typed, setTyped] = useState(value);
     const [committed, setCommitted] = useState(value);
 
@@ -955,7 +969,9 @@ function ColorRow({
                     <input
                         type="color"
                         className="absolute inset-0 opacity-0 cursor-pointer"
-                        aria-label={`${token} colour`}
+                        aria-label={consoleFinalText('console._part1_colour_21d2f91e', {
+                            part1: token,
+                        })}
                         value={value}
                         onChange={(event) => onChange(event.target.value.toLowerCase())}
                     />
@@ -967,7 +983,7 @@ function ColorRow({
                 className="mono"
                 style={{ width: '6.5rem', height: '2rem', fontSize: '12px' }}
                 spellCheck={false}
-                aria-label={`${token} hex`}
+                aria-label={consoleFinalText('console._part1_hex_ac7233c8', { part1: token })}
                 value={typed}
                 onChange={(event) => {
                     setTyped(event.target.value);

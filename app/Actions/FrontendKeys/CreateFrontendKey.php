@@ -10,6 +10,7 @@ use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use Cbox\Id\FrontendApi\Contracts\PublishableKeys;
@@ -58,7 +59,7 @@ final readonly class CreateFrontendKey implements Action
                 self::strings($context->array('origins')),
             );
         } catch (UnusableOrigin $e) {
-            throw ActionRefused::because('unusable_origin', $e->getMessage(), 'origins');
+            throw ActionRefused::because('unusable_origin', FrameworkMessage::from($e), 'origins');
         }
 
         return ActionResult::item($key, FrontendKeyFields::present($key), 201);

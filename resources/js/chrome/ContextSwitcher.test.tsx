@@ -58,7 +58,7 @@ describe('ContextSwitcher', () => {
             within(nav).getByRole('button', { name: /Environment: Production/ }),
         ).toBeInTheDocument();
         // The word, not only the tint — colour alone is not an indicator.
-        expect(within(nav).getByText('PRODUCTION')).toBeInTheDocument();
+        expect(within(nav).getByTitle('Production environment')).toBeInTheDocument();
     });
 
     it('opens another environment of the project by following its link', async () => {

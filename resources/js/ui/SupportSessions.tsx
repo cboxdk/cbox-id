@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import { Badge } from './Badge';
@@ -38,8 +38,10 @@ export function SupportSessions({
     sessions: SupportSessionRow[];
     lead: 'user' | 'organization';
 }) {
-    const { t: tc } = useUiTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [ending, setEnding] = useState<SupportSessionRow | null>(null);
 
     if (sessions.length === 0) {
@@ -60,20 +62,20 @@ export function SupportSessions({
                     >
                         <div className="min-w-0 flex-1 basis-56">
                             <p className="text-sm font-medium truncate">
-                                {lead === 'user' ? (
-                                    <Link
-                                        href={session.userHref}
-                                        style={{ color: 'var(--accent-strong)' }}
-                                    >
-                                        {session.user}
-                                    </Link>
-                                ) : (
-                                    session.organization
-                                )}{' '}
-                                <span style={{ color: 'var(--muted-foreground)' }}>
-                                    {tc('console.in_58296753', 'in')}
-                                </span>{' '}
-                                {session.app}
+                                {consoleRich('console.support_session_subject_app', {
+                                    subject:
+                                        lead === 'user' ? (
+                                            <Link
+                                                href={session.userHref}
+                                                style={{ color: 'var(--accent-strong)' }}
+                                            >
+                                                {session.user}
+                                            </Link>
+                                        ) : (
+                                            session.organization
+                                        ),
+                                    app: session.app,
+                                })}
                             </p>
                             <p
                                 className="text-xs break-words"
@@ -84,32 +86,33 @@ export function SupportSessions({
                             <p className="text-xs" style={{ color: 'var(--faint)' }}>
                                 {session.startedBy !== null && (
                                     <>
-                                        {tc('console.by_7dd37029', 'By ')}
-                                        {session.startedBy} ·{' '}
+                                        {consoleRich('console.by_part1_805e76a8', {
+                                            part1: session.startedBy,
+                                        })}
                                     </>
                                 )}
                                 <time dateTime={session.expiresAt}>
-                                    {tc('console.ends_1cb3a4ae', 'ends ')}
-                                    {session.expiresIn}
+                                    {consoleRich('console.ends_part1_10fed5b5', {
+                                        part1: session.expiresIn,
+                                    })}
                                 </time>
                             </p>
                         </div>
 
-                        <Badge tone="warn">
-                            {tc('console.support_session_5f5a9473', 'Support session')}
-                        </Badge>
+                        <Badge tone="warn">{consoleT('console.support_session_5f5a9473')}</Badge>
 
                         <div className="flex items-center gap-2 shrink-0">
                             {session.appUrl !== null && (
                                 <Button asChild size="sm">
                                     <a href={session.appUrl} rel="noreferrer">
-                                        {tc('console.open_b8039d1d', 'Open ')}
-                                        {session.app}
+                                        {consoleRich('console.open_part1_10c0f8b9', {
+                                            part1: session.app,
+                                        })}
                                     </a>
                                 </Button>
                             )}
                             <Button size="sm" variant="danger" onClick={() => setEnding(session)}>
-                                {tc('console.end_now_adf7eccb', 'End now')}
+                                {consoleT('console.end_now_adf7eccb')}
                             </Button>
                         </div>
                     </li>
@@ -129,16 +132,18 @@ export function SupportSessions({
                 title={
                     ending === null
                         ? ''
-                        : `End the support session for ${ending.user} in ${ending.app}?`
+                        : consoleFinalText(
+                              'console.end_the_support_session_for_part1_in_part2_7c1d4ee9',
+                              { part1: ending.user, part2: ending.app },
+                          )
                 }
-                description={tc(
-                    'console.every_token_it_issued_is_revoked_now_and_no__e0dca49c',
-                    "Every token it issued is revoked now, and no new sign-in can use it. An app that checks tokens itself stops accepting them when they expire, which is never later than the session's own end.",
+                description={consoleT(
+                    'console.every_token_it_issued_is_revoked_now_and_no_new_sign_in_e0dca49c',
                 )}
                 footer={
                     <>
                         <Button onClick={() => setEnding(null)}>
-                            {tc('console.cancel_19766ed6', 'Cancel')}
+                            {consoleT('console.cancel_19766ed6')}
                         </Button>
                         <Button
                             variant="danger"
@@ -151,7 +156,7 @@ export function SupportSessions({
                                 }
                             }}
                         >
-                            {tc('console.end_now_adf7eccb', 'End now')}
+                            {consoleT('console.end_now_adf7eccb')}
                         </Button>
                     </>
                 }

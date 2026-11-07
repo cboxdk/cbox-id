@@ -94,7 +94,8 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
          */
         $existing = $this->subjects->findByEmail($email);
 
-        if ($existing !== null && $this->memberships->of($organizationId, $existing->id) !== null) {
+        if ($existing !== null && $this->memberships->of($organizationId, $existing->id) !== null
+            && ($invitation->clientId === null || $invitation->accessRoleIds === [])) {
             throw InvitationRefused::alreadyMember();
         }
 
@@ -102,6 +103,13 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
         // checked for segregation of duties now, where there is a form to report into —
         // by acceptance time the only place left to refuse is a redirect.
         $roleIds = $this->offeredOrRefuse($organizationId, $invitation->accessRoleIds);
+        if ($existing !== null && $this->memberships->of($organizationId, $existing->id) !== null
+            && $invitation->clientId !== null && Role::query()
+                ->whereIn('id', $roleIds)
+                ->where(fn ($query) => $query->whereNull('client_id')->orWhere('client_id', '!=', $invitation->clientId))
+                ->exists()) {
+            throw InvitationRefused::accessRoleNotOffered();
+        }
         $conflict = $this->sod->refuseSet($organizationId, $roleIds);
 
         if ($conflict !== null) {
@@ -112,10 +120,10 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
 
         // `invite()` revokes the address's earlier pending invitation as it mints this one,
         // so what was parked for THAT one is forgotten here, in the same transaction.
-        $superseded = $this->pendingIdsFor($organizationId, $email);
+        $superseded = $this->pendingIdsFor($organizationId, $email, $invitation->clientId);
 
         $pending = DB::transaction(function () use ($invitation, $organizationId, $email, $roleIds, $target, $superseded) {
-            $pending = $this->invitations->invite($organizationId, $email, $invitation->role, $invitation->inviter->subjectId);
+            $pending = $this->invitations->invite($organizationId, $email, $invitation->role, $invitation->inviter->subjectId, $invitation->clientId);
 
             $this->forget($organizationId, $superseded);
             $this->park($pending->invitation, $roleIds, $target, $invitation->inviter);
@@ -147,7 +155,7 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
     {
         $found = $this->findPending($organizationId, $invitationId) ?? throw InvitationRefused::notPending();
 
-        $key = 'organization-invite-resend|'.$organizationId.'|'.$found->email;
+        $key = 'organization-invite-resend|'.$organizationId.'|'.$found->app_client_id.'|'.$found->email;
 
         if (RateLimiter::tooManyAttempts($key, 1)) {
             throw InvitationRefused::tooSoon(RateLimiter::availableIn($key));
@@ -165,7 +173,7 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
         $role = in_array($found->role, OrgRoles::assignable(), true) ? $found->role : MembershipRole::Admin;
 
         $pending = DB::transaction(function () use ($organizationId, $found, $role, $inviter) {
-            $pending = $this->invitations->invite($organizationId, $found->email, $role, $inviter->subjectId);
+            $pending = $this->invitations->invite($organizationId, $found->email, $role, $inviter->subjectId, $found->app_client_id);
 
             // What the old link carried moves to the new one, so re-sending cannot quietly
             // drop the access roles or the way back to the app.
@@ -472,13 +480,17 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
     {
         // Drawn in the organization's own brand where it has one: the person is being asked
         // to join IT, and its sign-in page is where the link lands.
-        Mail::to($invitation->email)->locale(app(MailLocale::class)->forRecipient())->send(new InvitationMail(
+        $roleNames = array_map(static fn (InvitedRole $role): string => $role->name, $this->invitedRoles($invitation));
+        $roleLabel = $invitation->app_client_id === null
+            ? $invitation->role->label()
+            : ($roleNames === [] ? null : implode(', ', $roleNames));
+        Mail::to($invitation->email)->locale(app(MailLocale::class)->forRecipient(false))->send(new InvitationMail(
             organization: $this->organizations->find($invitation->organization_id)->name ?? 'your team',
             inviter: $inviter->name,
             // MailLinks, not route(): a mailed link's origin comes from the deployment, not
             // from the Host header of whoever asked to send it.
             url: $this->links->route('invitation.accept', $token),
-            role: $invitation->role->label(),
+            role: $roleLabel,
             app: $target?->appName,
         )->forOrganization($invitation->organization_id));
     }
@@ -505,12 +517,13 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
     /**
      * @return list<string>
      */
-    private function pendingIdsFor(string $organizationId, string $email): array
+    private function pendingIdsFor(string $organizationId, string $email, ?string $clientId): array
     {
         return array_values(array_filter(
             Invitation::query()
                 ->where('organization_id', $organizationId)
                 ->where('email', $email)
+                ->where('app_client_id', $clientId)
                 ->where('status', InvitationStatus::Pending->value)
                 ->pluck('id')
                 ->all(),

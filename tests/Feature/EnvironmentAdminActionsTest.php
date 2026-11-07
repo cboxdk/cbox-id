@@ -74,6 +74,7 @@ it('exercises the connection detail mutating actions (saveConfig, activate, disa
         ], 200),
     ]);
     $orgId = makeOrg('conn-org');
+    grantFeature($orgId, 'cbox-id-sso');
     $connection = app(Connections::class)->create(
         $orgId,
         ConnectionType::Oidc,
@@ -104,6 +105,7 @@ it('exercises the connection detail mutating actions (saveConfig, activate, disa
 it('exercises the directory detail mutating actions (regenerateToken, toggleStatus, saveName, delete)', function (): void {
     crudSetup();
     $orgId = makeOrg('dir-org');
+    grantFeature($orgId, 'cbox-id-scim');
     $directory = app(Directories::class)->register($orgId, 'HR')->directory;
 
     $from = route('environment.directories.show', $directory->id);

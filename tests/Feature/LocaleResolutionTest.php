@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\ResolveConsoleLocale;
-use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Locale\HostedLocale;
 use App\Platform\Locale\LocaleResolver;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -99,6 +97,21 @@ it('reads Accept-Language in q-order, by primary language', function (string $he
     'unknown first, known second' => ['ja, fr;q=0.5', 'fr'],
     'Norwegian macrolanguage' => ['no', 'nb'],
     'Bokmål' => ['nb-NO', 'nb'],
+    'fi' => ['fi-FI', 'fi'],
+    'es' => ['es-ES', 'es'],
+    'it' => ['it-IT', 'it'],
+    'nl' => ['nl-NL', 'nl'],
+    'pt' => ['pt-PT', 'pt'],
+    'pl' => ['pl-PL', 'pl'],
+    'ro' => ['ro-RO', 'ro'],
+    'cs' => ['cs-CZ', 'cs'],
+    'hu' => ['hu-HU', 'hu'],
+    'el' => ['el-GR', 'el'],
+    'bg' => ['bg-BG', 'bg'],
+    'hr' => ['hr-HR', 'hr'],
+    'sk' => ['sk-SK', 'sk'],
+    'tr' => ['tr-TR', 'tr'],
+    'uk' => ['uk-UA', 'uk'],
 ]);
 
 it('falls back to the environment default when nobody said anything usable', function (): void {
@@ -137,31 +150,41 @@ it('keeps the default inside the enabled list', function (): void {
 it('names each language in itself for the picker', function (): void {
     $locales = collect(i18nOf(signInPageIn('en'))['locales'])->pluck('name', 'code')->all();
 
-    expect($locales)->toBe([
+    expect($locales)->toEqual([
         'en' => 'English',
         'da' => 'Dansk',
         'de' => 'Deutsch',
         'sv' => 'Svenska',
         'nb' => 'Norsk bokmål',
-        'fr' => 'Français',
         'fi' => 'Suomi',
+        'fr' => 'Français',
         'es' => 'Español',
         'it' => 'Italiano',
         'nl' => 'Nederlands',
+        'pt' => 'Português',
+        'pl' => 'Polski',
+        'ro' => 'Română',
+        'cs' => 'Čeština',
+        'hu' => 'Magyar',
+        'el' => 'Ελληνικά',
+        'bg' => 'Български',
+        'hr' => 'Hrvatski',
+        'sk' => 'Slovenčina',
+        'tr' => 'Türkçe',
+        'uk' => 'Українська',
     ]);
 });
 
-it('renders the console in Danish when the browser prefers it', function (): void {
+it('offers the console catalogue in the browser language before a preference is saved', function (): void {
     ['subjectId' => $subjectId] = provisionAccount('owner@acme.example');
     signInAsMember($subjectId);
 
     $response = test()->withHeader('Accept-Language', 'da')->withCookie(LocaleResolver::COOKIE, 'da')->get(route('dashboard'));
 
-    $response->assertOk()->assertSee('<html lang="da"', false)->assertHeader('Content-Language', 'da');
-    $props = (array) $response->inertiaProps();
-    expect($props['i18n']['locale'])->toBe('da')
-        ->and(collect($props['i18n']['locales'])->pluck('code')->all())->toBe(HostedLocale::codes())
-        ->and($props['i18n']['messages']['console.my_account_b53181a4'])->toBe('Min konto');
+    $response->assertOk()->assertSee('<html lang="da"', false);
+    $i18n = ((array) $response->inertiaProps())['i18n'];
+    expect($i18n['locale'])->toBe('da')
+        ->and($i18n['messages'])->toHaveKey('console.save_1509f561');
 });
 
 it('remembers a language picked on the page, and drops the authorization’s choice for it', function (): void {
@@ -203,13 +226,11 @@ it('shares the console language independently of the hosted authorization langua
     signInAsMember($subjectId);
     session()->put(LocaleResolver::SESSION_KEY, 'fr');
 
-    test()->from(route('dashboard'))->post(route('console.locale.update'), ['locale' => 'da', 'user_id' => $subjectId])
-        ->assertRedirect(route('dashboard'))
-        ->assertCookieExpired(ResolveConsoleLocale::COOKIE);
+    test()->from(route('dashboard'))->post(route('console.locale.update'), ['language' => 'da', 'subject_id' => $subjectId, 'version' => 0])
+        ->assertRedirect(route('dashboard'));
     expect(session(LocaleResolver::SESSION_KEY))->toBe('fr');
 
     $response = test()->withHeader('Accept-Language', 'en')
-        ->withHeader('Accept-Language', 'da')
         ->get(route('dashboard'));
     $response->assertOk()->assertHeader('Content-Language', 'da');
     expect(((array) $response->inertiaProps())['i18n']['locale'])->toBe('da');
@@ -229,18 +250,17 @@ it('does not let hosted language restrictions remove Danish from the console', f
 it('rejects unsupported console language choices without changing the preference', function (mixed $locale): void {
     ['subjectId' => $subjectId] = provisionAccount();
     signInAsMember($subjectId);
-    test()->postJson(route('console.locale.update'), ['locale' => $locale, 'user_id' => $subjectId])
+    test()->postJson(route('console.locale.update'), ['language' => $locale, 'subject_id' => $subjectId, 'version' => 0])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors('locale')
-        ->assertCookieMissing(ResolveConsoleLocale::COOKIE);
-})->with(['ja', 'pl', '<script>alert(1)</script>', '', 'array' => [['da']]]);
+        ->assertJsonValidationErrors('language');
+})->with(['ja', 'xx', '<script>alert(1)</script>', '', 'array' => [['da']]]);
 
 it('falls back to English for unsupported browser and cookie languages in the console', function (): void {
     ['subjectId' => $subjectId] = provisionAccount('owner@acme.example');
     signInAsMember($subjectId);
 
     $response = test()->withHeader('Accept-Language', 'ja')
-        ->withCookie(ResolveConsoleLocale::COOKIE, 'ja')
+        ->withCookie(LocaleResolver::COOKIE, 'ja')
         ->get(route('dashboard'));
     $response->assertOk()->assertHeader('Content-Language', 'en')->assertSee('<html lang="en"', false);
     expect(((array) $response->inertiaProps())['i18n']['locale'])->toBe('en');
@@ -293,12 +313,12 @@ it('translates built-in security rules and fields without changing their keys or
 it('persists every supported console language independently of hosted policy', function (string $locale): void {
     actAsEnvironmentAdminOfATenant();
     config()->set('cbox-id.locales.enabled', ['en']);
+    $preference = test()->get(route('environment.users'))->assertOk()->inertiaProps()['i18n']['preference'];
     test()->from(route('environment.users'))
-        ->post(route('environment.locale.update'), ['locale' => $locale, 'user_id' => app(EnvironmentAdminAuth::class)->subjectId()])
-        ->assertRedirect(route('environment.users'))
-        ->assertCookieExpired(ResolveConsoleLocale::COOKIE);
+        ->post($preference['updateUrl'], ['language' => $locale, 'subject_id' => $preference['subjectId'], 'version' => $preference['version']])
+        ->assertRedirect(route('environment.users'));
 
-    $response = test()->withCookie(ResolveConsoleLocale::COOKIE, $locale)->get(route('environment.users'));
+    $response = test()->withHeader('Accept-Language', 'en')->get(route('environment.users'));
     $response->assertOk()->assertHeader('Content-Language', $locale);
     $props = (array) $response->inertiaProps();
     expect($props['i18n']['locale'])->toBe($locale)

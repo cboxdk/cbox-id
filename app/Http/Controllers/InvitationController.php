@@ -102,8 +102,7 @@ final readonly class InvitationController extends PageController
             return redirect()->route('login');
         }
 
-        $auth->establish($request, $accepted->subjectId, ['invitation']);
-        $auth->switchOrganization($request, $accepted->organizationId());
+        $auth->establish($request, $accepted->subjectId, ['invitation'], $accepted->organizationId());
 
         $returnTo = $accepted->returnTarget?->url;
 

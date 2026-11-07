@@ -1,0 +1,212 @@
+SIKKERHEDSANALYSE — CBOX ID
+4. november 2026
+
+VURDERING
+
+Tre lokalt reproducerede fund med høj prioritet (P1). Jeg vil ikke give den
+undersøgte kode en sikkerhedsgodkendelse, før disse er rettet. To flows omgår
+anden faktor; et tredje kan genetablere tokenadgang efter deaktivering.
+Der er ikke påvist et angreb mod produktionen eller tegn på faktisk misbrug.
+
+311 eksisterende, udvalgte sikkerheds-/integrationstests består (2.557 assertions).
+Tre særskilte reproduktionstests består (27 assertions): her betyder grøn, at
+den usikre adfærd blev reproduceret, IKKE at en rettelse er verificeret.
+Composer- og npm-scanningerne fandt ingen kendte sårbarheder i de undersøgte
+produktionsafhængigheder. Det er ikke en garanti for, at afhængighederne er sikre.
+
+GRUNDLAG OG AFGRÆNSNING
+
+Checkout: /Volumes/DockDisk/projects/cbox-id
+HEAD: 2af61b3f07b029b14b81b3d0c79074ba102f1086
+Git describe: v2.0.0-145-g2af61b3f
+Installeret/lockfile: cboxdk/laravel-id v1.26.4
+Motor-reference: 1b316ef74e78a84792fb0c0e057d88a9fb39685f
+Laravel v13.35.0; firebase/php-jwt v7.2.1.
+
+Analysen gælder det lokale checkout og den installerede motor. Den kørende
+produktionsversions commit, konfiguration, ingress, nøgler, netværksadgang og
+SaaS-produkternes tokenvalidering er ikke kontrolleret. Produktionspåvirkningen
+skal derfor matches mod den deployede version og de anvendte loginmetoder.
+
+Eksisterende lokale ændringer i CHANGELOG.md, config/cbox-id.php og
+docs/configuration/environment-variables.md blev bevaret. Ingen produktkode,
+produktionstilstand, branches, commits eller releases er ændret. Leverancen er
+kun denne rapport, reproduktionstest og testlogs i samme mappe.
+
+Kodegennemgangen omfattede udvalgte kontrolpunkter for password-/magic-link-login,
+MFA-politik, sessions, password-reset, kontolinking, OAuth-koder, refresh,
+tokenudstedelse/introspection, delegeret adgang, tenant-/organisationsafgrænsning,
+roller, vault/pipes, frontend-login, OIDC/SAML-validering, SSRF-værn, headers,
+CSRF-undtagelser, host/proxy-tillid og billed-upload. Dette er en målrettet
+sikkerhedsreview, ikke en udtømmende audit af alle filer, native authenticator-app,
+alle SaaS-integrationer eller infrastrukturen. Der er ikke kørt en produktions-
+pentest, fuld browser-suite, fuld testsuite eller samtidighedstest på PostgreSQL.
+
+FUND 1 — P1: MAGIC LINK OMGÅR BRUGERENS AKTIVEREDE TOTP
+
+Placering:
+  app/Http/Controllers/MagicLinkController.php:77
+  vendor/cboxdk/laravel-id/src/Identity/MagicLinkService.php (redeem)
+  app/Http/Controllers/OAuthConsentController.php:1252
+
+Forudsætninger: Magic links er aktiveret, og angriberen kan læse/opsnappe et gyldigt
+loginlink for offeret. Offeret har bekræftet TOTP. Fejlen er også reproduceret med
+miljøets MFA-politik sat til Required. Standardkonfigurationen i motoren tillader
+magic links, men den effektive produktionsindstilling er ikke aflæst.
+
+Forløb: redeem() opretter en session med amr=['magic_link']; controlleren kontrollerer
+SSO-politikken og adopterer derefter sessionen direkte. Der spørges ikke efter TOTP.
+OAuth-kontrollen spørger kun, om en faktor skal indskrives. Fordi TOTP allerede er
+indskrevet, går brugeren videre. En almindelig OAuth-anmodning uden et særskilt
+acr_values-krav giver en code, access_token, refresh_token og id_token.
+
+Konsekvens: Adgang til mail/loginlink er nok til at omgå den anden faktor, som ville
+have været krævet ved password-login. Testen anvender en registreret first-party
+klient for at undgå en irrelevant samtykkeskærm; den er ikke en test af klientoprettelse.
+
+Rettelse: Behandl magic link som én autentifikationsmetode, og hold login i en
+ufuldstændig tilstand, når en selvstændig anden faktor kræves. Opret/adoptér først en
+fuldt autoriseret session efter faktorkontrollen. Anvend en fælles assurance-kontrol
+på login, OAuth-udstedelse og øvrige sign-in-døre; indskrivning må ikke stå i stedet
+for bevis på, at faktoren blev brugt i den aktuelle session.
+
+Midlertidig begrænsning: Deaktivér magic links i berørte miljøer, når en fungerende
+alternativ loginmetode er sikret. Det retter ikke fund 2.
+
+Regression: En bruger med TOTP og et gyldigt magic link skal holdes til anden faktor;
+ingen almindelig OAuth-code eller tokens før afslutning. Dæk også SMS/recovery,
+frontend-login, SAML og device approval med den samme politik.
+
+FUND 2 — P1: REGISTRERET PASSKEY LADER PASSWORD ALENE OPFYLDE REQUIRED MFA
+
+Placering:
+  app/Platform/PlatformAuth.php:222 og :378
+  vendor/cboxdk/laravel-id/src/Identity/DatabaseMfaMandate.php:55
+  app/Http/Controllers/OAuthConsentController.php:1252
+
+Forudsætninger: Brugeren har password og en passkey, men hverken TOTP eller brugbar
+SMS-faktor; MFA er Required. Angriberen kender passwordet, men har ikke passkeyen.
+
+Forløb: hasSecondFactor() tæller kun TOTP/SMS. Password-login opretter derfor en
+session med amr=['pwd']. Derefter vurderer requiresEnrolment(), at passkey-rækken
+betyder, at yderligere indskrivning ikke er nødvendig. Ingen af disse to kontroller
+kræver, at passkeyen faktisk bruges. Testen får en OAuth-code og alle tre tokenarter
+uden nogen WebAuthn-anmodning.
+
+Konsekvens: Et stjålet password er tilstrækkeligt trods organisationens MFA-krav.
+Dette er ikke et angreb på WebAuthn-signaturverifikationen; flowet kalder den aldrig.
+Reproduktionens passkey er en database-fixture, fordi det er eksistenskontrollen,
+der undersøges. Testen beviser ikke noget om passkey-protokollens kryptografi.
+
+Rettelse: Adskil 'har tilmeldt en faktor' fra 'denne session har opfyldt politikken'.
+Ved password-login skal en bruger i denne tilstand bekræfte passkeyen eller gennemføre
+en anden godkendt stærk metode. Kontrollér sessionens faktiske autentifikationsbevis
+ved adgang til beskyttede funktioner og tokenudstedelse. Et per-klient acr_values-
+krav kan begrænse eksponeringen, men erstatter ikke håndhævelse af Required MFA.
+
+Regression: Password alene må ikke give OAuth-tokens i ovenstående tilstand;
+verificeret passkey-login skal fortsat virke. Dæk også en eksisterende pwd-session,
+hvor MFA-politikken strammes eller en passkey tilføjes.
+
+FUND 3 — P1: EN UDESTÅENDE CODE KAN GENETABLERE TOKENS EFTER DEAKTIVERING
+
+Placering:
+  vendor/cboxdk/laravel-id/src/OAuthServer/RefreshTokenGrantRevoker.php:20
+  vendor/cboxdk/laravel-id/src/OAuthServer/AuthorizationCodeService.php (exchange)
+  vendor/cboxdk/laravel-id/src/Api/Http/Controllers/TokenController.php:240 og :450
+  vendor/cboxdk/laravel-id/src/OAuthServer/RefreshTokenService.php (rotate)
+
+Forudsætninger: En hidtil aktiv bruger/klient holder en endnu ikke indløst code samt
+PKCE-verifieren. Klienten er registreret til authorization_code/refresh_token, og
+granten indeholder offline_access. For en confidential client kræves også gyldig
+klientautentifikation. Koden skal indløses inden dens 60-sekunders udløb.
+
+Forløb: Subjects::deactivate() trækker eksisterende refresh-/access-tokens tilbage,
+men sletter/forbruger ikke de udestående authorization codes. exchange() validerer
+kode, klient, redirect URI og PKCE, men ikke brugerens aktuelle status. Token-endpointet
+udsteder nye access-, refresh- og ID-tokens. Den nye refresh-token kan også fornyes,
+selv om kontoen stadig er deaktiveret: rotate()/udstedelsen genkontrollerer ikke status.
+
+Testen opretter den oprindelige code gennem den rigtige AuthorizationCodes-service,
+deaktiverer via den rigtige Subjects-service og indløser/fornyer over HTTP. Der er
+ikke mocked tokenudstedelse. ID-tokenets rigtige RS256-signatur verificeres i testen.
+
+Konsekvens: Tilbagekaldelse kan omgås gennem en grant, der allerede var på vej.
+Fornyelsen kan forlænge adgangen ud over kodens korte levetid. RefreshTokenService
+sætter ny 30-dages udløbsfrist pr. rotation; den viste kode genkontrollerer ikke
+kontostatus ved efterfølgende rotationer.
+
+Vigtig afgrænsning: Cbox ID's egen TokenIntrospector afviser access-tokenet, fordi
+brugeren er deaktiveret; det er også testet. Der er derfor ikke påvist adgang til
+Cbox ID's beskyttede API med denne token. Risikoen ligger især hos SaaS-/OIDC-
+modtagere, som validerer signatur, issuer, audience og expiry lokalt og stoler på
+nyudstedte ID-/access-tokens. De konkrete modtagere er ikke testet.
+
+Rettelse: Genkontrollér aktiv bruger og gyldigt adgangsgrundlag ved ALLE udstedelser
+og refresh, samt luk udestående grants ved deaktivering. Håndtér suspension,
+medlemsfjernelse, organisationens status og policyændringer efter samme princip.
+Gør statusændring og tokenudstedelse konsistente under samtidighed; kun at slette
+codes efterfølgende efterlader race-vinduer. Ret i laravel-id og opdatér appens pin.
+
+Regression: En code udstedt før deaktivering skal efter deaktivering give
+invalid_grant uden nye tokenrækker. Tilsvarende tests for refresh, device/CIBA-grants,
+password-reset og medlemsfjernelse; kør samtidighedstests på produktions-DB-motoren.
+
+VERIFIKATION OG LEVERANCE
+
+Kørte commands fra cbox-id-checkout:
+  composer audit --locked --no-dev --format=json
+  npm audit --omit=dev --json
+
+Begge rapporterede nul kendte advisories for de scannede produktionsafhængigheder.
+
+Alle Pest-kørsler var isoleret med:
+  DB_CONNECTION=sqlite DB_DATABASE=:memory: DB_URL=''
+  php -d memory_limit=1G vendor/bin/pest ... --compact
+
+76 eksisterende tests / 525 assertions / 40,15 s — existing-tests.log:
+  CrossTenantIdSweep, OAuthScopeValidation, OAuthStepUp, AuthPolicyEnforcement,
+  EnvironmentResolutionSecurity, OperatorAuthority, DeletedOrganizationEnforcement,
+  RevokeTokensOnRoleChange, SessionManagement, RootAuthorizationSteps.
+
+235 eksisterende tests / 2.032 assertions / 112,59 s — extended-tests.log:
+  FrontendSignIn, FrontendSecondFactor, FrontendPasskey, FrontendCsrf,
+  InboundSsoBrowserLogin, SsoMandateDoors, SamlIdpSso, VaultApi, AppApiKeys,
+  MembersAuthorization, OrganizationPermissionOwnership, StepUpApproval, KeyActions,
+  DelegatedAccess, ManagementStepUp, LinkAtSignIn, PasskeyRelyingParty,
+  AuthPolicyRevocation.
+
+3 reproduktionstests / 27 assertions / 2,78 s — reproductions.log.
+SecurityAuditProbeTest.php er gemt ved siden af rapporten og ligger ikke i den
+normale testsuite: den bekræfter nuværende fejl og skal ikke blive et permanent krav
+om usikker adfærd. For at gentage den, kopiér den til den hidtil ikke eksisterende
+sti tests/Feature/SecurityAuditProbeTest.php, kør ovenstående isolerede Pest-command
+med den fil som argument, og fjern kun denne kopi bagefter. Ved rettelse omskrives
+assertions til at kræve afvisning eller MFA-challenge.
+
+De centrale motorfiler for fund 2/3 er byte-identiske med de tilsvarende filer i
+/Volumes/DockDisk/projects/laravel-id/src på analysetidspunktet.
+
+PRIORITERET OPFØLGNING
+
+1. Match de tre berørte flows mod faktisk deployet commit og konfiguration.
+2. Luk MFA-omgåelserne og tokenudstedelse for deaktiverede brugere; verificér med
+   negative regressionstests før deployment. Rapporten indeholder ingen rettelser.
+3. Efter rettelse: vurder tilbagekaldelse af eksisterende berørte sessions/grants.
+   En kodeændring gør ikke allerede udstedte offline-validerede JWT'er ugyldige.
+4. Gennemgå SaaS-modtagernes issuer/audience/typ/expiry-kontrol, tokenlevetid,
+   back-channel logout og behov for online-statuskontrol ved kritiske operationer.
+5. Afslut med produktionskonfiguration-/infrastrukturreview og uafhængig pentest.
+   Dette er resterende kontrolområder, ikke påståede fund.
+
+REFERENCER
+
+OAuth-mitigations er holdt op mod RFC 9700, især tokenprivilegier og refresh-revocation:
+https://www.rfc-editor.org/rfc/rfc9700.html
+
+MFA-vurderingen skelner mellem indskrivning og faktisk flerfaktorautentifikation;
+se OWASP's vejledning om konsistent MFA og alternative login-/recovery-døre:
+https://cheatsheetseries.owasp.org/cheatsheets/Multifactor_Authentication_Cheat_Sheet.html
+
+Fundene er baseret på projektets kode og reproduktioner; referencerne er ikke en
+påstand om formel RFC-/OWASP-certificering eller en fuld ASVS-gennemgang.

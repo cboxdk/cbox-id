@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Props\Console;
 
 use App\Http\Props\Prop;
+use App\Platform\Locale\ConsoleLabels;
 use Cbox\Id\Organization\Models\Environment;
 
 /**
@@ -20,7 +21,7 @@ final readonly class CopyTargetProps implements Prop
 
     public static function of(Environment $environment): self
     {
-        return new self($environment->id, $environment->name, $environment->type->label());
+        return new self($environment->id, $environment->name, ConsoleLabels::navigation($environment->type->label()));
     }
 
     /**

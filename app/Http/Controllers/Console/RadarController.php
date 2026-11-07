@@ -16,7 +16,6 @@ use App\Http\Props\Shared\HelpProps;
 use App\Models\Radar\RadarListEntry;
 use App\Models\Radar\RadarRule;
 use App\Models\RiskDecision;
-use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Locale\ConsoleStrings;
 use App\Platform\Radar\Enums\RadarAction;
@@ -89,7 +88,7 @@ final readonly class RadarController extends ConsoleController
         $page = $decisions->page($filters, self::PER_PAGE, $after);
         $names = $decisions->ruleNames($page['rows']);
 
-        return $this->page('console/radar/index', ConsoleStrings::text(Vocabulary::RADAR), [
+        return $this->page('console/radar/index', __('console.radar_524f8327'), [
             'help' => HelpProps::for(HelpTopic::Radar),
             'tabs' => $this->tabs('decisions'),
             'mode' => $this->modeProps($policy),
@@ -117,7 +116,7 @@ final readonly class RadarController extends ConsoleController
     {
         $this->scope->assertMayAdministerEnvironment();
 
-        return $this->page('console/radar/rules', ConsoleStrings::text(Vocabulary::RADAR), [
+        return $this->page('console/radar/rules', __('console.radar_524f8327'), [
             'help' => HelpProps::for(HelpTopic::Radar),
             'tabs' => $this->tabs('rules'),
             'mode' => $this->modeProps($policy),
@@ -225,16 +224,14 @@ final readonly class RadarController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', $request->string('mode')->toString() === 'enforce'
-                ? __('console.radar_now_enforces_blocks_refuse_challenges__fe2c0317')
-                : __('console.radar_now_monitors_every_verdict_is_recorded_6ca10a23'));
+            : back()->with('status', $request->string('mode')->toString() === 'enforce' ? __('console.radar_now_enforces_blocks_refuse_challenges_ask_for_a_s_fe2c0317') : __('console.radar_now_monitors_every_verdict_is_recorded_none_is_ac_6ca10a23'));
     }
 
     public function lists(RadarLists $lists): Response
     {
         $this->scope->assertMayAdministerEnvironment();
 
-        return $this->page('console/radar/lists', ConsoleStrings::text(Vocabulary::RADAR), [
+        return $this->page('console/radar/lists', __('console.radar_524f8327'), [
             'help' => HelpProps::for(HelpTopic::Radar),
             'tabs' => $this->tabs('lists'),
             'entries' => array_values($lists->all()->map(static fn (RadarListEntry $entry): array => [
@@ -245,7 +242,7 @@ final readonly class RadarController extends ConsoleController
                 RadarListKind::Ip => __('console.ip_address_or_range_b5bbac17'),
                 RadarListKind::Email => __('console.email_address_f2488fd4'),
                 RadarListKind::EmailDomain => __('console.email_domain_f865f1ee'),
-                RadarListKind::Device => ConsoleStrings::text('Device'),
+                RadarListKind::Device => __('console.device_6ba0bdec'),
             }], RadarListKind::cases()),
             'storeHref' => route('environment.radar.lists.store'),
         ]);
@@ -291,8 +288,8 @@ final readonly class RadarController extends ConsoleController
         $builtins = $settings['builtin_rules'];
         foreach ($builtins as &$builtin) {
             $rule = RadarBuiltin::from($builtin['key']);
-            $builtin['name'] = ConsoleStrings::text($rule->label());
-            $builtin['description'] = ConsoleStrings::text($rule->description());
+            $builtin['name'] = $rule->label();
+            $builtin['description'] = $rule->description();
         }
         $settings['builtin_rules'] = $builtins;
 
@@ -308,7 +305,7 @@ final readonly class RadarController extends ConsoleController
             'rule' => $rule === null ? null : RadarPresenter::rule($rule),
             'fields' => array_map(static fn (RadarField $field): array => [
                 'value' => $field->value,
-                'label' => ConsoleStrings::text($field->label()),
+                'label' => $field->label(),
                 'type' => $field->type(),
                 'operators' => array_map(static fn (RadarOperator $operator): array => [
                     'value' => $operator->value,
@@ -426,7 +423,7 @@ final readonly class RadarController extends ConsoleController
         $options = [];
 
         foreach (RadarBuiltin::cases() as $builtin) {
-            $options[] = ['value' => 'builtin:'.$builtin->value, 'label' => ConsoleStrings::text($builtin->label())];
+            $options[] = ['value' => 'builtin:'.$builtin->value, 'label' => $builtin->label()];
         }
 
         foreach (RadarRule::query()->orderBy('position')->get(['id', 'name']) as $rule) {
@@ -435,7 +432,16 @@ final readonly class RadarController extends ConsoleController
 
         foreach (RadarList::cases() as $list) {
             foreach (RadarListKind::cases() as $kind) {
-                $options[] = ['value' => $list->value.'_list:'.$kind->value, 'label' => ucfirst($list->value).' list ('.str_replace('_', ' ', $kind->value).')'];
+                $options[] = ['value' => $list->value.'_list:'.$kind->value, 'label' => __(match ($list->value.':'.$kind->value) {
+                    'allow:ip' => 'console.radar_allow_ip',
+                    'allow:email' => 'console.radar_allow_email',
+                    'allow:email_domain' => 'console.radar_allow_email_domain',
+                    'allow:device' => 'console.radar_allow_device',
+                    'deny:ip' => 'console.radar_deny_ip',
+                    'deny:email' => 'console.radar_deny_email',
+                    'deny:email_domain' => 'console.radar_deny_email_domain',
+                    'deny:device' => 'console.radar_deny_device',
+                })];
             }
         }
 

@@ -21,14 +21,12 @@ use App\Http\Props\Shared\ReturnAppProps;
 use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Requests\Console\InviteOrganizationMemberRequest;
 use App\Platform\Actions\ActionRefused;
-use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Invitations\AppReturnTargets;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
 use App\Platform\Invitations\ValueObjects\SentInvitation;
-use App\Platform\Locale\ConsoleStrings;
 use App\Platform\Membership\AfterLeaving;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
@@ -129,7 +127,7 @@ final readonly class DirectoryMemberController extends ConsoleController
             ];
         }
 
-        return $this->page('console/directory-members', ConsoleStrings::text(Vocabulary::MEMBERS), [
+        return $this->page('console/directory-members', __('console.members_1044a4c0'), [
             'isAdmin' => $isAdmin,
             'members' => $rows,
             'pagination' => PaginationProps::from($page),
@@ -198,7 +196,7 @@ final readonly class DirectoryMemberController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', __('console.invitation_sent_to_1294f712').$request->email().'.');
+        return back()->with('status', __('console.invitation_sent_to_part1_5b76ee7f', ['part1' => $request->email()]));
     }
 
     /** Send a pending invitation again, on a fresh link. */
@@ -214,7 +212,9 @@ final readonly class DirectoryMemberController extends ConsoleController
 
         $sent = $result->value;
 
-        return back()->with('status', __('console.invitation_sent_again_31ffca77').($sent instanceof SentInvitation ? ' to '.$sent->invitation->email : '').'.');
+        return back()->with('status', $sent instanceof SentInvitation
+            ? __('console.invitation_sent_again_to_part1_eefdfbca', ['part1' => $sent->invitation->email])
+            : __('console.invitation_sent_again_31ffca77'));
     }
 
     public function revokeInvitation(string $invitation): RedirectResponse
@@ -251,7 +251,7 @@ final readonly class DirectoryMemberController extends ConsoleController
             'organization_id' => $this->organizationId(),
             'user_id' => $member,
             'role' => $next->value,
-        ], ['role' => 'role', 'user_id' => 'member'], 'role', ['last_owner' => __('console.the_organization_must_keep_at_least_one_owne_f3917bab')]);
+        ], ['role' => 'role', 'user_id' => 'member'], 'role', ['last_owner' => __('console.the_organization_must_keep_at_least_one_owner_f3917bab')]);
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.built_in_role_updated_a1cff526'));
     }
@@ -294,7 +294,7 @@ final readonly class DirectoryMemberController extends ConsoleController
         $result = $this->act(RemoveMember::class, [
             'organization_id' => $this->organizationId(),
             'user_id' => $member,
-        ], ['user_id' => 'member'], 'member', ['last_owner' => __('console.the_organization_must_keep_at_least_one_owne_f3917bab')]);
+        ], ['user_id' => 'member'], 'member', ['last_owner' => __('console.the_organization_must_keep_at_least_one_owner_f3917bab')]);
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.member_removed_d6fe67b5'));
     }
@@ -320,7 +320,7 @@ final readonly class DirectoryMemberController extends ConsoleController
 
         $subject = $subjects->find($member);
 
-        return back()->with('status', __('console.ownership_transferred_to_d375650c').($subject->name ?? $subject->email ?? __('console.that_member_4103a653')).__('console.you_are_now_an_admin_a2e4aa5f'));
+        return back()->with('status', __('console.ownership_transferred_to_part1_you_are_now_an_admin_ab4d3d4a', ['part1' => $subject->name ?? $subject->email ?? 'that member']));
     }
 
     /**
@@ -333,7 +333,7 @@ final readonly class DirectoryMemberController extends ConsoleController
     {
         $me = app(CurrentUser::class);
         $organizationId = $this->organizationId();
-        $name = $me->organization()->name ?? __('console.the_organization_7b4eb279');
+        $name = $me->organization()?->name;
 
         $result = $this->act(LeaveOrganization::class, ['organization_id' => $organizationId], ['organization_id' => 'member'], 'member');
 
@@ -341,7 +341,7 @@ final readonly class DirectoryMemberController extends ConsoleController
             return $result;
         }
 
-        return $after->land($request, $me->id(), $organizationId, __('console.you_left_44582a29').$name.'.');
+        return $after->land($request, $me->id(), $organizationId, $name !== null ? __('console.organization_left_status', ['name' => $name]) : __('console.organization_left_status_unnamed'));
     }
 
     private function assertAdmin(): void
@@ -351,7 +351,10 @@ final readonly class DirectoryMemberController extends ConsoleController
 
     private function organizationId(): string
     {
-        return app(CurrentUser::class)->organizationId() ?? '';
+        $organizationId = app(CurrentUser::class)->organizationId();
+        abort_unless(is_string($organizationId) && $organizationId !== '', 403);
+
+        return $organizationId;
     }
 
     /**

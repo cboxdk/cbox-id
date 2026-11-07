@@ -12,6 +12,7 @@ use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Locale\MailLocale;
@@ -85,11 +86,11 @@ final readonly class SetUserPassword implements Action
                 reason: trim($context->string('reason')),
             ));
         } catch (PolicyViolation $violation) {
-            throw ActionRefused::because('password_policy', $violation->getMessage(), 'password');
+            throw ActionRefused::because('password_policy', FrameworkMessage::from($violation), 'password');
         }
 
         if ($context->boolean('send_email', true)) {
-            Mail::to($user->email)->locale(app(MailLocale::class)->forRecipient())->send(new AdminAssignedPasswordMail(
+            Mail::to($user->email)->locale(app(MailLocale::class)->forRecipient(false))->send(new AdminAssignedPasswordMail(
                 password: $password,
                 temporary: $temporary,
                 expiresAt: $expiresAt,

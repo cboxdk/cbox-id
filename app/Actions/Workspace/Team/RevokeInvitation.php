@@ -14,8 +14,8 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
-use App\Platform\Invitations\Contracts\TeamInvitations;
 use App\Platform\Invitations\Exceptions\InvitationRefused;
+use App\Platform\NativeProduct\NativeTeamInvitations as TeamInvitations;
 
 /**
  * Withdraw an invitation nobody accepted; its link stops working. One that is not pending

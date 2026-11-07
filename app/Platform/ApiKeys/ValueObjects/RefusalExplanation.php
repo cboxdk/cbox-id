@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\ApiKeys\ValueObjects;
 
+use App\Platform\Actions\ActionMessage;
 use Cbox\Id\Organization\Enums\ApiKeyRefusal;
 use Cbox\Id\Organization\Exceptions\CustomerApiKeyRefused;
 
@@ -19,36 +20,40 @@ use Cbox\Id\Organization\Exceptions\CustomerApiKeyRefused;
  */
 final readonly class RefusalExplanation
 {
+    public string $message;
+
     public function __construct(
         public string $field,
-        public string $message,
-    ) {}
+        public ActionMessage $sourceMessage,
+    ) {
+        $this->message = $sourceMessage->render('en');
+    }
 
     public static function of(CustomerApiKeyRefused $refused, ?string $appName): self
     {
-        $app = $appName ?? 'That app';
+        $app = $appName ?? new ActionMessage('console.projection_9b1a53644f87');
 
         return match ($refused->reason) {
             ApiKeyRefusal::UnknownClient,
-            ApiKeyRefusal::KeysNotEnabled => new self('client_id', "{$app} does not offer API keys to this organization."),
-            ApiKeyRefusal::NotAMember => new self('organization_id', 'You are not an active member of that organization.'),
-            ApiKeyRefusal::OrganizationInactive => new self('organization_id', 'That organization is suspended, so no new keys can be created in it.'),
-            ApiKeyRefusal::HolderInactive => new self('organization_id', 'Your account is not active, so it cannot hold a key.'),
+            ApiKeyRefusal::KeysNotEnabled => new self('client_id', new ActionMessage('console.projection_f4c1563cb200', ['app' => $app])),
+            ApiKeyRefusal::NotAMember => new self('organization_id', new ActionMessage('console.projection_a463253e1e77')),
+            ApiKeyRefusal::OrganizationInactive => new self('organization_id', new ActionMessage('console.projection_dce3f8eae16c')),
+            ApiKeyRefusal::HolderInactive => new self('organization_id', new ActionMessage('console.projection_aada5bb0564f')),
             ApiKeyRefusal::PermissionNotHeld => new self('permissions', self::notHeld($refused->permissions, $app)),
-            ApiKeyRefusal::ExpiryInPast => new self('expiresOn', 'Choose a date after today.'),
-            ApiKeyRefusal::InvalidInput => new self('name', 'A key name is at most 255 characters.'),
+            ApiKeyRefusal::ExpiryInPast => new self('expiresOn', new ActionMessage('console.projection_c0b95f451e84')),
+            ApiKeyRefusal::InvalidInput => new self('name', new ActionMessage('console.projection_511bfa171b72')),
         };
     }
 
     /**
      * @param  list<string>  $permissions
      */
-    private static function notHeld(array $permissions, string $app): string
+    private static function notHeld(array $permissions, string|ActionMessage $app): ActionMessage
     {
         $list = implode(', ', $permissions);
 
         return count($permissions) === 1
-            ? "You do not hold {$list} in {$app}, so a key cannot carry it. A key can only do what you can do yourself."
-            : "You do not hold {$list} in {$app}, so a key cannot carry them. A key can only do what you can do yourself.";
+            ? new ActionMessage('console.projection_13814f592d62', ['permissions' => $list, 'app' => $app])
+            : new ActionMessage('console.projection_f6177d13293c', ['permissions' => $list, 'app' => $app]);
     }
 }

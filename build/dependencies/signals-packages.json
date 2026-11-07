@@ -1,8 +1,9 @@
 {
   "laravel-signals-client": {
-    "revision": "87914a4b912bcd47982f75cebe1b676f17356c3d",
-    "sha256": "afae7eff4af20936667056fc5cfec670968ed5e478e4c8e6e20fa3b3020aaec3",
+    "revision": "454786bc445423f123aec2358bd4c7e6b7381e06",
+    "sha256": "5e64b51013955e60d3066e354105d68344ffe13d62a4ca54f3337bbdac6c1b5e",
     "license": "MIT",
-    "published": false
+    "published": false,
+    "status": "unpublished reviewed immutable source snapshot"
   }
 }

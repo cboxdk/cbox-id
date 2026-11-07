@@ -33,7 +33,7 @@ final readonly class EnvironmentHomeController extends ConsoleController
     public function index(EnvironmentChecklist $checklist): Response
     {
         $admin = app(EnvironmentAdminAuth::class);
-        abort_unless($admin->check(), 403);
+        abort_unless($admin->canRead(), 403);
 
         $subject = $admin->subjectId();
         // The workspace whose membership opened this console; none on the platform root's,
@@ -46,7 +46,7 @@ final readonly class EnvironmentHomeController extends ConsoleController
              * rest a click away. Null once neither applies, so the home page goes back to
              * being the numbers.
              */
-            'checklist' => $progress['isComplete'] || ($subject !== null && $checklist->isDismissed($subject)) ? null : [
+            'checklist' => ! $admin->check() || $progress['isComplete'] || ($subject !== null && $checklist->isDismissed($subject)) ? null : [
                 ...$progress,
                 'href' => route('environment.get-started'),
                 'dismissHref' => route('environment.get-started.dismiss'),
@@ -64,7 +64,7 @@ final readonly class EnvironmentHomeController extends ConsoleController
                     'href' => route('environment.organizations'),
                 ],
                 [
-                    'label' => __('console.ux_active_users'),
+                    'label' => __('console.users_6b0cc904'),
                     'icon' => 'members',
                     'count' => User::query()->where('status', UserStatus::Active->value)->count(),
                     'href' => route('environment.users'),
@@ -89,12 +89,11 @@ final readonly class EnvironmentHomeController extends ConsoleController
                     'href' => route('environment.directories'),
                 ],
             ],
-            'quickActions' => [
+            'quickActions' => ! $admin->check() ? [] : [
                 ['label' => __('console.new_organization_62e34b70'), 'href' => route('environment.organizations.create')],
                 ['label' => __('console.new_user_6384ffa7'), 'href' => route('environment.users.create')],
                 ['label' => __('console.new_sso_connection_49ecf1f1'), 'href' => route('environment.connections.create')],
                 ['label' => __('console.new_app_747f1473'), 'href' => route('environment.clients.create')],
-                ['label' => __('console.connectors_c3d2e79e'), 'href' => route('environment.connectors.catalog'), 'icon' => 'layers'],
             ],
         ]);
     }

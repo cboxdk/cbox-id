@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform\Invitations\Exceptions;
 
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Invitations\Enums\InvitationRefusalReason;
-use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use RuntimeException;
@@ -20,9 +20,9 @@ use RuntimeException;
  */
 final class InvitationRefused extends RuntimeException
 {
-    private function __construct(public readonly InvitationRefusalReason $reason, string $message)
+    private function __construct(public readonly InvitationRefusalReason $reason, public readonly string|ActionMessage $sourceMessage)
     {
-        parent::__construct($message);
+        parent::__construct($sourceMessage instanceof ActionMessage ? $sourceMessage->render('en') : $sourceMessage);
     }
 
     public function field(): string
@@ -32,7 +32,7 @@ final class InvitationRefused extends RuntimeException
 
     public static function alreadyMember(): self
     {
-        return new self(InvitationRefusalReason::AlreadyMember, 'That person is already a member of this organization.');
+        return new self(InvitationRefusalReason::AlreadyMember, new ActionMessage('console.that_person_is_already_a_member_of_this_organization_78646280'));
     }
 
     /**
@@ -41,7 +41,7 @@ final class InvitationRefused extends RuntimeException
      */
     public static function alreadyOnTeam(): self
     {
-        return new self(InvitationRefusalReason::AlreadyMember, 'That person is already on this list.');
+        return new self(InvitationRefusalReason::AlreadyMember, new ActionMessage('console.that_person_is_already_on_this_list_e4bbac22'));
     }
 
     /**
@@ -51,10 +51,7 @@ final class InvitationRefused extends RuntimeException
     {
         return new self(
             InvitationRefusalReason::RoleNotOffered,
-            'Choose one of: '.implode(', ', array_map(
-                static fn (MembershipRole $role): string => $role->label(),
-                MembershipRole::assignable(),
-            )).'. Ownership is handed over with "Transfer ownership", never by invitation.',
+            new ActionMessage('console.choose_one_of_roles_ownership_is_handed_over_with_trans_90a222bb', ['roles' => self::roleMessages(MembershipRole::assignable())]),
         );
     }
 
@@ -62,7 +59,7 @@ final class InvitationRefused extends RuntimeException
     {
         return new self(
             InvitationRefusalReason::RoleNotOffered,
-            OrgRoles::message().' Ownership is handed over with "Transfer ownership", never by invitation.',
+            new ActionMessage('console.choose_one_of_roles_ownership_is_handed_over_with_trans_90a222bb', ['roles' => self::roleMessages(OrgRoles::assignable())]),
         );
     }
 
@@ -73,7 +70,7 @@ final class InvitationRefused extends RuntimeException
      */
     public static function accessRoleNotOffered(): self
     {
-        return new self(InvitationRefusalReason::AccessRoleNotOffered, OrgAccessRoles::NOT_OFFERED);
+        return new self(InvitationRefusalReason::AccessRoleNotOffered, new ActionMessage('console.that_access_role_is_not_offered_in_this_organization_ch_f6d5199a'));
     }
 
     public static function accessRoleConflict(string $message): self
@@ -85,7 +82,7 @@ final class InvitationRefused extends RuntimeException
     {
         return new self(
             InvitationRefusalReason::ReturnWithoutApp,
-            'A return address needs the app it belongs to. Send the app\'s client ID with it.',
+            new ActionMessage('console.a_return_address_needs_the_app_it_belongs_to_send_the_a_f30025ab'),
         );
     }
 
@@ -93,7 +90,7 @@ final class InvitationRefused extends RuntimeException
     {
         return new self(
             InvitationRefusalReason::UnknownApp,
-            'No app with that client ID is available to this organization.',
+            new ActionMessage('console.no_app_with_that_client_id_is_available_to_this_organiz_a80ad89d'),
         );
     }
 
@@ -101,7 +98,7 @@ final class InvitationRefused extends RuntimeException
     {
         return new self(
             InvitationRefusalReason::ReturnToMalformed,
-            'The return address must be a full https:// URL (http:// only for localhost).',
+            new ActionMessage('console.the_return_address_must_be_a_full_https_url_http_only_f_b853f42d'),
         );
     }
 
@@ -109,7 +106,7 @@ final class InvitationRefused extends RuntimeException
     {
         return new self(
             InvitationRefusalReason::ReturnToNotRegistered,
-            'The return address must be on one of '.$app.'\'s registered redirect URI origins.',
+            new ActionMessage('console.the_return_address_must_be_on_one_of_app_s_registered_r_20ea9b1f', ['app' => $app]),
         );
     }
 
@@ -117,7 +114,7 @@ final class InvitationRefused extends RuntimeException
     {
         return new self(
             InvitationRefusalReason::NotPending,
-            'That invitation has already been accepted, withdrawn or has expired.',
+            new ActionMessage('console.that_invitation_has_already_been_accepted_withdrawn_or_4c902e98'),
         );
     }
 
@@ -125,7 +122,7 @@ final class InvitationRefused extends RuntimeException
     {
         return new self(
             InvitationRefusalReason::TooSoon,
-            'Already sent. Try again in '.$seconds.' seconds — and check their spam folder in the meantime.',
+            new ActionMessage('console.already_sent_try_again_in_seconds_seconds_and_check_the_e294712c', ['seconds' => $seconds]),
         );
     }
 
@@ -134,8 +131,22 @@ final class InvitationRefused extends RuntimeException
         return new self(
             InvitationRefusalReason::MailFailed,
             $invitationKept
-                ? 'That invitation could not be sent — the mail server refused it. It is still listed below; try again in a moment.'
-                : 'We could not send that invitation — the mail server refused it. Nothing was created; try again, or check the deployment\'s mail configuration.',
+                ? new ActionMessage('console.that_invitation_could_not_be_sent_the_mail_server_refus_59435126')
+                : new ActionMessage('console.we_could_not_send_that_invitation_the_mail_server_refus_81a3f4df'),
         );
+    }
+
+    /** @param list<MembershipRole> $roles
+     * @return list<ActionMessage>
+     */
+    private static function roleMessages(array $roles): array
+    {
+        return array_map(static fn (MembershipRole $role): ActionMessage => new ActionMessage(match ($role) {
+            MembershipRole::Owner => 'console.owner_4b1b8aa3',
+            MembershipRole::Admin => 'console.admin_c1c224b0',
+            MembershipRole::Developer => 'console.developer_3fb7b394',
+            MembershipRole::Member => 'console.member_7c968fb7',
+            MembershipRole::Viewer => 'console.viewer_678bfa6a',
+        }), $roles);
     }
 }

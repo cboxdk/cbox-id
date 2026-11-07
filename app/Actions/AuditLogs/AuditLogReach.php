@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\AuditLogs;
 
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\OrganizationTarget;
 use App\Platform\AuditLogs\AuditLogFilters;
@@ -53,14 +54,14 @@ final class AuditLogReach
             $value = $context->nullableString($field);
 
             if ($value !== null && ! self::parses($value)) {
-                throw ActionRefused::because('invalid_range', "{$field} must be an ISO 8601 date-time.", $field);
+                throw ActionRefused::because('invalid_range', new ActionMessage('console._part1_must_be_an_iso_8601_date_time_14fb8f41', ['part1' => (string) ($field)]), $field);
             }
         }
 
         $filters = AuditLogFilters::from($context->input, self::organization($context));
 
         if ($filters->rangeStart !== null && $filters->rangeEnd !== null && ! $filters->rangeStart->isBefore($filters->rangeEnd)) {
-            throw ActionRefused::because('invalid_range', 'range_start must be before range_end.', 'range_start');
+            throw ActionRefused::because('invalid_range', new ActionMessage('console.range_start_must_be_before_range_end_e262b176'), 'range_start');
         }
 
         return $filters;

@@ -7,6 +7,7 @@ namespace App\Http\Props\Console;
 use App\Http\Props\Prop;
 use App\Platform\Actions\AppManagementScopes;
 use App\Platform\EnvironmentKeyScopes;
+use App\Platform\Locale\ConsoleScopeCopy;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 
 /**
@@ -47,11 +48,7 @@ final readonly class EnvironmentScopeProps implements Prop
      */
     private static function label(EnvironmentApiScope $scope): string
     {
-        return match ($scope) {
-            EnvironmentApiScope::ApiKeysRead => __('console.read_member_api_keys_746f4554'),
-            EnvironmentApiScope::ApiKeysWrite => __('console.revoke_member_api_keys_c542c1c3'),
-            default => $scope->label(),
-        };
+        return ConsoleScopeCopy::label($scope->value);
     }
 
     /**
@@ -65,7 +62,7 @@ final readonly class EnvironmentScopeProps implements Prop
 
         return $scope !== null
             ? self::from($scope)
-            : new self($value, AppManagementScopes::label($value), AppManagementScopes::writes($value), AppManagementScopes::critical($value));
+            : new self($value, ConsoleScopeCopy::label($value), AppManagementScopes::writes($value), AppManagementScopes::critical($value));
     }
 
     /**

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Console;
 
 use App\Http\Controllers\EnvironmentHandoffController;
 use App\Platform\CurrentUser;
+use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
 use Illuminate\Http\Request;
@@ -27,14 +28,18 @@ final readonly class EnvironmentRefusedController extends ConsoleController
 {
     public function show(Request $request, string $environment): Response
     {
-        $model = app(EnvironmentContext::class)->withoutScope(
+        $organizationId = app(CurrentUser::class)->organizationId();
+        $canRead = $this->scope->capabilities()?->canReadEnvironments() === true;
+        $visible = $canRead && $organizationId !== null
+            && in_array($environment, app(NativeEnvironmentAccess::class)->ids($organizationId, app(CurrentUser::class)->id()), true);
+        $model = $visible ? app(EnvironmentContext::class)->withoutScope(
             static fn (): ?Environment => Environment::query()->find($environment),
-        );
+        ) : null;
 
         return $this->page('console/environment-refused', __('console.you_don_t_administer_this_environment_f9046e00'), [
             'refusedEnvironment' => $model === null ? null : ['name' => $model->name, 'type' => $model->type->value],
             'email' => app(CurrentUser::class)->email(),
-            'projectsHref' => route('projects'),
+            'projectsHref' => $canRead ? route('projects') : null,
             'accountsHref' => route('accounts'),
         ])->toResponse($request)->setStatusCode(403);
     }

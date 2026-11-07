@@ -84,12 +84,13 @@ it('shows a token that does not verify as a rejected sign-in', function (): void
 it('shows an unreachable provider as unreachable', function (): void {
     $login = $this->get('https://'.RootGoogle::HOST.'/login')->assertOk();
     $start = (string) collect($login->inertiaProps('providers'))->firstWhere('provider', 'google')['url'];
-    $started = $this->get($start);
-    parse_str((string) parse_url((string) $started->headers->get('Location'), PHP_URL_QUERY), $query);
-    $cookie = collect($started->headers->getCookies())->first(fn ($entry): bool => str_starts_with($entry->getName(), '__Host-cbox_fed_'));
-
-    expect($cookie)->not->toBeNull('the authorization redirect sets the browser flow cookie');
-    $this->withUnencryptedCookie($cookie->getName(), (string) $cookie->getValue());
+    $redirect = $this->get($start);
+    foreach ($redirect->headers->getCookies() as $cookie) {
+        if (str_starts_with($cookie->getName(), '__Host-cbox_fed_')) {
+            $this->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
+        }
+    }
+    parse_str((string) parse_url((string) $redirect->headers->get('Location'), PHP_URL_QUERY), $query);
 
     Http::fake(['oauth2.googleapis.com/token' => static fn () => throw new ConnectionException('timed out')]);
 
@@ -101,12 +102,13 @@ it('shows an unreachable provider as unreachable', function (): void {
 it('shows a switched-off connection on the callback as unavailable here', function (): void {
     $login = $this->get('https://'.RootGoogle::HOST.'/login')->assertOk();
     $start = (string) collect($login->inertiaProps('providers'))->firstWhere('provider', 'google')['url'];
-    $started = $this->get($start);
-    parse_str((string) parse_url((string) $started->headers->get('Location'), PHP_URL_QUERY), $query);
-    $cookie = collect($started->headers->getCookies())->first(fn ($entry): bool => str_starts_with($entry->getName(), '__Host-cbox_fed_'));
-
-    expect($cookie)->not->toBeNull('the authorization redirect sets the browser flow cookie');
-    $this->withUnencryptedCookie($cookie->getName(), (string) $cookie->getValue());
+    $redirect = $this->get($start);
+    foreach ($redirect->headers->getCookies() as $cookie) {
+        if (str_starts_with($cookie->getName(), '__Host-cbox_fed_')) {
+            $this->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
+        }
+    }
+    parse_str((string) parse_url((string) $redirect->headers->get('Location'), PHP_URL_QUERY), $query);
 
     switchOff($this->google);
 

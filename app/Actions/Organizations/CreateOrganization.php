@@ -6,6 +6,7 @@ namespace App\Actions\Organizations;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -80,14 +81,14 @@ final readonly class CreateOrganization implements Action
         $parentId = $context->nullableString('parent_id');
 
         if ($parentId !== null && Organization::query()->whereKey($parentId)->doesntExist()) {
-            throw ActionRefused::because('parent_not_found', 'No organization with that parent_id exists in this environment.', 'parent_id');
+            throw ActionRefused::because('parent_not_found', new ActionMessage('console.no_organization_with_that_parent_id_exists_in_this_envi_7d690fba'), 'parent_id');
         }
 
         $ownerId = $context->nullableString('owner_user_id');
 
         // The environment-scoped user store: an id from another environment is no user here.
         if ($ownerId !== null && User::query()->whereKey($ownerId)->doesntExist()) {
-            throw ActionRefused::because('user_not_found', 'No user with that owner_user_id exists in this environment.', 'owner_user_id');
+            throw ActionRefused::because('user_not_found', new ActionMessage('console.no_user_with_that_owner_user_id_exists_in_this_environm_e3f66cbc'), 'owner_user_id');
         }
 
         $metadata = OrganizationFields::metadata($context->array('metadata'));
@@ -130,6 +131,6 @@ final readonly class CreateOrganization implements Action
 
     private function slugTaken(): ActionRefused
     {
-        return ActionRefused::because('slug_taken', 'That slug is already in use in this environment.', 'slug');
+        return ActionRefused::because('slug_taken', new ActionMessage('console.that_slug_is_already_in_use_in_this_environment_1bff4d6b'), 'slug');
     }
 }

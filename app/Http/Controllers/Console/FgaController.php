@@ -13,9 +13,7 @@ use App\Actions\Fga\ValidateFgaSchema;
 use App\Actions\Fga\WriteFgaTuples;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\Actions\ActionRefused;
-use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Kernel\Authorization\Exceptions\InvalidTuple;
 use Cbox\Id\Kernel\Authorization\Schema\AuthorizationSchema;
 use Cbox\Id\Kernel\Authorization\Schema\RelationDefinition;
@@ -89,7 +87,7 @@ final readonly class FgaController extends ConsoleController
 
         $nextCursor = $tuples->meta['next_cursor'] ?? null;
 
-        return $this->page('console/fga/index', ConsoleStrings::text(Vocabulary::FINE_GRAINED_AUTHORIZATION), [
+        return $this->page('console/fga/index', __('console.fine_grained_authorization_9fde1ed0'), [
             'help' => HelpProps::for(HelpTopic::FineGrainedAuthorization),
             'schema' => [
                 'defined' => (bool) ($schema['defined'] ?? false),
@@ -144,7 +142,7 @@ final readonly class FgaController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route('environment.fga')->with('status', __('console.schema_saved_every_check_is_decided_by_it_fr_e54cf8c0'));
+            : to_route('environment.fga')->with('status', __('console.schema_saved_every_check_is_decided_by_it_from_now_on_e54cf8c0'));
     }
 
     public function storeTuple(Request $request): RedirectResponse
@@ -216,7 +214,7 @@ final readonly class FgaController extends ConsoleController
         }
 
         if ($type === '' || $id === '') {
-            return [...$check, 'error' => __('console.write_the_resource_as_type_id_e_g_document_r_98ca2d29')];
+            return [...$check, 'error' => __('console.write_the_resource_as_type_id_e_g_document_readme_98ca2d29')];
         }
 
         try {

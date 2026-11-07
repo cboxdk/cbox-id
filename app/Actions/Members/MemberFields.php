@@ -6,7 +6,9 @@ namespace App\Actions\Members;
 
 use App\Actions\Roles\RoleFields;
 use App\Http\Resources\Environment\MemberResource;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\GrantAccessRole;
 use App\Platform\OrgAccessRoles;
 use Cbox\Id\AccessControl\Enums\GrantSource;
@@ -62,7 +64,7 @@ final class MemberFields
 
         foreach (array_unique(array_filter($references, static fn (mixed $ref): bool => is_string($ref) && $ref !== '')) as $reference) {
             $role = RoleFields::reference((string) $reference, $clientId)
-                ?? throw ActionRefused::because('unknown_role', "No role [{$reference}] exists in this environment.", $field);
+                ?? throw ActionRefused::because('unknown_role', new ActionMessage('console.no_role_part1_exists_in_this_environment_2da98fb0', ['part1' => (string) ($reference)]), $field);
 
             if (! $catalog->isAssignable($organizationId, $role->id)) {
                 throw self::notAssignable($role, $field);
@@ -86,13 +88,13 @@ final class MemberFields
         try {
             $refusal = app(GrantAccessRole::class)->grant($organizationId, $userId, $role->id, GrantSource::Manual);
         } catch (GrantRefused $refused) {
-            throw new ActionRefused('role_conflict', $refused->getMessage(), 409, $field);
+            throw new ActionRefused('role_conflict', FrameworkMessage::from($refused), 409, $field);
         } catch (UnknownRole) {
             throw ActionRefused::notFound('role');
         }
 
         if ($refusal !== null) {
-            throw new ActionRefused('role_conflict', $refusal->message(), 409, $field);
+            throw new ActionRefused('role_conflict', $refusal->sourceMessage(), 409, $field);
         }
     }
 
@@ -100,7 +102,7 @@ final class MemberFields
     {
         return ActionRefused::because(
             'role_not_assignable',
-            "The role [{$role->name}] cannot be held in this organization — it belongs to another organization, or to an app this organization cannot use.",
+            new ActionMessage('console.the_role_part1_cannot_be_held_in_this_organization_it_b_6fdeacd4', ['part1' => (string) ($role->name)]),
             $field,
         );
     }

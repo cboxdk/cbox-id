@@ -1,0 +1,120 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'layout' => [
+        'footer' => '© :year :brand · Ovo je automatska poruka iz vaše platforme za identitet.',
+    ],
+    'common' => [
+        'paste_link' => 'Ili zalijepite ovu poveznicu u preglednik:',
+    ],
+    'roles' => [
+        'owner' => 'Vlasnik',
+        'admin' => 'Administrator',
+        'developer' => 'Razvojni programer',
+        'member' => 'Član',
+        'viewer' => 'Promatrač',
+    ],
+    'magic_link' => [
+        'subject' => 'Vaša poveznica za prijavu u :brand',
+        'heading' => 'Prijava u :brand',
+        'body' => 'Kliknite gumb u nastavku kako biste se prijavili. Poveznica vrijedi jednom i istječe za 15 minuta. Ako je niste zatražili, zanemarite ovu poruku.',
+        'button' => 'Prijava u :brand',
+    ],
+    'password_reset' => [
+        'subject' => 'Ponovno postavite lozinku za :brand',
+        'heading' => 'Ponovno postavite lozinku',
+        'body' => 'Primili smo zahtjev za ponovno postavljanje vaše lozinke za :brand. Kliknite gumb u nastavku kako biste odabrali novu. Poveznica vrijedi jednom i istječe za 60 minuta. Ako to niste zatražili, zanemarite poruku — vaša se lozinka neće promijeniti.',
+        'button' => 'Postavi novu lozinku',
+    ],
+    'email_verification' => [
+        'subject' => 'Potvrdite adresu e-pošte za svoj račun :brand',
+        'heading' => 'Potvrdite adresu e-pošte',
+        'body' => 'Dobro došli u :brand. Potvrdite da je ova adresa e-pošte vaša kako biste zaštitili račun. Poveznica vrijedi jednom i istječe za 24 sata.',
+        'button' => 'Potvrdite adresu e-pošte',
+        'not_you' => 'Ako niste izradili račun u sustavu :brand, zanemarite ovu poruku — ništa se ne događa bez poveznice.',
+    ],
+    'admin_assigned_password' => [
+        'subject' => 'Vaša lozinka za :brand je promijenjena',
+        'heading' => 'Vaša je lozinka promijenjena',
+        'body' => 'Administrator je postavio novu lozinku za vaš račun. Prijavite se lozinkom navedenom u nastavku.',
+        'temporary' => 'Odmah nakon prijave morat ćete odabrati vlastitu lozinku.',
+        'expires' => 'Ova lozinka prestaje vrijediti :date, pa se prijavite prije tog datuma.',
+        'not_expected' => 'Ako ovu poruku niste očekivali, obratite se administratoru. Promjenu je napravila osoba s pristupom konzoli vaše organizacije, a radnja je zabilježena u revizijskom zapisniku.',
+    ],
+    'invitation' => [
+        'subject' => ':inviter vas poziva da se pridružite organizaciji :organization',
+        'heading' => 'Pridružite se organizaciji :organization',
+        'invited' => ':inviter vas poziva da se pridružite organizaciji :organization.',
+        'invited_as' => ':inviter vas poziva da se pridružite organizaciji :organization u ulozi :role.',
+        'accept_app' => 'Prihvatite poziv kako biste se prijavili u :app svojim računom za :organization.',
+        'accept' => 'Prihvatite poziv kako biste postavili račun i prijavili se.',
+        'button' => 'Pregledaj poziv',
+        'note' => 'Poveznica otvara stranicu za potvrdu — ništa se neće dogoditi dok ne potvrdite. Istječe za 7 dana. Ako ovo niste očekivali, zanemarite poruku.',
+    ],
+    'organization_invite' => [
+        'subject' => ':inviter vas poziva da upravljate organizacijom :organization u sustavu :brand',
+        'heading' => 'Pomozite upravljati organizacijom :organization u sustavu :brand',
+        'invited' => ':inviter vas poziva da upravljate organizacijom :organization u sustavu :brand, konzoli za njezine pružatelje identiteta, okruženja, članove i naplatu. Prihvatite poziv kako biste postavili lozinku i prijavili se.',
+        'invited_as' => ':inviter vas poziva da upravljate organizacijom :organization u ulozi :role u sustavu :brand, konzoli za njezine pružatelje identiteta, okruženja, članove i naplatu. Prihvatite poziv kako biste postavili lozinku i prijavili se.',
+        'button' => 'Potvrdite poziv',
+        'note' => 'Ako niste očekivali ovaj poziv, zanemarite ga — ništa se neće dogoditi dok ga ne prihvatite.',
+    ],
+    'portal_link' => [
+        'subject' => 'Postavite :organization u :brand',
+        'heading' => 'Postavite :organization',
+        'lead' => 'Zamoljeni ste da za :organization u sustavu :brand postavite sljedeće. Ne trebate račun — dovoljno je kliknuti gumb u nastavku.',
+        'intents' => [
+            'sso' => 'Jedinstvena prijava putem vašeg pružatelja identiteta',
+            'dsync' => 'Sinkronizacija direktorija (SCIM)',
+            'domain_verification' => 'Provjera vaših domena e-pošte',
+            'log_streams' => 'Slanje revizijskih zapisnika u vaš SIEM',
+            'certificate_renewal' => 'Obnavljanje vašeg SAML certifikata za potpisivanje',
+            'audit_logs' => 'Pregled revizijskih zapisnika (samo čitanje)',
+        ],
+        'button' => 'Započni postavljanje',
+        'expires' => 'Poveznica vrijedi jednom, do :date. Ako istekne, zatražite novu.',
+        'not_expected' => 'Ako niste očekivali ovu poruku, možete je zanemariti. Ništa se ne postavlja dok netko ne upotrijebi poveznicu.',
+    ],
+    'certificate_expiring' => [
+        'subject' => 'Jedinstvena prijava putem veze :connection prestaje raditi za :count dan|Jedinstvena prijava putem veze :connection prestaje raditi za :count dana|Jedinstvena prijava putem veze :connection prestaje raditi za :count dana',
+        'subject_expired' => 'Jedinstvena prijava putem veze :connection prestala je raditi',
+        'heading' => 'Vaš SAML certifikat uskoro istječe',
+        'heading_expired' => 'Vaš SAML certifikat je istekao',
+        'lead' => 'Certifikat za potpisivanje veze :connection, koja omogućuje jedinstvenu prijavu za organizaciju :organization, istječe :date. Nakon toga prijava putem te veze više neće biti moguća.',
+        'lead_expired' => 'Certifikat za potpisivanje veze :connection, koja omogućuje jedinstvenu prijavu za :organization, istekao je :date. Nitko se ne može prijaviti putem te veze dok se certifikat ne obnovi.',
+        'what_to_do' => 'Zatražite novi certifikat za potpisivanje od osobe koja upravlja vašim pružateljem identiteta, zatim ga prenesite u administratorsku konzolu. Možete zatražiti i poveznicu na administratorski portal kako biste ga tamo prenijeli.',
+        'why' => 'Ovu poruku primate jer ste vlasnik ili administrator ove organizacije u sustavu :brand.',
+    ],
+    'one_time_code' => [
+        'label' => 'Vaš kod',
+        'expires' => 'Kôd istječe za :count minutu i može se upotrijebiti samo jednom.|Kôd istječe za :count minute i može se upotrijebiti samo jednom.|Kôd istječe za :count minuta i može se upotrijebiti samo jednom.',
+        'never_share' => 'Ne dijelite kôd ni s kim — :brand ga nikad neće tražiti telefonom, putem razgovora ili e-poštom.',
+        'not_you_title' => 'Niste ovo zatražili?',
+        'sign_in' => [
+            'subject' => 'Vaš kod za prijavu na :brand',
+            'heading' => 'Potvrdite svoj identitet',
+            'lead' => 'Unesite ovaj kod kako biste dovršili prijavu u :brand.',
+            'not_you' => 'Nemojte nigdje unositi ovaj kôd i zanemarite poruku. Ako imate račun u sustavu :brand, promijenite njegovu lozinku — osoba koja je pokrenula ovaj postupak možda je zna.',
+        ],
+        'device' => [
+            'subject' => 'Vaš kod za odobrenje uređaja u sustavu :brand',
+            'heading' => 'Odobrite prijavu na drugom uređaju',
+            'lead' => 'Unesite ovaj kôd kako biste odobrili prijavu u :brand na drugom uređaju, poput televizora ili alata naredbenog retka.',
+            'not_you' => 'Nemojte nigdje unositi ovaj kôd. Netko vas možda pokušava navesti da odobrite njegov uređaj — tako započinje ova vrsta napada. Zanemarite poruku i nemojte ništa odobravati.',
+        ],
+        'link' => [
+            'subject' => 'Vaš kod za povezivanje načina prijave u sustavu :brand',
+            'heading' => 'Povežite način prijave',
+            'lead' => 'Unesite ovaj kod kako biste povezali novi način prijave na vaš račun :brand.',
+            'not_you' => 'Nemojte nigdje unositi ovaj kod. Netko možda pokušava povezati svoj način prijave s vašim računom. Zanemarite poruku i ništa se neće povezati.',
+        ],
+        'verify' => [
+            'subject' => 'Vaš kôd za potvrdu u sustavu :brand',
+            'heading' => 'Vaš kod za potvrdu',
+            'lead' => 'Unesite ovaj kod na :brand kako biste potvrdili da je ova adresa e-pošte vaša.',
+            'not_you' => 'Možete zanemariti ovu poruku. Bez koda se ništa neće dogoditi.',
+        ],
+    ],
+];

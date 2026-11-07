@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, OrganizationFilter, PageProps } from '@/types';
@@ -32,18 +32,23 @@ type Props = PageProps<{
 }>;
 
 export default function Apis({ help, apis, organizationFilter, createHref }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <>
             <PageHeader
                 help={help}
-                description={tc('console.the_services_of_yours_that_receive_access_to_8f7e35e1')}
+                description={consoleT(
+                    'console.the_services_of_yours_that_receive_access_tokens_and_th_8f7e35e1',
+                )}
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>
-                            <Icon name="plus" className="w-4 h-4" />
-                            {tc('console.new_api_bacd0a9a')}
+                            {consoleRich('console._part1_new_api_a405c2d8', {
+                                part1: <Icon name="plus" className="w-4 h-4" />,
+                            })}
                         </Link>
                     </Button>
                 }
@@ -68,20 +73,27 @@ export default function Apis({ help, apis, organizationFilter, createHref }: Pro
                         actions={
                             <Button asChild variant="primary">
                                 <Link href={createHref}>
-                                    <Icon name="plus" className="w-4 h-4" />
-                                    {tc('console.new_api_bacd0a9a')}
+                                    {consoleRich('console._part1_new_api_a405c2d8', {
+                                        part1: <Icon name="plus" className="w-4 h-4" />,
+                                    })}
                                 </Link>
                             </Button>
                         }
-                        title={tc('console.no_apis_registered_yet_94c90755')}
+                        title={consoleT('console.no_apis_registered_yet_94c90755')}
                         help={help}
-                        description={tc(
-                            'console.until_an_api_is_registered_a_scope_is_just_t_db7d3254',
+                        description={consoleT(
+                            'console.until_an_api_is_registered_a_scope_is_just_text_on_an_a_db7d3254',
                         )}
                         steps={[
-                            tc('console.register_the_api_with_the_address_its_tokens_ecada0cf'),
-                            tc('console.add_the_scopes_it_understands_and_say_which__29474e74'),
-                            tc('console.give_your_apps_those_scopes_on_their_scopes__97d115cd'),
+                            consoleRuntimeText(
+                                'console.register_the_api_with_the_address_its_tokens_should_nam_ecada0cf',
+                            ),
+                            consoleRuntimeText(
+                                'console.add_the_scopes_it_understands_and_say_which_of_them_app_29474e74',
+                            ),
+                            consoleRuntimeText(
+                                'console.give_your_apps_those_scopes_on_their_scopes_tab_tokens_97d115cd',
+                            ),
                         ]}
                     />
                 ) : (
@@ -108,8 +120,9 @@ export default function Apis({ help, apis, organizationFilter, createHref }: Pro
                                     <Badge>{api.owner}</Badge>
                                     {api.linkedApp !== null && (
                                         <Badge>
-                                            {tc('console.roles_from_814d3d3b')}
-                                            {api.linkedApp}
+                                            {consoleRich('console.roles_from_part1_f33761e4', {
+                                                part1: api.linkedApp,
+                                            })}
                                         </Badge>
                                     )}
                                 </div>
@@ -117,8 +130,8 @@ export default function Apis({ help, apis, organizationFilter, createHref }: Pro
                             <Badge>
                                 {api.scopeCount}{' '}
                                 {api.scopeCount === 1
-                                    ? tc('console.scope_5f161c91')
-                                    : tc('console.scopes_56b3669c')}
+                                    ? consoleText('console.scope_5f161c91')
+                                    : consoleText('console.scopes_56b3669c')}
                             </Badge>
                             <Icon
                                 name="chevron"

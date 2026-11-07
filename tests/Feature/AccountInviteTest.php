@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Mail\OrganizationInviteMail;
+use App\Mail\InvitationMail;
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\PasswordReset;
@@ -21,16 +21,16 @@ use Inertia\Testing\AssertableInertia;
 // The accept page screens the password against HaveIBeenPwned — keep it offline.
 beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]));
 
-it('invites a teammate and emails a signed accept link', function (): void {
+it('invites a teammate with native app roles and an acceptance link', function (): void {
     Mail::fake();
     ['member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount('owner@acme.example');
     signInAsMember($ownerSubjectId);
 
     $this->from(route('members'))
-        ->post(route('members.invite'), [
+        ->post(route('members.invite', ['organization' => $owner->organization_id]), [
             'email' => 'new@acme.example',
             'name' => 'New Person',
-            'role' => 'member',
+            'roles' => ['viewer'],
         ])
         ->assertRedirect(route('members'))
         ->assertSessionHasNoErrors();
@@ -45,7 +45,7 @@ it('invites a teammate and emails a signed accept link', function (): void {
     expect(app(PlatformRoot::class)->run(fn () => app(Invitations::class)->pending($owner->organization_id)))
         ->toHaveCount(1);
 
-    Mail::assertSent(OrganizationInviteMail::class, fn (OrganizationInviteMail $m): bool => $m->hasTo('new@acme.example'));
+    Mail::assertSent(InvitationMail::class, fn (InvitationMail $m): bool => $m->hasTo('new@acme.example'));
 });
 
 it('rejects inviting an email that already belongs to a member', function (): void {
@@ -54,7 +54,7 @@ it('rejects inviting an email that already belongs to a member', function (): vo
     signInAsMember($ownerSubjectId);
 
     $this->from(route('members'))
-        ->post(route('members.invite'), ['email' => 'owner@acme.example', 'role' => 'member'])
+        ->post(route('members.invite', ['organization' => $owner->organization_id]), ['email' => 'owner@acme.example', 'roles' => ['viewer']])
         ->assertSessionHasErrors('email');
 
     Mail::assertNothingSent();
@@ -109,7 +109,7 @@ it('accepts a signed invite, sets a password, and signs in', function (): void {
     );
 
     $this->post($accept, ['password' => 'a-strong-unbreached-passphrase'])
-        ->assertRedirect(route('projects'));
+        ->assertRedirect(route('dashboard'));
 
     // The MEMBERSHIP exists now, which it did not before acceptance — that is the whole
     // difference between an invitation and a member. It used to be one row moving from
@@ -138,6 +138,21 @@ it('accepts a signed invite, sets a password, and signs in', function (): void {
  * being asserted is that a MEMBER is reachable by the ordinary flow, and that is exactly
  * the claim that would rot silently if it were nobody's test.
  */
+it('accepts into the invited workspace instead of the existing persons oldest membership', function (): void {
+    $existing = provisionAccount('existing@invite.example');
+    $target = provisionAccount('target-owner@invite.example');
+    $pending = app(PlatformRoot::class)->run(fn () => app(Invitations::class)->invite(
+        $target['organization']->id, 'existing@invite.example', MembershipRole::Developer,
+    ));
+    $accept = URL::temporarySignedRoute('organization.invite.accept.store', now()->addDay(), ['token' => $pending->token]);
+
+    $this->post($accept, ['password' => 'a-strong-unbreached-passphrase'])->assertRedirect(route('dashboard'));
+
+    $session = app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->active((string) session(PlatformAuth::SESSION_KEY)));
+    expect($session?->user_id)->toBe($existing['subjectId'])
+        ->and($session?->organization_id)->toBe($target['organization']->id);
+});
+
 it('resets an account member through the console flow and ends their open sessions', function (): void {
     Mail::fake();
     ['member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount('owner@acme.example');

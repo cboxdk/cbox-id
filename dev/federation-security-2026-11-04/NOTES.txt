@@ -1,0 +1,63 @@
+Federation security fixes — 2026-11-04
+
+Source changes live in ../laravel-id and app/Http/Controllers/Sso/SamlAcsController.php.
+Other local changes were retained. No commit, tag, release or deployment was made.
+
+Fixed paths:
+- SAML IdP POST logout: timestamp is read from the signed XML root, not comments.
+- SAML SP logout: root attributes are parsed consistently through the safe XML loader.
+- SP-initiated SAML login: both ACS controllers require the initiating __Host cookie.
+- Package SAML ACS: non-SAML connections are rejected before validator dispatch.
+- Package SAML IdP SLO: a missing/malformed message cannot authorize ambient-session logout.
+- OIDC: mandatory __Host cookie, opaque browser token, server-side expiry and atomic consumption.
+
+The host uses a copied Composer dependency. To make local app tests/run use the fixes,
+only the following vendor paths were overlaid after verifying each existing source file
+matched laravel-id HEAD before this task:
+  src/Federation/Support/FederationFlowStash.php
+  src/Federation/Saml/SamlLogout.php
+  src/SamlIdp/SamlSingleLogoutService.php
+  src/Api/Http/Controllers/Sso/SamlLoginController.php
+  src/Api/Http/Controllers/Sso/SamlAcsController.php
+  src/Api/Http/Controllers/Sso/SamlIdpLogoutController.php
+  src/Federation/Support/SamlBrowserBinding.php (new)
+The vendor ApiServiceProvider received ONLY the ACS cookie-middleware line change.
+No other vendor modifications or Composer lock changes were made by this task.
+Original vendor files: /var/folders/td/v_f38fw56lndxpy8zmcprqth0000gn/T/cbox-federation-vendor-before-vyc7bbty
+
+This local overlay is not a deployment mechanism. Publish the fixed package and update
+the host Composer lock before deploying. Deploy host and package together. See the new
+federation section of ../laravel-id/UPGRADING.md: HTTPS, same host, shared persistent cache,
+restart in-progress flows, and use a CSRF-protected host route for ordinary local logout.
+
+Package checks:
+  vendor/bin/pest tests/Feature/Federation tests/Feature/SamlIdp tests/Feature/Api/SamlSpTest.php tests/Feature/Api/SamlAcsTest.php tests/Feature/Api/SamlIdpSingleLogoutTest.php tests/Feature/Api/SamlLogoutCsrfTest.php tests/Feature/Api/ProtocolCsrfTest.php --compact
+  328 passed.
+  vendor/bin/pest tests/Feature/Api/SamlBrowserBindingTest.php tests/Feature/Api/EndpointsTest.php --compact
+  19 passed; strengthened signed-OIDC-token case rerun successfully afterwards.
+  vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+  Passed (whole configured source/fixtures scope).
+  Pint on touched source/test files passed.
+
+Host checks (normal bootstrap, local vendor overlay):
+  vendor/bin/pest tests/Feature/InboundSsoBrowserLoginTest.php tests/Feature/OperatorSocialLoginTest.php tests/Feature/ProtocolPostBindingTest.php tests/Feature/FrontendCsrfTest.php --compact
+  55 passed (263 assertions).
+
+Regression sensitivity:
+- IdP POST stale-root/fresh-comment regression failed before DOM fix, passes after.
+- Four missing-message logout cases failed against original controller, pass after.
+- A genuinely signed OIDC token returned 200 at the original SAML ACS; the new regression rejects it before session creation.
+- Browser binding tests use genuine signed SAML responses at the package route.
+- Host OIDC integration uses genuine RSA signatures/JWKS and the encrypted cookie roundtrip.
+- OIDC consumption regression interleaves two cache reads before either claim, ensuring one winner.
+
+The full application test suite was not run. These checks cover the changed federation paths.
+
+Whole-app PHPStan:
+The first run failed while writing the shared PHPStan cache. Retried with isolated
+/tmp/cbox-federation-phpstan.neon (includes project config, separate tmpDir).
+Completed analysis reports 13 errors confined to the unrelated pre-existing local
+app/Actions/UserProperties/{ConfigureNamespace,NamespaceFields,ShowNamespace}.php:
+the installed vendor lacks their new Cbox\Id\UserProperties classes. Those source files
+and dependencies were not modified to silence the errors. This task's source has no
+reported errors. The full app analysis is therefore NOT green.

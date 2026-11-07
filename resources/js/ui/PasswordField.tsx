@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { forwardRef, type ReactNode, useId, useState } from 'react';
 import { cn } from '@/lib/cn';
 import { Icon } from './Icon';
@@ -18,9 +18,7 @@ export interface PasswordFieldProps extends Omit<InputProps, 'type'> {
     /** The floor the tenant's policy enforces. Stated so the person is not guessing. */
     minLength?: number;
     /**
-     * The words this control speaks, for a page that is not in English. Optional, and
-     * English by default, because the console is English and every console caller would
-     * otherwise have to spell them out. The hosted pages pass their translations.
+     * Optional wording overrides. Defaults follow the selected language.
      */
     showLabel?: string;
     hideLabel?: string;
@@ -52,8 +50,8 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
             error,
             policy = false,
             minLength = 12,
-            showLabel: suppliedShowlabel,
-            hideLabel: suppliedHidelabel,
+            showLabel: suppliedShowLabel,
+            hideLabel: suppliedHideLabel,
             policyLabel,
             className,
             value,
@@ -63,11 +61,9 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
         },
         ref,
     ) {
-        const { t: tc } = useUiTranslator();
-        const showLabel =
-            suppliedShowlabel ?? tc('console.show_password_6aeaa6a5', 'Show password');
-        const hideLabel =
-            suppliedHidelabel ?? tc('console.hide_password_a60a56c5', 'Hide password');
+        const { t, choice } = useConsoleTranslator();
+        const showLabel = suppliedShowLabel ?? t('console.show_password_596f5170');
+        const hideLabel = suppliedHideLabel ?? t('console.hide_password_1a39339c');
         const generated = useId();
         const id = statedId ?? generated;
         const [visible, setVisible] = useState(false);
@@ -146,11 +142,7 @@ export const PasswordField = forwardRef<HTMLInputElement, PasswordFieldProps>(
                         <Icon name="check" className="w-3.5 h-3.5" />
                         <span>
                             {policyLabel ??
-                                tc(
-                                    'console.at_least_count_characters_56be6f78',
-                                    'At least :count characters',
-                                    { count: minLength },
-                                )}
+                                choice('console.password_minimum_characters', minLength)}
                         </span>
                     </div>
                 )}

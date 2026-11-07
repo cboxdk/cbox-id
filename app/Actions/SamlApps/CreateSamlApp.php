@@ -6,6 +6,7 @@ namespace App\Actions\SamlApps;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -68,7 +69,7 @@ final readonly class CreateSamlApp implements Action
         $signed = $context->boolean('want_authn_requests_signed');
 
         if ($entityId === '' || $this->providers->findByEntityId($entityId) !== null) {
-            throw ActionRefused::because('entity_id_taken', 'A SAML app with this entity id is already registered in this environment.', 'entity_id');
+            throw ActionRefused::because('entity_id_taken', new ActionMessage('console.a_saml_app_with_this_entity_id_is_already_registered_in_999cf33d'), 'entity_id');
         }
 
         SamlAppFields::assertVerifiable($signed, $certificate);

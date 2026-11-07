@@ -27,11 +27,11 @@ uses(RefreshDatabase::class);
  * are separate, and both are pinned below.
  */
 it('serves billing when the deployment bills', function (): void {
-    ['subjectId' => $ownerSubjectId] = provisionAccount();
+    ['subjectId' => $ownerSubjectId, 'organization' => $organization] = provisionAccount();
 
     signInAsMember($ownerSubjectId);
 
-    $this->get(route('billing'))->assertOk();
+    $this->get(route('billing', ['organization' => $organization->id]))->assertOk();
 });
 
 it('has no billing route at all when the module is switched off', function (): void {
@@ -75,7 +75,7 @@ it('keeps billing out of a developer\'s rail while leaving the page reachable', 
         ->and(Console::featureActive('billing'))->toBeTrue();
 
     signInAsMember($devSubjectId);
-    $this->get(route('billing'))->assertRedirect(route('projects'));
+    $this->get(route('billing', ['organization' => $organization->id]))->assertForbidden();
 });
 
 it('registers billing without the host naming it', function (): void {

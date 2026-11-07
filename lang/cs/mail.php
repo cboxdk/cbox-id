@@ -1,0 +1,120 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'layout' => [
+        'footer' => '© :year :brand · Toto je automatické upozornění z vaší platformy pro správu identity.',
+    ],
+    'common' => [
+        'paste_link' => 'Nebo vložte tento odkaz do svého prohlížeče:',
+    ],
+    'roles' => [
+        'owner' => 'Vlastník',
+        'admin' => 'Administrátor',
+        'developer' => 'Vývojář',
+        'member' => 'Člen',
+        'viewer' => 'Čtenář',
+    ],
+    'magic_link' => [
+        'subject' => 'Váš přihlašovací odkaz do :brand',
+        'heading' => 'Přihlaste se k :brand',
+        'body' => 'Kliknutím na tlačítko níže se přihlásíte. Odkaz lze použít pouze jednou a jeho platnost vyprší za 15 minut. Pokud jste o něj nežádali, můžete tento e-mail ignorovat.',
+        'button' => 'Přihlaste se k :brand',
+    ],
+    'password_reset' => [
+        'subject' => 'Obnovte heslo pro :brand',
+        'heading' => 'Obnovte své heslo',
+        'body' => 'Obdrželi jsme žádost o obnovení vašeho hesla pro :brand. Klikněte na tlačítko níže a zvolte nové heslo. Odkaz lze použít pouze jednou a jeho platnost vyprší za 60 minut. Pokud jste o změnu nežádali, e-mail ignorujte. Vaše heslo se nezmění.',
+        'button' => 'Obnovit heslo',
+    ],
+    'email_verification' => [
+        'subject' => 'Potvrďte svou e-mailovou adresu v :brand',
+        'heading' => 'Potvrďte svou e-mailovou adresu',
+        'body' => 'Vítejte v :brand. Potvrďte, že tato e-mailová adresa patří vám, a zabezpečte tak svůj účet. Odkaz lze použít pouze jednou a jeho platnost vyprší za 24 hodin.',
+        'button' => 'Potvrďte e-mailovou adresu',
+        'not_you' => 'Pokud jste si nevytvořili účet v :brand, můžete tento e-mail ignorovat. Bez použití odkazu se nic nestane.',
+    ],
+    'admin_assigned_password' => [
+        'subject' => 'Vaše heslo do :brand bylo obnoveno',
+        'heading' => 'Vaše heslo bylo resetováno',
+        'body' => 'Administrátor nastavil nové heslo pro váš účet. Přihlaste se s ním níže.',
+        'temporary' => 'Okamžitě budete požádáni, abyste si vybrali své vlastní heslo.',
+        'expires' => 'Platnost tohoto hesla vyprší :date. Přihlaste se prosím před tímto datem.',
+        'not_expected' => 'Pokud jste tuto změnu neočekávali, kontaktujte svého administrátora – někdo s přístupem k konzoli vaší organizace tuto změnu provedl a je zaznamenána v auditní stopě.',
+    ],
+    'invitation' => [
+        'subject' => ':inviter vás zve do organizace :organization',
+        'heading' => 'Připojte se k organizaci :organization',
+        'invited' => ':inviter vás zve do organizace :organization.',
+        'invited_as' => ':inviter vás zve do organizace :organization s rolí :role.',
+        'accept_app' => 'Přijměte pozvánku a přihlaste se do :app pomocí svého účtu organizace :organization.',
+        'accept' => 'Přijměte, abyste si vytvořili účet a přihlásili se.',
+        'button' => 'Prohlédněte si pozvánku',
+        'note' => 'Tento odkaz otevře stránku, kde potvrdíte – nic se nestane, dokud to neuděláte. Platí 7 dní. Pokud jste neočekávali toto upozornění, můžete ho ignorovat.',
+    ],
+    'organization_invite' => [
+        'subject' => ':inviter vás zve ke správě organizace :organization v :brand',
+        'heading' => 'Pomozte spravovat :organization na :brand',
+        'invited' => ':inviter vás zve ke správě organizace :organization v :brand, konzoli pro její poskytovatele identity, prostředí, členy a fakturaci. Přijměte pozvánku, nastavte si heslo a přihlaste se.',
+        'invited_as' => ':inviter vás zve ke správě organizace :organization s rolí :role v :brand, konzoli pro její poskytovatele identity, prostředí, členy a fakturaci. Přijměte pozvánku, nastavte si heslo a přihlaste se.',
+        'button' => 'Přijmout pozvánku',
+        'note' => 'Pokud jste tuto pozvánku neočekávali, můžete ji ignorovat. Dokud ji nepřijmete, nic se nestane.',
+    ],
+    'portal_link' => [
+        'subject' => 'Nastavte :organization v :brand',
+        'heading' => 'Nastavit :organization',
+        'lead' => 'Byli jste požádáni o nastavení následujících položek pro organizaci :organization v :brand. Nepotřebujete účet. Stačí použít tlačítko níže.',
+        'intents' => [
+            'sso' => 'Jednotné přihlášení u vašeho poskytovatele identity',
+            'dsync' => 'Synchronizace adresáře (SCIM)',
+            'domain_verification' => 'Ověření vašich e-mailových domén',
+            'log_streams' => 'Streamování vašeho protokolu auditu do vašeho SIEM',
+            'certificate_renewal' => 'Obnovení vašeho podpisového certifikátu SAML',
+            'audit_logs' => 'Prohlížení auditních protokolů (pouze pro čtení)',
+        ],
+        'button' => 'Spustit nastavení',
+        'expires' => 'Odkaz lze použít pouze jednou a platí do :date. Pokud jeho platnost vyprší, požádejte o nový.',
+        'not_expected' => 'Pokud jste neočekávali tuto notifikaci, můžete ji ignorovat – nic nebude aktivováno, dokud někdo neklikne na odkaz.',
+    ],
+    'certificate_expiring' => [
+        'subject' => 'Jednotné přihlášení přes :connection přestane fungovat za :count den|Jednotné přihlášení přes :connection přestane fungovat za :count dny|Jednotné přihlášení přes :connection přestane fungovat za :count dní',
+        'subject_expired' => 'Jednotné přihlášení přes :connection přestalo fungovat',
+        'heading' => 'Platnost vašeho certifikátu SAML brzy vyprší',
+        'heading_expired' => 'Platnost vašeho certifikátu SAML vypršela',
+        'lead' => 'Platnost podpisového certifikátu připojení :connection, které zajišťuje jednotné přihlášení pro organizaci :organization, vyprší :date. Poté se přes toto připojení nikdo nebude moci přihlásit.',
+        'lead_expired' => 'Platnost podpisového certifikátu připojení :connection, které zajišťuje jednotné přihlášení pro :organization, vypršela :date. Dokud certifikát neobnovíte, přes toto připojení se nikdo nemůže přihlásit.',
+        'what_to_do' => 'Požádejte správce svého poskytovatele identity o nový podpisový certifikát a nahrajte jej v administrační konzoli. Můžete také požádat svého správce o odkaz na administrační portál a nahrát certifikát tam.',
+        'why' => 'Tento e-mail dostáváte, protože jste vlastníkem nebo správcem této organizace v :brand.',
+    ],
+    'one_time_code' => [
+        'label' => 'Váš kód',
+        'expires' => 'Platnost kódu vyprší za :count minutu a lze jej použít pouze jednou.|Platnost kódu vyprší za :count minuty a lze jej použít pouze jednou.|Platnost kódu vyprší za :count minut a lze jej použít pouze jednou.',
+        'never_share' => 'Kód nikomu nesdělujte. :brand jej po vás nikdy nebude požadovat telefonicky, přes chat ani e-mailem.',
+        'not_you_title' => 'Nežádali jste o tento kód?',
+        'sign_in' => [
+            'subject' => 'Váš přihlašovací kód do :brand',
+            'heading' => 'Potvrďte svou totožnost',
+            'lead' => 'Zadejte tento kód pro dokončení přihlášení k :brand.',
+            'not_you' => 'Kód nikam nezadávejte a tento e-mail ignorujte. Pokud máte účet u :brand, změňte si heslo. Osoba, která se dostala až k tomuto kroku, ho možná zná.',
+        ],
+        'device' => [
+            'subject' => 'Váš kód pro schválení zařízení v :brand',
+            'heading' => 'Schvalte přihlášení na jiném zařízení',
+            'lead' => 'Zadejte tento kód pro schválení přihlášení do :brand na jiném zařízení, například televizoru nebo v nástroji příkazové řádky.',
+            'not_you' => 'Kód nikam nezadávejte. Někdo se vás možná snaží přimět ke schválení svého zařízení. Tak začíná tento typ útoku. Ignorujte tento e-mail a nic nebude schváleno.',
+        ],
+        'link' => [
+            'subject' => 'Váš kód pro propojení přihlašovací metody v :brand',
+            'heading' => 'Propojit metodu přihlášení',
+            'lead' => 'Zadejte tento kód pro propojení nového způsobu přihlášení se svým účtem v :brand.',
+            'not_you' => 'Kód nikam nezadávejte. Někdo se možná snaží propojit svůj způsob přihlášení s vaším účtem. Ignorujte tento e-mail a nic nebude propojeno.',
+        ],
+        'verify' => [
+            'subject' => 'Váš ověřovací kód pro :brand',
+            'heading' => 'Váš kód pro ověření',
+            'lead' => 'Zadejte tento kód v :brand, abyste potvrdili, že tato e-mailová adresa je vaše.',
+            'not_you' => 'Tento e-mail můžete ignorovat. Bez kódu se nic nestane.',
+        ],
+    ],
+];

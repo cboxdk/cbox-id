@@ -88,7 +88,7 @@ it('hides what an account role may not see, and drops the area when it holds not
         ->and($pages())->toContain('organization-settings')
         ->and($pages())->toContain('keys');
 
-    // A Viewer reads the roster and the bill and changes nothing.
+    // A Reader reads operational records; billing requires its separate app role.
     //
     // A SECOND member, because the first is the account's only owner and demoting the last
     // owner is refused — re-roling an owner orphans the account just as surely as deleting
@@ -97,7 +97,14 @@ it('hides what an account role may not see, and drops the area when it holds not
     nextRequest();
     signInAsMember($viewerSubjectId);
 
-    expect($pages())->toContain('billing')
+    expect($pages())->not->toContain('billing')
+        ->and($pages())->not->toContain('organization-settings')
+        ->and($pages())->not->toContain('keys');
+
+    grantNativeProductRoles($viewer, ['billing']);
+    nextRequest();
+    signInAsMember($viewerSubjectId);
+    expect($pages())->toContain('billing')->not->toContain('projects')
         ->and($pages())->not->toContain('organization-settings')
         ->and($pages())->not->toContain('keys');
 });

@@ -16,11 +16,9 @@ use App\Platform\ApiKeys\KeyApps;
 use App\Platform\ApiKeys\ValueObjects\KeyApp;
 use App\Platform\ApiKeys\ValueObjects\KeyOrganization;
 use App\Platform\ApiKeys\ValueObjects\KeyPermission;
-use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentUser;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Organization\Models\CustomerApiKey;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -83,7 +81,7 @@ final readonly class AccountApiKeyController extends PageController
             ]),
         );
 
-        return $this->page('account/api-keys', ConsoleStrings::text(Vocabulary::MY_API_KEYS), [
+        return $this->page('account/api-keys', __('console.my_api_keys_70cf4f91'), [
             'help' => HelpProps::for(HelpTopic::ApiKeys),
             'organizations' => array_map(fn (KeyOrganization $candidate): array => [
                 'id' => $candidate->id,

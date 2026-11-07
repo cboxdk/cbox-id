@@ -26,11 +26,12 @@ final readonly class RootWorkspace
         public MembershipRole $role,
         public bool $allEnvironments,
         public array $environmentIds,
+        private OrganizationCapabilities $resolvedCapabilities,
     ) {}
 
     public function capabilities(): OrganizationCapabilities
     {
-        return OrganizationCapabilities::of($this->role);
+        return $this->resolvedCapabilities;
     }
 
     /**

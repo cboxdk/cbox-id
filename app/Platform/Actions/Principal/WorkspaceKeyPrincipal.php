@@ -10,6 +10,7 @@ use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\Approvals\StepUpPolicy;
 use App\Platform\Actions\WorkspaceScopes;
 use App\Platform\OrganizationCapabilities;
+use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -56,7 +57,11 @@ final readonly class WorkspaceKeyPrincipal implements Principal
             throw new AuthorizationException('A workspace key cannot run this.');
         }
 
-        $can = OrganizationCapabilities::of($this->key->role);
+        if ($action->name === 'team.transfer_ownership') {
+            throw new AuthorizationException('Ownership transfer requires the current owner signed in as a person.');
+        }
+
+        $can = OrganizationCapabilities::forMachineRole($this->key->role);
 
         foreach ([WorkspaceScopes::capability($action->scope), $action->consoleGate->capability()] as $capability) {
             if ($capability === false || ! WorkspaceScopes::holds($can, $capability)) {
@@ -66,6 +71,9 @@ final readonly class WorkspaceKeyPrincipal implements Principal
 
         if (! WorkspaceScopes::knows($action->scope) || ! $this->key->permits($action->scope)) {
             throw new AuthorizationException("This key is missing the required scope: {$action->scope}.");
+        }
+        if (in_array($action->scope, ['workspace:read', 'projects:write', 'environments:write', 'keys:write'], true)) {
+            app(ProductAdmission::class)->assertGranted($this->id(), $this->key->organization_id);
         }
     }
 
@@ -134,6 +142,6 @@ final readonly class WorkspaceKeyPrincipal implements Principal
     /** What the key's role may do — the same object the console asks for a person. */
     public function capabilities(): OrganizationCapabilities
     {
-        return OrganizationCapabilities::of($this->key->role);
+        return OrganizationCapabilities::forMachineRole($this->key->role);
     }
 }

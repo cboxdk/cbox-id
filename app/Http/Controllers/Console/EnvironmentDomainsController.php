@@ -7,9 +7,7 @@ namespace App\Http\Controllers\Console;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Platform\Console\OrganizationFilter;
-use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Illuminate\Http\Request;
 use Inertia\Response;
@@ -53,7 +51,7 @@ final readonly class EnvironmentDomainsController extends ConsoleController
         $domains = $query->paginate(self::PER_PAGE)->withQueryString();
         $owners = $this->scope->organizationNames($domains->pluck('organization_id'));
 
-        return $this->page('console/domains-overview', ConsoleStrings::text(Vocabulary::DOMAINS), [
+        return $this->page('console/domains-overview', __('console.domains_ced67718'), [
             'help' => HelpProps::for(HelpTopic::Domains),
             'domains' => $domains->getCollection()->map(fn (VerifiedDomain $domain): array => [
                 'id' => $domain->id,

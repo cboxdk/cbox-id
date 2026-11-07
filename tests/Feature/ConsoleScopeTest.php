@@ -185,10 +185,9 @@ it('does not carry a bound organization into another environment', function (): 
 })->group('security');
 
 it('enforces entitlements on the organization plane', function (): void {
-    actingAsRole(MembershipRole::Owner);
-
-    // OpenEntitlements is bound by default, so this passes today. The test states the
-    // contract rather than the current binding.
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    expect(scope()->entitled('sso'))->toBeFalse();
+    grantFeature($org->id, 'cbox-id-sso');
     expect(scope()->entitled('sso'))->toBeTrue();
 });
 
@@ -199,7 +198,8 @@ it('enforces entitlements on the environment plane too', function (): void {
     actAsRealEnvironmentAdmin();
     $orgId = anOrganization('acme-env');
     scope()->bindOrganization($orgId);
-
+    expect(scope()->entitled('sso'))->toBeFalse();
+    grantFeature($orgId, 'cbox-id-sso');
     expect(scope()->entitled('sso'))->toBeTrue();
 
     // And with none named there is no organization to be entitled, so it refuses rather

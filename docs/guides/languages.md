@@ -6,7 +6,7 @@ description: Which languages the sign-in pages, consent screen, Admin Portal and
 
 # Languages
 
-The pages **your users and your customers' IT admins** see can be shown in ten
+The pages **your users and your customers' IT admins** see can be shown in 21
 languages:
 
 | Code | Language |
@@ -21,6 +21,17 @@ languages:
 | `es` | Español |
 | `it` | Italiano |
 | `nl` | Nederlands |
+| `pt` | Português |
+| `pl` | Polski |
+| `ro` | Română |
+| `cs` | Čeština |
+| `hu` | Magyar |
+| `el` | Ελληνικά |
+| `bg` | Български |
+| `hr` | Hrvatski |
+| `sk` | Slovenčina |
+| `tr` | Türkçe |
+| `uk` | Українська |
 
 That covers sign-in, sign-up, two-factor and step-up prompts, password reset,
 invitations and email confirmation, the OAuth consent screen and organization picker,
@@ -142,13 +153,13 @@ frame), `auth`, `oauth`, `portal`, `mail` and `errors`. English is the source:
 1. Add or change the key in `lang/en/…`.
 2. Run `php artisan i18n:types`. This regenerates `resources/js/i18n/keys.ts`, so React
    pages can only ask for keys that exist in English. CI fails if that file is out of date.
-3. Add the same key, with the same `:placeholders`, to the other five languages.
+3. Add the same key, with the same `:placeholders`, to all other supported languages.
    `LangParityTest` fails if any language is missing a key, has an extra key, or changes
    a placeholder.
 
 In React, use `useTranslator()` from `@/i18n`. It gives you `t(key, params)` for text,
 `rich(key, { name: <b>…</b> })` when a placeholder is a React element, and
-`choice(key, count)` for two-form plurals. A page receives only its own group's text.
+`choice(key, count)` for locale-specific plurals. A page receives only its own group's text.
 
 ## Danish terminology
 
@@ -217,3 +228,9 @@ Only the sentences around them are translated.
 - [Admin Portal](admin-portal.md) — the hosted pages an IT admin opens in their own language.
 - [For your customers' IT admins](../for-it-admins/_index.md) — what those IT admins read.
 - [Enterprise SSO](single-sign-on.md) and [Social login](social-sign-in.md) — the sign-in pages these languages apply to.
+
+## Translation sources and review
+
+The additional European catalogs use local TranslateGemma output, with reviewed authentication messages and integer plural forms. Framework validation messages also use Laravel-Lang/lang (MIT; see `resources/licenses/laravel-lang.md`). Portuguese follows Portugal. These additions are machine-assisted and still need native-speaker review. Catalog parity verifies coverage and placeholders, not linguistic accuracy.
+
+Polish, Romanian, Czech, Croatian, Slovak and Ukrainian carry three plural forms in Laravel order: singular, few, remaining counts. React follows the same order for integer UI counters. Test 0, 1, 2, 5, 11, 21 and 22 when changing counted messages.

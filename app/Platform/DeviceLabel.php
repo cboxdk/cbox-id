@@ -45,12 +45,12 @@ final class DeviceLabel
         'Linux' => 'Linux',
     ];
 
-    public static function for(?string $userAgent): string
+    public static function for(?string $userAgent, bool $localized = false): string
     {
         $agent = trim((string) $userAgent);
 
         if ($agent === '') {
-            return 'Device not recorded';
+            return $localized ? __('console.device_not_recorded_0d70f75d') : 'Device not recorded';
         }
 
         $browser = null;
@@ -74,7 +74,9 @@ final class DeviceLabel
         }
 
         if ($browser !== null && $platform !== null) {
-            return $browser.' on '.$platform;
+            return $localized
+                ? __('console.device_browser_platform', ['browser' => $browser, 'platform' => $platform])
+                : $browser.' on '.$platform;
         }
 
         // One of the two, or neither. The raw string beats a confident guess: somebody

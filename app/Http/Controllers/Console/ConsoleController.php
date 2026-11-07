@@ -13,6 +13,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\OrganizationFilter;
 use App\Platform\Console\ShellPayload;
 use App\Platform\Entitlements;
+use App\Platform\EnvironmentAdminAuth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route as RouteRegistry;
 use Illuminate\Validation\ValidationException;
@@ -57,7 +58,11 @@ abstract readonly class ConsoleController extends PageController
      */
     protected function page(string $component, string $title, array $props = []): Response
     {
-        return parent::page($component, $title, $props)
+        return parent::page($component, $title, [
+            ...$props,
+            'canManageEnvironment' => $this->scope->plane() !== ConsolePlane::Environment
+                || app(EnvironmentAdminAuth::class)->check(),
+        ])
             ->withViewData(['section' => app(ShellPayload::class)->build()?->section]);
     }
 

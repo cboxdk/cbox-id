@@ -8,7 +8,6 @@ use App\Http\Props\Shared\HelpProps;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Kernel\Usage\Contracts\UsageMeter;
 use Inertia\Response;
 
@@ -32,28 +31,31 @@ final readonly class UsageController extends ConsoleController
     private const DAYS = 30;
 
     /** Human labels for the shared auth.* metric keys. */
-    private const LABELS = [
-        'auth.login' => 'Sign-ins',
-        'auth.session' => 'Sessions',
-        'auth.user' => 'Users created',
-        'auth.id_token' => 'Tokens issued',
-        'auth.mfa_enrolled' => 'MFA enrolments',
-        'auth.passkey' => 'Passkeys registered',
-        'auth.passkey_auth' => 'Passkey sign-ins',
-        'auth.otp' => 'One-time codes',
-        'auth.identity_linked' => 'Identities linked',
-        'auth.organization' => 'Organisations created',
-        'auth.member_added' => 'Members added',
-        'auth.invitation' => 'Invitations sent',
-        'auth.invitation_accepted' => 'Invitations accepted',
-        'auth.role_assigned' => 'Roles assigned',
-        'auth.service_account' => 'Service accounts',
-        'auth.ciba' => 'Approvals granted',
-        'auth.domain_verified' => 'Domains verified',
-        'auth.governance_campaign' => 'Access reviews',
-        'auth.scim_sync' => 'SCIM syncs',
-        'auth.vault_lease' => 'Vault leases',
-    ];
+    /** @return array<string, string> */
+    private static function labels(): array
+    {
+        return [
+            'auth.login' => __('console.sign_ins_f258cdd8'),
+            'auth.session' => __('console.sessions_6fa3cbf4'),
+            'auth.user' => __('console.users_created_e2423242'),
+            'auth.mfa_enrolled' => __('console.mfa_enrolments_57ec5e68'),
+            'auth.passkey' => __('console.passkeys_registered_dcd6aabb'),
+            'auth.passkey_auth' => __('console.passkey_sign_ins_aa160ea2'),
+            'auth.otp' => __('console.one_time_codes_832b4020'),
+            'auth.identity_linked' => __('console.identities_linked_b4e2cb8c'),
+            'auth.organization' => __('console.organisations_created_e52be337'),
+            'auth.member_added' => __('console.members_added_fa393672'),
+            'auth.member_removed' => __('console.members_removed_0604a637'),
+            'auth.directory_user' => __('console.directory_users_provisioned_18e1ea18'),
+            'auth.invitation' => __('console.invitations_sent_3bdf2724'),
+            'auth.invitation_accepted' => __('console.invitations_accepted_831b4800'),
+            'auth.role_assigned' => __('console.roles_assigned_f07357c6'),
+            'auth.service_account' => __('console.service_accounts_1642d9e2'),
+            'auth.ciba' => __('console.approvals_granted_35195475'),
+            'auth.domain_verified' => __('console.domains_verified_234eeb46'),
+            'auth.governance_campaign' => __('console.access_reviews_f0cc91be'),
+        ];
+    }
 
     public function index(UsageMeter $meter): Response
     {
@@ -95,7 +97,7 @@ final readonly class UsageController extends ConsoleController
                 'key' => $key,
                 // The raw key stays beside the label everywhere it is shown: the person
                 // reading this may also be the one who has to go and find it in the meter.
-                'label' => ConsoleStrings::text(self::LABELS[$key] ?? ucfirst(str_replace(['auth.', '_'], ['', ' '], $key))),
+                'label' => self::labels()[$key] ?? ucfirst(str_replace(['auth.', '_'], ['', ' '], $key)),
                 'total' => (int) $total,
             ];
         }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\UserProperties\Contracts\UserPreferences;
+use Cbox\Id\UserProperties\ValueObjects\PropertyPatch;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
@@ -92,6 +94,17 @@ it('enables an OAuth 2.0 provider and offers it on the sign-in page', function (
         // Activated, not left as a draft — a draft renders no button, so an administrator
         // who filled the form in would see nothing happen.
         ->and($enabled[0]->isActive())->toBeTrue();
+});
+
+it('renders a whole localized provider status without changing the organization name', function (): void {
+    [$person, $org] = actingAsRole(MembershipRole::Owner);
+    app(UserPreferences::class)->patch(
+        $person,
+        new PropertyPatch(0, (object) ['language' => 'da']),
+    );
+
+    enableSocialProvider()->assertSessionHasNoErrors()
+        ->assertSessionHas('status', 'GitHub er nu tilgængelig på login-siden for '.$org->name.'.');
 });
 
 it('does not enable the same provider twice', function (): void {

@@ -109,7 +109,7 @@ final readonly class LegacyLoginController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', __('console.approved_sign_ins_for_people_who_are_not_in__01771bd7'));
+            : back()->with('status', __('console.approved_sign_ins_for_people_who_are_not_in_cbox_id_yet_01771bd7'));
     }
 
     public function revoke(): RedirectResponse
@@ -121,7 +121,7 @@ final readonly class LegacyLoginController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', __('console.withdrawn_people_already_migrated_are_unaffe_228f7b22'));
+            : back()->with('status', __('console.withdrawn_people_already_migrated_are_unaffected_anyone_228f7b22'));
     }
 
     /**

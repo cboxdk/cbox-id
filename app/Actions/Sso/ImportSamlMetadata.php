@@ -6,11 +6,13 @@ namespace App\Actions\Sso;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Actions\Preflight;
@@ -76,7 +78,7 @@ final readonly class ImportSamlMetadata implements Action, Preflight
                 ? $this->importer->fromUrl($input)
                 : $this->importer->fromXml($input);
         } catch (SamlMetadataImportFailed|UnsafeFederationUrl $e) {
-            throw ActionRefused::because('invalid_metadata', $e->getMessage(), 'metadata');
+            throw ActionRefused::because('invalid_metadata', FrameworkMessage::from($e), 'metadata');
         }
 
         return ActionResult::item($metadata, [
@@ -92,7 +94,7 @@ final readonly class ImportSamlMetadata implements Action, Preflight
         $input = trim($context->string('metadata'));
 
         if ($input === '') {
-            throw ActionRefused::because('metadata_required', 'Paste the IdP metadata XML, or a metadata URL.', 'metadata');
+            throw ActionRefused::because('metadata_required', new ActionMessage('console.paste_the_idp_metadata_xml_or_a_metadata_url_568b4813'), 'metadata');
         }
 
         return $input;

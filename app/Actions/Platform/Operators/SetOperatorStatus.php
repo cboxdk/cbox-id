@@ -7,6 +7,7 @@ namespace App\Actions\Platform\Operators;
 use App\Actions\Platform\AsOperator;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
@@ -66,13 +67,13 @@ final readonly class SetOperatorStatus implements Action
         } elseif ($operator->isActive()) {
             // Checked BEFORE the roster is asked, so it cannot be reached at all.
             if ($operator->id === $actorId) {
-                throw ActionRefused::because('self_suspension', 'You cannot suspend the operator you are currently signed in as.', 'operator');
+                throw ActionRefused::because('self_suspension', new ActionMessage('console.you_cannot_suspend_the_operator_you_are_currently_signe_5c20d336'), 'operator');
             }
 
             try {
                 $this->operators->suspend($operator->id, $actorId);
             } catch (CannotSuspendLastOperator) {
-                throw ActionRefused::because('last_operator', 'You cannot suspend the last active operator — the console would lock everyone out.', 'operator');
+                throw ActionRefused::because('last_operator', new ActionMessage('console.you_cannot_suspend_the_last_active_operator_the_console_8af63954'), 'operator');
             }
         }
 

@@ -151,7 +151,7 @@ final readonly class VaultController extends ConsoleController
         $secret = $result->value;
 
         return to_route($this->routeName('vault.show'), $secret->id)
-            ->with('status', __('console.secret_sealed_and_stored_its_value_is_never__61f7ff4d'));
+            ->with('status', __('console.secret_sealed_and_stored_its_value_is_never_shown_again_61f7ff4d'));
     }
 
     public function show(string $secret, VaultScope $vault): Response
@@ -198,7 +198,7 @@ final readonly class VaultController extends ConsoleController
         // A revoked secret has no future lease to serve, so rotating one would replace a
         // sealed value nothing can ever open — busywork that reads as a fix.
         if ($model->isRevoked()) {
-            return back()->withErrors(['secret' => __('console.this_secret_is_revoked_it_can_no_longer_be_r_cba2e557')]);
+            return back()->withErrors(['secret' => __('console.this_secret_is_revoked_it_can_no_longer_be_rotated_cba2e557')]);
         }
 
         $result = $this->act(RotateVaultSecret::class, [
@@ -217,7 +217,7 @@ final readonly class VaultController extends ConsoleController
         $model = $this->resolve($secret, $vault);
 
         if ($model->isRevoked()) {
-            return back()->withErrors(['client' => __('console.this_secret_is_revoked_no_client_can_lease_i_73392e58')]);
+            return back()->withErrors(['client' => __('console.this_secret_is_revoked_no_client_can_lease_it_73392e58')]);
         }
 
         $result = $this->act(GrantVaultAccess::class, [

@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -14,15 +14,12 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
     Input,
-    InviteForm,
     PageHeader,
     Pagination,
     Panel,
     type PendingInvitation,
     PendingInvitations,
     type RoleOption,
-    roleSelectOptions,
-    Select,
 } from '@/ui';
 import { access, invite, remove, role, transferOwnership } from '@routes/members';
 
@@ -32,6 +29,8 @@ interface Administrator {
     email: string;
     role: string;
     roleLabel: string;
+    roles: string[];
+    roles_version: string;
     isSelf: boolean;
     pending: boolean;
     status: string;
@@ -48,6 +47,7 @@ interface Administrator {
 
 interface Editor {
     memberId: string;
+    version: string;
     all: boolean;
     selected: string[];
     environments: { id: string; name: string; sandbox: boolean }[];
@@ -57,6 +57,7 @@ interface Editor {
 }
 
 type Props = PageProps<{
+    organization: string;
     members: Administrator[];
     pagination: PaginationState;
     invitations: PendingInvitation[];
@@ -80,6 +81,7 @@ type Pending = { kind: 'remove' | 'transfer'; id: string; label: string } | null
  * projects, its environments and its bill.
  */
 export default function Members({
+    organization,
     members,
     pagination,
     invitations,
@@ -91,16 +93,19 @@ export default function Members({
     editor,
     help,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
+    const nativeRoleNames = roleNames(assignableRoles);
     const [pending, setPending] = useState<Pending>(null);
 
     return (
         <>
-            <PageHeader
-                help={help}
-                description={tc('console.the_people_who_run_this_workspace_their_buil_14a4b1eb')}
-            />
+            <PageHeader help={help} description={consoleT('console.native_access_description')} />
 
             <div
                 className="mt-6 rounded-xl border overflow-hidden"
@@ -116,10 +121,10 @@ export default function Members({
                                 : undefined
                         }
                     >
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3 sm:flex-nowrap">
                             <Avatar name={member.name} />
 
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-40 flex-1">
                                 <div className="flex items-center gap-2">
                                     <span className="font-medium truncate">{member.name}</span>
                                     {member.isSelf && (
@@ -130,7 +135,7 @@ export default function Members({
                                                 color: 'var(--accent-strong)',
                                             }}
                                         >
-                                            {tc('console.you_08b04193')}
+                                            {consoleT('console.you_08b04193')}
                                         </span>
                                     )}
                                     {member.pending && <Badge tone="warn">{member.status}</Badge>}
@@ -145,21 +150,11 @@ export default function Members({
 
                             {member.manageable ? (
                                 <>
-                                    <Select
-                                        className="shrink-0"
-                                        value={member.role}
-                                        onValueChange={(next) => {
-                                            router.patch(
-                                                role.url({ member: member.id }),
-                                                { role: next },
-                                                { preserveScroll: true },
-                                            );
-                                        }}
-                                        options={roleSelectOptions(assignableRoles)}
-                                        aria-label={tc(
-                                            'console.built_in_role_for_value0_1ecbad27',
-                                            { value0: member.email },
-                                        )}
+                                    <NativeRoleEditor
+                                        key={member.id}
+                                        member={member}
+                                        organization={organization}
+                                        assignableRoles={assignableRoles}
                                     />
 
                                     <DropdownMenu>
@@ -167,9 +162,9 @@ export default function Members({
                                             <Button
                                                 size="sm"
                                                 className="shrink-0"
-                                                aria-label={tc(
-                                                    'console.more_actions_for_value0_fab1edb9',
-                                                    { value0: member.email },
+                                                aria-label={consoleFinalText(
+                                                    'console.more_actions_for_part1_b26d24f6',
+                                                    { part1: member.email },
                                                 )}
                                             >
                                                 ⋯
@@ -178,9 +173,11 @@ export default function Members({
                                         <DropdownMenuContent>
                                             {member.scoped && (
                                                 <DropdownMenuItem
-                                                    onSelect={() => openEditor(member.id)}
+                                                    onSelect={() =>
+                                                        openEditor(member.id, organization)
+                                                    }
                                                 >
-                                                    {tc(
+                                                    {consoleT(
                                                         'console.manage_environment_access_9408e7c7',
                                                     )}
                                                 </DropdownMenuItem>
@@ -195,7 +192,9 @@ export default function Members({
                                                         })
                                                     }
                                                 >
-                                                    {tc('console.transfer_ownership_3667f939')}
+                                                    {consoleT(
+                                                        'console.transfer_ownership_3667f939',
+                                                    )}
                                                 </DropdownMenuItem>
                                             )}
                                             <DropdownMenuItem
@@ -208,13 +207,19 @@ export default function Members({
                                                     })
                                                 }
                                             >
-                                                {tc('console.remove_c3812fc4')}
+                                                {consoleT('console.remove_c3812fc4')}
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
                                 </>
                             ) : (
-                                <Badge className="shrink-0">{member.roleLabel}</Badge>
+                                <Badge className="shrink-0">
+                                    {member.role === 'owner'
+                                        ? consoleShortText('console.owner_4b1b8aa3')
+                                        : member.roles
+                                              .map((key) => nativeRoleNames[key] ?? key)
+                                              .join(', ') || consoleT('console.native_no_access')}
+                                </Badge>
                             )}
                         </div>
 
@@ -225,12 +230,12 @@ export default function Members({
                                     style={{ color: 'var(--faint)' }}
                                 >
                                     {member.allEnvironments
-                                        ? tc('console.access_to_all_environments_dbea6c6e')
-                                        : tc(
-                                              'console.access_to_value0_of_value1_environments_461b766a',
+                                        ? consoleText('console.access_to_all_environments_dbea6c6e')
+                                        : consoleFinalText(
+                                              'console.access_to_part1_of_part2_environments_7c44f9ee',
                                               {
-                                                  value0: member.accessCount,
-                                                  value1: environmentCount,
+                                                  part1: member.accessCount,
+                                                  part2: environmentCount,
                                               },
                                           )}
                                 </div>
@@ -239,6 +244,7 @@ export default function Members({
                                     <EnvironmentAccess
                                         key={editor.memberId}
                                         editor={editor}
+                                        organization={organization}
                                         environmentCount={environmentCount}
                                     />
                                 )}
@@ -251,9 +257,9 @@ export default function Members({
             <div className="mt-4">
                 <Pagination
                     pagination={pagination}
-                    noun={tc('console.administrator_4194d170')}
-                    pluralNoun={tc('console.administrators_3c530c2f')}
-                    href={(page) => `${window.location.pathname}?page=${page}`}
+                    href={(page) =>
+                        `${window.location.pathname}?organization=${encodeURIComponent(organization)}&page=${page}`
+                    }
                 />
             </div>
 
@@ -269,12 +275,13 @@ export default function Members({
             {canManage && (
                 <div className="mt-6">
                     <Panel
-                        title={tc('console.invite_a_teammate_3e14c447')}
-                        description={tc(
-                            'console.they_ll_get_an_email_to_set_a_password_and_j_ddd97c98',
-                        )}
+                        title={consoleT('console.invite_a_teammate_3e14c447')}
+                        description={consoleT('console.native_invite_note')}
                     >
-                        <InviteForm href={invite.url()} roles={assignableRoles} withName />
+                        <NativeInviteForm
+                            organization={organization}
+                            assignableRoles={assignableRoles}
+                        />
                     </Panel>
                 </div>
             )}
@@ -283,14 +290,20 @@ export default function Members({
                 open={pending?.kind === 'remove'}
                 onOpenChange={(open) => !open && setPending(null)}
                 name={pending?.label ?? ''}
-                verb="Remove"
-                consequence={tc('console.they_lose_access_to_this_workspace_and_every_b6acaaa9')}
+                verb={consoleShortText('console.remove_c3812fc4')}
+                consequence={consoleUiText('console.native_removal_note')}
                 onConfirm={() => {
                     const target = pending;
                     setPending(null);
 
                     if (target !== null) {
-                        router.delete(remove.url({ member: target.id }));
+                        router.delete(remove.url({ member: target.id }), {
+                            data: {
+                                organization,
+                                roles_version: members.find((member) => member.id === target.id)
+                                    ?.roles_version,
+                            },
+                        });
                     }
                 }}
             />
@@ -299,9 +312,11 @@ export default function Members({
                 open={pending?.kind === 'transfer'}
                 onOpenChange={(open) => !open && setPending(null)}
                 name={pending?.label ?? ''}
-                verb={tc('console.hand_this_workspace_to_2c3b6bfe')}
-                actionLabel={tc('console.transfer_ownership_3667f939')}
-                consequence={tc('console.they_become_the_workspace_owner_and_you_are__892fe276')}
+                verb={consoleAttributeText('console.hand_this_workspace_to_2c3b6bfe')}
+                actionLabel={consoleUiText('console.transfer_ownership_3667f939')}
+                consequence={consoleUiText(
+                    'console.they_become_the_workspace_owner_and_you_are_demoted_to_892fe276',
+                )}
                 onConfirm={() => {
                     const target = pending;
                     setPending(null);
@@ -309,7 +324,7 @@ export default function Members({
                     if (target !== null) {
                         router.post(
                             transferOwnership.url({ member: target.id }),
-                            {},
+                            { organization },
                             { preserveScroll: true },
                         );
                     }
@@ -326,36 +341,47 @@ export default function Members({
  * this person reaches, are the server's answers — and the list is searchable and capped, so
  * it cannot be shipped in full with every roster page.
  */
-function openEditor(memberId: string): void {
+function openEditor(memberId: string, organization: string): void {
     router.get(
         window.location.pathname,
-        { editing: memberId },
+        { editing: memberId, organization },
         { only: ['editor'], preserveScroll: true, preserveState: true },
     );
 }
 
 /** Close it again, by asking for a page with no editor on it. */
-function closeEditor(): void {
+function closeEditor(organization: string): void {
     router.get(
         window.location.pathname,
-        {},
+        { organization },
         { only: ['editor'], preserveScroll: true, preserveState: true },
     );
 }
 
 function EnvironmentAccess({
+    organization,
     editor,
     environmentCount,
 }: {
+    organization: string;
     editor: Editor;
     environmentCount: number;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [all, setAll] = useState(editor.all);
     const [selected, setSelected] = useState(editor.selected);
+    const [version, setVersion] = useState(editor.version);
+    if (version !== editor.version) {
+        setVersion(editor.version);
+        setAll(editor.all);
+        setSelected(editor.selected);
+    }
     const [term, setTerm] = useState(editor.search);
     const [saving, setSaving] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (term === editor.search) {
@@ -365,13 +391,13 @@ function EnvironmentAccess({
         const timer = setTimeout(() => {
             router.get(
                 window.location.pathname,
-                { editing: editor.memberId, envSearch: term },
+                { editing: editor.memberId, envSearch: term, organization },
                 { only: ['editor'], preserveScroll: true, preserveState: true },
             );
         }, 300);
 
         return () => clearTimeout(timer);
-    }, [term, editor.search, editor.memberId]);
+    }, [term, editor.search, editor.memberId, organization]);
 
     const shown = editor.environments.length;
 
@@ -383,7 +409,7 @@ function EnvironmentAccess({
             <Checkbox
                 checked={all}
                 onCheckedChange={setAll}
-                label={tc('console.all_environments_including_ones_added_later_cfead322')}
+                label={consoleT('console.all_environments_including_ones_added_later_cfead322')}
             />
 
             <div
@@ -394,10 +420,11 @@ function EnvironmentAccess({
                     <Input
                         type="search"
                         disabled={all}
-                        aria-label={tc('console.search_environments_by_name_5033777d')}
-                        placeholder={tc('console.search_value0_environments_4661970e', {
-                            value0: environmentCount,
-                        })}
+                        aria-label={consoleT('console.search_environments_by_name_5033777d')}
+                        placeholder={consoleFinalText(
+                            'console.search_part1_environments_54a78318',
+                            { part1: environmentCount },
+                        )}
                         value={term}
                         onChange={(event) => setTerm(event.target.value)}
                     />
@@ -405,8 +432,9 @@ function EnvironmentAccess({
 
                 {editor.environments.length === 0 ? (
                     <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                        {tc('console.no_environment_matches_e95a8816')}
-                        {editor.search}”.
+                        {consoleRich('console.no_environment_matches_part1_7d06ed36', {
+                            part1: editor.search,
+                        })}
                     </p>
                 ) : (
                     editor.environments.map((environment) => (
@@ -426,8 +454,9 @@ function EnvironmentAccess({
                                     {environment.name}
                                     {environment.sandbox && (
                                         <span style={{ color: 'var(--warning-strong)' }}>
-                                            {' '}
-                                            {tc('console.sandbox_21718253')}
+                                            {consoleRich('console._part1_sandbox_999a5fa7', {
+                                                part1: ' ',
+                                            })}
                                         </span>
                                     )}
                                 </>
@@ -438,9 +467,10 @@ function EnvironmentAccess({
 
                 {editor.truncated && (
                     <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                        {tc('console.showing_the_first_92eb9ae1')}
-                        {shown}
-                        {tc('console.search_to_reach_the_rest_598edbc6')}
+                        {consoleRich(
+                            'console.showing_the_first_part1_search_to_reach_the_rest_9e61b9cb',
+                            { part1: shown },
+                        )}
                     </p>
                 )}
 
@@ -450,13 +480,18 @@ function EnvironmentAccess({
                     narrowed to nothing — or how much of the list is on screen.
                 */}
                 <output className="block text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                    {shown}
-                    {tc('console.shown_f70dce7d')}
-                    {selected.length}
-                    {tc('console.selected_97a2e881')}
+                    {consoleRich('console._part1_shown_part2_selected_828aa594', {
+                        part1: shown,
+                        part2: selected.length,
+                    })}
                 </output>
             </div>
 
+            {Object.entries(errors).map(([key, value]) => (
+                <p key={key} role="alert">
+                    {value}
+                </p>
+            ))}
             <div className="mt-3 flex gap-2">
                 <Button
                     variant="primary"
@@ -464,21 +499,28 @@ function EnvironmentAccess({
                     loading={saving}
                     onClick={() => {
                         setSaving(true);
+                        setErrors({});
                         router.put(
                             access.url({ member: editor.memberId }),
-                            { all, environmentIds: selected },
+                            {
+                                all,
+                                organization,
+                                environmentIds: selected,
+                                environment_access_version: editor.version,
+                            },
                             {
                                 preserveScroll: true,
+                                onError: setErrors,
                                 onFinish: () => setSaving(false),
-                                onSuccess: closeEditor,
+                                onSuccess: () => closeEditor(organization),
                             },
                         );
                     }}
                 >
-                    {tc('console.save_access_0f586dd3')}
+                    {consoleT('console.save_access_0f586dd3')}
                 </Button>
-                <Button size="sm" onClick={closeEditor}>
-                    {tc('console.cancel_19766ed6')}
+                <Button size="sm" onClick={() => closeEditor(organization)}>
+                    {consoleT('console.cancel_19766ed6')}
                 </Button>
             </div>
         </div>
@@ -486,3 +528,161 @@ function EnvironmentAccess({
 }
 
 Members.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+
+function roleNames(roles: RoleOption[]): Record<string, string> {
+    return Object.fromEntries(
+        roles.filter((option) => !option.disabled).map((option) => [option.value, option.label]),
+    );
+}
+
+function NativeRoleEditor({
+    organization,
+    member,
+    assignableRoles,
+}: {
+    organization: string;
+    member: Administrator;
+    assignableRoles: RoleOption[];
+}) {
+    const nativeRoleNames = roleNames(assignableRoles);
+    const { t: consoleT } = useConsoleTranslator();
+    const [selected, setSelected] = useState(member.roles);
+    const [version, setVersion] = useState(member.roles_version);
+    if (version !== member.roles_version) {
+        setVersion(member.roles_version);
+        setSelected(member.roles);
+    }
+    const [saving, setSaving] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    return (
+        <details className="min-w-0 max-w-full rounded border p-2">
+            <summary className="cursor-pointer">
+                {member.roles.map((key) => nativeRoleNames[key] ?? key).join(', ') ||
+                    consoleT('console.native_no_access')}
+            </summary>
+            <fieldset className="flex flex-wrap gap-3 py-3" disabled={saving}>
+                <legend className="sr-only">
+                    {consoleT('console.native_product_roles')} — {member.email}
+                </legend>
+                {Object.entries(nativeRoleNames).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={selected.includes(key)}
+                            onChange={(event) =>
+                                setSelected(
+                                    event.target.checked
+                                        ? [...selected, key]
+                                        : selected.filter((value) => value !== key),
+                                )
+                            }
+                        />
+                        {label}
+                    </label>
+                ))}
+            </fieldset>
+            <Button
+                size="sm"
+                disabled={saving || selected.length === 0}
+                onClick={() => {
+                    setSaving(true);
+                    setErrors({});
+                    router.patch(
+                        role.url({ member: member.id }),
+                        { organization, roles: selected, roles_version: member.roles_version },
+                        {
+                            preserveScroll: true,
+                            onError: setErrors,
+                            onFinish: () => setSaving(false),
+                        },
+                    );
+                }}
+            >
+                {consoleT('console.save_1509f561')}
+            </Button>
+            {Object.entries(errors).map(([key, value]) => (
+                <p key={key} role="alert">
+                    {value}
+                </p>
+            ))}
+        </details>
+    );
+}
+
+function NativeInviteForm({
+    assignableRoles,
+    organization,
+}: {
+    assignableRoles: RoleOption[];
+    organization: string;
+}) {
+    const nativeRoleNames = roleNames(assignableRoles);
+    const { t: consoleT } = useConsoleTranslator();
+    const [email, setEmail] = useState('');
+    const [selected, setSelected] = useState<string[]>(
+        assignableRoles.some((option) => option.value === 'viewer' && !option.disabled)
+            ? ['viewer']
+            : [],
+    );
+    const [sending, setSending] = useState(false);
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    return (
+        <form
+            className="space-y-4"
+            onSubmit={(event) => {
+                event.preventDefault();
+                setSending(true);
+                setErrors({});
+                router.post(
+                    invite.url(),
+                    { organization, email, roles: selected },
+                    {
+                        preserveScroll: true,
+                        onError: setErrors,
+                        onSuccess: () => setEmail(''),
+                        onFinish: () => setSending(false),
+                    },
+                );
+            }}
+        >
+            <label className="block space-y-2">
+                <span>{consoleT('console.email_address_f2488fd4')}</span>
+                <Input
+                    type="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    required
+                />
+            </label>
+            <fieldset className="flex flex-wrap gap-3" disabled={sending}>
+                <legend className="mb-2">{consoleT('console.native_product_roles')}</legend>
+                {Object.entries(nativeRoleNames).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            checked={selected.includes(key)}
+                            onChange={(event) =>
+                                setSelected(
+                                    event.target.checked
+                                        ? [...selected, key]
+                                        : selected.filter((value) => value !== key),
+                                )
+                            }
+                        />
+                        {label}
+                    </label>
+                ))}
+            </fieldset>
+            {Object.entries(errors).map(([key, value]) => (
+                <p key={key} role="alert">
+                    {value}
+                </p>
+            ))}
+            <Button type="submit" disabled={sending || selected.length === 0}>
+                {consoleT(
+                    sending ? 'console.sending_b8ed5279' : 'console.send_invitation_dba4038b',
+                )}
+            </Button>
+        </form>
+    );
+}

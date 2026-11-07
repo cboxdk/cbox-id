@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useFormatTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -123,10 +124,10 @@ export default function Audit({
     environmentWide,
     organizationFilter,
 }: Props) {
-    const { locale } = useTranslator();
-
-    const { t: tc } = useTranslator();
-
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [action, setAction] = useState(filters.action);
     const [search, setSearch] = useState(filters.q);
 
@@ -170,13 +171,15 @@ export default function Audit({
         <>
             <PageHeader
                 help={help}
-                description={tc('console.every_change_made_here_who_did_what_to_what__4f61494d')}
+                description={consoleT(
+                    'console.every_change_made_here_who_did_what_to_what_and_when_ha_4f61494d',
+                )}
                 actions={
                     <div className="relative w-full sm:w-auto">
                         <Input
                             className="w-full sm:min-w-[16rem]"
-                            placeholder={tc('console.filter_by_action_baf887de')}
-                            aria-label={tc('console.filter_by_action_ef58fbae')}
+                            placeholder={consoleUiText('console.filter_by_action_baf887de')}
+                            aria-label={consoleT('console.filter_by_action_ef58fbae')}
                             value={action}
                             onChange={(event) => setAction(event.target.value)}
                         />
@@ -193,8 +196,8 @@ export default function Audit({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder={tc('console.search_action_or_target_b9c2cfcf')}
-                    aria-label={tc('console.search_the_audit_log_eb31f4b3')}
+                    placeholder={consoleUiText('console.search_action_or_target_b9c2cfcf')}
+                    aria-label={consoleT('console.search_the_audit_log_eb31f4b3')}
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                 />
@@ -211,13 +214,13 @@ export default function Audit({
                 */}
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
                     <ChipGroup
-                        label={tc('console.who_c17b94b8')}
+                        label={consoleT('console.who_c17b94b8')}
                         options={actorKinds}
                         value={filters.actor}
                         onChoose={(value) => choose('actor', value)}
                     />
                     <ChipGroup
-                        label={tc('console.via_2ed8b806')}
+                        label={consoleT('console.via_2ed8b806')}
                         options={doors}
                         value={filters.via}
                         onChoose={(value) => choose('via', value)}
@@ -225,32 +228,30 @@ export default function Audit({
                 </div>
 
                 <output className="sr-only">
-                    {entries.length}{' '}
-                    {entries.length === 1
-                        ? tc('console.entry_923fe539')
-                        : tc('console.entries_87d05cd0')}
-                    {tc('console.shown_d2edca72')}
+                    {consoleRich('console.results_on_page', { count: entries.length })}
                 </output>
 
                 {environmentWide && (
                     <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
-                        {tc('console.every_organization_in_this_environment_add_t_3839ba26')}
+                        {consoleT(
+                            'console.every_organization_in_this_environment_add_the_organiza_3839ba26',
+                        )}
                     </p>
                 )}
             </div>
 
             <div className="card overflow-hidden mt-4">
                 <div className="overflow-x-auto">
-                    <Table caption={tc('console.audit_log_e4d36f9a')}>
+                    <Table caption={consoleUiText('console.audit_log_e4d36f9a')}>
                         <thead>
                             <tr>
                                 <Th style={{ width: '1%' }} className="hidden sm:table-cell">
-                                    {tc('console.seq_43ac2602')}
+                                    {consoleT('console.seq_43ac2602')}
                                 </Th>
-                                <Th>{tc('console.action_64cff131')}</Th>
-                                <Th>{tc('console.actor_449995c4')}</Th>
-                                <Th>{tc('console.target_978354db')}</Th>
-                                <Th className="text-right">{tc('console.when_cf9c7aa2')}</Th>
+                                <Th>{consoleT('console.action_64cff131')}</Th>
+                                <Th>{consoleT('console.actor_449995c4')}</Th>
+                                <Th>{consoleT('console.target_978354db')}</Th>
+                                <Th className="text-right">{consoleT('console.when_cf9c7aa2')}</Th>
                             </tr>
                         </thead>
                         <tbody>
@@ -265,18 +266,22 @@ export default function Audit({
                                         {filtered ? (
                                             <EmptyState
                                                 icon="search"
-                                                title={tc('console.no_matching_entries_9c940e9d')}
-                                                description={tc(
-                                                    'console.no_entry_matches_those_filters_try_a_broader_afd8d040',
+                                                title={consoleT(
+                                                    'console.no_matching_entries_9c940e9d',
+                                                )}
+                                                description={consoleT(
+                                                    'console.no_entry_matches_those_filters_try_a_broader_term_or_cl_afd8d040',
                                                 )}
                                             />
                                         ) : (
                                             <EmptyState
                                                 icon="audit"
-                                                title={tc('console.nothing_recorded_yet_cb77e288')}
+                                                title={consoleT(
+                                                    'console.nothing_recorded_yet_cb77e288',
+                                                )}
                                                 help={help}
-                                                description={tc(
-                                                    'console.every_administrative_change_members_roles_co_ef641619',
+                                                description={consoleT(
+                                                    'console.every_administrative_change_members_roles_connections_a_ef641619',
                                                 )}
                                             />
                                         )}
@@ -406,14 +411,18 @@ export default function Audit({
                                                 <p className="mb-0.5 flex flex-wrap justify-end gap-1">
                                                     {entry.via !== null && (
                                                         <Pill tone="neutral" dot={false}>
-                                                            {tc('console.via_c1035a0b')}
-                                                            {entry.via}
+                                                            {consoleRich(
+                                                                'console.via_part1_b3f55fad',
+                                                                { part1: entry.via },
+                                                            )}
                                                         </Pill>
                                                     )}
                                                     {entry.approvedBy !== null && (
                                                         <Pill tone="success" dot={false}>
-                                                            {tc('console.approved_by_11f61778')}
-                                                            {entry.approvedBy}
+                                                            {consoleRich(
+                                                                'console.approved_by_part1_e1a5347c',
+                                                                { part1: entry.approvedBy },
+                                                            )}
                                                         </Pill>
                                                     )}
                                                 </p>
@@ -423,9 +432,12 @@ export default function Audit({
                                                     className="text-xs"
                                                     style={{ color: 'var(--muted-foreground)' }}
                                                     dateTime={entry.recordedAt}
-                                                    title={absoluteTime(entry.recordedAt, locale)}
+                                                    title={absoluteTime(
+                                                        entry.recordedAt,
+                                                        consoleLocale,
+                                                    )}
                                                 >
-                                                    {relativeTime(entry.recordedAt, locale)}
+                                                    {relativeTime(entry.recordedAt, consoleLocale)}
                                                 </time>
                                             )}
                                         </Td>
@@ -442,14 +454,14 @@ export default function Audit({
                     className="flex items-center gap-1.5 text-xs min-w-0"
                     style={{ color: 'var(--faint)' }}
                 >
-                    <Icon name="shield" className="w-3.5 h-3.5 shrink-0" />
-                    {tc('console.entries_are_append_only_and_hash_chained_any_a42659c5')}
+                    {consoleRich(
+                        'console._part1_entries_are_append_only_and_hash_chained_any_tam_9a24349b',
+                        { part1: <Icon name="shield" className="w-3.5 h-3.5 shrink-0" /> },
+                    )}
                 </p>
 
                 <SimplePagination
                     pagination={pagination}
-                    noun={tc('console.entry_923fe539')}
-                    pluralNoun={tc('console.entries_87d05cd0')}
                     href={(page) => filterHref(filters, page)}
                 />
             </div>
@@ -472,13 +484,11 @@ function ChipGroup({
     value: string | null;
     onChoose: (value: string) => void;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { rich: consoleRich } = useConsoleTranslator();
     return (
         <fieldset className="flex flex-wrap items-center gap-1.5 border-0 p-0 m-0 min-w-0">
             <legend className="sr-only">
-                {tc('console.filter_by_9535ef75')}
-                {label.toLowerCase()}
+                {consoleRich('console.filter_by_part1_6aa68d7e', { part1: label })}
             </legend>
             <span className="text-xs" aria-hidden="true" style={{ color: 'var(--faint)' }}>
                 {label}

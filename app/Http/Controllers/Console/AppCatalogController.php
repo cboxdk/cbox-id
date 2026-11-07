@@ -25,7 +25,7 @@ final readonly class AppCatalogController extends ConsoleController
     {
         $this->scope->assertMayAdministerEnvironment();
 
-        return $this->page('console/app-catalog/index', 'App catalog', [
+        return $this->page('console/app-catalog/index', __('console.catalog_heading'), [
             'help' => HelpProps::for(HelpTopic::AppCatalog),
             'entries' => CatalogEntry::query()->orderBy('position')->orderBy('key')->get()->map(fn (CatalogEntry $entry): array => [
                 ...$catalog->present($entry, true), 'editHref' => route('environment.app-catalog.edit', $entry->key),
@@ -56,7 +56,7 @@ final readonly class AppCatalogController extends ConsoleController
         $fields = ['key', 'name', 'description', 'launch_url', 'position', 'audience', 'required_feature', 'icon'];
         $result = $this->act(SaveCatalogApp::class, [...$input, 'key' => $key], array_combine($fields, $fields));
 
-        return $result instanceof RedirectResponse ? $result : to_route('environment.app-catalog')->with('status', 'App catalog saved.');
+        return $result instanceof RedirectResponse ? $result : to_route('environment.app-catalog')->with('status', __('console.catalog_saved'));
     }
 
     public function destroy(Request $request, string $key): RedirectResponse
@@ -64,7 +64,7 @@ final readonly class AppCatalogController extends ConsoleController
         $this->scope->assertMayAdministerEnvironment();
         $result = $this->act(DeleteCatalogApp::class, ['key' => $key, 'version' => $request->input('version')]);
 
-        return $result instanceof RedirectResponse ? $result : to_route('environment.app-catalog')->with('status', 'App removed from the catalog. Its integrations are unchanged.');
+        return $result instanceof RedirectResponse ? $result : to_route('environment.app-catalog')->with('status', __('console.catalog_removed'));
     }
 
     public function lookup(Request $request): JsonResponse
@@ -87,7 +87,7 @@ final readonly class AppCatalogController extends ConsoleController
 
     private function editor(?CatalogEntry $entry): Response
     {
-        return $this->page('console/app-catalog/edit', $entry === null ? 'New catalog app' : 'Edit '.$entry->name, [
+        return $this->page('console/app-catalog/edit', $entry === null ? __('console.catalog_new') : __('console.catalog_edit_named', ['name' => $entry->name]), [
             'entry' => $entry === null ? null : app(AppCatalog::class)->present($entry, true),
             'indexHref' => route('environment.app-catalog'),
             'saveBaseHref' => route('environment.app-catalog'),

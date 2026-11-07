@@ -30,6 +30,12 @@ final class RoleResource
             'organization_id' => $role->organization_id,
             'tenant_assignable' => $role->tenant_assignable,
             'permissions' => $permissions,
+            'active_definition_version' => $role->active_definition_version,
+            'pending_definition' => $role->pending_definition_version === null ? null : [
+                'version' => $role->pending_definition_version,
+                'permissions' => $role->pending_permission_keys,
+                'tenant_assignable' => $role->pending_tenant_assignable,
+            ],
         ];
     }
 }

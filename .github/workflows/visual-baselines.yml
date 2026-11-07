@@ -29,7 +29,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - run: |
-          php bin/unpack-signals-packages.php ../../laravel-signals-client
+          php bin/verify-signals-sdk.php
           composer install --no-interaction --prefer-dist --no-progress
       - run: npm ci
       - name: Install the locked Chromium browser

@@ -1,22 +1,25 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import { Button, Field, Input, PageHeader, Panel } from '@/ui';
-import { update } from '@actions/App/Http/Controllers/Console/AccountSettingsController';
+import { update } from '@routes/organization-settings';
 
 type Props = PageProps<{ name: string; help: HelpContent }>;
 
 export default function AccountSettings({ name, help }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({ name });
 
     return (
         <>
             <PageHeader
                 help={help}
-                description={tc('console.the_name_of_the_workspace_these_identity_pro_7bb1773d')}
+                description={consoleT(
+                    'console.the_name_of_the_workspace_these_identity_providers_are_7bb1773d',
+                )}
             />
 
             <form
@@ -29,8 +32,8 @@ export default function AccountSettings({ name, help }: Props) {
                 <Panel>
                     <div className="flex items-start gap-2">
                         <Field
-                            label={tc('console.workspace_name_9619649d')}
-                            hint={tc('console.shown_across_the_console_fe4b6d94')}
+                            label={consoleT('console.workspace_name_9619649d')}
+                            hint={consoleT('console.shown_across_the_console_fe4b6d94')}
                             error={form.errors.name}
                             className="flex-1 max-w-sm"
                         >
@@ -48,7 +51,7 @@ export default function AccountSettings({ name, help }: Props) {
                             loading={form.processing}
                             style={{ marginTop: '1.9rem' }}
                         >
-                            {tc('console.save_1509f561')}
+                            {consoleT('console.save_1509f561')}
                         </Button>
                     </div>
                 </Panel>
@@ -61,9 +64,11 @@ export default function AccountSettings({ name, help }: Props) {
                 conversation, not a control somebody would then have to be talked out of.
             */}
             <div className="mt-4">
-                <Panel title={tc('console.delete_workspace_55f033db')}>
+                <Panel title={consoleT('console.delete_workspace_55f033db')}>
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        {tc('console.deleting_this_workspace_tears_down_every_pro_f26b2e2f')}
+                        {consoleT(
+                            'console.deleting_this_workspace_tears_down_every_project_and_en_f26b2e2f',
+                        )}
                     </p>
                 </Panel>
             </div>

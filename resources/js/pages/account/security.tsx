@@ -645,8 +645,9 @@ function TwoFactorPanel({
                                 {tc('console.recovery_codes_36880d15')}
                             </h3>
                             <Pill dot={false}>
-                                {twoFactor.recoveryRemaining}
-                                {tc('console.left_bce319cf')}
+                                {tc('console.recovery_codes_remaining_count', {
+                                    count: twoFactor.recoveryRemaining,
+                                })}
                             </Pill>
                         </div>
                         <p className="text-sm" style={{ color: 'var(--muted)' }}>
@@ -1376,8 +1377,9 @@ function SessionPanel({
                 {otherSessions > 0 && (
                     <Button onClick={() => setSigningOut(true)}>
                         <Icon name="logout" className="w-4 h-4" />
-                        {tc('console.sign_out_other_sessions_9bacda8c')}
-                        {otherSessions})
+                        {tc('console.sign_out_other_sessions_action_count', {
+                            count: otherSessions,
+                        })}
                     </Button>
                 )}
 
@@ -1398,10 +1400,7 @@ function SessionPanel({
             <Dialog
                 open={signingOut}
                 onOpenChange={setSigningOut}
-                title={tc('console.sign_out_of_your_value0_other_value1_999aea88', {
-                    value0: otherSessions,
-                    value1: otherSessions === 1 ? 'session' : 'sessions',
-                })}
+                title={tc('console.sign_out_other_sessions_count', { count: otherSessions })}
                 description={tc('console.every_other_device_holding_a_session_as_you__a01280d4')}
                 footer={
                     <>

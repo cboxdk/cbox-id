@@ -12,22 +12,21 @@
     ],
     "license": "Elastic-2.0",
     "require": {
-        "php": "^8.5",
         "bacon/bacon-qr-code": "^3.1",
         "cboxdk/dns": "^1.0",
-        "cboxdk/laravel-assistant-client": "^0.1",
-        "cboxdk/laravel-billing-client": "^0.4.13",
+        "cboxdk/laravel-assistant-client": "^0.1.1",
+        "cboxdk/laravel-billing-client": "^0.4.14",
         "cboxdk/laravel-console-kit": "^0.2",
         "cboxdk/laravel-dns": "^1.0",
         "cboxdk/laravel-engage-client": "^0.1.1",
         "cboxdk/laravel-health": "^2.0",
-        "cboxdk/laravel-id": "^1.28.0",
+        "cboxdk/laravel-id": "^2.0",
         "cboxdk/laravel-postal": "^0.1.1",
         "cboxdk/laravel-queue-autoscale": "^4.3",
         "cboxdk/laravel-queue-metrics": "^3.4",
         "cboxdk/laravel-queue-monitor": "^1.11",
         "cboxdk/laravel-risk": "^1.1",
-        "cboxdk/laravel-signals-client": "dev-sd/signals-implementation as 0.1.0",
+        "cboxdk/laravel-signals-client": "dev-sd/security-tenant-context",
         "cboxdk/laravel-ssrf": "^1.1.1",
         "cboxdk/laravel-telemetry": "^3.9.3",
         "firebase/php-jwt": "^7.0",
@@ -38,6 +37,7 @@
         "laravel/wayfinder": "^0.1",
         "league/flysystem-aws-s3-v3": "^3.35",
         "maxmind-db/reader": "^1.12",
+        "php": "^8.5",
         "resend/resend-php": "^1.16",
         "symfony/intl": "^8.0"
     },
@@ -147,11 +147,11 @@
     "repositories": [
         {
             "type": "path",
-            "url": "../../laravel-signals-client",
+            "url": "packages/signals-client",
             "options": {
-                "symlink": true,
+                "symlink": false,
                 "versions": {
-                    "cboxdk/laravel-signals-client": "dev-sd/signals-implementation"
+                    "cboxdk/laravel-signals-client": "dev-sd/security-tenant-context"
                 }
             }
         }

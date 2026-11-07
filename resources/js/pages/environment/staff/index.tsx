@@ -1,5 +1,6 @@
 import type { Translator } from '@/i18n';
-import { useTranslator } from '@/i18n';
+import { EnvironmentReadOnly } from '@/ui/EnvironmentReadOnly';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -65,132 +66,153 @@ function byScope(grants: GrantRow[], tc: Translator['t']): [string, GrantRow[]][
 }
 
 export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref, help }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [revoking, setRevoking] = useState<GrantRow | null>(null);
 
     return (
-        <>
-            <PageHeader
-                help={help}
-                description={tc('console.an_admin_support_role_is_a_role_you_grant_to_caea5beb')}
-                actions={
-                    <Button asChild className="shrink-0">
-                        <Link href={reviewHref}>
-                            <Icon name="shield" className="w-4 h-4" />
-                            {tc('console.review_admin_support_access_81f237a2')}
-                        </Link>
-                    </Button>
-                }
-            />
-
-            <div className="mt-6 space-y-6">
-                <GrantForm roles={roles} storeHref={storeHref} rolesHref={rolesHref} />
-
-                {grants.length === 0 ? (
-                    <div className="rounded-xl border" style={{ borderColor: 'var(--border)' }}>
-                        <EmptyState
-                            icon="members"
-                            equivalent="users.environment_roles.grant"
-                            title={tc('console.nobody_holds_an_admin_support_role_41962c81')}
-                            description={tc(
-                                'console.grant_one_to_the_people_who_support_or_run_y_3991d001',
-                            )}
-                        />
-                    </div>
-                ) : (
-                    byScope(grants, tc).map(([scope, rows]) => (
-                        <Panel
-                            key={scope}
-                            title={scope}
-                            description={
-                                scope === tc('console.all_apps_01bed311')
-                                    ? tc(
-                                          'console.in_the_tokens_of_every_app_in_every_organiza_6a811d97',
-                                      )
-                                    : tc(
-                                          'console.only_in_tokens_for_value0_in_every_organizat_7e530a50',
-                                          { value0: scope },
-                                      )
-                            }
-                        >
-                            <ul className="-my-1">
-                                {rows.map((grant, index) => (
-                                    <li
-                                        key={`${grant.userId}:${grant.role.id}`}
-                                        className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5"
-                                        style={
-                                            index < rows.length - 1
-                                                ? { borderBottom: '1px solid var(--border)' }
-                                                : undefined
-                                        }
-                                    >
-                                        <Link
-                                            href={grant.userHref}
-                                            className="min-w-0 flex-1 basis-48"
-                                        >
-                                            <span
-                                                className="block truncate text-sm font-medium"
-                                                style={{ color: 'var(--accent-strong)' }}
-                                            >
-                                                {grant.userName ?? grant.userEmail ?? grant.userId}
-                                            </span>
-                                            {grant.userName !== null &&
-                                                grant.userEmail !== null && (
-                                                    <span
-                                                        className="block truncate text-xs"
-                                                        style={{ color: 'var(--faint)' }}
-                                                    >
-                                                        {grant.userEmail}
-                                                    </span>
-                                                )}
-                                        </Link>
-
-                                        <span className="inline-flex items-center gap-1.5">
-                                            <Badge>{grant.role.name}</Badge>
-                                            {grant.role.staffOnly && (
-                                                <Badge tone="info">
-                                                    {tc('console.admins_support_only_bc5dfbd2')}
-                                                </Badge>
-                                            )}
-                                        </span>
-
-                                        <Button
-                                            size="sm"
-                                            variant="danger"
-                                            className="shrink-0"
-                                            onClick={() => setRevoking(grant)}
-                                        >
-                                            {tc('console.take_back_7d2a64f5')}
-                                        </Button>
-                                    </li>
-                                ))}
-                            </ul>
-                        </Panel>
-                    ))
-                )}
-            </div>
-
-            <ConfirmDelete
-                open={revoking !== null}
-                onOpenChange={(open) => !open && setRevoking(null)}
-                name={revoking?.userName ?? revoking?.userEmail ?? ''}
-                title={tc('console.take_back_value0_from_value1_a2cec092', {
-                    value0: revoking?.role.name ?? '',
-                    value1: revoking?.userName ?? revoking?.userEmail ?? '',
-                })}
-                actionLabel={tc('console.take_back_7d2a64f5')}
-                consequence={tc('console.they_lose_this_role_in_every_organization_at_2750f7e3')}
-                onConfirm={() => {
-                    const grant = revoking;
-                    setRevoking(null);
-
-                    if (grant !== null) {
-                        router.delete(grant.revokeHref, { preserveScroll: true });
+        <EnvironmentReadOnly>
+            <>
+                <PageHeader
+                    help={help}
+                    description={consoleT(
+                        'console.an_admin_support_role_is_a_role_you_grant_to_your_own_p_caea5beb',
+                    )}
+                    actions={
+                        <Button asChild className="shrink-0">
+                            <Link href={reviewHref}>
+                                {consoleRich(
+                                    'console._part1_review_admin_support_access_fa3ed6c8',
+                                    {
+                                        part1: <Icon name="shield" className="w-4 h-4" />,
+                                    },
+                                )}
+                            </Link>
+                        </Button>
                     }
-                }}
-            />
-        </>
+                />
+
+                <div className="mt-6 space-y-6">
+                    <GrantForm roles={roles} storeHref={storeHref} rolesHref={rolesHref} />
+
+                    {grants.length === 0 ? (
+                        <div className="rounded-xl border" style={{ borderColor: 'var(--border)' }}>
+                            <EmptyState
+                                icon="members"
+                                equivalent="users.environment_roles.grant"
+                                title={consoleT(
+                                    'console.nobody_holds_an_admin_support_role_41962c81',
+                                )}
+                                description={consoleT(
+                                    'console.grant_one_to_the_people_who_support_or_run_your_apps_an_3991d001',
+                                )}
+                            />
+                        </div>
+                    ) : (
+                        byScope(grants, consoleT).map(([scope, rows]) => (
+                            <Panel
+                                key={scope}
+                                title={scope}
+                                description={
+                                    scope === consoleRuntimeText('console.all_apps_01bed311')
+                                        ? consoleText(
+                                              'console.in_the_tokens_of_every_app_in_every_organization_6a811d97',
+                                          )
+                                        : consoleFinalText(
+                                              'console.only_in_tokens_for_part1_in_every_organization_cead60fe',
+                                              { part1: scope },
+                                          )
+                                }
+                            >
+                                <ul className="-my-1">
+                                    {rows.map((grant, index) => (
+                                        <li
+                                            key={`${grant.userId}:${grant.role.id}`}
+                                            className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5"
+                                            style={
+                                                index < rows.length - 1
+                                                    ? { borderBottom: '1px solid var(--border)' }
+                                                    : undefined
+                                            }
+                                        >
+                                            <Link
+                                                href={grant.userHref}
+                                                className="min-w-0 flex-1 basis-48"
+                                            >
+                                                <span
+                                                    className="block truncate text-sm font-medium"
+                                                    style={{ color: 'var(--accent-strong)' }}
+                                                >
+                                                    {grant.userName ??
+                                                        grant.userEmail ??
+                                                        grant.userId}
+                                                </span>
+                                                {grant.userName !== null &&
+                                                    grant.userEmail !== null && (
+                                                        <span
+                                                            className="block truncate text-xs"
+                                                            style={{ color: 'var(--faint)' }}
+                                                        >
+                                                            {grant.userEmail}
+                                                        </span>
+                                                    )}
+                                            </Link>
+
+                                            <span className="inline-flex items-center gap-1.5">
+                                                <Badge>{grant.role.name}</Badge>
+                                                {grant.role.staffOnly && (
+                                                    <Badge tone="info">
+                                                        {consoleT(
+                                                            'console.admins_support_only_bc5dfbd2',
+                                                        )}
+                                                    </Badge>
+                                                )}
+                                            </span>
+
+                                            <Button
+                                                size="sm"
+                                                variant="danger"
+                                                className="shrink-0"
+                                                onClick={() => setRevoking(grant)}
+                                            >
+                                                {consoleT('console.take_back_7d2a64f5')}
+                                            </Button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </Panel>
+                        ))
+                    )}
+                </div>
+
+                <ConfirmDelete
+                    open={revoking !== null}
+                    onOpenChange={(open) => !open && setRevoking(null)}
+                    name={revoking?.userName ?? revoking?.userEmail ?? ''}
+                    title={consoleFinalText('console.take_back_part1_from_part2_5114808a', {
+                        part1: revoking?.role.name ?? '',
+                        part2: revoking?.userName ?? revoking?.userEmail ?? '',
+                    })}
+                    actionLabel={consoleUiText('console.take_back_7d2a64f5')}
+                    consequence={consoleUiText(
+                        'console.they_lose_this_role_in_every_organization_at_once_apps_2750f7e3',
+                    )}
+                    onConfirm={() => {
+                        const grant = revoking;
+                        setRevoking(null);
+
+                        if (grant !== null) {
+                            router.delete(grant.revokeHref, { preserveScroll: true });
+                        }
+                    }}
+                />
+            </>
+        </EnvironmentReadOnly>
     );
 }
 
@@ -203,23 +225,30 @@ function GrantForm({
     storeHref: string;
     rolesHref: string;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({ email: '', role: '' });
 
     if (roles.length === 0) {
         return (
-            <Panel title={tc('console.grant_an_admin_support_role_ebbcd7de')}>
+            <Panel title={consoleT('console.grant_an_admin_support_role_ebbcd7de')}>
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    {tc('console.there_is_no_role_to_grant_yet_define_one_on__e3341872')}{' '}
-                    <Link
-                        href={rolesHref}
-                        className="underline underline-offset-2"
-                        style={{ color: 'var(--accent-strong)' }}
-                    >
-                        {tc('console.roles_c2533705')}
-                    </Link>{' '}
-                    {tc('console.page_or_let_an_app_declare_its_own_in_its_ma_8f3988ab')}
+                    {consoleRich(
+                        'console.there_is_no_role_to_grant_yet_define_one_on_the_part1_p_ffe056a6',
+                        {
+                            part1: ' ',
+                            part2: (
+                                <Link
+                                    href={rolesHref}
+                                    className="underline underline-offset-2"
+                                    style={{ color: 'var(--accent-strong)' }}
+                                >
+                                    {consoleT('console.roles_c2533705')}
+                                </Link>
+                            ),
+                            part3: ' ',
+                        },
+                    )}
                 </p>
             </Panel>
         );
@@ -227,8 +256,10 @@ function GrantForm({
 
     return (
         <Panel
-            title={tc('console.grant_an_admin_support_role_ebbcd7de')}
-            description={tc('console.segregation_of_duties_rules_are_checked_in_e_8204cb95')}
+            title={consoleT('console.grant_an_admin_support_role_ebbcd7de')}
+            description={consoleT(
+                'console.segregation_of_duties_rules_are_checked_in_every_organi_8204cb95',
+            )}
         >
             <form
                 className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] items-start"
@@ -240,7 +271,7 @@ function GrantForm({
                     });
                 }}
             >
-                <Field label={tc('console.person_6007db63')} error={form.errors.email}>
+                <Field label={consoleT('console.person_6007db63')} error={form.errors.email}>
                     <Input
                         name="email"
                         type="email"
@@ -250,7 +281,7 @@ function GrantForm({
                     />
                 </Field>
 
-                <Field label={tc('console.role_14736a2e')} error={form.errors.role}>
+                <Field label={consoleT('console.role_14736a2e')} error={form.errors.role}>
                     <StaffRolePicker
                         roles={roles}
                         value={form.data.role}
@@ -264,7 +295,7 @@ function GrantForm({
                     loading={form.processing}
                     className="shrink-0 sm:self-end"
                 >
-                    {tc('console.grant_78b7d037')}
+                    {consoleT('console.grant_78b7d037')}
                 </Button>
             </form>
         </Panel>

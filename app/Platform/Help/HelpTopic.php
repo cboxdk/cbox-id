@@ -93,6 +93,7 @@ enum HelpTopic: string
     public function title(): string
     {
         return match ($this) {
+            self::AppCatalog => __('console.catalog_title'),
             self::Overview => __('console.your_organization_at_a_glance_5abc1baf'),
             self::Usage => __('console.what_counts_as_usage_eb49e1ed'),
             self::AgentApprovals => __('console.approving_on_someone_else_s_screen_1b86f9a5'),
@@ -102,7 +103,7 @@ enum HelpTopic: string
             self::Permissions => __('console.what_a_role_is_made_of_ab5b67f4'),
             self::SingleSignOn => __('console.signing_in_with_your_own_identity_provider_57c0a4a2'),
             self::Domains => __('console.proving_which_email_domains_are_yours_9c5e31e1'),
-            self::SocialSignIn => __('console.signing_in_with_an_account_people_already_ha_922d7973'),
+            self::SocialSignIn => __('console.signing_in_with_an_account_people_already_have_922d7973'),
             self::SyncUsersIn => __('console.keeping_people_up_to_date_automatically_2cf0c98f'),
             self::SyncUsersOut => __('console.pushing_people_out_to_your_other_apps_d57642fb'),
             self::AccessReviews => __('console.certifying_who_still_needs_access_0c8f1d84'),
@@ -111,7 +112,6 @@ enum HelpTopic: string
             self::Apis => __('console.your_apis_and_who_may_call_them_2052cd06'),
             self::Webhooks => __('console.getting_told_when_something_happens_2816559c'),
             self::InlineHooks => __('console.having_a_say_while_it_happens_15efcb5d'),
-            self::AppCatalog => 'Your shared app list',
             self::FeatureFlags => __('console.features_on_for_some_not_all_57ba7057'),
             self::TokenVault => __('console.credentials_your_apps_use_elsewhere_db36cae9'),
             self::Pipes => __('console.calling_other_services_as_your_users_aed68939'),
@@ -143,8 +143,8 @@ enum HelpTopic: string
             self::LegacyLogin => __('console.signing_in_through_your_old_system_23b062d0'),
             self::Connectors => __('console.every_integration_in_one_place_028e0c56'),
             self::LogStreaming => __('console.sending_the_audit_log_to_your_own_tools_061b9609'),
-            self::AuditLogs => __('console.what_your_app_records_about_each_organizatio_3c1ad833'),
-            self::FineGrainedAuthorization => __('console.who_may_do_what_to_which_of_your_app_s_resou_a6227e5b'),
+            self::AuditLogs => __('console.what_your_app_records_about_each_organization_3c1ad833'),
+            self::FineGrainedAuthorization => __('console.who_may_do_what_to_which_of_your_app_s_resources_a6227e5b'),
             self::DataExports => __('console.exports_retention_6d540b79'),
             self::RiskEvents => __('console.sign_ins_that_looked_suspicious_5d581685'),
             self::Radar => __('console.allowing_challenging_and_blocking_sign_ins_1df777ec'),
@@ -164,124 +164,124 @@ enum HelpTopic: string
     public function summary(): string
     {
         return match ($this) {
-            self::Overview => __('console.everything_your_organization_has_set_up_and__2eaad20f'),
+            self::AppCatalog => __('console.catalog_description'),
+            self::Overview => __('console.everything_your_organization_has_set_up_and_what_is_lef_2eaad20f'),
 
-            self::Usage => __('console.how_many_people_signed_in_and_how_often_your_bc3b092f'),
+            self::Usage => __('console.how_many_people_signed_in_and_how_often_your_apps_calle_bc3b092f'),
 
-            self::TrustedDevices => __('console.a_phone_with_the_authenticator_app_installed_caef4b54'),
-            self::AgentApprovals => __('console.when_an_app_or_an_ai_agent_needs_your_go_ahe_51a99858'),
+            self::TrustedDevices => __('console.a_phone_with_the_authenticator_app_installed_becomes_th_caef4b54'),
+            self::AgentApprovals => __('console.when_an_app_or_an_ai_agent_needs_your_go_ahead_to_act_a_51a99858'),
 
-            self::Members => __('console.everyone_who_can_sign_in_to_this_organizatio_e278dd18'),
+            self::Members => __('console.everyone_who_can_sign_in_to_this_organization_and_the_i_e278dd18'),
 
-            self::Roles => __('console.a_role_is_a_job_title_your_apps_understand_e_73cd7eac'),
+            self::Roles => __('console.a_role_is_a_job_title_your_apps_understand_editor_suppo_73cd7eac'),
 
-            self::Permissions => __('console.a_permission_is_one_thing_a_role_is_allowed__522b0034'),
+            self::Permissions => __('console.a_permission_is_one_thing_a_role_is_allowed_to_do_creat_522b0034'),
 
-            self::SingleSignOn => __('console.lets_your_people_sign_in_with_the_company_ac_5186cda3'),
+            self::SingleSignOn => __('console.lets_your_people_sign_in_with_the_company_account_they_5186cda3'),
 
-            self::Domains => __('console.the_email_domains_this_organization_owns_eac_02a41e13'),
+            self::Domains => __('console.the_email_domains_this_organization_owns_each_proved_wi_02a41e13'),
 
-            self::SocialSignIn => __('console.offers_google_github_apple_and_others_as_but_82b5af03'),
+            self::SocialSignIn => __('console.offers_google_github_apple_and_others_as_buttons_on_you_82b5af03'),
 
-            self::SyncUsersIn => __('console.your_identity_provider_creates_updates_and_d_2d9dc172'),
+            self::SyncUsersIn => __('console.your_identity_provider_creates_updates_and_deactivates_2d9dc172'),
 
-            self::SyncUsersOut => __('console.the_mirror_image_cbox_id_pushes_your_people__19c0ed40'),
+            self::SyncUsersOut => __('console.the_mirror_image_cbox_id_pushes_your_people_into_the_ot_19c0ed40'),
 
-            self::AccessReviews => __('console.a_round_where_you_go_through_who_holds_which_617023b9'),
+            self::AccessReviews => __('console.a_round_where_you_go_through_who_holds_which_role_and_c_617023b9'),
 
-            self::RoleConflicts => __('console.some_pairs_of_roles_must_never_sit_with_the__70e4454a'),
+            self::RoleConflicts => __('console.some_pairs_of_roles_must_never_sit_with_the_same_person_70e4454a'),
 
-            self::Apps => __('console.every_app_that_signs_people_in_through_cbox__1e151c65'),
+            self::Apps => __('console.every_app_that_signs_people_in_through_cbox_id_or_calls_1e151c65'),
 
-            self::Apis => __('console.an_api_is_a_service_of_yours_that_receives_a_2747c516'),
+            self::Apis => __('console.an_api_is_a_service_of_yours_that_receives_access_token_2747c516'),
 
-            self::Webhooks => __('console.cbox_id_posts_a_signed_message_to_your_endpo_8dadac57'),
+            self::Webhooks => __('console.cbox_id_posts_a_signed_message_to_your_endpoint_after_s_8dadac57'),
 
-            self::InlineHooks => __('console.these_run_in_the_middle_of_an_operation_not__c325ec80'),
+            self::InlineHooks => __('console.these_run_in_the_middle_of_an_operation_not_after_it_an_c325ec80'),
 
-            self::AppCatalog => 'The app catalog is the list your products show in their app switcher. Publish each app with a launch URL and icon, then choose who can see it. Each app still controls sign-in and access.',
-            self::FeatureFlags => __('console.a_feature_flag_is_a_switch_your_apps_ask_abo_9a43d208'),
+            self::FeatureFlags => __('console.a_feature_flag_is_a_switch_your_apps_ask_about_for_one_9a43d208'),
 
-            self::Pipes => __('console.each_pipe_lets_people_connect_their_own_acco_ec4853ae'),
+            self::Pipes => __('console.each_pipe_lets_people_connect_their_own_account_at_a_se_ec4853ae'),
 
-            self::TokenVault => __('console.api_keys_and_tokens_your_apps_and_agents_nee_f9b71876'),
+            self::TokenVault => __('console.api_keys_and_tokens_your_apps_and_agents_need_for_other_f9b71876'),
 
-            self::ActivityLog => __('console.every_change_made_in_this_organization_who_d_1d80a907'),
+            self::ActivityLog => __('console.every_change_made_in_this_organization_who_did_what_to_1d80a907'),
 
-            self::Settings => __('console.your_organization_s_name_domains_and_default_8e3220c0'),
+            self::Settings => __('console.your_organization_s_name_domains_and_defaults_changes_h_8e3220c0'),
 
-            self::Appearance => __('console.the_sign_in_page_your_people_see_is_yours_no_7573e3bf'),
+            self::Appearance => __('console.the_sign_in_page_your_people_see_is_yours_not_ours_logo_7573e3bf'),
 
-            self::AccountSecurity => __('console.your_own_sign_in_methods_and_active_sessions_2bf79cbb'),
+            self::AccountSecurity => __('console.your_own_sign_in_methods_and_active_sessions_a_passkey_2bf79cbb'),
 
-            self::SessionsAndActivity => __('console.every_browser_and_device_signed_in_as_you_th_ee516093'),
+            self::SessionsAndActivity => __('console.every_browser_and_device_signed_in_as_you_the_apps_you_ee516093'),
 
-            self::ApiKeys => __('console.a_key_lets_your_own_scripts_and_integrations_4edbc37d'),
+            self::ApiKeys => __('console.a_key_lets_your_own_scripts_and_integrations_call_an_ap_4edbc37d'),
 
-            self::MemberApiKeys => __('console.every_api_key_the_people_in_this_organizatio_fe7787a7'),
+            self::MemberApiKeys => __('console.every_api_key_the_people_in_this_organization_have_crea_fe7787a7'),
 
-            self::WorkspaceSettings => __('console.the_name_of_your_workspace_which_your_projec_3fa3245f'),
+            self::WorkspaceSettings => __('console.the_name_of_your_workspace_which_your_projects_environm_3fa3245f'),
 
-            self::Projects => __('console.a_project_is_one_of_your_products_with_its_o_45d566d1'),
+            self::Projects => __('console.a_project_is_one_of_your_products_with_its_own_plan_sig_45d566d1'),
 
-            self::Team => __('console.everyone_who_administers_this_workspace_the__26825e5f'),
+            self::Team => __('console.everyone_who_administers_this_workspace_the_built_in_ro_26825e5f'),
 
-            self::Keys => __('console.the_keys_your_own_code_presents_to_cbox_id_o_42243556'),
+            self::Keys => __('console.the_keys_your_own_code_presents_to_cbox_id_one_tab_per_42243556'),
 
-            self::EnvironmentDomains => __('console.serves_an_environment_s_identity_endpoints_o_f6582d38'),
+            self::EnvironmentDomains => __('console.serves_an_environment_s_identity_endpoints_on_a_domain_f6582d38'),
 
-            self::Billing => __('billing.explanation'),
+            self::Billing => __('console.each_project_in_your_workspace_has_its_own_plan_and_env_c5ff35b1'),
 
-            self::EnvironmentOverview => __('console.how_many_organizations_users_single_sign_on__8e80258f'),
+            self::EnvironmentOverview => __('console.how_many_organizations_users_single_sign_on_connections_8e80258f'),
 
-            self::EnvironmentGetStarted => __('console.pick_the_framework_you_are_building_with_and_a82b6a71'),
+            self::EnvironmentGetStarted => __('console.pick_the_framework_you_are_building_with_and_an_app_is_a82b6a71'),
 
-            self::ReviewAgentRequests => __('console.what_agents_in_this_environment_are_waiting__8f2ea5c0'),
+            self::ReviewAgentRequests => __('console.what_agents_in_this_environment_are_waiting_for_a_perso_8f2ea5c0'),
 
-            self::Agents => __('console.an_agent_is_any_software_that_acts_on_this_e_05aebde2'),
+            self::Agents => __('console.an_agent_is_any_software_that_acts_on_this_environment_05aebde2'),
 
-            self::ConnectAgent => __('console.this_environment_serves_an_mcp_server_the_st_eb9faa22'),
+            self::ConnectAgent => __('console.this_environment_serves_an_mcp_server_the_standard_way_eb9faa22'),
 
-            self::Organizations => __('console.each_organization_is_a_company_or_team_using_08cdcb7d'),
+            self::Organizations => __('console.each_organization_is_a_company_or_team_using_your_produ_08cdcb7d'),
 
-            self::Users => __('console.every_person_with_an_identity_in_this_enviro_f9f26f27'),
-            self::Staff => __('console.an_admin_support_role_is_a_role_you_grant_to_4b6ac4cb'),
-            self::SupportAccess => __('console.see_an_app_exactly_as_one_of_its_users_does__8eafae42'),
+            self::Users => __('console.every_person_with_an_identity_in_this_environment_which_f9f26f27'),
+            self::Staff => __('console.an_admin_support_role_is_a_role_you_grant_to_your_own_p_4b6ac4cb'),
+            self::SupportAccess => __('console.see_an_app_exactly_as_one_of_its_users_does_you_sign_in_8eafae42'),
 
-            self::SignInRules => __('console.the_password_rules_lockout_two_factor_requir_6d5c4102'),
+            self::SignInRules => __('console.the_password_rules_lockout_two_factor_requirement_and_s_6d5c4102'),
 
-            self::SamlApplications => __('console.registers_applications_that_accept_this_envi_d381d96e'),
+            self::SamlApplications => __('console.registers_applications_that_accept_this_environment_as_d381d96e'),
 
-            self::LegacyLogin => __('console.while_you_move_off_another_system_an_app_can_c182528e'),
+            self::LegacyLogin => __('console.while_you_move_off_another_system_an_app_can_ask_for_th_c182528e'),
 
-            self::Connectors => __('console.every_link_between_cbox_id_and_another_syste_0376dee4'),
+            self::Connectors => __('console.every_link_between_cbox_id_and_another_system_in_one_pl_0376dee4'),
 
-            self::LogStreaming => __('console.mirrors_every_audit_log_entry_into_your_secu_b980f702'),
-            self::AuditLogs => __('console.the_audit_events_your_app_sends_about_each_o_a385fa1d'),
-            self::FineGrainedAuthorization => __('console.your_app_s_own_access_model_resource_types_l_24105154'),
+            self::LogStreaming => __('console.mirrors_every_audit_log_entry_into_your_security_team_s_b980f702'),
+            self::AuditLogs => __('console.the_audit_events_your_app_sends_about_each_organization_a385fa1d'),
+            self::FineGrainedAuthorization => __('console.your_app_s_own_access_model_resource_types_like_documen_24105154'),
 
-            self::DataExports => __('console.how_the_audit_trail_leaves_cbox_id_a_schedul_3da9deb4'),
+            self::DataExports => __('console.how_the_audit_trail_leaves_cbox_id_a_scheduled_export_s_3da9deb4'),
 
-            self::RiskEvents => __('console.sign_ins_and_requests_that_cbox_id_scored_as_b09e917e'),
-            self::SignInMethods => __('console.every_way_a_person_can_sign_in_here_password_1abc176e'),
-            self::Radar => __('console.radar_judges_every_sign_in_and_sign_up_crede_96651d15'),
+            self::RiskEvents => __('console.sign_ins_and_requests_that_cbox_id_scored_as_risky_enou_b09e917e'),
+            self::SignInMethods => __('console.every_way_a_person_can_sign_in_here_password_passkeys_m_1abc176e'),
+            self::Radar => __('console.radar_judges_every_sign_in_and_sign_up_credential_stuff_96651d15'),
 
-            self::SignInActivity => __('console.sign_ins_tokens_issued_new_users_and_two_fac_e9040ee7'),
+            self::SignInActivity => __('console.sign_ins_tokens_issued_new_users_and_two_factor_enrolme_e9040ee7'),
 
-            self::Branding => __('console.everything_your_people_see_of_your_brand_on__9d98e332'),
+            self::Branding => __('console.everything_your_people_see_of_your_brand_on_one_page_th_9d98e332'),
 
-            self::Workspaces => __('console.a_workspace_is_one_signed_up_company_s_home__3053f712'),
+            self::Workspaces => __('console.a_workspace_is_one_signed_up_company_s_home_on_this_ins_3053f712'),
 
-            self::Environments => __('console.an_environment_is_a_fully_isolated_identity__fed9a3d8'),
+            self::Environments => __('console.an_environment_is_a_fully_isolated_identity_service_wit_fed9a3d8'),
 
-            self::PlatformOrganizations => __('console.every_organization_in_the_environment_the_co_0de4eff9'),
+            self::PlatformOrganizations => __('console.every_organization_in_the_environment_the_console_is_po_0de4eff9'),
 
-            self::PlatformUsage => __('console.organizations_users_and_active_sessions_for__b7f36bfd'),
+            self::PlatformUsage => __('console.organizations_users_and_active_sessions_for_every_envir_b7f36bfd'),
 
-            self::PlatformSearch => __('console.looks_up_an_organization_by_name_or_handle_o_d7460886'),
+            self::PlatformSearch => __('console.looks_up_an_organization_by_name_or_handle_or_a_user_by_d7460886'),
 
-            self::PlatformQueues => __('console.webhooks_sign_out_notices_to_connected_apps__776577f9'),
-            self::Operators => __('console.platform_operators_administer_every_workspac_fb24c050'),
+            self::PlatformQueues => __('console.webhooks_sign_out_notices_to_connected_apps_role_update_776577f9'),
+            self::Operators => __('console.platform_operators_administer_every_workspace_and_envir_fb24c050'),
         };
     }
 

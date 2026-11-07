@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useFormatTranslator } from '@/i18n';
 import { absoluteTime } from '@/lib/time';
 import { Badge } from './Badge';
 
@@ -43,8 +43,7 @@ export function AuditEventList({
     events: AuditEventRow[];
     labels: AuditEventListLabels;
 }) {
-    const { locale } = useUiTranslator();
-
+    const { locale: consoleLocale } = useFormatTranslator();
     return (
         <ol
             aria-label={labels.caption}
@@ -67,7 +66,7 @@ export function AuditEventList({
                                 className="mono text-xs shrink-0"
                                 style={{ color: 'var(--faint)', minWidth: '11rem' }}
                             >
-                                {absoluteTime(event.occurredAt, locale)}
+                                {absoluteTime(event.occurredAt, consoleLocale)}
                             </time>
                             <span className="mono text-sm font-medium">{event.action}</span>
                             <span className="text-sm" style={{ color: 'var(--muted)' }}>

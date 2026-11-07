@@ -9,6 +9,7 @@ declare(strict_types=1);
  * `:brand` is the deployment's configured product name.
  */
 return [
+    'locale_conflict' => 'Your settings or signed-in account changed. Reload the page and choose a language again.',
     'layout' => [
         'default_title' => 'Error',
         'default_heading' => 'Something went wrong',

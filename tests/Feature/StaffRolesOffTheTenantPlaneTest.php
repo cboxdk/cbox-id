@@ -236,6 +236,7 @@ it('marks a staff role as staff-only wherever the environment console offers one
 
 it('does not offer a staff role for a directory group, and refuses it in words when posted', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    grantFeature($org->id, 'cbox-id-scim');
     $directory = app(Directories::class)->register($org->id, 'Okta')->directory;
     $group = DirectoryGroup::query()->create([
         'directory_id' => $directory->id,

@@ -6,7 +6,9 @@ namespace App\Actions\Sso;
 
 use App\Http\Resources\Environment\Timestamp;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Enterprise\EnterpriseReach;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -157,7 +159,7 @@ final class SsoFields
     {
         if (! self::verifiable($config)) {
             throw ActionRefused::onFields('incomplete_connection', [
-                'signing_key' => 'This provider\'s discovery document publishes no signing keys (jwks_uri). Paste its ID-token signing key (PEM public key).',
+                'signing_key' => new ActionMessage('console.this_provider_s_discovery_document_publishes_no_signing_07a38178'),
             ]);
         }
     }
@@ -223,7 +225,7 @@ final class SsoFields
         try {
             return array_merge($config, app(OidcDiscovery::class)->fromIssuer($config['issuer'] ?? '')->toConfig());
         } catch (OidcDiscoveryFailed|UnsafeFederationUrl $e) {
-            throw ActionRefused::because('discovery_failed', sprintf(self::DISCOVERY_FAILED, $e->getMessage()), 'issuer');
+            throw ActionRefused::because('discovery_failed', new ActionMessage('console.framework_eea732d53f46', ['details' => FrameworkMessage::from($e)], sourceEnglish: sprintf(self::DISCOVERY_FAILED, $e->getMessage())), 'issuer');
         }
     }
 

@@ -31,7 +31,7 @@ use Cbox\Id\Platform\Models\Project;
     danger: Danger::Read,
     plane: ActionPlane::Workspace,
     rest: ['GET', '/environments'],
-    consoleGate: ConsoleGate::WorkspaceMember,
+    consoleGate: ConsoleGate::ReadEnvironments,
     schema: 'Environment',
     tag: 'Environments',
 )]
@@ -48,7 +48,10 @@ final class ListEnvironments implements Action
     {
         [$limit, $page] = $this->pageOf($context);
 
+        $workspace = InWorkspace::id($context->principal);
+        $reachable = InWorkspace::environmentIds($context->principal, $workspace);
         $environments = Environment::query()
+            ->when($reachable !== null, fn ($query) => $query->whereIn('id', $reachable ?? []))
             ->whereIn('project_id', Project::query()->where('organization_id', InWorkspace::id($context->principal))->pluck('id'))
             ->orderBy('created_at')
             ->orderBy('id')

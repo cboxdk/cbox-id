@@ -176,7 +176,7 @@ final readonly class SudoController extends PageController
     {
         $seconds = RateLimiter::availableIn($key);
 
-        return $this->refuse($request, __('console.too_many_attempts_try_again_in_021db289').$seconds.' seconds.', 429, ['Retry-After' => (string) $seconds]);
+        return $this->refuse($request, __('console.sudo_retry_seconds', ['seconds' => $seconds]), 429, ['Retry-After' => (string) $seconds]);
     }
 
     /**

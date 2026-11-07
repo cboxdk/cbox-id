@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { useEffect, useRef } from 'react';
 
 declare global {
@@ -63,8 +63,7 @@ export interface TurnstileProps {
  * `script-src`/`frame-src` only when Turnstile is configured.
  */
 export function Turnstile({ siteKey, onToken }: TurnstileProps) {
-    const { t: tc } = useUiTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const host = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -96,9 +95,8 @@ export function Turnstile({ siteKey, onToken }: TurnstileProps) {
         <div>
             <div ref={host} />
             <p className="mt-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                {tc(
-                    'console.a_quick_check_that_you_re_not_a_bot_it_usual_1b748be3',
-                    "A quick check that you're not a bot. It usually completes on its own.",
+                {consoleT(
+                    'console.a_quick_check_that_you_re_not_a_bot_it_usually_complete_1b748be3',
                 )}
             </p>
         </div>

@@ -116,7 +116,7 @@ final class InvitationFields
             default => $refused->field(),
         };
 
-        return new ActionRefused($refused->reason->value, $refused->getMessage(), $status, $field);
+        return new ActionRefused($refused->reason->value, $refused->sourceMessage, $status, $field);
     }
 
     /**

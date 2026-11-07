@@ -14,8 +14,10 @@ use App\Platform\Actions\Danger;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentOrigin;
+use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OAuth\ValueObjects\RootSignIn;
 use App\Platform\OAuth\ValueObjects\RootWorkspace;
+use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
@@ -151,11 +153,16 @@ final readonly class EnvironmentMemberPrincipal implements SignedInPerson, Token
         // action reached any other way than the door that bound this principal still asks
         // them: the role administers environments and the membership reaches this one
         // ({@see EnvironmentAdminAuth}'s per-request re-check, for a token).
-        if ($this->workspace === null
-            || ! $this->workspace->capabilities()->canManageEnvironments()
-            || ! in_array($this->environment->id, $this->workspace->environmentIds, true)) {
+        $workspace = $this->workspace === null ? null
+            : app(RootDelegatedAccess::class)->workspaceOf($this->signIn->subjectId, $this->workspace->id);
+        if ($workspace === null
+            || ! $workspace->capabilities()->canReadEnvironments()
+            || ($action->danger->writes() && ! $workspace->capabilities()->canManageEnvironments())
+            || ! in_array($this->environment->id, $workspace->environmentIds, true)) {
             throw new AuthorizationException('You do not have permission to change this.');
         }
+
+        app(ProductAdmission::class)->assertGranted($this->signIn->subjectId, $workspace->id);
     }
 
     public function supportsIdempotency(): bool

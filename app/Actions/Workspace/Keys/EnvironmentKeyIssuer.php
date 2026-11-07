@@ -7,7 +7,9 @@ namespace App\Actions\Workspace\Keys;
 use App\Actions\Workspace\Environments\CreateEnvironment;
 use App\Actions\Workspace\InWorkspace;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\EnvironmentKeyScopes;
@@ -52,13 +54,13 @@ final readonly class EnvironmentKeyIssuer
         $scopes = array_values(array_unique($scopes));
 
         if ($scopes === []) {
-            throw ActionRefused::because('invalid_scopes', 'Choose at least one scope — a key with none can do nothing.', $field);
+            throw ActionRefused::because('invalid_scopes', new ActionMessage('console.choose_at_least_one_scope_a_key_with_none_can_do_nothin_59eacb6e'), $field);
         }
 
         $unoffered = array_values(array_diff($scopes, EnvironmentKeyScopes::offeredValues()));
 
         if ($unoffered !== []) {
-            throw ActionRefused::because('invalid_scopes', 'No management key can carry: '.implode(', ', $unoffered).'.', $field);
+            throw ActionRefused::because('invalid_scopes', new ActionMessage('console.no_management_key_can_carry_part1_2ad24a53', ['part1' => (string) (implode(', ', $unoffered))]), $field);
         }
 
         try {
@@ -70,7 +72,7 @@ final readonly class EnvironmentKeyIssuer
                 stepUpPolicy: $principal instanceof WorkspaceKeyPrincipal ? $principal->key()->step_up_policy : null,
             ));
         } catch (UnknownApiKeyScope $refused) {
-            throw ActionRefused::because('invalid_scopes', $refused->getMessage(), $field);
+            throw ActionRefused::because('invalid_scopes', FrameworkMessage::from($refused), $field);
         }
 
         InWorkspace::record($principal, $workspaceId, 'organization.environment_key_created', 'environment', $environment->id, [
@@ -100,11 +102,11 @@ final readonly class EnvironmentKeyIssuer
         try {
             $at = CarbonImmutable::parse(is_scalar($value) ? (string) $value : '');
         } catch (Throwable) {
-            throw ActionRefused::because('invalid_expiry', 'expires_at must be an ISO 8601 date-time.', $key);
+            throw ActionRefused::because('invalid_expiry', new ActionMessage('console.expires_at_must_be_an_iso_8601_date_time_59d532ae'), $key);
         }
 
         if (! $at->isFuture()) {
-            throw ActionRefused::because('invalid_expiry', 'expires_at must be in the future — a key that has already expired can do nothing.', $key);
+            throw ActionRefused::because('invalid_expiry', new ActionMessage('console.expires_at_must_be_in_the_future_a_key_that_has_already_80eeeed0'), $key);
         }
 
         return $at;

@@ -104,13 +104,8 @@ final class SignupProvisioner
             $project = $this->projectWriter->createForOrganization(
                 $organization->id,
                 $blueprint->organizationName,
-                SubscriptionAdmission::required() ? 0 : $blueprint->environmentLimit,
+                $blueprint->environmentLimit,
             );
-
-            if (SubscriptionAdmission::required()) {
-                $project->environment_limit = 0;
-                $project->save();
-            }
 
             return new PendingOrganization($organization, $owner, $membership, $project);
         });
@@ -125,15 +120,13 @@ final class SignupProvisioner
      * organization, can never mint a second free environment), and a suspended organization
      * or project gets nothing rather than an exception on a link click.
      */
-    public function releaseEnvironment(string $organizationId): ?Environment
+    public function releaseEnvironment(string $organizationId, string $subjectId): ?Environment
     {
         $project = $this->platformRoot->run(
             fn (): ?Project => $this->projects->forOrganization($organizationId)->first(),
         );
 
-        // A metered signup waits for a plan after email verification. That is normal
-        // admission, not a provisioning failure to warn about for every new customer.
-        if ($project === null || $project->environment_limit === 0) {
+        if ($project === null) {
             return null;
         }
 
@@ -145,7 +138,7 @@ final class SignupProvisioner
         }
 
         try {
-            app(ProductAdmission::class)->assertGranted('email-verification', $organizationId);
+            app(ProductAdmission::class)->assertGranted($subjectId, $organizationId);
 
             // The organization's own status is checked INSIDE addEnvironment(), which is
             // where it belongs — an operator who suspended a signup while it was still

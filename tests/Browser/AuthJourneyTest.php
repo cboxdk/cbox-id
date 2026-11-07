@@ -132,7 +132,7 @@ it('refuses a wrong password in words, and keeps the email', function (): void {
         ->click('button[type="submit"]');
 
     // Still at the door, told why, with the address intact.
-    $page->assertSee('Those credentials do not match our records')
+    $page->assertSee(__('auth.login.invalid_credentials'))
         ->assertPathIs('/login')
         ->assertValue('input[type="email"]', $email)
         ->assertNoJavaScriptErrors();

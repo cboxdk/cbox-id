@@ -7,6 +7,7 @@ namespace App\Actions\LogStreams;
 use App\Http\Resources\Environment\LogStreamResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -137,7 +138,7 @@ final readonly class CreateLogStream implements Action, Preflight
                 options: $options,
             );
         } catch (UnsafeStreamUrl) {
-            throw ActionRefused::because('unsafe_url', 'That URL is not allowed — it must be a public endpoint.', 'endpoint_url');
+            throw ActionRefused::because('unsafe_url', new ActionMessage('console.that_url_is_not_allowed_it_must_be_a_public_endpoint_93361f69'), 'endpoint_url');
         } catch (InvalidStreamConfiguration $invalid) {
             throw LogStreamDestinations::refusal($invalid);
         }

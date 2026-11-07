@@ -1,8 +1,8 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import { riskLabel, RISK_TONE, type Risk } from '@/lib/agents';
+import { RISK_LABEL, RISK_TONE, type Risk } from '@/lib/agents';
 import type { HelpContent, PageProps } from '@/types';
 import {
     Badge,
@@ -65,8 +65,12 @@ export default function Agents({
     tabs,
     help,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const { freshKey, freshKeyName } = usePage().flash;
     const [revoking, setRevoking] = useState<AgentRow | null>(null);
     const [rotating, setRotating] = useState<AgentRow | null>(null);
@@ -75,23 +79,25 @@ export default function Agents({
         <>
             <PageHeader
                 help={help}
-                description={tc('console.software_that_acts_on_this_environment_with__24a4b34d')}
+                description={consoleT(
+                    'console.software_that_acts_on_this_environment_with_a_managemen_24a4b34d',
+                )}
                 actions={
                     <>
                         <Button asChild size="sm" variant="secondary">
                             <Link href={urls.connect}>
-                                {tc('console.connect_an_agent_ce504be3')}
+                                {consoleT('console.connect_an_agent_ce504be3')}
                             </Link>
                         </Button>
                         <Button asChild size="sm" variant="primary" icon="plus">
-                            <Link href={urls.create}>{tc('console.new_agent_98a23e6d')}</Link>
+                            <Link href={urls.create}>{consoleT('console.new_agent_98a23e6d')}</Link>
                         </Button>
                     </>
                 }
             />
 
             <div className="mt-4">
-                <LinkTabs tabs={tabs} label={tc('console.key_types_0562e0e6')} />
+                <LinkTabs tabs={tabs} label={consoleT('console.key_types_0562e0e6')} />
             </div>
 
             <div className="mt-6 space-y-6">
@@ -107,14 +113,16 @@ export default function Agents({
                         <Icon name="shield" className="w-5 h-5 shrink-0" />
                         <span className="text-sm font-medium flex-1">
                             {waitingForYou === 1
-                                ? tc('console.an_agent_is_waiting_for_your_approval_14b2c367')
-                                : tc(
-                                      'console.value0_agent_actions_are_waiting_for_your_ap_de2e475c',
-                                      { value0: waitingForYou },
+                                ? consoleText(
+                                      'console.an_agent_is_waiting_for_your_approval_14b2c367',
+                                  )
+                                : consoleFinalText(
+                                      'console._part1_agent_actions_are_waiting_for_your_approval_8941048e',
+                                      { part1: waitingForYou },
                                   )}
                         </span>
                         <span className="text-sm" style={{ color: 'var(--primary)' }}>
-                            {tc('console.review_ab7681ea')}
+                            {consoleT('console.review_ab7681ea')}
                         </span>
                     </Link>
                 )}
@@ -124,9 +132,9 @@ export default function Agents({
                         value={freshKey}
                         title={
                             freshKeyName !== undefined
-                                ? tc(
-                                      'console.the_new_key_for_value0_copy_it_now_you_won_t_28a892ec',
-                                      { value0: freshKeyName },
+                                ? consoleFinalText(
+                                      'console.the_new_key_for_part1_copy_it_now_you_won_t_be_able_to_42e3ecb3',
+                                      { part1: freshKeyName },
                                   )
                                 : undefined
                         }
@@ -138,14 +146,14 @@ export default function Agents({
                         <EmptyState
                             icon="magic"
                             equivalent="keys.create"
-                            title={tc('console.no_agents_yet_971b61f8')}
-                            description={tc(
-                                'console.create_a_key_for_claude_code_cursor_or_your__90d822be',
+                            title={consoleT('console.no_agents_yet_971b61f8')}
+                            description={consoleT(
+                                'console.create_a_key_for_claude_code_cursor_or_your_own_bot_giv_90d822be',
                             )}
                             actions={
                                 <Button asChild variant="primary">
                                     <Link href={urls.create}>
-                                        {tc('console.new_agent_98a23e6d')}
+                                        {consoleT('console.new_agent_98a23e6d')}
                                     </Link>
                                 </Button>
                             }
@@ -153,7 +161,7 @@ export default function Agents({
                     </div>
                 ) : (
                     <Panel
-                        title={tc('console.agents_279b44d2')}
+                        title={consoleT('console.agents_279b44d2')}
                         flush={agents.length > 0}
                         action={
                             inactiveCount > 0 ? (
@@ -164,22 +172,23 @@ export default function Agents({
                                     preserveScroll
                                 >
                                     {showAll
-                                        ? tc('console.hide_revoked_and_expired_c783740b')
-                                        : tc('console.show_value0_revoked_or_expired_9dbdd15e', {
-                                              value0: inactiveCount,
-                                          })}
+                                        ? consoleText('console.hide_revoked_and_expired_c783740b')
+                                        : consoleFinalText(
+                                              'console.show_part1_revoked_or_expired_124775c6',
+                                              { part1: inactiveCount },
+                                          )}
                                 </Link>
                             ) : undefined
                         }
                     >
                         {agents.length === 0 ? (
                             <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                                {tc(
-                                    'console.no_live_agents_revoked_and_expired_keys_stay_8dd5437a',
+                                {consoleT(
+                                    'console.no_live_agents_revoked_and_expired_keys_stay_listed_for_8dd5437a',
                                 )}
                             </p>
                         ) : (
-                            <ul aria-label={tc('console.agents_279b44d2')}>
+                            <ul aria-label={consoleT('console.agents_279b44d2')}>
                                 {agents.map((agent, index) => (
                                     <AgentItem
                                         key={agent.id}
@@ -201,13 +210,17 @@ export default function Agents({
                 title={
                     rotating === null
                         ? ''
-                        : tc('console.rotate_value0_c01d8336', { value0: rotating.name })
+                        : consoleFinalText('console.rotate_part1_9a77decd', {
+                              part1: rotating.name,
+                          })
                 }
-                description={tc('console.a_new_key_with_the_same_scopes_and_approval__c8fff425')}
+                description={consoleT(
+                    'console.a_new_key_with_the_same_scopes_and_approval_policy_is_c_c8fff425',
+                )}
                 footer={
                     <>
                         <Button onClick={() => setRotating(null)}>
-                            {tc('console.cancel_19766ed6')}
+                            {consoleT('console.cancel_19766ed6')}
                         </Button>
                         <Button
                             variant="primary"
@@ -220,7 +233,7 @@ export default function Agents({
                                 }
                             }}
                         >
-                            {tc('console.rotate_key_c66b8b38')}
+                            {consoleT('console.rotate_key_c66b8b38')}
                         </Button>
                     </>
                 }
@@ -230,11 +243,15 @@ export default function Agents({
                 open={revoking !== null}
                 onOpenChange={(open) => !open && setRevoking(null)}
                 name={revoking?.name ?? ''}
-                verb="Revoke"
+                verb={consoleShortText('console.revoke_87e6d00b')}
                 consequence={
                     revoking !== null && revoking.descendants > 0
-                        ? `The agent stops working immediately — and so do the ${revoking.descendants} ${revoking.descendants === 1 ? 'key' : 'keys'} it minted, which are revoked with it. This cannot be undone.`
-                        : tc('console.the_agent_stops_working_immediately_this_can_910eb1ce')
+                        ? consoleFinalText('console.agent_revoke_descendant_count', {
+                              count: revoking.descendants,
+                          })
+                        : consoleAttributeText(
+                              'console.the_agent_stops_working_immediately_this_cannot_be_undo_910eb1ce',
+                          )
                 }
                 onConfirm={() => {
                     const agent = revoking;
@@ -263,8 +280,9 @@ function AgentItem({
     onRotate: () => void;
     onRevoke: () => void;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const inactive = agent.lifecycle.status !== 'active';
 
     return (
@@ -293,16 +311,23 @@ function AgentItem({
                     <span className="font-medium truncate">{agent.name}</span>
                     <KeyStatusPill lifecycle={agent.lifecycle} />
                     <Tooltip
-                        content={tc('console.the_most_harmful_thing_its_scopes_allow_5b434c86')}
+                        content={consoleUiText(
+                            'console.the_most_harmful_thing_its_scopes_allow_5b434c86',
+                        )}
                     >
                         <span>
                             <Badge tone={RISK_TONE[agent.risk]}>
-                                {riskLabel(agent.risk, tc)}
-                                <span className="sr-only">{tc('console.risk_56ce854b')}</span>
+                                {RISK_LABEL(consoleT)[agent.risk]}
+                                <span className="sr-only">
+                                    {' '}
+                                    {consoleT('console.risk_2c6ef0f0')}
+                                </span>
                             </Badge>
                         </span>
                     </Tooltip>
-                    {agent.depth > 0 && <Badge>{tc('console.minted_by_a_key_fd2e1030')}</Badge>}
+                    {agent.depth > 0 && (
+                        <Badge>{consoleT('console.minted_by_a_key_fd2e1030')}</Badge>
+                    )}
                 </div>
 
                 {agent.description !== null && (
@@ -330,8 +355,9 @@ function AgentItem({
                         ·
                     </span>
                     <span style={{ color: 'var(--muted-foreground)' }}>
-                        {tc('console.created_by_b2742e6c')}
-                        {agent.createdBy}
+                        {consoleRich('console.created_by_part1_8e7dc073', {
+                            part1: agent.createdBy,
+                        })}
                     </span>
                 </p>
 
@@ -342,12 +368,12 @@ function AgentItem({
                 <div className="flex gap-2 shrink-0">
                     {agent.rotateHref !== null && (
                         <Button size="sm" variant="secondary" onClick={onRotate}>
-                            {tc('console.rotate_c3613b17')}
+                            {consoleT('console.rotate_c3613b17')}
                         </Button>
                     )}
                     {agent.revokeHref !== null && (
                         <Button size="sm" variant="danger" onClick={onRevoke}>
-                            {tc('console.revoke_87e6d00b')}
+                            {consoleT('console.revoke_87e6d00b')}
                         </Button>
                     )}
                 </div>

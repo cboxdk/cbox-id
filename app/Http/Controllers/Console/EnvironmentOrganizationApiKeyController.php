@@ -36,7 +36,7 @@ final readonly class EnvironmentOrganizationApiKeyController extends ConsoleCont
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', __('console.api_key_revoked_whatever_was_using_it_stops__90e5a8a5'));
+            : back()->with('status', __('console.api_key_revoked_whatever_was_using_it_stops_working_now_90e5a8a5'));
     }
 
     /**

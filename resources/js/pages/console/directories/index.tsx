@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -65,8 +65,13 @@ export default function DirectoriesIndex({
     createHref,
     inviteHref,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     // The setup link is a credential in a URL, so it rides the flash channel and never
     // the props — props are written into the browser's history entry.
     const portalUrl = usePage().flash.portalUrl;
@@ -95,7 +100,9 @@ export default function DirectoriesIndex({
         <>
             <PageHeader
                 help={help}
-                description={tc('console.let_your_identity_provider_create_update_and_1208087e')}
+                description={consoleT(
+                    'console.let_your_identity_provider_create_update_and_deactivate_1208087e',
+                )}
                 actions={
                     canAct ? (
                         <>
@@ -107,13 +114,14 @@ export default function DirectoriesIndex({
                                         router.post(inviteHref, {}, { preserveScroll: true })
                                     }
                                 >
-                                    {tc('console.invite_your_it_admin_3aba7671')}
+                                    {consoleT('console.invite_your_it_admin_3aba7671')}
                                 </Button>
                             )}
                             <Button asChild variant="primary" className="shrink-0">
                                 <Link href={createHref}>
-                                    <Icon name="plus" className="w-4 h-4" />
-                                    {tc('console.new_directory_000ddb55')}
+                                    {consoleRich('console._part1_new_directory_a2cfd11e', {
+                                        part1: <Icon name="plus" className="w-4 h-4" />,
+                                    })}
                                 </Link>
                             </Button>
                         </>
@@ -126,10 +134,12 @@ export default function DirectoriesIndex({
                     <div className="card">
                         <EmptyState
                             icon="directory"
-                            title={tc('console.syncing_users_in_is_an_enterprise_feature_c3b68cec')}
+                            title={consoleT(
+                                'console.syncing_users_in_is_an_enterprise_feature_c3b68cec',
+                            )}
                             help={help}
-                            description={tc(
-                                'console.contact_your_account_team_to_enable_it_for_t_c4ba4d29',
+                            description={consoleT(
+                                'console.contact_your_account_team_to_enable_it_for_this_organiz_c4ba4d29',
                             )}
                         />
                     </div>
@@ -149,11 +159,14 @@ export default function DirectoriesIndex({
                         }}
                     >
                         <div className="flex items-center gap-2 font-semibold">
-                            <Icon name="members" className="w-4 h-4" />
-                            {tc('console.setup_link_for_your_it_admin_df0a3a89')}
+                            {consoleRich('console._part1_setup_link_for_your_it_admin_27c2e0cd', {
+                                part1: <Icon name="members" className="w-4 h-4" />,
+                            })}
                         </div>
                         <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                            {tc('console.send_this_single_use_link_to_whoever_configu_e8056999')}
+                            {consoleT(
+                                'console.send_this_single_use_link_to_whoever_configures_your_id_e8056999',
+                            )}
                         </p>
                         <p
                             className="mt-3 mono text-xs rounded-lg px-3 py-2 select-all break-all"
@@ -171,8 +184,8 @@ export default function DirectoriesIndex({
                     <Input
                         type="search"
                         style={{ maxWidth: '24rem' }}
-                        placeholder={tc('console.search_by_name_4ae2b333')}
-                        aria-label={tc('console.search_directories_72c57fbd')}
+                        placeholder={consoleUiText('console.search_by_name_4ae2b333')}
+                        aria-label={consoleT('console.search_directories_72c57fbd')}
                         value={term}
                         onChange={(event) => setTerm(event.target.value)}
                     />
@@ -182,11 +195,7 @@ export default function DirectoriesIndex({
                         narrowed to nothing.
                     */}
                     <output className="sr-only">
-                        {pagination.total}{' '}
-                        {pagination.total === 1
-                            ? tc('console.directory_33317878')
-                            : tc('console.directories_374cb37a')}{' '}
-                        {tc('console.found_ddbb3871')}
+                        {consoleRich('console.search_results_found', { count: pagination.total })}
                     </output>
                 </div>
 
@@ -198,42 +207,48 @@ export default function DirectoriesIndex({
                         search !== '' ? (
                             <EmptyState
                                 icon="search"
-                                title={tc('console.no_matches_for_value0_617e79ef', {
-                                    value0: search,
+                                title={consoleFinalText('console.no_matches_for_part1_42a992b5', {
+                                    part1: search,
                                 })}
-                                description={tc(
-                                    'console.no_directory_matches_that_name_try_a_differe_bfc6957c',
+                                description={consoleT(
+                                    'console.no_directory_matches_that_name_try_a_different_search_t_bfc6957c',
                                 )}
                             />
                         ) : (
                             <EmptyState
                                 icon="directory"
                                 equivalent="directories.create"
-                                title={tc('console.no_directory_connected_yet_d4e7a522')}
+                                title={consoleT('console.no_directory_connected_yet_d4e7a522')}
                                 help={help}
-                                description={tc(
-                                    'console.today_somebody_adds_and_removes_people_here__01774e72',
+                                description={consoleT(
+                                    'console.today_somebody_adds_and_removes_people_here_by_hand_con_01774e72',
                                 )}
                                 steps={[
-                                    tc(
-                                        'console.choose_scim_if_your_provider_pushes_to_us_go_99b715bb',
+                                    consoleRuntimeText(
+                                        'console.choose_scim_if_your_provider_pushes_to_us_google_worksp_99b715bb',
                                     ),
-                                    tc(
-                                        'console.for_scim_paste_the_endpoint_and_the_token_we_4dcda8c9',
+                                    consoleRuntimeText(
+                                        'console.for_scim_paste_the_endpoint_and_the_token_we_mint_into_4dcda8c9',
                                     ),
-                                    tc(
-                                        'console.for_a_pull_directory_paste_its_credentials_a_581eae82',
+                                    consoleRuntimeText(
+                                        'console.for_a_pull_directory_paste_its_credentials_and_we_verif_581eae82',
                                     ),
-                                    tc(
-                                        'console.map_the_groups_you_sync_onto_roles_so_access_246e648d',
+                                    consoleRuntimeText(
+                                        'console.map_the_groups_you_sync_onto_roles_so_access_follows_th_246e648d',
                                     ),
                                 ]}
                                 actions={
                                     canAct ? (
                                         <Button asChild variant="primary">
                                             <Link href={createHref}>
-                                                <Icon name="plus" className="w-4 h-4" />
-                                                {tc('console.new_directory_000ddb55')}
+                                                {consoleRich(
+                                                    'console._part1_new_directory_a2cfd11e',
+                                                    {
+                                                        part1: (
+                                                            <Icon name="plus" className="w-4 h-4" />
+                                                        ),
+                                                    },
+                                                )}
                                             </Link>
                                         </Button>
                                     ) : undefined
@@ -271,7 +286,7 @@ export default function DirectoriesIndex({
                                 <Badge>{directory.provider}</Badge>
                                 <Pill tone={directory.active ? 'success' : 'warning'}>
                                     {directory.active
-                                        ? tc('console.active_92340695')
+                                        ? consoleText('console.active_92340695')
                                         : directory.status}
                                 </Pill>
                                 <Icon
@@ -289,8 +304,6 @@ export default function DirectoriesIndex({
 
                 <Pagination
                     pagination={pagination}
-                    noun={tc('console.directory_33317878')}
-                    pluralNoun={tc('console.directories_374cb37a')}
                     href={(page) => listHref(search, page)}
                 />
 
@@ -301,9 +314,9 @@ export default function DirectoriesIndex({
                 */}
                 {entitled && (
                     <Panel
-                        title={tc('console.scim_endpoint_59109538')}
-                        description={tc(
-                            'console.paste_this_into_your_identity_provider_with__6f366a6e',
+                        title={consoleT('console.scim_endpoint_59109538')}
+                        description={consoleT(
+                            'console.paste_this_into_your_identity_provider_with_the_bearer_6f366a6e',
                         )}
                     >
                         <div className="flex items-center gap-2">

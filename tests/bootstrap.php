@@ -44,6 +44,15 @@ $suiteOwned = [
     // Billing tests explicitly inject test transports; never inherit a developer's account.
     'BILLING_CLIENT_BASE_URL' => '',
     'BILLING_CLIENT_API_TOKEN' => '',
+    'BILLING_CLIENT_DEFINITION_TOKEN' => '',
+    // Admission tests opt into their fake Billing transport explicitly. The CI
+    // .env.example enables the production gate and must not leak into other fixtures.
+    'CBOX_ID_PRODUCT_ACCESS_ENABLED' => 'false',
+    'CBOX_ID_PRODUCT_BILLING_TOKEN' => '',
+    'CBOX_WAITLISTS_ENABLED' => 'false',
+    'CBOX_WAITLISTS_ID_ENVIRONMENT' => '',
+    'CBOX_WAITLISTS_BILLING_URL' => '',
+    'CBOX_WAITLISTS_BILLING_TOKEN' => '',
     'CBOX_BILLING_ENABLED' => 'true',
     'CBOX_BILLING_PRODUCT' => 'cbox-id',
     'CBOX_BILLING_CURRENCY' => 'DKK',

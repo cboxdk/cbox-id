@@ -27,10 +27,9 @@ use Throwable;
  */
 final readonly class SignInActivityController extends ConsoleController
 {
-    /** The four questions this page is for, in the order somebody asks them. */
+    /** The measured questions this page is for, in the order somebody asks them. */
     private const METRICS = [
         ['key' => 'auth.login', 'label' => 'Logins'],
-        ['key' => 'auth.id_token', 'label' => 'Tokens issued'],
         ['key' => 'auth.user', 'label' => 'New users'],
         ['key' => 'auth.mfa_enrolled', 'label' => 'MFA enrolments'],
     ];

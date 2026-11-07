@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -40,23 +40,25 @@ type Props = PageProps<{
 }>;
 
 export default function VaultSecretDetail({ secret, grants, indexHref, urls }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [revoking, setRevoking] = useState(false);
 
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={indexHref} label={tc('console.token_vault_1d74ef9e')} />
+                <Breadcrumb href={indexHref} label={consoleT('console.token_vault_1d74ef9e')} />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{secret.name}</h1>
                     <Badge className="mono">{secret.provider}</Badge>
                     <Pill tone={statusTone(secret.status)}>
                         {secret.status === 'revoked'
-                            ? tc('console.revoked_f6f738d0')
+                            ? consoleText('console.revoked_f6f738d0')
                             : secret.status === 'expired'
-                              ? tc('console.expired_424a2551')
-                              : tc('console.active_92340695')}
+                              ? consoleText('console.expired_424a2551')
+                              : consoleText('console.active_92340695')}
                     </Pill>
                 </div>
                 <p className="mt-1 text-sm mono" style={{ color: 'var(--faint)' }}>
@@ -65,17 +67,17 @@ export default function VaultSecretDetail({ secret, grants, indexHref, urls }: P
             </div>
 
             {/* The sealed value is never here — only its shape. */}
-            <Panel title={tc('console.details_45989de4')}>
+            <Panel title={consoleT('console.details_45989de4')}>
                 <KvList>
-                    <Kv label={tc('console.provider_472590ae')}>{secret.provider}</Kv>
-                    <Kv label={tc('console.scope_b073f6c6')} prose>
+                    <Kv label={consoleT('console.provider_472590ae')}>{secret.provider}</Kv>
+                    <Kv label={consoleT('console.scope_b073f6c6')} prose>
                         {secret.scope}
                     </Kv>
-                    <Kv label={tc('console.rotated_24b10841')} prose>
-                        {secret.rotatedAt ?? tc('console.never_6497e4b3')}
+                    <Kv label={consoleT('console.rotated_24b10841')} prose>
+                        {secret.rotatedAt ?? consoleT('console.never_6300ef80')}
                     </Kv>
-                    <Kv label={tc('console.expires_f6725f3a')} prose>
-                        {secret.expiresAt ?? tc('console.never_6497e4b3')}
+                    <Kv label={consoleT('console.expires_f6725f3a')} prose>
+                        {secret.expiresAt ?? consoleT('console.never_6300ef80')}
                     </Kv>
                 </KvList>
             </Panel>
@@ -85,16 +87,20 @@ export default function VaultSecretDetail({ secret, grants, indexHref, urls }: P
             <Grants revoked={secret.revoked} grants={grants} href={urls.grant} />
 
             <Panel
-                title={tc('console.revoke_secret_2d7f529d')}
+                title={consoleT('console.revoke_secret_2d7f529d')}
                 description={
                     secret.revoked
-                        ? tc('console.this_secret_is_revoked_no_future_lease_can_o_1a5a07c0')
-                        : tc('console.revoking_is_immediate_and_permanent_no_futur_27e17e18')
+                        ? consoleText(
+                              'console.this_secret_is_revoked_no_future_lease_can_open_it_1a5a07c0',
+                          )
+                        : consoleText(
+                              'console.revoking_is_immediate_and_permanent_no_future_lease_can_27e17e18',
+                          )
                 }
             >
                 {!secret.revoked && (
                     <Button size="sm" variant="danger" onClick={() => setRevoking(true)}>
-                        {tc('console.revoke_secret_2d7f529d')}
+                        {consoleT('console.revoke_secret_2d7f529d')}
                     </Button>
                 )}
             </Panel>
@@ -103,8 +109,10 @@ export default function VaultSecretDetail({ secret, grants, indexHref, urls }: P
                 open={revoking}
                 onOpenChange={setRevoking}
                 name={secret.name}
-                verb="Revoke"
-                consequence={tc('console.no_future_lease_can_open_this_secret_revocat_5b330536')}
+                verb={consoleShortText('console.revoke_87e6d00b')}
+                consequence={consoleUiText(
+                    'console.no_future_lease_can_open_this_secret_revocation_is_imme_5b330536',
+                )}
                 onConfirm={() => {
                     setRevoking(false);
                     router.post(urls.revoke, {}, { preserveScroll: true });
@@ -123,23 +131,30 @@ export default function VaultSecretDetail({ secret, grants, indexHref, urls }: P
  * somebody has decided to rotate.
  */
 function Rotate({ revoked, name, href }: { revoked: boolean; name: string; href: string }) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [open, setOpen] = useState(false);
     const form = useForm({ secret: '' });
 
     return (
         <Panel
-            title={tc('console.rotate_c3613b17')}
+            title={consoleT('console.rotate_c3613b17')}
             description={
                 revoked
-                    ? tc('console.this_secret_is_revoked_it_can_no_longer_be_r_cba2e557')
-                    : tc('console.replace_the_sealed_value_with_a_new_credenti_17b46d38')
+                    ? consoleText(
+                          'console.this_secret_is_revoked_it_can_no_longer_be_rotated_cba2e557',
+                      )
+                    : consoleText(
+                          'console.replace_the_sealed_value_with_a_new_credential_the_stor_17b46d38',
+                      )
             }
             action={
                 !revoked && !open ? (
                     <Button size="sm" className="shrink-0" onClick={() => setOpen(true)}>
-                        {tc('console.rotate_c3613b17')}
+                        {consoleT('console.rotate_c3613b17')}
                     </Button>
                 ) : undefined
             }
@@ -161,7 +176,9 @@ function Rotate({ revoked, name, href }: { revoked: boolean; name: string; href:
                     }}
                 >
                     <Field
-                        label={tc('console.new_value_for_value0_120650f0', { value0: name })}
+                        label={consoleFinalText('console.new_value_for_part1_c99769be', {
+                            part1: name,
+                        })}
                         error={form.errors.secret}
                     >
                         <Textarea
@@ -170,7 +187,7 @@ function Rotate({ revoked, name, href }: { revoked: boolean; name: string; href:
                             className="mono"
                             spellCheck={false}
                             autoComplete="off"
-                            placeholder={tc('console.sk_live_2897b00f')}
+                            placeholder={consoleUiText('console.sk_live_2897b00f')}
                             value={form.data.secret}
                             onChange={(event) => form.setData('secret', event.target.value)}
                         />
@@ -187,16 +204,20 @@ function Rotate({ revoked, name, href }: { revoked: boolean; name: string; href:
                             className="text-sm font-medium"
                             style={{ color: 'var(--warning-strong)' }}
                         >
-                            {tc('console.this_is_the_only_time_the_value_is_handled_i_ccb3680f')}
+                            {consoleT(
+                                'console.this_is_the_only_time_the_value_is_handled_in_the_clear_ccb3680f',
+                            )}
                         </p>
                         <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                            {tc('console.it_replaces_the_sealed_value_on_rotate_and_i_cec701f1')}
+                            {consoleT(
+                                'console.it_replaces_the_sealed_value_on_rotate_and_is_never_sho_cec701f1',
+                            )}
                         </p>
                     </div>
 
                     <div className="flex items-center gap-2">
                         <Button type="submit" variant="primary" size="sm" loading={form.processing}>
-                            {tc('console.rotate_c3613b17')}
+                            {consoleT('console.rotate_c3613b17')}
                         </Button>
                         <Button
                             type="button"
@@ -206,7 +227,7 @@ function Rotate({ revoked, name, href }: { revoked: boolean; name: string; href:
                                 setOpen(false);
                             }}
                         >
-                            {tc('console.cancel_19766ed6')}
+                            {consoleT('console.cancel_19766ed6')}
                         </Button>
                     </div>
                 </form>
@@ -224,15 +245,18 @@ function Rotate({ revoked, name, href }: { revoked: boolean; name: string; href:
  * read as "who has access".
  */
 function Grants({ revoked, grants, href }: { revoked: boolean; grants: Grant[]; href: string }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [revokingClient, setRevokingClient] = useState<Grant | null>(null);
     const form = useForm({ client: '' });
 
     return (
         <Panel
-            title={tc('console.client_grants_e42a14c7')}
-            description={tc('console.only_the_apps_listed_here_can_lease_this_sec_3afb49f2')}
+            title={consoleT('console.client_grants_e42a14c7')}
+            description={consoleT(
+                'console.only_the_apps_listed_here_can_lease_this_secret_everyth_3afb49f2',
+            )}
         >
             <div className="space-y-2">
                 {grants.length === 0 ? (
@@ -240,7 +264,9 @@ function Grants({ revoked, grants, href }: { revoked: boolean; grants: Grant[]; 
                         className="rounded-xl border p-4 text-sm"
                         style={{ borderColor: 'var(--border)', color: 'var(--muted-foreground)' }}
                     >
-                        {tc('console.no_clients_are_authorized_to_lease_this_secr_58c00826')}
+                        {consoleT(
+                            'console.no_clients_are_authorized_to_lease_this_secret_58c00826',
+                        )}
                     </p>
                 ) : (
                     grants.map((grant) => (
@@ -256,7 +282,7 @@ function Grants({ revoked, grants, href }: { revoked: boolean; grants: Grant[]; 
                                 className="shrink-0"
                                 onClick={() => setRevokingClient(grant)}
                             >
-                                {tc('console.revoke_87e6d00b')}
+                                {consoleT('console.revoke_87e6d00b')}
                             </Button>
                         </div>
                     ))
@@ -275,20 +301,20 @@ function Grants({ revoked, grants, href }: { revoked: boolean; grants: Grant[]; 
                     }}
                 >
                     <Field
-                        label={tc('console.authorize_a_client_24a03bcb')}
+                        label={consoleT('console.authorize_a_client_24a03bcb')}
                         className="flex-1"
                         error={form.errors.client}
                     >
                         <Input
                             name="client"
                             className="mono"
-                            placeholder={tc('console.agent_client_1_1b358275')}
+                            placeholder={consoleUiText('console.agent_client_1_1b358275')}
                             value={form.data.client}
                             onChange={(event) => form.setData('client', event.target.value)}
                         />
                     </Field>
                     <Button type="submit" variant="primary" size="sm" loading={form.processing}>
-                        {tc('console.add_grant_f8cf2049')}
+                        {consoleT('console.add_grant_f8cf2049')}
                     </Button>
                 </form>
             )}
@@ -297,8 +323,10 @@ function Grants({ revoked, grants, href }: { revoked: boolean; grants: Grant[]; 
                 open={revokingClient !== null}
                 onOpenChange={(open) => !open && setRevokingClient(null)}
                 name={revokingClient?.clientId ?? ''}
-                verb="Revoke"
-                consequence={tc('console.this_client_can_no_longer_lease_the_secret_a_c5728383')}
+                verb={consoleShortText('console.revoke_87e6d00b')}
+                consequence={consoleUiText(
+                    'console.this_client_can_no_longer_lease_the_secret_any_lease_it_c5728383',
+                )}
                 onConfirm={() => {
                     const grant = revokingClient;
                     setRevokingClient(null);

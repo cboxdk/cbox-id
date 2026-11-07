@@ -257,6 +257,11 @@ it('lands every Identity platform nav entry on a page titled the way the entry i
 
     foreach ($area?->pages() ?? [] as $page) {
         $response = $this->get(route($page->route));
+        if ($page->route === 'billing') {
+            $canonical = route('billing', ['organization' => $result->organization->id]);
+            $response->assertRedirect($canonical);
+            $response = $this->get($canonical);
+        }
 
         expect($response->status())->toBe(200, "identity-platform › {$page->label}: not reachable by its owner");
 

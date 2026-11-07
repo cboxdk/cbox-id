@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -52,8 +52,13 @@ export default function HooksIndex({
     createHref,
     organizationFilter,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -76,12 +81,15 @@ export default function HooksIndex({
         <>
             <PageHeader
                 help={help}
-                description={tc('console.your_endpoint_is_called_in_the_middle_of_an__ab67a6b0')}
+                description={consoleT(
+                    'console.your_endpoint_is_called_in_the_middle_of_an_operation_a_ab67a6b0',
+                )}
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>
-                            <Icon name="plus" className="w-4 h-4" />
-                            {tc('console.register_endpoint_1e7b84db')}
+                            {consoleRich('console._part1_register_endpoint_a3b45cbc', {
+                                part1: <Icon name="plus" className="w-4 h-4" />,
+                            })}
                         </Link>
                     </Button>
                 }
@@ -96,8 +104,8 @@ export default function HooksIndex({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder={tc('console.search_by_url_98cb36da')}
-                    aria-label={tc('console.search_hooks_1f85b0cc')}
+                    placeholder={consoleUiText('console.search_by_url_98cb36da')}
+                    aria-label={consoleT('console.search_hooks_1f85b0cc')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -107,11 +115,7 @@ export default function HooksIndex({
                     narrowed to nothing.
                 */}
                 <output className="sr-only">
-                    {pagination.total}{' '}
-                    {pagination.total === 1
-                        ? tc('console.hook_0648298b')
-                        : tc('console.hooks_a9fa9fda')}
-                    {tc('console.found_599e25a3')}
+                    {consoleRich('console.search_results_found', { count: pagination.total })}
                 </output>
             </div>
 
@@ -123,30 +127,39 @@ export default function HooksIndex({
                     search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={tc('console.no_hooks_match_value0_6f2388b4', { value0: search })}
-                            description={tc(
-                                'console.no_endpoint_url_matches_that_search_try_a_di_45378b36',
+                            title={consoleFinalText('console.no_hooks_match_part1_85b93364', {
+                                part1: search,
+                            })}
+                            description={consoleT(
+                                'console.no_endpoint_url_matches_that_search_try_a_different_one_45378b36',
                             )}
                         />
                     ) : (
                         <EmptyState
                             icon="webhooks"
                             equivalent="hooks.create"
-                            title={tc('console.no_hooks_registered_2469ba6e')}
+                            title={consoleT('console.no_hooks_registered_2469ba6e')}
                             help={help}
-                            description={tc(
-                                'console.most_integrations_want_webhooks_instead_thos_576be07b',
+                            description={consoleT(
+                                'console.most_integrations_want_webhooks_instead_those_run_after_576be07b',
                             )}
                             steps={[
-                                tc('console.register_the_endpoint_and_choose_the_hook_po_bd5f70f2'),
-                                tc('console.verify_the_signature_on_every_call_and_answe_5219ed81'),
-                                tc('console.fail_open_or_closed_deliberately_decide_now__daf1e068'),
+                                consoleRuntimeText(
+                                    'console.register_the_endpoint_and_choose_the_hook_point_it_answ_bd5f70f2',
+                                ),
+                                consoleRuntimeText(
+                                    'console.verify_the_signature_on_every_call_and_answer_within_th_5219ed81',
+                                ),
+                                consoleRuntimeText(
+                                    'console.fail_open_or_closed_deliberately_decide_now_what_should_daf1e068',
+                                ),
                             ]}
                             actions={
                                 <Button asChild variant="primary">
                                     <Link href={createHref}>
-                                        <Icon name="plus" className="w-4 h-4" />
-                                        {tc('console.register_endpoint_1e7b84db')}
+                                        {consoleRich('console._part1_register_endpoint_a3b45cbc', {
+                                            part1: <Icon name="plus" className="w-4 h-4" />,
+                                        })}
                                     </Link>
                                 </Button>
                             }
@@ -178,7 +191,10 @@ export default function HooksIndex({
                                         </span>
                                     </Tooltip>
                                     <Badge>
-                                        {hook.owner ?? tc('console.all_organizations_e3002b23')}
+                                        {hook.owner ??
+                                            consoleRuntimeText(
+                                                'console.all_organizations_e3002b23',
+                                            )}
                                     </Badge>
                                 </div>
                                 <p
@@ -191,8 +207,8 @@ export default function HooksIndex({
 
                             <Pill tone={hook.active ? 'success' : 'warning'}>
                                 {hook.active
-                                    ? tc('console.active_92340695')
-                                    : tc('console.paused_e159b061')}
+                                    ? consoleText('console.active_92340695')
+                                    : consoleText('console.paused_e159b061')}
                             </Pill>
 
                             <Icon
@@ -207,8 +223,6 @@ export default function HooksIndex({
 
             <Pagination
                 pagination={pagination}
-                noun={tc('console.hook_0648298b')}
-                pluralNoun={tc('console.hooks_a9fa9fda')}
                 href={(page) => listHref(search, page)}
             />
         </>

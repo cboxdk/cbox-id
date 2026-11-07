@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import { Badge } from './Badge';
@@ -45,8 +45,11 @@ export function AppApiKeyList({
     empty: { title: string; description: ReactNode };
     consequence: string;
 }) {
-    const { t: tc } = useUiTranslator();
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleT } = useConsoleTranslator();
     const [revoking, setRevoking] = useState<AppApiKey | null>(null);
 
     if (keys.length === 0) {
@@ -70,7 +73,7 @@ export function AppApiKeyList({
                             <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium break-words min-w-0">
                                     {key.name ??
-                                        tc('console.untitled_key_c8ec47ab', 'Untitled key')}
+                                        consoleRuntimeText('console.untitled_key_c8ec47ab')}
                                 </span>
                                 <KeyStatusPill lifecycle={key.lifecycle} />
                                 <Badge>{key.appName}</Badge>
@@ -79,7 +82,7 @@ export function AppApiKeyList({
                             {key.holder !== null && (
                                 <p className="text-sm break-words">
                                     <span className="sr-only">
-                                        {tc('console.held_by_0d69e27f', 'Held by ')}
+                                        {consoleT('console.held_by_c761bca7')}{' '}
                                     </span>
                                     {key.holder.name}
                                     {key.holder.email !== null &&
@@ -98,15 +101,14 @@ export function AppApiKeyList({
                                         className="text-xs"
                                         style={{ color: 'var(--muted-foreground)' }}
                                     >
-                                        {tc(
-                                            'console.no_permissions_it_identifies_its_holder_and__80cf422c',
-                                            'No permissions — it identifies its holder and nothing more',
+                                        {consoleT(
+                                            'console.no_permissions_it_identifies_its_holder_and_nothing_mor_80cf422c',
                                         )}
                                     </span>
                                 ) : (
                                     <>
                                         <span className="sr-only">
-                                            {tc('console.permissions_529e126c', 'Permissions: ')}
+                                            {consoleT('console.permissions_79e3c033')}
                                         </span>
                                         {key.permissions.map((permission) => (
                                             <Badge key={permission} className="mono">
@@ -125,10 +127,12 @@ export function AppApiKeyList({
                                 size="sm"
                                 variant="danger"
                                 className="shrink-0"
-                                aria-label={`Revoke ${key.name ?? key.prefix}`}
+                                aria-label={consoleFinalText('console.revoke_part1_a9e9c495', {
+                                    part1: key.name ?? key.prefix,
+                                })}
                                 onClick={() => setRevoking(key)}
                             >
-                                {tc('console.revoke_87e6d00b', 'Revoke')}
+                                {consoleT('console.revoke_87e6d00b')}
                             </Button>
                         )}
                     </li>
@@ -139,7 +143,7 @@ export function AppApiKeyList({
                 open={revoking !== null}
                 onOpenChange={(open) => setRevoking(open ? revoking : null)}
                 name={revoking?.name ?? revoking?.prefix ?? ''}
-                verb="Revoke"
+                verb={consoleShortText('console.revoke_87e6d00b')}
                 consequence={consequence}
                 onConfirm={() => {
                     const key = revoking;

@@ -68,7 +68,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
                         <div className="mt-9">{children}</div>
 
                         <div
-                            className="mt-10 flex items-center justify-between text-xs"
+                            className="mt-10 flex flex-wrap items-center justify-between gap-3 text-xs"
                             style={{ color: 'var(--faint)' }}
                         >
                             <span className="inline-flex items-center gap-1.5">

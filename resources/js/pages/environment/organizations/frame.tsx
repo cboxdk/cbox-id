@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { EnvironmentReadOnly, useCanManageEnvironment } from '@/ui/EnvironmentReadOnly';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { useForm, usePage } from '@inertiajs/react';
 import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import type { OrganizationHub } from '@/types';
@@ -35,11 +36,13 @@ export function OrganizationFrame({
     hub: OrganizationHub;
     children: ReactNode;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleT } = useConsoleTranslator();
     // The link itself, on the flash channel and nowhere else: it admits its holder to the
     // organization's setup with no account, and page props are written into the history
     // entry, where it would be retrievable by pressing Back.
+    const canManage = useCanManageEnvironment();
     const portalUrl = usePage().flash.portalUrl;
     const [linking, setLinking] = useState(false);
 
@@ -49,7 +52,10 @@ export function OrganizationFrame({
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={hub.indexHref} label={tc('console.organizations_2730183d')} />
+                <Breadcrumb
+                    href={hub.indexHref}
+                    label={consoleT('console.organizations_2730183d')}
+                />
                 <div className="mt-2 flex items-start justify-between gap-3 flex-wrap">
                     <div style={{ minWidth: 0 }}>
                         <div className="flex items-center gap-3 flex-wrap">
@@ -69,14 +75,19 @@ export function OrganizationFrame({
                             </span>
                             <CopyButton
                                 value={hub.id}
-                                label={tc('console.copy_organization_id_320d9999')}
+                                label={consoleT('console.copy_organization_id_320d9999')}
                             />
                         </div>
                     </div>
 
-                    <Button variant="primary" size="sm" onClick={() => setLinking(true)}>
+                    <Button
+                        disabled={!canManage}
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setLinking(true)}
+                    >
                         <Icon name="external" className="w-4 h-4" />
-                        {tc('console.ux_invite_it')}
+                        {consoleT('console.ux_invite_it')}
                     </Button>
                 </div>
             </div>
@@ -86,27 +97,31 @@ export function OrganizationFrame({
             <div>
                 <LinkTabs
                     tabs={hub.tabs}
-                    label={tc('console.value0_pages_e0b5cf6d', { value0: hub.name })}
+                    label={consoleFinalText('console._part1_pages_e37b5db1', { part1: hub.name })}
                 />
+                {/*
+                    The shown page's group, as a second row — Members beside its pending
+                    Invitations, the two audit logs, Settings' four pages. Fourteen tabs in
+                    one row ran off the edge of a laptop screen; nine tabs and a row for the
+                    group fit.
+                */}
                 <LinkTabs
                     tabs={hub.subTabs}
-                    label={tc('console.value0_pages_e0b5cf6d', {
-                        value0: hub.tabs.find((tab) => tab.current)?.label ?? hub.name,
+                    label={consoleFinalText('console._part1_pages_e37b5db1', {
+                        part1: hub.tabs.find((tab) => tab.current)?.label ?? hub.name,
                     })}
                     variant="sub"
                 />
             </div>
 
-            {children}
+            <EnvironmentReadOnly>{children}</EnvironmentReadOnly>
 
-            {linking && (
-                <PortalLinkDialog
-                    open={linking}
-                    onOpenChange={setLinking}
-                    name={hub.name}
-                    link={hub.portalLink}
-                />
-            )}
+            <PortalLinkDialog
+                open={linking}
+                onOpenChange={setLinking}
+                name={hub.name}
+                link={hub.portalLink}
+            />
         </div>
     );
 }
@@ -131,7 +146,7 @@ function PortalLinkDialog({
     name: string;
     link: OrganizationHub['portalLink'];
 }) {
-    const { t: tc } = useTranslator();
+    const { t: tc } = useConsoleTranslator();
 
     const form = useForm({
         intents: link.intents
@@ -333,8 +348,7 @@ function PortalLinkDialog({
 
 /** The link, the one render it is in — brought into view, because the button was above it. */
 function PortalLinkRevealed({ url }: { url: string }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const card = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -353,10 +367,12 @@ function PortalLinkRevealed({ url }: { url: string }) {
             }}
         >
             <p className="text-sm font-semibold">
-                {tc('console.setup_link_for_their_it_admin_8c06f675')}
+                {consoleT('console.setup_link_for_their_it_admin_8c06f675')}
             </p>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                {tc('console.send_this_single_use_link_to_whoever_runs_th_ecdd3fd5')}
+                {consoleT(
+                    'console.send_this_single_use_link_to_whoever_runs_their_identit_ecdd3fd5',
+                )}
             </p>
             <div className="mt-3 flex items-start gap-2">
                 <code

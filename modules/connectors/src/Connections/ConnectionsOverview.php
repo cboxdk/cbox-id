@@ -386,7 +386,7 @@ class ConnectionsOverview
                 id: $model->id,
                 name: $model->name,
                 status: $model->enabled ? 'active' : 'paused',
-                target: LogStreamController::DESTINATIONS[$model->destination->value],
+                target: LogStreamController::destinations()[$model->destination->value],
                 organizationId: $model->organization_id,
                 lastActivityAt: self::latest($model->last_success_at, $model->last_failure_at),
                 signal: match (true) {

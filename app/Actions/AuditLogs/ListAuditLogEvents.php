@@ -7,6 +7,7 @@ namespace App\Actions\AuditLogs;
 use App\Http\Resources\Environment\AuditLogEventResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -54,7 +55,7 @@ final class ListAuditLogEvents implements Action
         $cursor = $context->nullableString('after');
 
         if ($cursor !== null && ! AuditLogQuery::validCursor($cursor)) {
-            throw ActionRefused::because('invalid_cursor', 'after must be a next_cursor this list returned.', 'after');
+            throw ActionRefused::because('invalid_cursor', new ActionMessage('console.after_must_be_a_next_cursor_this_list_returned_a1483c90'), 'after');
         }
 
         $page = AuditLogQuery::page($filters, $limit, $cursor, $context->string('order') !== 'asc');

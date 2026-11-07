@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Platform\Actions\Idempotency\IdempotencyRecord;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
+use App\Platform\NativeProduct\NativeEnvironmentAccess;
+use App\Platform\NativeProduct\NativeProductMembers;
 use App\Platform\OrganizationActivity;
 use App\Platform\Sudo;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -183,8 +185,8 @@ it('answers 404 for another workspace\'s ids, whatever the endpoint', function (
     $this->withToken($agent)->postJson('/api/v1/workspace/environments', ['name' => 'X', 'project_id' => $theirs['project']->id])->assertNotFound();
     $this->withToken($agent)->postJson("/api/v1/workspace/environments/{$theirs['environment']->id}/keys", ['name' => 'X', 'scopes' => ['users:read']])->assertNotFound();
     $this->withToken($agent)->deleteJson("/api/v1/workspace/keys/{$theirKey->key->id}")->assertNotFound();
-    $this->withToken($agent)->patchJson("/api/v1/workspace/members/{$theirMember->id}/role", ['role' => 'viewer'])->assertNotFound();
-    $this->withToken($agent)->deleteJson("/api/v1/workspace/members/{$theirMember->id}")->assertNotFound();
+    $this->withToken($agent)->patchJson("/api/v1/workspace/members/{$theirMember->id}/role", ['roles' => ['viewer'], 'roles_version' => str_repeat('0', 64)])->assertNotFound();
+    $this->withToken($agent)->deleteJson("/api/v1/workspace/members/{$theirMember->id}", ['roles_version' => str_repeat('0', 64)])->assertNotFound();
 
     expect($theirKey->key->fresh()?->revoked_at)->toBeNull()
         ->and($theirs['project']->fresh()?->name)->toBe('Acme');
@@ -268,35 +270,36 @@ it('runs the team from the API as the console does, recorded as the key', functi
         return app(Memberships::class)->add($workspace->id, $subject->id, MembershipRole::Developer);
     });
 
-    $this->withToken($agent)->patchJson("/api/v1/workspace/members/{$member->id}/role", ['role' => 'viewer'])
-        ->assertOk()->assertJsonPath('data.role', 'viewer');
+    $this->withToken($agent)->patchJson("/api/v1/workspace/members/{$member->id}/role", ['roles' => ['viewer'], 'roles_version' => app(NativeProductMembers::class)->access($member)['roles_version']])
+        ->assertOk()->assertJsonPath('data.roles', ['viewer'])->assertJsonPath('data.role', 'developer');
 
     $this->withToken($agent)->putJson("/api/v1/workspace/members/{$member->id}/access", [
         'all_environments' => false,
         'environment_ids' => [$account['environment']->id],
+        'environment_access_version' => app(NativeEnvironmentAccess::class)->version($member),
     ])->assertOk()->assertJsonPath('data.all_environments', false);
 
     // The owner is changed only by a transfer, and a key never transfers it.
-    $this->withToken($agent)->patchJson("/api/v1/workspace/members/{$account['member']->id}/role", ['role' => 'viewer'])
+    $this->withToken($agent)->patchJson("/api/v1/workspace/members/{$account['member']->id}/role", ['roles' => ['viewer'], 'roles_version' => str_repeat('0', 64)])
         ->assertUnprocessable()->assertJsonPath('error', 'not_manageable');
     $this->withToken($agent)->postJson("/api/v1/workspace/members/{$member->id}/transfer-ownership")
-        ->assertForbidden()->assertJsonPath('error', 'owner_only');
+        ->assertForbidden()->assertJsonPath('error', 'forbidden');
 
-    $this->withToken($agent)->deleteJson("/api/v1/workspace/members/{$member->id}")->assertNoContent();
+    $this->withToken($agent)->deleteJson("/api/v1/workspace/members/{$member->id}", ['roles_version' => app(NativeProductMembers::class)->access($member)['roles_version']])->assertNoContent();
 
-    foreach (['organization.member_role_changed', 'organization.member_removed'] as $action) {
+    foreach (['member.app_roles_changed'] as $action) {
         $entry = workspaceLog($workspace->id, $action)[0] ?? null;
 
         expect($entry)->not->toBeNull()
             ->and($entry->actor_type)->toBe(ActorType::Service)
             ->and($entry->actor_id)->toBe($agentId)
-            ->and($entry->target_id)->toBe($member->id);
+            ->and($entry->target_id)->toBe($member->user_id);
     }
 });
 
 it('renames the workspace, and records it once', function (): void {
     $workspace = provisionAccount()['organization'];
-    $agent = workspaceKey($workspace, MembershipRole::Admin, ['settings:write', 'workspace:read']);
+    $agent = workspaceKey($workspace, MembershipRole::Owner, ['settings:write', 'workspace:read']);
 
     $this->withToken($agent)->patchJson('/api/v1/workspace', ['name' => 'Acme Group'])
         ->assertOk()->assertJsonPath('data.name', 'Acme Group');
@@ -445,14 +448,17 @@ it('revokes, with a workspace key, every environment key it minted and their own
         ->toHaveCount(2);
 });
 
-it('does not let a workspace key choose its environment allowance', function (): void {
+it('enforces the manually assigned environment ceiling for workspace keys', function (): void {
     $workspace = provisionAccount()['organization'];
+    grantProductEnvironmentAllowance($workspace->id, 2);
     $agent = workspaceKey($workspace);
     $this->withToken($agent)->postJson('/api/v1/workspace/projects', ['name' => 'Untrusted limit', 'environment_limit' => 100])
-        ->assertCreated()->assertJsonPath('data.environment_limit', 2);
-    config(['cbox-id.entitlements.mode' => 'metered']);
-    $this->withToken($agent)->postJson('/api/v1/workspace/projects', ['name' => 'Needs a plan', 'environment_limit' => 100])
-        ->assertCreated()->assertJsonPath('data.environment_limit', 0);
+        ->assertUnprocessable()->assertJsonPath('error', 'environment_limit_reached');
+    $this->withToken($agent)->postJson('/api/v1/workspace/projects', ['name' => 'Lower limit', 'environment_limit' => 1])
+        ->assertCreated()->assertJsonPath('data.environment_limit', 1);
+    grantProductEnvironmentAllowance($workspace->id, 0);
+    $this->withToken($agent)->postJson('/api/v1/workspace/projects', ['name' => 'Revoked access'])
+        ->assertUnprocessable()->assertJsonPath('error', 'environment_limit_reached');
 });
 
 it('keeps inclusive project admission behind the early access waitlist', function (): void {
@@ -467,10 +473,13 @@ it('keeps inclusive project admission behind the early access waitlist', functio
         ->assertForbidden();
 });
 
-it('creates inclusive projects with a server-owned allowance until a plan is chosen', function (): void {
+it('does not let inclusive identity defaults raise the centrally assigned environment ceiling', function (): void {
     $workspace = provisionAccount()['organization'];
     $agent = workspaceKey($workspace);
-    config(['cbox-id.entitlements.mode' => 'inclusive', 'billing.require_subscription' => true]);
+    config(['cbox-id.entitlements.mode' => 'inclusive']);
+    grantProductEnvironmentAllowance($workspace->id, 3);
     $this->withToken($agent)->postJson('/api/v1/workspace/projects', ['name' => 'Inclusive', 'environment_limit' => 100])
-        ->assertCreated()->assertJsonPath('data.environment_limit', 0);
+        ->assertUnprocessable()->assertJsonPath('error', 'environment_limit_reached');
+    $this->withToken($agent)->postJson('/api/v1/workspace/projects', ['name' => 'Within allowance'])
+        ->assertCreated()->assertJsonPath('data.environment_limit', 3);
 });

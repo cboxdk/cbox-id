@@ -22,11 +22,9 @@ use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveConnectionRequest;
 use App\Http\Requests\Console\StoreConnectionRequest;
 use App\Platform\Console\ConsolePlane;
-use App\Platform\Console\Vocabulary;
 use App\Platform\Entitlements;
 use App\Platform\Enums\PortalIntent;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use App\Platform\Sso\CertificateExpiryAlerts;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -104,7 +102,7 @@ final readonly class ConnectionController extends ConsoleController
 
         $owners = $this->scope->organizationNames($connections->pluck('organization_id'));
 
-        return $this->page('console/connections/index', ConsoleStrings::text(Vocabulary::ENTERPRISE_SSO), [
+        return $this->page('console/connections/index', __('console.enterprise_sso_0f8d7e8e'), [
             'help' => HelpProps::for(HelpTopic::SingleSignOn),
             'connections' => $connections->getCollection()->map(fn (Connection $connection): array => [
                 'id' => $connection->id,
@@ -174,7 +172,7 @@ final readonly class ConnectionController extends ConsoleController
 
         $organizationId = $this->scope->requireOrganizationId();
 
-        return $this->page('console/domains', ConsoleStrings::text(Vocabulary::DOMAINS), [
+        return $this->page('console/domains', __('console.domains_ced67718'), [
             'help' => HelpProps::for(HelpTopic::Domains),
             'mayAdminister' => $this->scope->mayAdminister(),
             // The writes are Enterprise SSO's, gated on the same plan feature.
@@ -290,7 +288,7 @@ final readonly class ConnectionController extends ConsoleController
 
         return ($result->payload['verified'] ?? false) === true
             ? back()->with('status', __('console.domain_verified_11272c96'))
-            : back()->with('error', __('console.we_couldn_t_find_the_txt_record_yet_dns_can__0f4e9bce'));
+            : back()->with('error', __('console.we_couldn_t_find_the_txt_record_yet_dns_can_take_a_few_0f4e9bce'));
     }
 
     /** Toggle the capture gate on a VERIFIED domain this organization owns. */
@@ -314,9 +312,7 @@ final readonly class ConnectionController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', $record->capture
-            ? __('console.capture_disabled_c3e9f59f')
-            : __('console.capture_enabled_matching_users_must_use_sso_2b2c171a'));
+        return back()->with('status', $record->capture ? __('console.capture_disabled_c3e9f59f') : __('console.capture_enabled_matching_users_must_use_sso_2b2c171a'));
     }
 
     public function removeDomain(string $domain): RedirectResponse
@@ -375,7 +371,7 @@ final readonly class ConnectionController extends ConsoleController
 
         $this->inertia->flash('metadata', $result->payload);
 
-        return back()->with('status', __('console.metadata_imported_review_the_fields_and_crea_b6b3fc21'));
+        return back()->with('status', __('console.metadata_imported_review_the_fields_and_create_the_conn_b6b3fc21'));
     }
 
     public function store(StoreConnectionRequest $request): RedirectResponse
@@ -597,7 +593,7 @@ final readonly class ConnectionController extends ConsoleController
         // page — writing them from here would let a control labelled "require SSO for this
         // organization" quietly change the rule for every tenant too.
         if ($model->organization_id === null) {
-            return back()->with('error', __('console.this_connection_belongs_to_the_environment_n_5e9a5366'));
+            return back()->with('error', __('console.this_connection_belongs_to_the_environment_not_to_one_o_5e9a5366'));
         }
 
         $result = $this->act(RequireSso::class, ['id' => $model->id, 'organization_id' => $this->routeOrganizationId()]);

@@ -6,11 +6,13 @@ namespace App\Actions\SignIn;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Enterprise\EnterpriseReach;
@@ -85,7 +87,7 @@ final readonly class EnableSocialProvider implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $template = SocialProviderFields::loginTemplate($context->string('provider'))
-            ?? throw ActionRefused::because('unknown_provider', 'That provider is not one that can be offered for sign-in.', 'provider');
+            ?? throw ActionRefused::because('unknown_provider', new ActionMessage('console.that_provider_is_not_one_that_can_be_offered_for_sign_i_34c03a7a'), 'provider');
 
         // Apple hands out key material instead of a client secret; demanding one anyway made
         // the one provider shaped specially the one nobody could finish enabling.
@@ -93,7 +95,7 @@ final readonly class EnableSocialProvider implements Action
         $secret = trim($context->string('client_secret'));
 
         if ($secretRequired && $secret === '') {
-            throw ActionRefused::because('client_secret_required', 'The client secret is required.', 'client_secret');
+            throw ActionRefused::because('client_secret_required', new ActionMessage('console.the_client_secret_is_required_39779684'), 'client_secret');
         }
 
         $values = SocialProviderFields::parameters($context, $template);
@@ -113,7 +115,7 @@ final readonly class EnableSocialProvider implements Action
             ->exists();
 
         if ($existing) {
-            throw ActionRefused::because('already_enabled', $template->name.' is already set up '.($organizationId === null ? 'for the environment' : 'for this organization').'. Change its credentials, or remove it first.', 'client_id');
+            throw ActionRefused::because('already_enabled', new ActionMessage($organizationId === null ? 'console._part1_is_already_set_up_for_the_environment_change_its_57ef8e6e' : 'console._part1_is_already_set_up_for_this_organization_change_i_dea89857', ['part1' => $template->name]), 'client_id');
         }
 
         $config = [
@@ -138,7 +140,7 @@ final readonly class EnableSocialProvider implements Action
                 id: $context->nullableString('reserved_id'),
             );
         } catch (InvalidAssertion $e) {
-            throw ActionRefused::because('invalid_provider', $e->getMessage(), $context->nullableString('reserved_id') === null ? 'client_id' : 'reserved_id');
+            throw ActionRefused::because('invalid_provider', FrameworkMessage::from($e), $context->nullableString('reserved_id') === null ? 'client_id' : 'reserved_id');
         }
 
         $this->connections->activate($organizationId, $connection->id);

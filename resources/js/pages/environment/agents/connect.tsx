@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import type { Translator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -41,12 +42,12 @@ interface WorkspaceProps {
     workspaceKeysHref: string | null;
 }
 
-const CLIENTS: { id: ClientId; label: string }[] = [
+const CLIENTS = (t: Translator['t']): { id: ClientId; label: string }[] => [
     { id: 'claude-code', label: 'Claude Code' },
     { id: 'claude-desktop', label: 'Claude Desktop' },
     { id: 'cursor', label: 'Cursor' },
     { id: 'vscode', label: 'VS Code' },
-    { id: 'generic', label: 'Generic' },
+    { id: 'generic', label: t('console.generic_0228c6d4') },
 ];
 
 export default function ConnectAgent({
@@ -59,26 +60,29 @@ export default function ConnectAgent({
     urls,
     help,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleOptionText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [client, setClient] = useState<ClientId>('claude-code');
 
     return (
         <>
             <PageHeader
                 help={help}
-                description={tc('console.this_environment_serves_an_mcp_server_next_t_8094252a')}
+                description={consoleT(
+                    'console.this_environment_serves_an_mcp_server_next_to_its_rest_8094252a',
+                )}
                 actions={
                     <Button asChild size="sm" variant="primary" icon="plus">
                         <Link href={urls.createAgent}>
-                            {tc('console.create_a_key_for_this_agent_f16f18d7')}
+                            {consoleT('console.create_a_key_for_this_agent_f16f18d7')}
                         </Link>
                     </Button>
                 }
             />
 
             <div className="mt-6 space-y-6" style={{ maxWidth: '52rem' }}>
-                <Panel title={tc('console.mcp_server_d938c816')}>
+                <Panel title={consoleT('console.mcp_server_d938c816')}>
                     <div className="flex items-center gap-2">
                         <code
                             className="mono text-sm break-all flex-1 rounded-lg px-3 py-2.5"
@@ -86,22 +90,26 @@ export default function ConnectAgent({
                         >
                             {mcpUrl}
                         </code>
-                        <CopyButton value={mcpUrl} label={tc('console.copy_url_b26d1037')} />
+                        <CopyButton value={mcpUrl} label={consoleT('console.copy_url_b26d1037')} />
                     </div>
                     <p className="mt-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        {tc('console.streamable_http_every_request_carries_006a13fe')}{' '}
-                        <span className="mono">
-                            {tc('console.authorization_bearer_cbid_env_4fde5a9b')}
-                        </span>
-                        {tc('console.a_management_key_of_this_environment_fbaf8743')}
+                        {consoleRich(
+                            'console.streamable_http_every_request_carries_part1_part2_a_man_6348600d',
+                            {
+                                part1: ' ',
+                                part2: (
+                                    <span className="mono">Authorization: Bearer cbid_env_…</span>
+                                ),
+                            },
+                        )}
                     </p>
                 </Panel>
 
-                <Panel title={tc('console.set_up_your_client_facf6955')}>
+                <Panel title={consoleT('console.set_up_your_client_facf6955')}>
                     <Tabs
                         value={client}
                         onValueChange={(next) => setClient(next as ClientId)}
-                        label={tc('console.mcp_client_c6f98ebe')}
+                        label={consoleT('console.mcp_client_c6f98ebe')}
                         panels={
                             <div className="pt-4">
                                 <TabPanel value="claude-code">
@@ -109,14 +117,16 @@ export default function ConnectAgent({
                                         <Snippet snippet={claudeCode(mcpUrl)} />
                                         <div>
                                             <p className="text-sm font-medium">
-                                                {tc('console.share_it_with_your_team_474083cd')}
+                                                {consoleT(
+                                                    'console.share_it_with_your_team_474083cd',
+                                                )}
                                             </p>
                                             <p
                                                 className="text-xs mt-0.5"
                                                 style={{ color: 'var(--muted-foreground)' }}
                                             >
-                                                {tc(
-                                                    'console.commit_this_file_and_give_each_person_their__f23e11a2',
+                                                {consoleT(
+                                                    'console.commit_this_file_and_give_each_person_their_own_key_in_f23e11a2',
                                                 )}
                                             </p>
                                             <div className="mt-2">
@@ -139,8 +149,8 @@ export default function ConnectAgent({
                                             className="text-xs"
                                             style={{ color: 'var(--muted-foreground)' }}
                                         >
-                                            {tc(
-                                                'console.vs_code_asks_for_the_key_the_first_time_and__e11c90d5',
+                                            {consoleT(
+                                                'console.vs_code_asks_for_the_key_the_first_time_and_keeps_it_in_e11c90d5',
                                             )}
                                         </p>
                                     </div>
@@ -158,7 +168,7 @@ export default function ConnectAgent({
                             </div>
                         }
                     >
-                        {CLIENTS.map((option) => (
+                        {CLIENTS(consoleOptionText).map((option) => (
                             <Tab key={option.id} value={option.id}>
                                 {option.label}
                             </Tab>
@@ -168,15 +178,18 @@ export default function ConnectAgent({
 
                 {workspace && <WorkspaceConnection workspace={workspace} />}
 
-                <Panel title={tc('console.for_developers_6f79cf5c')}>
+                <Panel title={consoleT('console.for_developers_6f79cf5c')}>
                     <dl className="grid gap-3 text-sm">
                         <Endpoint
-                            label={tc('console.resource_metadata_rfc_9728_54cff8ab')}
+                            label={consoleT('console.resource_metadata_rfc_9728_54cff8ab')}
                             value={metadataUrl}
                         />
-                        <Endpoint label="REST API" value={restBaseUrl} />
                         <Endpoint
-                            label={tc('console.openapi_cf2c9e21')}
+                            label={consoleT('console.rest_api_41a52587')}
+                            value={restBaseUrl}
+                        />
+                        <Endpoint
+                            label={consoleT('console.openapi_cf2c9e21')}
                             value={openApiUrl}
                             external
                         />
@@ -184,11 +197,14 @@ export default function ConnectAgent({
                 </Panel>
 
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    {tc('console.already_have_a_key_b399339b')}{' '}
-                    <Link href={urls.agents} style={{ color: 'var(--primary)' }}>
-                        {tc('console.see_every_agent_and_what_it_can_do_d10856a4')}
-                    </Link>
-                    .
+                    {consoleRich('console.already_have_a_key_part1_part2_190f7234', {
+                        part1: ' ',
+                        part2: (
+                            <Link href={urls.agents} style={{ color: 'var(--primary)' }}>
+                                {consoleT('console.see_every_agent_and_what_it_can_do_d10856a4')}
+                            </Link>
+                        ),
+                    })}
                 </p>
             </div>
         </>
@@ -196,8 +212,7 @@ export default function ConnectAgent({
 }
 
 function Snippet({ snippet }: { snippet: ClientSnippet }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <div>
             <p className="label">{snippet.where}</p>
@@ -221,7 +236,7 @@ function Snippet({ snippet }: { snippet: ClientSnippet }) {
                     <CopyButton
                         value={snippet.code}
                         size="sm"
-                        label={tc('console.copy_e21f935f')}
+                        label={consoleT('console.copy_e21f935f')}
                     />
                 </div>
             </div>
@@ -234,16 +249,18 @@ function Snippet({ snippet }: { snippet: ClientSnippet }) {
  * when the server says the MCP resource accepts it; until then it is named, not offered.
  */
 function SignInOption({ available, mcpUrl }: { available: boolean; mcpUrl: string }) {
-    const { t: tc } = useTranslator();
-
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     if (available) {
         return (
             <div>
                 <p className="text-sm font-medium">
-                    {tc('console.or_sign_in_with_an_account_of_this_environme_5aaaebd6')}
+                    {consoleT('console.or_sign_in_with_an_account_of_this_environment_5aaaebd6')}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
-                    {tc('console.for_one_of_this_environment_s_own_people_an__1c327ded')}
+                    {consoleT(
+                        'console.for_one_of_this_environment_s_own_people_an_organizatio_1c327ded',
+                    )}
                 </p>
                 <div className="mt-2">
                     <Snippet snippet={claudeCodeOAuth(mcpUrl)} />
@@ -260,11 +277,14 @@ function SignInOption({ available, mcpUrl }: { available: boolean; mcpUrl: strin
             <Icon name="user" className="w-4 h-4 mt-0.5 shrink-0" />
             <div>
                 <p className="text-sm font-medium flex items-center gap-2">
-                    {tc('console.sign_in_with_your_account_15369047')}
-                    <Badge>{tc('console.coming_soon_4f7d6401')}</Badge>
+                    {consoleRich('console.sign_in_with_your_account_part1_5fae887f', {
+                        part1: <Badge>{consoleT('console.coming_soon_4f7d6401')}</Badge>,
+                    })}
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
-                    {tc('console.the_agent_will_act_as_you_with_your_access_a_dd9fa746')}
+                    {consoleT(
+                        'console.the_agent_will_act_as_you_with_your_access_and_no_key_t_dd9fa746',
+                    )}
                 </p>
             </div>
         </div>
@@ -280,25 +300,32 @@ function SignInOption({ available, mcpUrl }: { available: boolean; mcpUrl: strin
  * client needs nothing but the URL. The cbox CLI and a workspace key are the alternatives.
  */
 function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleNestedText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
-        <Panel title={tc('console.one_connection_for_your_whole_workspace_7b9b1116')}>
+        <Panel title={consoleT('console.one_connection_for_your_whole_workspace_7b9b1116')}>
             <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                {tc('console.connect_once_at_the_platform_root_instead_of_289076ee')}
-                <span className="mono">{tc('console.environment_ba528516')}</span>{' '}
-                {tc('console.argument_and_the_rest_api_a_d919155f')}
-                <span className="mono">{tc('console.cbox_environment_31e7430f')}</span>
-                {tc('console.header_naming_where_to_act_it_can_do_what_yo_a0fc3c07')}
+                {consoleRich(
+                    'console.connect_once_at_the_platform_root_instead_of_once_per_e_fbee6c88',
+                    {
+                        part1: <span className="mono">environment</span>,
+                        part2: ' ',
+                        part3: <span className="mono">Cbox-Environment</span>,
+                    },
+                )}
             </p>
             <div className="mt-4 space-y-5">
                 {workspace.oauth ? (
                     <div>
                         <p className="text-sm font-medium">
-                            {tc('console.add_it_to_claude_code_and_sign_in_fb82849c')}
+                            {consoleT('console.add_it_to_claude_code_and_sign_in_fb82849c')}
                         </p>
                         <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
-                            {tc('console.claude_code_opens_your_browser_to_sign_in_he_a86b6b5e')}
+                            {consoleT(
+                                'console.claude_code_opens_your_browser_to_sign_in_here_and_asks_a86b6b5e',
+                            )}
                         </p>
                         <div className="mt-2">
                             <Snippet snippet={claudeCodeOAuth(workspace.mcpUrl)} />
@@ -312,7 +339,7 @@ function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
                         <Icon name="user" className="w-4 h-4 mt-0.5 shrink-0" />
                         <div>
                             <p className="text-sm font-medium">
-                                {tc(
+                                {consoleT(
                                     'console.agents_signing_in_at_the_root_are_turned_off_080e7850',
                                 )}
                             </p>
@@ -320,8 +347,8 @@ function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
                                 className="text-xs mt-0.5"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                {tc(
-                                    'console.this_deployment_does_not_let_an_mcp_client_s_b8375ebb',
+                                {consoleT(
+                                    'console.this_deployment_does_not_let_an_mcp_client_sign_you_in_b8375ebb',
                                 )}
                             </p>
                         </div>
@@ -330,8 +357,8 @@ function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
                 <div>
                     <p className="text-sm font-medium">
                         {workspace.oauth
-                            ? tc('console.or_sign_the_cbox_cli_in_as_yourself_29d51963')
-                            : tc('console.sign_the_cbox_cli_in_as_yourself_722a3ec5')}
+                            ? consoleText('console.or_sign_the_cbox_cli_in_as_yourself_29d51963')
+                            : consoleText('console.sign_the_cbox_cli_in_as_yourself_722a3ec5')}
                     </p>
                     <div className="mt-2">
                         <Snippet snippet={cboxLogin(workspace.issuer)} />
@@ -339,18 +366,24 @@ function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
                 </div>
                 <div>
                     <p className="text-sm font-medium">
-                        {tc('console.or_give_an_agent_a_workspace_key_03647658')}
+                        {consoleT('console.or_give_an_agent_a_workspace_key_03647658')}
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
-                        {tc('console.a_workspace_key_reaches_the_workspace_itself_3df144e4')}{' '}
-                        {workspace.workspaceKeysHref === null ? (
-                            tc('console.keys_workspace_keys_6b727150')
-                        ) : (
-                            <a href={workspace.workspaceKeysHref}>
-                                {tc('console.keys_workspace_keys_6b727150')}
-                            </a>
-                        )}{' '}
-                        {tc('console.at_the_platform_root_3928bb9f')}
+                        {consoleRich(
+                            'console.a_workspace_key_reaches_the_workspace_itself_projects_e_28317ec8',
+                            {
+                                part1: ' ',
+                                part2:
+                                    workspace.workspaceKeysHref === null ? (
+                                        consoleNestedText('console.keys_workspace_keys_6b727150')
+                                    ) : (
+                                        <a href={workspace.workspaceKeysHref}>
+                                            {consoleT('console.keys_workspace_keys_6b727150')}
+                                        </a>
+                                    ),
+                                part3: ' ',
+                            },
+                        )}
                     </p>
                     <div className="mt-2">
                         <Snippet snippet={claudeCodeWorkspace(workspace.mcpUrl)} />
@@ -359,11 +392,11 @@ function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
             </div>
             <dl className="mt-5 grid gap-3 text-sm">
                 <Endpoint
-                    label={tc('console.mcp_server_platform_root_925c6860')}
+                    label={consoleT('console.mcp_server_platform_root_925c6860')}
                     value={workspace.mcpUrl}
                 />
                 <Endpoint
-                    label={tc('console.rest_api_platform_root_061582e3')}
+                    label={consoleT('console.rest_api_platform_root_061582e3')}
                     value={workspace.restBaseUrl}
                 />
             </dl>
@@ -380,8 +413,7 @@ function Endpoint({
     value: string;
     external?: boolean;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <div className="grid gap-1 sm:grid-cols-[14rem_1fr] sm:items-center">
             <dt style={{ color: 'var(--muted-foreground)' }}>{label}</dt>
@@ -403,7 +435,7 @@ function Endpoint({
                     value={value}
                     size="sm"
                     variant="ghost"
-                    label={tc('console.copy_e21f935f')}
+                    label={consoleT('console.copy_e21f935f')}
                 />
             </dd>
         </div>

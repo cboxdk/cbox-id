@@ -7,6 +7,8 @@ namespace App\Platform\Apps;
 use App\Http\Props\Console\ApiScopeGroupProps;
 use App\Http\Props\Console\ApiScopeOptionProps;
 use App\Http\Props\Console\AppAudienceProps;
+use App\Platform\Actions\ActionMessage;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\ScopeCatalog;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\Apis;
@@ -76,8 +78,8 @@ final readonly class AppScopes
                 name: $api->name,
                 identifier: $api->identifier,
                 owner: $api->organization_id === null
-                    ? 'This environment'
-                    : ($owners[$api->organization_id] ?? 'An organization'),
+                    ? __('console.projection_549c02688466')
+                    : ($owners[$api->organization_id] ?? __('console.projection_c46fba8e0bb7')),
                 scopes: $holdable,
             );
         }
@@ -187,7 +189,7 @@ final readonly class AppScopes
      * organization owns is not named, because naming it would tell this organization what
      * its neighbour runs.
      */
-    public function explain(ScopeNotGrantable $refused, ScopeHolder $holder): string
+    public function explain(ScopeNotGrantable $refused, ScopeHolder $holder): string|ActionMessage
     {
         $registered = $this->registeredAmong($holder, $refused->scopes);
         $sentences = [];
@@ -200,23 +202,23 @@ final readonly class AppScopes
             }
 
             if ($scope->api->organizationId !== null) {
-                $sentences[] = "\"{$key}\" belongs to an API another organization owns, and only that organization's apps may hold it.";
+                $sentences[] = new ActionMessage('console.projection_bf00193d22ca', ['scope' => $key]);
 
                 continue;
             }
 
             $name = $this->apis->find($scope->api->id)->name ?? $scope->api->identifier;
 
-            $sentences[] = "\"{$key}\" belongs to the {$name} API ({$scope->api->identifier}), which keeps it for this environment's own apps.";
+            $sentences[] = new ActionMessage('console.projection_bb4afb17f223', ['scope' => $key, 'name' => $name, 'identifier' => $scope->api->identifier]);
         }
 
         if ($sentences === []) {
-            return $refused->getMessage();
+            return FrameworkMessage::from($refused);
         }
 
-        return 'This app may not hold '.(count($sentences) === 1 ? 'that scope' : 'those scopes').'. '
-            .implode(' ', $sentences)
-            .' Remove '.(count($sentences) === 1 ? 'it' : 'them').', or ask the environment\'s administrators to let organizations\' apps request '.(count($sentences) === 1 ? 'it' : 'them').'.';
+        return new ActionMessage(count($sentences) === 1
+            ? 'console.projection_fa2d23938835'
+            : 'console.projection_a0d1246b29ea', ['reasons' => $sentences], ' ');
     }
 
     /**

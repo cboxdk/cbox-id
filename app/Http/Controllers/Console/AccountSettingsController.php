@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Console;
 use App\Actions\Workspace\UpdateWorkspaceSettings;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\RenameOrganizationRequest;
+use App\Platform\Console\WorkspaceLanding;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
@@ -28,8 +29,8 @@ final readonly class AccountSettingsController extends ConsoleController
     {
         $organization = $this->acting($organizations);
 
-        if ($organization === null || $this->scope->capabilities()?->canManageMembers() !== true) {
-            return to_route('projects');
+        if ($organization === null || $this->scope->capabilities()?->isOwner() !== true) {
+            return redirect()->to(app(WorkspaceLanding::class)->url());
         }
 
         return $this->page('console/account-settings', __('console.workspace_settings_5ebc5914'), [
@@ -43,7 +44,7 @@ final readonly class AccountSettingsController extends ConsoleController
         $organization = $this->acting($organizations);
 
         abort_if($organization === null, 403);
-        abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
+        abort_unless($this->scope->capabilities()?->isOwner() === true, 403);
 
         // Unchanged is not an act: no write, no line on the log, no "saved".
         if ($request->name() === $organization->name) {

@@ -6,6 +6,7 @@ namespace App\Actions\Workspace;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
@@ -58,6 +59,9 @@ final readonly class UpdateWorkspaceSettings implements Action
 
     public function handle(ActionContext $context): ActionResult
     {
+        if (InWorkspace::capabilities($context->principal)?->isOwner() !== true) {
+            throw new ActionRefused('forbidden', new ActionMessage('console.only_the_current_organization_owner_may_rename_it_228e8758'), 403);
+        }
         $workspaceId = InWorkspace::id($context->principal);
 
         $organization = $this->platformRoot->run(fn (): ?Organization => $this->organizations->find($workspaceId))
@@ -67,7 +71,7 @@ final readonly class UpdateWorkspaceSettings implements Action
         $to = trim($context->string('name'));
 
         if ($to === '') {
-            throw ActionRefused::because('validation_failed', 'The workspace needs a name.', 'name');
+            throw ActionRefused::because('validation_failed', new ActionMessage('console.the_workspace_needs_a_name_16e53b34'), 'name');
         }
 
         if ($to !== $from) {

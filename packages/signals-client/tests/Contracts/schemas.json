@@ -1,0 +1,3231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$defs": {
+    "Entity": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        }
+      },
+      "required": [
+        "namespace",
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "Event": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "data": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "schema_version",
+        "occurred_at",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "EventBatch": {
+      "type": "object",
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "events": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/$defs/Event"
+          }
+        }
+      },
+      "required": [
+        "source_id",
+        "events"
+      ],
+      "additionalProperties": false
+    },
+    "Receipt": {
+      "type": "object",
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "accepted_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 500
+        },
+        "accepted_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "operation_id",
+        "accepted_count",
+        "accepted_at"
+      ],
+      "additionalProperties": false
+    },
+    "Error": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "field_errors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "field": {
+                "type": "string",
+                "minLength": 1
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "field",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "retry_after": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "code",
+        "message",
+        "request_id"
+      ],
+      "additionalProperties": false
+    },
+    "EvaluationRequest": {
+      "type": "object",
+      "properties": {
+        "request_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subject": {
+          "$ref": "#/$defs/Entity"
+        },
+        "action": {
+          "const": "auth.login"
+        },
+        "context": {
+          "type": "object",
+          "properties": {
+            "device_id": {
+              "type": "string"
+            },
+            "ip": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "request_id",
+        "subject",
+        "action",
+        "context"
+      ],
+      "additionalProperties": false
+    },
+    "EvaluationSignal": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project": {
+          "type": "string",
+          "minLength": 1
+        },
+        "environment": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subject": {
+          "$ref": "#/$defs/Entity"
+        },
+        "detector_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detector_version": {
+          "type": "integer"
+        },
+        "mapping_version": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        },
+        "status": {
+          "enum": [
+            "active",
+            "resolved",
+            "expired"
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mode": {
+          "enum": [
+            "active",
+            "observe"
+          ]
+        },
+        "first_seen_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_seen_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "definition_hash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "configuration_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "data_quality": {
+          "enum": [
+            "warming_up",
+            "ready",
+            "insufficient_data",
+            "degraded",
+            "disabled",
+            "not_configured"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "revision",
+        "type",
+        "severity",
+        "reasons",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "Evaluation": {
+      "type": "object",
+      "properties": {
+        "evaluation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "evaluated",
+            "insufficient_data",
+            "degraded"
+          ]
+        },
+        "signals": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/EvaluationSignal"
+          }
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": {
+            "enum": [
+              "warming_up",
+              "ready",
+              "insufficient_data",
+              "degraded",
+              "disabled"
+            ]
+          }
+        },
+        "data_as_of": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "config_version": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "evaluation_id",
+        "status",
+        "signals",
+        "coverage",
+        "data_as_of",
+        "config_version"
+      ],
+      "additionalProperties": false
+    },
+    "Metric": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "number"
+        },
+        "unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "gauge",
+            "cumulative_counter",
+            "delta"
+          ]
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "interval_start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "interval_end": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "entity": {
+          "$ref": "#/$defs/Entity"
+        },
+        "dimensions": {
+          "type": "object",
+          "maxProperties": 16,
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 256
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "value",
+        "unit",
+        "kind",
+        "observed_at",
+        "entity",
+        "dimensions"
+      ],
+      "additionalProperties": false
+    },
+    "MetricBatch": {
+      "type": "object",
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "samples": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "items": {
+            "$ref": "#/$defs/Metric"
+          }
+        }
+      },
+      "required": [
+        "source_id",
+        "samples"
+      ],
+      "additionalProperties": false
+    },
+    "Expression": {
+      "type": "object",
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^\\$\\.[A-Za-z0-9_.-]+$",
+          "maxLength": 256
+        },
+        "constant": {
+          "type": "string"
+        },
+        "cast": {
+          "enum": [
+            "string",
+            "integer",
+            "boolean",
+            "timestamp"
+          ]
+        },
+        "enum": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "compare": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "enum": [
+                "integer",
+                "number",
+                "string",
+                "boolean",
+                "timestamp"
+              ]
+            },
+            "operator": {
+              "enum": [
+                "eq",
+                "ne",
+                "gt",
+                "gte",
+                "lt",
+                "lte"
+              ]
+            },
+            "value": {
+              "type": "string",
+              "maxLength": 256
+            }
+          },
+          "required": [
+            "type",
+            "operator",
+            "value"
+          ],
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "type": {
+                    "enum": [
+                      "string",
+                      "boolean"
+                    ]
+                  }
+                }
+              },
+              "then": {
+                "properties": {
+                  "operator": {
+                    "enum": [
+                      "eq",
+                      "ne"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      "required": [],
+      "additionalProperties": false,
+      "oneOf": [
+        {
+          "required": [
+            "path"
+          ],
+          "not": {
+            "required": [
+              "constant"
+            ]
+          }
+        },
+        {
+          "required": [
+            "constant"
+          ],
+          "not": {
+            "required": [
+              "path"
+            ]
+          }
+        }
+      ]
+    },
+    "EntityMapping": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "$ref": "#/$defs/Expression"
+        },
+        "type": {
+          "$ref": "#/$defs/Expression"
+        },
+        "id": {
+          "$ref": "#/$defs/Expression"
+        },
+        "tenant_id": {
+          "$ref": "#/$defs/Expression"
+        }
+      },
+      "required": [
+        "namespace",
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    },
+    "Mapping": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "event": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "observation": {
+          "enum": [
+            "access.attempt",
+            "identity.login",
+            "billing.payment",
+            "billing.refund",
+            "custom.category",
+            "custom.flag",
+            "custom.number",
+            "security.activity"
+          ]
+        },
+        "subject": {
+          "$ref": "#/$defs/EntityMapping"
+        },
+        "resource": {
+          "$ref": "#/$defs/EntityMapping"
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Expression"
+          }
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "event",
+        "schema_version",
+        "observation",
+        "subject",
+        "fields"
+      ],
+      "additionalProperties": false
+    },
+    "MappingPreviewRequest": {
+      "type": "object",
+      "properties": {
+        "mapping": {
+          "$ref": "#/$defs/Mapping"
+        },
+        "event": {
+          "$ref": "#/$defs/Event"
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "mapping",
+        "event",
+        "source_id"
+      ],
+      "additionalProperties": false
+    },
+    "Signal": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project": {
+          "type": "string",
+          "minLength": 1
+        },
+        "environment": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subject": {
+          "$ref": "#/$defs/Entity"
+        },
+        "detector_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detector_version": {
+          "type": "integer"
+        },
+        "mapping_version": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        },
+        "status": {
+          "enum": [
+            "active",
+            "resolved",
+            "expired"
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mode": {
+          "enum": [
+            "active",
+            "observe"
+          ]
+        },
+        "first_seen_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_seen_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "definition_hash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "configuration_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "data_quality": {
+          "enum": [
+            "warming_up",
+            "ready",
+            "insufficient_data",
+            "degraded",
+            "disabled",
+            "not_configured"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "project",
+        "environment",
+        "subject",
+        "detector_id",
+        "detector_version",
+        "mapping_version",
+        "type",
+        "severity",
+        "reasons",
+        "evidence",
+        "status",
+        "revision",
+        "mode",
+        "first_seen_at",
+        "last_seen_at",
+        "expires_at",
+        "definition_hash",
+        "configuration_revision"
+      ],
+      "additionalProperties": false
+    },
+    "Webhook": {
+      "type": "object",
+      "properties": {
+        "delivery_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "signal.created",
+            "signal.updated",
+            "signal.resolved",
+            "signal.expired"
+          ]
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "data": {
+          "$ref": "#/$defs/Signal"
+        }
+      },
+      "required": [
+        "delivery_id",
+        "type",
+        "occurred_at",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "Operation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "accepted",
+            "completed",
+            "failed"
+          ]
+        },
+        "accepted_count": {
+          "type": "integer"
+        },
+        "error_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReplayResult"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "status",
+        "accepted_count",
+        "error_code",
+        "result"
+      ],
+      "additionalProperties": false
+    },
+    "Evidence": {
+      "type": "object",
+      "properties": {
+        "measure": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {
+          "type": "number"
+        },
+        "baseline": {
+          "type": "number"
+        },
+        "occurrences": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "measure",
+        "value",
+        "occurrences"
+      ],
+      "additionalProperties": false
+    },
+    "SignalDetail": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project": {
+          "type": "string",
+          "minLength": 1
+        },
+        "environment": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subject": {
+          "$ref": "#/$defs/Entity"
+        },
+        "detector_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detector_version": {
+          "type": "integer"
+        },
+        "mapping_version": {
+          "type": "integer"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        },
+        "status": {
+          "enum": [
+            "active",
+            "resolved",
+            "expired"
+          ]
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mode": {
+          "enum": [
+            "active",
+            "observe"
+          ]
+        },
+        "first_seen_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "last_seen_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "definition_hash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "configuration_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "data_quality": {
+          "enum": [
+            "warming_up",
+            "ready",
+            "insufficient_data",
+            "degraded",
+            "disabled",
+            "not_configured"
+          ]
+        },
+        "revisions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SignalRevision"
+          }
+        },
+        "deliveries": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Delivery"
+          }
+        },
+        "history_limit": {
+          "const": 100
+        },
+        "recent_observations": {
+          "type": "array",
+          "maxItems": 16,
+          "items": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "string"
+              },
+              "event_id": {
+                "type": "string"
+              },
+              "occurred_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "observation_type": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "source",
+              "event_id",
+              "occurred_at",
+              "observation_type"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "project",
+        "environment",
+        "subject",
+        "detector_id",
+        "detector_version",
+        "mapping_version",
+        "type",
+        "severity",
+        "reasons",
+        "evidence",
+        "status",
+        "revision",
+        "mode",
+        "first_seen_at",
+        "last_seen_at",
+        "expires_at",
+        "definition_hash",
+        "configuration_revision",
+        "revisions",
+        "deliveries",
+        "history_limit"
+      ],
+      "additionalProperties": false
+    },
+    "SignalRevision": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "active",
+                "resolved",
+                "expired"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "revision",
+        "occurred_at",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "Delivery": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "destination_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "delivered",
+            "exhausted",
+            "configuration_error",
+            "disabled"
+          ]
+        },
+        "attempts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "last_status": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "next_attempt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "destination_id",
+        "revision",
+        "status",
+        "attempts",
+        "last_status",
+        "next_attempt"
+      ],
+      "additionalProperties": false
+    },
+    "SignalList": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Signal"
+          }
+        },
+        "next_cursor": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "data",
+        "next_cursor"
+      ],
+      "additionalProperties": false
+    },
+    "ReplayRequest": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "to": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "configuration_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mapping_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "detector_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "configuration_revision",
+        "mapping_version",
+        "detector_id"
+      ],
+      "additionalProperties": false
+    },
+    "Finding": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          }
+        }
+      },
+      "required": [
+        "type",
+        "severity",
+        "reasons",
+        "evidence"
+      ],
+      "additionalProperties": false
+    },
+    "DetectorResult": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "ready",
+            "warming_up",
+            "insufficient_data",
+            "degraded",
+            "disabled"
+          ]
+        },
+        "finding": {
+          "$ref": "#/$defs/Finding"
+        },
+        "data_as_of": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "status",
+        "data_as_of"
+      ],
+      "additionalProperties": false
+    },
+    "ReplayResult": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "const": "isolated"
+        },
+        "configuration_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mapping_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "detector_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observations": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "samples": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "results": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/DetectorResult"
+          }
+        },
+        "live_deliveries": {
+          "const": false
+        },
+        "billable_events": {
+          "const": 0
+        }
+      },
+      "required": [
+        "mode",
+        "configuration_revision",
+        "detector_id",
+        "results",
+        "live_deliveries",
+        "billable_events"
+      ],
+      "additionalProperties": false
+    },
+    "ErasureRequest": {
+      "type": "object",
+      "properties": {
+        "subject": {
+          "$ref": "#/$defs/Entity"
+        }
+      },
+      "required": [
+        "subject"
+      ],
+      "additionalProperties": false
+    },
+    "Erasure": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "enum": [
+            "pending",
+            "pending_history",
+            "pending_configuration",
+            "completed"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "status"
+      ],
+      "additionalProperties": false
+    },
+    "FieldError": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "field",
+        "message"
+      ],
+      "additionalProperties": false
+    },
+    "Observation": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "access.attempt",
+            "identity.login",
+            "billing.payment",
+            "billing.refund",
+            "custom.category",
+            "custom.flag",
+            "custom.number",
+            "security.activity"
+          ]
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "subject": {
+          "$ref": "#/$defs/Entity"
+        },
+        "resource": {
+          "$ref": "#/$defs/Entity"
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "mapping_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mapping_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mapping_hash": {
+          "type": "string",
+          "minLength": 1
+        },
+        "outcome": {
+          "type": "string",
+          "minLength": 1
+        },
+        "device": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payment_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "financial_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 1
+        },
+        "amount_minor": {
+          "type": "integer"
+        },
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "flag": {
+          "type": "boolean"
+        },
+        "number": {
+          "type": "number"
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "origin": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "causation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "id",
+        "source",
+        "type",
+        "version",
+        "subject",
+        "occurred_at",
+        "mapping_version",
+        "mapping_id",
+        "mapping_hash"
+      ],
+      "additionalProperties": false
+    },
+    "MappingPreview": {
+      "type": "object",
+      "properties": {
+        "observation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Observation"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "errors": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FieldError"
+          }
+        },
+        "compatible_detectors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "required": [
+        "observation",
+        "errors",
+        "compatible_detectors"
+      ],
+      "additionalProperties": false
+    },
+    "DetectorState": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "enum": [
+            "observe",
+            "active",
+            "disabled"
+          ]
+        },
+        "status": {
+          "enum": [
+            "ready",
+            "warming_up",
+            "insufficient_data",
+            "degraded",
+            "disabled"
+          ]
+        },
+        "entities": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "data_as_of": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "mode",
+        "status",
+        "entities",
+        "counts",
+        "data_as_of"
+      ],
+      "additionalProperties": false
+    },
+    "DetectorStates": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/DetectorState"
+          }
+        }
+      },
+      "required": [
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "ConnectionState": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cursor": {
+          "type": "string"
+        },
+        "last_success_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "last_attempt_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "latest_event_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "pending_operation": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "imported_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "import_started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "backfill_limit": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "id",
+        "cursor",
+        "last_success_at",
+        "last_attempt_at",
+        "latest_event_at",
+        "error_code",
+        "pending_operation",
+        "imported_count",
+        "import_started_at",
+        "backfill_limit"
+      ],
+      "additionalProperties": false
+    },
+    "ConnectionStates": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ConnectionState"
+          }
+        }
+      },
+      "required": [
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "RetentionState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "retention_days",
+        "operational_purged_before",
+        "history_purged_before",
+        "last_completed_at",
+        "next_run_at",
+        "status"
+      ],
+      "properties": {
+        "retention_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 395
+        },
+        "operational_purged_before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "history_purged_before": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "last_completed_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "next_run_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "ready",
+            "pending",
+            "pending_history"
+          ]
+        }
+      }
+    },
+    "ManagementMapping": {
+      "type": "object",
+      "properties": {
+        "event": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "observation": {
+          "enum": [
+            "access.attempt",
+            "identity.login",
+            "billing.payment",
+            "billing.refund",
+            "custom.category",
+            "custom.flag",
+            "custom.number",
+            "security.activity"
+          ]
+        },
+        "subject": {
+          "$ref": "#/$defs/EntityMapping"
+        },
+        "resource": {
+          "$ref": "#/$defs/EntityMapping"
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/Expression"
+          }
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "event",
+        "schema_version",
+        "observation",
+        "subject",
+        "fields"
+      ],
+      "additionalProperties": false
+    },
+    "ManagementSchema": {
+      "type": "object",
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event": {
+          "type": "string",
+          "minLength": 1
+        },
+        "schema_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "document": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "source_id",
+        "event",
+        "schema_version",
+        "document"
+      ],
+      "additionalProperties": false
+    },
+    "ManagementBinding": {
+      "type": "object",
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "from": {
+          "$ref": "#/$defs/Entity"
+        },
+        "to": {
+          "$ref": "#/$defs/Entity"
+        },
+        "provenance": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "source_id",
+        "from",
+        "to",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "ManagementDetector": {
+      "type": "object",
+      "properties": {
+        "template": {
+          "enum": [
+            "distinct_targets_on_denial",
+            "new_login_context",
+            "refund_rate_changed",
+            "memory_growth",
+            "count",
+            "distinct_count",
+            "rate",
+            "ratio",
+            "new_value",
+            "trend",
+            "security_match",
+            "security_count",
+            "security_sequence"
+          ]
+        },
+        "mapping_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mapping_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "window_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 86400
+        },
+        "threshold": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "minimum_samples": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "ttl_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2592000
+        },
+        "mode": {
+          "enum": [
+            "observe",
+            "active",
+            "disabled"
+          ]
+        },
+        "security": {
+          "$ref": "#/$defs/ManagementSecurityRule"
+        }
+      },
+      "required": [
+        "template",
+        "window_seconds",
+        "threshold",
+        "minimum_samples",
+        "ttl_seconds",
+        "mode"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "template": {
+                "enum": [
+                  "security_match",
+                  "security_count",
+                  "security_sequence"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "security"
+            ]
+          },
+          "else": {
+            "properties": {
+              "window_seconds": {
+                "minimum": 60
+              },
+              "minimum_samples": {
+                "minimum": 2
+              },
+              "ttl_seconds": {
+                "minimum": 60,
+                "maximum": 86400
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ManagementDestination": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "types": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "signal.created",
+              "signal.updated",
+              "signal.resolved",
+              "signal.expired",
+              "finding.created",
+              "incident.opened",
+              "incident.severity_changed",
+              "incident.resolved",
+              "source.stale",
+              "risk.updated"
+            ]
+          }
+        },
+        "services": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 190
+          },
+          "maxItems": 100
+        },
+        "tenant_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 190
+          },
+          "maxItems": 1000
+        },
+        "rule_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 190
+          },
+          "maxItems": 100
+        },
+        "severities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 190
+          },
+          "maxItems": 4
+        }
+      },
+      "required": [
+        "url",
+        "types"
+      ],
+      "additionalProperties": false
+    },
+    "ManagementConnection": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "enum": [
+            "events_api",
+            "id_events",
+            "billing_events",
+            "clickhouse_events",
+            "telemetry_metrics"
+          ]
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "paused": {
+          "type": "boolean"
+        },
+        "backfill_limit": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10000000
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "organization_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "event_types": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "database": {
+          "type": "string",
+          "minLength": 1
+        },
+        "view": {
+          "type": "string",
+          "minLength": 1
+        },
+        "telemetry_project": {
+          "type": "string",
+          "minLength": 1
+        },
+        "import_from": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "metric_bindings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "metric": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "enum": [
+                  "runtime.memory",
+                  "runtime.load"
+                ]
+              },
+              "unit": {
+                "enum": [
+                  "bytes",
+                  "1/s"
+                ]
+              },
+              "namespace": {
+                "type": "string",
+                "minLength": 1
+              },
+              "entity_type": {
+                "type": "string",
+                "minLength": 1
+              },
+              "entity_label": {
+                "type": "string",
+                "minLength": 1
+              },
+              "dimensions": {
+                "type": "object",
+                "properties": {
+                  "instance": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "deployment": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "restart": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "instance",
+                  "deployment",
+                  "restart"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "metric",
+              "name",
+              "unit",
+              "namespace",
+              "entity_type",
+              "entity_label",
+              "dimensions"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "cursor_mode": {
+          "const": "timestamp"
+        },
+        "heartbeat_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "allowed_tenant_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 190
+          },
+          "maxItems": 1000
+        },
+        "service_grant_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,190}$",
+          "description": "Organization-owned Cbox ID service grant. Requires import_from; credentials remain in the encrypted secret reference."
+        },
+        "provider_environment": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]{1,190}$",
+          "description": "Required for Billing service grants; exact production environment key returned by the provider."
+        }
+      },
+      "required": [
+        "type",
+        "source_id"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "cursor_mode"
+            ]
+          },
+          "then": {
+            "properties": {
+              "type": {
+                "const": "clickhouse_events"
+              }
+            },
+            "required": [
+              "import_from"
+            ]
+          }
+        }
+      ]
+    },
+    "ManagementCreate": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "definition": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ManagementMapping"
+            },
+            {
+              "$ref": "#/$defs/ManagementSchema"
+            },
+            {
+              "$ref": "#/$defs/ManagementBinding"
+            },
+            {
+              "$ref": "#/$defs/ManagementDetector"
+            },
+            {
+              "$ref": "#/$defs/ManagementDestination"
+            },
+            {
+              "$ref": "#/$defs/ManagementConnection"
+            }
+          ]
+        },
+        "token": {
+          "type": "string",
+          "writeOnly": true
+        },
+        "username": {
+          "type": "string",
+          "writeOnly": true
+        }
+      },
+      "required": [
+        "name",
+        "definition"
+      ],
+      "additionalProperties": false
+    },
+    "ManagementReplace": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "definition": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ManagementMapping"
+            },
+            {
+              "$ref": "#/$defs/ManagementSchema"
+            },
+            {
+              "$ref": "#/$defs/ManagementBinding"
+            },
+            {
+              "$ref": "#/$defs/ManagementDetector"
+            },
+            {
+              "$ref": "#/$defs/ManagementDestination"
+            },
+            {
+              "$ref": "#/$defs/ManagementConnection"
+            }
+          ]
+        },
+        "token": {
+          "type": "string",
+          "writeOnly": true
+        },
+        "username": {
+          "type": "string",
+          "writeOnly": true
+        }
+      },
+      "required": [
+        "definition"
+      ],
+      "additionalProperties": false
+    },
+    "ManagementRotate": {
+      "type": "object",
+      "properties": {
+        "token": {
+          "type": "string",
+          "writeOnly": true
+        },
+        "username": {
+          "type": "string",
+          "writeOnly": true
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "ManagementRecord": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "definition": {
+          "type": "object",
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "token"
+                ]
+              },
+              {
+                "required": [
+                  "password"
+                ]
+              },
+              {
+                "required": [
+                  "secret_reference"
+                ]
+              },
+              {
+                "required": [
+                  "secret"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "version",
+        "status",
+        "definition"
+      ],
+      "additionalProperties": false
+    },
+    "ManagementCreated": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        },
+        "definition": {
+          "type": "object",
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "token"
+                ]
+              },
+              {
+                "required": [
+                  "password"
+                ]
+              },
+              {
+                "required": [
+                  "secret_reference"
+                ]
+              },
+              {
+                "required": [
+                  "secret"
+                ]
+              }
+            ]
+          }
+        },
+        "secret": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "One-time signing key on destination creation or rotation only."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "version",
+        "status",
+        "definition"
+      ],
+      "additionalProperties": false
+    },
+    "ManagementPage": {
+      "type": "object",
+      "properties": {
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ManagementRecord"
+          }
+        },
+        "next_cursor": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        }
+      },
+      "required": [
+        "data",
+        "next_cursor"
+      ],
+      "additionalProperties": false
+    },
+    "ManagementActivation": {
+      "type": "object",
+      "properties": {
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "revision"
+      ],
+      "additionalProperties": false
+    },
+    "ManagementError": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "errors": {
+          "type": "object"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "message"
+          ]
+        },
+        {
+          "required": [
+            "code"
+          ]
+        }
+      ]
+    },
+    "SecurityMatch": {
+      "type": "object",
+      "properties": {
+        "category": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "outcome": {
+          "type": "string",
+          "maxLength": 190
+        }
+      },
+      "required": [
+        "category"
+      ],
+      "additionalProperties": false
+    },
+    "SecurityRule": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "matches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SecurityMatch"
+          },
+          "maxItems": 8,
+          "minItems": 1
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "reason_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "distinct_tenants": {
+          "type": "boolean"
+        },
+        "cooldown_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "escalate_after": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "escalate_to": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        }
+      },
+      "required": [
+        "version",
+        "matches",
+        "severity",
+        "reason_code",
+        "description",
+        "cooldown_seconds"
+      ],
+      "additionalProperties": false
+    },
+    "SecurityFinding": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "signal_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "incident_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "subject": {
+          "$ref": "#/$defs/Entity"
+        },
+        "rule_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "rule_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "definition_hash": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "reason_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Evidence"
+          },
+          "maxItems": 32
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "signal_id",
+        "incident_id",
+        "subject",
+        "rule_id",
+        "rule_version",
+        "definition_hash",
+        "severity",
+        "reason_code",
+        "description",
+        "evidence",
+        "occurred_at",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "SecurityIncident": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "subject": {
+          "$ref": "#/$defs/Entity"
+        },
+        "rule_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "status": {
+          "enum": [
+            "new",
+            "acknowledged",
+            "investigating",
+            "resolved"
+          ]
+        },
+        "classification": {
+          "enum": [
+            "suspicious",
+            "confirmed",
+            "false_positive"
+          ]
+        },
+        "assignee": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "snoozed_until": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "opened_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "resolved_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "id",
+        "subject",
+        "rule_id",
+        "title",
+        "severity",
+        "status",
+        "classification",
+        "assignee",
+        "snoozed_until",
+        "opened_at",
+        "updated_at",
+        "resolved_at",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "RiskRequest": {
+      "type": "object",
+      "properties": {
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 8,
+          "minItems": 1
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        }
+      },
+      "required": [
+        "tenant_id",
+        "subjects",
+        "action"
+      ],
+      "additionalProperties": false
+    },
+    "RiskSubject": {
+      "type": "object",
+      "properties": {
+        "subject": {
+          "$ref": "#/$defs/Entity"
+        },
+        "state_version": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "updated_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "data_as_of": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RiskFinding"
+          },
+          "maxItems": 64
+        }
+      },
+      "required": [
+        "subject",
+        "state_version",
+        "updated_at",
+        "data_as_of",
+        "findings"
+      ],
+      "additionalProperties": false
+    },
+    "RiskEvaluation": {
+      "type": "object",
+      "properties": {
+        "evaluation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "status": {
+          "enum": [
+            "complete",
+            "partial",
+            "unknown"
+          ]
+        },
+        "recommendation": {
+          "enum": [
+            "unknown",
+            "none",
+            "flag",
+            "step_up"
+          ]
+        },
+        "evaluated_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RiskSubject"
+          },
+          "maxItems": 8
+        },
+        "cache_ttl_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "sources_fresh": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "evaluation_id",
+        "status",
+        "recommendation",
+        "evaluated_at",
+        "action",
+        "subjects",
+        "cache_ttl_seconds",
+        "sources_fresh"
+      ],
+      "additionalProperties": false
+    },
+    "IncidentCommand": {
+      "type": "object",
+      "properties": {
+        "action": {
+          "enum": [
+            "acknowledge",
+            "investigate",
+            "confirm",
+            "assign",
+            "snooze",
+            "resolve",
+            "false_positive",
+            "note",
+            "revoke"
+          ]
+        },
+        "actor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "assignee": {
+          "type": "string",
+          "maxLength": 256
+        },
+        "until": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "finding_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        }
+      },
+      "required": [
+        "action",
+        "version"
+      ],
+      "additionalProperties": false
+    },
+    "SecurityNotice": {
+      "type": "object",
+      "properties": {
+        "project": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "environment": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "subject": {
+          "$ref": "#/$defs/Entity"
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "rule_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "origin": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "causation_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "finding": {
+          "$ref": "#/$defs/SecurityFinding"
+        },
+        "incident": {
+          "$ref": "#/$defs/SecurityIncident"
+        },
+        "state_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "subjects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Entity"
+          },
+          "maxItems": 1001
+        }
+      },
+      "required": [
+        "project",
+        "environment",
+        "subject",
+        "origin"
+      ],
+      "additionalProperties": false
+    },
+    "SecurityWebhook": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "delivery_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "type": {
+          "enum": [
+            "finding.created",
+            "incident.opened",
+            "incident.severity_changed",
+            "incident.resolved",
+            "source.stale",
+            "risk.updated"
+          ]
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "data": {
+          "$ref": "#/$defs/SecurityNotice"
+        }
+      },
+      "required": [
+        "schema_version",
+        "event_id",
+        "delivery_id",
+        "type",
+        "occurred_at",
+        "data"
+      ],
+      "additionalProperties": false
+    },
+    "SecurityView": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "SecurityAccepted": {
+      "type": "object",
+      "properties": {
+        "accepted": {
+          "const": true
+        }
+      },
+      "required": [
+        "accepted"
+      ],
+      "additionalProperties": false
+    },
+    "RedeliveryRequest": {
+      "type": "object",
+      "properties": {
+        "actor": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "RiskFinding": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "signal_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "incident_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "subject": {
+          "$ref": "#/$defs/Entity"
+        },
+        "rule_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "rule_version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "definition_hash": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "reason_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "expires_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "revoked_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "signal_id",
+        "incident_id",
+        "subject",
+        "rule_id",
+        "rule_version",
+        "definition_hash",
+        "severity",
+        "reason_code",
+        "description",
+        "occurred_at",
+        "expires_at"
+      ],
+      "additionalProperties": false
+    },
+    "ManagementSecurityRule": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "matches": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SecurityMatch"
+          },
+          "maxItems": 8,
+          "minItems": 1
+        },
+        "severity": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        },
+        "reason_code": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 190
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "distinct_tenants": {
+          "type": "boolean"
+        },
+        "cooldown_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400
+        },
+        "escalate_after": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000
+        },
+        "escalate_to": {
+          "enum": [
+            "low",
+            "medium",
+            "high",
+            "critical"
+          ]
+        }
+      },
+      "required": [
+        "matches",
+        "severity",
+        "reason_code",
+        "description",
+        "cooldown_seconds"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

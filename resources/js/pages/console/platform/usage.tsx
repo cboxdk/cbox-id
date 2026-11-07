@@ -1,4 +1,6 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useFormatTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -37,10 +39,11 @@ type Props = PageProps<{
 }>;
 
 export default function PlatformUsage({ totals, breakdown, topOrganizations, help }: Props) {
-    const { locale } = useTranslator();
-
-    const { t: tc } = useTranslator();
-
+    const { t: tc } = usePublicTranslator();
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const tiles: [string, number][] = [
         ['Environments', totals.environments],
         ['Organizations', totals.organizations],
@@ -55,14 +58,16 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations, hel
         <>
             <PageHeader
                 help={help}
-                description={tc('console.platform_wide_usage_across_every_environment_0e12a08a')}
+                description={consoleT(
+                    'console.platform_wide_usage_across_every_environment_not_only_t_0e12a08a',
+                )}
             />
 
             <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 mb-5 mt-8">
                 {tiles.map(([label, value]) => (
                     <div key={label} className="cbx-stat">
                         <div className="min-w-0">
-                            <p className="cbx-stat-value">{value.toLocaleString(locale)}</p>
+                            <p className="cbx-stat-value">{value.toLocaleString(consoleLocale)}</p>
                             <p className="cbx-stat-label">{label}</p>
                         </div>
                     </div>
@@ -71,42 +76,42 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations, hel
 
             <div className="mb-5">
                 <Panel
-                    title={tc('console.per_environment_breakdown_8d6b222d')}
+                    title={consoleT('console.per_environment_breakdown_8d6b222d')}
                     action={
                         <span className="text-xs" style={{ color: 'var(--faint)' }}>
                             {breakdown.length}{' '}
                             {breakdown.length === 1
-                                ? tc('console.environment_ba528516')
-                                : tc('console.environments_d5f6d542')}
+                                ? consoleText('console.environment_ba528516')
+                                : consoleText('console.environments_d5f6d542')}
                         </span>
                     }
                 >
                     {breakdown.length === 0 ? (
                         <EmptyState
                             icon="layers"
-                            title={tc('console.no_environments_provisioned_yet_3a208207')}
-                            description={tc(
-                                'console.create_one_on_platform_environments_and_its__2e1a2d8f',
+                            title={consoleT('console.no_environments_provisioned_yet_3a208207')}
+                            description={consoleT(
+                                'console.create_one_on_platform_environments_and_its_counts_appe_2e1a2d8f',
                             )}
                         />
                     ) : (
                         <div className="overflow-x-auto">
                             <Table
-                                caption={tc(
-                                    'console.every_environment_on_this_install_and_how_mu_1d09cf29',
+                                caption={consoleUiText(
+                                    'console.every_environment_on_this_install_and_how_much_of_the_e_1d09cf29',
                                 )}
                             >
                                 <thead>
                                     <tr>
-                                        <Th>{tc('console.environment_9e471951')}</Th>
+                                        <Th>{consoleT('console.environment_9e471951')}</Th>
                                         <Th className="text-right">
-                                            {tc('console.organizations_2730183d')}
+                                            {consoleT('console.organizations_2730183d')}
                                         </Th>
                                         <Th className="text-right">
-                                            {tc('console.users_6b0cc904')}
+                                            {consoleT('console.users_6b0cc904')}
                                         </Th>
                                         <Th className="text-right">
-                                            {tc('console.active_sessions_61ad9909')}
+                                            {consoleT('console.active_sessions_61ad9909')}
                                         </Th>
                                     </tr>
                                 </thead>
@@ -123,13 +128,13 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations, hel
                                                 </p>
                                             </Td>
                                             <Td className="text-right tabular-nums">
-                                                {plane.organizations.toLocaleString(locale)}
+                                                {plane.organizations.toLocaleString(consoleLocale)}
                                             </Td>
                                             <Td className="text-right tabular-nums">
-                                                {plane.users.toLocaleString(locale)}
+                                                {plane.users.toLocaleString(consoleLocale)}
                                             </Td>
                                             <Td className="text-right tabular-nums">
-                                                {plane.sessions.toLocaleString(locale)}
+                                                {plane.sessions.toLocaleString(consoleLocale)}
                                             </Td>
                                         </tr>
                                     ))}
@@ -141,36 +146,38 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations, hel
             </div>
 
             <Panel
-                title={tc('console.top_organizations_by_members_cf67e5ff')}
+                title={consoleT('console.top_organizations_by_members_cf67e5ff')}
                 action={
                     <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                        {tc('console.across_every_environment_de59592c')}
+                        {consoleT('console.across_every_environment_de59592c')}
                     </span>
                 }
             >
                 {topOrganizations.length === 0 ? (
                     <EmptyState
                         icon="members"
-                        title={tc('console.no_organization_has_a_member_yet_78cd6728')}
-                        description={tc(
-                            'console.this_ranks_organizations_by_member_count_onc_d333557e',
+                        title={consoleT('console.no_organization_has_a_member_yet_78cd6728')}
+                        description={consoleT(
+                            'console.this_ranks_organizations_by_member_count_once_they_do_d333557e',
                         )}
                     />
                 ) : (
                     <div className="overflow-x-auto">
                         <Table
-                            caption={tc(
-                                'console.the_ten_organizations_with_the_most_members__1c7ea5a5',
+                            caption={consoleUiText(
+                                'console.the_ten_organizations_with_the_most_members_and_the_env_1c7ea5a5',
                             )}
                         >
                             <thead>
                                 <tr>
-                                    <Th>{tc('console.organization_d764d425')}</Th>
-                                    <Th>{tc('console.environment_9e471951')}</Th>
-                                    <Th className="text-right">{tc('console.members_1044a4c0')}</Th>
+                                    <Th>{consoleT('console.organization_d764d425')}</Th>
+                                    <Th>{consoleT('console.environment_9e471951')}</Th>
+                                    <Th className="text-right">
+                                        {consoleT('console.members_1044a4c0')}
+                                    </Th>
                                     <Th>
                                         <span className="sr-only">
-                                            {tc('console.actions_ff8059dc')}
+                                            {consoleT('console.actions_ff8059dc')}
                                         </span>
                                     </Th>
                                 </tr>
@@ -196,7 +203,7 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations, hel
                                             </Pill>
                                         </Td>
                                         <TdMono className="text-right tabular-nums">
-                                            {organization.members.toLocaleString(locale)}
+                                            {organization.members.toLocaleString(consoleLocale)}
                                         </TdMono>
                                         <Td className="text-right whitespace-nowrap">
                                             {/*
@@ -207,7 +214,7 @@ export default function PlatformUsage({ totals, breakdown, topOrganizations, hel
                                             */}
                                             <Button asChild size="sm">
                                                 <Link href={organization.href}>
-                                                    {tc('console.view_dcc839a4')}
+                                                    {consoleT('console.view_dcc839a4')}
                                                 </Link>
                                             </Button>
                                         </Td>

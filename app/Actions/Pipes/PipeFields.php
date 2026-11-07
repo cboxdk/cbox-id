@@ -6,7 +6,9 @@ namespace App\Actions\Pipes;
 
 use App\Http\Resources\Environment\Timestamp;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Pipes\Exceptions\InvalidPipeConfiguration;
@@ -70,7 +72,7 @@ final class PipeFields
     public static function assertApp(string $clientId): void
     {
         if (! Client::query()->where('client_id', $clientId)->exists()) {
-            throw ActionRefused::because('unknown_app', 'There is no app with that client id in this environment.', 'client_id');
+            throw ActionRefused::because('unknown_app', new ActionMessage('console.there_is_no_app_with_that_client_id_in_this_environment_f61e7d47'), 'client_id');
         }
     }
 
@@ -79,7 +81,7 @@ final class PipeFields
      */
     public static function refusal(InvalidPipeConfiguration $e): ActionRefused
     {
-        return ActionRefused::because('invalid_pipe', $e->getMessage(), $e->field);
+        return ActionRefused::because('invalid_pipe', FrameworkMessage::from($e), $e->field);
     }
 
     /**

@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -75,8 +75,13 @@ export default function RolesIndex({
     consoleAccessHref,
     organizationFilter,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleNestedText } = useConsoleTranslator();
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -99,13 +104,16 @@ export default function RolesIndex({
         <>
             <PageHeader
                 help={help}
-                description={tc('console.what_people_can_do_inside_your_apps_you_assi_c31f1a20')}
+                description={consoleT(
+                    'console.what_people_can_do_inside_your_apps_you_assign_roles_he_c31f1a20',
+                )}
                 actions={
                     mayAdminister ? (
                         <Button asChild variant="primary" className="shrink-0">
                             <Link href={createHref}>
-                                <Icon name="plus" className="w-4 h-4" />
-                                {tc('console.new_role_500f2f9d')}
+                                {consoleRich('console._part1_new_role_db15d053', {
+                                    part1: <Icon name="plus" className="w-4 h-4" />,
+                                })}
                             </Link>
                         </Button>
                     ) : undefined
@@ -130,20 +138,32 @@ export default function RolesIndex({
                         <Icon name="key" className="w-4 h-4" />
                     </span>
                     <p className="text-sm">
-                        <b>{tc('console.cbox_id_assigns_roles_your_app_decides_what__840ee10f')}</b>
-                        {tc('console.a_role_is_a_label_stamped_into_the_token_the_a527f0c7')}{' '}
-                        {consoleAccessHref !== null ? (
-                            <Link
-                                href={consoleAccessHref}
-                                className="underline"
-                                style={{ color: 'var(--accent-strong)' }}
-                            >
-                                {tc('console.built_in_role_59a06e31')}
-                            </Link>
-                        ) : (
-                            tc('console.built_in_role_59a06e31')
-                        )}{' '}
-                        {tc('console.owner_admin_developer_member_or_viewer_which_8110d258')}
+                        {consoleRich(
+                            'console._part1_a_role_is_a_label_stamped_into_the_token_the_one_92a78021',
+                            {
+                                part1: (
+                                    <b>
+                                        {consoleT(
+                                            'console.cbox_id_assigns_roles_your_app_decides_what_they_can_do_840ee10f',
+                                        )}
+                                    </b>
+                                ),
+                                part2: ' ',
+                                part3:
+                                    consoleAccessHref !== null ? (
+                                        <Link
+                                            href={consoleAccessHref}
+                                            className="underline"
+                                            style={{ color: 'var(--accent-strong)' }}
+                                        >
+                                            {consoleT('console.built_in_role_59a06e31')}
+                                        </Link>
+                                    ) : (
+                                        consoleNestedText('console.built_in_role_59a06e31')
+                                    ),
+                                part4: ' ',
+                            },
+                        )}
                     </p>
                 </div>
             </div>
@@ -159,8 +179,8 @@ export default function RolesIndex({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder={tc('console.search_by_name_4ae2b333')}
-                    aria-label={tc('console.search_roles_848b9c5d')}
+                    placeholder={consoleUiText('console.search_by_name_4ae2b333')}
+                    aria-label={consoleT('console.search_roles_848b9c5d')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -170,11 +190,7 @@ export default function RolesIndex({
                     filter narrowed to nothing.
                 */}
                 <output aria-live="polite" className="sr-only">
-                    {pagination.total}{' '}
-                    {pagination.total === 1
-                        ? tc('console.role_4b168d88')
-                        : tc('console.roles_66cf5513')}
-                    {tc('console.found_599e25a3')}
+                    {consoleRich('console.search_results_found', { count: pagination.total })}
                 </output>
             </div>
 
@@ -186,32 +202,39 @@ export default function RolesIndex({
                     search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={tc('console.no_matches_2df01a03')}
-                            description={tc(
-                                'console.no_roles_match_value0_try_a_different_name_274ce6f7',
-                                { value0: search },
+                            title={consoleT('console.no_matches_2df01a03')}
+                            description={consoleFinalText(
+                                'console.no_roles_match_part1_try_a_different_name_135af768',
+                                { part1: search },
                             )}
                         />
                     ) : (
                         <EmptyState
                             icon="shield"
                             equivalent="roles.create"
-                            title={tc('console.no_roles_yet_4fbdeea7')}
+                            title={consoleT('console.no_roles_yet_4fbdeea7')}
                             help={help}
-                            description={tc(
-                                'console.without_roles_everyone_who_can_sign_in_gets__dc1418f9',
+                            description={consoleT(
+                                'console.without_roles_everyone_who_can_sign_in_gets_whatever_an_dc1418f9',
                             )}
                             steps={[
-                                tc('console.let_your_apps_declare_the_roles_they_underst_719f1d4a'),
-                                tc('console.or_create_a_role_here_and_compose_it_from_th_ed2a324a'),
-                                tc('console.assign_it_to_people_the_role_travels_with_th_a3f3f862'),
+                                consoleRuntimeText(
+                                    'console.let_your_apps_declare_the_roles_they_understand_those_a_719f1d4a',
+                                ),
+                                consoleRuntimeText(
+                                    'console.or_create_a_role_here_and_compose_it_from_the_permissio_ed2a324a',
+                                ),
+                                consoleRuntimeText(
+                                    'console.assign_it_to_people_the_role_travels_with_them_into_eve_a3f3f862',
+                                ),
                             ]}
                             actions={
                                 mayAdminister ? (
                                     <Button asChild variant="primary">
                                         <Link href={createHref}>
-                                            <Icon name="plus" className="w-4 h-4" />
-                                            {tc('console.new_role_500f2f9d')}
+                                            {consoleRich('console._part1_new_role_db15d053', {
+                                                part1: <Icon name="plus" className="w-4 h-4" />,
+                                            })}
                                         </Link>
                                     </Button>
                                 ) : undefined
@@ -234,8 +257,6 @@ export default function RolesIndex({
 
             <Pagination
                 pagination={pagination}
-                noun={tc('console.role_4b168d88')}
-                pluralNoun={tc('console.roles_66cf5513')}
                 href={(page) => listHref(search, page)}
             />
             <div className="mt-8">
@@ -260,8 +281,7 @@ export default function RolesIndex({
  * may compose one, so the rows already carry the answer.
  */
 function Legend({ roles }: { roles: RoleRow[] }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const declared = roles.some((role) => role.declaredByApp);
     const wide = roles.filter((role) => role.environmentWide);
 
@@ -274,20 +294,28 @@ function Legend({ roles }: { roles: RoleRow[] }) {
             {declared && (
                 <div className="flex items-start gap-2">
                     <dt className="shrink-0">
-                        <Badge>{tc('console.app_0d04bfeb')}</Badge>
+                        <Badge>{consoleT('console.app_0d04bfeb')}</Badge>
                     </dt>
-                    <dd>{tc('console.declared_by_the_application_which_is_its_sou_b3e04ae9')}</dd>
+                    <dd>
+                        {consoleT(
+                            'console.declared_by_the_application_which_is_its_source_of_trut_b3e04ae9',
+                        )}
+                    </dd>
                 </div>
             )}
             {wide.length > 0 && (
                 <div className="flex items-start gap-2">
                     <dt className="shrink-0">
-                        <Badge>{tc('console.environment_wide_cd1204b6')}</Badge>
+                        <Badge>{consoleT('console.environment_wide_cd1204b6')}</Badge>
                     </dt>
                     <dd>
                         {wide.some((role) => role.mayCompose)
-                            ? tc('console.defined_for_the_whole_environment_every_orga_8039a976')
-                            : tc('console.owned_by_the_environment_it_applies_here_but_b6293291')}
+                            ? consoleT(
+                                  'console.defined_for_the_whole_environment_every_organization_ca_8039a976',
+                              )
+                            : consoleT(
+                                  'console.owned_by_the_environment_it_applies_here_but_is_not_you_b6293291',
+                              )}
                     </dd>
                 </div>
             )}
@@ -310,8 +338,11 @@ function Row({
     mayAdminister: boolean;
     last: boolean;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     /*
      * AN EMPTY PICKER MEANS TWO DIFFERENT THINGS. With grants on the role it means they
      * are all held; with none it means the catalogue has nothing for this role at all —
@@ -342,24 +373,27 @@ function Row({
                     )}
                 </div>
 
-                {role.declaredByApp && <Badge>{tc('console.app_0d04bfeb')}</Badge>}
+                {role.declaredByApp && <Badge>{consoleT('console.app_0d04bfeb')}</Badge>}
 
                 {role.app !== null ? (
                     <Badge>
-                        <Icon name="clients" className="w-3 h-3" />
-                        {role.app}
-                        {tc('console.only_e850fc29')}
+                        {consoleRich('console._part1_part2_only_5ce234b9', {
+                            part1: <Icon name="clients" className="w-3 h-3" />,
+                            part2: role.app,
+                        })}
                     </Badge>
                 ) : (
-                    <Badge>{tc('console.all_apps_01bed311')}</Badge>
+                    <Badge>{consoleT('console.all_apps_01bed311')}</Badge>
                 )}
 
-                {role.environmentWide && <Badge>{tc('console.environment_wide_cd1204b6')}</Badge>}
+                {role.environmentWide && (
+                    <Badge>{consoleT('console.environment_wide_cd1204b6')}</Badge>
+                )}
 
                 {role.organization !== null && (
                     <Badge>
                         <Icon name="members" className="w-3 h-3" />
-                        <span className="sr-only">{tc('console.organization_5300e286')}</span>
+                        <span className="sr-only">{consoleT('console.organization_5300e286')}</span>
                         {role.organization}
                     </Badge>
                 )}
@@ -369,7 +403,9 @@ function Row({
                 <Link
                     href={role.href}
                     className="cbx-iconbtn shrink-0"
-                    aria-label={tc('console.open_value0_f5734efb', { value0: role.name })}
+                    aria-label={consoleFinalText('console.open_part1_10c0f8b9', {
+                        part1: role.name,
+                    })}
                 >
                     <Icon
                         name="chevron"
@@ -383,8 +419,10 @@ function Row({
                 {role.permissions.length === 0 ? (
                     <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                         {nothingToOffer
-                            ? tc('console.no_permissions_yet_none_of_your_apps_has_dec_f84b634e')
-                            : tc('console.no_permissions_yet_340e092f')}
+                            ? consoleT(
+                                  'console.no_permissions_yet_none_of_your_apps_has_declared_one_t_f84b634e',
+                              )
+                            : consoleT('console.no_permissions_yet_340e092f')}
                     </span>
                 ) : (
                     role.permissions.map((permission) => (
@@ -396,9 +434,7 @@ function Row({
                 )}
                 {role.moreCount > 0 && (
                     <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                        {tc('console.and_427a379a')}
-                        {role.moreCount}
-                        {tc('console.more_226ba18b')}
+                        {consoleRich('console.and_part1_more_1468d675', { part1: role.moreCount })}
                     </span>
                 )}
             </div>
@@ -408,18 +444,19 @@ function Row({
                 !nothingToOffer &&
                 (role.offerable.length === 0 ? (
                     <p className="text-xs mt-3" style={{ color: 'var(--faint)' }}>
-                        {tc('console.every_available_permission_is_already_grante_50e66339')}
+                        {consoleT('console.every_available_permission_is_already_granted_50e66339')}
                     </p>
                 ) : (
                     <div className="mt-3" style={{ maxWidth: '22rem' }}>
                         <Combobox
                             value={undefined}
-                            aria-label={tc('console.add_a_permission_to_the_value0_role_eadbbfd0', {
-                                value0: role.name,
-                            })}
-                            placeholder={tc('console.add_a_permission_d9202366')}
-                            searchPlaceholder={tc('console.search_permissions_267b21e2')}
-                            emptyMessage={tc('console.no_permission_matches_that_acbdba7a')}
+                            aria-label={consoleFinalText(
+                                'console.add_a_permission_to_the_part1_role_5684b805',
+                                { part1: role.name },
+                            )}
+                            placeholder={consoleUiText('console._add_a_permission_d9202366')}
+                            searchPlaceholder={consoleT('console.search_permissions_267b21e2')}
+                            emptyMessage={consoleT('console.no_permission_matches_that_acbdba7a')}
                             options={role.offerable.map((permission) => ({
                                 value: permission.id,
                                 label: permission.name,
@@ -448,24 +485,28 @@ function Row({
  * two commonest guesses, `scope` and a nested `authorization` object, are both wrong.
  */
 function TokenShape({ sample }: { sample: { role: string; permissions: string[] } }) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const quoted = sample.permissions.map((permission) => `"${permission}"`).join(', ');
 
     return (
         <details className="card mt-4 p-4">
             <summary className="text-sm font-medium cursor-pointer">
-                {tc('console.what_your_app_receives_20810522')}
+                {consoleT('console.what_your_app_receives_20810522')}
             </summary>
 
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                {tc('console.roles_and_permissions_arrive_in_the_access_t_0107aa88')}
+                {consoleT(
+                    'console.roles_and_permissions_arrive_in_the_access_token_as_two_0107aa88',
+                )}
             </p>
             <Snippet>
-                {tc('console.sub_the_person_s_id_org_the_organization_the_6eaa9420', {
-                    value0: sample.role,
-                    value1: quoted,
-                })}
+                {consoleFinalText(
+                    'console._sub_the_person_s_id_org_the_organization_they_are_acti_2e2ddc7f',
+                    { part1: sample.role, part2: quoted },
+                )}
             </Snippet>
 
             {/*
@@ -479,39 +520,56 @@ function TokenShape({ sample }: { sample: { role: string; permissions: string[] 
                 token themselves.)
             */}
             <p className="mt-3 text-sm">
-                <b>{tc('console.if_your_app_expects_groups_these_are_them_09efb592')}</b>
-                {tc('console.tick_the_b3fa28ef')}{' '}
-                <code className="mono">{tc('console.groups_4ed379d4')}</code>
-                {tc('console.scope_when_you_register_the_app_and_the_id_t_748047d0')}
-                <code className="mono">{tc('console.groups_4ed379d4')}</code>
-                {tc('console.claim_the_name_kubernetes_grafana_and_vault__917a8b31')}
+                {consoleRich(
+                    'console._part1_tick_the_part2_part3_scope_when_you_register_the_ef0603eb',
+                    {
+                        part1: (
+                            <b>
+                                {consoleT(
+                                    'console.if_your_app_expects_groups_these_are_them_09efb592',
+                                )}
+                            </b>
+                        ),
+                        part2: ' ',
+                        part3: <code className="mono">{'groups'}</code>,
+                        part4: <code className="mono">{'groups'}</code>,
+                    },
+                )}
             </p>
-            <Snippet>{tc('console.groups_value0_688a0d2e', { value0: sample.role })}</Snippet>
+            <Snippet>
+                {consoleFinalText('console._groups_part1_39d243e0', { part1: sample.role })}
+            </Snippet>
 
             <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
-                {sample.permissions.length === 0 && (
-                    <>
-                        <b>{sample.role}</b>
-                        {tc('console.has_no_permissions_yet_so_f1ca0235')}{' '}
-                        <code className="mono">{tc('console.permissions_4fe3cdd4')}</code>
-                        {tc('console.arrives_empty_the_role_name_is_still_there_t_02b0783c')}{' '}
-                    </>
+                {consoleRich(
+                    'console._part1_the_part2_claim_is_a_different_thing_it_is_what_c15748b6',
+                    {
+                        part1: sample.permissions.length === 0 && (
+                            <>
+                                {consoleRich(
+                                    'console._part1_has_no_permissions_yet_so_part2_part3_arrives_em_a819e0c7',
+                                    {
+                                        part1: <b>{sample.role}</b>,
+                                        part2: ' ',
+                                        part3: <code className="mono">{'permissions'}</code>,
+                                        part4: ' ',
+                                    },
+                                )}
+                            </>
+                        ),
+                        part2: <code className="mono">{'scope'}</code>,
+                        part3: ' ',
+                        part4: <em>{consoleT('console.app_a172cedc')}</em>,
+                        part5: <em>{consoleT('console.person_38a81e87')}</em>,
+                    },
                 )}
-                {tc('console.the_103c5169')}
-                <code className="mono">{tc('console.scope_5f161c91')}</code>
-                {tc('console.claim_is_a_different_thing_it_is_what_the_31a8e2ce')}{' '}
-                <em>{tc('console.app_a172cedc')}</em>
-                {tc('console.was_allowed_to_ask_for_not_what_this_00dcd21a')}
-                <em>{tc('console.person_38a81e87')}</em>
-                {tc('console.may_do_99e1cd2d')}
             </p>
         </details>
     );
 }
 
 function Snippet({ children }: { children: string }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <section
             // Scrollable sideways, so reachable by keyboard: a long line is read by scrolling it
@@ -520,7 +578,7 @@ function Snippet({ children }: { children: string }) {
 
             // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
             tabIndex={0}
-            aria-label={tc('console.permissions_as_code_d6c35b7e')}
+            aria-label={consoleT('console.permissions_as_code_d6c35b7e')}
             className="mt-3 rounded-lg p-3 overflow-x-auto text-xs mono"
             style={{
                 background: 'var(--surface-2)',

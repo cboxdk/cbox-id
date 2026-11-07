@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { usePage } from '@inertiajs/react';
 import { EnvBadge } from '@/chrome/EnvBadge';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -10,7 +10,8 @@ type Props = PageProps<{
     label: string;
     /** Whether each environment link opens this same page there, rather than its front page. */
     samePage: boolean;
-    projectsHref: string;
+    projectsHref: string | null;
+    consoleHref: string;
     /** The platform's own environment console, for an operator. */
     platformHref: string | null;
 }>;
@@ -29,10 +30,13 @@ export default function ConfiguredInEnvironment({
     label,
     samePage,
     projectsHref,
+    consoleHref,
     platformHref,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const { shell } = usePage<SharedProps>().props;
     const projects = (shell?.context.projects ?? []).filter((project) => project.id !== 'platform');
 
@@ -42,29 +46,49 @@ export default function ConfiguredInEnvironment({
                 eyebrow={null}
                 description={
                     <>
-                        {tc('console.this_console_is_your_workspace_its_projects__6f25b5a6')}
-                        {label.toLowerCase()}
-                        {tc('console.included_is_set_for_each_environment_in_that_65e9f6b5')}
+                        {consoleRich(
+                            'console.this_console_is_your_workspace_its_projects_team_keys_a_66180b31',
+                            { part1: label },
+                        )}
                     </>
                 }
             />
 
             <div className="mt-6 space-y-4">
                 <Panel
-                    title={tc('console.open_value0_in_an_environment_c5a3bb6a', {
-                        value0: label.toLowerCase(),
+                    title={consoleFinalText('console.open_part1_in_an_environment_882ce491', {
+                        part1: label,
                     })}
                 >
                     {projects.length === 0 ? (
                         <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                            {tc('console.you_have_no_environment_to_open_yet_204552fe')}{' '}
-                            <a href={projectsHref} className="underline underline-offset-2">
-                                {tc('console.go_to_projects_cad12684')}
-                            </a>{' '}
-                            {tc('console.to_create_one_or_ask_a_workspace_owner_for_a_218b736c')}
+                            {projectsHref === null ? (
+                                <a href={consoleHref} className="underline underline-offset-2">
+                                    {consoleT('console.open_console_f4063d1b')}
+                                </a>
+                            ) : (
+                                consoleRich(
+                                    'console.you_have_no_environment_to_open_yet_part1_part2_part3_t_26e057f8',
+                                    {
+                                        part1: ' ',
+                                        part2: (
+                                            <a
+                                                href={projectsHref}
+                                                className="underline underline-offset-2"
+                                            >
+                                                {consoleT('console.go_to_projects_cad12684')}
+                                            </a>
+                                        ),
+                                        part3: ' ',
+                                    },
+                                )
+                            )}
                         </p>
                     ) : (
-                        <ul className="space-y-2" aria-label={tc('console.environments_07437cd6')}>
+                        <ul
+                            className="space-y-2"
+                            aria-label={consoleT('console.environments_07437cd6')}
+                        >
                             {projects.flatMap((project) =>
                                 project.environments.map((environment) => (
                                     <li key={environment.id}>
@@ -89,24 +113,28 @@ export default function ConfiguredInEnvironment({
                     )}
                     {samePage && projects.length > 0 && (
                         <p className="mt-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                            {tc('console.each_link_opens_c21aaa7e')}
-                            {label}
-                            {tc('console.in_that_environment_s_console_9b410cb2')}
+                            {consoleRich(
+                                'console.each_link_opens_part1_in_that_environment_s_console_5f38b7b2',
+                                { part1: label },
+                            )}
                         </p>
                     )}
                 </Panel>
 
                 {platformHref !== null && (
-                    <Panel title={tc('console.the_platform_s_own_sign_in_1b8b2a80')}>
+                    <Panel title={consoleT('console.the_platform_s_own_sign_in_1b8b2a80')}>
                         <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                            {tc('console.how_workspace_owners_and_operators_sign_in_t_293f421d')}
+                            {consoleT(
+                                'console.how_workspace_owners_and_operators_sign_in_to_cbox_id_i_293f421d',
+                            )}
                         </p>
                         <a
                             href={platformHref}
                             className="mt-2 inline-flex items-center gap-2 text-sm hover:underline"
                         >
-                            <Icon name="lock" className="w-4 h-4" />
-                            {tc('console.open_the_platform_environment_d2be2ac0')}
+                            {consoleRich('console._part1_open_the_platform_environment_fc71b62f', {
+                                part1: <Icon name="lock" className="w-4 h-4" />,
+                            })}
                         </a>
                     </Panel>
                 )}

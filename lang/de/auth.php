@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-// German: the sign-in group (pages/auth/*), its validation and flash messages.
 return [
     'common' => [
         'email' => 'E-Mail',
@@ -19,13 +18,11 @@ return [
         'could_not_process' => 'Diese Anfrage konnte nicht verarbeitet werden. Bitte versuchen Sie es später erneut.',
         'code_incorrect' => 'Dieser Code ist falsch oder abgelaufen.',
     ],
-
     'password_field' => [
         'show' => 'Passwort anzeigen',
         'hide' => 'Passwort ausblenden',
         'policy' => 'Mindestens :count Zeichen',
     ],
-
     'login' => [
         'title' => 'Anmelden',
         'purpose' => [
@@ -37,7 +34,6 @@ return [
             'dev_note' => 'Wird angezeigt, weil in dieser Umgebung kein E-Mail-Versand konfiguriert ist.',
         ],
         'mandate' => [
-            // :organization may be the fallback "Ihre Organisation" — keep it in nominative/accusative.
             'heading' => ':organization erfordert Single Sign-On',
             'continue' => 'Über :organization anmelden',
             'no_provider' => 'Für :organization ist noch kein Identitätsanbieter verbunden, daher können wir Sie nirgendwohin weiterleiten. Bitten Sie einen Administrator, die Einrichtung von Single Sign-On abzuschließen.',
@@ -52,7 +48,7 @@ return [
             ],
         ],
         'use_different_email' => 'Andere E-Mail-Adresse verwenden',
-        'continue' => 'Weiter',
+        'continue' => 'Fortsetzen',
         'sso' => [
             'continue' => 'Weiter mit Single Sign-On',
             'or_password' => 'oder Ihr Passwort verwenden',
@@ -61,8 +57,6 @@ return [
         'forgot_password' => 'Passwort vergessen?',
         'or' => 'ODER',
         'continue_with' => 'Weiter mit :provider',
-        // The badge on the sign-in method this device used last, and what it means said in full
-        // for a screen reader.
         'last_used' => 'Zuletzt verwendet',
         'last_used_hint' => 'So haben Sie sich zuletzt auf diesem Gerät angemeldet.',
         'magic_link' => 'Anmeldelink per E-Mail senden',
@@ -70,7 +64,7 @@ return [
         'passkey_failed' => 'Die Anmeldung mit Passkey ist fehlgeschlagen.',
         'new_organization' => 'Neue Organisation?',
         'create_one' => 'Jetzt erstellen',
-        'invalid_credentials' => 'Diese Anmeldedaten stimmen nicht mit unseren Unterlagen überein.',
+        'invalid_credentials' => 'Die E-Mail-Adresse oder das Passwort ist falsch.',
         'passkey_errors' => [
             'challenge_expired' => 'Die Anmeldeanfrage ist abgelaufen. Versuchen Sie es erneut.',
             'not_registered' => 'Dieser Passkey ist nicht registriert.',
@@ -78,13 +72,11 @@ return [
             'unverified' => 'Dieser Passkey konnte nicht verifiziert werden.',
             'failed' => 'Bei der Anmeldung ist ein Fehler aufgetreten.',
         ],
-        // Answered by a passkey or magic-link door the environment has switched off.
         'method_off' => [
             'passkeys' => 'Passkeys sind hier deaktiviert. Melden Sie sich auf andere Weise an.',
             'magic_link' => 'Anmeldelinks per E-Mail sind hier deaktiviert. Melden Sie sich auf andere Weise an.',
         ],
     ],
-
     'signup' => [
         'title' => 'Jetzt loslegen',
         'heading' => [
@@ -122,7 +114,6 @@ return [
             'closed' => 'Die Registrierung ist derzeit geschlossen.',
         ],
     ],
-
     'forgot_password' => [
         'title' => 'Passwort zurücksetzen',
         'heading' => 'Passwort zurücksetzen',
@@ -132,7 +123,6 @@ return [
         'remembered' => 'Wieder eingefallen?',
         'throttled' => 'Zu viele Versuche. Bitte warten Sie einige Minuten und versuchen Sie es dann erneut.',
     ],
-
     'reset_password' => [
         'title' => 'Neues Passwort festlegen',
         'lead' => 'Wählen Sie ein sicheres Passwort mit mindestens :count Zeichen.',
@@ -141,14 +131,12 @@ return [
         'invalid_link' => 'Dieser Link zum Zurücksetzen ist ungültig oder abgelaufen. Fordern Sie einen neuen an.',
         'done' => 'Ihr Passwort wurde zurückgesetzt – melden Sie sich mit Ihrem neuen Passwort an.',
     ],
-
     'change_password' => [
         'title' => 'Neues Passwort festlegen',
         'lead' => 'Das Passwort, mit dem Sie sich angemeldet haben, wurde von einem Administrator vergeben. Legen Sie ein Passwort fest, das nur Sie kennen, bevor Sie fortfahren.',
         'submit' => 'Passwort ändern',
         'mismatch' => 'Die Passwörter stimmen nicht überein.',
     ],
-
     'mfa' => [
         'title' => 'Zwei-Faktor-Authentifizierung',
         'code' => [
@@ -177,7 +165,6 @@ return [
             'unavailable' => 'SMS-Codes sind für dieses Konto nicht verfügbar.',
         ],
     ],
-
     'otp_step_up' => [
         'title' => 'Zusätzliche Bestätigung',
         'lead' => 'Diese Anmeldung wirkte ungewöhnlich, daher haben wir einen Einmalcode an :email gesendet. Geben Sie ihn ein, um fortzufahren.',
@@ -188,20 +175,17 @@ return [
         'resent' => 'Wir haben einen neuen Code an :email gesendet.',
         'too_many_codes' => 'Zu viele Codes angefordert. Bitte warten Sie einen Moment und versuchen Sie es dann erneut.',
     ],
-
     'accounts' => [
         'title' => 'Benutzer wechseln',
         'lead' => 'Alle, die auf diesem Gerät angemeldet sind. Wählen Sie ein Konto aus, oder melden Sie sich als andere Person an.',
         'active' => 'Aktiv',
         'add' => 'Als andere Person anmelden',
     ],
-
     'signed_out' => [
         'title' => 'Abgemeldet',
         'heading' => 'Sie sind abgemeldet',
         'lead' => 'Sie wurden auf diesem Gerät abgemeldet, auch von jeder Konsole, die Sie mit dieser Anmeldung geöffnet haben. Melden Sie sich erneut an, um fortzufahren.',
     ],
-
     'accept_invite' => [
         'title' => 'Einladung annehmen',
         'heading' => 'Ihre Einladung annehmen',
@@ -215,7 +199,6 @@ return [
         'invalid' => 'Diese Einladung ist ungültig oder abgelaufen.',
         'not_completed' => 'Diese Einladung konnte nicht abgeschlossen werden.',
     ],
-
     'confirm_email' => [
         'title' => 'E-Mail-Adresse bestätigen',
         'heading' => 'Bestätigen Sie Ihre E-Mail-Adresse',
@@ -225,7 +208,6 @@ return [
         'verified_sign_in' => 'E-Mail-Adresse bestätigt – melden Sie sich an, um Ihre Umgebung zu öffnen.',
         'verified' => 'Ihre E-Mail-Adresse ist bestätigt – Sie können sich jetzt anmelden.',
     ],
-
     'confirm_sign_in' => [
         'title' => 'Anmelden',
         'heading' => 'Anmeldung abschließen',
@@ -234,7 +216,6 @@ return [
         'note' => 'Der Link funktioniert nur einmal. Wenn Sie keine Anmeldung angefordert haben, schließen Sie diese Seite – es passiert nichts, bis Sie auf die Schaltfläche klicken.',
         'invalid' => 'Dieser Anmeldelink ist ungültig oder abgelaufen.',
     ],
-
     'first_run' => [
         'title' => 'Cbox ID einrichten',
         'lead' => 'Diese Bereitstellung ist leer. Übernehmen Sie sie einmalig – von dem Rechner aus, auf dem sie läuft.',
@@ -265,7 +246,6 @@ return [
         'submit' => 'Bereitstellung installieren',
         'token_mismatch' => 'Dieses Einrichtungstoken passt nicht zu dieser Bereitstellung oder ist abgelaufen. Geben Sie mit php artisan cbox-id:setup-token ein neues aus.',
     ],
-
     'join_organization' => [
         'title' => ':organization beitreten',
         'heading' => ':organization beitreten?',
@@ -284,16 +264,15 @@ return [
         ],
         'invalid' => 'Diese Einladung ist ungültig oder abgelaufen.',
     ],
-
     'federation' => [
-        'this_provider' => 'den Identitätsanbieter',
+        'this_provider' => 'Identitätsanbieter',
         'expired' => 'Die Anmeldung hat zu lange gedauert oder wurde bereits verwendet. Bitte melden Sie sich erneut an.',
         'rejected' => 'Wir konnten die Anmeldung mit :provider nicht bestätigen. Bitte versuchen Sie es erneut oder wenden Sie sich an Ihren Administrator.',
         'inactive' => 'Die Anmeldung mit :provider ist hier nicht mehr verfügbar. Melden Sie sich auf andere Weise an oder bitten Sie Ihren Administrator, sie wieder zu aktivieren.',
         'cancelled' => 'Die Anmeldung mit :provider wurde abgebrochen oder nicht abgeschlossen. Bitte versuchen Sie es erneut.',
         'unavailable' => ':provider ist gerade nicht erreichbar. Bitte versuchen Sie es gleich noch einmal oder melden Sie sich auf andere Weise an.',
         'incomplete' => 'Die Antwort von :provider war unvollständig. Beginnen Sie erneut bei Ihrem Identitätsanbieter.',
-        'unverified' => ':provider hat nicht bestätigt, dass :email Ihnen gehört. Deshalb können wir es nicht mit dem Konto verknüpfen, das diese Adresse verwendet. Melden Sie sich auf andere Weise an und verbinden Sie :provider dann unter My account › Sign-in methods.',
+        'unverified' => ':provider hat nicht bestätigt, dass :email Ihnen gehört. Deshalb können wir es nicht mit dem Konto verknüpfen, das diese Adresse verwendet. Melden Sie sich auf andere Weise an und verbinden Sie :provider dann unter Mein Konto › Anmeldemethoden.',
         'already_linked' => 'Dieses :provider-Konto ist hier bereits mit einem anderen Konto verknüpft.',
         'account_disabled' => 'Dieses Konto wurde deaktiviert. Wenden Sie sich an Ihren Administrator.',
         'link_expired' => 'Die Anfrage, :provider zu verknüpfen, ist abgelaufen oder wurde bereits verwendet. Melden Sie sich erneut mit :provider an, um neu zu beginnen.',
@@ -301,16 +280,15 @@ return [
         'refused' => 'Wir konnten diese Anmeldung nicht verarbeiten. Bitte versuchen Sie es später erneut.',
         'connect_session_changed' => 'Sie wurden abgemeldet oder als jemand anderes angemeldet, während Sie :provider verbunden haben, daher wurde nichts verknüpft. Melden Sie sich an und versuchen Sie es erneut.',
     ],
-
     'link_account' => [
         'title' => 'Ihr :provider-Konto verknüpfen',
         'heading' => 'Ihr :provider-Konto mit :email verknüpfen?',
         'lead' => 'Sie haben bereits ein Konto mit dieser E-Mail-Adresse. Bestätigen Sie, dass es Ihnen gehört, dann verknüpfen wir :provider damit — danach können Sie sich mit beidem anmelden.',
         'challenged' => 'Diese Anmeldung sieht ungewöhnlich aus, daher benötigen wir einen Code statt Ihres Passworts.',
-        'totp_label' => 'Code aus Ihrer Authenticator-App',
+        'totp_label' => 'Code aus Ihrer Authentifizierungs-App',
         'recovery_label' => 'Wiederherstellungscode',
         'use_recovery' => 'Stattdessen einen Wiederherstellungscode verwenden',
-        'use_totp' => 'Stattdessen Ihre Authenticator-App verwenden',
+        'use_totp' => 'Stattdessen Ihre Authentifizierungs-App verwenden',
         'sms_label' => 'Code aus der SMS',
         'send_sms' => 'Code per SMS senden',
         'use_sms' => 'Stattdessen eine SMS verwenden',
@@ -329,7 +307,6 @@ return [
         'linked' => ':provider ist jetzt mit Ihrem Konto verknüpft. Ab sofort können Sie sich damit anmelden.',
         'cancelled' => 'Es wurde nichts verknüpft. Ihr Konto ist unverändert.',
     ],
-
     'open_portal_setup' => [
         'title' => 'Admin-Einrichtung',
         'heading' => 'Anmeldung für Ihre Organisation einrichten',
@@ -337,7 +314,6 @@ return [
         'action' => 'Einrichtung öffnen',
         'note' => 'Der Link funktioniert nur einmal, und die damit geöffnete Einrichtungssitzung läuft ab. Öffnen Sie ihn erst, wenn Sie bereit sind, die Einrichtung abzuschließen.',
     ],
-
     'connected_services' => [
         'title' => 'Verbundene Dienste',
         'heading' => 'Verbundene Dienste',
@@ -347,7 +323,7 @@ return [
         'connected_label' => 'Verbunden',
         'not_connected' => 'Nicht verbunden',
         'needs_reauth' => 'Erneut verbinden',
-        'needs_reauth_hint' => ':provider akzeptiert diese Verbindung nicht mehr. Verbinden Sie erneut, um sie weiter zu nutzen.',
+        'needs_reauth_hint' => ':provider akzeptiert diese Verbindung nicht mehr. Stellen Sie die Verbindung erneut her, um sie weiter zu nutzen.',
         'access' => 'Zugriff: :scopes',
         'connect' => 'Verbinden',
         'reconnect' => 'Erneut verbinden',
@@ -361,7 +337,6 @@ return [
         'failed' => ':provider konnte nicht verbunden werden. Bitte versuchen Sie es erneut.',
         'disconnected' => ':provider wurde getrennt.',
     ],
-
     'connect_service' => [
         'title' => ':provider verbinden',
         'heading' => 'Ihr :provider-Konto verbinden',

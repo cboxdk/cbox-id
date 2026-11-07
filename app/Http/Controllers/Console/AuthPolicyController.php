@@ -18,10 +18,8 @@ use App\Http\Requests\Console\SaveSignInMethodsRequest;
 use App\Http\Requests\Console\SaveSmsFactorPolicyRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
-use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentEnvironment;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use App\Platform\LockoutDefaults;
 use App\Platform\SelfServiceSignup;
 use App\Platform\SignupPolicy;
@@ -105,7 +103,7 @@ final readonly class AuthPolicyController extends ConsoleController
         $edited = $onEnvironmentPlane ? $baseline : $policies->resolve($this->organizationId());
         $override = $onEnvironmentPlane ? null : $policies->overrideFor($this->organizationId());
 
-        return $this->page('console/auth-policy', ConsoleStrings::text(Vocabulary::AUTHENTICATION_POLICY), [
+        return $this->page('console/auth-policy', __('console.authentication_policy_07e21daf'), [
             'help' => HelpProps::for(HelpTopic::SignInRules),
             'onEnvironmentPlane' => $onEnvironmentPlane,
             'policy' => self::toProps($edited),
@@ -226,9 +224,7 @@ final readonly class AuthPolicyController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', $enabled
-            ? __('console.self_service_sign_up_is_on_people_can_create_af9f74f0')
-            : __('console.self_service_sign_up_is_off_people_join_by_i_3a61a734'));
+        return back()->with('status', $enabled ? __('console.self_service_sign_up_is_on_people_can_create_an_account_af9f74f0') : __('console.self_service_sign_up_is_off_people_join_by_invitation_3a61a734'));
     }
 
     /**
@@ -253,9 +249,7 @@ final readonly class AuthPolicyController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', $input['enabled']
-            ? __('console.text_message_codes_are_on_for_68f4f0cf').count($input['allowed_countries']).' '.(count($input['allowed_countries']) === 1 ? 'country' : 'countries').'.'
-            : __('console.text_message_codes_are_off_1bc7fc7a'));
+        return back()->with('status', $input['enabled'] ? __('console.sms_enabled_country_count', ['count' => count($input['allowed_countries'])]) : __('console.text_message_codes_are_off_1bc7fc7a'));
     }
 
     /**

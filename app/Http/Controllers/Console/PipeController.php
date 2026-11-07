@@ -12,9 +12,7 @@ use App\Actions\Pipes\RevokePipeAccess;
 use App\Actions\Pipes\UpdatePipe;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
-use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Pipes\Models\Pipe;
 use Cbox\Id\Pipes\Models\PipeConnection;
@@ -61,7 +59,7 @@ final readonly class PipeController extends ConsoleController
             $counts[$connection->pipe_id] = ($counts[$connection->pipe_id] ?? 0) + 1;
         }
 
-        return $this->page('console/pipes/index', ConsoleStrings::text(Vocabulary::PIPES), [
+        return $this->page('console/pipes/index', __('console.pipes_685afe34'), [
             'help' => HelpProps::for(HelpTopic::Pipes),
             'providers' => array_map(function (PipeProvider $provider) use ($configured, $counts): array {
                 /** @var Pipe|null $pipe */
@@ -120,7 +118,7 @@ final readonly class PipeController extends ConsoleController
         $pipe = $result->value;
 
         return to_route($this->routeName('pipes.show'), $pipe->id)
-            ->with('status', __('console.pipe_configured_the_client_secret_is_sealed__21a370a1'));
+            ->with('status', __('console.pipe_configured_the_client_secret_is_sealed_and_never_s_21a370a1'));
     }
 
     public function show(Request $request, string $pipe): Response
@@ -221,7 +219,7 @@ final readonly class PipeController extends ConsoleController
             return $result;
         }
 
-        return to_route($this->routeName('pipes'))->with('status', __('console.pipe_removed_every_connection_through_it_was_ab1fa440'));
+        return to_route($this->routeName('pipes'))->with('status', __('console.pipe_removed_every_connection_through_it_was_revoked_he_ab1fa440'));
     }
 
     public function grant(Request $request, string $pipe): RedirectResponse
@@ -233,7 +231,7 @@ final readonly class PipeController extends ConsoleController
             'client_id' => $request->string('client_id')->toString(),
         ], ['client_id' => 'client_id'], fallback: 'client_id');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.access_granted_that_app_can_now_lease_tokens_3ea323c1'));
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.access_granted_that_app_can_now_lease_tokens_through_th_3ea323c1'));
     }
 
     public function revokeGrant(string $pipe, string $client): RedirectResponse

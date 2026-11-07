@@ -1,5 +1,6 @@
+import { useTranslator as usePublicTranslator } from '@/i18n';
 import type { Translator } from '@/i18n';
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import type { InertiaFormProps } from '@inertiajs/react';
 import { Checkbox, Field, Input, Panel, type PillTone, RadioGroup, Select, Textarea } from '@/ui';
 
@@ -55,12 +56,12 @@ export type StreamHealth = 'healthy' | 'degraded' | 'paused' | 'action_required'
 
 /** A stream's delivery health, said in words — the tone never carries it alone. */
 export const HEALTH = (
-    tc: Translator['t'],
+    t: Translator['t'],
 ): Record<StreamHealth, { label: string; tone: PillTone }> => ({
-    healthy: { label: tc('console.delivering_a0760d3d'), tone: 'success' },
-    degraded: { label: tc('console.retrying_f8fe6f86'), tone: 'warning' },
-    paused: { label: tc('console.paused_after_failures_d3f375a7'), tone: 'warning' },
-    action_required: { label: tc('console.action_required_adf69e75'), tone: 'destructive' },
+    healthy: { label: t('console.delivering_a0760d3d'), tone: 'success' },
+    degraded: { label: t('console.retrying_f8fe6f86'), tone: 'warning' },
+    paused: { label: t('console.paused_after_failures_d3f375a7'), tone: 'warning' },
+    action_required: { label: t('console.action_required_adf69e75'), tone: 'destructive' },
 });
 
 export const emptyOptions: StreamOptionsForm = {
@@ -143,8 +144,13 @@ export function DestinationFields({
     choices: StreamChoices;
     hasSecret?: boolean;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const { data } = form;
     const errors = form.errors as Record<string, string | undefined>;
     const cloud = isCloud(data.destination);
@@ -164,11 +170,13 @@ export function DestinationFields({
 
     return (
         <>
-            <Panel title={tc('console.where_it_goes_4d1ca74f')}>
+            <Panel title={consoleT('console.where_it_goes_4d1ca74f')}>
                 <div className="space-y-4">
                     <Field
-                        label={tc('console.destination_293d404a')}
-                        hint={tc('console.splunk_elastic_graylog_cef_and_generic_json__8d405816')}
+                        label={consoleT('console.destination_293d404a')}
+                        hint={consoleT(
+                            'console.splunk_elastic_graylog_cef_and_generic_json_are_http_co_8d405816',
+                        )}
                         error={errors.destination}
                     >
                         <Select
@@ -193,7 +201,7 @@ export function DestinationFields({
 
                     {!cloud && (
                         <Field
-                            label={tc('console.endpoint_url_2578179d')}
+                            label={consoleT('console.endpoint_url_2578179d')}
                             error={errors.endpointUrl}
                         >
                             <Input
@@ -212,9 +220,9 @@ export function DestinationFields({
                     {data.destination === 'datadog' && (
                         <>
                             <Field
-                                label={tc('console.datadog_site_e01eb56a')}
-                                hint={tc(
-                                    'console.the_site_your_account_lives_on_the_domain_of_7f128cbf',
+                                label={consoleT('console.datadog_site_e01eb56a')}
+                                hint={consoleT(
+                                    'console.the_site_your_account_lives_on_the_domain_of_the_datado_7f128cbf',
                                 )}
                                 error={errors['options.site']}
                             >
@@ -227,19 +235,19 @@ export function DestinationFields({
                             </Field>
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <Field
-                                    label={tc('console.service_d677190e')}
+                                    label={consoleT('console.service_d677190e')}
                                     optional
-                                    hint={tc(
-                                        'console.the_service_attribute_defaults_to_this_platf_23d483a1',
+                                    hint={consoleT(
+                                        'console.the_service_attribute_defaults_to_this_platform_s_name_23d483a1',
                                     )}
                                     error={errors['options.service']}
                                 >
                                     <Input {...text('service')} className="mono" />
                                 </Field>
                                 <Field
-                                    label={tc('console.source_0e570ca6')}
+                                    label={consoleT('console.source_0e570ca6')}
                                     optional
-                                    hint={tc(
+                                    hint={consoleT(
                                         'console.the_ddsource_attribute_defaults_to_cbox_8743f5cd',
                                     )}
                                     error={errors['options.source']}
@@ -248,9 +256,11 @@ export function DestinationFields({
                                 </Field>
                             </div>
                             <Field
-                                label={tc('console.tags_1331275b')}
+                                label={consoleT('console.tags_1331275b')}
                                 optional
-                                hint={tc('console.key_value_tags_separated_by_commas_b8006cb4')}
+                                hint={consoleT(
+                                    'console.key_value_tags_separated_by_commas_b8006cb4',
+                                )}
                                 error={errors['options.tags']}
                             >
                                 <Input
@@ -260,10 +270,10 @@ export function DestinationFields({
                                 />
                             </Field>
                             <Field
-                                label={tc('console.hostname_2db53355')}
+                                label={consoleT('console.hostname_2db53355')}
                                 optional
-                                hint={tc(
-                                    'console.the_hostname_attribute_defaults_to_this_plat_03e46070',
+                                hint={consoleT(
+                                    'console.the_hostname_attribute_defaults_to_this_platform_s_host_03e46070',
                                 )}
                                 error={errors['options.hostname']}
                             >
@@ -276,36 +286,40 @@ export function DestinationFields({
                         <>
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <Field
-                                    label={tc('console.bucket_c83b6579')}
+                                    label={consoleT('console.bucket_c83b6579')}
                                     error={errors['options.bucket']}
                                 >
                                     <Input
                                         {...text('bucket')}
                                         className="mono"
-                                        placeholder={tc('console.acme_audit_logs_22d3d5bb')}
+                                        placeholder={consoleUiText(
+                                            'console.acme_audit_logs_22d3d5bb',
+                                        )}
                                     />
                                 </Field>
                                 {data.destination === 's3' && (
                                     <Field
-                                        label={tc('console.aws_region_7e489ee6')}
-                                        hint={tc(
-                                            'console.for_example_eu_west_1_cloudflare_r2_uses_aut_d42aeb2a',
+                                        label={consoleT('console.aws_region_7e489ee6')}
+                                        hint={consoleT(
+                                            'console.for_example_eu_west_1_cloudflare_r2_uses_auto_d42aeb2a',
                                         )}
                                         error={errors['options.region']}
                                     >
                                         <Input
                                             {...text('region')}
                                             className="mono"
-                                            placeholder={tc('console.eu_west_1_d763c260')}
+                                            placeholder={consoleUiText(
+                                                'console.eu_west_1_d763c260',
+                                            )}
                                         />
                                     </Field>
                                 )}
                             </div>
                             <Field
-                                label={tc('console.prefix_74feac5e')}
+                                label={consoleT('console.prefix_74feac5e')}
                                 optional
-                                hint={tc(
-                                    'console.objects_are_written_to_prefix_yyyy_mm_dd_hh__5c6035ae',
+                                hint={consoleT(
+                                    'console.objects_are_written_to_prefix_yyyy_mm_dd_hh_batch_ndjso_5c6035ae',
                                 )}
                                 error={errors['options.prefix']}
                             >
@@ -316,8 +330,8 @@ export function DestinationFields({
                                 />
                             </Field>
                             <Checkbox
-                                label={tc('console.compress_objects_gzip_c8ae75a6')}
-                                hint={tc('console.off_writes_plain_ndjson_57bf425a')}
+                                label={consoleT('console.compress_objects_gzip_c8ae75a6')}
+                                hint={consoleT('console.off_writes_plain_ndjson_57bf425a')}
                                 checked={data.options.gzip}
                                 onCheckedChange={(gzip) => option('gzip', gzip)}
                             />
@@ -326,10 +340,13 @@ export function DestinationFields({
                 </div>
             </Panel>
 
-            <Panel title={tc('console.how_it_authenticates_3288609b')}>
+            <Panel title={consoleT('console.how_it_authenticates_3288609b')}>
                 <div className="space-y-4">
                     {!cloud && (
-                        <Field label={tc('console.auth_scheme_4a894695')} error={errors.scheme}>
+                        <Field
+                            label={consoleT('console.auth_scheme_4a894695')}
+                            error={errors.scheme}
+                        >
                             <Select
                                 name="scheme"
                                 value={data.scheme}
@@ -342,7 +359,7 @@ export function DestinationFields({
                     {data.destination === 's3' && (
                         <>
                             <RadioGroup
-                                label={tc('console.credentials_d48a617c')}
+                                label={consoleT('console.credentials_d48a617c')}
                                 value={data.credential}
                                 onValueChange={(credential) =>
                                     form.setData('credential', credential)
@@ -350,20 +367,20 @@ export function DestinationFields({
                                 options={[
                                     {
                                         value: 'access_key',
-                                        label: tc('console.access_key_8663b0d4'),
-                                        hint: tc(
-                                            'console.an_iam_user_allowed_only_s3_putobject_on_the_5337441e',
+                                        label: consoleText('console.access_key_8663b0d4'),
+                                        hint: consoleText(
+                                            'console.an_iam_user_allowed_only_s3_putobject_on_the_bucket_its_5337441e',
                                         ),
                                     },
                                     {
                                         value: 'role',
-                                        label: tc('console.assume_an_iam_role_86a49309'),
+                                        label: consoleText('console.assume_an_iam_role_86a49309'),
                                         hint: choices.assumedRoleAvailable
-                                            ? tc(
-                                                  'console.no_secret_is_stored_the_role_trusts_this_pla_4b76cd90',
+                                            ? consoleAttributeText(
+                                                  'console.no_secret_is_stored_the_role_trusts_this_platform_with_4b76cd90',
                                               )
-                                            : tc(
-                                                  'console.not_set_up_on_this_platform_it_has_no_aws_id_c076f7f2',
+                                            : consoleAttributeText(
+                                                  'console.not_set_up_on_this_platform_it_has_no_aws_identity_of_i_c076f7f2',
                                               ),
                                         disabled:
                                             !choices.assumedRoleAvailable &&
@@ -373,7 +390,7 @@ export function DestinationFields({
                             />
                             {data.credential === 'role' ? (
                                 <Field
-                                    label={tc('console.iam_role_arn_acaac048')}
+                                    label={consoleT('console.iam_role_arn_acaac048')}
                                     error={errors['options.role_arn']}
                                 >
                                     <Input
@@ -386,14 +403,14 @@ export function DestinationFields({
                                 </Field>
                             ) : (
                                 <Field
-                                    label={tc('console.access_key_id_14eb0f96')}
+                                    label={consoleT('console.access_key_id_14eb0f96')}
                                     error={errors['options.access_key_id']}
                                 >
                                     <Input
                                         {...text('access_key_id')}
                                         className="mono"
                                         autoComplete="off"
-                                        placeholder={tc('console.akia_b3941023')}
+                                        placeholder={consoleUiText('console.akia_b3941023')}
                                     />
                                 </Field>
                             )}
@@ -408,22 +425,22 @@ export function DestinationFields({
                             optional={generatesKey || hasSecret}
                             hint={
                                 generatesKey
-                                    ? tc(
-                                          'console.left_empty_a_signing_key_is_generated_for_yo_7cc3e0ba',
+                                    ? consoleText(
+                                          'console.left_empty_a_signing_key_is_generated_for_you_and_shown_7cc3e0ba',
                                       )
                                     : data.destination === 'gcs'
-                                      ? tc(
-                                            'console.paste_the_whole_json_key_file_of_a_service_a_68ea5ffd',
-                                            { value0: keepHint },
+                                      ? consoleFinalText(
+                                            'console.paste_the_whole_json_key_file_of_a_service_account_gran_6f4e93cd',
+                                            { part1: keepHint },
                                         )
                                       : data.destination === 'datadog'
-                                        ? tc(
-                                              'console.an_api_key_organization_settings_api_keys_no_7bebf1bc',
-                                              { value0: keepHint },
+                                        ? consoleFinalText(
+                                              'console.an_api_key_organization_settings_api_keys_not_an_applic_916c023d',
+                                              { part1: keepHint },
                                           )
-                                        : tc(
-                                              'console.stored_encrypted_and_never_shown_again_value_9076dcd0',
-                                              { value0: keepHint },
+                                        : consoleFinalText(
+                                              'console.stored_encrypted_and_never_shown_again_part1_2bdbba2d',
+                                              { part1: keepHint },
                                           )
                             }
                             error={errors.secret}
@@ -460,7 +477,7 @@ export function DestinationFields({
                     {data.destination === 's3' && (
                         <div className="grid gap-4 sm:grid-cols-2">
                             <Field
-                                label={tc('console.server_side_encryption_88986133')}
+                                label={consoleT('console.server_side_encryption_88986133')}
                                 error={errors['options.sse']}
                             >
                                 <Select
@@ -472,22 +489,27 @@ export function DestinationFields({
                                     options={[
                                         {
                                             value: 'default',
-                                            label: tc('console.the_bucket_s_default_9720401e'),
+                                            label: consoleText(
+                                                'console.the_bucket_s_default_9720401e',
+                                            ),
                                         },
-                                        { value: 'AES256', label: 'SSE-S3 (AES256)' },
+                                        {
+                                            value: 'AES256',
+                                            label: consoleText('console.sse_s3_aes256_d64ae3ac'),
+                                        },
                                         {
                                             value: 'aws:kms',
-                                            label: tc('console.sse_kms_aws_kms_03857bf3'),
+                                            label: consoleText('console.sse_kms_aws_kms_03857bf3'),
                                         },
                                     ]}
                                 />
                             </Field>
                             {data.options.sse === 'aws:kms' && (
                                 <Field
-                                    label={tc('console.aws_kms_key_94d3792b')}
+                                    label={consoleT('console.aws_kms_key_94d3792b')}
                                     optional
-                                    hint={tc(
-                                        'console.key_id_alias_or_arn_empty_uses_the_aws_manag_6cf3c54f',
+                                    hint={consoleT(
+                                        'console.key_id_alias_or_arn_empty_uses_the_aws_managed_key_6cf3c54f',
                                     )}
                                     error={errors['options.kms_key_id']}
                                 >
@@ -505,16 +527,20 @@ export function DestinationFields({
 
             {cloud && data.destination !== 'datadog' && (
                 <Panel
-                    title={tc('console.custom_endpoint_5fb0795e')}
+                    title={consoleT('console.custom_endpoint_5fb0795e')}
                     description={
                         data.destination === 's3'
-                            ? tc('console.only_for_an_s3_compatible_store_such_as_mini_266ca7ae')
-                            : tc('console.empty_uses_https_storage_googleapis_com_a6ee9d11')
+                            ? consoleText(
+                                  'console.only_for_an_s3_compatible_store_such_as_minio_or_cloudf_266ca7ae',
+                              )
+                            : consoleText(
+                                  'console.empty_uses_https_storage_googleapis_com_a6ee9d11',
+                              )
                     }
                 >
                     <div className="space-y-4">
                         <Field
-                            label={tc('console.endpoint_url_2578179d')}
+                            label={consoleT('console.endpoint_url_2578179d')}
                             optional
                             error={errors.endpointUrl}
                         >
@@ -535,9 +561,9 @@ export function DestinationFields({
                         </Field>
                         {data.destination === 's3' && (
                             <Checkbox
-                                label={tc('console.force_path_style_addressing_380b7ab2')}
-                                hint={tc(
-                                    'console.the_bucket_in_the_path_rather_than_the_host__070b78d0',
+                                label={consoleT('console.force_path_style_addressing_380b7ab2')}
+                                hint={consoleT(
+                                    'console.the_bucket_in_the_path_rather_than_the_host_name_a_cust_070b78d0',
                                 )}
                                 checked={data.options.path_style}
                                 onCheckedChange={(pathStyle) => option('path_style', pathStyle)}

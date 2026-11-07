@@ -110,7 +110,7 @@ final readonly class ClientSecretsController extends ConsoleController
         $model = $this->clients->manageable($client);
 
         if ($model->type !== ClientType::Confidential) {
-            return back()->with('error', __('console.public_apps_use_pkce_and_have_no_secret_to_r_b299056f'));
+            return back()->with('error', __('console.public_apps_use_pkce_and_have_no_secret_to_rotate_b299056f'));
         }
 
         /*
@@ -122,7 +122,7 @@ final readonly class ClientSecretsController extends ConsoleController
          * authentication model, offered as routine hygiene.
          */
         if (! AppTabs::holdsSharedSecret($model)) {
-            return back()->with('error', __('console.this_app_signs_assertions_with_its_own_keys__7e457dd4'));
+            return back()->with('error', __('console.this_app_signs_assertions_with_its_own_keys_and_has_no_7e457dd4'));
         }
 
         $grace = $request->grace();
@@ -138,7 +138,7 @@ final readonly class ClientSecretsController extends ConsoleController
             ['client' => $model->id, 'confirmed' => 'rotate'],
             $grace === SecretGrace::Immediately
                 ? __('console.rotating_this_app_s_secret_creates_a_new_one_c5772a3d')
-                : __('console.rotating_this_app_s_secret_creates_a_new_one_18dace33').$grace->overlap().'.',
+                : __('console.secret_rotation_step_up_duration', ['duration' => $grace->duration()]),
         );
 
         if ($sudo !== null) {
@@ -157,9 +157,7 @@ final readonly class ClientSecretsController extends ConsoleController
         // The plaintext exists only in this response — see the class comment.
         $this->inertia->flash('revealedSecret', $rotated->secret);
 
-        return back()->with('status', $grace === SecretGrace::Immediately
-            ? __('console.secret_rotated_and_the_previous_one_has_stop_14aacb17')
-            : __('console.secret_rotated_the_previous_one_keeps_workin_a0dad459').$grace->overlap().__('console.copy_the_new_one_now_it_will_not_be_shown_ag_e926c451'));
+        return back()->with('status', $grace === SecretGrace::Immediately ? __('console.secret_rotated_and_the_previous_one_has_stopped_working_14aacb17') : __('console.secret_rotated_remaining_duration', ['duration' => $grace->duration()]));
     }
 
     /**
@@ -175,11 +173,11 @@ final readonly class ClientSecretsController extends ConsoleController
 
         // Refused before the step-up, for the same reason rotation's refusals are.
         if ($target === []) {
-            return back()->with('error', RevokeAppSecret::NOT_LIVE);
+            return back()->with('error', __('console.that_secret_is_no_longer_live_it_has_already_run_out_or_26673767'));
         }
 
         if (count($live) <= 1) {
-            return back()->with('error', RevokeAppSecret::LAST_LIVE);
+            return back()->with('error', __('console.this_is_the_app_s_only_live_secret_rotate_it_to_replace_70716789'));
         }
 
         $sudo = app(ConsoleStepUp::class)->challenge(
@@ -204,9 +202,7 @@ final readonly class ClientSecretsController extends ConsoleController
 
         $hint = $target[0]->hint;
 
-        return back()->with('status', $hint !== null
-            ? "Secret ending in {$hint} revoked. It no longer works."
-            : __('console.secret_revoked_it_no_longer_works_9b2336b2'));
+        return back()->with('status', $hint !== null ? "Secret ending in {$hint} revoked. It no longer works." : __('console.secret_revoked_it_no_longer_works_9b2336b2'));
     }
 
     /**

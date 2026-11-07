@@ -23,6 +23,7 @@ use App\Platform\AccountLinking\SignInIdentity;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Mfa\AuthenticatorEnrollment;
 use App\Platform\Passkeys\PasskeyName;
 use App\Platform\Passkeys\RecordsPasskeyUse;
@@ -105,7 +106,7 @@ final readonly class AccountController extends PageController
                 'initial' => mb_strtoupper(mb_substr($me->name(), 0, 1)),
                 'organization' => $organization === null ? null : [
                     'name' => $organization->name,
-                    'role' => $me->role()?->label() ?? 'Member',
+                    'role' => ConsoleLabels::navigation($me->role()?->label() ?? 'Member'),
                 ],
             ],
             'hasPassword' => $this->hasPassword($subjectId),
@@ -295,7 +296,7 @@ final readonly class AccountController extends PageController
 
         if (RateLimiter::tooManyAttempts($key, self::ENROL_ATTEMPTS)) {
             return back()->withErrors([
-                'code' => __('console.too_many_attempts_try_again_in_021db289').RateLimiter::availableIn($key).' seconds.',
+                'code' => __('console.sudo_retry_seconds', ['seconds' => RateLimiter::availableIn($key)]),
             ]);
         }
 
@@ -443,7 +444,7 @@ final readonly class AccountController extends PageController
 
         if (RateLimiter::tooManyAttempts($key, self::ENROL_ATTEMPTS)) {
             return back()->withErrors([
-                'smsCode' => __('console.too_many_attempts_try_again_in_021db289').RateLimiter::availableIn($key).' seconds.',
+                'smsCode' => __('console.sudo_retry_seconds', ['seconds' => RateLimiter::availableIn($key)]),
             ]);
         }
 

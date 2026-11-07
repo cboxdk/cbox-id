@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform\Navigation;
 
+use App\Platform\Locale\ConsoleLabels;
+
 /**
  * One plane's navigation, and the only description of it.
  *
@@ -87,7 +89,7 @@ readonly class ConsoleNav
 
         return array_map(fn (NavArea $area): array => [
             'key' => $area->label,
-            'label' => $area->label,
+            'label' => ConsoleLabels::navigation($area->label),
             'icon' => $area->icon,
             'href' => $area->href(),
             'active' => $area->label === $current->label,
@@ -104,7 +106,7 @@ readonly class ConsoleNav
     {
         return array_map(fn (NavPage $page): array => [
             'href' => $page->href(),
-            'label' => $page->label,
+            'label' => ConsoleLabels::navigation($page->label),
             'active' => $page->isCurrent(),
         ], $this->currentArea()->pages);
     }
@@ -118,11 +120,11 @@ readonly class ConsoleNav
     public function groups(): array
     {
         return array_map(fn (NavArea $area): array => [
-            'label' => $area->label,
+            'label' => ConsoleLabels::navigation($area->label),
             'icon' => $area->icon,
             'pages' => array_map(fn (NavPage $page): array => [
                 'route' => $page->route,
-                'label' => $page->label,
+                'label' => ConsoleLabels::navigation($page->label),
             ], $area->pages),
         ], $this->areas);
     }

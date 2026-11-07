@@ -10,7 +10,7 @@ it('shows the catalog editor and keyboard-accessible app selector in both themes
     visit(route('environment.app-catalog.create'))
         ->assertSee('Add app')
         ->assertSee('Launch URL')
-        ->assertSee('Selected clients')
+        ->assertSee('Selected OAuth integrations')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'app-catalog-light');
     visit(route('environment.app-catalog.create'))->inDarkMode()

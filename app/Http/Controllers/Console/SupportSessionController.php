@@ -51,7 +51,7 @@ final readonly class SupportSessionController extends ConsoleController
          */
         if (! $support->isEligible($request->clientId())) {
             return back()->withInput()->withErrors([
-                'app' => __('console.support_sessions_reach_only_first_party_apps_5884a7e2'),
+                'app' => __('console.support_sessions_reach_only_first_party_apps_this_envir_5884a7e2'),
             ]);
         }
 
@@ -62,7 +62,7 @@ final readonly class SupportSessionController extends ConsoleController
 
         if ($membership === null || $membership->status !== MembershipStatus::Active) {
             return back()->withInput()->withErrors([
-                'organization' => __('console.they_are_not_an_active_member_of_that_organi_006b23b0'),
+                'organization' => __('console.they_are_not_an_active_member_of_that_organization_006b23b0'),
             ]);
         }
 
@@ -117,7 +117,7 @@ final readonly class SupportSessionController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', __('console.support_session_ended_every_token_it_issued__3b91bce1'));
+            : back()->with('status', __('console.support_session_ended_every_token_it_issued_is_revoked_3b91bce1'));
     }
 
     /** The administrator acting, as a subject of the platform root. */

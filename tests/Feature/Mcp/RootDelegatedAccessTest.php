@@ -7,13 +7,19 @@ use App\Mcp\ActionTool;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ActionApprovalRequest;
+use App\Platform\AppMemberRoles;
 use App\Platform\EnvironmentOrigin;
+use App\Platform\GrantAccessRole;
+use App\Platform\NativeProduct\NativeProductAccess;
+use App\Platform\NativeProduct\NativeProductClient;
 use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OrganizationActivity;
 use App\Support\CliClient;
+use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Crypto\Contracts\TokenSigner;
 use Cbox\Id\Kernel\Crypto\Enums\SigningAlg;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -142,6 +148,84 @@ function rootApisIn(Environment $environment): array
 
 // ── Who gets in ─────────────────────────────────────────────────────────────────
 
+it('requires an exact workspace selector for an unbound multi-workspace token', function (): void {
+    $other = provisionAccount('second-owner@example.test');
+    $subject = $this->account['subjectId'];
+    $first = $this->account['organization']->id;
+    $second = $other['organization']->id;
+    $membership = app(PlatformRoot::class)->run(fn () => app(Memberships::class)->add($second, $subject, MembershipRole::Member));
+    grantNativeProductRoles($membership, ['viewer']);
+    $token = rootToken($subject);
+
+    expect(app(RootDelegatedAccess::class)->holdsStanding($subject))->toBeTrue();
+    $this->withToken($token)->getJson('/api/v1/workspace')->assertForbidden();
+    $this->withToken($token)->getJson('/api/v1/workspace', ['Cbox-Organization' => $first])->assertOk()->assertJsonPath('data.id', $first);
+    $this->withToken($token)->getJson('/api/v1/workspace', ['Cbox-Organization' => $second])->assertOk()->assertJsonPath('data.id', $second);
+    $this->withToken(rootToken($subject, null, $first))->getJson('/api/v1/workspace', ['Cbox-Organization' => $second])->assertForbidden();
+
+    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->remove($second, $subject));
+    $this->withToken($token)->getJson('/api/v1/workspace', ['Cbox-Organization' => $second])->assertForbidden();
+
+    $key = app(OrganizationApiKeys::class)->issue($first, 'Bound machine', MembershipRole::Admin)->plaintext;
+    $this->withToken($key)->getJson('/api/v1/workspace', ['Cbox-Organization' => $second])->assertForbidden();
+})->group('security');
+
+it('uses native app permissions rather than shared membership tier at the workspace API gate', function (): void {
+    [$membership, $subject] = addMember($this->account['organization']->id, MembershipRole::Member, 'native-admin@example.test');
+    grantNativeProductRoles($membership, ['admin']);
+    $token = rootToken($subject, ['team:read'], $membership->organization_id);
+
+    $this->withToken($token)->getJson('/api/v1/workspace/members')->assertOk();
+})->group('security');
+
+it('does not turn a shared organization admin into an ID product admin', function (): void {
+    [, $subject] = addMember($this->account['organization']->id, MembershipRole::Admin, 'shared-admin@example.test');
+    $token = rootToken($subject, null, $this->account['organization']->id);
+
+    expect(app(RootDelegatedAccess::class)->workspaceOf($subject, $this->account['organization']->id))->toBeNull();
+    $this->withToken($token)->getJson('/api/v1/workspace/projects')->assertForbidden();
+    $this->withToken($token)->getJson('/api/v1/apis', ['Cbox-Environment' => $this->account['environment']->id])->assertForbidden();
+})->group('security');
+
+it('keeps native Reader access read-only and revokes it on the next token request', function (): void {
+    [$member, $subject] = addMember($this->account['organization']->id, MembershipRole::Admin, 'native-reader@example.test');
+    app(PlatformRoot::class)->run(function () use ($member): void {
+        $client = app(NativeProductClient::class)->clientId();
+        app(AppMemberRoles::class)->replace($member, $client, ['viewer'], hash('sha256', '[]'), AuditActor::user($this->account['subjectId']));
+    });
+    $token = rootToken($subject, null, $this->account['organization']->id);
+    $headers = ['Cbox-Environment' => $this->account['environment']->id];
+
+    $this->withToken($token)->getJson('/api/v1/workspace/projects')->assertOk();
+    $this->withToken($token)->getJson('/api/v1/apis', $headers)->assertOk();
+    $this->withToken($token)->postJson('/api/v1/workspace/projects', ['name' => 'Forbidden'])->assertForbidden();
+    $this->withToken($token)->postJson('/api/v1/apis', ['name' => 'Forbidden', 'identifier' => 'https://forbidden.example.test'], $headers)->assertForbidden();
+
+    $can = app(NativeProductAccess::class)->forSubject($subject, $member->organization_id);
+    expect($can->canReadBilling())->toBeFalse()->and($can->canManageMembers())->toBeFalse();
+
+    app(PlatformRoot::class)->run(function () use ($member): void {
+        $client = app(NativeProductClient::class)->clientId();
+        $role = Role::query()->where('client_id', $client)->where('key', 'viewer')->firstOrFail();
+        app(GrantAccessRole::class)->revoke($member->organization_id, $member->user_id, $role->id);
+    });
+    $this->withToken($token)->getJson('/api/v1/workspace/projects')->assertForbidden();
+    $this->withToken($token)->getJson('/api/v1/apis', $headers)->assertForbidden();
+})->group('security');
+
+it('never substitutes another workspace for an explicitly bound organization', function (): void {
+    $access = app(RootDelegatedAccess::class);
+    $subject = $this->account['subjectId'];
+    $organization = $this->account['organization']->id;
+
+    expect($access->workspaceOf($subject, $organization)?->id)->toBe($organization)
+        ->and($access->workspaceOf($subject, 'missing-organization'))->toBeNull()
+        ->and($access->workspaceOf($subject, ''))->toBeNull();
+
+    $token = rootToken($subject, ['workspace:read'], 'missing-organization');
+    $this->withToken($token)->getJson('/api/v1/workspace/projects')->assertForbidden();
+})->group('security');
+
 it('takes a workspace member\'s root token at the root\'s /mcp and says who it acts as', function (): void {
     $token = rootToken($this->account['subjectId']);
 
@@ -216,8 +300,10 @@ it('reserves the environment argument: no environment action declares a field of
 });
 
 it('lists only what the token\'s scopes and the member\'s role both allow', function (): void {
-    [, $developer] = addMember($this->account['organization']->id, MembershipRole::Developer, 'dev@acme.example');
-    [, $viewer] = addMember($this->account['organization']->id, MembershipRole::Viewer, 'viewer@acme.example');
+    [$developerMembership, $developer] = addMember($this->account['organization']->id, MembershipRole::Developer, 'dev@acme.example');
+    grantNativeProductRoles($developerMembership, ['developer']);
+    [$viewerMembership, $viewer] = addMember($this->account['organization']->id, MembershipRole::Viewer, 'viewer@acme.example');
+    grantNativeProductRoles($viewerMembership, ['viewer']);
 
     // A developer administers environments but may not read the team (PII).
     expect(array_keys(mcpTools(rootToken($developer))))->toContain('projects_create', 'apis_create')->not->toContain('team_list');
@@ -258,7 +344,8 @@ it('runs a workspace action as the member, recorded as the member', function ():
 });
 
 it('bounds a member\'s workspace token by their role, at both doors', function (): void {
-    [, $developer] = addMember($this->account['organization']->id, MembershipRole::Developer, 'dev@acme.example');
+    [$developerMembership, $developer] = addMember($this->account['organization']->id, MembershipRole::Developer, 'dev@acme.example');
+    grantNativeProductRoles($developerMembership, ['developer']);
     $token = rootToken($developer);
 
     $this->withToken($token)->getJson('/api/v1/workspace/members')
@@ -308,7 +395,8 @@ it('runs an environment action in the environment it names, inside that environm
 
 it('refuses an environment the member cannot reach, another workspace\'s, and no environment at all', function (): void {
     $staging = rootSecondEnvironment($this->account);
-    [, $scoped] = addMember($this->account['organization']->id, MembershipRole::Developer, 'dev@acme.example');
+    [$scopedMembership, $scoped] = addMember($this->account['organization']->id, MembershipRole::Developer, 'dev@acme.example');
+    grantNativeProductRoles($scopedMembership, ['developer']);
     $workspace = $this->account['organization']->id;
     app(PlatformRoot::class)->run(static fn () => app(Memberships::class)->setEnvironmentAccess($workspace, $scoped, false, [$staging->id]));
 
@@ -343,7 +431,7 @@ it('refuses a member whose role administers no environment, even with the scope'
     $this->withToken($token)
         ->getJson('/api/v1/apis', ['Cbox-Environment' => $this->account['environment']->id])
         ->assertForbidden()
-        ->assertJsonPath('message', 'Your role in this workspace does not administer environments.');
+        ->assertJsonPath('message', "You are not on a workspace's team, so there is no environment to act in.");
 })->group('security');
 
 it('takes the environment in a header over REST, on the environment API\'s own routes', function (): void {
@@ -378,6 +466,7 @@ it('mints the URLs of an environment action taken at the root on that environmen
     // ACS URL on the root, which serves no SAML, and the Admin Portal link it minted said
     // "expired" there while the same token opened on the environment's host.
     config()->set('cbox-id.environments.base_domains', ['id.example']);
+    grantFeature($this->account['organization']->id, 'cbox-id-sso');
     $staging = rootSecondEnvironment($this->account);
     $token = rootToken($this->account['subjectId']);
     $headers = ['Cbox-Environment' => $staging->slug];
@@ -410,6 +499,7 @@ it('mails the links of an environment action taken at the root on that environme
     // root mailed an accept link on the root, which bounced the invitee to its sign-in. The
     // root resolves to no environment, so MailLinks fell back to `app.url`.
     config()->set('cbox-id.environments.base_domains', ['id.example']);
+    grantFeature($this->account['organization']->id, 'cbox-id-sso');
     $staging = rootSecondEnvironment($this->account);
     $token = rootToken($this->account['subjectId']);
     $headers = ['Cbox-Environment' => $staging->slug];
@@ -431,6 +521,7 @@ it('mails the links of an environment action taken at the root on that environme
 
 it('keeps a held environment action\'s poll on the root, where its token is taken', function (): void {
     config()->set('cbox-id.environments.base_domains', ['id.example']);
+    grantFeature($this->account['organization']->id, 'cbox-id-sso');
     $token = rootToken($this->account['subjectId']);
     $root = rtrim((string) config('app.url'), '/');
 

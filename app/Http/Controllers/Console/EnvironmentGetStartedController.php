@@ -112,7 +112,7 @@ final readonly class EnvironmentGetStartedController extends ConsoleController
         $name = trim($request->string('name')->toString());
 
         $result = $this->attempt(CreateApp::class, [
-            'name' => $name !== '' ? $name : 'My '.$framework->label().' app',
+            'name' => $name !== '' ? $name : __('console.default_framework_app_name', ['framework' => $framework->label()]),
             'type' => $framework->kind()->value,
             'redirect_uris' => [$framework->redirectUri()],
             'organization_id' => null,
@@ -131,7 +131,7 @@ final readonly class EnvironmentGetStartedController extends ConsoleController
         }
 
         return to_route('environment.get-started', ['framework' => $framework->value, 'app' => $registered->client->id])
-            ->with('status', 'App "'.$registered->client->name.'" created.');
+            ->with('status', __('console.app_part1_created_4e389b94', ['part1' => $registered->client->name]));
     }
 
     /** Put the checklist away — for this person, in this environment. */

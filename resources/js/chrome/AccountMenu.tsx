@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import { currentTheme, toggleTheme } from '@/lib/theme';
@@ -46,8 +46,11 @@ export function AccountMenu({
     platformHref,
     platformEnvironmentHref = null,
 }: AccountMenuProps) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const signOut = useForm({});
     // Read when the menu opens, not at render: the theme is the document's, and a value
     // captured on the first render would name the theme from before the last toggle.
@@ -57,7 +60,9 @@ export function AccountMenu({
         <DropdownMenu onOpenChange={(open) => open && setTheme(currentTheme())}>
             <DropdownMenuTrigger
                 className="cbx-avatar-btn"
-                aria-label={tc('console.account_menu_value0_6ab6a9a2', { value0: user.name })}
+                aria-label={consoleFinalText('console.account_menu_part1_18b175d9', {
+                    part1: user.name,
+                })}
             >
                 <Avatar name={user.name} />
             </DropdownMenuTrigger>
@@ -70,7 +75,7 @@ export function AccountMenu({
 
                 {workspaceSettingsHref !== null && (
                     <AccountMenuLink href={workspaceSettingsHref} icon="briefcase">
-                        {tc('console.workspace_settings_5ebc5914')}
+                        {consoleT('console.workspace_settings_5ebc5914')}
                     </AccountMenuLink>
                 )}
                 {/*
@@ -79,14 +84,14 @@ export function AccountMenu({
                     administrator to a sign-in form for the tenant's end users.
                 */}
                 <AccountMenuLink href={accountHref} icon="user">
-                    {tc('console.my_account_b53181a4')}
+                    {consoleT('console.my_account_b53181a4')}
                 </AccountMenuLink>
                 {/*
                     "Switch user": it moves between the people signed in on this device.
                     "Switch account" read as switching workspace.
                 */}
                 <AccountMenuLink href={switchUserHref} icon="switch">
-                    {tc('console.switch_user_4f899129')}
+                    {consoleT('console.switch_user_4f899129')}
                 </AccountMenuLink>
 
                 {(platformHref !== null || platformEnvironmentHref !== null) && (
@@ -94,7 +99,7 @@ export function AccountMenu({
                 )}
                 {platformHref !== null && (
                     <AccountMenuLink href={platformHref} icon="lock">
-                        {tc('console.platform_admin_69652f55')}
+                        {consoleT('console.platform_admin_69652f55')}
                     </AccountMenuLink>
                 )}
                 {/*
@@ -103,7 +108,7 @@ export function AccountMenu({
                 */}
                 {platformEnvironmentHref !== null && (
                     <AccountMenuLink href={platformEnvironmentHref} icon="layers">
-                        {tc('console.platform_environment_2676dfe4')}
+                        {consoleT('console.platform_environment_2676dfe4')}
                     </AccountMenuLink>
                 )}
 
@@ -116,11 +121,11 @@ export function AccountMenu({
                     onSelect={() => setTheme(toggleTheme())}
                 >
                     <Icon name={theme === 'dark' ? 'sun' : 'moon'} className="w-4 h-4" />
-                    <span className="min-w-0 flex-1">{tc('console.theme_efb52e71')}</span>
+                    <span className="min-w-0 flex-1">{consoleT('console.theme_efb52e71')}</span>
                     <span className="cbx-account-hint">
                         {theme === 'dark'
-                            ? tc('console.dark_60acc53f')
-                            : tc('console.light_dbcd5e7b')}
+                            ? consoleText('console.dark_60acc53f')
+                            : consoleText('console.light_dbcd5e7b')}
                     </span>
                 </DropdownMenuItem>
 
@@ -130,8 +135,9 @@ export function AccountMenu({
                     // session can be triggered by any image tag on any page.
                     onSelect={() => signOut.post(logoutUrl)}
                 >
-                    <Icon name="logout" className="w-4 h-4" />
-                    {tc('console.sign_out_48f0d3d3')}
+                    {consoleRich('console._part1_sign_out_c5531c62', {
+                        part1: <Icon name="logout" className="w-4 h-4" />,
+                    })}
                 </DropdownMenuItem>
             </DropdownMenuContent>
         </DropdownMenu>

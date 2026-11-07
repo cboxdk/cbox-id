@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform\Appearance;
 
+use App\Platform\Actions\ActionMessage;
+
 /**
  * The four anchor colours of one mode (light or dark) of a hosted-sign-in theme.
  * A strongly-typed replacement for the old `array{primary, background, foreground,
@@ -35,16 +37,30 @@ final readonly class ThemeMode
      */
     public function contrastFailures(): array
     {
+        return array_map(static fn (ActionMessage $message): string => $message->render('en'), $this->contrastMessages());
+    }
+
+    /** @return list<ActionMessage> */
+    public function contrastMessages(?bool $dark = null): array
+    {
         $failures = [];
         $body = Color::contrastRatio($this->foreground, $this->background);
         $muted = Color::contrastRatio($this->muted, $this->background);
 
         if ($body < 4.5) {
-            $failures[] = sprintf('Text on the background is %.2f:1 — it needs 4.5:1 to be readable.', $body);
+            $failures[] = new ActionMessage(match ($dark) {
+                true => 'console.dark_mode_text_on_the_background_is_ratio_1_it_needs_4_b765ecdf',
+                false => 'console.light_mode_text_on_the_background_is_ratio_1_it_needs_4_22bc83f1',
+                null => 'console.text_on_the_background_is_ratio_1_it_needs_4_5_1_to_be_34891948',
+            }, ['ratio' => sprintf('%.2f', $body)]);
         }
 
         if ($muted < 3.0) {
-            $failures[] = sprintf('Muted text on the background is %.2f:1 — it needs 3:1.', $muted);
+            $failures[] = new ActionMessage(match ($dark) {
+                true => 'console.dark_mode_muted_text_on_the_background_is_ratio_1_it_ne_85b2ff6c',
+                false => 'console.light_mode_muted_text_on_the_background_is_ratio_1_it_n_7f4cfb27',
+                null => 'console.muted_text_on_the_background_is_ratio_1_it_needs_3_1_6ac86f49',
+            }, ['ratio' => sprintf('%.2f', $muted)]);
         }
 
         return $failures;

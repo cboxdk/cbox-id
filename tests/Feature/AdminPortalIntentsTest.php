@@ -12,9 +12,12 @@ use App\Platform\Actions\ActionTrail;
 use App\Platform\Actions\ActionVia;
 use App\Platform\Actions\Principal\PortalPrincipal;
 use App\Platform\AdminPortal;
+use App\Platform\Billing\ProductBilling;
 use App\Platform\Enums\PortalIntent;
 use App\Platform\Enums\PortalScope;
 use App\Platform\Sso\SamlCertificate;
+use Cbox\Billing\Client\Enums\FeatureType;
+use Cbox\Billing\Client\ValueObjects\FeatureEntitlement;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Cbox\Id\Directory\Enums\DirectoryProvider;
 use Cbox\Id\Directory\Enums\DirectoryStatus;
@@ -29,8 +32,6 @@ use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Federation\Testing\InteractsWithFederation;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
-use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
-use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
@@ -140,6 +141,7 @@ it('mints a link over REST with intents, a lifetime of its own, and mails it in 
     [$key, $keyId] = intentKey(['portal_links:write']);
     $org = intentOrg();
 
+    grantFeature($org, 'cbox-id-sso');
     $response = $this->withToken($key)->postJson("/api/v1/organizations/{$org}/portal-links", [
         'intents' => ['log_streams', 'sso', 'domain_verification'],
         'expires_in_minutes' => 1440,
@@ -199,6 +201,8 @@ it('mints a link over MCP with the same intents', function (): void {
     [$key] = intentKey(['portal_links:write']);
     $org = intentOrg();
 
+    grantFeature($org, 'cbox-id-sso');
+    grantFeature($org, 'cbox-id-scim');
     $result = mcpCall($key, 'organizations_portal_links_create', ['organization_id' => $org, 'intents' => ['dsync', 'certificate_renewal']]);
 
     expect($result['isError'] ?? false)->toBeFalse()
@@ -261,8 +265,7 @@ it('drops an intent the plan stopped including from a live session', function ()
 
     $this->get(route('portal.sso'))->assertOk();
 
-    app(EntitlementWriter::class)
-        ->revoke($org, 'cbox-id-sso', EntitlementSource::Manual);
+    centralBillingFixture()->feature(app(ProductBilling::class)->owningWorkspace($org), new FeatureEntitlement('cbox-id.sso', FeatureType::Boolean, false));
 
     // The session lives on what is still usable — and only that.
     $this->get(route('portal.sso'))->assertNotFound();
@@ -315,6 +318,7 @@ it('shows the link\'s intents as a checklist whose progress is read from the sys
  */
 it('completes directory sync when a SCIM push lands, and when a pull directory syncs', function (): void {
     $org = intentOrg();
+    grantFeature($org, 'cbox-id-scim');
     openPortal($org, [PortalIntent::Dsync]);
 
     $steps = fn (): array => $this->get(route('portal.setup'))->assertOk()->inertiaProps('tasks')[0]['steps'];
@@ -340,6 +344,7 @@ it('completes directory sync when a SCIM push lands, and when a pull directory s
 
     // A pull directory, on its own: done once its scheduled sync has run, not before.
     $pulled = intentOrg('portal-pull');
+    grantFeature($pulled, 'cbox-id-scim');
     openPortal($pulled, [PortalIntent::Dsync]);
     $directory = new Directory;
     $directory->forceFill([
@@ -407,6 +412,7 @@ it('says a refusal in the visitor\'s language', function (): void {
 it('walks single sign-on end to end: start, paste our values, import metadata, verify a domain, activate', function (): void {
     $dns = $this->fakeDns();
     $org = intentOrg();
+    grantFeature($org, 'cbox-id-sso');
     openPortal($org, [PortalIntent::Sso]);
 
     // The guides, with the providers an IT administrator actually runs.
@@ -458,6 +464,7 @@ it('walks single sign-on end to end: start, paste our values, import metadata, v
 it('refuses a portal write against another organization\'s connection', function (): void {
     $org = intentOrg();
     $theirs = samlConnectionExpiring(intentOrg('portal-other'), 200);
+    grantFeature($org, 'cbox-id-sso');
     openPortal($org, [PortalIntent::Sso, PortalIntent::CertificateRenewal]);
 
     // Looked up inside the session's own organization, so another one's is not found at all.
@@ -472,6 +479,7 @@ it('refuses a portal write against another organization\'s connection', function
 
 it('walks directory sync: create a directory, see the token once, rotate it', function (): void {
     $org = intentOrg();
+    grantFeature($org, 'cbox-id-scim');
     openPortal($org, [PortalIntent::Dsync]);
 
     $props = (array) $this->get(route('portal.directories', ['provider' => 'okta']))->assertOk()->inertiaProps();
@@ -651,6 +659,7 @@ it('walks certificate renewal: see the expiry, upload the new one, see the check
     $org = intentOrg();
     $connection = samlConnectionExpiring($org, 12);
     $old = SamlCertificate::parse((string) (app(Connections::class)->config($connection)['idp_x509cert'] ?? ''));
+    grantFeature($org, 'cbox-id-sso');
     openPortal($org, [PortalIntent::CertificateRenewal]);
 
     $row = $this->get(route('portal.certificates'))->assertOk()->inertiaProps('connections')[0];
@@ -698,6 +707,7 @@ it('walks certificate renewal: see the expiry, upload the new one, see the check
 it('manages certificates over REST, with the checks on the answer', function (): void {
     [$key] = intentKey(['sso:read', 'sso:write']);
     $org = intentOrg();
+    grantFeature($org, 'cbox-id-sso');
     $connection = samlConnectionExpiring($org, 20);
 
     $this->withToken($key)->getJson("/api/v1/sso/connections/{$connection->id}/certificates")
@@ -726,6 +736,7 @@ it('manages certificates over REST, with the checks on the answer', function ():
 it('creates an SSO draft before the identity provider\'s details over REST, and will not activate it', function (): void {
     [$key] = intentKey(['sso:read', 'sso:write']);
     $org = intentOrg();
+    grantFeature($org, 'cbox-id-sso');
 
     $created = $this->withToken($key)->postJson('/api/v1/sso/connections', [
         'organization_id' => $org, 'name' => 'Okta', 'type' => 'saml', 'pending_idp' => true,

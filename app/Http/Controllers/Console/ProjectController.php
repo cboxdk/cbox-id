@@ -15,8 +15,10 @@ use App\Http\Requests\Console\RenameProjectRequest;
 use App\Http\Requests\Console\StoreEnvironmentRequest;
 use App\Http\Requests\Console\StoreProjectRequest;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Billing\ProductBilling;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
+use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -71,6 +73,8 @@ final readonly class ProjectController extends ConsoleController
             return to_route($this->scope->isPlatformOperator() ? 'platform.environments' : 'dashboard');
         }
 
+        abort_unless($this->scope->capabilities()?->canReadEnvironments() === true, 403);
+
         $organizationId = $this->scope->organizationId();
         $actorId = $this->scope->actorId();
         if ($organizationId !== null) {
@@ -121,9 +125,9 @@ final readonly class ProjectController extends ConsoleController
                     'id' => $project->id,
                     'name' => $project->name,
                     'status' => $project->status->value,
-                    'limit' => $project->environment_limit,
-                    'used' => $inProject->count(),
-                    'atLimit' => $inProject->count() >= $project->environment_limit,
+                    'limit' => app(ProductBilling::class)->projectLimit($project),
+                    'used' => $visible->count(),
+                    'atLimit' => $visible->count() >= app(ProductBilling::class)->projectLimit($project),
                     'settingsHref' => route('projects.show', $project->id),
                     'environments' => $visible->map(static fn (Environment $e): array => [
                         'id' => $e->id,
@@ -141,8 +145,8 @@ final readonly class ProjectController extends ConsoleController
             'projects' => $rows,
             'canManage' => $this->mayManage($members),
             'createHref' => route('projects.create'),
-            'billingHref' => config('billing.enabled') && $this->scope->capabilities()?->canReadBilling() ? route('billing') : null,
-            'choosePlanLabel' => __('billing.plans'),
+            'billingHref' => config('billing.enabled') && $this->scope->capabilities()->canReadBilling() ? route('billing') : null,
+            'manageBillingLabel' => __('billing.manage'),
             // The first environment is held back until the owner confirms their address,
             // so the page has to say so — otherwise it shows a project with no
             // environments and no explanation.
@@ -154,19 +158,17 @@ final readonly class ProjectController extends ConsoleController
         ]);
     }
 
-    public function create(): Response
+    public function create(Memberships $members): Response
     {
-        // Reaching this page at all requires a membership; whether this member may stand
-        // up a product is asked again at the write, against the capability rather than
-        // the role.
-        abort_if($this->scope->membershipRole() === null, 403);
+        $this->assertMayManage($members);
+        app(ProductAdmission::class)->assertWebGranted($this->scope->actorId(), $this->scope->organizationId() ?? '');
 
         return $this->page('console/projects/create', __('console.new_project_a41eb2bf'), [
             'indexHref' => route('projects'),
         ]);
     }
 
-    public function store(StoreProjectRequest $request): RedirectResponse
+    public function store(StoreProjectRequest $request, Memberships $members): RedirectResponse
     {
         abort_if($this->scope->membershipRole() === null, 403);
 
@@ -174,6 +176,8 @@ final readonly class ProjectController extends ConsoleController
         // refusal is the 403 it always was, and again by the action's gate.
         abort_if($this->scope->organizationId() === null, 403);
         abort_unless($this->scope->capabilities()?->canManageEnvironments() === true, 403);
+
+        $this->assertMayManage($members);
 
         // The same action `POST /api/v1/workspace/projects` runs.
         $result = $this->act(CreateProject::class, ['name' => $request->name()], ['name' => 'name'], 'name');
@@ -194,6 +198,7 @@ final readonly class ProjectController extends ConsoleController
     {
         abort_if($this->scope->membershipRole() === null, 403);
 
+        abort_unless($this->scope->capabilities()?->canReadEnvironments() === true, 403);
         $model = $this->owned($project);
         $scoped = ! $this->hasFullAccess($members);
         $accessible = $this->reachable($members);
@@ -228,7 +233,7 @@ final readonly class ProjectController extends ConsoleController
                 'slug' => $model->slug,
                 'status' => $model->status->value,
                 'suspended' => $model->status === ProjectStatus::Suspended,
-                'limit' => $model->environment_limit,
+                'limit' => app(ProductBilling::class)->projectLimit($model),
             ],
             'environments' => $query->get()->map(fn (Environment $environment): array => [
                 'id' => $environment->id,
@@ -243,9 +248,11 @@ final readonly class ProjectController extends ConsoleController
             // A management surface requires the capability AND full access.
             'canManage' => ! $scoped && $this->mayManage($members),
             'scoped' => $scoped,
-            'remaining' => $projects->remainingEnvironments($model),
+            'billingHref' => config('billing.enabled') === true && $this->scope->capabilities()->canReadBilling()
+                ? route('billing', ['organization' => $model->organization_id])
+                : null,
+            'remaining' => $scoped ? 0 : $projects->remainingEnvironments($model),
             'indexHref' => route('projects'),
-            'billingHref' => config('billing.enabled') && $this->scope->capabilities()?->canReadBilling() ? route('billing') : null,
             'manageBillingLabel' => __('billing.manage'),
         ]);
     }
@@ -278,7 +285,7 @@ final readonly class ProjectController extends ConsoleController
             ['name' => $request->name(), 'type' => $request->type()->value, 'project_id' => $this->owned($project)->id],
             ['name' => 'name', 'type' => 'type'],
             'name',
-            ['environment_limit_reached' => __('console.this_project_is_at_its_environment_limit_upg_c7856d59')],
+            ['environment_limit_reached' => __('console.this_project_is_at_its_environment_limit_upgrade_its_pl_c7856d59')],
         );
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.environment_created_fcc0ee4c'));
@@ -292,7 +299,7 @@ final readonly class ProjectController extends ConsoleController
 
         return $result instanceof RedirectResponse ? $result : back()->with(
             'status',
-            __('console.project_suspended_its_environments_stay_live_be6ca1ef'),
+            __('console.project_suspended_its_environments_stay_live_but_no_new_be6ca1ef'),
         );
     }
 
@@ -359,6 +366,7 @@ final readonly class ProjectController extends ConsoleController
             : Project::query()->whereKey($projectId)->where('organization_id', $organizationId)->first();
 
         abort_if($model === null, 404);
+        app(ProductAdmission::class)->assertWebGranted($this->scope->actorId(), $model->organization_id);
 
         return $model;
     }
@@ -385,6 +393,10 @@ final readonly class ProjectController extends ConsoleController
         $organizationId = $this->scope->organizationId();
         $actorId = $this->scope->actorId();
 
+        if ($this->scope->capabilities()?->isOwner() === true) {
+            return true;
+        }
+
         return $organizationId !== null
             && $actorId !== ''
             && app(PlatformRoot::class)->run(
@@ -408,9 +420,7 @@ final readonly class ProjectController extends ConsoleController
 
         return $organizationId === null || $actorId === ''
             ? []
-            : app(PlatformRoot::class)->run(
-                fn (): array => $members->accessibleEnvironmentIds($organizationId, $actorId),
-            ) ?? [];
+            : app(NativeEnvironmentAccess::class)->ids($organizationId, $actorId);
     }
 
     /**

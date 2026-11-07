@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
@@ -37,8 +37,8 @@ export default function CreateWebhook({
     mayScopeEnvironmentWide,
     organization,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleOptionText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({
         url: '',
         eventTypes: [] as string[],
@@ -58,11 +58,13 @@ export default function CreateWebhook({
 
     return (
         <>
-            <Breadcrumb href={indexHref} label={tc('console.webhooks_45808d75')} />
+            <Breadcrumb href={indexHref} label={consoleT('console.webhooks_45808d75')} />
 
-            <h1 className="mt-2 cbx-page-title">{tc('console.new_webhook_d58b5d64')}</h1>
+            <h1 className="mt-2 cbx-page-title">{consoleT('console.new_webhook_d58b5d64')}</h1>
             <p className="cbx-page-desc">
-                {tc('console.the_signing_secret_is_shown_once_right_after_aa1c7a87')}
+                {consoleT(
+                    'console.the_signing_secret_is_shown_once_right_after_you_create_aa1c7a87',
+                )}
             </p>
 
             <form
@@ -76,7 +78,7 @@ export default function CreateWebhook({
                 <Panel>
                     <div style={{ display: 'grid', gap: '16px' }}>
                         <Field
-                            label={tc('console.endpoint_url_2578179d')}
+                            label={consoleT('console.endpoint_url_2578179d')}
                             error={form.errors.url}
                             required
                         >
@@ -95,9 +97,9 @@ export default function CreateWebhook({
                                 onCheckedChange={(checked) =>
                                     form.setData('environmentWide', checked)
                                 }
-                                label={tc('console.environment_wide_cd1204b6')}
-                                hint={tc(
-                                    'console.send_this_endpoint_every_organization_s_even_ea696387',
+                                label={consoleT('console.environment_wide_cd1204b6')}
+                                hint={consoleT(
+                                    'console.send_this_endpoint_every_organization_s_events_in_this_ea696387',
                                 )}
                             />
                         )}
@@ -107,19 +109,19 @@ export default function CreateWebhook({
                                 picker={organization}
                                 error={form.errors.organization}
                                 onChange={(id) => form.setData('organization', id)}
-                                hint={tc(
-                                    'console.whose_events_it_is_sent_or_tick_environment__7ab3be5b',
+                                hint={consoleT(
+                                    'console.whose_events_it_is_sent_or_tick_environment_wide_above_7ab3be5b',
                                 )}
                             />
                         )}
 
                         <div>
                             <RadioGroup
-                                label={tc('console.signature_scheme_c432c67a')}
+                                label={consoleT('console.signature_scheme_c432c67a')}
                                 name="signatureScheme"
                                 value={form.data.signatureScheme}
                                 onValueChange={(scheme) => form.setData('signatureScheme', scheme)}
-                                options={signatureSchemeOptions(tc)}
+                                options={signatureSchemeOptions(consoleOptionText)}
                             />
                             <p
                                 className="field-error"
@@ -137,7 +139,9 @@ export default function CreateWebhook({
                                 without it a screen reader announces twenty-four unrelated
                                 checkboxes with no idea what they belong to.
                             */}
-                            <legend className="label">{tc('console.event_types_8f338cc0')}</legend>
+                            <legend className="label">
+                                {consoleT('console.event_types_8f338cc0')}
+                            </legend>
 
                             <div
                                 style={{
@@ -167,7 +171,7 @@ export default function CreateWebhook({
 
                         <div>
                             <Button type="submit" variant="primary" loading={form.processing}>
-                                {tc('console.create_endpoint_fbd43477')}
+                                {consoleT('console.create_endpoint_fbd43477')}
                             </Button>
                         </div>
                     </div>

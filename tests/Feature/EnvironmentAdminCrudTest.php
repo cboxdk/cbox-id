@@ -260,6 +260,7 @@ it('resets a user\'s two-factor factors', function (): void {
 it('requires and stores client_secret for an OIDC connection created via the form', function (): void {
     crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'OIDC Co', slug: 'oidc-co'));
+    grantFeature($org->id, 'cbox-id-sso');
     FormOrganization::$id = $org->id;
     $key = "-----BEGIN PUBLIC KEY-----\nMIIB\n-----END PUBLIC KEY-----";
 
@@ -302,6 +303,7 @@ it('requires and stores client_secret for an OIDC connection created via the for
 it('refuses an OIDC connection whose issuer has no reachable discovery document', function (): void {
     crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Bad OIDC', slug: 'bad-oidc'));
+    grantFeature($org->id, 'cbox-id-sso');
     FormOrganization::$id = $org->id;
     config(['cbox-id.federation.verify_url' => false]);
     Http::fake(['badidp.example/.well-known/openid-configuration' => Http::response('nope', 404)]);

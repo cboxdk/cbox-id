@@ -12,9 +12,6 @@ use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
-use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
-use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementInput;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -29,11 +26,7 @@ use Inertia\Testing\AssertableInertia;
 /** Entitle an org for a self-serve feature ('cbox-id-sso' | 'cbox-id-scim'). */
 function entitle(string $organizationId, string $key): void
 {
-    app(EntitlementWriter::class)->set(
-        $organizationId,
-        new EntitlementInput($key, ['enabled' => true]),
-        EntitlementSource::Manual,
-    );
+    grantFeature($organizationId, $key);
 }
 
 function owner(): string

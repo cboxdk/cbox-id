@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
-use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 
@@ -74,12 +73,12 @@ enum AppKind: string
     public function label(): string
     {
         return match ($this) {
-            self::WebApp => ConsoleStrings::message('console.web_app_f2dc406d'),
-            self::SpaOrMobile => ConsoleStrings::message('console.single_page_or_mobile_app_2cdb4280'),
-            self::CliOrDevice => ConsoleStrings::message('console.cli_or_device_9380493d'),
-            self::Service => ConsoleStrings::message('console.service_or_background_job_d8a0400a'),
-            self::Agent => ConsoleStrings::message('console.ai_agent_92c7d7f8'),
-            self::Advanced => ConsoleStrings::message('console.something_else_cc728431'),
+            self::WebApp => __('console.web_app_f2dc406d'),
+            self::SpaOrMobile => __('console.single_page_or_mobile_app_2cdb4280'),
+            self::CliOrDevice => __('console.cli_or_device_9380493d'),
+            self::Service => __('console.service_or_background_job_d8a0400a'),
+            self::Agent => __('console.ai_agent_92c7d7f8'),
+            self::Advanced => __('console.something_else_cc728431'),
         };
     }
 
@@ -91,12 +90,12 @@ enum AppKind: string
     public function description(): string
     {
         return match ($this) {
-            self::WebApp => ConsoleStrings::message('console.runs_on_a_server_and_can_keep_a_secret_larav_5f242f75'),
-            self::SpaOrMobile => ConsoleStrings::message('console.runs_on_the_device_so_it_holds_no_secret_rea_bcd752f3'),
-            self::CliOrDevice => ConsoleStrings::message('console.no_browser_of_its_own_a_terminal_a_ci_job_a__3abb52d5'),
-            self::Service => ConsoleStrings::message('console.calls_the_api_as_itself_with_no_person_invol_ecd6923a'),
-            self::Agent => ConsoleStrings::message('console.acts_on_somebody_s_behalf_and_asks_them_to_a_6327932e'),
-            self::Advanced => ConsoleStrings::message('console.pick_the_grants_and_client_type_yourself_1e7163c1'),
+            self::WebApp => __('console.runs_on_a_server_and_can_keep_a_secret_laravel_rails_ne_5f242f75'),
+            self::SpaOrMobile => __('console.runs_on_the_device_so_it_holds_no_secret_react_vue_ios_bcd752f3'),
+            self::CliOrDevice => __('console.no_browser_of_its_own_a_terminal_a_ci_job_a_tv_the_pers_3abb52d5'),
+            self::Service => __('console.calls_the_api_as_itself_with_no_person_involved_cron_jo_ecd6923a'),
+            self::Agent => __('console.acts_on_somebody_s_behalf_and_asks_them_to_approve_firs_6327932e'),
+            self::Advanced => __('console.pick_the_grants_and_client_type_yourself_1e7163c1'),
         };
     }
 

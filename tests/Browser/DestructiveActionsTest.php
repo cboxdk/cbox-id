@@ -85,7 +85,7 @@ it('will not delete an app until its name is typed exactly', function (): void {
         ->click('button:has-text("Delete app")');
 
     // The dialog, with the consequence stated rather than implied.
-    $page->assertSee('Delete Billing Worker?')
+    $page->assertSee(__('console.confirm_action_for', ['action' => __('console.delete_e2d0a549'), 'name' => 'Billing Worker']))
         ->assertSee('will stop working immediately');
 
     /*

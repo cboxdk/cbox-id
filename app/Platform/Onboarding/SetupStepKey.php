@@ -43,12 +43,12 @@ enum SetupStepKey: string
     public function description(): string
     {
         return match ($this) {
-            self::InviteTeam => __('console.add_the_people_who_will_administer_this_orga_75edc5a6'),
-            self::ConnectApp => __('console.register_an_app_so_your_people_can_sign_in_t_9fcc62a6'),
-            self::DefineRoles => __('console.give_people_roles_instead_of_blanket_access__8788f6f3'),
-            self::BrandSignIn => __('console.your_sign_in_page_carries_your_logo_and_colo_76d3ce22'),
-            self::SingleSignOn => __('console.connect_entra_id_okta_or_google_workspace_an_688a5abf'),
-            self::SyncUsersIn => __('console.let_your_provider_create_and_deactivate_peop_7db65233'),
+            self::InviteTeam => __('console.add_the_people_who_will_administer_this_organization_wi_75edc5a6'),
+            self::ConnectApp => __('console.register_an_app_so_your_people_can_sign_in_to_it_with_t_9fcc62a6'),
+            self::DefineRoles => __('console.give_people_roles_instead_of_blanket_access_so_every_co_8788f6f3'),
+            self::BrandSignIn => __('console.your_sign_in_page_carries_your_logo_and_colours_people_76d3ce22'),
+            self::SingleSignOn => __('console.connect_entra_id_okta_or_google_workspace_and_your_peop_688a5abf'),
+            self::SyncUsersIn => __('console.let_your_provider_create_and_deactivate_people_here_on_7db65233'),
         };
     }
 

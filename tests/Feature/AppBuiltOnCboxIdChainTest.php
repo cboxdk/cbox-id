@@ -564,7 +564,7 @@ it('runs the whole app-on-Cbox-ID scenario as one chain', function (): void {
 
     test()->from(route('directory.members'))->post(route('directory.members.leave'))
         ->assertRedirect(route('dashboard'))
-        ->assertSessionHas('status', 'You left Hansen Revision.');
+        ->assertSessionHas('status', 'You left the organization Hansen Revision.');
 
     // No longer a member, the key is dead with the membership.
     $verify($clientId, $secret)->assertExactJson(['active' => false]);

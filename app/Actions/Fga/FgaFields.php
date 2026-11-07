@@ -6,6 +6,7 @@ namespace App\Actions\Fga;
 
 use App\Platform\Actions\ActionContext;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use Cbox\Id\Kernel\Authorization\Exceptions\AuthorizationModelException;
 use Cbox\Id\Kernel\Authorization\Exceptions\InvalidConsistencyToken;
@@ -244,7 +245,7 @@ final class FgaFields
         } catch (AuthorizationModelException $refused) {
             throw new ActionRefused(
                 $refused->errorCode(),
-                $refused->getMessage(),
+                FrameworkMessage::from($refused),
                 // A conflict with the tuples already stored is the one refusal about STATE a
                 // retry cannot fix by changing the input; everything else is the input's.
                 $refused instanceof SchemaConflict ? 409 : 422,

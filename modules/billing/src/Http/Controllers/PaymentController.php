@@ -4,21 +4,16 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Billing\Http\Controllers;
 
-use App\Actions\Workspace\Billing\UpdateBillingDetails;
-use App\Actions\Workspace\Billing\UpdatePaymentMethod;
 use App\Http\Controllers\Console\ConsoleController;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\OrganizationActivity;
 use Cbox\Billing\Client\BillingManagement;
 use Cbox\Billing\Client\Exceptions\TransportException;
 use Cbox\Id\Billing\Contracts\ProjectPayments;
-use Cbox\Id\Billing\PlanCatalog;
-use Cbox\Id\Billing\Subscriptions;
 use Cbox\Id\Platform\Models\Project;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -27,76 +22,6 @@ use Throwable;
 
 final readonly class PaymentController extends ConsoleController
 {
-    public function account(Request $request, string $billingOrganization): JsonResponse
-    {
-        $org = $this->authorize(false);
-
-        return $this->respond(function () use ($org): array {
-            $billing = app(BillingManagement::class);
-            $profile = $billing->upsertOrganization($org, ['name' => $this->scope->organizationName(), 'customer_account' => true]);
-            $plans = array_values(array_filter($billing->plans(null, $org), fn ($p) => $p->product === config('billing.product')));
-
-            return ['profile' => $profile, 'cards' => $billing->paymentMethods($org), 'invoices' => $billing->invoices($org),
-                'plans' => array_map(fn ($p): array => ['key' => $p->key, 'name' => $p->name, 'priceMinor' => $p->priceMinor, 'totalMinor' => $p->grossMinor(), 'currency' => $p->currency, 'interval' => $p->interval, 'features' => $p->features], $plans)];
-        });
-    }
-
-    public function invoice(Request $request, string $billingOrganization): JsonResponse
-    {
-        $org = $this->authorize(false);
-        $request->validate(['number' => ['required', 'string', 'max:128', 'regex:/^[a-zA-Z0-9_-]+$/']]);
-
-        return $this->respond(function () use ($org, $request): array {
-            $invoice = app(BillingManagement::class)->invoice($org, $request->string('number')->toString());
-            abort_unless(is_string($invoice->pdfUrl) && parse_url($invoice->pdfUrl, PHP_URL_SCHEME) === 'https', 404);
-
-            return ['url' => $invoice->pdfUrl];
-        });
-    }
-
-    public function details(Request $request, string $billingOrganization): JsonResponse
-    {
-        $this->authorize();
-        $input = $this->strings($request, ['billing_email', 'invoice_name', 'address_line_1', 'address_line_2', 'postal_code', 'city', 'country', 'subdivision', 'tax_id']);
-
-        return $this->respond(fn (): array => ['profile' => $this->runAction(UpdateBillingDetails::class, $input)->payload]);
-    }
-
-    public function updateCard(Request $request, string $billingOrganization): JsonResponse
-    {
-        $this->authorize();
-
-        return $this->respond(function () use ($request): array {
-            $this->runAction(UpdatePaymentMethod::class, $this->strings($request, ['operation', 'card']));
-
-            return ['ok' => true];
-        });
-    }
-
-    public function card(Request $request, string $billingOrganization): JsonResponse
-    {
-        $org = $this->authorize();
-        $request->validate(['operation' => ['required', Rule::in(['setup', 'added'])], 'card' => ['nullable', 'string', 'regex:/^[a-zA-Z0-9_-]{1,128}$/']]);
-        $data = $this->strings($request, ['operation', 'card']);
-
-        return $this->respond(function () use ($org, $data): array {
-            $billing = app(BillingManagement::class);
-            if ($data['operation'] === 'setup') {
-                return ['intent' => $billing->createSetupIntent($org)];
-            }
-            $cards = $billing->paymentMethods($org);
-            if ($data['operation'] === 'added') {
-                if ($cards !== [] && ! array_any($cards, fn ($c) => $c->isDefault)) {
-                    $billing->setDefaultPaymentMethod($org, $cards[array_key_last($cards)]->id);
-                }
-
-                return ['ok' => true];
-            }
-
-            return ['ok' => true];
-        });
-    }
-
     public function preview(Request $request, string $project): JsonResponse
     {
         $org = $this->authorize();
@@ -111,8 +36,7 @@ final readonly class PaymentController extends ConsoleController
             $plan = $input['plan'];
             $payload = ['mode' => 'period_end'];
             if ($operation === 'plan') {
-                app(PlanCatalog::class)->get($plan, true);
-                app(PlanCatalog::class)->environmentLimit($plan);
+                $this->soldPlan($plan, $org);
                 $payload = ['plan' => $plan];
                 if ($subscription === null) {
                     $priced = array_find(app(BillingManagement::class)->plans(null, $org), fn ($p) => $p->key === $plan && $p->product === config('billing.product'));
@@ -129,6 +53,7 @@ final readonly class PaymentController extends ConsoleController
                 }
             } elseif ($operation === 'cancel') {
                 $preview = $payments->perform('cancel-preview', $org, $model->id, $payload, (string) Str::uuid());
+                $preview['currency'] = $this->subscriptionCurrency($subscription);
             } else {
                 $preview = $this->renewalPreview($subscription);
                 $payload = [];
@@ -168,15 +93,14 @@ final readonly class PaymentController extends ConsoleController
                 // money moves. A changed quote needs fresh, explicit customer consent.
                 if (in_array($operation, ['change', 'cancel'], true)) {
                     $fresh = $payments->perform($operation === 'change' ? 'preview' : 'cancel-preview', $org, $model->id, $payload, (string) Str::uuid());
-                    if ($operation === 'change') {
-                        $subscription = $payments->subscription($org, $model->id);
-                        $fresh['currency'] = $this->subscriptionCurrency($subscription);
-                    }
+                    $subscription = $payments->subscription($org, $model->id);
+                    $fresh['currency'] = $this->subscriptionCurrency($subscription);
                     abort_unless($this->economics($preview) === $this->economics($fresh), 409, __('billing.expired'));
                 } elseif (in_array($operation, ['subscribe', 'checkout'], true)) {
+                    abort_unless($payments->subscription($org, $model->id) === null, 409, __('billing.expired'));
                     $plan = $payload['plan'] ?? null;
                     abort_unless(is_string($plan), 409);
-                    app(PlanCatalog::class)->get($plan, true);
+                    $this->soldPlan($plan, $org);
                     $priced = array_find(app(BillingManagement::class)->plans(null, $org), fn ($p) => $p->key === $plan && $p->product === config('billing.product'));
                     abort_unless($priced !== null && $priced->grossMinor() !== null && $priced->grossMinor() === ($preview['due_now_minor'] ?? null) && $priced->currency === ($preview['currency'] ?? null) && $priced->interval === ($preview['interval'] ?? null), 409, __('billing.expired'));
                 }
@@ -185,7 +109,7 @@ final readonly class PaymentController extends ConsoleController
                     abort_unless($this->economics($preview) === $this->economics($fresh), 409, __('billing.expired'));
                 }
                 if ($operation === 'checkout') {
-                    $payload += ['return_url' => route('billing'), 'currency' => Config::string('billing.currency')];
+                    $payload += ['return_url' => route('billing', ['organization' => $org])];
                 }
                 app(OrganizationActivity::class)->record($org, 'billing.'.$operation.'.requested', $this->scope->actorId(), 'project', $model->id, ['confirmation' => $quoteId, 'plan' => $payload['plan'] ?? null], request());
                 $remote = $payments->perform($operation, $org, $model->id, $payload, $quoteId);
@@ -198,12 +122,7 @@ final readonly class PaymentController extends ConsoleController
                 }
                 Cache::put($key, $answer, 600);
                 app(OrganizationActivity::class)->record($org, 'billing.'.$operation.'.completed', $this->scope->actorId(), 'project', $model->id, ['confirmation' => $quoteId], request());
-                // Persist success before the read: a failed refresh must not repeat a charge.
-                try {
-                    app(Subscriptions::class)->refresh($model);
-                } catch (Throwable $e) {
-                    report($e);
-                }
+                // Payments never write role, admission or feature assignments.
 
                 return $answer;
             });
@@ -213,6 +132,13 @@ final readonly class PaymentController extends ConsoleController
 
             return array_filter($result, is_string(...), ARRAY_FILTER_USE_KEY);
         });
+    }
+
+    private function soldPlan(string $key, string $organization): void
+    {
+        $plan = array_find(app(BillingManagement::class)->plans(null, $organization),
+            fn ($plan) => $plan->key === $key && $plan->product === config('billing.product'));
+        abort_unless($plan !== null, 422, __('billing.unavailable'));
     }
 
     /** @param array<string, mixed>|null $subscription */
@@ -250,7 +176,21 @@ final readonly class PaymentController extends ConsoleController
     private function economics(array $preview): string
     {
         // effective_at can mean "now" and change by a second; ends_at is a fixed date.
-        return json_encode(array_intersect_key($preview, array_flip(['currency', 'interval', 'due_now_tax', 'due_now_minor', 'credit_minor', 'new_recurring_minor', 'new_recurring_tax', 'ends_at', 'mode', 'consequences', 'credit_delta', 'discount'])), JSON_THROW_ON_ERROR);
+        unset($preview['effective_at']);
+
+        return json_encode($this->canonicalize($preview), JSON_THROW_ON_ERROR);
+    }
+
+    private function canonicalize(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+        if (! array_is_list($value)) {
+            ksort($value);
+        }
+
+        return array_map($this->canonicalize(...), $value);
     }
 
     /**

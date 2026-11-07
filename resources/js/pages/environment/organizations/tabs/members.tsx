@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -101,8 +101,13 @@ function Members({
     addHref: string;
     invitationsHref: string;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [managing, setManaging] = useState<string | null>(null);
     const [removing, setRemoving] = useState<Member | null>(null);
     const [transferring, setTransferring] = useState<Member | null>(null);
@@ -114,14 +119,18 @@ function Members({
 
     return (
         <Panel
-            title={tc('console.members_1044a4c0')}
-            description={tc('console.who_belongs_to_this_organization_and_what_th_330bf97e')}
+            title={consoleT('console.members_1044a4c0')}
+            description={consoleT(
+                'console.who_belongs_to_this_organization_and_what_they_can_do_s_330bf97e',
+            )}
             // The way to bring in somebody NEW. "Add" below only takes people who already
             // have an account in this environment, and an administrator who came here to
             // invite a colleague found no invite on the page they expected it on.
             action={
                 <Button asChild size="sm" icon="mail">
-                    <Link href={invitationsHref}>{tc('console.invite_by_email_f728553b')}</Link>
+                    <Link href={invitationsHref}>
+                        {consoleT('console.invite_by_email_f728553b')}
+                    </Link>
                 </Button>
             }
         >
@@ -144,14 +153,14 @@ function Members({
                 {members.length === 0 ? (
                     <EmptyState
                         icon="members"
-                        title={tc('console.nobody_yet_aca29464')}
-                        description={tc(
-                            'console.add_an_existing_user_of_this_environment_or__0eb3e414',
+                        title={consoleT('console.nobody_yet_aca29464')}
+                        description={consoleT(
+                            'console.add_an_existing_user_of_this_environment_or_invite_some_0eb3e414',
                         )}
                         actions={
                             <Button asChild variant="primary">
                                 <Link href={invitationsHref}>
-                                    {tc('console.invite_by_email_f728553b')}
+                                    {consoleT('console.invite_by_email_f728553b')}
                                 </Link>
                             </Button>
                         }
@@ -196,7 +205,7 @@ function Members({
                                     <div className="flex flex-wrap items-center gap-1">
                                         <Pill>
                                             <span className="sr-only">
-                                                {tc('console.built_in_role_ad05edaa')}
+                                                {consoleT('console.built_in_role_5b39844c')}
                                             </span>
                                             {rosterRoleOptions.find(
                                                 (option) => option.value === member.role,
@@ -222,8 +231,8 @@ function Members({
                                         }
                                     >
                                         {managing === member.userId
-                                            ? tc('console.done_11a6767d')
-                                            : tc('console.edit_roles_3b3489d0')}
+                                            ? consoleText('console.done_11a6767d')
+                                            : consoleText('console.edit_roles_3b3489d0')}
                                     </Button>
 
                                     <DropdownMenu>
@@ -231,9 +240,9 @@ function Members({
                                             <Button
                                                 size="sm"
                                                 className="shrink-0"
-                                                aria-label={tc(
-                                                    'console.more_actions_for_value0_fab1edb9',
-                                                    { value0: member.name },
+                                                aria-label={consoleFinalText(
+                                                    'console.more_actions_for_part1_b26d24f6',
+                                                    { part1: member.name },
                                                 )}
                                             >
                                                 ⋯
@@ -244,14 +253,16 @@ function Members({
                                                 <DropdownMenuItem
                                                     onSelect={() => setTransferring(member)}
                                                 >
-                                                    {tc('console.make_owner_fdbbb37b')}
+                                                    {consoleT('console.make_owner_fdbbb37b')}
                                                 </DropdownMenuItem>
                                             )}
                                             <DropdownMenuItem
                                                 destructive
                                                 onSelect={() => setRemoving(member)}
                                             >
-                                                {tc('console.remove_from_organization_2416fd1f')}
+                                                {consoleT(
+                                                    'console.remove_from_organization_2416fd1f',
+                                                )}
                                             </DropdownMenuItem>
                                         </DropdownMenuContent>
                                     </DropdownMenu>
@@ -265,20 +276,20 @@ function Members({
                                         <div className="pt-3 grid gap-4 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
                                             <div>
                                                 <p className="label mb-1">
-                                                    {tc('console.built_in_role_9f680a16')}
+                                                    {consoleT('console.built_in_role_9f680a16')}
                                                 </p>
                                                 <p
                                                     className="text-xs mb-2"
                                                     style={{ color: 'var(--muted-foreground)' }}
                                                 >
-                                                    {tc(
-                                                        'console.exactly_one_it_decides_what_they_may_adminis_45ec2b16',
+                                                    {consoleT(
+                                                        'console.exactly_one_it_decides_what_they_may_administer_in_this_45ec2b16',
                                                     )}
                                                 </p>
                                                 <Select
-                                                    aria-label={tc(
-                                                        'console.built_in_role_for_value0_1ecbad27',
-                                                        { value0: member.name },
+                                                    aria-label={consoleFinalText(
+                                                        'console.built_in_role_for_part1_de8e2bb3',
+                                                        { part1: member.name },
                                                     )}
                                                     value={member.role}
                                                     onValueChange={(role) =>
@@ -294,13 +305,15 @@ function Members({
 
                                             <div>
                                                 <p className="label mb-1">
-                                                    {tc('console.app_and_custom_roles_ecb0207e')}
+                                                    {consoleT(
+                                                        'console.app_and_custom_roles_ecb0207e',
+                                                    )}
                                                 </p>
                                                 <p
                                                     className="text-xs mb-2"
                                                     style={{ color: 'var(--muted-foreground)' }}
                                                 >
-                                                    {tc(
+                                                    {consoleT(
                                                         'console.any_number_they_ride_in_the_app_tokens_23cc6b17',
                                                     )}
                                                 </p>
@@ -309,8 +322,8 @@ function Members({
                                                         className="text-sm"
                                                         style={{ color: 'var(--muted-foreground)' }}
                                                     >
-                                                        {tc(
-                                                            'console.no_roles_are_defined_for_this_organization_y_a7f006b2',
+                                                        {consoleT(
+                                                            'console.no_roles_are_defined_for_this_organization_yet_a7f006b2',
                                                         )}
                                                     </p>
                                                 ) : (
@@ -347,8 +360,6 @@ function Members({
 
                 <Pagination
                     pagination={pagination}
-                    noun={tc('console.member_e31ab643')}
-                    pluralNoun={tc('console.members_17373ca1')}
                     href={() => window.location.pathname}
                 />
             </div>
@@ -357,8 +368,10 @@ function Members({
                 open={removing !== null}
                 onOpenChange={(open) => !open && setRemoving(null)}
                 name={removing?.name ?? ''}
-                verb="Remove"
-                consequence={tc('console.they_lose_access_to_this_organization_and_ev_984eedd8')}
+                verb={consoleShortText('console.remove_c3812fc4')}
+                consequence={consoleUiText(
+                    'console.they_lose_access_to_this_organization_and_everything_it_984eedd8',
+                )}
                 onConfirm={() => {
                     const member = removing;
                     setRemoving(null);
@@ -378,9 +391,11 @@ function Members({
                 open={transferring !== null}
                 onOpenChange={(open) => !open && setTransferring(null)}
                 name={transferring?.email ?? transferring?.name ?? ''}
-                verb={tc('console.make_owner_350d86c6')}
-                actionLabel={tc('console.make_owner_fdbbb37b')}
-                consequence={tc('console.they_become_this_organization_s_only_owner_w_11374c6d')}
+                verb={consoleAttributeText('console.make_owner_350d86c6')}
+                actionLabel={consoleUiText('console.make_owner_fdbbb37b')}
+                consequence={consoleUiText(
+                    'console.they_become_this_organization_s_only_owner_whoever_owns_11374c6d',
+                )}
                 onConfirm={() => {
                     const member = transferring;
                     setTransferring(null);
@@ -403,8 +418,7 @@ function AddMember({
     roleOptions: RoleOption[];
     href: string;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({
         email: '',
         role: 'member',
@@ -423,12 +437,14 @@ function AddMember({
                 });
             }}
         >
-            <p className="text-sm font-medium">{tc('console.add_an_existing_user_e7d56d1f')}</p>
+            <p className="text-sm font-medium">
+                {consoleT('console.add_an_existing_user_e7d56d1f')}
+            </p>
 
             <div className="flex flex-wrap items-end gap-2">
                 <Field
-                    label={tc('console.email_969ccbd3')}
-                    hint={tc('console.they_must_already_exist_in_this_environment_67854676')}
+                    label={consoleT('console.email_969ccbd3')}
+                    hint={consoleT('console.they_must_already_exist_in_this_environment_67854676')}
                     className="flex-1"
                     error={form.errors.email}
                 >
@@ -440,7 +456,7 @@ function AddMember({
                     />
                 </Field>
 
-                <Field label={tc('console.built_in_role_9f680a16')} error={form.errors.role}>
+                <Field label={consoleT('console.built_in_role_9f680a16')} error={form.errors.role}>
                     <Select
                         name="role"
                         value={form.data.role}
@@ -455,7 +471,7 @@ function AddMember({
                     className="shrink-0"
                     loading={form.processing}
                 >
-                    {tc('console.add_9fd728c6')}
+                    {consoleT('console.add_9fd728c6')}
                 </Button>
             </div>
 
@@ -480,15 +496,14 @@ function AccessRolePicker({
     onChange: (roles: string[]) => void;
     hint?: string;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     if (roles.length === 0) {
         return null;
     }
 
     return (
         <fieldset>
-            <legend className="label">{tc('console.app_and_custom_roles_ecb0207e')}</legend>
+            <legend className="label">{consoleT('console.app_and_custom_roles_ecb0207e')}</legend>
             {hint !== undefined && (
                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
                     {hint}

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Mail\OrganizationInviteMail;
+use App\Mail\InvitationMail;
 use App\Platform\OrganizationCapabilities;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -25,12 +25,15 @@ if (! function_exists('apiAccount')) {
         // customer whose organization does not exist.
         platformRootEnvironment();
 
-        return app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        $organization = app(TenantProvisioner::class)->provision(new TenantBlueprint(
             organizationName: 'Acme',
             ownerEmail: 'owner@acme.example',
             ownerName: 'Owner',
             ownerPassword: 'supersecret123',
         ))->organization;
+        grantProductEnvironmentAllowance($organization->id, 100);
+
+        return $organization;
     }
 }
 
@@ -39,12 +42,15 @@ if (! function_exists('apiAccount2')) {
     {
         platformRootEnvironment();
 
-        return app(TenantProvisioner::class)->provision(new TenantBlueprint(
+        $organization = app(TenantProvisioner::class)->provision(new TenantBlueprint(
             organizationName: 'Other',
             ownerEmail: 'owner@other.example',
             ownerName: 'Other Owner',
             ownerPassword: 'supersecret123',
         ))->organization;
+        grantProductEnvironmentAllowance($organization->id, 100);
+
+        return $organization;
     }
 }
 
@@ -69,16 +75,14 @@ it('rejects requests without a valid account key', function (): void {
 
 it('returns the account and per-project plans for a valid key', function (): void {
     $account = apiAccount();
-    $token = issueKey($account, MembershipRole::Viewer);
+    $token = issueKey($account, MembershipRole::Admin);
 
     // Plans are per PROJECT now — the account block lists projects with each one's own
     // allowance, never a single account-level number.
     $this->withToken($token)->getJson('/api/v1/workspace')
         ->assertOk()
         ->assertJsonPath('data.name', 'Acme')
-        ->assertJsonPath('data.projects.0.name', 'Acme')
-        ->assertJsonPath('data.projects.0.environment_limit', 2)
-        ->assertJsonPath('data.projects.0.environments_used', 1);
+        ->assertJsonMissingPath('data.projects');
 });
 
 it('lists and creates projects (IdP products) through the API', function (): void {
@@ -95,7 +99,7 @@ it('lists and creates projects (IdP products) through the API', function (): voi
         ->assertCreated()
         ->assertJsonPath('data.name', 'Product Two')
         ->assertJsonPath('data.slug', 'product-two')
-        ->assertJsonPath('data.environment_limit', 2);
+        ->assertJsonPath('data.environment_limit', 1);
 
     // A read-only viewer can't create one.
     $this->withToken($viewer)->postJson('/api/v1/workspace/projects', ['name' => 'Nope'])->assertForbidden();
@@ -147,15 +151,15 @@ it('invites members only with a manage-members key', function (): void {
     $admin = issueKey($account, MembershipRole::Admin);
     $developer = issueKey($account, MembershipRole::Developer);
 
-    $this->withToken($admin)->postJson('/api/v1/workspace/members', ['email' => 'new@acme.example', 'role' => 'developer'])
+    $this->withToken($admin)->postJson('/api/v1/workspace/members', ['email' => 'new@acme.example', 'roles' => ['developer']])
         ->assertCreated()
         ->assertJsonPath('data.status', 'invited')
-        ->assertJsonPath('data.role', 'developer');
+        ->assertJsonPath('data.roles', ['developer']);
 
-    Mail::assertSent(OrganizationInviteMail::class);
+    Mail::assertSent(InvitationMail::class);
 
     // A developer key can't manage members.
-    $this->withToken($developer)->postJson('/api/v1/workspace/members', ['email' => 'x@acme.example', 'role' => 'viewer'])
+    $this->withToken($developer)->postJson('/api/v1/workspace/members', ['email' => 'x@acme.example', 'roles' => ['viewer']])
         ->assertForbidden();
 });
 
@@ -170,13 +174,14 @@ it('gates the member roster and billing behind read capability', function (): vo
 
     // …a read-only viewer can read both.
     $this->withToken($viewer)->getJson('/api/v1/workspace/members')->assertOk();
-    $this->withToken($viewer)->getJson('/api/v1/workspace')->assertOk()->assertJsonPath('data.projects.0.environment_limit', 2);
+    $this->withToken($viewer)->getJson('/api/v1/workspace')->assertOk()->assertJsonMissingPath('data.projects');
 });
 
 it('enforces the plan limit through the API', function (): void {
     $account = apiAccount();
     $admin = issueKey($account, MembershipRole::Admin);
 
+    grantProductEnvironmentAllowance($account->id, 2);
     // Limit 2, one used → one more allowed, then refused.
     $this->withToken($admin)->postJson('/api/v1/workspace/environments', ['name' => 'Staging'])->assertCreated();
     $this->withToken($admin)->postJson('/api/v1/workspace/environments', ['name' => 'Extra'])

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Props\Console;
 
 use App\Http\Props\Prop;
-use App\Platform\Locale\ConsoleStrings;
+use App\Platform\Locale\ConsoleLabels;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
 use DateTimeInterface;
 
@@ -34,7 +34,7 @@ final readonly class ApiKeyRowProps implements Prop
             id: $key->id,
             name: $key->name,
             prefix: $key->prefix,
-            role: ConsoleStrings::text($key->role->label()),
+            role: ConsoleLabels::navigation($key->role->label()),
             lifecycle: $lifecycle,
             revokeHref: $lifecycle->active() ? $revokeHref : null,
         );

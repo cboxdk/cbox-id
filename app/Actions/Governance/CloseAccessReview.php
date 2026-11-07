@@ -6,6 +6,7 @@ namespace App\Actions\Governance;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -55,7 +56,7 @@ final readonly class CloseAccessReview implements Action
         $campaign = AccessReviewFields::campaign($context);
 
         if ($campaign->status !== CampaignStatus::Open) {
-            throw new ActionRefused('review_closed', 'This access review is already closed.', 409);
+            throw new ActionRefused('review_closed', new ActionMessage('console.this_access_review_is_already_closed_2b90fb54'), 409);
         }
 
         $closed = $this->reviews->close($campaign->id, AccessReviewFields::writeOrganizationId($context, $campaign));

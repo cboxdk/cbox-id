@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-// Translation provenance and review scope: docs/guides/languages.md.
 return [
     'layout' => [
         'secured_by' => 'Beveiligd door :name',
         'theme' => 'Thema',
-        'toggle_theme' => 'Licht of donker thema aan/uit',
+        'toggle_theme' => 'Wissel tussen het lichte en donkere thema',
         'about' => 'Over dit product',
-        'hero_body' => 'Bedrijfs-SSO, SCIM-directorysynchronisatie, MFA en passkeys, RBAC en een auditlog waarin manipulatie zichtbaar is — zelf te hosten en in jouw beheer.',
+        'hero_body' => 'SSO voor bedrijven, SCIM-directorysynchronisatie, MFA en passkeys, RBAC en een auditlog waarmee manipulatie kan worden opgespoord. Zelf te hosten, onder jouw beheer.',
         'features' => [
-            'sso' => 'SAML & OIDC single sign-on',
-            'scim' => 'SCIM 2.0 directory provisioning',
-            'mfa' => 'Passkeys, TOTP en magische links',
-            'audit' => 'Hash-chained, sabotage-vanzelfsprekende audit',
+            'sso' => 'Eenmalige aanmelding met SAML en OIDC',
+            'scim' => 'Accountbeheer via SCIM 2.0',
+            'mfa' => 'Passkeys, TOTP en eenmalige inloglinks',
+            'audit' => 'Auditlog met gekoppelde hashes voor het opsporen van manipulatie',
         ],
+        'hero_title' => 'Eén identiteitslaag voor al je apps.',
     ],
     'language' => [
         'label' => 'Taal',
     ],
-    'skip_to_content' => 'Skip to content',
+    'skip_to_content' => 'Ga naar de inhoud',
 ];

@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -51,8 +52,14 @@ export default function OutboundSyncIndex({
     help,
     organizationFilter,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -75,12 +82,15 @@ export default function OutboundSyncIndex({
         <>
             <PageHeader
                 help={help}
-                description={tc('console.push_your_people_into_the_apps_that_need_the_249f03c2')}
+                description={consoleT(
+                    'console.push_your_people_into_the_apps_that_need_their_own_copy_249f03c2',
+                )}
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>
-                            <Icon name="plus" className="w-4 h-4" />
-                            {tc('console.new_connection_729bceee')}
+                            {consoleRich('console._part1_new_connection_bce987f9', {
+                                part1: <Icon name="plus" className="w-4 h-4" />,
+                            })}
                         </Link>
                     </Button>
                 }
@@ -95,8 +105,8 @@ export default function OutboundSyncIndex({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder={tc('console.search_by_name_4ae2b333')}
-                    aria-label={tc('console.search_outbound_connections_d6171f84')}
+                    placeholder={consoleUiText('console.search_by_name_4ae2b333')}
+                    aria-label={consoleT('console.search_outbound_connections_d6171f84')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -106,11 +116,7 @@ export default function OutboundSyncIndex({
                     narrowed to nothing.
                 */}
                 <output className="sr-only">
-                    {pagination.total}{' '}
-                    {pagination.total === 1
-                        ? tc('console.connection_b38d9d16')
-                        : tc('console.connections_1e5fac86')}{' '}
-                    {tc('console.found_ddbb3871')}
+                    {consoleRich('console.search_results_found', { count: pagination.total })}
                 </output>
             </div>
 
@@ -122,31 +128,38 @@ export default function OutboundSyncIndex({
                     search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={tc('console.no_connections_match_value0_4bce1061', {
-                                value0: search,
+                            title={consoleFinalText('console.no_connections_match_part1_14089864', {
+                                part1: search,
                             })}
-                            description={tc(
-                                'console.no_outbound_connection_matches_that_name_try_2fb976c3',
+                            description={consoleT(
+                                'console.no_outbound_connection_matches_that_name_try_a_differen_2fb976c3',
                             )}
                         />
                     ) : (
                         <EmptyState
                             icon="directory"
                             equivalent="provisioning.targets.create"
-                            title={tc('console.no_outbound_sync_yet_6f16faf1')}
-                            description={tc(
-                                'console.apps_that_keep_their_own_user_list_drift_out_fc8e8671',
+                            title={consoleT('console.no_outbound_sync_yet_6f16faf1')}
+                            description={consoleT(
+                                'console.apps_that_keep_their_own_user_list_drift_out_of_step_th_fc8e8671',
                             )}
                             steps={[
-                                tc('console.paste_the_app_s_scim_base_url_and_the_creden_4908336e'),
-                                tc('console.choose_how_it_authenticates_a_bearer_token_o_a5be3b55'),
-                                tc('console.save_it_joins_changes_and_departures_start_f_3ec32b01'),
+                                consoleRuntimeText(
+                                    'console.paste_the_app_s_scim_base_url_and_the_credential_it_iss_4908336e',
+                                ),
+                                consoleRuntimeText(
+                                    'console.choose_how_it_authenticates_a_bearer_token_or_oauth_cli_a5be3b55',
+                                ),
+                                consoleRuntimeText(
+                                    'console.save_it_joins_changes_and_departures_start_flowing_from_3ec32b01',
+                                ),
                             ]}
                             actions={
                                 <Button asChild variant="primary">
                                     <Link href={createHref}>
-                                        <Icon name="plus" className="w-4 h-4" />
-                                        {tc('console.new_connection_729bceee')}
+                                        {consoleRich('console._part1_new_connection_bce987f9', {
+                                            part1: <Icon name="plus" className="w-4 h-4" />,
+                                        })}
                                     </Link>
                                 </Button>
                             }
@@ -194,8 +207,8 @@ export default function OutboundSyncIndex({
 
                             <Pill tone={connection.active ? 'success' : 'warning'}>
                                 {connection.active
-                                    ? tc('console.active_92340695')
-                                    : tc('console.paused_e159b061')}
+                                    ? consoleText('console.active_92340695')
+                                    : consoleText('console.paused_e159b061')}
                             </Pill>
 
                             <Icon
@@ -210,8 +223,6 @@ export default function OutboundSyncIndex({
 
             <Pagination
                 pagination={pagination}
-                noun={tc('console.connection_b38d9d16')}
-                pluralNoun={tc('console.connections_1e5fac86')}
                 href={(page) => listHref(search, page)}
             />
         </>

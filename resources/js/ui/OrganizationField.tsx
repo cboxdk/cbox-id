@@ -1,4 +1,5 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useFormatTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Command } from 'cmdk';
 import { type ReactNode, useEffect, useState } from 'react';
 import { cn } from '@/lib/cn';
@@ -75,10 +76,10 @@ function LookupStatus({
     total: number;
     term: string;
 }) {
-    const { locale } = useUiTranslator();
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { t: consoleFinalText, choice } = useConsoleTranslator();
 
-    const { t: tc } = useUiTranslator();
-
+    const { t: consoleText } = useConsoleTranslator();
     return (
         // WCAG 4.1.3. The list is replaced on a debounced keystroke with no focus change, so
         // this line is the only thing that can tell a screen-reader user their search
@@ -86,17 +87,19 @@ function LookupStatus({
         <output className="cbx-lookup-status">
             {loading && <Spinner className="w-3 h-3" />}
             {loading
-                ? tc('console.searching_c31723ab', 'Searching…')
+                ? consoleText('console.searching_c31723ab')
                 : count === 0
                   ? term.trim() === ''
-                      ? tc(
-                            'console.this_environment_has_no_organizations_yet_e3dd0861',
-                            'This environment has no organizations yet.',
-                        )
-                      : `No organization matches “${term.trim()}”.`
+                      ? consoleText('console.this_environment_has_no_organizations_yet_e3dd0861')
+                      : consoleFinalText('console.no_organization_matches_part1_022c2190', {
+                            part1: term.trim(),
+                        })
                   : total > count
-                    ? `Showing ${count} of ${total.toLocaleString(locale)} — type to narrow.`
-                    : `${count} ${count === 1 ? 'organization' : 'organizations'}.`}
+                    ? consoleFinalText('console.showing_part1_of_part2_type_to_narrow_54c3f471', {
+                          part1: count,
+                          part2: total.toLocaleString(consoleLocale),
+                      })
+                    : choice('console.count_organizations', count)}
         </output>
     );
 }
@@ -119,8 +122,8 @@ export function OrganizationLookupList({
     /** Rows drawn above the results — "The whole environment" where that is an answer. */
     leading?: ReactNode;
 }) {
-    const { t: tc } = useUiTranslator();
-
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [term, setTerm] = useState('');
     const { results, total, loading } = useOrganizationLookup(lookupHref, open, term);
 
@@ -130,11 +133,8 @@ export function OrganizationLookupList({
             <div className="cbx-combobox-search">
                 <Icon name="search" className="w-4 h-4 shrink-0" />
                 <Command.Input
-                    placeholder={tc(
-                        'console.search_organizations_0156eb39',
-                        'Search organizations…',
-                    )}
-                    aria-label={tc('console.search_organizations_c1b2693a', 'Search organizations')}
+                    placeholder={consoleUiText('console.search_organizations_0156eb39')}
+                    aria-label={consoleT('console.search_organizations_c1b2693a')}
                     value={term}
                     onValueChange={setTerm}
                 />
@@ -189,11 +189,12 @@ export function OrganizationField({
     placeholder?: string;
     disabled?: boolean;
 }) {
-    const { t: tc } = useUiTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
     const placeholder =
-        suppliedPlaceholder ??
-        tc('console.find_an_organization_eb2523db', 'Find an organization\u2026');
-
+        suppliedPlaceholder ?? consoleFinalText('console.find_an_organization_eb2523db');
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [open, setOpen] = useState(false);
     const field = useFieldControl();
 
@@ -212,7 +213,7 @@ export function OrganizationField({
                 <span className={cn('cbx-select-value', value === null && 'is-placeholder')}>
                     {value?.name ??
                         (allowsEnvironment
-                            ? tc('console.the_whole_environment_9ad4afa7', 'The whole environment')
+                            ? consoleText('console.the_whole_environment_9ad4afa7')
                             : placeholder)}
                 </span>
             </PopoverTrigger>
@@ -237,16 +238,15 @@ export function OrganizationField({
                                 }}
                             >
                                 <span style={{ minWidth: 0, flex: 1 }}>
-                                    {tc(
-                                        'console.the_whole_environment_9ad4afa7',
-                                        'The whole environment',
-                                    )}
-                                    <span className="cbx-menuitem-hint">
-                                        {tc(
-                                            'console.every_organization_here_and_none_in_particul_ad3f49b0',
-                                            'Every organization here, and none in particular',
-                                        )}
-                                    </span>
+                                    {consoleRich('console.the_whole_environment_part1_6c96bfa7', {
+                                        part1: (
+                                            <span className="cbx-menuitem-hint">
+                                                {consoleT(
+                                                    'console.every_organization_here_and_none_in_particular_ad3f49b0',
+                                                )}
+                                            </span>
+                                        ),
+                                    })}
                                 </span>
                                 {value === null && (
                                     <Icon name="check" className="w-4 h-4 shrink-0" />
@@ -279,16 +279,14 @@ export function OrganizationPickerField({
     /** The question, where "for which organization" would undersell "the whole environment". */
     label?: string;
 }) {
-    const { t: tc } = useUiTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
     const hint =
         suppliedHint ??
-        tc(
-            'console.what_you_create_here_belongs_to_this_organiz_fc8e15c4',
-            'What you create here belongs to this organization, and to no other.',
+        consoleFinalText(
+            'console.what_you_create_here_belongs_to_this_organization_and_t_fc8e15c4',
         );
-    const label =
-        suppliedLabel ?? tc('console.for_which_organization_aaca2bbd', 'For which organization?');
-
+    const label = suppliedLabel ?? consoleFinalText('console.for_which_organization_aaca2bbd');
+    const { t: consoleText } = useConsoleTranslator();
     const [value, setValue] = useState<OrganizationOption | null>(picker.selected);
 
     return (
@@ -296,10 +294,7 @@ export function OrganizationPickerField({
             label={label}
             hint={
                 picker.locked
-                    ? tc(
-                          'console.opened_from_this_organization_s_page_08622d45',
-                          'Opened from this organization’s page.',
-                      )
+                    ? consoleText('console.opened_from_this_organization_s_page_08622d45')
                     : hint
             }
             error={error}

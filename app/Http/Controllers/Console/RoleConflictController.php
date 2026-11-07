@@ -183,7 +183,7 @@ final readonly class RoleConflictController extends ConsoleController
              */
             if ($this->scope->plane() !== ConsolePlane::Environment) {
                 return back()->withInput()->withErrors([
-                    'environmentWide' => __('console.only_an_environment_administrator_may_write__39184ea2'),
+                    'environmentWide' => __('console.only_an_environment_administrator_may_write_a_rule_for_39184ea2'),
                 ]);
             }
 
@@ -210,7 +210,7 @@ final readonly class RoleConflictController extends ConsoleController
         $policy = $result->value;
 
         return to_route($this->scope->routeName('sod-policies.show'), $policy->id)
-            ->with('status', 'Rule "'.$policy->name.__('console.defined_over_586e5440').count($policy->role_ids).' roles.');
+            ->with('status', __('console.rule_part1_defined_over_part2_roles_9d2a17ea', ['part1' => $policy->name, 'part2' => count($policy->role_ids)]));
     }
 
     public function show(Request $request, string $policy, SegregationOfDuties $sod, Subjects $subjects): Response
@@ -309,9 +309,7 @@ final readonly class RoleConflictController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', $model->active
-            ? __('console.rule_deactivated_grants_that_would_break_it__65b2c178')
-            : __('console.rule_activated_grants_that_would_break_it_ar_fb4adf4c'));
+        return back()->with('status', $model->active ? __('console.rule_deactivated_grants_that_would_break_it_are_allowed_65b2c178') : __('console.rule_activated_grants_that_would_break_it_are_blocked_f_fb4adf4c'));
     }
 
     public function destroy(string $policy): RedirectResponse
@@ -328,7 +326,7 @@ final readonly class RoleConflictController extends ConsoleController
         }
 
         return to_route($this->scope->routeName('sod-policies'))
-            ->with('status', 'Rule "'.$name.'" removed.');
+            ->with('status', __('console.rule_part1_removed_108e0263', ['part1' => $name]));
     }
 
     /**

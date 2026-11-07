@@ -86,8 +86,7 @@ export interface LocaleOption {
 /**
  * `App\Http\Props\Shared\I18nProps`
  *
- * Null on every console page: the console is English and ships no catalogue. On a hosted
- * page, its own group's strings only, flattened to dot keys. Read through `useTranslator()`
+ * Page and shared UI strings, flattened to dot keys. Read through `useTranslator()`
  * in `@/i18n` rather than directly, so every lookup is checked against the generated key
  * type.
  */
@@ -95,6 +94,7 @@ export interface I18n {
     locale: string;
     locales: LocaleOption[];
     messages: Record<string, string>;
+    preference: { subjectId: string; version: number; updateUrl: string } | null;
 }
 
 /** `App\Http\Props\Shared\FlashProps` */
@@ -403,6 +403,8 @@ export interface SharedProps {
      * page is about, which the layout draws as the hub's header and tabs around the page.
      */
     organizationHub?: OrganizationHub | null;
+    /** Live environment write authority; only presentation, server actions recheck. */
+    canManageEnvironment?: boolean;
     /**
      * The actions this console page hosts, keyed by name, for "</> API"
      * (`App\Platform\Connect\ActionSnippets`). Empty off the console. Optional because a

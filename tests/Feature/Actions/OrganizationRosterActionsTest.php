@@ -470,7 +470,7 @@ it('leaves from the People page through the same action', function (): void {
 
     test()->from(route('directory.members'))->post(route('directory.members.leave'))
         ->assertRedirect(route('login'))
-        ->assertSessionHas('status', 'You left Acme. You are not a member of any other organization here, so you have been signed out.');
+        ->assertSessionHas('status', 'You left the organization Acme. You are not a member of any other organization here, so you have been signed out.');
 
     expect(app(Memberships::class)->of($org->id, $meId))->toBeNull()
         ->and(AuditEntry::query()->where('action', 'organization.member_removed')->where('scope', $org->id)->sole()->actor_id)->toBe($meId);

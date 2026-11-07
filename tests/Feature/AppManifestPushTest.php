@@ -2,14 +2,17 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\AccessControl\Manifest\ManifestParser;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
+use Cbox\Id\OAuthServer\Models\AccessToken;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
 beforeEach(function (): void {
+    AccessToken::query()->create(['jti' => 'manifest-fixture', 'client_id' => 'app_billing', 'scopes' => ['apps.manifest'], 'expires_at' => now()->addMinutes(5)]);
     // Fake introspector: opaque test tokens → a client id + scopes, so the real
     // auth path runs without minting signed JWTs.
     $this->app->instance(TokenIntrospector::class, new class implements TokenIntrospector
@@ -17,8 +20,8 @@ beforeEach(function (): void {
         public function introspect(string $token): Introspection
         {
             return match ($token) {
-                'manifest-tok' => Introspection::active(null, 'app_billing', ['apps.manifest'], []),
-                'noscope-tok' => Introspection::active(null, 'app_billing', [], []),
+                'manifest-tok' => Introspection::active('app_billing', 'app_billing', ['apps.manifest'], ['jti' => 'manifest-fixture']),
+                'noscope-tok' => Introspection::active('app_billing', 'app_billing', [], []),
                 default => Introspection::inactive(),
             };
         }
@@ -42,6 +45,9 @@ function pushBody(): array
 it('pushes a manifest and syncs the app catalog under its own client id', function (): void {
     $this->postJson('/api/v1/apps/manifest', pushBody(), ['Authorization' => 'Bearer manifest-tok'])
         ->assertOk()
+        ->assertJsonPath('client_id', 'app_billing')
+        ->assertJsonPath('version', '1')
+        ->assertJsonPath('checksum', app(ManifestParser::class)->parse(pushBody())->checksum())
         ->assertJson(['roles_declared' => 1, 'permissions_declared' => 1, 'unchanged' => false]);
 
     expect(Role::query()->where('client_id', 'app_billing')->where('key', 'viewer')->exists())->toBeTrue();
@@ -62,4 +68,18 @@ it('rejects a malformed manifest with 422', function (): void {
 
 it('rejects a push with no token', function (): void {
     $this->postJson('/api/v1/apps/manifest', pushBody())->assertStatus(401);
+});
+
+it('acknowledges the exact manifest on an idempotent repeat and when retiring every definition', function (): void {
+    $headers = ['Authorization' => 'Bearer manifest-tok'];
+    $this->postJson('/api/v1/apps/manifest', pushBody(), $headers)->assertOk();
+    $this->postJson('/api/v1/apps/manifest', pushBody(), $headers)->assertOk()
+        ->assertJsonPath('unchanged', true)
+        ->assertJsonPath('client_id', 'app_billing')
+        ->assertJsonPath('checksum', app(ManifestParser::class)->parse(pushBody())->checksum());
+    $empty = ['version' => 'empty', 'roles' => [], 'permissions' => []];
+    $this->postJson('/api/v1/apps/manifest', $empty, $headers)->assertOk()
+        ->assertJsonPath('version', 'empty')
+        ->assertJsonPath('checksum', app(ManifestParser::class)->parse($empty)->checksum())
+        ->assertJsonPath('orphaned_roles', ['viewer']);
 });

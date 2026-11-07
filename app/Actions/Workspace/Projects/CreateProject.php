@@ -17,8 +17,9 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\Principal\SignedInPerson;
+use App\Platform\Billing\ProductBilling;
 use App\Platform\ServiceAccess\ProductAdmission;
-use App\Platform\SubscriptionAdmission;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\PlatformRoot;
@@ -58,30 +59,32 @@ final readonly class CreateProject implements Action
     {
         return InputSchema::of([
             Field::string('name')->required()->max(120),
+            Field::integer('environment_limit')->min(1)->max(100)->describe('Optional lower allowance; it cannot exceed your account access.'),
         ]);
     }
 
     public function handle(ActionContext $context): ActionResult
     {
         $workspaceId = InWorkspace::id($context->principal);
-        app(ProductAdmission::class)->assertGranted($context->principal->id(), $workspaceId);
+        app(ProductAdmission::class)->assertGranted($context->principal instanceof SignedInPerson ? $context->principal->subjectId() : $context->principal->id(), $workspaceId);
 
         // IN THE PLATFORM ROOT: `organizations` is environment-owned and this plane pins no
         // environment, so an unscoped read finds nothing.
         $organization = $this->platformRoot->run(fn (): ?Organization => $this->organizations->find($workspaceId))
             ?? throw ActionRefused::notFound('organization');
 
-        // Quotas are server-owned. Extra legacy input cannot buy an allowance.
-        $limit = SubscriptionAdmission::required() ? 0 : 2;
-        $project = DB::transaction(function () use ($organization, $context, $limit) {
-            $project = $this->provisioner->addProject($organization, trim($context->string('name')), $limit);
-            // The framework factory clamps to one; hosted admission permits zero until billed.
-            if ($limit === 0) {
-                $project->environment_limit = 0;
-                $project->save();
+        $limit = $context->has('environment_limit') && is_numeric($context->input['environment_limit'])
+            ? (int) $context->input['environment_limit']
+            : null;
+
+        $project = DB::transaction(function () use ($organization, $workspaceId, $context, $limit) {
+            DB::table('organizations')->where('id', $workspaceId)->lockForUpdate()->first();
+            $ceiling = app(ProductBilling::class)->environmentLimit($workspaceId);
+            if ($ceiling < 1 || ($limit !== null && $limit > $ceiling)) {
+                throw ActionRefused::because('environment_limit_reached', __('billing.allowance_exceeded'), 'environment_limit');
             }
 
-            return $project;
+            return $this->provisioner->addProject($organization, trim($context->string('name')), $limit ?? $ceiling);
         });
 
         // On the workspace's log, like the environments created under it: a project is a

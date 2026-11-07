@@ -11,7 +11,7 @@ use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementValue;
 use Illuminate\Contracts\Config\Repository;
 
 /**
- * Live feature defaults, separate from project subscription admission.
+ * Live identity feature defaults, separate from product admission and central limits.
  *
  * Open installs grant absent keys. Inclusive hosted installs grant only the configured
  * ID security keys, leaving application entitlements deny-by-default. Metered installs

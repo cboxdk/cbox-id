@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Http\Middleware\ResolveConsoleLocale;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Locale\HostedLocale;
+use App\Platform\Locale\LocaleResolver;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Kernel\Events\Models\Event;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -30,8 +30,8 @@ it('publishes every console language to the document consuming apps read', funct
     app(UserProperties::class)->patch($client->client_id, $person, 'preferences', new PropertyPatch(0, (object) ['theme' => 'dark', 'timezone' => 'Europe/Copenhagen']));
     $grants = $namespace->fresh()->getAttributes();
 
-    $this->from(route('dashboard'))->post(route('console.locale.update'), ['locale' => $locale, 'user_id' => $person])
-        ->assertRedirect(route('dashboard'))->assertCookieExpired(ResolveConsoleLocale::COOKIE);
+    $this->from(route('dashboard'))->post(route('console.locale.update'), ['language' => $locale, 'subject_id' => $person, 'version' => 1])
+        ->assertRedirect(route('dashboard'));
 
     $document = app(UserProperties::class)->read($client->client_id, $person, 'preferences');
     expect($document->data)->toEqual((object) ['theme' => 'dark', 'timezone' => 'Europe/Copenhagen', 'language' => $locale])
@@ -45,11 +45,11 @@ it('publishes every console language to the document consuming apps read', funct
         ->and($event->payload)->not->toHaveKey('data');
     Queue::assertPushed(RelayPropertyChanges::class);
 
-    $page = $this->withCookie(ResolveConsoleLocale::COOKIE, 'ja')->withHeader('Accept-Language', 'ja')->get(route('dashboard'));
+    $page = $this->withCookie(LocaleResolver::COOKIE, 'ja')->withHeader('Accept-Language', 'ja')->get(route('dashboard'));
     $page->assertOk()->assertHeader('Content-Language', $locale);
     expect($page->inertiaProps('i18n.locale'))->toBe($locale);
 
-    $this->post(route('console.locale.update'), ['locale' => $locale, 'user_id' => $person])->assertRedirect();
+    $this->post(route('console.locale.update'), ['language' => $locale, 'subject_id' => $person, 'version' => 2])->assertRedirect();
     expect(app(UserProperties::class)->read($client->client_id, $person, 'preferences')->version)->toBe(2)
         ->and(Event::query()->where('type', 'user.preferences.updated')->count())->toBe(2);
 })->with(HostedLocale::codes());
@@ -60,19 +60,19 @@ it('reads a shared regional preference ahead of cookies without rewriting it', f
     app(EnvironmentContext::class)->set(platformRootEnvironment());
     PropertyDocument::query()->create(['user_id' => $person, 'namespace' => 'preferences', 'data' => (object) ['language' => $preference], 'version' => 7]);
 
-    $page = $this->withCookie(ResolveConsoleLocale::COOKIE, 'it')->withHeader('Accept-Language', 'de')->get(route('dashboard'));
+    $page = $this->withCookie(LocaleResolver::COOKIE, 'it')->withHeader('Accept-Language', 'de')->get(route('dashboard'));
     $page->assertOk()->assertHeader('Content-Language', $expected);
     expect($page->inertiaProps('i18n.locale'))->toBe($expected)
         ->and(PropertyDocument::query()->sole()->data->language)->toBe($preference)
         ->and(PropertyDocument::query()->sole()->version)->toBe(7)
         ->and(Event::query()->where('type', 'user.preferences.updated')->count())->toBe(0);
-})->with([['da-DK', 'da'], ['no', 'nb'], ['fr-CA', 'fr'], ['ja', 'en']]);
+})->with([['da-DK', 'da'], ['no', 'nb'], ['fr-CA', 'fr'], ['ja', 'de']]);
 
 it('does not seed defaults or reuse the previous accounts cookie', function (): void {
     ['subjectId' => $person] = provisionAccount();
     signInAsMember($person);
     app(EnvironmentContext::class)->set(platformRootEnvironment());
-    $this->withCookie(ResolveConsoleLocale::COOKIE, 'de')->withHeader('Accept-Language', 'sv')->get(route('dashboard'))
+    $this->withCookie(LocaleResolver::COOKIE, 'de')->withHeader('Accept-Language', 'sv')->get(route('dashboard'))
         ->assertOk()->assertHeader('Content-Language', 'sv');
     expect(PropertyDocument::query()->count())->toBe(0);
 });
@@ -82,17 +82,17 @@ it('refuses a stale tab writing after the signed in account changed', function (
     ['subjectId' => $second] = provisionAccount('second@example.test');
     signInAsMember($second);
 
-    $this->postJson(route('console.locale.update'), ['locale' => 'de', 'user_id' => $first])->assertConflict();
+    $this->postJson(route('console.locale.update'), ['language' => 'de', 'subject_id' => $first, 'version' => 0])->assertUnprocessable()->assertJsonValidationErrors('language');
     expect(PropertyDocument::query()->count())->toBe(0);
 });
 
 it('does not accept a guest or revoked session as a preference writer', function (): void {
     ['subjectId' => $person] = provisionAccount();
-    $this->postJson(route('console.locale.update'), ['locale' => 'de', 'user_id' => $person])->assertUnauthorized();
+    $this->postJson(route('console.locale.update'), ['language' => 'de', 'subject_id' => $person, 'version' => 0])->assertUnauthorized();
     signInAsMember($person);
     app(EnvironmentContext::class)->set(platformRootEnvironment());
     app(SessionManager::class)->revokeAllForUser($person);
-    $this->postJson(route('console.locale.update'), ['locale' => 'de', 'user_id' => $person])->assertUnauthorized();
+    $this->postJson(route('console.locale.update'), ['language' => 'de', 'subject_id' => $person, 'version' => 0])->assertUnauthorized();
     expect(PropertyDocument::query()->count())->toBe(0);
 });
 
@@ -100,7 +100,7 @@ it('stores an environment administrators language on their own root identity', f
     $tenant = actAsEnvironmentAdminOfATenant();
     $person = app(EnvironmentAdminAuth::class)->subjectId();
     Queue::fake();
-    $this->from(route('environment.home'))->post(route('environment.locale.update'), ['locale' => 'fi', 'user_id' => $person])->assertRedirect(route('environment.home'));
+    $this->from(route('environment.home'))->post(route('environment.locale.update'), ['language' => 'fi', 'subject_id' => $person, 'version' => 0])->assertRedirect(route('environment.home'));
     expect(app(EnvironmentContext::class)->current()?->environmentKey())->toBe($tenant)
         ->and(PropertyDocument::query()->count())->toBe(0)
         ->and(PropertyNamespace::query()->count())->toBe(0);
@@ -129,4 +129,18 @@ it('reads the operators own language while administering another environment', f
     expect(app(EnvironmentContext::class)->current()?->environmentKey())->toBe($tenant->id)
         ->and(PropertyDocument::query()->count())->toBe(0);
     expect(app(PlatformRoot::class)->run(fn (): string => PropertyDocument::query()->sole()->data->language))->toBe('de');
+});
+
+it('refuses an outdated language version without overwriting another tab', function (): void {
+    ['subjectId' => $person] = provisionAccount();
+    signInAsMember($person);
+    Queue::fake();
+    $this->post(route('console.locale.update'), ['language' => 'da', 'subject_id' => $person, 'version' => 0])->assertRedirect();
+    $this->postJson(route('console.locale.update'), ['language' => 'de', 'subject_id' => $person, 'version' => 0])
+        ->assertUnprocessable()->assertJsonValidationErrors('language');
+    app(PlatformRoot::class)->run(function () use ($person): void {
+        $document = PropertyDocument::query()->where('user_id', $person)->sole();
+        expect($document->data->language)->toBe('da')->and($document->version)->toBe(1);
+        expect(Event::query()->where('type', 'user.preferences.updated')->count())->toBe(1);
+    });
 });

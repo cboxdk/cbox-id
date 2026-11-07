@@ -2,11 +2,9 @@
 
 declare(strict_types=1);
 
-// Danish: the OAuth authorization pages (see lang/en/oauth.php).
 return [
     'signed_in_as' => 'Logget ind som :account',
     'cancel_and_return' => 'Annuller og gå tilbage til :client',
-
     'consent' => [
         'title' => 'Giv adgang',
         'heading' => 'Giv :client adgang',
@@ -18,16 +16,13 @@ return [
         'cancel' => 'Annuller',
         'authorize' => 'Giv adgang',
         'redirect_notice' => 'Når du har givet adgang, bliver du sendt videre til :host.',
-        // A client that registered itself (RFC 7591, or a client ID metadata document).
         'self_registered_owner' => 'appen selv',
         'self_registered' => 'Denne app har registreret sig selv. Ingen hos :account har gennemgået den – fortsæt kun hvis du selv har startet dette login.',
         'published_by' => 'Beskrevet af :host – det eneste ved denne app der er blevet kontrolleret.',
         'about_app' => 'Om denne app',
-        // Management-plane scopes an agent acts with as the person.
         'critical' => 'Kritisk',
         'acts_as_you' => 'Alt hvad den gør på dine vegne, er begrænset til det du selv må, og bliver registreret i revisionsloggen.',
         'critical_notice' => 'Kritiske handlinger skal stadig godkendes på din enhed – hver gang.',
-
         'scopes' => [
             'openid' => 'Bekræfte din identitet',
             'profile' => 'Se dit navn',
@@ -38,23 +33,21 @@ return [
             'feature_flags' => 'Se hvilke funktioner der er slået til for dig',
         ],
     ],
-
     'failure' => [
         'title' => 'Godkendelsen mislykkedes',
         'heading' => 'Godkendelsen mislykkedes',
         'back' => 'Tilbage til :name',
         'generic' => 'Anmodningen om godkendelse kunne ikke gennemføres.',
         'expired' => 'Anmodningen om godkendelse er udløbet eller allerede brugt. Start forfra.',
-        'par_required' => 'Denne server kræver pushed authorization requests. Send først anmodningen til /oauth/par.',
+        'par_required' => 'Denne server kræver forhåndsindsendte godkendelsesanmodninger (PAR). Send først anmodningen til /oauth/par.',
         'unknown_client' => 'Ukendt klient. Appen er ikke registreret i Cbox ID.',
         'client_document' => 'Appens beskrivelse kunne ikke læses. Den skal ligge på den adresse appen har opgivet som sit ID, men dokumentet mangler, kan ikke nås eller er ugyldigt.',
-        'redirect_mismatch' => 'Redirect-URI’en matcher ingen af dem der er registreret for denne app.',
+        'redirect_mismatch' => 'Omdirigeringsadressen matcher ingen af de adresser, der er registreret for denne app.',
         'stale' => 'Anmodningen om godkendelse kan ikke længere gennemføres. Start forfra.',
         'account_attention' => 'Der er noget på din konto du skal tage dig af, før du kan fortsætte. Log ind igen.',
         'step_up' => 'Appen kræver et nyere eller stærkere login. Start forfra.',
         'no_workspace' => 'Dette login forbinder en agent med et arbejdsområde på Cbox ID, men din konto er ikke med i teamet for noget arbejdsområde. Bed en ejer af arbejdsområdet om at invitere dig, eller forbind i stedet agenten via dit miljøs egen adresse.',
     ],
-
     'organization' => [
         'title' => 'Vælg en organisation',
         'heading' => 'Vælg en organisation',
@@ -75,7 +68,6 @@ return [
             'viewer' => 'Læser',
         ],
     ],
-
     'create_organization' => [
         'title' => 'Opret en organisation',
         'heading' => 'Opret en organisation',

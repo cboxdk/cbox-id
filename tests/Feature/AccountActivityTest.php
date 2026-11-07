@@ -365,3 +365,11 @@ it('dates every activity row', function (): void {
             ->and($row['at'])->toBeString();
     }
 });
+
+it('localizes device structure without translating an unknown user agent', function (): void {
+    app()->setLocale('da');
+
+    expect(DeviceLabel::for('Chrome/141.0 Macintosh', localized: true))->toBe('Chrome på macOS')
+        ->and(DeviceLabel::for('Active', localized: true))->toBe('Active')
+        ->and(DeviceLabel::for(null, localized: true))->toBe(__('console.device_not_recorded_0d70f75d'));
+});

@@ -1,5 +1,5 @@
 import type { Translator } from '@/i18n';
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import type { HelpContent } from '@/types';
@@ -15,10 +15,10 @@ export interface RadarMode {
     href: string;
 }
 
-const INTELLIGENCE = (tc: Translator['t']): Record<RadarMode['intelligence'], string> => ({
-    none: tc('console.no_ip_intelligence_configured_country_networ_8ebfbb9f'),
-    maxmind: tc('console.ip_intelligence_maxmind_database_files_on_th_d7e6172c'),
-    ipinfo: tc('console.ip_intelligence_ipinfo_a64fcb37'),
+const INTELLIGENCE = (t: Translator['t']): Record<RadarMode['intelligence'], string> => ({
+    none: t('console.no_ip_intelligence_configured_country_network_and_trave_8ebfbb9f'),
+    maxmind: t('console.ip_intelligence_maxmind_database_files_on_this_deployme_d7e6172c'),
+    ipinfo: t('console.ip_intelligence_ipinfo_a64fcb37'),
 });
 
 /**
@@ -44,8 +44,12 @@ export function RadarFrame({
     actions?: ReactNode;
     children: ReactNode;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleLastText } = useConsoleTranslator();
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { t: consoleStaticText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [confirming, setConfirming] = useState(false);
     const [processing, setProcessing] = useState(false);
     const target = mode?.mode === 'enforce' ? 'monitor' : 'enforce';
@@ -57,23 +61,24 @@ export function RadarFrame({
             {mode !== undefined && (
                 <section
                     className="mt-5 card p-4 flex flex-wrap items-center gap-3"
-                    aria-label={tc('console.radar_mode_9c13cfa3')}
+                    aria-label={consoleT('console.radar_mode_9c13cfa3')}
                 >
                     <Pill tone={mode.mode === 'enforce' ? 'success' : 'warning'}>
                         {mode.mode === 'enforce'
-                            ? tc('console.enforcing_1ca5672a')
-                            : tc('console.monitoring_1dc83f60')}
+                            ? consoleText('console.enforcing_1ca5672a')
+                            : consoleText('console.monitoring_1dc83f60')}
                     </Pill>
                     <p className="text-sm flex-1 min-w-[16rem]" style={{ color: 'var(--muted)' }}>
                         {mode.mode === 'enforce'
-                            ? tc('console.blocks_refuse_sign_ins_and_sign_ups_challeng_6a4ee9dc')
-                            : tc('console.every_verdict_is_recorded_and_none_is_acted__1b797986')}
-                        {mode.inherited &&
-                            tc(
-                                'console.following_this_deployment_s_default_until_yo_588a3298',
-                            )}{' '}
+                            ? consoleText(
+                                  'console.blocks_refuse_sign_ins_and_sign_ups_challenges_ask_for_6a4ee9dc',
+                              )
+                            : consoleText(
+                                  'console.every_verdict_is_recorded_and_none_is_acted_on_read_the_1b797986',
+                              )}
+                        {mode.inherited && <> {consoleT('console.following_deployment_default')}</>}{' '}
                         <span style={{ color: 'var(--faint)' }}>
-                            {INTELLIGENCE(tc)[mode.intelligence]}
+                            {INTELLIGENCE(consoleStaticText)[mode.intelligence]}
                         </span>
                     </p>
                     <Button
@@ -82,31 +87,39 @@ export function RadarFrame({
                     >
                         <Icon name="shield" className="w-4 h-4" />
                         {target === 'enforce'
-                            ? tc('console.switch_to_enforce_199a1586')
-                            : tc('console.switch_to_monitor_d9ddd684')}
+                            ? consoleText('console.switch_to_enforce_199a1586')
+                            : consoleText('console.switch_to_monitor_d9ddd684')}
                     </Button>
                     <ConfirmDelete
                         open={confirming}
                         onOpenChange={setConfirming}
                         name={target}
-                        verb={target === 'enforce' ? 'Enforce' : 'Monitor'}
+                        verb={
+                            target === 'enforce'
+                                ? consoleShortText('console.enforce_3f7e3034')
+                                : consoleShortText('console.monitor_4c2e1df4')
+                        }
                         title={
                             target === 'enforce'
-                                ? tc('console.start_blocking_and_challenging_sign_ins_d9132199')
-                                : tc('console.stop_blocking_and_challenging_sign_ins_40067216')
+                                ? consoleText(
+                                      'console.start_blocking_and_challenging_sign_ins_d9132199',
+                                  )
+                                : consoleText(
+                                      'console.stop_blocking_and_challenging_sign_ins_40067216',
+                                  )
                         }
                         actionLabel={
                             target === 'enforce'
-                                ? tc('console.switch_to_enforce_199a1586')
-                                : tc('console.switch_to_monitor_d9ddd684')
+                                ? consoleLastText('console.switch_to_enforce_199a1586')
+                                : consoleLastText('console.switch_to_monitor_d9ddd684')
                         }
                         consequence={
                             target === 'enforce'
-                                ? tc(
-                                      'console.from_the_next_attempt_blocks_refuse_sign_ins_e89996c3',
+                                ? consoleAttributeText(
+                                      'console.from_the_next_attempt_blocks_refuse_sign_ins_and_sign_u_e89996c3',
                                   )
-                                : tc(
-                                      'console.from_the_next_attempt_nothing_is_refused_or__0dcf7713',
+                                : consoleAttributeText(
+                                      'console.from_the_next_attempt_nothing_is_refused_or_challenged_0dcf7713',
                                   )
                         }
                         confirming={processing}
@@ -129,7 +142,7 @@ export function RadarFrame({
             )}
 
             <div className="mt-6">
-                <LinkTabs tabs={tabs} label={tc('console.radar_524f8327')} />
+                <LinkTabs tabs={tabs} label={consoleT('console.radar_524f8327')} />
             </div>
 
             {children}

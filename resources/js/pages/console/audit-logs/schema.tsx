@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -63,8 +63,13 @@ export default function AuditLogSchemaEditor({
     indexHref,
     recent,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleLastText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({
         action: schema?.action ?? action,
         metadata: schema?.metadata ?? '',
@@ -87,22 +92,20 @@ export default function AuditLogSchemaEditor({
         <>
             <PageHeader
                 title={
-                    schema === null ? tc('console.new_audit_log_schema_615358bc') : schema.action
+                    schema === null
+                        ? consoleText('console.new_audit_log_schema_615358bc')
+                        : schema.action
                 }
-                badge={
-                    schema !== null ? (
-                        <Badge>
-                            {tc('console.v_4c94485e')}
-                            {schema.version}
-                        </Badge>
-                    ) : undefined
-                }
-                description={tc('console.metadata_schemas_are_a_subset_of_json_schema_64eba270')}
+                badge={schema !== null ? <Badge>v{schema.version}</Badge> : undefined}
+                description={consoleT(
+                    'console.metadata_schemas_are_a_subset_of_json_schema_an_object_64eba270',
+                )}
                 actions={
                     <Button asChild>
                         <Link href={indexHref}>
-                            <Icon name="arrow-left" className="w-4 h-4" />
-                            {tc('console.schemas_bdae3cfc')}
+                            {consoleRich('console._part1_schemas_c5c0c5c4', {
+                                part1: <Icon name="arrow-left" className="w-4 h-4" />,
+                            })}
                         </Link>
                     </Button>
                 }
@@ -122,9 +125,9 @@ export default function AuditLogSchemaEditor({
                 )}
                 {schema === null && (
                     <Field
-                        label={tc('console.action_64cff131')}
+                        label={consoleT('console.action_64cff131')}
                         error={form.errors.action}
-                        hint={tc('console.dotted_words_as_your_app_sends_it_cfc9781a')}
+                        hint={consoleT('console.dotted_words_as_your_app_sends_it_cfc9781a')}
                     >
                         <Input
                             className="mono"
@@ -135,10 +138,10 @@ export default function AuditLogSchemaEditor({
                     </Field>
                 )}
                 <Field
-                    label={tc('console.event_metadata_schema_a978eb8e')}
+                    label={consoleT('console.event_metadata_schema_a978eb8e')}
                     optional
                     error={form.errors.metadata}
-                    hint={tc('console.leave_empty_to_accept_any_metadata_97c0eb7b')}
+                    hint={consoleT('console.leave_empty_to_accept_any_metadata_97c0eb7b')}
                 >
                     <Textarea
                         className="mono text-xs"
@@ -149,7 +152,7 @@ export default function AuditLogSchemaEditor({
                     />
                 </Field>
                 <Field
-                    label={tc('console.actor_metadata_schema_53ca9ca6')}
+                    label={consoleT('console.actor_metadata_schema_53ca9ca6')}
                     optional
                     error={form.errors.actorMetadata}
                 >
@@ -161,10 +164,12 @@ export default function AuditLogSchemaEditor({
                     />
                 </Field>
                 <Field
-                    label={tc('console.target_types_eb291d0e')}
+                    label={consoleT('console.target_types_eb291d0e')}
                     optional
                     error={form.errors.targets}
-                    hint={tc('console.a_list_of_the_target_types_this_action_may_n_26513896')}
+                    hint={consoleT(
+                        'console.a_list_of_the_target_types_this_action_may_name_each_wi_26513896',
+                    )}
                 >
                     <Textarea
                         className="mono text-xs"
@@ -177,13 +182,14 @@ export default function AuditLogSchemaEditor({
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
                         {schema === null
-                            ? tc('console.create_schema_23cf9767')
-                            : tc('console.save_new_version_20334a86')}
+                            ? consoleText('console.create_schema_23cf9767')
+                            : consoleText('console.save_new_version_20334a86')}
                     </Button>
                     {schema !== null && (
                         <Button type="button" variant="ghost" onClick={() => setDeleting(true)}>
-                            <Icon name="trash" className="w-4 h-4" />
-                            {tc('console.delete_schema_d58a8d6b')}
+                            {consoleRich('console._part1_delete_schema_7db72fc9', {
+                                part1: <Icon name="trash" className="w-4 h-4" />,
+                            })}
                         </Button>
                     )}
                 </div>
@@ -191,21 +197,23 @@ export default function AuditLogSchemaEditor({
 
             <section className="mt-10">
                 <h2 className="text-sm font-semibold">
-                    {tc('console.recent_events_of_this_action_7846d4c1')}
+                    {consoleT('console.recent_events_of_this_action_7846d4c1')}
                 </h2>
                 {recent.length === 0 ? (
                     <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-                        {tc('console.none_received_yet_4bb6befa')}
+                        {consoleT('console.none_received_yet_4bb6befa')}
                     </p>
                 ) : (
                     <div className="mt-3">
                         <AuditEventList
                             events={recent}
                             labels={{
-                                caption: tc('console.recent_events_of_this_action_7846d4c1'),
-                                actor: 'Actor',
-                                targets: 'Target',
-                                location: 'Location',
+                                caption: consoleLastText(
+                                    'console.recent_events_of_this_action_7846d4c1',
+                                ),
+                                actor: consoleLastText('console.actor_449995c4'),
+                                targets: consoleLastText('console.target_978354db'),
+                                location: consoleLastText('console.location_15b61974'),
                             }}
                         />
                     </div>
@@ -217,11 +225,11 @@ export default function AuditLogSchemaEditor({
                     open={deleting}
                     onOpenChange={setDeleting}
                     name={schema.action}
-                    title={tc('console.delete_the_schema_for_value0_ae78be12', {
-                        value0: schema.action,
+                    title={consoleFinalText('console.delete_the_schema_for_part1_5d4f21eb', {
+                        part1: schema.action,
                     })}
-                    consequence={tc(
-                        'console.its_events_are_accepted_unchecked_from_now_o_af37acad',
+                    consequence={consoleUiText(
+                        'console.its_events_are_accepted_unchecked_from_now_on_or_refuse_af37acad',
                     )}
                     onConfirm={() => router.delete(schema.destroyHref)}
                 />

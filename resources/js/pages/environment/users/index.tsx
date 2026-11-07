@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useCanManageEnvironment } from '@/ui/EnvironmentReadOnly';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useCallback, useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -54,7 +55,13 @@ export default function UsersIndex({
     createHref,
     help,
 }: Props) {
-    const { t } = useTranslator();
+    const canManage = useCanManageEnvironment();
+    const { t } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
+
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [term, setTerm] = useState(search);
     const filters = [
         { value: 'active', label: t('console.active_92340695') },
@@ -104,22 +111,27 @@ export default function UsersIndex({
         <>
             <PageHeader
                 help={help}
-                description={t('console.every_end_user_identity_in_this_environment_ca1655ff')}
+                description={consoleT(
+                    'console.every_end_user_identity_in_this_environment_ca1655ff',
+                )}
                 actions={
-                    <Button asChild variant="primary">
-                        <Link href={createHref}>
-                            <Icon name="plus" className="w-4 h-4" />
-                            {t('console.new_user_6384ffa7')}
-                        </Link>
-                    </Button>
+                    canManage && (
+                        <Button asChild variant="primary" className="shrink-0">
+                            <Link href={createHref}>
+                                {consoleRich('console._part1_new_user_6b6e5234', {
+                                    part1: <Icon name="plus" className="w-4 h-4" />,
+                                })}
+                            </Link>
+                        </Button>
+                    )
                 }
             />
             <div className="cbx-list-toolbar mt-6">
                 <Input
                     type="search"
-                    className="max-w-sm"
-                    placeholder={t('console.search_by_email_or_name_683669d2')}
-                    aria-label={t('console.search_users_e4bb77af')}
+                    style={{ maxWidth: '24rem' }}
+                    placeholder={consoleUiText('console.search_by_email_or_name_683669d2')}
+                    aria-label={consoleT('console.search_users_e4bb77af')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -137,34 +149,41 @@ export default function UsersIndex({
                     ))}
                 </nav>
                 <output className="sr-only">
-                    {pagination.count} {t('console.users_7dfb4cf6')}{' '}
-                    {t('console.on_this_page_d8ae7c64')}
+                    {consoleRich('console.results_on_page', { count: pagination.count })}
                 </output>
             </div>
             <div className="mt-4 rounded-xl border border-[var(--border)] overflow-hidden">
                 {users.length === 0 ? (
-                    <EmptyState
-                        icon="search"
-                        title={t('console.no_matches_2df01a03')}
-                        description={
-                            search
-                                ? t(
-                                      'console.no_users_match_value0_try_a_different_email__0494af10',
-                                      { value0: search },
-                                  )
-                                : t('console.ux_no_users_status')
-                        }
-                        actions={
-                            <>
-                                <Button asChild>
-                                    <Link href={href('', 'all')}>{t('console.all_a52ace42')}</Link>
-                                </Button>
-                                <Button asChild variant="primary">
-                                    <Link href={createHref}>{t('console.new_user_6384ffa7')}</Link>
-                                </Button>
-                            </>
-                        }
-                    />
+                    search !== '' ? (
+                        <EmptyState
+                            icon="search"
+                            title={consoleT('console.no_matches_2df01a03')}
+                            description={consoleFinalText(
+                                'console.no_users_match_part1_try_a_different_email_or_name_dc47e2b6',
+                                { part1: search },
+                            )}
+                        />
+                    ) : (
+                        <EmptyState
+                            icon="members"
+                            equivalent="users.create"
+                            title={consoleT('console.no_users_yet_eadb8912')}
+                            description={consoleT(
+                                'console.every_end_user_identity_in_this_environment_appears_her_480d2872',
+                            )}
+                            actions={
+                                canManage && (
+                                    <Button asChild variant="primary">
+                                        <Link href={createHref}>
+                                            {consoleRich('console._part1_new_user_6b6e5234', {
+                                                part1: <Icon name="plus" className="w-4 h-4" />,
+                                            })}
+                                        </Link>
+                                    </Button>
+                                )
+                            }
+                        />
+                    )
                 ) : (
                     users.map((user) => (
                         <Link
@@ -193,6 +212,15 @@ export default function UsersIndex({
                                 )}
                                 <Pill tone={statusTone(user.status)}>{label(user.status)}</Pill>
                             </div>
+
+                            {!user.verified && (
+                                <Pill tone="warning">
+                                    {consoleT('console.unverified_33c8e8de')}
+                                </Pill>
+                            )}
+
+                            <Pill tone={statusTone(user.status)}>{user.status}</Pill>
+
                             <Icon
                                 name="chevron"
                                 className="cbx-user-row-chevron w-4 h-4 shrink-0 -rotate-90 text-[var(--faint)]"
@@ -204,8 +232,6 @@ export default function UsersIndex({
             <div className="mt-4">
                 <SimplePagination
                     pagination={pagination}
-                    noun={t('console.user_04f8996d')}
-                    pluralNoun={t('console.users_7dfb4cf6')}
                     href={(page) => href(search, statusFilter, page)}
                 />
             </div>

@@ -11,6 +11,7 @@ use App\Platform\Console\DashboardCards;
 use App\Platform\Console\WorkspaceLanding;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Onboarding\SetupChecklist;
 use App\Platform\Onboarding\SetupProgress;
 use App\Platform\Onboarding\SetupStep;
@@ -102,7 +103,7 @@ final readonly class DashboardController extends ConsoleController
          * this console states one string and uses it for both.
          */
         return $this->page('console/dashboard', __('console.overview_d4b1ea57'), [
-            'heading' => __('console.welcome_back_0c7229ae').Str::before($me->name(), ' '),
+            'heading' => __('console.welcome_back_part1_3c339e48', ['part1' => Str::before($me->name(), ' ')]),
             /*
              * THE SUBTITLE NAMES THE ORGANIZATION, or says plainly that there is not one.
              * "Here's what's happening across your organization" was the fallback, and it is
@@ -111,11 +112,11 @@ final readonly class DashboardController extends ConsoleController
              * the platform root, where holding no membership is the ordinary state.
              */
             'greeting' => $organization !== null
-                ? __('console.here_s_what_s_happening_across_21e2ead4').$organization->name.'.'
+                ? __('console.organization_overview_greeting', ['organization' => $organization->name])
                 : __('console.you_re_signed_in_you_don_t_belong_to_an_orga_67d0efb9'),
             'isAdmin' => $isAdmin,
             'apps' => $launcher->apps(),
-            'role' => $me->role()?->label() ?? 'Member',
+            'role' => ConsoleLabels::navigation($me->role()?->label() ?? 'Member'),
             'organizationName' => $organization?->name,
             'memberCount' => $organizationId !== null ? $memberships->countForOrganization($organizationId) : 0,
             'ssoActive' => $organizationId !== null && $connections->forOrganization($organizationId) !== null,
@@ -156,7 +157,7 @@ final readonly class DashboardController extends ConsoleController
 
         $checklist->dismiss($organizationId, $me->id());
 
-        return back()->with('status', __('console.setup_guide_hidden_reach_it_any_time_from_se_4a070c25'));
+        return back()->with('status', __('console.setup_guide_hidden_reach_it_any_time_from_settings_4a070c25'));
     }
 
     /**

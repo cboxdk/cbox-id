@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useFormatTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -76,10 +77,10 @@ export default function Dashboard({
     help,
     urls,
 }: Props) {
-    const { locale } = useTranslator();
-
-    const { t: tc } = useTranslator();
-
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <>
             <PageHeader title={heading} help={help} description={greeting} />
@@ -114,11 +115,12 @@ export default function Dashboard({
                                 className="flex items-center gap-2 text-sm"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                <Icon name="members" className="w-4 h-4" />
-                                {tc('console.members_0240fc22')}
+                                {consoleRich('console._part1_members_6d67d0fe', {
+                                    part1: <Icon name="members" className="w-4 h-4" />,
+                                })}
                             </div>
                             <p className="mt-2 text-3xl font-semibold tracking-tight mono">
-                                {memberCount.toLocaleString(locale)}
+                                {memberCount.toLocaleString(consoleLocale)}
                             </p>
                         </div>
                         <div className="card p-5">
@@ -126,14 +128,15 @@ export default function Dashboard({
                                 className="flex items-center gap-2 text-sm"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                <Icon name="connections" className="w-4 h-4" />
-                                {tc('console.enterprise_sso_d3bef1d7')}
+                                {consoleRich('console._part1_enterprise_sso_809194a7', {
+                                    part1: <Icon name="connections" className="w-4 h-4" />,
+                                })}
                             </div>
                             <p className="mt-2 text-lg font-semibold">
                                 <Pill tone={ssoActive ? 'success' : 'neutral'}>
                                     {ssoActive
-                                        ? tc('console.active_92340695')
-                                        : tc('console.not_configured_dd1841d2')}
+                                        ? consoleText('console.active_92340695')
+                                        : consoleText('console.not_configured_dd1841d2')}
                                 </Pill>
                             </p>
                         </div>
@@ -142,8 +145,9 @@ export default function Dashboard({
                                 className="flex items-center gap-2 text-sm"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                <Icon name="shield" className="w-4 h-4" />
-                                {tc('console.your_role_2c73fd13')}
+                                {consoleRich('console._part1_your_role_ce746e43', {
+                                    part1: <Icon name="shield" className="w-4 h-4" />,
+                                })}
                             </div>
                             <p className="mt-2 text-lg font-semibold">{role}</p>
                         </div>
@@ -190,8 +194,9 @@ export default function Dashboard({
                             className="flex items-center gap-2 text-sm"
                             style={{ color: 'var(--muted-foreground)' }}
                         >
-                            <Icon name="shield" className="w-4 h-4" />
-                            {tc('console.your_role_2c73fd13')}
+                            {consoleRich('console._part1_your_role_ce746e43', {
+                                part1: <Icon name="shield" className="w-4 h-4" />,
+                            })}
                         </div>
                         {/*
                             The separator belongs to the organization name, not to the role:
@@ -213,15 +218,18 @@ export default function Dashboard({
                             className="flex items-center gap-2 text-sm"
                             style={{ color: 'var(--muted-foreground)' }}
                         >
-                            <Icon name="key" className="w-4 h-4" />
-                            {tc('console.your_security_4cb5de89')}
+                            {consoleRich('console._part1_your_security_a4d581a2', {
+                                part1: <Icon name="key" className="w-4 h-4" />,
+                            })}
                         </div>
                         <p className="mt-2 text-sm">
-                            {tc('console.add_a_passkey_or_two_factor_authentication_t_1e16b90d')}
+                            {consoleT(
+                                'console.add_a_passkey_or_two_factor_authentication_to_keep_your_1e16b90d',
+                            )}
                         </p>
                         <Button asChild size="sm" variant="primary" className="mt-3 self-start">
                             <Link href={urls.account}>
-                                {tc('console.manage_security_9292d619')}
+                                {consoleT('console.manage_security_9292d619')}
                             </Link>
                         </Button>
                     </div>
@@ -238,8 +246,9 @@ function FirstRun({
     checklist: NonNullable<Props['checklist']>;
     href: string;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleNestedText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <div
             className="card p-5 mb-4"
@@ -261,19 +270,24 @@ function FirstRun({
                     </span>
                     <div className="min-w-0">
                         <p className="font-semibold">
-                            {tc('console.nothing_is_set_up_yet_0c0c66c3')}
+                            {consoleT('console.nothing_is_set_up_yet_0c0c66c3')}
                         </p>
                         <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                            {checklist.total}
-                            {tc(
-                                'console.steps_in_the_order_that_makes_sense_starting_fbaba61b',
-                            )}{' '}
-                            {checklist.nextTitle ?? tc('console.the_basics_abf82d2f')}.
+                            {consoleRich(
+                                'console._part1_steps_in_the_order_that_makes_sense_starting_wit_f38a7d27',
+                                {
+                                    part1: checklist.total,
+                                    part2: ' ',
+                                    part3:
+                                        checklist.nextTitle ??
+                                        consoleNestedText('console.the_basics_abf82d2f'),
+                                },
+                            )}
                         </p>
                     </div>
                 </div>
                 <Button asChild variant="primary" className="shrink-0">
-                    <Link href={href}>{tc('console.start_setting_up_202f2866')}</Link>
+                    <Link href={href}>{consoleT('console.start_setting_up_202f2866')}</Link>
                 </Button>
             </div>
         </div>
@@ -289,8 +303,7 @@ function FirstRun({
  * it looks is not its business.
  */
 function ModuleCardTile({ card }: { card: ModuleCard }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleShortText } = useConsoleTranslator();
     const toneClass =
         card.tone === 'success'
             ? 'cbx-stat-icon--success'
@@ -339,7 +352,7 @@ function ModuleCardTile({ card }: { card: ModuleCard }) {
                     className="mt-4 inline-block text-sm font-medium"
                     style={{ color: 'var(--accent-strong)' }}
                 >
-                    {card.linkLabel ?? tc('console.open_ed077f3d')} →
+                    {card.linkLabel ?? consoleShortText('console.open_ed077f3d')} →
                 </Link>
             )}
         </div>
@@ -347,22 +360,21 @@ function ModuleCardTile({ card }: { card: ModuleCard }) {
 }
 
 function RecentActivity({ recent, href }: { recent: Props['recent']; href: string | null }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <Panel
-            title={tc('console.recent_activity_6cb44b56')}
+            title={consoleT('console.recent_activity_6cb44b56')}
             action={
                 href !== null ? (
                     <Link href={href} className="text-sm" style={{ color: 'var(--accent-strong)' }}>
-                        {tc('console.view_audit_log_d34e55be')}
+                        {consoleT('console.view_audit_log_d34e55be')}
                     </Link>
                 ) : undefined
             }
         >
             {recent.length === 0 ? (
                 <p className="py-6 text-center text-sm" style={{ color: 'var(--faint)' }}>
-                    {tc('console.no_activity_recorded_yet_09f1c438')}
+                    {consoleT('console.no_activity_recorded_yet_09f1c438')}
                 </p>
             ) : (
                 <ul>
@@ -415,26 +427,26 @@ function Checklist({
     getStartedHref: string;
     dismissHref: string;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <div className="card min-w-0 p-5">
             <div className="flex items-start justify-between gap-2">
-                <h3 className="font-semibold">{tc('console.finish_setting_up_51eb40d7')}</h3>
+                <h3 className="font-semibold">{consoleT('console.finish_setting_up_51eb40d7')}</h3>
                 <button
                     type="button"
                     className="cbx-help-link"
                     style={{ color: 'var(--muted-foreground)' }}
                     onClick={() => router.post(dismissHref, {}, { preserveScroll: true })}
                 >
-                    {tc('console.hide_ac20a57b')}
+                    {consoleT('console.hide_ac20a57b')}
                 </button>
             </div>
 
             <div className="mt-3 flex items-center gap-3">
                 <Progress
                     percent={checklist.percent}
-                    label={tc('console.setup_progress_e9b4495a')}
+                    label={consoleT('console.setup_progress_e9b4495a')}
                 />
                 <span
                     className="text-xs mono shrink-0"
@@ -487,8 +499,9 @@ function Checklist({
 
             <Button asChild size="sm" className="mt-4 w-full justify-center">
                 <Link href={getStartedHref}>
-                    <Icon name="rocket" className="w-4 h-4" />
-                    {tc('console.open_the_setup_guide_7c0189e5')}
+                    {consoleRich('console._part1_open_the_setup_guide_a20c5bad', {
+                        part1: <Icon name="rocket" className="w-4 h-4" />,
+                    })}
                 </Link>
             </Button>
         </div>

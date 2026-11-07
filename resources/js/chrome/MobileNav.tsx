@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { Dialog as Primitive } from 'radix-ui';
 import { type ReactNode, useState } from 'react';
@@ -64,8 +64,10 @@ export function MobileNav({
     platformUrl = null,
     children,
 }: MobileNavProps) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [open, setOpen] = useState(false);
     const [accountOpen, setAccountOpen] = useState(false);
 
@@ -94,10 +96,11 @@ export function MobileNav({
 
                 <Primitive.Trigger
                     className="cbx-mobilebar-btn"
-                    aria-label={tc('console.open_menu_b40b3713')}
+                    aria-label={consoleT('console.open_menu_b40b3713')}
                 >
-                    <Icon name="menu" className="w-[18px] h-[18px]" />
-                    {tc('console.menu_aa30a129')}
+                    {consoleRich('console._part1_menu_79fc3632', {
+                        part1: <Icon name="menu" className="w-[18px] h-[18px]" />,
+                    })}
                 </Primitive.Trigger>
             </div>
 
@@ -105,14 +108,14 @@ export function MobileNav({
                 <Primitive.Overlay className="cbx-overlay lg:hidden" />
                 <Primitive.Content className="cbx-sheet lg:hidden" aria-describedby={undefined}>
                     <Primitive.Title className="sr-only">
-                        {tc('console.navigation_3db65f8c')}
+                        {consoleT('console.navigation_3db65f8c')}
                     </Primitive.Title>
 
                     <div className="cbx-sheet-hd">
                         <span className="cbx-sheet-grab" aria-hidden="true" />
                         <Primitive.Close
                             className="cbx-sheet-close"
-                            aria-label={tc('console.close_menu_6ccd5c78')}
+                            aria-label={consoleT('console.close_menu_6ccd5c78')}
                         >
                             <Icon name="close" className="w-[18px] h-[18px]" />
                         </Primitive.Close>
@@ -120,7 +123,10 @@ export function MobileNav({
 
                     {children !== undefined && <div className="cbx-sheet-slot">{children}</div>}
 
-                    <nav className="cbx-sheet-nav" aria-label={tc('console.navigation_3db65f8c')}>
+                    <nav
+                        className="cbx-sheet-nav"
+                        aria-label={consoleT('console.navigation_3db65f8c')}
+                    >
                         {areas.map((area) => (
                             <div key={area.key} className="space-y-0.5">
                                 <p
@@ -184,11 +190,14 @@ export function MobileNav({
                                 */}
                                 {workspaceSettingsUrl !== null && (
                                     <a href={workspaceSettingsUrl} className="nav-link w-full">
-                                        <Icon
-                                            name="briefcase"
-                                            className="w-[1.15rem] h-[1.15rem]"
-                                        />
-                                        {tc('console.workspace_settings_5ebc5914')}
+                                        {consoleRich('console._part1_workspace_settings_908122da', {
+                                            part1: (
+                                                <Icon
+                                                    name="briefcase"
+                                                    className="w-[1.15rem] h-[1.15rem]"
+                                                />
+                                            ),
+                                        })}
                                     </a>
                                 )}
 
@@ -199,22 +208,40 @@ export function MobileNav({
                                 */}
                                 {showAccountLink && accountUrl !== undefined && (
                                     <a href={accountUrl} className="nav-link w-full">
-                                        <Icon name="user" className="w-[1.15rem] h-[1.15rem]" />
-                                        {tc('console.my_account_b53181a4')}
+                                        {consoleRich('console._part1_my_account_e642603a', {
+                                            part1: (
+                                                <Icon
+                                                    name="user"
+                                                    className="w-[1.15rem] h-[1.15rem]"
+                                                />
+                                            ),
+                                        })}
                                     </a>
                                 )}
 
                                 {switchUserUrl !== undefined && (
                                     <a href={switchUserUrl} className="nav-link w-full">
-                                        <Icon name="switch" className="w-[1.15rem] h-[1.15rem]" />
-                                        {tc('console.switch_user_4f899129')}
+                                        {consoleRich('console._part1_switch_user_704d5a0f', {
+                                            part1: (
+                                                <Icon
+                                                    name="switch"
+                                                    className="w-[1.15rem] h-[1.15rem]"
+                                                />
+                                            ),
+                                        })}
                                     </a>
                                 )}
 
                                 {platformUrl !== null && (
                                     <a href={platformUrl} className="nav-link w-full">
-                                        <Icon name="lock" className="w-[1.15rem] h-[1.15rem]" />
-                                        {tc('console.platform_admin_69652f55')}
+                                        {consoleRich('console._part1_platform_admin_6ca6edf3', {
+                                            part1: (
+                                                <Icon
+                                                    name="lock"
+                                                    className="w-[1.15rem] h-[1.15rem]"
+                                                />
+                                            ),
+                                        })}
                                     </a>
                                 )}
 
@@ -223,8 +250,11 @@ export function MobileNav({
                                     className="nav-link w-full"
                                     onClick={() => toggleTheme()}
                                 >
-                                    <Icon name="moon" className="w-[1.15rem] h-[1.15rem]" />
-                                    {tc('console.toggle_theme_6026719f')}
+                                    {consoleRich('console._part1_toggle_theme_a2f3db78', {
+                                        part1: (
+                                            <Icon name="moon" className="w-[1.15rem] h-[1.15rem]" />
+                                        ),
+                                    })}
                                 </button>
 
                                 <button
@@ -233,8 +263,14 @@ export function MobileNav({
                                     style={{ color: 'var(--destructive)' }}
                                     onClick={() => router.post(logoutUrl)}
                                 >
-                                    <Icon name="logout" className="w-[1.15rem] h-[1.15rem]" />
-                                    {tc('console.sign_out_48f0d3d3')}
+                                    {consoleRich('console._part1_sign_out_c5531c62', {
+                                        part1: (
+                                            <Icon
+                                                name="logout"
+                                                className="w-[1.15rem] h-[1.15rem]"
+                                            />
+                                        ),
+                                    })}
                                 </button>
                             </div>
                         )}
@@ -251,7 +287,7 @@ export function MobileNav({
                             </span>
                             <span className="min-w-0 flex-1 text-left">
                                 <span className="block text-[13px] font-medium truncate leading-tight">
-                                    {user?.name ?? tc('console.account_7e1b0d56')}
+                                    {user?.name ?? consoleShortText('console.account_7e1b0d56')}
                                 </span>
                                 {user?.email != null && (
                                     <span
@@ -271,8 +307,8 @@ export function MobileNav({
                             />
                             <span className="sr-only">
                                 {accountOpen
-                                    ? tc('console.hide_account_3759e10c')
-                                    : tc('console.show_account_345f7979')}
+                                    ? consoleText('console.hide_account_3759e10c')
+                                    : consoleText('console.show_account_345f7979')}
                             </span>
                         </button>
                     </div>

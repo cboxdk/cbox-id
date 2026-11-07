@@ -171,10 +171,10 @@ final readonly class SettingsController extends ConsoleController
         try {
             $lifecycle->archive($organizationId, $me->id(), $request->string('name')->toString());
         } catch (MembershipRefused $refused) {
-            return back()->withErrors(['name' => $refused->getMessage()]);
+            return back()->withErrors(['name' => $refused->sourceMessage()->render()]);
         }
 
-        return $after->land($request, $me->id(), $organizationId, $name.__('console.has_been_deleted_f09df52b'));
+        return $after->land($request, $me->id(), $organizationId, __('console.organization_deleted_status', ['name' => $name]));
     }
 
     /**

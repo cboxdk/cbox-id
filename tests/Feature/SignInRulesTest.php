@@ -378,6 +378,7 @@ it('refuses the environment baseline an attempt to inherit from itself', functio
 function anOrgWithADraftConnection(): array
 {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    grantFeature($org->id, 'cbox-id-sso');
 
     $connection = app(Connections::class)->create(
         $org->id,

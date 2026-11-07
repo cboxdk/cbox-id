@@ -142,7 +142,8 @@ it('takes somebody who starts at a tenant\'s console signed out through Google a
     $callback = signInWithGoogleAtTheRoot('new.admin@acme.example');
     $subject = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('new.admin@acme.example'));
     expect($subject)->not->toBeNull();
-    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->add($this->account['organization']->id, (string) $subject?->id, MembershipRole::Admin));
+    $membership = app(PlatformRoot::class)->run(fn () => app(Memberships::class)->add($this->account['organization']->id, (string) $subject?->id, MembershipRole::Admin));
+    grantNativeProductRoles($membership, ['admin']);
 
     // Back to the door they came through, with the page still on it.
     expect((string) $callback->headers->get('Location'))->toBe($open);
@@ -213,7 +214,8 @@ it('tells a root account that administers nothing there so, rather than answerin
     $refused = $this->get($open)->assertForbidden();
 
     expect($refused->inertiaPage()['component'])->toBe('console/environment-refused')
-        ->and($refused->inertiaProps('refusedEnvironment.name'))->toBe(Environment::query()->find($this->account['environment']->id)?->name)
+        ->and($refused->inertiaProps('refusedEnvironment'))->toBeNull()
+        ->and($refused->inertiaProps('projectsHref'))->toBeNull()
         ->and($refused->inertiaProps('email'))->toBe('stranger@elsewhere.example');
 });
 

@@ -185,7 +185,7 @@ final readonly class ProductSignupController
             }
             $request->session()->forget('product-signup.invitation');
 
-            return to_route('projects');
+            return to_route('dashboard');
         } catch (ValidationException $error) {
             return to_route('product-signup.show', ['invite' => 1])->withErrors($error->errors());
         } catch (ServiceAccessUnavailable) {

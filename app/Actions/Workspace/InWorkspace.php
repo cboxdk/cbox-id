@@ -10,6 +10,7 @@ use App\Platform\Actions\Principal\Principal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
 use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\Invitations\ValueObjects\Inviter;
+use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\OrganizationActivity;
 use App\Platform\OrganizationCapabilities;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -160,6 +161,31 @@ final class InWorkspace
     }
 
     /**
+     * Null means an explicitly scoped machine credential; human rows always resolve live.
+     *
+     * @return list<string>|null
+     */
+    public static function environmentIds(Principal $principal, string $workspaceId): ?array
+    {
+        if ($principal instanceof WorkspaceKeyPrincipal) {
+            return null;
+        }
+        $subject = self::personId($principal);
+
+        return $subject === null ? [] : app(NativeEnvironmentAccess::class)->ids($workspaceId, $subject);
+    }
+
+    public static function unscoped(Principal $principal, string $workspaceId): bool
+    {
+        if ($principal instanceof WorkspaceKeyPrincipal || self::capabilities($principal)?->isOwner() === true) {
+            return true;
+        }
+        $subject = self::personId($principal);
+
+        return $subject !== null && app(PlatformRoot::class)->run(fn () => app(Memberships::class)->of($workspaceId, $subject))?->all_environments === true;
+    }
+
+    /**
      * An environment of THIS workspace the principal may reach, or 404.
      *
      * A key reaches every environment its workspace owns. A person reaches those their
@@ -183,7 +209,7 @@ final class InWorkspace
 
         if (! $principal instanceof WorkspaceKeyPrincipal) {
             $reachable = $personId === null ? [] : (app(PlatformRoot::class)->run(
-                fn (): array => app(Memberships::class)->accessibleEnvironmentIds($workspaceId, $personId),
+                fn (): array => app(NativeEnvironmentAccess::class)->ids($workspaceId, $personId),
             ) ?? []);
 
             if (! in_array($environment->id, $reachable, true)) {
@@ -205,7 +231,7 @@ final class InWorkspace
      */
     public static function assertUnscoped(Principal $principal, string $workspaceId): void
     {
-        if ($principal instanceof WorkspaceKeyPrincipal) {
+        if ($principal instanceof WorkspaceKeyPrincipal || self::capabilities($principal)?->isOwner() === true) {
             return;
         }
 

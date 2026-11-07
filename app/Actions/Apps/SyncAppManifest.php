@@ -6,11 +6,13 @@ namespace App\Actions\Apps;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\InputSchema;
 use Cbox\Id\AccessControl\AppManifestPuller;
 use Throwable;
@@ -49,17 +51,17 @@ final readonly class SyncAppManifest implements Action
         $client = AppFields::find($context, $context->string('id'));
 
         if ($client->manifest_url === null || $client->manifest_url === '') {
-            throw ActionRefused::because('no_manifest_url', 'This app publishes no manifest URL. Set one first, or push its manifest instead.', 'manifest_url');
+            throw ActionRefused::because('no_manifest_url', new ActionMessage('console.this_app_publishes_no_manifest_url_set_one_first_or_pus_036327df'), 'manifest_url');
         }
 
         try {
             $result = $this->puller->pull($client);
         } catch (Throwable $failed) {
-            throw ActionRefused::because('manifest_sync_failed', $failed->getMessage(), 'manifest_url');
+            throw ActionRefused::because('manifest_sync_failed', FrameworkMessage::from($failed), 'manifest_url');
         }
 
         if ($result === null) {
-            throw ActionRefused::because('no_manifest_url', 'This app publishes no manifest URL. Set one first, or push its manifest instead.', 'manifest_url');
+            throw ActionRefused::because('no_manifest_url', new ActionMessage('console.this_app_publishes_no_manifest_url_set_one_first_or_pus_036327df'), 'manifest_url');
         }
 
         return ActionResult::item($result, [

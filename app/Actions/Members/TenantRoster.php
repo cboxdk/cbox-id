@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Members;
 
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
@@ -119,7 +120,7 @@ final class TenantRoster
     public static function assertManagedHere(string $organizationId, string $field): void
     {
         if (self::managedElsewhere($organizationId)) {
-            throw new ActionRefused('managed_elsewhere', self::MANAGED_ELSEWHERE, 409, $field);
+            throw new ActionRefused('managed_elsewhere', new ActionMessage('console.this_organization_is_a_cbox_workspace_its_team_is_manag_354a43db'), 409, $field);
         }
     }
 

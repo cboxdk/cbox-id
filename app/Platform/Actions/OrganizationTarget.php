@@ -52,7 +52,7 @@ final class OrganizationTarget
         if ($organizationId !== null && ($foreign || Organization::query()->whereKey($organizationId)->doesntExist())) {
             throw $inPath
                 ? ActionRefused::notFound('organization')
-                : ActionRefused::because('organization_not_found', 'No organization with that organization_id exists in this environment.', 'organization_id');
+                : ActionRefused::because('organization_not_found', new ActionMessage('console.no_organization_with_that_organization_id_exists_in_thi_5c5c6245'), 'organization_id');
         }
 
         return $organizationId;

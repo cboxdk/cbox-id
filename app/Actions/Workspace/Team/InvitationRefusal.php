@@ -26,6 +26,6 @@ final class InvitationRefusal
             default => ['validation_failed', 422],
         };
 
-        return new ActionRefused($error, $refused->getMessage(), $status, 'email');
+        return new ActionRefused($error, $refused->sourceMessage, $status, 'email');
     }
 }

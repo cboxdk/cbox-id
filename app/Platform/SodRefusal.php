@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\Actions\ActionMessage;
+
 /**
  * A refused role grant, with everything needed to tell the admin WHY in their own
  * words: the rule that tripped, the role they tried to grant, and the roles it
@@ -21,6 +23,13 @@ final readonly class SodRefusal
         public string $proposedRoleName,
         public array $conflictingRoleNames,
     ) {}
+
+    public function sourceMessage(): ActionMessage
+    {
+        $quoted = array_map(static fn (string $name): string => '"'.$name.'"', $this->conflictingRoleNames);
+
+        return new ActionMessage('console.framework_d6d1b33b1958', ['policy' => $this->policyName, 'role' => $this->proposedRoleName, 'conflicts' => implode(', ', $quoted)], sourceEnglish: $this->message());
+    }
 
     public function message(): string
     {

@@ -111,7 +111,7 @@ final readonly class AccountActivityController extends PageController
         return $this->page('account/activity', __('console.sessions_activity_96d8d278'), [
             'help' => HelpProps::for(HelpTopic::SessionsAndActivity),
             'sessions' => $sessions->map(function (Session $session) use ($currentId): array {
-                $label = DeviceLabel::for($session->user_agent);
+                $label = DeviceLabel::for($session->user_agent, localized: true);
                 $isCurrent = $session->id === $currentId;
                 $ip = filled($session->ip) ? $session->ip : null;
                 $publicIp = $ip !== null && filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
@@ -122,7 +122,7 @@ final readonly class AccountActivityController extends PageController
 
                 return [
                     'id' => $session->id,
-                    'label' => ConsoleStrings::text($label),
+                    'label' => $label,
                     'isCurrent' => $isCurrent,
                     // Said out loud: somebody is acting as you with permission, and you are
                     // entitled to know it is happening.
@@ -131,9 +131,9 @@ final readonly class AccountActivityController extends PageController
                     'country' => filled($country) ? $country : $countryCode,
                     'countryCode' => $countryCode,
                     'city' => $session->getAttribute('city'),
-                    'locationUnavailable' => ConsoleStrings::text($ip === null
-                        ? 'No IP address recorded'
-                        : ($publicIp ? 'Country unavailable' : 'Local or reserved address')),
+                    'locationUnavailable' => $ip === null
+                        ? ConsoleStrings::text('No IP address recorded')
+                        : ($publicIp ? ConsoleStrings::text('Country unavailable') : ConsoleStrings::text('Local or reserved address')),
                     'signInMethod' => $this->signInMethod($session),
                     'signedIn' => $session->created_at?->diffForHumans(),
                     'signedInIso' => $session->created_at?->toIso8601String(),
@@ -146,7 +146,7 @@ final readonly class AccountActivityController extends PageController
                      * called "Sign out" and no way to tell which is which — on the one
                      * control that can sign them out of the browser they are holding.
                      */
-                    'revokeLabel' => __('console.sign_out_fb7db69d').($isCurrent ? __('console.this_device_cf3cc23e') : $label),
+                    'revokeLabel' => $isCurrent ? __('console.sign_out_current_device_action') : __('console.sign_out_named_device_action', ['device' => $label]),
                 ];
             })->values()->all(),
             'applications' => array_map(static fn (ConnectedApplication $app): array => [
@@ -173,15 +173,15 @@ final readonly class AccountActivityController extends PageController
             'magic_link' => 'Email link',
             'otp' => 'One-time code',
             'sms' => 'Text message',
-            'sso' => 'Enterprise SSO',
-            'social' => 'Social login',
+            'sso' => __('console.enterprise_sso_0f8d7e8e'),
+            'social' => __('console.social_login_267d75d3'),
             'mfa' => 'Two-factor authentication',
             'impersonation' => 'Support access',
             'invitation' => 'Invitation',
         ];
         $methods = array_values(array_intersect_key($labels, array_flip($session->amr ?? [])));
 
-        return $methods === [] ? null : implode(' · ', array_map(ConsoleStrings::text(...), $methods));
+        return $methods === [] ? null : implode(' · ', $methods);
     }
 
     /**
@@ -275,7 +275,7 @@ final readonly class AccountActivityController extends PageController
         foreach ($entries as $entry) {
             $rows[] = [
                 'id' => $entry->id,
-                'label' => ConsoleStrings::text(self::ACTIVITY[$entry->action] ?? $entry->action),
+                'label' => isset(self::ACTIVITY[$entry->action]) ? ConsoleStrings::text(self::ACTIVITY[$entry->action]) : $entry->action,
                 'detail' => $this->detail($entry, $apps),
                 // Only when there IS one. An entry written outside a request — a scheduled
                 // job, a console command — has no address, and printing "no address

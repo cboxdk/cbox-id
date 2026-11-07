@@ -1,4 +1,5 @@
-import { useUiTranslator } from '@/i18n/ui';
+import type { Translator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { usePage } from '@inertiajs/react';
 import { useId, useMemo, useState } from 'react';
 import {
@@ -50,8 +51,10 @@ export function ApiEquivalent({
     action,
     values,
     defaultOpen = false,
-    label = 'API',
+    label: suppliedLabel,
 }: ApiEquivalentProps) {
+    const { t: consoleFinalText } = useConsoleTranslator();
+    const label = suppliedLabel ?? consoleFinalText('console.api_c8e5998f');
     const described = usePageActions()[action];
     const [open, setOpen] = useState(defaultOpen);
     const region = useId();
@@ -101,31 +104,42 @@ export function ApiEquivalentBody({
     action: ApiAction;
     values?: SnippetValues;
 }) {
-    const { t: tc } = useUiTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
-    const snippets = useMemo(() => apiSnippets(action, values, tc), [action, values, tc]);
+    const { rich: consoleRich } = useConsoleTranslator();
+    const snippets = useMemo(
+        () => apiSnippets(action, values, consoleFinalText, consoleRich),
+        [action, values, consoleFinalText, consoleRich],
+    );
 
     return (
         <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-xs">
                 <Pill tone={action.danger === 'read' ? 'neutral' : 'info'}>{action.method}</Pill>
-                <code className="mono break-all">
-                    {tc('console.api_v1_b969bf5c', '/api/v1')}
-                    {action.path}
-                </code>
+                <code className="mono break-all">/api/v1{action.path}</code>
                 <span style={{ color: 'var(--muted-foreground)' }}>
-                    {tc('console.needs_92e32416', 'needs ')}
-                    <code className="mono">{action.scope}</code>
+                    {consoleRich('console.needs_part1_5e67f8f1', {
+                        part1: <code className="mono">{action.scope}</code>,
+                    })}
                 </span>
                 {(action.danger === 'destructive' || action.danger === 'critical') && (
-                    <Pill tone="warning">{action.danger}</Pill>
+                    <Pill tone="warning">
+                        {consoleFinalText(
+                            action.danger === 'critical'
+                                ? 'console.agent_risk_critical'
+                                : 'console.agent_risk_destructive',
+                        )}
+                    </Pill>
                 )}
             </div>
             <p className="mt-1 mb-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>
                 {action.summary}
             </p>
 
-            <SnippetTabs snippets={snippets} label={`${action.name} as code`} />
+            <SnippetTabs
+                snippets={snippets}
+                label={consoleFinalText('console._part1_as_code_54016cd4', { part1: action.name })}
+            />
         </div>
     );
 }
@@ -133,55 +147,35 @@ export function ApiEquivalentBody({
 /** The four doors, as snippets. Exported for the tests. */
 export function apiSnippets(
     action: ApiAction,
-    values?: SnippetValues,
-    tc: ReturnType<typeof useUiTranslator>['t'] = (_key, fallback) => fallback,
+    values: SnippetValues | undefined,
+    tc: Translator['t'],
+    rich: Translator['rich'],
 ): CodeSnippet[] {
     return [
         {
             id: 'curl',
             label: 'curl',
             code: curl(action, values),
-            note: (
-                <>
-                    {tc('console.reads_the_key_from_c6130ae6', 'Reads the key from ')}
-                    <code className="mono">${tokenEnv(action.plane)}</code>
-                    {tc(
-                        'console.secrets_are_never_copied_from_the_form_2d4b22b6',
-                        '. Secrets are never copied from the form.',
-                    )}
-                </>
-            ),
+            note: rich('console.api_curl_credential_note', {
+                variable: <code className="mono">${tokenEnv(action.plane)}</code>,
+            }),
         },
         {
             id: 'mcp',
             label: 'MCP',
             code: mcp(action, values),
-            note: (
-                <>
-                    {tc('console.the_103c5169', 'The ')}
-                    <code className="mono">{action.tool}</code>
-                    {tc(
-                        'console.tool_on_this_environment_s_58691b7a',
-                        " tool on this environment's ",
-                    )}
-                    <code className="mono">/mcp</code>
-                    {tc('console.server_d0c93f65', ' server.')}
-                </>
-            ),
+            note: rich('console.api_mcp_tool_note', {
+                tool: <code className="mono">{action.tool}</code>,
+                endpoint: <code className="mono">/mcp</code>,
+            }),
         },
         {
             id: 'cli',
             label: 'CLI',
             code: cli(action, values),
             note: action.cliShipped
-                ? tc(
-                      'console.the_cbox_cli_signed_in_with_cbox_login_88433b30',
-                      'The cbox CLI, signed in with `cbox login`.',
-                  )
-                : tc(
-                      'console.not_in_the_cbox_cli_yet_this_is_the_command__48b39c79',
-                      'Not in the cbox CLI yet \u2014 this is the command it will have.',
-                  ),
+                ? tc('console.the_cbox_cli_signed_in_with_cbox_login_88433b30')
+                : tc('console.not_in_the_cbox_cli_yet_this_is_the_command__48b39c79'),
         },
         {
             id: 'sdk',
@@ -190,14 +184,8 @@ export function apiSnippets(
             install: 'npm i @cboxdk/id-js',
             docs: 'https://www.npmjs.com/package/@cboxdk/id-js',
             note: action.sdkPreview
-                ? tc(
-                      'console.preview_this_call_is_not_in_the_published_sd_15302df3',
-                      'Preview: this call is not in the published SDK yet. Use curl or MCP today.',
-                  )
-                : tc(
-                      'console.server_code_only_the_client_holds_a_manageme_d8e5b217',
-                      'Server code only \u2014 the client holds a management credential.',
-                  ),
+                ? tc('console.preview_this_call_is_not_in_the_published_sd_15302df3')
+                : tc('console.server_code_only_the_client_holds_a_manageme_d8e5b217'),
         },
     ];
 }
@@ -208,8 +196,7 @@ export function apiSnippets(
  * this?", whatever its own header looks like.
  */
 export function PageApiEquivalents() {
-    const { t: tc } = useUiTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const actions = usePageActions();
     const list = Object.values(actions);
     const [open, setOpen] = useState(false);
@@ -228,10 +215,7 @@ export function PageApiEquivalents() {
                 variant="ghost"
                 onClick={() => setOpen(true)}
                 data-page-api-equivalents={list.length}
-                aria-label={tc(
-                    'console.api_do_this_page_s_actions_from_code_3cf98d0c',
-                    "API: do this page's actions from code",
-                )}
+                aria-label={consoleT('console.api_do_this_page_s_actions_from_code_3cf98d0c')}
             >
                 <Icon name="code" className="w-4 h-4" />
                 <span className="hidden sm:inline">API</span>
@@ -241,16 +225,15 @@ export function PageApiEquivalents() {
                 open={open}
                 onOpenChange={setOpen}
                 size="lg"
-                title={tc('console.do_this_from_code_d9ead9ce', 'Do this from code')}
-                description={tc(
-                    'console.everything_on_this_page_is_also_a_rest_endpo_28d51f03',
-                    'Everything on this page is also a REST endpoint, an MCP tool and a CLI command — the same rules, the same audit trail.',
+                title={consoleT('console.do_this_from_code_d9ead9ce')}
+                description={consoleT(
+                    'console.everything_on_this_page_is_also_a_rest_endpoint_an_mcp_28d51f03',
                 )}
             >
                 {list.length > 1 && (
                     <div className="mb-4">
                         <Select
-                            aria-label={tc('console.action_64cff131', 'Action')}
+                            aria-label={consoleT('console.action_64cff131')}
                             value={current.name}
                             onValueChange={setChosen}
                             options={list.map((action) => ({

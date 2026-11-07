@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Http\Props\Shared\HelpProps;
+use App\Platform\Console\WorkspaceLanding;
 use App\Platform\CurrentUser;
 use App\Platform\Onboarding\SetupChecklist;
 use App\Platform\Onboarding\SetupProgress;
@@ -33,7 +34,7 @@ final readonly class GetStartedController extends ConsoleController
         // page — is about an organization's product. A workspace's product is in its
         // environments, so its setup starts on Projects.
         if ($this->scope->atWorkspaceAltitude()) {
-            return to_route('projects');
+            return redirect()->to(app(WorkspaceLanding::class)->url());
         }
 
         $me = $this->assertAdmin();
@@ -43,7 +44,7 @@ final readonly class GetStartedController extends ConsoleController
 
         $organization = $me->organization();
 
-        return $this->page('console/get-started', __('console.set_up_f0ed49ff').($organization === null ? __('console.your_organization_bb0bdf0a') : $organization->name), [
+        return $this->page('console/get-started', $organization === null ? __('console.set_up_your_organization') : __('console.set_up_named_organization', ['name' => $organization->name]), [
             'eyebrow' => __('console.getting_started_831d0f72'),
             'steps' => array_map(fn (SetupStep $step): array => [
                 'key' => $step->key->value,

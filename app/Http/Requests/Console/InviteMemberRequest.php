@@ -51,14 +51,14 @@ final class InviteMemberRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'role.in' => __('console.choose_one_of_6a89dad0').implode(', ', array_map(
+            'role.in' => __('console.choose_one_of_part1_057c2e61', ['part1' => implode(', ', array_map(
                 static fn (MembershipRole $role): string => $role->label(),
                 MembershipRole::assignable(),
-            )).'.',
-            'role.required' => __('console.choose_one_of_6a89dad0').implode(', ', array_map(
+            ))]),
+            'role.required' => __('console.choose_one_of_part1_057c2e61', ['part1' => implode(', ', array_map(
                 static fn (MembershipRole $role): string => $role->label(),
                 MembershipRole::assignable(),
-            )).'.',
+            ))]),
         ];
     }
 

@@ -19,6 +19,8 @@ final class Field
 
     private bool $nullable = false;
 
+    private bool $present = false;
+
     private bool $distinct = false;
 
     private bool $inPath = false;
@@ -80,6 +82,15 @@ final class Field
     public function required(): self
     {
         $this->required = true;
+
+        return $this;
+    }
+
+    /** Require the field to be supplied, allowing an empty list or object. */
+    public function present(): self
+    {
+        $this->required = true;
+        $this->present = true;
 
         return $this;
     }
@@ -171,6 +182,7 @@ final class Field
         $path ??= $this->name;
 
         $rules = [match (true) {
+            $this->present => $within === null ? 'present' : 'present_with:'.$within,
             ! $this->required => 'sometimes',
             $within !== null => 'required_with:'.$within,
             default => 'required',

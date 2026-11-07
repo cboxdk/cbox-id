@@ -86,7 +86,7 @@ it('invites someone with the shared form, back to an app, and lists them with bo
     $page->click('button:has-text("Send invitation")')
         ->assertSee('Invitation sent to newbie@people.test.')
         ->assertSee('Invited, not joined yet')
-        ->assertSee('for Acme Tasks')
+        ->assertSee(__('console.pending_invitation_application', ['application' => 'Acme Tasks']))
         ->assertSee('invited by Olivia Owner')
         ->assertSee('Send again')
         ->assertSee('Withdraw')
@@ -105,7 +105,7 @@ it('transfers ownership from a row, and offers the owner a way to leave', functi
         ->assertSee('Transfer ownership')
         ->assertSee('Remove from organization')
         ->click('[role="menuitem"]:has-text("Transfer ownership")')
-        ->assertSee('Transfer ownership to dana@people.test?')
+        ->assertSee('Confirm “Transfer ownership” for dana@people.test')
         ->assertSee('Only the new owner can hand it back.')
         ->screenshot(filename: 'people-transfer-dialog');
 
@@ -172,7 +172,7 @@ it('offers the owner "Delete organization" under Settings', function (): void {
     visit('/settings')
         ->assertSee('Delete organization')
         ->click('button:has-text("Delete organization")')
-        ->assertSee('Delete Acme People?')
+        ->assertSee('Confirm “Delete” for Acme People')
         ->assertDisabled('.cbx-dialog button:has-text("Delete")')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'settings-delete-organization');

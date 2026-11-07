@@ -10,6 +10,7 @@ use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\EnvironmentWorkspace;
@@ -55,7 +56,7 @@ final readonly class AddDomain implements Action
         try {
             $this->domains->request($environment->id, $context->string('domain'));
         } catch (InvalidCustomDomain $e) {
-            throw ActionRefused::because('invalid_domain', $e->getMessage(), 'domain');
+            throw ActionRefused::because('invalid_domain', FrameworkMessage::from($e), 'domain');
         }
 
         $fresh = $environment->fresh() ?? $environment;

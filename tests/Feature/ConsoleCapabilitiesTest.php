@@ -2038,6 +2038,7 @@ it('registers a directory against the organization from the scope', function ():
     // and none on the organization plane — the second place the answer lived, validated
     // differently in each.
     $orgId = anEnvironmentAdminActingOn('tenant-dir-scoped');
+    grantFeature($orgId, 'cbox-id-scim');
 
     confirmConsoleStepUp();
     registerDirectory(['name' => 'Acme Okta SCIM'], 'environment.directories')->assertSessionHasNoErrors();
@@ -2085,6 +2086,7 @@ it('connects a pull directory on the environment plane', function (): void {
     // The capability the environment plane never had. Verified against the connector
     // before anything is stored, so a wrong key fails here rather than at 3am.
     $orgId = anEnvironmentAdminActingOn('tenant-dir-pull');
+    grantFeature($orgId, 'cbox-id-scim');
 
     app()->instance(DirectoryConnectors::class, new DirectoryConnectors([
         new FakeDirectoryConnector(DirectoryProvider::GoogleWorkspace),
@@ -2110,7 +2112,8 @@ it('connects a pull directory on the environment plane', function (): void {
 })->group('security');
 
 it('refuses a pull directory whose credentials the provider rejects', function (): void {
-    anEnvironmentAdminActingOn('tenant-dir-pull-bad');
+    $orgId = anEnvironmentAdminActingOn('tenant-dir-pull-bad');
+    grantFeature($orgId, 'cbox-id-scim');
 
     app()->instance(DirectoryConnectors::class, new DirectoryConnectors([
         new FakeDirectoryConnector(DirectoryProvider::MicrosoftEntra, verifies: false),
@@ -2131,6 +2134,7 @@ it('gives the organization plane the lifecycle it never had', function (): void 
     // Rename, rotate, pause and delete existed only on the environment plane. A tenant
     // admin whose SCIM token leaked had no way to rotate it from their own console.
     [, $org] = actingAsRole(MembershipRole::Owner);
+    grantFeature($org->id, 'cbox-id-scim');
     $directory = app(Directories::class)->register($org->id, 'HR')->directory;
     $originalHash = $directory->bearer_token_hash;
 
@@ -2162,7 +2166,8 @@ it('reveals a directory bearer token exactly once, on both planes', function ():
      * flash channel, so it is on the ONE render that follows the mint and gone from the
      * next. A dismissal was a control that had to be pressed for the credential to leave.
      */
-    anEnvironmentAdminActingOn('tenant-dir-token');
+    $orgId = anEnvironmentAdminActingOn('tenant-dir-token');
+    grantFeature($orgId, 'cbox-id-scim');
 
     confirmConsoleStepUp();
     registerDirectory(['name' => 'Acme Okta SCIM'], 'environment.directories')
@@ -2211,6 +2216,7 @@ it('refuses a group mapping that belongs to another directory', function (): voi
     // map half, so an id belonging to another directory could be unmapped through a
     // directory the caller does hold.
     [, $org] = actingAsRole(MembershipRole::Owner);
+    grantFeature($org->id, 'cbox-id-scim');
     $mine = app(Directories::class)->register($org->id, 'Mine')->directory;
     $theirs = app(Directories::class)->register($org->id, 'Theirs')->directory;
 
@@ -2301,6 +2307,7 @@ it('creates a connection against the organization from the scope', function (): 
     // and none on the organization plane — the second place the answer lived, validated
     // differently in each.
     $orgId = anEnvironmentAdminActingOn('tenant-sso-scoped');
+    grantFeature($orgId, 'cbox-id-sso');
 
     createConnection(['name' => 'Acme Okta'], 'environment.connections')->assertSessionHasNoErrors();
 
@@ -2324,6 +2331,7 @@ it('gives the organization plane the edit, disable and delete it never had', fun
     // tenant admin cannot correct a rotated certificate, cannot switch a misconfigured
     // IdP off, and cannot remove one at all.
     [, $org] = actingAsRole(MembershipRole::Owner);
+    grantFeature($org->id, 'cbox-id-sso');
     $connection = aSamlConnection($org->id);
 
     $showing = (array) $this->get(route('connections.show', $connection->id))
@@ -2354,6 +2362,7 @@ it('gives the environment plane domain verification and the Admin Portal invite,
     // which is the thing that routes their people to the IdP at all. Both are about ONE
     // organization, so they live on its SSO tab, under its own URL.
     $orgId = anEnvironmentAdminActingOn('tenant-sso-domains');
+    grantFeature($orgId, 'cbox-id-sso');
     $tab = route('environment.organizations.sso', $orgId);
 
     $this->get($tab)
@@ -2386,6 +2395,7 @@ it('attributes an Admin Portal link to the environment administrator who minted 
     // the organization page's reader would have recorded '' as the creator of a link
     // that hands SSO configuration to an outsider.
     $orgId = anEnvironmentAdminActingOn('tenant-sso-actor');
+    grantFeature($orgId, 'cbox-id-sso');
     $actor = app(ConsoleScope::class)->actorId();
 
     $this->from(route('environment.organizations.sso', $orgId))
@@ -2429,7 +2439,8 @@ it('refuses an organization admin another organization\'s connection', function 
 it('refuses another organization\'s domain to an organization admin', function (): void {
     // The same escalation on the domain half: capture on a domain you do not own would
     // force that company's people through YOUR identity provider.
-    actingAsRole(MembershipRole::Owner);
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    grantFeature($org->id, 'cbox-id-sso');
     $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-sso-domains'));
     $foreign = app(DomainVerification::class)->add($other->id, 'foreign.example');
 

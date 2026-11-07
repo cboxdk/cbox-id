@@ -8,6 +8,10 @@ use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\Radar\RadarConditions;
 use App\Platform\Radar\RadarFacts;
 use App\Platform\Radar\RadarRuleInvalid;
+use Tests\TestCase;
+
+// Condition descriptions use the application's translated field labels.
+uses(TestCase::class);
 
 /*
 |--------------------------------------------------------------------------

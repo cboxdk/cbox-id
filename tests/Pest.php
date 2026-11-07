@@ -6,6 +6,7 @@ use App\Http\Controllers\EnvironmentHandoffController;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Platform\Appearance\Appearance;
 use App\Platform\Appearance\BrandImageUpload;
+use App\Platform\Billing\ProductBilling;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
@@ -14,12 +15,21 @@ use App\Platform\CurrentUser;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
+use App\Platform\NativeProduct\NativeProductClient;
+use App\Platform\NativeProduct\NativeProductManifest;
+use App\Platform\NativeProduct\NativeProductMembers;
 use App\Platform\OperatorEnvironment;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
 use App\Platform\SignInLineage;
 use App\Platform\StepUpPrompt;
 use App\Platform\Sudo;
+use Cbox\Billing\Client\BillingClient;
+use Cbox\Billing\Client\Contracts\BillingTransport;
+use Cbox\Billing\Client\Enums\FeatureSource;
+use Cbox\Billing\Client\Enums\FeatureType;
+use Cbox\Billing\Client\Testing\FakeBillingTransport;
+use Cbox\Billing\Client\ValueObjects\FeatureEntitlement;
 use Cbox\Id\AccessControl\Contracts\AppManifests;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Manifest\DeclaredPermission;
@@ -36,6 +46,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Exceptions\UnknownCredential;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\ValueObjects\Subject;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
 use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
 use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementInput;
@@ -81,7 +92,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use Tests\Support\FormOrganization;
 use Tests\TestCase;
 
-uses(TestCase::class, RefreshDatabase::class)->in('Feature');
+uses(TestCase::class, RefreshDatabase::class)->beforeEach(fn () => centralBillingFixture())->in('Feature');
 
 // Pest 4 browser tests (real Chromium via Playwright) — boot the full app the same
 // way, so `visit()` drives the running application with its middleware and DB.
@@ -102,15 +113,19 @@ uses(TestCase::class, RefreshDatabase::class)->beforeEach(function (): void {
  *
  * See docs/core-concepts/unified-identity.md.
  */
-function platformRootEnvironment(): Environment
+function platformRootEnvironment(bool $publishNativeCatalog = true): Environment
 {
     $existing = Environment::query()->where('is_default', true)->first();
 
     if ($existing !== null) {
+        if ($publishNativeCatalog) {
+            syncNativeProductCatalog();
+        }
+
         return $existing;
     }
 
-    return Environment::query()->create([
+    $environment = Environment::query()->create([
         'name' => 'Platform',
         'slug' => 'platform-root-'.Str::lower((string) Str::ulid()),
         'type' => EnvironmentType::Production,
@@ -118,6 +133,27 @@ function platformRootEnvironment(): Environment
         'is_default' => true,
         'settings' => [],
     ]);
+    if ($publishNativeCatalog) {
+        syncNativeProductCatalog();
+    }
+
+    return $environment;
+}
+
+/** Install definitions only, exactly as the release command does. */
+function syncNativeProductCatalog(): void
+{
+    app(NativeProductClient::class)->synchronize(
+        app(AppManifests::class),
+        app(NativeProductManifest::class),
+    );
+}
+
+/** Explicit native app assignment for positive authorization fixtures. */
+function grantNativeProductRoles(Membership $member, array $roles): void
+{
+    $service = app(NativeProductMembers::class);
+    $service->replace($member, $roles, $service->access($member)['roles_version'], AuditActor::system());
 }
 
 /**
@@ -209,6 +245,8 @@ function provisionAccount(string $email = 'owner@acme.example'): array
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
+
+    grantProductEnvironmentAllowance($result->organization->id, 100);
 
     return [
         'member' => $result->membership,
@@ -1825,8 +1863,44 @@ function gateAdmin(string $slug = 'gate-acme', MembershipRole $role = Membership
     return $org->id;
 }
 
+/** Explicit central service fixture: absent feature grants still deny. */
+function centralBillingFixture(): FakeBillingTransport
+{
+    if (! app()->bound('tests.central-billing')) {
+        $transport = new FakeBillingTransport;
+        app()->instance('tests.central-billing', $transport);
+        app()->instance(BillingTransport::class, $transport);
+        app()->forgetInstance(BillingClient::class);
+    }
+
+    return app('tests.central-billing');
+}
+
+function grantProductEnvironmentAllowance(string $workspaceId, int $limit): void
+{
+    centralBillingFixture()->feature($workspaceId, new FeatureEntitlement(
+        key: 'cbox-id.environments', type: FeatureType::Config,
+        enabled: true, value: $limit, source: FeatureSource::Override,
+    ));
+}
+
 function grantFeature(string $organizationId, string $key): void
 {
+    $productKey = ['cbox-id-sso' => 'cbox-id.sso', 'cbox-id-scim' => 'cbox-id.scim', 'cbox-id-audit-logs' => 'cbox-id.audit_logs'][$key] ?? null;
+    if ($productKey !== null) {
+        $workspace = app(ProductBilling::class)->owningWorkspace($organizationId);
+        if ($workspace === null) {
+            // Older enterprise fixtures pin env_test without persisting its root record.
+            Environment::query()->firstOrCreate(['id' => 'env_test'], ['name' => 'Test root', 'slug' => 'test-root', 'type' => EnvironmentType::Production, 'status' => EnvironmentStatus::Active, 'is_default' => true, 'settings' => []]);
+            $workspace = app(ProductBilling::class)->owningWorkspace($organizationId);
+        }
+        if ($workspace === null) {
+            throw new LogicException('The feature fixture requires an owning workspace.');
+        }
+        centralBillingFixture()->feature($workspace, new FeatureEntitlement(key: $productKey, type: FeatureType::Boolean, enabled: true, source: FeatureSource::Override));
+
+        return;
+    }
     app(EntitlementWriter::class)->set(
         $organizationId,
         new EntitlementInput($key, ['enabled' => true]),

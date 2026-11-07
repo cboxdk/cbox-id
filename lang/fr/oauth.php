@@ -2,11 +2,9 @@
 
 declare(strict_types=1);
 
-// French: the OAuth authorization pages (pages/oauth/*).
 return [
     'signed_in_as' => 'Connecté en tant que :account',
     'cancel_and_return' => 'Annuler et revenir à :client',
-
     'consent' => [
         'title' => 'Autoriser',
         'heading' => 'Autoriser :client',
@@ -18,16 +16,13 @@ return [
         'cancel' => 'Annuler',
         'authorize' => 'Autoriser',
         'redirect_notice' => 'Après l’autorisation, vous serez redirigé vers :host.',
-        // A client that registered itself (RFC 7591, or a client ID metadata document).
         'self_registered_owner' => 'l’application elle-même',
         'self_registered' => 'Cette application s’est enregistrée elle-même. Personne chez :account ne l’a vérifiée — ne continuez que si vous avez lancé cette connexion vous-même.',
         'published_by' => 'Décrite par :host — la seule chose vérifiée au sujet de cette application.',
         'about_app' => 'À propos de cette application',
-        // Management-plane scopes an agent acts with as the person.
         'critical' => 'Critique',
         'acts_as_you' => 'Tout ce qu’elle fait en votre nom est limité à ce que vous pouvez faire vous-même, et consigné dans le journal d’audit.',
         'critical_notice' => 'Les actions critiques attendent toujours votre approbation sur votre appareil, à chaque fois.',
-
         'scopes' => [
             'openid' => 'Vérifier votre identité',
             'profile' => 'Votre nom',
@@ -38,7 +33,6 @@ return [
             'feature_flags' => 'Les fonctionnalités activées pour vous',
         ],
     ],
-
     'failure' => [
         'title' => 'Échec de l’autorisation',
         'heading' => 'Échec de l’autorisation',
@@ -54,7 +48,6 @@ return [
         'step_up' => 'Cette application exige une authentification plus récente ou plus forte. Veuillez recommencer.',
         'no_workspace' => 'Cette connexion relie un agent à un espace de travail sur Cbox ID, et votre compte ne fait partie de l’équipe d’aucun espace de travail. Demandez à un propriétaire de l’espace de travail de vous inviter, ou connectez plutôt l’agent à l’adresse propre de votre environnement.',
     ],
-
     'organization' => [
         'title' => 'Choisissez une organisation',
         'heading' => 'Choisissez une organisation',
@@ -75,7 +68,6 @@ return [
             'viewer' => 'Lecteur',
         ],
     ],
-
     'create_organization' => [
         'title' => 'Créer une organisation',
         'heading' => 'Créer une organisation',
@@ -97,7 +89,7 @@ return [
         'next_note' => 'Vous verrez quelle application le demande avant que quoi que ce soit ne soit connecté.',
         'code_required' => 'Saisissez le code affiché sur votre appareil.',
         'invalid' => 'Ce code est invalide ou a expiré. Vérifiez le code sur votre appareil et réessayez.',
-        'too_many' => 'Trop de tentatives. Réessayez dans :seconds secondes.',
+        'too_many' => 'Trop de tentatives. Délai avant de réessayer, en secondes : :seconds.',
         'link_expired' => 'Cette demande de connexion a expiré ou est déjà terminée. Saisissez le code affiché sur votre appareil.',
         'consent_heading' => 'Se connecter à :client ?',
         'consent_lead' => ':client, sur un autre appareil, demande à se connecter à votre compte.',

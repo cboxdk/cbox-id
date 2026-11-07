@@ -6,6 +6,7 @@ namespace App\Actions\Organizations;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -49,7 +50,7 @@ final readonly class VerifyOrganizationDomain implements Action
         $domain = DomainFields::find($organization->id, $context->string('domain_id'));
 
         if (! $this->domains->verify($domain->id)) {
-            throw ActionRefused::because('record_not_found', 'Verification failed — the DNS TXT record was not found yet.', 'domain');
+            throw ActionRefused::because('record_not_found', new ActionMessage('console.verification_failed_the_dns_txt_record_was_not_found_ye_2bdb5667'), 'domain');
         }
 
         $fresh = $domain->fresh() ?? $domain;

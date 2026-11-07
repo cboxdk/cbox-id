@@ -16,12 +16,11 @@ use App\Http\Requests\Console\IssueEnvironmentKeyRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\KeyTabs;
-use App\Platform\Console\Vocabulary;
+use App\Platform\Console\WorkspaceLanding;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentKeyScopes;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use App\Platform\OrganizationActivity;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -76,7 +75,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
          * to send them to: it is refused.
          */
         if (! $this->mayManageEnvironments()) {
-            return to_route('projects');
+            return redirect()->to(app(WorkspaceLanding::class)->url());
         }
 
         /*
@@ -108,7 +107,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
         // Workspace › Keys — one line from My account › API keys, which is a person's OWN
         // keys and a different page; the same word twice in one rail would send people to
         // the wrong one. (The environment console's keys are its Agents page, above.)
-        return $this->page('console/keys/management', ConsoleStrings::text(Vocabulary::API_KEYS), [
+        return $this->page('console/keys/management', __('console.api_keys_98aae897'), [
             'help' => HelpProps::for(HelpTopic::Keys),
             'tabs' => $tabs->for(KeyTabs::MANAGEMENT),
             // Any environment of the workspace this person may reach.
@@ -221,7 +220,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
         $this->inertia->flash('freshKey', $minted->plaintext);
         $this->inertia->flash('freshKeyName', $minted->key->name);
 
-        return back()->with('status', __('console.management_key_created_copy_it_now_it_will_n_9ec713ad'));
+        return back()->with('status', __('console.management_key_created_copy_it_now_it_will_not_be_shown_9ec713ad'));
     }
 
     public function destroy(
@@ -305,7 +304,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
         $this->inertia->flash('freshKey', $minted->plaintext);
         $this->inertia->flash('freshKeyName', $minted->key->name);
 
-        return back()->with('status', __('console.key_rotated_copy_the_new_one_now_the_old_key_aedb1c3d'));
+        return back()->with('status', __('console.key_rotated_copy_the_new_one_now_the_old_key_keeps_work_aedb1c3d'));
     }
 
     /**

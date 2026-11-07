@@ -6,6 +6,7 @@ namespace App\Actions\SamlApps;
 
 use App\Http\Resources\Environment\Timestamp;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\OrganizationTarget;
@@ -72,7 +73,7 @@ final class SamlAppFields
         $url = trim($url);
 
         if (! SecureRedirectUri::isSecure($url)) {
-            throw ActionRefused::because('insecure_acs_url', 'The ACS URL must use https (http is allowed only on localhost), be absolute, and carry no fragment.', 'acs_url');
+            throw ActionRefused::because('insecure_acs_url', new ActionMessage('console.the_acs_url_must_use_https_http_is_allowed_only_on_loca_c596bd8b'), 'acs_url');
         }
 
         return $url;
@@ -90,7 +91,7 @@ final class SamlAppFields
     public static function assertVerifiable(bool $signed, ?string $certificate): void
     {
         if ($signed && $certificate === null) {
-            throw ActionRefused::because('certificate_required', 'A signing certificate is required for signed AuthnRequests.', 'certificate');
+            throw ActionRefused::because('certificate_required', new ActionMessage('console.a_signing_certificate_is_required_for_signed_authnreque_e3d34291'), 'certificate');
         }
     }
 

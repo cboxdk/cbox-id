@@ -25,7 +25,6 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use App\Platform\ScopeCatalog;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\AccessControl\Manifest\ManifestSyncResult;
@@ -159,7 +158,7 @@ final readonly class ClientController extends ConsoleController
 
         $showsEveryOrganization = ! $filter->active();
 
-        return $this->page('console/clients/index', ConsoleStrings::text(Vocabulary::APPLICATIONS), [
+        return $this->page('console/clients/index', __('console.applications_98e33b0f'), [
             'help' => HelpProps::for(HelpTopic::Apps),
             'clients' => $clients->getCollection()
                 ->map(fn (Client $client): array => $this->row($client, $roleCounts, $owners, $showsEveryOrganization))
@@ -257,7 +256,7 @@ final readonly class ClientController extends ConsoleController
 
         if (in_array('authorization_code', $grantTypes, true) && $redirects === []) {
             return back()->withInput()->withErrors([
-                'redirectUris' => __('console.a_browser_login_app_needs_at_least_one_redir_f870e56d'),
+                'redirectUris' => __('console.a_browser_login_app_needs_at_least_one_redirect_uri_to_f870e56d'),
             ]);
         }
 
@@ -326,7 +325,7 @@ final readonly class ClientController extends ConsoleController
         }
 
         return to_route($this->scope->routeName('clients.show'), $registered->client->id)
-            ->with('status', 'App "'.$registered->client->name.'" created.');
+            ->with('status', __('console.app_part1_created_4e389b94', ['part1' => $registered->client->name]));
     }
 
     public function show(string $client, AppHeader $header): Response
@@ -456,13 +455,13 @@ final readonly class ClientController extends ConsoleController
         $synced = $this->attempt(SyncAppManifest::class, ['id' => $model->id]);
 
         if ($synced instanceof ActionRefused) {
-            return back()->withErrors(['manifestUrl' => __('console.saved_but_the_sync_failed_4c459926').$synced->getMessage()]);
+            return back()->withErrors(['manifestUrl' => __('console.saved_but_the_sync_failed_part1_31eb393c', ['part1' => $synced->getMessage()])]);
         }
 
         /** @var ManifestSyncResult $result */
         $result = $synced->value;
 
-        return back()->with('status', __('console.manifest_synced_558c6980').$result->rolesDeclared.' role(s), '.$result->permissionsDeclared.' permission(s).');
+        return back()->with('status', __('console.manifest_synced_part1_role_s_part2_permission_s_1e34ea1f', ['part1' => $result->rolesDeclared, 'part2' => $result->permissionsDeclared]));
     }
 
     public function sync(string $client): RedirectResponse
@@ -476,15 +475,13 @@ final readonly class ClientController extends ConsoleController
         $synced = $this->attempt(SyncAppManifest::class, ['id' => $model->id]);
 
         if ($synced instanceof ActionRefused) {
-            return back()->with('error', __('console.sync_failed_1fbcf597').$synced->getMessage());
+            return back()->with('error', __('console.sync_failed_part1_93192988', ['part1' => $synced->getMessage()]));
         }
 
         /** @var ManifestSyncResult $result */
         $result = $synced->value;
 
-        return back()->with('status', ! $result->unchanged
-            ? 'Synced — '.$result->rolesDeclared.' role(s).'
-            : __('console.already_up_to_date_21c23d93'));
+        return back()->with('status', ! $result->unchanged ? __('console.synced_part1_role_s_44e6c98d', ['part1' => $result->rolesDeclared]) : __('console.already_up_to_date_21c23d93'));
     }
 
     /**

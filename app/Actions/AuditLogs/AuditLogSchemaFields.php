@@ -7,6 +7,7 @@ namespace App\Actions\AuditLogs;
 use App\Http\Resources\Environment\Timestamp;
 use App\Models\AuditLogs\AuditLogSchema;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Input\Field;
 use App\Platform\AuditLogs\EventShape;
@@ -85,7 +86,7 @@ final class AuditLogSchemaFields
     public static function action(string $action): string
     {
         if (! EventShape::validAction($action)) {
-            throw ActionRefused::because('invalid_action', 'An action is dotted words of letters, digits, `_` and `-`, e.g. `invoice.voided`.', 'action');
+            throw ActionRefused::because('invalid_action', new ActionMessage('console.an_action_is_dotted_words_of_letters_digits_and_e_g_inv_0b81eabe'), 'action');
         }
 
         return $action;

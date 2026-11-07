@@ -19,7 +19,13 @@ type Props = PageProps<{
     renderedAt: number;
 }>;
 
-export default function Signup({ identityOnly, createsIdp, forApp, turnstileSiteKey, renderedAt }: Props) {
+export default function Signup({
+    identityOnly,
+    createsIdp,
+    forApp,
+    turnstileSiteKey,
+    renderedAt,
+}: Props) {
     // Set once the risk scorer has asked THIS submission to be challenged, and gone
     // again on the next page. The overwhelming majority never see a CAPTCHA at all.
     const challenged = usePage().flash.challenged === true;
@@ -85,25 +91,25 @@ export default function Signup({ identityOnly, createsIdp, forApp, turnstileSite
                 </div>
 
                 {!identityOnly && (
-                <Field
-                    label={
-                        createsIdp
-                            ? t('auth.signup.organization_label.creates_idp')
-                            : forApp !== null
-                              ? t('auth.signup.organization_label.for_app')
-                              : t('auth.signup.organization_label.default')
-                    }
-                    error={form.errors.organization}
-                >
-                    <Input
-                        name="organization"
-                        scale="lg"
-                        autoComplete="organization"
-                        placeholder={t('auth.signup.organization_placeholder')}
-                        value={form.data.organization}
-                        onChange={(event) => form.setData('organization', event.target.value)}
-                    />
-                </Field>
+                    <Field
+                        label={
+                            createsIdp
+                                ? t('auth.signup.organization_label.creates_idp')
+                                : forApp !== null
+                                  ? t('auth.signup.organization_label.for_app')
+                                  : t('auth.signup.organization_label.default')
+                        }
+                        error={form.errors.organization}
+                    >
+                        <Input
+                            name="organization"
+                            scale="lg"
+                            autoComplete="organization"
+                            placeholder={t('auth.signup.organization_placeholder')}
+                            value={form.data.organization}
+                            onChange={(event) => form.setData('organization', event.target.value)}
+                        />
+                    </Field>
                 )}
 
                 <div className="grid sm:grid-cols-2 gap-4">

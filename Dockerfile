@@ -6,9 +6,8 @@
 # linux/arm64, each native), for pushes to main and `v*` tags. Production (cboxid.com, on
 # arm64) runs this image: each main commit whose checks pass is released there.
 #
-# The Signals client still uses reviewed unpublished source through the explicit
-# signals-client BuildKit context. The identity engine is installed from its published
-# Composer release; never resolve an unpinned sibling.
+# The reviewed Signals client is bundled with its commit and archive checksum.
+# Composer mirrors this verified source; builds never resolve a sibling checkout.
 
 # ---- build stage: composer + frontend (vite) ----
 # Runs on the build host's native arch; vendor/ + public/build are arch-neutral,
@@ -19,9 +18,11 @@ WORKDIR /var/www/html
 # PHP deps first for layer caching. --no-scripts: no app env at build time; the
 # base-image entrypoint runs package:discover + config/route/event caching at
 # container start.
-COPY --from=signals-client . /var/laravel-signals-client
+COPY packages/signals-client ./packages/signals-client
+COPY build/dependencies/laravel-signals-client.tar build/dependencies/laravel-signals-client.json ./build/dependencies/
+COPY bin/verify-signals-sdk.php ./bin/verify-signals-sdk.php
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --prefer-dist --no-interaction --no-progress --optimize-autoloader
+RUN php bin/verify-signals-sdk.php && composer install --no-dev --no-scripts --prefer-dist --no-interaction --no-progress --optimize-autoloader
 
 # Frontend build (Node 22 ships in the standard tier). Tailwind v4 via the vite
 # plugin — a plain `vite build`.
@@ -33,7 +34,6 @@ RUN npm run build && rm -rf node_modules
 # ---- runtime image ----
 FROM ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1
 WORKDIR /var/www/html
-COPY --from=build --chown=www-data:www-data /var/laravel-signals-client /var/laravel-signals-client
 COPY --from=build --chown=www-data:www-data /var/www/html /var/www/html
 
 # The app owns its security response headers (App\Http\Middleware\SecurityHeaders).

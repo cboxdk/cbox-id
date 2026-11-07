@@ -7,6 +7,7 @@ namespace App\Actions\Apps;
 use App\Http\Resources\Environment\AppResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -56,7 +57,7 @@ final readonly class SetAppTokenExchange implements Action
         $client = AppFields::find($context, $context->string('id'));
 
         if ($client->type !== ClientType::Confidential) {
-            throw ActionRefused::because('public_client', 'Only an app that holds a secret or its own keys can exchange tokens. A public app cannot prove who is asking.', 'enabled');
+            throw ActionRefused::because('public_client', new ActionMessage('console.only_an_app_that_holds_a_secret_or_its_own_keys_can_exc_b8912c8c'), 'enabled');
         }
 
         $grants = array_values(array_filter(

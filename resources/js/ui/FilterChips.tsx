@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { type ReactNode, useState } from 'react';
 import type { OrganizationFilter } from '@/types';
@@ -17,11 +17,13 @@ import { Popover, PopoverContent, PopoverTrigger } from './Popover';
  */
 export function FilterChips({
     children,
-    label = 'Filters',
+    label: suppliedLabel,
 }: {
     children: ReactNode;
     label?: string;
 }) {
+    const { t: consoleFinalText } = useConsoleTranslator();
+    const label = suppliedLabel ?? consoleFinalText('console.filters_546ebb8e');
     return (
         <fieldset className="cbx-filter-chips">
             <legend className="sr-only">{label}</legend>
@@ -90,8 +92,10 @@ function withParameter(parameter: string, value: string | null): string {
  * vault), choosing one GOES there instead of narrowing this list.
  */
 export function OrganizationFilterChip({ filter }: { filter: OrganizationFilter }) {
-    const { t: tc } = useUiTranslator();
-
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [open, setOpen] = useState(false);
 
     const choose = (id: string): void => {
@@ -112,12 +116,9 @@ export function OrganizationFilterChip({ filter }: { filter: OrganizationFilter 
     if (filter.selected !== null) {
         return (
             <FilterChip
-                label={tc('console.organization_d764d425', 'Organization')}
+                label={consoleT('console.organization_d764d425')}
                 value={filter.selected.name}
-                clearLabel={tc(
-                    'console.show_every_organization_64ecc6bb',
-                    'Show every organization',
-                )}
+                clearLabel={consoleUiText('console.show_every_organization_64ecc6bb')}
                 onClear={clear}
             />
         );
@@ -126,12 +127,9 @@ export function OrganizationFilterChip({ filter }: { filter: OrganizationFilter 
     if (filter.unknown) {
         return (
             <FilterChip
-                label={tc('console.organization_d764d425', 'Organization')}
-                value={tc('console.not_in_this_environment_98f2f096', 'not in this environment')}
-                clearLabel={tc(
-                    'console.show_every_organization_64ecc6bb',
-                    'Show every organization',
-                )}
+                label={consoleT('console.organization_d764d425')}
+                value={consoleRuntimeText('console.not_in_this_environment_98f2f096')}
+                clearLabel={consoleUiText('console.show_every_organization_64ecc6bb')}
                 onClear={clear}
                 warning
             />
@@ -141,8 +139,9 @@ export function OrganizationFilterChip({ filter }: { filter: OrganizationFilter 
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger className="cbx-filter-chip is-unset">
-                <Icon name="plus" className="w-3 h-3" aria-hidden="true" />
-                {tc('console.organization_d764d425', 'Organization')}
+                {consoleRich('console._part1_organization_0c5d66a6', {
+                    part1: <Icon name="plus" className="w-3 h-3" aria-hidden="true" />,
+                })}
             </PopoverTrigger>
             <PopoverContent className="cbx-combobox" align="start" style={{ width: '18rem' }}>
                 <OrganizationLookupList

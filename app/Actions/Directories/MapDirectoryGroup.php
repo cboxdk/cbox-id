@@ -6,6 +6,7 @@ namespace App\Actions\Directories;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -77,7 +78,7 @@ final readonly class MapDirectoryGroup implements Action
             try {
                 $this->mappings->map($directory->organization_id, $group->id, $roleId);
             } catch (UnknownRole) {
-                throw ActionRefused::because('role_not_mappable', 'That role cannot be given to a directory group here.', 'role_id');
+                throw ActionRefused::because('role_not_mappable', new ActionMessage('console.that_role_cannot_be_given_to_a_directory_group_here_d4c35edb'), 'role_id');
             }
         } else {
             $this->mappings->unmap($directory->organization_id, $group->id, $roleId);

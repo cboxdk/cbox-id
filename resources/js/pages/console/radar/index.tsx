@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useFormatTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { type FormEvent, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -86,10 +87,11 @@ export default function RadarDecisions({
     firstHref,
     listStoreHref,
 }: Props) {
-    const { locale } = useTranslator();
-
-    const { t: tc } = useTranslator();
-
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [draft, setDraft] = useState<Filters>(filters);
     const [open, setOpen] = useState<string | null>(null);
     const filtered = Object.values(filters).some((value) => value !== '');
@@ -111,77 +113,82 @@ export default function RadarDecisions({
             help={help}
             tabs={tabs}
             mode={mode}
-            description={tc('console.radar_judges_every_sign_in_and_sign_up_crede_9c16eda1')}
+            description={consoleT(
+                'console.radar_judges_every_sign_in_and_sign_up_credential_stuff_9c16eda1',
+            )}
         >
             <section
                 className="mt-6 grid gap-3 sm:grid-cols-3"
-                aria-label={tc('console.the_last_24_hours_7ef73a06')}
+                aria-label={consoleT('console.the_last_24_hours_7ef73a06')}
             >
                 <Stat
                     icon="check"
                     tone="success"
-                    label={tc('console.allowed_last_24h_9942a928')}
-                    value={summary.allow.toLocaleString(locale)}
+                    label={consoleT('console.allowed_last_24h_9942a928')}
+                    value={summary.allow.toLocaleString(consoleLocale)}
                 />
                 <Stat
                     icon="shield"
                     tone="warning"
-                    label={tc('console.challenged_last_24h_437a6554')}
-                    value={summary.challenge.toLocaleString(locale)}
+                    label={consoleT('console.challenged_last_24h_437a6554')}
+                    value={summary.challenge.toLocaleString(consoleLocale)}
                 />
                 <Stat
                     icon="warning"
                     tone="neutral"
-                    label={tc('console.blocked_last_24h_f6a8e9fa')}
-                    value={summary.block.toLocaleString(locale)}
+                    label={consoleT('console.blocked_last_24h_f6a8e9fa')}
+                    value={summary.block.toLocaleString(consoleLocale)}
                 />
             </section>
 
             <form onSubmit={apply} className="mt-6 grid gap-3 sm:grid-cols-6 items-end">
-                <Field label={tc('console.verdict_4a36f89d')}>
+                <Field label={consoleT('console.verdict_4a36f89d')}>
                     <Select
                         value={draft.verdict === '' ? ANY : draft.verdict}
                         onValueChange={set('verdict')}
                         options={[
-                            { value: ANY, label: tc('console.any_2b505597') },
-                            { value: 'allow', label: tc('console.allow_e213c161') },
-                            { value: 'challenge', label: tc('console.challenge_27cf1792') },
-                            { value: 'block', label: tc('console.block_211d0bb8') },
+                            { value: ANY, label: consoleText('console.any_2b505597') },
+                            { value: 'allow', label: consoleText('console.allow_e213c161') },
+                            {
+                                value: 'challenge',
+                                label: consoleText('console.challenge_27cf1792'),
+                            },
+                            { value: 'block', label: consoleText('console.block_211d0bb8') },
                         ]}
                     />
                 </Field>
-                <Field label={tc('console.flow_f1273dc7')}>
+                <Field label={consoleT('console.flow_f1273dc7')}>
                     <Select
                         value={draft.flow === '' ? ANY : draft.flow}
                         onValueChange={set('flow')}
                         options={[
-                            { value: ANY, label: tc('console.both_b6c1d862') },
-                            { value: 'sign_in', label: tc('console.sign_in_5bbbe531') },
-                            { value: 'sign_up', label: tc('console.sign_up_3cc08ebe') },
+                            { value: ANY, label: consoleText('console.both_b6c1d862') },
+                            { value: 'sign_in', label: consoleText('console.sign_in_5bbbe531') },
+                            { value: 'sign_up', label: consoleText('console.sign_up_3cc08ebe') },
                         ]}
                     />
                 </Field>
-                <Field label={tc('console.rule_62845f31')} className="sm:col-span-2">
+                <Field label={consoleT('console.rule_62845f31')} className="sm:col-span-2">
                     <Select
                         value={draft.rule === '' ? ANY : draft.rule}
                         onValueChange={set('rule')}
                         options={[
-                            { value: ANY, label: tc('console.any_rule_d2a1b565') },
+                            { value: ANY, label: consoleText('console.any_rule_d2a1b565') },
                             ...ruleOptions,
                         ]}
                     />
                 </Field>
-                <Field label={tc('console.country_701d021d')}>
+                <Field label={consoleT('console.country_701d021d')}>
                     <Input
                         value={draft.country}
                         maxLength={2}
-                        placeholder="DK"
+                        placeholder={consoleUiText('console.dk_23cb4f8a')}
                         onChange={(event) =>
                             setDraft({ ...draft, country: event.target.value.toUpperCase() })
                         }
                     />
                 </Field>
-                <Field label={tc('console.device_6ba0bdec')}>
+                <Field label={consoleT('console.device_6ba0bdec')}>
                     <Input
                         className="mono"
                         value={draft.device}
@@ -189,9 +196,9 @@ export default function RadarDecisions({
                     />
                 </Field>
                 <Field
-                    label={tc('console.email_address_f2488fd4')}
+                    label={consoleT('console.email_address_f2488fd4')}
                     className="sm:col-span-2"
-                    hint={tc('console.matched_by_pseudonym_never_shown_a97f8fe1')}
+                    hint={consoleT('console.matched_by_pseudonym_never_shown_a97f8fe1')}
                 >
                     <Input
                         type="email"
@@ -200,9 +207,9 @@ export default function RadarDecisions({
                     />
                 </Field>
                 <Field
-                    label={tc('console.ip_address_0302a467')}
+                    label={consoleT('console.ip_address_0302a467')}
                     className="sm:col-span-2"
-                    hint={tc('console.matched_by_pseudonym_never_shown_a97f8fe1')}
+                    hint={consoleT('console.matched_by_pseudonym_never_shown_a97f8fe1')}
                 >
                     <Input
                         className="mono"
@@ -210,14 +217,14 @@ export default function RadarDecisions({
                         onChange={(event) => setDraft({ ...draft, ip: event.target.value })}
                     />
                 </Field>
-                <Field label={tc('console.from_21819769')}>
+                <Field label={consoleT('console.from_21819769')}>
                     <Input
                         type="date"
                         value={draft.from}
                         onChange={(event) => setDraft({ ...draft, from: event.target.value })}
                     />
                 </Field>
-                <Field label={tc('console.to_f4b06ef6')}>
+                <Field label={consoleT('console.to_f4b06ef6')}>
                     <Input
                         type="date"
                         value={draft.to}
@@ -226,13 +233,14 @@ export default function RadarDecisions({
                 </Field>
                 <div className="sm:col-span-6 flex flex-wrap items-center gap-2">
                     <Button type="submit">
-                        <Icon name="search" className="w-4 h-4" />
-                        {tc('console.filter_638e249f')}
+                        {consoleRich('console._part1_filter_735b6e83', {
+                            part1: <Icon name="search" className="w-4 h-4" />,
+                        })}
                     </Button>
                     {filtered && (
                         <Button asChild variant="ghost">
                             <Link href={window.location.pathname}>
-                                {tc('console.clear_filters_7179ea00')}
+                                {consoleT('console.clear_filters_7179ea00')}
                             </Link>
                         </Button>
                     )}
@@ -247,16 +255,16 @@ export default function RadarDecisions({
                             equivalent="radar.decisions.list"
                             title={
                                 filtered
-                                    ? tc('console.no_decisions_match_db5e0252')
-                                    : tc('console.no_decisions_yet_a30edf59')
+                                    ? consoleText('console.no_decisions_match_db5e0252')
+                                    : consoleText('console.no_decisions_yet_a30edf59')
                             }
                             description={
                                 filtered
-                                    ? tc(
-                                          'console.nothing_recorded_matches_these_filters_widen_804705cd',
+                                    ? consoleText(
+                                          'console.nothing_recorded_matches_these_filters_widen_the_range_804705cd',
                                       )
-                                    : tc(
-                                          'console.every_sign_in_and_sign_up_in_this_environmen_083be88e',
+                                    : consoleText(
+                                          'console.every_sign_in_and_sign_up_in_this_environment_is_judged_083be88e',
                                       )
                             }
                         />
@@ -280,19 +288,19 @@ export default function RadarDecisions({
             {(nextHref !== null || firstHref !== null) && (
                 <nav
                     className="mt-4 flex items-center gap-2"
-                    aria-label={tc('console.pagination_7b3f674b')}
+                    aria-label={consoleT('console.pagination_7b3f674b')}
                 >
                     {firstHref !== null && (
                         <Button asChild variant="ghost">
                             <Link href={firstHref} preserveScroll>
-                                {tc('console.newest_d15efa17')}
+                                {consoleT('console.newest_d15efa17')}
                             </Link>
                         </Button>
                     )}
                     {nextHref !== null && (
                         <Button asChild>
                             <Link href={nextHref} preserveScroll>
-                                {tc('console.older_03281c88')}
+                                {consoleT('console.older_03281c88')}
                             </Link>
                         </Button>
                     )}
@@ -315,9 +323,22 @@ function DecisionRow({
     onToggle: () => void;
     listStoreHref: string;
 }) {
-    const { locale } = useTranslator();
-
-    const { t: tc } = useTranslator();
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
+    const riskOutcomeLabels: Record<string, string> = {
+        allow: consoleT('console.allow_e213c161'),
+        flag: consoleT('console.flag_807d0fbc'),
+        challenge: consoleT('console.challenge_27cf1792'),
+        step_up: consoleT('console.require_mfa_e35be609'),
+        reject: consoleT('console.block_211d0bb8'),
+    };
+    const modeLabels: Record<string, string> = {
+        monitor: consoleT('console.monitor_4c2e1df4'),
+        enforce: consoleT('console.enforce_3f7e3034'),
+    };
 
     const deny = useForm({ list: 'deny', kind: 'device', value: decision.device ?? '', note: '' });
 
@@ -331,12 +352,12 @@ function DecisionRow({
             >
                 <Pill tone={VERDICT_TONE[decision.verdict]}>{decision.verdict}</Pill>
                 {!decision.enforced && decision.verdict !== 'allow' && (
-                    <Badge>{tc('console.monitor_only_398d456f')}</Badge>
+                    <Badge>{consoleT('console.monitor_only_398d456f')}</Badge>
                 )}
                 <span className="text-sm font-medium">
                     {decision.flow === 'sign_up'
-                        ? tc('console.sign_up_3cc08ebe')
-                        : tc('console.sign_in_5bbbe531')}
+                        ? consoleText('console.sign_up_3cc08ebe')
+                        : consoleText('console.sign_in_5bbbe531')}
                     {decision.method !== null && decision.flow === 'sign_in' && (
                         <span style={{ color: 'var(--faint)' }}>
                             {' '}
@@ -345,7 +366,7 @@ function DecisionRow({
                     )}
                 </span>
                 <span className="text-sm" style={{ color: 'var(--muted)' }}>
-                    {decision.rule_name ?? tc('console.no_rule_matched_c849aafd')}
+                    {decision.rule_name ?? consoleRuntimeText('console.no_rule_matched_c849aafd')}
                 </span>
                 {decision.country !== null && <Badge tone="info">{decision.country}</Badge>}
                 {decision.email_domain !== null && (
@@ -354,7 +375,7 @@ function DecisionRow({
                     </span>
                 )}
                 <span className="ml-auto text-xs" style={{ color: 'var(--faint)' }}>
-                    {absoluteTime(decision.assessed_at, locale)}
+                    {absoluteTime(decision.assessed_at, consoleLocale)}
                 </span>
             </button>
 
@@ -365,12 +386,12 @@ function DecisionRow({
                             className="text-xs font-semibold uppercase tracking-wide"
                             style={{ color: 'var(--faint)' }}
                         >
-                            {tc('console.why_d3ae14a5')}
+                            {consoleT('console.why_d3ae14a5')}
                         </h3>
                         <ul className="mt-2 grid gap-1 text-sm">
                             {decision.reasons.length === 0 ? (
                                 <li style={{ color: 'var(--muted)' }}>
-                                    {tc('console.nothing_fired_d12bb320')}
+                                    {consoleT('console.nothing_fired_d12bb320')}
                                 </li>
                             ) : (
                                 decision.reasons.map((reason) => <li key={reason}>{reason}</li>)
@@ -389,9 +410,17 @@ function DecisionRow({
                             </div>
                         )}
                         <p className="mt-3 text-xs" style={{ color: 'var(--faint)' }}>
-                            {tc('console.risk_score_64948c4c')}
-                            {decision.risk_score} ({decision.risk_outcome.replace('_', ' ')}
-                            {tc('console.recorded_under_606b659d')} {decision.mode}
+                            {consoleRich(
+                                'console.risk_score_part1_part2_recorded_under_part3_part4_ae0bca2b',
+                                {
+                                    part1: decision.risk_score,
+                                    part2:
+                                        riskOutcomeLabels[decision.risk_outcome] ??
+                                        decision.risk_outcome,
+                                    part3: ' ',
+                                    part4: modeLabels[decision.mode] ?? decision.mode,
+                                },
+                            )}
                         </p>
                     </div>
                     <div>
@@ -399,7 +428,7 @@ function DecisionRow({
                             className="text-xs font-semibold uppercase tracking-wide"
                             style={{ color: 'var(--faint)' }}
                         >
-                            {tc('console.facts_3683709d')}
+                            {consoleT('console.facts_3683709d')}
                         </h3>
                         <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
                             {Object.entries(decision.facts).map(([key, value]) => (
@@ -413,9 +442,13 @@ function DecisionRow({
                             {decision.asn !== null && (
                                 <div className="contents">
                                     <dt className="mono text-xs" style={{ color: 'var(--muted)' }}>
-                                        {tc('console.asn_103a0c3e')}
+                                        {consoleT('console.asn_103a0c3e')}
                                     </dt>
-                                    <dd className="mono text-xs">AS{decision.asn}</dd>
+                                    <dd className="mono text-xs">
+                                        {consoleRich('console.as_part1_dc2f6a80', {
+                                            part1: decision.asn,
+                                        })}
+                                    </dd>
                                 </div>
                             )}
                         </dl>
@@ -425,8 +458,9 @@ function DecisionRow({
                                     className="mono text-xs break-all"
                                     style={{ color: 'var(--faint)' }}
                                 >
-                                    {tc('console.device_63be5889')}
-                                    {decision.device.slice(0, 16)}…
+                                    {consoleRich('console.device_part1_028c2e55', {
+                                        part1: decision.device.slice(0, 16),
+                                    })}
                                 </span>
                                 <Button
                                     size="sm"
@@ -436,7 +470,7 @@ function DecisionRow({
                                         deny.post(listStoreHref, { preserveScroll: true })
                                     }
                                 >
-                                    {tc('console.deny_this_device_eeb0f48f')}
+                                    {consoleT('console.deny_this_device_eeb0f48f')}
                                 </Button>
                                 {deny.errors.value !== undefined && (
                                     <p role="alert" className="field-error">

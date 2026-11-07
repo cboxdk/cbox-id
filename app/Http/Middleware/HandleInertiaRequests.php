@@ -114,9 +114,12 @@ final class HandleInertiaRequests extends Middleware
              * unearned certification badge in the default configuration would put words
              * in the mouth of everybody who installs this.
              */
-            'app' => [
+            'app' => fn (): array => [
                 'name' => config('cbox-id.branding.name', 'Cbox ID'),
-                'tagline' => config('cbox-id.branding.tagline'),
+                // Translate the shipped headline; a deployment's own wording stays authored.
+                'tagline' => config('cbox-id.branding.tagline') === trans('hosted.layout.hero_title', [], 'en')
+                    ? __('hosted.layout.hero_title')
+                    : config('cbox-id.branding.tagline'),
                 'trustLine' => config('cbox-id.branding.trust_line'),
                 'year' => date('Y'),
             ],

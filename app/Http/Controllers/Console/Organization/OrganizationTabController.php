@@ -39,7 +39,7 @@ abstract readonly class OrganizationTabController extends ConsoleController
      */
     protected function organization(): Organization
     {
-        abort_unless(app(EnvironmentAdminAuth::class)->check(), 403);
+        abort_unless((request()->isMethodSafe() ? app(EnvironmentAdminAuth::class)->canRead() : app(EnvironmentAdminAuth::class)->check()), 403);
 
         $id = $this->routeOrganizationId();
 

@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { type ReactNode, useState } from 'react';
 import { CodeBlock } from './CodeBlock';
 import { Icon } from './Icon';
@@ -64,14 +64,17 @@ export function SnippetTabs({ snippets, label, value, onValueChange }: SnippetTa
 }
 
 function SnippetPanel({ snippet }: { snippet: CodeSnippet }) {
-    const { t: tc } = useUiTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { rich: consoleRich } = useConsoleTranslator();
     return (
         <div>
             <CodeBlock
                 code={snippet.code}
                 install={snippet.install}
-                copyLabel={`Copy ${snippet.label}`}
+                copyLabel={consoleFinalText('console.copy_part1_99ee9514', {
+                    part1: snippet.label,
+                })}
                 caption={snippet.note}
             />
 
@@ -89,9 +92,10 @@ function SnippetPanel({ snippet }: { snippet: CodeSnippet }) {
                         className="underline"
                         style={{ color: 'var(--accent-strong)' }}
                     >
-                        {snippet.label}
-                        {tc('console.sdk_reference_a4132d5d', ' SDK reference')}
-                        <Icon name="external" className="w-3 h-3 inline ml-0.5" />
+                        {consoleRich('console._part1_sdk_reference_part2_7f4330a4', {
+                            part1: snippet.label,
+                            part2: <Icon name="external" className="w-3 h-3 inline ml-0.5" />,
+                        })}
                     </a>
                 </p>
             )}

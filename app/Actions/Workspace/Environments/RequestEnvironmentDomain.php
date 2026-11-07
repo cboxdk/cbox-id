@@ -15,6 +15,7 @@ use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
@@ -64,7 +65,7 @@ final readonly class RequestEnvironmentDomain implements Action
         try {
             $this->domains->request($environment->id, trim($context->string('domain')));
         } catch (InvalidCustomDomain $e) {
-            throw ActionRefused::because('invalid_domain', $e->getMessage(), 'domain');
+            throw ActionRefused::because('invalid_domain', FrameworkMessage::from($e), 'domain');
         }
 
         $fresh = $environment->fresh() ?? $environment;

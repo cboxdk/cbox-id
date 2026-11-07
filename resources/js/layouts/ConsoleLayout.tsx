@@ -1,6 +1,5 @@
 import { SupportLauncher } from '@/components/support/SupportLauncher';
-import { UiTranslationProvider } from '@/i18n/ui';
-import { StepUpDialog } from '@/chrome/StepUpDialog';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { AppSwitcher } from '@/chrome/AppSwitcher';
@@ -8,6 +7,7 @@ import { AccountMenu } from '@/chrome/AccountMenu';
 import { ConsoleLanguagePicker } from '@/chrome/ConsoleLanguagePicker';
 import { EmailConfirmationBanner, ImpersonationBanner, SandboxBanner } from '@/chrome/Banners';
 import { CommandPalette } from '@/chrome/CommandPalette';
+import { StepUpDialog } from '@/chrome/StepUpDialog';
 import { ContextSwitcher } from '@/chrome/ContextSwitcher';
 import { MobileNav } from '@/chrome/MobileNav';
 import { Rail } from '@/chrome/Rail';
@@ -51,19 +51,9 @@ export interface ConsoleLayoutProps {
  * own and a way out, so an operator on the root host moved between two consoles. It is an
  * area of the console now, and the line above the page is what says so.
  */
-export default function ConsoleLayout(props: ConsoleLayoutProps) {
-    const translator = useTranslator();
-    return (
-        <UiTranslationProvider translator={translator}>
-            <ConsoleShell {...props} />
-        </UiTranslationProvider>
-    );
-}
-
-function ConsoleShell({ children: page }: ConsoleLayoutProps) {
-    const { t: tc } = useTranslator();
-
-    const { shell, auth, title, environment, organizationHub, supportSessionUrl } = usePage<SharedProps>().props;
+export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { shell, auth, title, environment, organizationHub, i18n, supportSessionUrl } = usePage<SharedProps>().props;
 
     // A page under `/admin/organizations/{organization}/…` is a tab of that organization's
     // page: its header and tabs go around it, whichever page it is.
@@ -74,8 +64,7 @@ function ConsoleShell({ children: page }: ConsoleLayoutProps) {
             page
         );
 
-    const { locale } = useTranslator();
-    useDocumentLanguage(locale);
+    useDocumentLanguage(i18n?.locale ?? 'en');
 
     const [pinned, setPinned] = useState(shell?.navPinned ?? true);
     // Read in a lazy initialiser rather than an effect: reading it after mount renders
@@ -194,10 +183,12 @@ function ConsoleShell({ children: page }: ConsoleLayoutProps) {
                     areas={shell.areas}
                     heading={
                         onEnvironment
-                            ? (standingIn ?? environment.name ?? tc('console.environment_9e471951'))
+                            ? (standingIn ??
+                              environment.name ??
+                              consoleShortText('console.environment_9e471951'))
                             : (workspace?.label ??
                               organization?.name ??
-                              tc('console.console_29a40861'))
+                              consoleShortText('console.console_29a40861'))
                     }
                     subheading={onEnvironment ? (workspace?.label ?? null) : null}
                     user={auth.user}
@@ -220,9 +211,9 @@ function ConsoleShell({ children: page }: ConsoleLayoutProps) {
                             {/* "</> API": this page's actions as REST, MCP, CLI and SDK calls. */}
                             <PageApiEquivalents />
                             <CommandPalette areas={shell.areas} />
+                            <SupportLauncher sessionUrl={supportSessionUrl ?? null} />
                             <ConsoleLanguagePicker />
 
-                            <SupportLauncher sessionUrl={supportSessionUrl ?? null} />
                             <AppSwitcher />
                             <AccountMenu
                                 user={auth.user}
@@ -237,7 +228,10 @@ function ConsoleShell({ children: page }: ConsoleLayoutProps) {
                     </header>
 
                     <main id="main-content" className="flex-1 overflow-y-auto canvas-gradient">
-                        <div className="p-6 lg:p-8 mx-auto w-full" style={{ maxWidth: '72rem' }}>
+                        <div
+                            className="p-6 pb-24 lg:p-8 mx-auto w-full"
+                            style={{ maxWidth: '72rem' }}
+                        >
                             {shell.actsOn !== null && <ActsOn actsOn={shell.actsOn} />}
                             {shell.notice !== null && (
                                 <div className="cbx-shell-notice" role="note">

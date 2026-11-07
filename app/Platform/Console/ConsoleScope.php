@@ -11,6 +11,7 @@ use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\InstallationOrganization;
+use App\Platform\NativeProduct\NativeProductAccess;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -599,7 +600,7 @@ class ConsoleScope
      */
     public function signedIn(): bool
     {
-        return $this->subject->check() || $this->environmentAdmin->check();
+        return $this->subject->check() || $this->environmentAdmin->canRead();
     }
 
     /**
@@ -612,7 +613,7 @@ class ConsoleScope
      */
     private function actingSubjectId(): ?string
     {
-        if ($this->environmentAdmin->check()) {
+        if ($this->environmentAdmin->canRead()) {
             return null;
         }
 
@@ -696,7 +697,7 @@ class ConsoleScope
         //
         // Dropping this half grants the whole Identity-platform area to every owner of
         // every tenant organization on the install.
-        if (! $this->ownsProducts($organizationId)) {
+        if (! $this->ownsProducts($organizationId) && ! $this->planes->onAccountPlane()) {
             return null;
         }
 
@@ -762,7 +763,15 @@ class ConsoleScope
     {
         $role = $this->membershipRole();
 
-        return $role === null ? null : OrganizationCapabilities::of($role);
+        if ($role === null) {
+            return null;
+        }
+
+        $organizationId = $this->organizationId();
+        $subjectId = $this->actorId();
+
+        return $organizationId === null || $subjectId === '' ? null
+            : app(NativeProductAccess::class)->forWebSubject($subjectId, $organizationId);
     }
 
     /** Whether the organization being administered owns identity providers of its own. */

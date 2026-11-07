@@ -6,6 +6,7 @@ use App\Http\Middleware\PointAtFirstRun;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\Install\Contracts\PlatformInstaller;
+use App\Platform\NativeProduct\NativeProductManifest;
 use App\Platform\PlatformAuth;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -226,11 +227,12 @@ it('keeps the most-loaded console pages within budget', function (string $route,
 })->with([
     'dashboard' => ['dashboard', 75],
     // The live MFA check adds three bounded reads (memberships, TOTP and SMS).
-    // Repeated statements and per-organization growth remain checked below.
-    // One bounded existence read for the shared app catalog; no per-organization reads.
-    // One bounded read of the signed-in person's shared language preference.
-    // One request-memoized lookup enforces mandatory operator MFA.
-    'settings' => ['settings', 36],
+    // Session metadata capture and shared user preferences add bounded reads
+    // and an initial metadata write (35 observed). Per-row growth and repeated
+    // console statements remain independently checked below.
+    // The app switcher adds one bounded catalog-existence read. Preference resolution
+    // runs once; current subject and membership checks remain fresh.
+    'settings' => ['settings', 39],
 ]);
 
 /**
@@ -514,7 +516,8 @@ it('does not pay a per-row query on the roles list', function (): void {
 
     // ROWS FIRST, THEN QUERIES — the trap the member roster fell into for months. A page
     // that renders nothing is always cheap.
-    expect(roleRows('roles'))->toBe(3, 'the roles list rendered no rows — the fixture is wrong, not the page');
+    $nativeRoles = count(NativeProductManifest::ROLES);
+    expect(roleRows('roles'))->toBe(3 + $nativeRoles, 'the roles list must render the fixture and installed native roles');
 
     // Warm, so the first request's installer probes and platform-root lookup are not
     // counted as if they were the page's.
@@ -527,7 +530,7 @@ it('does not pay a per-row query on the roles list', function (): void {
         }
     });
 
-    expect(roleRows('roles'))->toBe(21);
+    expect(roleRows('roles'))->toBe(21 + $nativeRoles);
 
     $large = queriesFor('roles');
 

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Invitations\InvitationFields;
 use App\Mail\InvitationMail;
 use App\Models\InvitationContext;
 use App\Models\InvitationRoleGrant;
@@ -304,3 +305,27 @@ function mailedInvitationToken(): string
 
     return $matches[1] ?? '';
 }
+
+it('invites an existing organization member into an app without changing shared membership', function (): void {
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $app = returnApp($org->id);
+    $subject = app(Subjects::class)->create('existing-app@acme.test', 'Existing');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Admin);
+    $role = app(Roles::class)->define($org->id, 'App reader', clientId: $app->client_id);
+    inviteToDirectory([
+        'email' => 'existing-app@acme.test',
+        'accessRoles' => [$role->id],
+        'client_id' => $app->client_id,
+        'return_to' => 'https://tasks.acme.test/welcome',
+    ])->assertSessionHasNoErrors();
+    $token = mailedInvitationToken();
+    app(PlatformAuth::class)->logout(request());
+    $this->post(route('invitation.accept.store', $token))->assertRedirect();
+    $invitation = Invitation::query()->where('email', 'existing-app@acme.test')->sole();
+    expect($invitation->status)->toBe(InvitationStatus::Accepted)
+        ->and($invitation->accepted_by)->toBe($subject->id)
+        ->and(app(Memberships::class)->of($org->id, $subject->id)->role)->toBe(MembershipRole::Admin)
+        ->and(RoleAssignment::query()->where('organization_id', $org->id)->where('user_id', $subject->id)->where('role_id', $role->id)->exists())->toBeTrue();
+    $receipt = InvitationFields::present($invitation);
+    expect($receipt['client_id'])->toBe($app->client_id)->and($receipt['accepted_by'])->toBe($subject->id);
+});

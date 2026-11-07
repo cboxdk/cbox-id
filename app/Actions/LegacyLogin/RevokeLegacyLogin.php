@@ -6,6 +6,7 @@ namespace App\Actions\LegacyLogin;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -46,7 +47,7 @@ final readonly class RevokeLegacyLogin implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $declaration = $this->approvals->current()
-            ?? throw ActionRefused::because('no_declaration', 'No app has declared a legacy login endpoint.');
+            ?? throw ActionRefused::because('no_declaration', new ActionMessage('console.no_app_has_declared_a_legacy_login_endpoint_08ad3a5c'));
 
         if ($declaration->isApproved()) {
             $this->approvals->revoke();

@@ -62,7 +62,8 @@ it('gives the workspace console both of its kinds of key as tabs of one page', f
 
 it('draws only the tabs a person may open', function (): void {
     ['organization' => $workspace] = provisionAccount();
-    [, $developerId] = addMember($workspace->id, MembershipRole::Developer, 'dev@acme.example');
+    [$developer, $developerId] = addMember($workspace->id, MembershipRole::Developer, 'dev@acme.example');
+    grantNativeProductRoles($developer, ['developer']);
 
     signInAsMember($developerId);
 

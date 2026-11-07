@@ -10,7 +10,7 @@ it('switches the environment console to Danish and keeps the choice on navigatio
     actAsEnvironmentAdminOfATenant();
 
     $page = visit('/admin');
-    $page->click('[data-testid="console-language-picker"]')
+    $page->click('button[aria-label="'.__('hosted.language.label', [], 'en').'"]')
         ->click('[role="menuitemradio"]:has-text("Dansk")')
         ->assertSee('Brugere og organisationer')
         ->assertNoJavaScriptErrors();
@@ -21,7 +21,7 @@ it('switches the environment console to Danish and keeps the choice on navigatio
     $page->screenshot(false, 'console-languages-danish-users');
     expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
 
-    $page->click('[data-testid="console-language-picker"]')
+    $page->click('button[aria-label="'.__('hosted.language.label', [], 'da').'"]')
         ->click('[role="menuitemradio"]:has-text("English")')
         ->assertSee('New user')
         ->assertNoJavaScriptErrors();
@@ -31,7 +31,7 @@ it('switches the environment console to Danish and keeps the choice on navigatio
 it('renders platform administration in Danish at a phone width', function (): void {
     actAsOperator();
     $page = visit('/admin/platform/workspaces')->on()->mobile()->assertSee('Workspaces');
-    $page->click('[data-testid="console-language-picker"]')
+    $page->click('button[aria-label="'.__('hosted.language.label', [], 'en').'"]')
         ->click('[role="menuitemradio"]:has-text("Dansk")');
     $page->assertSee('Arbejdsområder')->assertNoJavaScriptErrors();
     expect($page->script('document.documentElement.lang'))->toBe('da')
@@ -42,6 +42,7 @@ it('renders platform administration in Danish at a phone width', function (): vo
 it('switches through every additional language from the mobile topbar', function (): void {
     actAsEnvironmentAdminOfATenant();
     $page = visit('/admin/users')->on()->mobile()->assertSee('Users');
+    $currentLocale = 'en';
     foreach ([
         ['de', 'Deutsch', 'Benutzer'],
         ['sv', 'Svenska', 'Användare'],
@@ -52,10 +53,11 @@ it('switches through every additional language from the mobile topbar', function
         ['it', 'Italiano', 'Utenti'],
         ['nl', 'Nederlands', 'Gebruikers'],
     ] as [$locale, $name, $title]) {
-        $page->click('[data-testid="console-language-picker"]')
+        $page->click('button[aria-label="'.__('hosted.language.label', [], $currentLocale).'"]')
             ->click('[role="menuitemradio"]:has-text("'.$name.'")')
             ->assertSee($title)
             ->assertNoJavaScriptErrors();
+        $currentLocale = $locale;
         expect($page->script('document.documentElement.lang'))->toBe($locale)
             ->and($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
         if (in_array($locale, ['de', 'fi', 'nl'], true)) {

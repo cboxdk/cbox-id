@@ -12,9 +12,9 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Resolve the hosted sign-in and Admin Portal language from their own policy.
- * Runs after the console's default resolver on hosted route groups, so an OAuth
- * ui_locales request and the environment's enabled languages remain authoritative.
+ * Language resolution for hosted sign-in, MFA, invitations, consent and Admin Portal.
+ * These routes follow the visitor and environment preferences. Authenticated console
+ * routes use ResolveConsoleLocale and the subject's shared language preference instead.
  *
  * Runs BEFORE the controller, not as a view concern: validation messages, flash
  * statuses, page titles and the mail a request sends are all produced by PHP on the way

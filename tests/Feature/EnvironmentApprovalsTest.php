@@ -153,8 +153,18 @@ it('shows one page of requests and pays a flat number of queries for it', functi
     // The page of rows proves the budget is about a FULL page rather than an empty one: a
     // query-count assertion over a page that rendered nothing is the cheapest green there
     // is. And every row carries a resolved name, which is what the per-row query bought.
+    $fullPageQueries = $queries;
     expect($rows)->toHaveCount(25)
-        ->and(collect($rows)->pluck('app')->unique()->all())->toBe(['Agent'])
-        // One bounded read of the administrator's shared language, independent of row count.
-        ->and($queries)->toBeLessThan(16);
+        ->and(collect($rows)->pluck('app')->unique()->all())->toBe(['Agent']);
+
+    // The shared console now also reads the actor's language preferences. Compare the
+    // full page with one row so fixed middleware work cannot mask per-row lookups.
+    $keep = BackchannelAuthRequest::query()->value('id');
+    BackchannelAuthRequest::query()->where('id', '!=', $keep)->delete();
+    $queries = 0;
+    $single = (array) test()->get(route('environment.approvals'))->assertOk()->inertiaProps('requests');
+
+    expect($single)->toHaveCount(1)
+        ->and($fullPageQueries)->toBe($queries)
+        ->and($fullPageQueries)->toBeLessThan(30);
 });

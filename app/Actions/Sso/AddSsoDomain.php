@@ -6,6 +6,7 @@ namespace App\Actions\Sso;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -66,7 +67,7 @@ final readonly class AddSsoDomain implements Action, Preflight
         try {
             $record = $this->domains->add($organizationId, $domain);
         } catch (DomainAlreadyClaimed) {
-            throw ActionRefused::because('domain_claimed', 'That domain is already claimed by another organization.', 'domain');
+            throw ActionRefused::because('domain_claimed', new ActionMessage('console.that_domain_is_already_claimed_by_another_organization_792189db'), 'domain');
         }
 
         $record->refresh();
@@ -90,7 +91,7 @@ final readonly class AddSsoDomain implements Action, Preflight
         $domain = strtolower(trim($context->string('domain')));
 
         if (preg_match(self::HOSTNAME, $domain) !== 1) {
-            throw ActionRefused::because('invalid_domain', 'Enter a valid domain, e.g. acme.com.', 'domain');
+            throw ActionRefused::because('invalid_domain', new ActionMessage('console.enter_a_valid_domain_e_g_acme_com_2049a561'), 'domain');
         }
 
         return [$organizationId, $domain];

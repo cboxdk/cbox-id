@@ -22,11 +22,9 @@ use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\ConnectDirectoryRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
-use App\Platform\Console\Vocabulary;
 use App\Platform\Entitlements;
 use App\Platform\Enums\PortalIntent;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use App\Platform\OrgAccessRoles;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\AccessControl\Contracts\GroupRoleMappings;
@@ -96,7 +94,7 @@ final readonly class DirectoryController extends ConsoleController
             ->whereIn('id', $directories->pluck('organization_id')->filter()->unique())
             ->pluck('name', 'id');
 
-        return $this->page('console/directories/index', ConsoleStrings::text(Vocabulary::DIRECTORY_SYNC), [
+        return $this->page('console/directories/index', __('console.directory_sync_ea18bba8'), [
             'help' => HelpProps::for(HelpTopic::SyncUsersIn),
             'directories' => $directories->getCollection()->map(fn (Directory $directory): array => [
                 'id' => $directory->id,
@@ -284,7 +282,7 @@ final readonly class DirectoryController extends ConsoleController
         $this->inertia->flash('newToken', $registered->token);
 
         return to_route($this->scope->routeName('directories.show'), $registered->directory->id)
-            ->with('status', __('console.directory_registered_copy_the_bearer_token_i_6524a601'));
+            ->with('status', __('console.directory_registered_copy_the_bearer_token_it_is_shown_6524a601'));
     }
 
     /**
@@ -354,7 +352,7 @@ final readonly class DirectoryController extends ConsoleController
         $directory = $result->value;
 
         return to_route($this->scope->routeName('directories.show'), $directory->id)
-            ->with('status', $provider->label().__('console.connected_users_are_syncing_e99da93d'));
+            ->with('status', __('console._part1_connected_users_are_syncing_4b9dcad1', ['part1' => $provider->label()]));
     }
 
     public function show(string $directory, GroupRoleMappings $mappings, OrgAccessRoles $catalog): Response
@@ -486,7 +484,7 @@ final readonly class DirectoryController extends ConsoleController
         $directory = $result->value;
 
         return to_route($this->scope->routeName('directories.show'), $directory->id)
-            ->with('status', $directory->provider->label().__('console.connected_the_first_sync_is_running_24dbaefe'));
+            ->with('status', __('console._part1_connected_the_first_sync_is_running_d5199cb2', ['part1' => $directory->provider->label()]));
     }
 
     /** Pull now, on a worker. `full` asks an incremental HR system for everybody. */
@@ -555,7 +553,7 @@ final readonly class DirectoryController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result->withInput($request->except('credentials'))
-            : back()->with('status', __('console.credentials_replaced_the_next_sync_is_a_full_0b822e7d'));
+            : back()->with('status', __('console.credentials_replaced_the_next_sync_is_a_full_one_0b822e7d'));
     }
 
     /**
@@ -626,7 +624,7 @@ final readonly class DirectoryController extends ConsoleController
         // Only meaningful for a SCIM (push) directory — a pull directory authenticates
         // OUTWARD to the provider's API and has no inbound token.
         if ($model->provider !== DirectoryProvider::Scim) {
-            return back()->with('error', __('console.a_pull_directory_authenticates_to_the_provid_7816b2af'));
+            return back()->with('error', __('console.a_pull_directory_authenticates_to_the_provider_and_has_7816b2af'));
         }
 
         // LAST, after authorization and after the provider refusal.
@@ -650,7 +648,7 @@ final readonly class DirectoryController extends ConsoleController
         // Shown once on the next render; only its hash persists.
         $this->inertia->flash('newToken', $result->value);
 
-        return back()->with('status', __('console.bearer_token_rotated_the_previous_token_no_l_371476c2'));
+        return back()->with('status', __('console.bearer_token_rotated_the_previous_token_no_longer_works_371476c2'));
     }
 
     public function toggle(string $directory): RedirectResponse
@@ -670,9 +668,7 @@ final readonly class DirectoryController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', $resume
-            ? __('console.directory_enabled_provisioning_resumes_c7f84d11')
-            : __('console.directory_paused_provisioning_is_suspended_fb2173ec'));
+        return back()->with('status', $resume ? __('console.directory_enabled_provisioning_resumes_c7f84d11') : __('console.directory_paused_provisioning_is_suspended_fb2173ec'));
     }
 
     public function destroy(string $directory): RedirectResponse

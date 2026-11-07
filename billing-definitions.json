@@ -1,0 +1,139 @@
+{
+    "version": "d77639884af577f4",
+    "features": [
+        {
+            "key": "cbox-id.sso",
+            "name": "Single sign-on"
+        },
+        {
+            "key": "cbox-id.scim",
+            "name": "Directory provisioning"
+        },
+        {
+            "key": "cbox-id.audit_logs",
+            "name": "Organization audit logs"
+        },
+        {
+            "key": "cbox-id.environments",
+            "name": "Environments per project",
+            "type": "config",
+            "value_type": "integer"
+        }
+    ],
+    "meters": [
+        {
+            "key": "cbox-id.auth.login",
+            "name": "Login",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.session",
+            "name": "Session",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.user",
+            "name": "User",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.mfa_enrolled",
+            "name": "Mfa enrolled",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.passkey",
+            "name": "Passkey",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.passkey_auth",
+            "name": "Passkey auth",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.otp",
+            "name": "Otp",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.identity_linked",
+            "name": "Identity linked",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.organization",
+            "name": "Organization",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.member_added",
+            "name": "Member added",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.invitation",
+            "name": "Invitation",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.invitation_accepted",
+            "name": "Invitation accepted",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.role_assigned",
+            "name": "Role assigned",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.service_account",
+            "name": "Service account",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.ciba",
+            "name": "Ciba",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.domain_verified",
+            "name": "Domain verified",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.governance_campaign",
+            "name": "Governance campaign",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.member_removed",
+            "name": "Member removed",
+            "unit": "events",
+            "aggregation": "sum"
+        },
+        {
+            "key": "cbox-id.auth.directory_user",
+            "name": "Directory user",
+            "unit": "events",
+            "aggregation": "sum"
+        }
+    ]
+}

@@ -1,4 +1,5 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useFormatTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { relativeTime } from '@/lib/time';
@@ -40,10 +41,13 @@ export interface PendingInvitationsProps {
  * and inviting them again undoes it.
  */
 export function PendingInvitations({ invitations, total }: PendingInvitationsProps) {
-    const { locale } = useUiTranslator();
+    const { t: consoleNestedText } = useConsoleTranslator();
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
-    const { t: tc } = useUiTranslator();
-
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [withdrawing, setWithdrawing] = useState<PendingInvitation | null>(null);
     const [sending, setSending] = useState<string | null>(null);
 
@@ -53,21 +57,21 @@ export function PendingInvitations({ invitations, total }: PendingInvitationsPro
 
     return (
         <Panel
-            title={tc('console.invited_not_joined_yet_c4cd0dec', 'Invited, not joined yet')}
+            title={consoleT('console.invited_not_joined_yet_c4cd0dec')}
             description={
                 <>
-                    {tc(
-                        'console.each_link_works_until_it_expires_or_you_with_c5668c67',
-                        'Each link works until it expires or you withdraw it.',
-                    )}
-                    {total !== undefined && total > invitations.length && (
-                        <>
-                            {' '}
-                            {tc('console.showing_the_d20ab9b1', 'Showing the ')}
-                            {invitations.length}
-                            {tc('console.most_recent_of_250cb204', ' most recent of ')}
-                            {total}.
-                        </>
+                    {consoleRich(
+                        'console.each_link_works_until_it_expires_or_you_withdraw_it_par_d620d404',
+                        {
+                            part1: total !== undefined && total > invitations.length && (
+                                <>
+                                    {consoleRich(
+                                        'console._part1_showing_the_part2_most_recent_of_part3_679247ba',
+                                        { part1: ' ', part2: invitations.length, part3: total },
+                                    )}
+                                </>
+                            ),
+                        },
                     )}
                 </>
             }
@@ -79,22 +83,33 @@ export function PendingInvitations({ invitations, total }: PendingInvitationsPro
                         className="flex flex-wrap items-center gap-3 rounded-lg border px-3 py-2"
                         style={{ borderColor: 'var(--border)' }}
                     >
-                        <div className="min-w-0 flex-1">
-                            <p className="text-sm truncate">
-                                {invitation.email}{' '}
-                                <Badge className="ml-1">{invitation.roleLabel}</Badge>
+                        <div className="min-w-0 flex-1 basis-56">
+                            <p className="text-sm flex flex-wrap items-center gap-1">
+                                <span className="break-all">{invitation.email}</span>
+                                <Badge className="shrink-0">{invitation.roleLabel}</Badge>
                             </p>
                             <p className="text-xs truncate" style={{ color: 'var(--faint)' }}>
-                                {invitation.inviterName !== null
-                                    ? `invited by ${invitation.inviterName} `
-                                    : tc('console.invited_98b2a312', 'invited ')}
-                                {invitation.invitedAt === null
-                                    ? tc('console.recently_59f7a3dd', 'recently')
-                                    : relativeTime(invitation.invitedAt, locale)}
-                                {' · '}
-                                {tc('console.expires_22206a25', 'expires ')}
-                                {relativeTime(invitation.expiresAt, locale)}
-                                {invitation.appName !== null && ` · for ${invitation.appName}`}
+                                {[
+                                    invitation.inviterName !== null
+                                        ? consoleNestedText('console.invited_by_part1_5e67e47c', {
+                                              part1: invitation.inviterName,
+                                          })
+                                        : null,
+                                    consoleText('console.pending_invitation_dates', {
+                                        invited:
+                                            invitation.invitedAt === null
+                                                ? consoleText('console.recently_59f7a3dd')
+                                                : relativeTime(invitation.invitedAt, consoleLocale),
+                                        expires: relativeTime(invitation.expiresAt, consoleLocale),
+                                    }),
+                                    invitation.appName !== null
+                                        ? consoleText('console.pending_invitation_application', {
+                                              application: invitation.appName,
+                                          })
+                                        : null,
+                                ]
+                                    .filter(Boolean)
+                                    .join(' · ')}
                             </p>
                         </div>
 
@@ -103,7 +118,10 @@ export function PendingInvitations({ invitations, total }: PendingInvitationsPro
                                 size="sm"
                                 className="shrink-0"
                                 loading={sending === invitation.id}
-                                aria-label={`Send the invitation to ${invitation.email} again`}
+                                aria-label={consoleFinalText(
+                                    'console.send_the_invitation_to_part1_again_06d2bc79',
+                                    { part1: invitation.email },
+                                )}
                                 onClick={() => {
                                     const url = invitation.resendUrl;
 
@@ -119,7 +137,7 @@ export function PendingInvitations({ invitations, total }: PendingInvitationsPro
                                     );
                                 }}
                             >
-                                {tc('console.send_again_feead925', 'Send again')}
+                                {consoleT('console.send_again_feead925')}
                             </Button>
                         )}
 
@@ -128,10 +146,13 @@ export function PendingInvitations({ invitations, total }: PendingInvitationsPro
                                 size="sm"
                                 className="shrink-0"
                                 style={{ color: 'var(--destructive)' }}
-                                aria-label={`Withdraw the invitation to ${invitation.email}`}
+                                aria-label={consoleFinalText(
+                                    'console.withdraw_the_invitation_to_part1_13c82934',
+                                    { part1: invitation.email },
+                                )}
                                 onClick={() => setWithdrawing(invitation)}
                             >
-                                {tc('console.withdraw_164546a9', 'Withdraw')}
+                                {consoleT('console.withdraw_164546a9')}
                             </Button>
                         )}
                     </li>
@@ -141,15 +162,16 @@ export function PendingInvitations({ invitations, total }: PendingInvitationsPro
             <Dialog
                 open={withdrawing !== null}
                 onOpenChange={(open) => !open && setWithdrawing(null)}
-                title={`Withdraw the invitation to ${withdrawing?.email ?? ''}?`}
-                description={tc(
-                    'console.the_link_they_were_sent_stops_working_immedi_77389b6a',
-                    'The link they were sent stops working immediately, and any roles it carried go with it. You can invite them again afterwards.',
+                title={consoleFinalText('console.withdraw_the_invitation_to_part1_fafedcae', {
+                    part1: withdrawing?.email ?? '',
+                })}
+                description={consoleT(
+                    'console.the_link_they_were_sent_stops_working_immediately_and_a_77389b6a',
                 )}
                 footer={
                     <>
                         <Button onClick={() => setWithdrawing(null)}>
-                            {tc('console.cancel_19766ed6', 'Cancel')}
+                            {consoleT('console.cancel_19766ed6')}
                         </Button>
                         <Button
                             variant="danger"
@@ -162,7 +184,7 @@ export function PendingInvitations({ invitations, total }: PendingInvitationsPro
                                 }
                             }}
                         >
-                            {tc('console.withdraw_164546a9', 'Withdraw')}
+                            {consoleT('console.withdraw_164546a9')}
                         </Button>
                     </>
                 }

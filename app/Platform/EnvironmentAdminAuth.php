@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\NativeProduct\NativeEnvironmentAccess;
+use App\Platform\NativeProduct\NativeProductAccess;
+use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Identity\Contracts\MfaVerification;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -12,9 +15,12 @@ use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipStatus;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
+use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
 
@@ -424,11 +430,14 @@ final class EnvironmentAdminAuth
         // trusted from the session. It is also what keeps an ordinary TENANT subject out:
         // their session resolves in the tenant, not the root, and they hold no membership
         // there either way.
-        $membership = $this->platformRoot->run(
-            fn (): ?Membership => $this->memberships->forUser($subjectId)->first(),
-        );
+        $membership = $this->platformRoot->run(function () use ($subjectId, $hostEnv): ?Membership {
+            $projectId = Environment::query()->whereKey($hostEnv)->value('project_id');
+            $organizationId = is_string($projectId) ? Project::query()->whereKey($projectId)->value('organization_id') : null;
 
-        if ($membership === null) {
+            return is_string($organizationId) ? $this->memberships->of($organizationId, $subjectId) : null;
+        });
+
+        if ($membership === null || $membership->status !== MembershipStatus::Active) {
             return null;
         }
 
@@ -446,19 +455,17 @@ final class EnvironmentAdminAuth
             return null;
         }
 
-        // Capability, not just reachability: administering an environment's control plane
-        // is an owner/admin/developer power. A viewer may be ABLE TO REACH an environment
-        // (all_environments defaults true) but must never administer it — "accessible" is
-        // not "administrable". This is the single chokepoint every guard consults, so the
-        // check holds for both the handoff and admin-login paths.
-        if (! OrganizationCapabilities::of($membership->role)->canManageEnvironments()) {
+        // Read admission is separate from write authority. Shared membership alone
+        // grants neither; the native app's live roles decide both.
+        if (! app(NativeProductAccess::class)
+            ->forWebSubject($subjectId, $membership->organization_id)->canReadEnvironments()) {
             return null;
         }
 
         // Access is re-verified per request: a member whose access to THIS environment was
         // revoked loses the admin session immediately.
         $reachable = $this->platformRoot->run(
-            fn (): array => $this->memberships->accessibleEnvironmentIds(
+            fn (): array => app(NativeEnvironmentAccess::class)->ids(
                 $membership->organization_id,
                 $subjectId,
             ),
@@ -468,11 +475,26 @@ final class EnvironmentAdminAuth
             return null;
         }
 
+        app(ProductAdmission::class)->assertWebGranted($subjectId, $membership->organization_id);
+
         return $membership;
     }
 
-    /** Whether ANYBODY administers this environment on this request — either kind. */
+    /** Whether this request may change the environment. */
     public function check(): bool
+    {
+        if ($this->rootOperator() !== null) {
+            return true;
+        }
+
+        $membership = $this->membership();
+
+        return $membership !== null && app(NativeProductAccess::class)
+            ->forWebSubject($membership->user_id, $membership->organization_id)->canManageEnvironments();
+    }
+
+    /** Read-only product roles can enter without gaining any write authority. */
+    public function canRead(): bool
     {
         return $this->membership() !== null || $this->rootOperator() !== null;
     }

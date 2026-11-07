@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import { CatalogAppIcon } from '@/chrome/AppSwitcher';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -22,15 +23,16 @@ export default function AppCatalog({
     createHref: string;
     help: HelpContent;
 }>) {
+    const { t } = useTranslator();
     return (
         <>
             <PageHeader
-                title="App catalog"
+                title={t('console.catalog_heading')}
                 help={help}
-                description="Publish the apps people see in their app switcher. Each app still controls sign-in and access."
+                description={t('console.catalog_intro')}
             />
             <Button asChild variant="primary">
-                <Link href={createHref}>Add app</Link>
+                <Link href={createHref}>{t('console.catalog_add')}</Link>
             </Button>
             <div className="mt-6 space-y-3">
                 {entries.map((app) => (
@@ -42,25 +44,34 @@ export default function AppCatalog({
                                     {app.name}
                                 </Link>
                                 <p className="text-sm text-[var(--muted-foreground)]">
-                                    {app.enabled ? 'Published' : 'Draft'} ·{' '}
+                                    {app.enabled
+                                        ? t('console.catalog_published')
+                                        : t('console.draft_ebf12ef4')}{' '}
+                                    ·{' '}
                                     {app.audience === 'everyone'
-                                        ? 'Everyone'
-                                        : `Selected ${app.audience}`}{' '}
-                                    · Position {app.position}
+                                        ? t('console.catalog_everyone')
+                                        : t(
+                                              app.audience === 'organizations'
+                                                  ? 'console.catalog_selected_organizations'
+                                                  : 'console.catalog_selected_users',
+                                          )}{' '}
+                                    ·{' '}
+                                    {t('console.catalog_position_value', {
+                                        position: app.position,
+                                    })}
                                 </p>
                             </div>
                             <Button asChild>
-                                <Link href={app.editHref}>Edit</Link>
+                                <Link href={app.editHref}>{t('console.edit_464c4ffd')}</Link>
                             </Button>
                         </div>
                     </Panel>
                 ))}
                 {entries.length === 0 && (
                     <Panel>
-                        <h2 className="font-semibold">Publish your first app</h2>
+                        <h2 className="font-semibold">{t('console.catalog_first')}</h2>
                         <p className="mt-2 text-sm text-[var(--muted-foreground)]">
-                            Add its name, launch URL and icon, then choose who should see it. OAuth
-                            integrations are linked separately.
+                            {t('console.catalog_first_description')}
                         </p>
                     </Panel>
                 )}

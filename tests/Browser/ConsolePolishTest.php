@@ -83,8 +83,10 @@ it('fits the user panel on a phone and restores the URL selection on reload', fu
 it('reviews the portal task before creating a link and uses a sheet on a phone', function (): void {
     polishConsole();
     $org = app(Organizations::class)->create(new NewOrganization('Polish Company', 'polish-company'));
+    grantFeature($org->id, 'cbox-id-sso');
+    grantFeature($org->id, 'cbox-id-scim');
     $page = visit('/admin/organizations/'.$org->id);
-    $page->assertSee('Not configured')->screenshot(filename: 'polish-organization');
+    $page->assertSee('No connection yet.')->screenshot(filename: 'polish-organization');
     $page->resize(390, 844);
     $page->click('Invite IT administrator')->assertVisible('[role="dialog"]')
         ->assertDontSee('Link expires after')->click('button:has-text("Continue")')

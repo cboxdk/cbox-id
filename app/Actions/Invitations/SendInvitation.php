@@ -9,6 +9,7 @@ use App\Actions\Organizations\OrganizationFields;
 use App\Actions\Roles\RoleFields;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -89,7 +90,7 @@ final readonly class SendInvitation implements Action
 
         foreach (array_unique(array_filter($context->array('roles'), static fn (mixed $ref): bool => is_string($ref) && $ref !== '')) as $reference) {
             $role = RoleFields::reference((string) $reference, $clientId)
-                ?? throw ActionRefused::because('unknown_role', "No role [{$reference}] exists in this environment.", 'roles');
+                ?? throw ActionRefused::because('unknown_role', new ActionMessage('console.no_role_part1_exists_in_this_environment_2da98fb0', ['part1' => (string) ($reference)]), 'roles');
 
             $offered ??= $this->catalog->tenantAssignable($organization->id)->pluck('id')->all();
 

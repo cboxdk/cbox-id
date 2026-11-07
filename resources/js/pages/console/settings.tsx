@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -68,8 +68,11 @@ export default function Settings({
     discovery,
     closeOrganizationHref,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({ name: organization?.name ?? '' });
     const [closing, setClosing] = useState(false);
     const closeError = usePage<Props>().props.errors.name;
@@ -80,20 +83,30 @@ export default function Settings({
                 help={help}
                 description={
                     <>
-                        {tc('console.what_you_are_administering_and_the_details_y_ef36ba75')}
-                        {environmentRecord === null && (
-                            <>
-                                {' '}
-                                {tc('console.manage_your_own_security_under_ff3b0c49')}{' '}
-                                <Link
-                                    href={accountHref}
-                                    className="underline"
-                                    style={{ color: 'var(--accent-strong)' }}
-                                >
-                                    {tc('console.my_account_b53181a4')}
-                                </Link>
-                                .
-                            </>
+                        {consoleRich(
+                            'console.what_you_are_administering_and_the_details_your_apps_ne_23bc71ef',
+                            {
+                                part1: environmentRecord === null && (
+                                    <>
+                                        {consoleRich(
+                                            'console._part1_manage_your_own_security_under_part2_part3_a21c8866',
+                                            {
+                                                part1: ' ',
+                                                part2: ' ',
+                                                part3: (
+                                                    <Link
+                                                        href={accountHref}
+                                                        className="underline"
+                                                        style={{ color: 'var(--accent-strong)' }}
+                                                    >
+                                                        {consoleT('console.my_account_b53181a4')}
+                                                    </Link>
+                                                ),
+                                            },
+                                        )}
+                                    </>
+                                ),
+                            },
                         )}
                     </>
                 }
@@ -101,19 +114,19 @@ export default function Settings({
 
             {environmentRecord !== null && (
                 <Panel
-                    title={tc('console.environment_9e471951')}
-                    description={tc(
-                        'console.this_environment_every_organization_below_li_afb44516',
+                    title={consoleT('console.environment_9e471951')}
+                    description={consoleT(
+                        'console.this_environment_every_organization_below_lives_inside_afb44516',
                     )}
                 >
                     <KvList>
-                        <Kv label={tc('console.name_dcd1d522')} prose>
+                        <Kv label={consoleT('console.name_dcd1d522')} prose>
                             {environmentRecord.name}{' '}
                             {environmentRecord.sandbox && (
-                                <Badge tone="warn">{tc('console.sandbox_67fc6249')}</Badge>
+                                <Badge tone="warn">{consoleT('console.sandbox_67fc6249')}</Badge>
                             )}
                         </Kv>
-                        <Kv label={tc('console.environment_id_9ff84b43')}>
+                        <Kv label={consoleT('console.environment_id_9ff84b43')}>
                             {environmentRecord.id}
                         </Kv>
                     </KvList>
@@ -122,21 +135,23 @@ export default function Settings({
 
             {organizationsHref !== null && (
                 <Panel
-                    title={tc('console.organizations_2730183d')}
-                    description={tc(
-                        'console.each_organization_s_name_handle_and_details__e422089c',
+                    title={consoleT('console.organizations_2730183d')}
+                    description={consoleT(
+                        'console.each_organization_s_name_handle_and_details_are_on_its_e422089c',
                     )}
                 >
                     <Link href={organizationsHref} className="text-sm">
-                        {tc('console.go_to_organizations_2afa38a3')}
+                        {consoleT('console.go_to_organizations_2afa38a3')}
                     </Link>
                 </Panel>
             )}
 
             {organization !== null && renameHref !== null && (
                 <Panel
-                    title={tc('console.organization_d764d425')}
-                    description={tc('console.the_organization_this_console_administers_b1b7dbad')}
+                    title={consoleT('console.organization_d764d425')}
+                    description={consoleT(
+                        'console.the_organization_this_console_administers_b1b7dbad',
+                    )}
                 >
                     <>
                         <form
@@ -146,7 +161,10 @@ export default function Settings({
                                 form.patch(renameHref, { preserveScroll: true });
                             }}
                         >
-                            <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
+                            <Field
+                                label={consoleT('console.name_dcd1d522')}
+                                error={form.errors.name}
+                            >
                                 <div className="flex items-center gap-2">
                                     <Input
                                         name="name"
@@ -163,18 +181,18 @@ export default function Settings({
                                         className="shrink-0"
                                         loading={form.processing}
                                     >
-                                        {tc('console.rename_3064d79a')}
+                                        {consoleT('console.rename_3064d79a')}
                                     </Button>
                                 </div>
                             </Field>
                         </form>
 
                         <KvList>
-                            <Kv label={tc('console.slug_d15387ec')}>{organization.slug}</Kv>
-                            <Kv label={tc('console.type_baaddf70')} prose>
+                            <Kv label={consoleT('console.slug_d15387ec')}>{organization.slug}</Kv>
+                            <Kv label={consoleT('console.type_baaddf70')} prose>
                                 <Badge>{organization.type}</Badge>
                             </Kv>
-                            <Kv label={tc('console.organization_id_1f466322')}>
+                            <Kv label={consoleT('console.organization_id_1f466322')}>
                                 {organization.id}
                             </Kv>
                         </KvList>
@@ -188,23 +206,28 @@ export default function Settings({
             */}
             {setupGuideHref !== null && (
                 <Panel
-                    title={tc('console.setup_guide_f91058b1')}
-                    description={tc(
-                        'console.the_steps_worth_doing_for_a_new_organization_295f9381',
+                    title={consoleT('console.setup_guide_f91058b1')}
+                    description={consoleT(
+                        'console.the_steps_worth_doing_for_a_new_organization_with_what_295f9381',
                     )}
                 >
                     <div className="flex items-center justify-between gap-4">
                         <p className="text-sm min-w-0" style={{ color: 'var(--muted-foreground)' }}>
-                            {tc('console.each_step_is_measured_from_live_state_so_the_e7f5c55e')}
+                            {consoleT(
+                                'console.each_step_is_measured_from_live_state_so_the_guide_alwa_e7f5c55e',
+                            )}
                         </p>
                         <Button asChild variant="secondary" className="shrink-0">
                             <Link href={setupGuideHref}>
-                                {tc('console.open_guide_befbd50c')}
-                                <Icon
-                                    name="chevron"
-                                    className="w-4 h-4"
-                                    style={{ transform: 'rotate(-90deg)' }}
-                                />
+                                {consoleRich('console.open_guide_part1_6968b42e', {
+                                    part1: (
+                                        <Icon
+                                            name="chevron"
+                                            className="w-4 h-4"
+                                            style={{ transform: 'rotate(-90deg)' }}
+                                        />
+                                    ),
+                                })}
                             </Link>
                         </Button>
                     </div>
@@ -212,24 +235,32 @@ export default function Settings({
             )}
 
             <Panel
-                title={tc('console.login_branding_ff44c60c')}
+                title={consoleT('console.login_branding_ff44c60c')}
                 description={
                     organization !== null ? (
                         <>
-                            {tc('console.theme_this_organization_s_sign_in_page_its_t_c7a98a8e')}{' '}
-                            <a
-                                href={organization.brandedLoginHref}
-                                className="mono underline"
-                                style={{ color: 'var(--accent-strong)' }}
-                            >
-                                {tc('console.o_691a5778')}
-                                {organization.slug}
-                                {tc('console.login_7e93fba0')}
-                            </a>
-                            .
+                            {consoleRich(
+                                'console.theme_this_organization_s_sign_in_page_its_team_signs_i_cceda878',
+                                {
+                                    part1: ' ',
+                                    part2: (
+                                        <a
+                                            href={organization.brandedLoginHref}
+                                            className="mono underline"
+                                            style={{ color: 'var(--accent-strong)' }}
+                                        >
+                                            {consoleRich('console._o_part1_login_41752fcf', {
+                                                part1: organization.slug,
+                                            })}
+                                        </a>
+                                    ),
+                                },
+                            )}
                         </>
                     ) : (
-                        tc('console.the_environment_s_default_sign_in_theme_inhe_aa90ec1d')
+                        consoleRuntimeText(
+                            'console.the_environment_s_default_sign_in_theme_inherited_by_ev_aa90ec1d',
+                        )
                     )
                 }
             >
@@ -253,12 +284,13 @@ export default function Settings({
 
                         <div className="min-w-0">
                             <p className="text-sm font-medium">
-                                {appearance.preset}
-                                {tc('console.theme_ac06016a')}
+                                {consoleRich('console._part1_theme_1e426f5c', {
+                                    part1: appearance.preset,
+                                })}
                             </p>
                             <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                                {tc(
-                                    'console.presets_colours_corners_amp_type_edited_with_3950e4a7',
+                                {consoleT(
+                                    'console.presets_colours_corners_type_edited_with_a_live_preview_ff61e898',
                                 )}
                             </p>
                         </div>
@@ -266,12 +298,15 @@ export default function Settings({
 
                     <Button asChild variant="secondary" className="shrink-0">
                         <Link href={appearanceHref}>
-                            {tc('console.open_editor_550697e0')}
-                            <Icon
-                                name="chevron"
-                                className="w-4 h-4"
-                                style={{ transform: 'rotate(-90deg)' }}
-                            />
+                            {consoleRich('console.open_editor_part1_caf3e64a', {
+                                part1: (
+                                    <Icon
+                                        name="chevron"
+                                        className="w-4 h-4"
+                                        style={{ transform: 'rotate(-90deg)' }}
+                                    />
+                                ),
+                            })}
                         </Link>
                     </Button>
                 </div>
@@ -285,16 +320,19 @@ export default function Settings({
             */}
             {issuer !== null && discovery !== null && (
                 <Panel
-                    title={tc('console.integration_9a42d40a')}
-                    description={tc(
-                        'console.point_your_oidc_client_at_these_discovery_ex_81f0fa9a',
+                    title={consoleT('console.integration_9a42d40a')}
+                    description={consoleT(
+                        'console.point_your_oidc_client_at_these_discovery_exposes_every_81f0fa9a',
                     )}
                 >
                     <div className="space-y-3">
                         {(
                             [
-                                { label: tc('console.issuer_39e02c46'), value: issuer },
-                                { label: tc('console.oidc_discovery_885dc27a'), value: discovery },
+                                { label: consoleText('console.issuer_39e02c46'), value: issuer },
+                                {
+                                    label: consoleText('console.oidc_discovery_885dc27a'),
+                                    value: discovery,
+                                },
                             ] as const
                         ).map(({ label, value }) => (
                             <div
@@ -319,9 +357,9 @@ export default function Settings({
 
             {closeOrganizationHref !== null && organization !== null && (
                 <Panel
-                    title={tc('console.delete_organization_a70d189a')}
-                    description={tc(
-                        'console.everyone_in_it_loses_access_immediately_and__6b76018d',
+                    title={consoleT('console.delete_organization_a70d189a')}
+                    description={consoleT(
+                        'console.everyone_in_it_loses_access_immediately_and_it_disappea_6b76018d',
                     )}
                 >
                     {closeError !== undefined && (
@@ -334,14 +372,16 @@ export default function Settings({
                         </p>
                     )}
                     <Button variant="danger" onClick={() => setClosing(true)}>
-                        {tc('console.delete_organization_a70d189a')}
+                        {consoleT('console.delete_organization_a70d189a')}
                     </Button>
 
                     <ConfirmDelete
                         open={closing}
                         onOpenChange={setClosing}
                         name={organization.name}
-                        consequence="Every member is signed out of it and refused at every door, and its apps stop accepting their sign-ins. This cannot be undone from the console."
+                        consequence={consoleUiText(
+                            'console.every_member_is_signed_out_of_it_and_refused_at_every_d_67c21f22',
+                        )}
                         onConfirm={() => {
                             setClosing(false);
                             router.delete(closeOrganizationHref, {

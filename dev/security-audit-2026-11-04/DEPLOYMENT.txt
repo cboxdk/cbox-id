@@ -1,0 +1,31 @@
+# Cbox ID security deployment — 2026-11-04
+
+Production verified at 14:25 UTC. The user authorized package publication, dependency update, validation and production deployment.
+
+- Package: `cboxdk/laravel-id v1.26.6`, source `0ed9d3780d58737b4c24ad610bf05408a8093cf7`, independently verified on Packagist and in all three production containers.
+- App: `2373c72adaaa1e4b52537afe8d96d78522c00826`; Composer lock changes only laravel-id. Security implementation was committed in `a8565401d5bc1d22d92aeafc0ae793e9b81a58c7`.
+- Image: `ghcr.io/cboxdk/cbox-id@sha256:b21fc6a76a900715e1066b1085cd0cb68c9c6dcb1ffa5b4437f46cf87551406b` (ARM64 and AMD64).
+- Production: web 2/2 and worker 1/1 Ready, zero restarts. Public login and tenant OIDC discovery return HTTP 200; tenant issuer is correct. No ERROR/CRITICAL/EMERGENCY entries in new container logs during verification.
+- Migration job `cbox-id-migrate-2373c72adaaa-1793802121` completed in 12 seconds: nothing to migrate.
+
+## Security coverage
+
+Enrolled TOTP can no longer be bypassed using a magic link. A password alone cannot satisfy required MFA merely because a passkey is enrolled. Inactive or missing subjects cannot redeem authorization codes, rotate refresh tokens or receive fresh user tokens; deactivation invalidates outstanding codes. Regression tests exercise denied bypasses and valid completed sign-ins. Tests were also checked against the original vulnerable classes and failed as expected.
+
+## Validation
+
+Full local package gate: 3,179 passed, 2 existing skips, 58,421 assertions; Pint, PHPStan, production audit, licenses and SBOM passed. Package v1.26.6 changes only CI, changelog and SBOM from v1.26.5; runtime code and tests are identical. v1.26.5 is superseded, with its published tag left intact. Its tag CI failed before SBOM comparison because the container lacked jq. The corrected PHP comparison was exercised against equal sets, version-only changes, additions and removals. The refreshed 83-component set independently matches the canonical PHP 8.4/Laravel 13 CI artifact.
+
+All 15 app checks on the deployed commit passed: SQLite, PostgreSQL 18, MySQL 8.4, Linux browser/visual tests, lint, supply-chain checks, SAST, dependency/secrets checks and multi-architecture build. CI run: https://github.com/cboxdk/cbox-id/actions/runs/41845251457 . JavaScript tests: 200 passed; asset build passed. Production audit reports no advisories.
+
+Local broad app run also included Linux screenshot baselines on macOS and parallel browser execution: seven visual mismatches and one ResizeObserver timing error. No assertions or baselines were changed. The affected StaffAndSupport file passed all four tests when rerun serially; authoritative Linux browser CI passed. The correct Unit/Feature-only run against official v1.26.6 passed: 5,908 tests, 60,807 assertions, one existing skip (426.29 seconds).
+
+Package tag-CI run https://github.com/cboxdk/laravel-id/actions/runs/41844990254 remains running at this receipt's timestamp; database jobs passed and no job has failed. The full local package gate and all deployed-app checks passed before production rollout.
+
+## Deployment and recovery
+
+The first automatic attempt never executed migrations or replaced pods: the migration pod could not schedule because workload-node memory requests were full. The release schedule was suspended and the never-running attempt removed. For the final deployment, only the queue worker was temporarily scaled to zero (14:21:52); both web replicas remained serving during the normal release job. Desired worker replicas were restored at 14:23:32, and all three pods were Ready by 14:23:48. A concurrent Billing rollout briefly occupied surge capacity and then released it. No resource limits/requests were reduced and no paid capacity was added.
+
+Normal release CronJob resumed after package-version and public endpoint checks. Its next run at 14:25 confirmed `up to date (2373c72adaaa)`. No temporary scale or schedule override remains.
+
+Previous production revision: `2af61b3f07b029b14b81b3d0c79074ba102f1086`, image `ghcr.io/cboxdk/cbox-id@sha256:ac30d099d21c92f5715ef856c610940727c82fe4097d93ae4052adaab1dcf3f1`. This contains the original security weaknesses; use only for emergency availability recovery, never as a routine rollback target. No new schema migration ran during this deployment.

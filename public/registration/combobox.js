@@ -277,7 +277,7 @@ function enhance(select) {
         button.setAttribute('aria-expanded', 'true');
         if (search) {
             search.value = '';
-            remote ? lookup('') : filter('');
+            if (remote) { lookup(''); } else { filter(''); }
             search.focus();
         }
         setActive(rows.find((row) => row.option && row.option.selected) || visible()[0] || null);
@@ -332,11 +332,11 @@ function enhance(select) {
         switch (event.key) {
             case 'ArrowDown':
                 event.preventDefault();
-                pop.hidden ? open() : move(1);
+                if (pop.hidden) { open(); } else { move(1); }
                 break;
             case 'ArrowUp':
                 event.preventDefault();
-                pop.hidden ? open() : move(-1);
+                if (pop.hidden) { open(); } else { move(-1); }
                 break;
             case 'Home':
                 if (!pop.hidden) { event.preventDefault(); setActive(visible()[0] || null); }
@@ -350,12 +350,12 @@ function enhance(select) {
                     add(create.dataset.value || '');
                     break;
                 }
-                pop.hidden ? open() : choose(rows[active]);
+                if (pop.hidden) { open(); } else { choose(rows[active]); }
                 break;
             case ' ':
                 if (event.target === button) {
                     event.preventDefault();
-                    pop.hidden ? open() : choose(rows[active]);
+                    if (pop.hidden) { open(); } else { choose(rows[active]); }
                 }
                 break;
             case 'Escape':
@@ -400,7 +400,7 @@ function enhance(select) {
                     credentials: 'same-origin',
                 });
                 data = response.ok ? await response.json() : null;
-            } catch (error) {
+            } catch {
                 data = null;
             }
             if (mine !== lookupSeq || !data || !Array.isArray(data.results)) {
@@ -415,8 +415,8 @@ function enhance(select) {
             data.results.forEach((result) => {
                 if (!chosen || chosen.value !== String(result.value)) {
                     const option = new Option(String(result.label), String(result.value));
-                    Object.entries(result.data || {}).forEach(([key, value]) => {
-                        option.dataset[key] = value === null ? '' : String(value);
+                    Object.entries(result.data || {}).forEach(([key, dataValue]) => {
+                        option.dataset[key] = dataValue === null ? '' : String(dataValue);
                     });
                     select.add(option);
                 }

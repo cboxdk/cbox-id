@@ -76,8 +76,8 @@ it('saves an uploaded logo and favicon from the one Save, keeps them after a rel
     // A hard refresh: a new page load, nothing carried over in the editor's memory.
     $page = visit('/admin/branding')
         ->assertScript('document.querySelector("[data-testid=appearance-preview] img")?.getAttribute("src").startsWith("/brand-assets/")', true)
-        ->assertScript('document.querySelector("img[alt=\'Current logo\']")?.complete && document.querySelector("img[alt=\'Current logo\']").naturalWidth', 160)
-        ->assertScript('document.querySelector("img[alt=\'Current favicon\']")?.getAttribute("src").startsWith("/brand-assets/")', true)
+        ->assertScript('document.querySelector("img[alt=\'Logo\']")?.complete && document.querySelector("img[alt=\'Logo\']").naturalWidth', 160)
+        ->assertScript('document.querySelector("img[alt=\'Favicon\']")?.getAttribute("src").startsWith("/brand-assets/")', true)
         ->assertValue('#brand-app-name', 'Acme ID')
         ->assertScript('document.querySelector(\''.SAVE_BAR.'\') === null', true)
         ->assertNoJavaScriptErrors()

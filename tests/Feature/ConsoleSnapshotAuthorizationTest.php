@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\NativeProduct\NativeProductMembers;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\PlatformRoot;
@@ -38,7 +39,8 @@ function anAdminToDowngrade(): array
 {
     ['organization' => $organization] = provisionAccount();
 
-    [, $subjectId] = memberWithRole($organization->id, MembershipRole::Admin, 'admin@acme.example');
+    [$member, $subjectId] = memberWithRole($organization->id, MembershipRole::Admin, 'admin@acme.example');
+    grantNativeProductRoles($member, ['admin']);
 
     signInAsMember($subjectId);
 
@@ -46,11 +48,15 @@ function anAdminToDowngrade(): array
 }
 
 /** Take a capability away from the person currently holding the page open. */
-function downgradeTo(string $organizationId, string $subjectId, MembershipRole $role): void
+function downgradeTo(string $organizationId, string $subjectId, MembershipRole $role, bool $directory = false): void
 {
-    app(PlatformRoot::class)->run(
-        fn () => app(Memberships::class)->changeRole($organizationId, $subjectId, $role),
-    );
+    $member = app(PlatformRoot::class)->run(fn () => app(Memberships::class)->forOrganization($organizationId)->firstWhere('user_id', $subjectId));
+    if ($directory) {
+        app(PlatformRoot::class)->run(fn () => app(Memberships::class)->changeRole($organizationId, $subjectId, $role));
+    } else {
+        grantNativeProductRoles($member, [$role->value]);
+        expect(freshMembership($member)?->role)->toBe(MembershipRole::Admin);
+    }
 }
 
 it('stops serving a ported console page the request after the capability is taken away', function (string $route, MembershipRole $downgrade, ?string $redirectsTo): void {
@@ -60,7 +66,7 @@ it('stops serving a ported console page the request after the capability is take
     // downgrade and everything about the fixture.
     test()->get(route($route))->assertOk();
 
-    downgradeTo($organizationId, $subjectId, $downgrade);
+    downgradeTo($organizationId, $subjectId, $downgrade, directory: $route === 'roles');
 
     // THE VERY NEXT REQUEST, with no sign-out and no navigation in between. Under Volt
     // this was the request that kept working.
@@ -91,6 +97,8 @@ it('refuses a WRITE the request after the capability is taken away', function ()
     [$organizationId, $subjectId] = anAdminToDowngrade();
 
     [$target] = memberWithRole($organizationId, MembershipRole::Member, 'target@acme.example');
+    grantNativeProductRoles($target, ['viewer']);
+    $before = app(NativeProductMembers::class)->access($target);
 
     downgradeTo($organizationId, $subjectId, MembershipRole::Developer);
 
@@ -101,9 +109,10 @@ it('refuses a WRITE the request after the capability is taken away', function ()
      * a redirect back to a page they can still see, deliberately, because a 404 there
      * would deny the existence of a row rendered three lines above it.
      */
-    test()->from(route('members'))->delete(route('members.remove', $target->id));
+    test()->from(route('members'))->delete(route('members.remove', ['member' => $target->id, 'organization' => $organizationId]), ['roles_version' => $before['roles_version']])->assertRedirect(route('members'));
 
-    expect(freshMembership($target))->not->toBeNull();
+    expect(freshMembership($target))->not->toBeNull()
+        ->and(app(NativeProductMembers::class)->access($target))->toBe($before);
 })->group('security');
 
 /*

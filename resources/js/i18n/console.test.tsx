@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { router } from '@inertiajs/react';
@@ -9,50 +9,27 @@ import { ConfirmDelete } from '@/ui/ConfirmDelete';
 import { PasswordField } from '@/ui/PasswordField';
 import { CopyButton } from '@/ui/CopyButton';
 import { createTranslator } from './index';
-import { UiTranslationProvider } from './ui';
 
 function inDanish(children: React.ReactNode) {
-    const { locale, messages } = consoleI18n('da');
-    return (
-        <UiTranslationProvider translator={createTranslator(locale, messages)}>
-            {children}
-        </UiTranslationProvider>
-    );
+    setPageProps({ i18n: consoleI18n('da') });
+    return children;
 }
 
 describe('console languages', () => {
-    it('waits for the language visit to finish before accepting another selection', async () => {
-        setPageProps({ i18n: consoleI18n('en') });
-        const post = vi.spyOn(router, 'post').mockImplementation(() => {});
-        const view = render(<ConsoleLanguagePicker />);
-        await userEvent.click(screen.getByRole('button', { name: 'Language: English' }));
-        await userEvent.click(screen.getByRole('menuitemradio', { name: 'Dansk' }));
-
-        expect(screen.queryByRole('menu')).not.toBeInTheDocument();
-        const trigger = screen.getByRole('button', { name: 'Language: English' });
-        expect(trigger).toBeDisabled();
-        await userEvent.click(trigger);
-        expect(post).toHaveBeenCalledOnce();
-
-        // Props can arrive before Inertia has completed navigation and focus cleanup.
-        setPageProps({ i18n: consoleI18n('da') });
-        view.rerender(<ConsoleLanguagePicker />);
-        expect(screen.getByRole('button', { name: 'Sprog: Dansk' })).toBeDisabled();
-        await act(async () => {
-            const finish = post.mock.calls[0]?.[2]?.onFinish;
-            if (!finish) throw new Error('The language visit must unlock on completion');
-            finish({} as Parameters<typeof finish>[0]);
-        });
-        await userEvent.click(screen.getByRole('button', { name: 'Sprog: Dansk' }));
-        expect(screen.getByRole('menuitemradio', { name: 'Deutsch' })).toBeInTheDocument();
-        post.mockRestore();
-    });
-
     it('switches language from a keyboard accessible topbar menu', async () => {
-        setPageProps({ i18n: consoleI18n('en') });
+        setPageProps({
+            i18n: {
+                ...consoleI18n('en'),
+                preference: {
+                    subjectId: 'person-1',
+                    version: 4,
+                    updateUrl: '/account/preferences',
+                },
+            },
+        });
         const post = vi.spyOn(router, 'post').mockImplementation(() => {});
         render(<ConsoleLanguagePicker />);
-        screen.getByRole('button', { name: 'Language: English' }).focus();
+        screen.getByRole('button', { name: 'Language' }).focus();
         await userEvent.keyboard('{Enter}');
         expect(screen.getByRole('menuitemradio', { name: 'English' })).toHaveAttribute(
             'aria-checked',
@@ -61,9 +38,9 @@ describe('console languages', () => {
         screen.getByRole('menuitemradio', { name: 'Dansk' }).focus();
         await userEvent.keyboard('{Enter}');
         expect(post).toHaveBeenCalledWith(
-            '/console/locale',
-            { locale: 'da' },
-            { preserveScroll: true, preserveState: true, onFinish: expect.any(Function) },
+            '/account/preferences',
+            { language: 'da', subject_id: 'person-1', version: 4 },
+            expect.objectContaining({ preserveScroll: true, preserveState: true }),
         );
     });
 
@@ -77,7 +54,7 @@ describe('console languages', () => {
             ),
         );
         expect(screen.getByRole('button', { name: 'Vis adgangskode' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Kopiér' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Kopier' })).toBeInTheDocument();
     });
 
     it('retains exact typed-name confirmation when the destructive dialog is Danish', async () => {

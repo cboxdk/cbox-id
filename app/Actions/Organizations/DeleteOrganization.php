@@ -6,6 +6,7 @@ namespace App\Actions\Organizations;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -64,7 +65,7 @@ final readonly class DeleteOrganization implements Action
         if ($ownsProducts) {
             throw new ActionRefused(
                 'owns_products',
-                'This organization owns identity-provider projects on this platform and cannot be archived here.',
+                new ActionMessage('console.this_organization_owns_identity_provider_projects_on_th_f851615d'),
                 409,
             );
         }

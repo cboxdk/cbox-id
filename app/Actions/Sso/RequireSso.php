@@ -7,6 +7,7 @@ namespace App\Actions\Sso;
 use App\Actions\SignIn\AuthPolicyFields;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -68,7 +69,7 @@ final readonly class RequireSso implements Action
         $organizationId = $connection->organization_id;
 
         if ($organizationId === null) {
-            throw ActionRefused::because('environment_connection', 'This connection belongs to the environment, not to one organization. Set the requirement in the Authentication policy.');
+            throw ActionRefused::because('environment_connection', new ActionMessage('console.this_connection_belongs_to_the_environment_not_to_one_o_5e9a5366'));
         }
 
         $current = $this->policies->overrideFor($organizationId) ?? $this->policies->forEnvironment();

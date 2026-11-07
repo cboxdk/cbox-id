@@ -2,23 +2,23 @@
 
 declare(strict_types=1);
 
-// Translation provenance and review scope: docs/guides/languages.md.
 return [
     'layout' => [
-        'secured_by' => 'Al netto da :name',
+        'secured_by' => 'Protetto da :name',
         'theme' => 'Tema',
-        'toggle_theme' => 'Commuta tema chiaro o scuro',
+        'toggle_theme' => 'Attiva il tema chiaro o scuro',
         'about' => 'Informazioni su questo prodotto',
-        'hero_body' => 'Enterprise SSO, SCIM directory sync, MFA e passkeys, RBAC, e una traccia di audit evidente di manomissione self-hostable, e il vostro.',
+        'hero_body' => 'SSO aziendale, sincronizzazione delle directory SCIM, MFA e passkey, RBAC e un registro di audit che permette di rilevare le alterazioni — da ospitare sulla tua infrastruttura, sotto il tuo controllo.',
         'features' => [
-            'sso' => 'SAML & OIDC single sign-on',
-            'scim' => 'Provisioning directory SCIM 2.0',
-            'mfa' => 'Passkeys, TOTP e collegamenti magici',
-            'audit' => 'Verifica con catena di hash, evidente per manomissione',
+            'sso' => 'Single sign-on con SAML e OIDC',
+            'scim' => 'Provisioning della directory con SCIM 2.0',
+            'mfa' => 'Passkey, TOTP e link di accesso monouso',
+            'audit' => 'Registro di audit con hash concatenati che permette di rilevare le alterazioni',
         ],
+        'hero_title' => 'Un livello di identità per tutte le tue applicazioni.',
     ],
     'language' => [
         'label' => 'Lingua',
     ],
-    'skip_to_content' => 'Skip to content',
+    'skip_to_content' => 'Salta al contenuto',
 ];

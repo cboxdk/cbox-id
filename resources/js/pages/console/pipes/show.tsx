@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -75,13 +75,17 @@ export default function PipeDetail({
     indexHref,
     urls,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleNestedText } = useConsoleTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [removing, setRemoving] = useState(false);
 
     return (
         <div className="space-y-6">
-            <Breadcrumb href={indexHref} label={tc('console.pipes_685afe34')} />
+            <Breadcrumb href={indexHref} label={consoleT('console.pipes_685afe34')} />
 
             <PageHeader
                 help={help}
@@ -94,37 +98,45 @@ export default function PipeDetail({
                 badge={
                     <Pill tone={pipe.enabled ? 'success' : 'neutral'}>
                         {pipe.enabled
-                            ? tc('console.enabled_92c1cdfd')
-                            : tc('console.disabled_75081b59')}
+                            ? consoleText('console.enabled_92c1cdfd')
+                            : consoleText('console.disabled_75081b59')}
                     </Pill>
                 }
             />
 
             <Panel
-                title={tc('console.how_your_app_uses_it_bde1452e')}
-                description={tc('console.send_people_to_the_connect_page_lease_a_toke_db119651')}
+                title={consoleT('console.how_your_app_uses_it_bde1452e')}
+                description={consoleT(
+                    'console.send_people_to_the_connect_page_lease_a_token_from_your_db119651',
+                )}
             >
                 <KvList>
-                    <Kv label={tc('console.connect_page_b46eaa6a')}>
+                    <Kv label={consoleT('console.connect_page_b46eaa6a')}>
                         <span className="inline-flex items-center gap-2">
                             <span className="mono break-all">{pipe.connectUrl}</span>
                             <CopyButton value={pipe.connectUrl} />
                         </span>
                     </Kv>
-                    <Kv label={tc('console.lease_endpoint_320ca77d')}>
+                    <Kv label={consoleT('console.lease_endpoint_320ca77d')}>
                         <span className="inline-flex items-center gap-2">
-                            <span className="mono break-all">POST {pipe.leaseUrl}</span>
+                            <span className="mono break-all">
+                                {consoleRich('console.post_part1_aa0c2484', {
+                                    part1: pipe.leaseUrl,
+                                })}
+                            </span>
                             <CopyButton value={pipe.leaseUrl} />
                         </span>
                     </Kv>
-                    <Kv label={tc('console.redirect_uri_98e548b4')}>
+                    <Kv label={consoleT('console.redirect_uri_98e548b4')}>
                         <span className="inline-flex items-center gap-2">
                             <span className="mono break-all">{pipe.redirectUri}</span>
                             <CopyButton value={pipe.redirectUri} />
                         </span>
                     </Kv>
                     {catalogue !== null && (
-                        <Kv label={tc('console.api_base_url_a45474ea')}>{catalogue.apiBaseUrl}</Kv>
+                        <Kv label={consoleT('console.api_base_url_a45474ea')}>
+                            {catalogue.apiBaseUrl}
+                        </Kv>
                     )}
                 </KvList>
             </Panel>
@@ -134,12 +146,14 @@ export default function PipeDetail({
             <Grants grants={grants} apps={grantableApps} href={urls.grant} />
 
             <Panel
-                title={tc('console.connected_accounts_2fc385cd')}
-                description={tc('console.who_connected_an_account_through_this_pipe_t_ea456475')}
+                title={consoleT('console.connected_accounts_2fc385cd')}
+                description={consoleT(
+                    'console.who_connected_an_account_through_this_pipe_tokens_are_n_ea456475',
+                )}
             >
                 {connections.length === 0 ? (
                     <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                        {tc('console.nobody_has_connected_an_account_yet_dd232d26')}
+                        {consoleT('console.nobody_has_connected_an_account_yet_dd232d26')}
                     </p>
                 ) : (
                     <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
@@ -156,8 +170,9 @@ export default function PipeDetail({
                                                 className="text-sm"
                                                 style={{ color: 'var(--muted-foreground)' }}
                                             >
-                                                {tc('console.as_12876f7c')}
-                                                {connection.account}
+                                                {consoleRich('console.as_part1_cc84f04f', {
+                                                    part1: connection.account,
+                                                })}
                                             </span>
                                         )}
                                         <Pill
@@ -168,19 +183,32 @@ export default function PipeDetail({
                                             }
                                         >
                                             {connection.status === 'active'
-                                                ? tc('console.active_92340695')
-                                                : tc('console.needs_reconnect_62fe6ecf')}
+                                                ? consoleText('console.active_92340695')
+                                                : consoleText('console.needs_reconnect_62fe6ecf')}
                                         </Pill>
                                     </div>
                                     <p className="mt-0.5 text-xs" style={{ color: 'var(--faint)' }}>
-                                        {tc('console.connected_a09c65fb')}
-                                        {connection.connectedAt ?? '—'}
-                                        {connection.expiresAt !== null &&
-                                            ` · token expires ${connection.expiresAt}`}
-                                        {connection.reauthReason !== null &&
-                                            ` · ${connection.reauthReason}`}
-                                        {connection.lastError !== null &&
-                                            ` · last refresh failed: ${connection.lastError}`}
+                                        {consoleRich(
+                                            'console.connected_part1_part2_part3_part4_a093c4a3',
+                                            {
+                                                part1: connection.connectedAt ?? '—',
+                                                part2:
+                                                    connection.expiresAt !== null &&
+                                                    consoleNestedText(
+                                                        'console._token_expires_part1_6d6d489c',
+                                                        { part1: connection.expiresAt },
+                                                    ),
+                                                part3:
+                                                    connection.reauthReason !== null &&
+                                                    ` · ${connection.reauthReason}`,
+                                                part4:
+                                                    connection.lastError !== null &&
+                                                    consoleNestedText(
+                                                        'console._last_refresh_failed_part1_5c8d4687',
+                                                        { part1: connection.lastError },
+                                                    ),
+                                            },
+                                        )}
                                     </p>
                                 </div>
                                 <Button
@@ -192,7 +220,7 @@ export default function PipeDetail({
                                         })
                                     }
                                 >
-                                    {tc('console.disconnect_acfc5be7')}
+                                    {consoleT('console.disconnect_acfc5be7')}
                                 </Button>
                             </li>
                         ))}
@@ -201,19 +229,19 @@ export default function PipeDetail({
                 <div className="mt-3">
                     <Pagination
                         pagination={pagination}
-                        noun={tc('console.account_9af21132')}
-                        pluralNoun={tc('console.accounts_bc62a3c1')}
                         href={(page) => `?page=${page}`}
                     />
                 </div>
             </Panel>
 
             <Panel
-                title={tc('console.remove_pipe_a4c284c2')}
-                description={tc('console.removes_every_connection_through_it_tokens_a_eec0a79e')}
+                title={consoleT('console.remove_pipe_a4c284c2')}
+                description={consoleT(
+                    'console.removes_every_connection_through_it_tokens_are_revoked_eec0a79e',
+                )}
             >
                 <Button size="sm" variant="danger" onClick={() => setRemoving(true)}>
-                    {tc('console.remove_pipe_a4c284c2')}
+                    {consoleT('console.remove_pipe_a4c284c2')}
                 </Button>
             </Panel>
 
@@ -221,8 +249,10 @@ export default function PipeDetail({
                 open={removing}
                 onOpenChange={setRemoving}
                 name={pipe.name}
-                verb="Remove"
-                consequence={tc('console.every_connected_account_through_this_pipe_is_9181a044')}
+                verb={consoleShortText('console.remove_c3812fc4')}
+                consequence={consoleUiText(
+                    'console.every_connected_account_through_this_pipe_is_forgotten_9181a044',
+                )}
                 onConfirm={() => {
                     setRemoving(false);
                     router.delete(urls.destroy);
@@ -241,8 +271,7 @@ function Settings({
     catalogue: CatalogueEntry | null;
     href: string;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({
         client_id: pipe.clientId,
         client_secret: '',
@@ -254,8 +283,10 @@ function Settings({
 
     return (
         <Panel
-            title={tc('console.settings_74a883a0')}
-            description={tc('console.people_already_connected_keep_the_scopes_the_f979f289')}
+            title={consoleT('console.settings_74a883a0')}
+            description={consoleT(
+                'console.people_already_connected_keep_the_scopes_they_agreed_to_f979f289',
+            )}
         >
             <form
                 className="space-y-4"
@@ -268,15 +299,17 @@ function Settings({
                 }}
             >
                 <Field
-                    label={tc('console.enabled_92c1cdfd')}
-                    hint={tc('console.a_disabled_pipe_refuses_new_connections_and__4b6ed7e3')}
+                    label={consoleT('console.enabled_92c1cdfd')}
+                    hint={consoleT(
+                        'console.a_disabled_pipe_refuses_new_connections_and_every_lease_4b6ed7e3',
+                    )}
                 >
                     <Switch
                         checked={form.data.enabled}
                         onCheckedChange={(checked) => form.setData('enabled', checked)}
                     />
                 </Field>
-                <Field label={tc('console.client_id_8726db01')} error={errors.client_id}>
+                <Field label={consoleT('console.client_id_8726db01')} error={errors.client_id}>
                     <Input
                         className="mono"
                         value={form.data.client_id}
@@ -284,8 +317,10 @@ function Settings({
                     />
                 </Field>
                 <Field
-                    label={tc('console.new_client_secret_02aac1d8')}
-                    hint={tc('console.left_empty_unchanged_the_stored_one_is_never_46d6d236')}
+                    label={consoleT('console.new_client_secret_02aac1d8')}
+                    hint={consoleT(
+                        'console.left_empty_unchanged_the_stored_one_is_never_shown_46d6d236',
+                    )}
                     error={errors.client_secret}
                 >
                     <Input
@@ -297,8 +332,8 @@ function Settings({
                     />
                 </Field>
                 <Field
-                    label={tc('console.scopes_0d5644ff')}
-                    hint={tc('console.separated_by_spaces_19d6b908')}
+                    label={consoleT('console.scopes_0d5644ff')}
+                    hint={consoleT('console.separated_by_spaces_19d6b908')}
                     error={errors.scopes}
                 >
                     <Textarea
@@ -330,7 +365,7 @@ function Settings({
                     </Field>
                 ))}
                 <Button type="submit" variant="primary" size="sm" loading={form.processing}>
-                    {tc('console.save_1509f561')}
+                    {consoleT('console.save_1509f561')}
                 </Button>
             </form>
         </Panel>
@@ -350,19 +385,20 @@ function Grants({
     apps: { clientId: string; name: string }[];
     href: string;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({ client_id: apps[0]?.clientId ?? '' });
 
     return (
         <Panel
-            title={tc('console.apps_that_may_lease_tokens_683bd8d1')}
-            description={tc('console.only_the_apps_listed_here_get_a_token_everyt_3d600e70')}
+            title={consoleT('console.apps_that_may_lease_tokens_683bd8d1')}
+            description={consoleT(
+                'console.only_the_apps_listed_here_get_a_token_everything_else_i_3d600e70',
+            )}
         >
             <div className="space-y-2">
                 {grants.length === 0 ? (
                     <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                        {tc('console.no_app_may_lease_tokens_through_this_pipe_ye_67e304c0')}
+                        {consoleT('console.no_app_may_lease_tokens_through_this_pipe_yet_67e304c0')}
                     </p>
                 ) : (
                     <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
@@ -389,7 +425,7 @@ function Grants({
                                         router.delete(grant.revokeHref, { preserveScroll: true })
                                     }
                                 >
-                                    {tc('console.revoke_87e6d00b')}
+                                    {consoleT('console.revoke_87e6d00b')}
                                 </Button>
                             </li>
                         ))}
@@ -407,7 +443,7 @@ function Grants({
                 >
                     <div className="flex-1">
                         <Field
-                            label={tc('console.grant_an_app_a437ce1b')}
+                            label={consoleT('console.grant_an_app_a437ce1b')}
                             error={form.errors.client_id}
                         >
                             <Select
@@ -422,7 +458,7 @@ function Grants({
                         </Field>
                     </div>
                     <Button type="submit" size="sm" loading={form.processing}>
-                        {tc('console.grant_78b7d037')}
+                        {consoleT('console.grant_78b7d037')}
                     </Button>
                 </form>
             )}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Integrations;
 
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Input\Field;
 use Cbox\LaravelSiem\Enums\DatadogSite;
@@ -131,7 +132,7 @@ final class LogStreamDestinations
     {
         $field = in_array($invalid->field, self::TOP_LEVEL, true) ? $invalid->field : 'options.'.$invalid->field;
 
-        return ActionRefused::because('invalid_stream_configuration', $invalid->getMessage(), $field);
+        return ActionRefused::because('invalid_stream_configuration', LogStreamRefusalCopy::message($invalid), $field);
     }
 
     /**
@@ -175,7 +176,7 @@ final class LogStreamDestinations
     public static function assertRoleAssumable(Destination $destination, array $options): void
     {
         if ($destination === Destination::S3 && self::filled($options['role_arn'] ?? null) && ! self::assumedRoleAvailable()) {
-            throw ActionRefused::because('assumed_role_unavailable', 'Assuming an IAM role is not set up on this platform. Use an access key instead.', 'options.role_arn');
+            throw ActionRefused::because('assumed_role_unavailable', new ActionMessage('console.stream_validation_c261de80475f'), 'options.role_arn');
         }
     }
 

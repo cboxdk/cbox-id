@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
@@ -37,8 +38,10 @@ export default function CreateOutboundSync({
     indexHref,
     storeHref,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({
         name: '',
         baseUrl: '',
@@ -58,12 +61,15 @@ export default function CreateOutboundSync({
 
     return (
         <>
-            <Breadcrumb href={indexHref} label={tc('console.outbound_provisioning_e49a114e')} />
+            <Breadcrumb
+                href={indexHref}
+                label={consoleT('console.outbound_provisioning_e49a114e')}
+            />
 
             <div className="mt-2">
                 <PageHeader
-                    description={tc(
-                        'console.a_scim_endpoint_we_push_your_people_to_joins_629f70bd',
+                    description={consoleT(
+                        'console.a_scim_endpoint_we_push_your_people_to_joins_changes_an_629f70bd',
                     )}
                 />
             </div>
@@ -76,21 +82,21 @@ export default function CreateOutboundSync({
                     form.post(storeHref, { onFinish: () => form.setData('secret', '') });
                 }}
             >
-                <Panel title={tc('console.where_it_goes_4d1ca74f')}>
+                <Panel title={consoleT('console.where_it_goes_4d1ca74f')}>
                     <div className="space-y-4">
-                        <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
+                        <Field label={consoleT('console.name_dcd1d522')} error={form.errors.name}>
                             <Input
                                 name="name"
-                                placeholder={tc('console.datadog_8bd7b9fd')}
+                                placeholder={consoleUiText('console.datadog_8bd7b9fd')}
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}
                             />
                         </Field>
 
                         <Field
-                            label={tc('console.scim_base_url_be8fb61f')}
-                            hint={tc(
-                                'console.the_endpoint_the_app_documents_for_scim_usua_75ad1a23',
+                            label={consoleT('console.scim_base_url_be8fb61f')}
+                            hint={consoleT(
+                                'console.the_endpoint_the_app_documents_for_scim_usually_ending_75ad1a23',
                             )}
                             error={form.errors.baseUrl}
                         >
@@ -110,11 +116,11 @@ export default function CreateOutboundSync({
                                 onCheckedChange={(checked) =>
                                     form.setData('environmentWide', checked)
                                 }
-                                label={tc(
+                                label={consoleT(
                                     'console.send_every_organization_in_this_environment_ca82c33e',
                                 )}
-                                hint={tc(
-                                    'console.every_organization_s_people_are_pushed_to_th_27734b94',
+                                hint={consoleT(
+                                    'console.every_organization_s_people_are_pushed_to_this_one_targ_27734b94',
                                 )}
                             />
                         )}
@@ -124,8 +130,8 @@ export default function CreateOutboundSync({
                                 picker={organization}
                                 error={form.errors.organization}
                                 onChange={(id) => form.setData('organization', id)}
-                                hint={tc(
-                                    'console.whose_people_are_pushed_or_tick_the_box_abov_bb15010f',
+                                hint={consoleT(
+                                    'console.whose_people_are_pushed_or_tick_the_box_above_to_send_e_bb15010f',
                                 )}
                             />
                         )}
@@ -133,12 +139,14 @@ export default function CreateOutboundSync({
                 </Panel>
 
                 <Panel
-                    title={tc('console.how_it_authenticates_3288609b')}
-                    description={tc('console.what_we_present_to_the_app_on_every_push_e608e295')}
+                    title={consoleT('console.how_it_authenticates_3288609b')}
+                    description={consoleT(
+                        'console.what_we_present_to_the_app_on_every_push_e608e295',
+                    )}
                 >
                     <div className="space-y-4">
                         <RadioGroup
-                            label={tc('console.auth_scheme_4a894695')}
+                            label={consoleT('console.auth_scheme_4a894695')}
                             value={form.data.scheme}
                             onValueChange={(scheme) => form.setData('scheme', scheme)}
                             options={schemes.map((scheme) => ({
@@ -151,10 +159,10 @@ export default function CreateOutboundSync({
                         <Field
                             label={
                                 usesClientCredentials
-                                    ? tc('console.client_secret_4aded5fa')
-                                    : tc('console.bearer_token_b22ac30e')
+                                    ? consoleText('console.client_secret_4aded5fa')
+                                    : consoleText('console.bearer_token_b22ac30e')
                             }
-                            hint={tc('console.sealed_at_rest_and_never_shown_again_42b0dd3e')}
+                            hint={consoleT('console.sealed_at_rest_and_never_shown_again_42b0dd3e')}
                             error={form.errors.secret}
                         >
                             <Textarea
@@ -171,9 +179,9 @@ export default function CreateOutboundSync({
                         {usesClientCredentials && (
                             <>
                                 <Field
-                                    label={tc('console.token_url_431e0036')}
-                                    hint={tc(
-                                        'console.where_we_exchange_the_client_credentials_for_2afa7c75',
+                                    label={consoleT('console.token_url_431e0036')}
+                                    hint={consoleT(
+                                        'console.where_we_exchange_the_client_credentials_for_a_short_li_2afa7c75',
                                     )}
                                     error={form.errors.tokenUrl}
                                 >
@@ -190,7 +198,7 @@ export default function CreateOutboundSync({
                                 </Field>
 
                                 <Field
-                                    label={tc('console.client_id_8726db01')}
+                                    label={consoleT('console.client_id_8726db01')}
                                     error={form.errors.clientId}
                                 >
                                     <Input
@@ -204,7 +212,7 @@ export default function CreateOutboundSync({
                                 </Field>
 
                                 <Field
-                                    label={tc('console.scope_b073f6c6')}
+                                    label={consoleT('console.scope_b073f6c6')}
                                     optional
                                     error={form.errors.scope}
                                 >
@@ -225,10 +233,10 @@ export default function CreateOutboundSync({
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        {tc('console.register_connection_4cedd83e')}
+                        {consoleT('console.register_connection_4cedd83e')}
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
+                        <Link href={indexHref}>{consoleT('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
             </form>

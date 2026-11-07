@@ -6,6 +6,7 @@ namespace App\Actions\Account;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
@@ -64,7 +65,7 @@ final readonly class UnlinkSocialAccount implements Action
         $hasPasskey = WebAuthnCredential::query()->where('user_id', $subjectId)->exists();
 
         if (! $othersRemain && ! $hasPasskey && ! self::hasPassword($subjectId)) {
-            throw ActionRefused::because('last_sign_in_method', 'This is your only sign-in method — add a password or passkey before disconnecting it.', 'provider');
+            throw ActionRefused::because('last_sign_in_method', new ActionMessage('console.this_is_your_only_sign_in_method_add_a_password_or_pass_4b8a9d0b'), 'provider');
         }
 
         $this->subjects->unlink($subjectId, $identity);

@@ -90,6 +90,9 @@ class OrganizationConnections implements Connections
             abort_unless(is_array($definition) && ($definition['audience'] ?? null) === $connection->audience && ($definition['scopes'] ?? null) === $connection->scopes, 403);
             $client = Client::query()->where('client_id', $connection->service_client_id)->firstOrFail();
             $issued = $this->issuer->issueClientCredentials($client, $connection->scopes, $connection->audience);
+            abort_unless($issued->audience === $connection->audience
+                && array_diff($issued->scopes, $connection->scopes) === []
+                && array_diff($connection->scopes, $issued->scopes) === [], 503);
             $this->record('service_connection.token.leased', $caller, $connection);
 
             return $issued;

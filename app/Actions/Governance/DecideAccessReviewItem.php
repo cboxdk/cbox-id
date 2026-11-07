@@ -6,6 +6,7 @@ namespace App\Actions\Governance;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -58,7 +59,7 @@ final readonly class DecideAccessReviewItem implements Action
         $campaign = AccessReviewFields::campaign($context);
 
         if ($campaign->status !== CampaignStatus::Open) {
-            throw new ActionRefused('review_closed', 'This access review is closed; its decisions have been applied.', 409);
+            throw new ActionRefused('review_closed', new ActionMessage('console.this_access_review_is_closed_its_decisions_have_been_ap_3844f9ab'), 409);
         }
 
         // Within THIS review: an item id from another review is a 404, whatever the

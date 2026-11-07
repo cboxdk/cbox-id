@@ -6,6 +6,7 @@ namespace App\Actions\Directories;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -84,7 +85,7 @@ final readonly class ConnectHrisDirectory implements Action
         $provider = DirectoryProvider::tryFrom($context->string('provider'));
 
         if ($provider === null || ! $provider->isHris() || HrisCatalog::for($provider) === null) {
-            throw ActionRefused::because('unknown_provider', 'Choose an HR system.', 'provider');
+            throw ActionRefused::because('unknown_provider', new ActionMessage('console.choose_an_hr_system_63795f98'), 'provider');
         }
 
         $credentials = HrisCredentialFields::verified($this->connectors, $provider, $context->array('credentials'));

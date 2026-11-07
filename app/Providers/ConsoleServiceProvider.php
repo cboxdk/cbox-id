@@ -116,7 +116,7 @@ final class ConsoleServiceProvider extends ServiceProvider
             // Left as a gap rather than closed up: the orders in this area are unique
             // across modules by contract, and renumbering to fill it would collide with a
             // module the host cannot see.
-            ->page('organization-settings', 'Workspace settings', feature: 'organization.manage', order: 80);
+            ->page('organization-settings', 'Workspace settings', feature: 'organization.own', order: 80);
 
         // Plain-language labels for non-experts (the technical term lives on the page
         // header, not the nav). "Directory" → Members & roles, "Authentication" → Sign-in.
@@ -307,8 +307,10 @@ final class ConsoleServiceProvider extends ServiceProvider
         // capability: a person who administers this account belongs in the area even if
         // every page inside it happens to be closed to them, and `ownsIdentityProviders()`
         // is the same question phrased for the layout.
-        $features->register('organization.projects', static fn (): bool => app(ConsoleScope::class)->ownsIdentityProviders());
+        $features->register('organization.projects', static fn (): bool => app(ConsoleScope::class)->ownsIdentityProviders()
+            && $can()?->canReadEnvironments() === true);
         $features->register('organization.members', static fn (): bool => $can()?->canReadMembers() === true);
+        $features->register('organization.own', static fn (): bool => $can()?->isOwner() === true);
         $features->register('organization.manage', static fn (): bool => $can()?->canManageMembers() === true);
         $features->register('organization.environments', static fn (): bool => $can()?->canManageEnvironments() === true);
         // THE PLATFORM SECTION'S GATE, and the only thing standing between an ordinary

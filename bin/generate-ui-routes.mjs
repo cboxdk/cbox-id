@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { includeQueryMethod, normalizeDictionaries } from './lib/wayfinder-compat.mjs';
 
@@ -10,7 +10,9 @@ const generated = spawnSync('php', ['artisan', 'wayfinder:generate', ...process.
 });
 if (generated.error) throw generated.error;
 if (generated.status !== 0) process.exit(generated.status ?? 1);
-for (const relative of readdirSync('resources/js/actions', { recursive: true })) {
+for (const relative of existsSync('resources/js/actions')
+    ? readdirSync('resources/js/actions', { recursive: true })
+    : []) {
     if (!relative.endsWith('.ts')) continue;
     const path = join('resources/js/actions', relative);
     const source = readFileSync(path, 'utf8');

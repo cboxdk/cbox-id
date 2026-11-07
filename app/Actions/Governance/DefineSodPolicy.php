@@ -6,6 +6,7 @@ namespace App\Actions\Governance;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -60,7 +61,7 @@ final readonly class DefineSodPolicy implements Action
         $roleIds = array_values(array_unique(array_filter($context->array('role_ids'), 'is_string')));
 
         if (count($roleIds) < 2) {
-            throw ActionRefused::because('too_few_roles', 'Select at least two roles for a mutually-exclusive set.', 'role_ids');
+            throw ActionRefused::because('too_few_roles', new ActionMessage('console.select_at_least_two_roles_for_a_mutually_exclusive_set_24e4b9c6'), 'role_ids');
         }
 
         // Roles an organization's people can actually hold: a rule naming a role from
@@ -74,7 +75,7 @@ final readonly class DefineSodPolicy implements Action
             ->all();
 
         if (count($known) !== count($roleIds)) {
-            throw ActionRefused::because('unknown_role', 'Every role must be one this organization\'s people can hold.', 'role_ids');
+            throw ActionRefused::because('unknown_role', new ActionMessage('console.every_role_must_be_one_this_organization_s_people_can_h_4189bb43'), 'role_ids');
         }
 
         $description = trim($context->string('description'));

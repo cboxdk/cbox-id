@@ -1,5 +1,6 @@
+import { useTranslator as usePublicTranslator } from '@/i18n';
 import type { Translator } from '@/i18n';
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -61,15 +62,15 @@ type Props = PageProps<{
     rulesHref: string;
 }>;
 
-const ACTION_LABEL = (tc: Translator['t']): Record<Verdict, string> => ({
-    allow: tc('console.allow_skip_every_rule_after_this_one_a9cac725'),
-    challenge: tc('console.challenge_a_second_factor_on_sign_in_a_captc_38e590f3'),
-    block: tc('console.block_refuse_with_a_generic_message_206a03e9'),
+const ACTION_LABEL = (t: Translator['t']): Record<Verdict, string> => ({
+    allow: t('console.allow_skip_every_rule_after_this_one_a9cac725'),
+    challenge: t('console.challenge_a_second_factor_on_sign_in_a_captcha_or_email_38e590f3'),
+    block: t('console.block_refuse_with_a_generic_message_206a03e9'),
 });
-const SCOPE_LABEL = (tc: Translator['t']): Record<Scope, string> => ({
-    all: tc('console.sign_in_and_sign_up_b9773c35'),
-    sign_in: tc('console.sign_in_only_527f76e3'),
-    sign_up: tc('console.sign_up_only_e179069e'),
+const SCOPE_LABEL = (t: Translator['t']): Record<Scope, string> => ({
+    all: t('console.sign_in_and_sign_up_b9773c35'),
+    sign_in: t('console.sign_in_only_527f76e3'),
+    sign_up: t('console.sign_up_only_e179069e'),
 });
 
 let nextKey = 0;
@@ -102,8 +103,12 @@ export default function RadarRuleEditor({
     destroyHref,
     rulesHref,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleStaticText } = useConsoleTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [deleting, setDeleting] = useState(false);
     const form = useForm({
         name: rule?.name ?? '',
@@ -147,13 +152,13 @@ export default function RadarRuleEditor({
 
     return (
         <>
-            <Breadcrumb href={rulesHref} label={tc('console.radar_rules_d0f99c71')} />
+            <Breadcrumb href={rulesHref} label={consoleT('console.radar_rules_d0f99c71')} />
 
             <div className="mt-2">
                 <PageHeader
                     help={help}
-                    description={tc(
-                        'console.when_every_condition_holds_radar_takes_this__1e685d20',
+                    description={consoleT(
+                        'console.when_every_condition_holds_radar_takes_this_rule_s_acti_1e685d20',
                     )}
                 />
             </div>
@@ -170,20 +175,20 @@ export default function RadarRuleEditor({
                     }
                 }}
             >
-                <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
+                <Field label={consoleT('console.name_dcd1d522')} error={form.errors.name}>
                     <Input
                         value={form.data.name}
                         maxLength={120}
-                        placeholder={tc(
+                        placeholder={consoleUiText(
                             'console.challenge_sign_ins_from_outside_the_nordics_88b2de45',
                         )}
                         onChange={(event) => form.setData('name', event.target.value)}
                     />
                 </Field>
                 <Field
-                    label={tc('console.why_it_exists_77890c5d')}
+                    label={consoleT('console.why_it_exists_77890c5d')}
                     error={form.errors.description}
-                    hint={tc('console.optional_for_whoever_reads_it_next_460bb779')}
+                    hint={consoleT('console.optional_for_whoever_reads_it_next_460bb779')}
                 >
                     <Textarea
                         value={form.data.description}
@@ -194,7 +199,9 @@ export default function RadarRuleEditor({
                 </Field>
 
                 <fieldset className="grid gap-3">
-                    <legend className="text-sm font-semibold">{tc('console.when_cf9c7aa2')}</legend>
+                    <legend className="text-sm font-semibold">
+                        {consoleT('console.when_cf9c7aa2')}
+                    </legend>
                     {form.data.conditions.map((condition, index) => {
                         const field = fieldOf(condition.field);
                         const operator = field?.operators.find(
@@ -209,8 +216,8 @@ export default function RadarRuleEditor({
                                 <Field
                                     label={
                                         index === 0
-                                            ? tc('console.fact_2558566c')
-                                            : tc('console.and_6201111b')
+                                            ? consoleText('console.fact_2558566c')
+                                            : consoleText('console.and_6201111b')
                                     }
                                 >
                                     <Select
@@ -224,7 +231,7 @@ export default function RadarRuleEditor({
                                         }))}
                                     />
                                 </Field>
-                                <Field label={tc('console.is_f5985de1')}>
+                                <Field label={consoleT('console.is_f5985de1')}>
                                     <Select
                                         value={condition.operator}
                                         onValueChange={(value) =>
@@ -239,8 +246,8 @@ export default function RadarRuleEditor({
                                 <Field
                                     label={
                                         operator?.list
-                                            ? tc('console.values_comma_separated_6face72e')
-                                            : tc('console.value_8e37953d')
+                                            ? consoleText('console.values_comma_separated_6face72e')
+                                            : consoleText('console.value_8e37953d')
                                     }
                                 >
                                     {field?.type === 'boolean' ? (
@@ -254,11 +261,11 @@ export default function RadarRuleEditor({
                                             options={[
                                                 {
                                                     value: 'true',
-                                                    label: tc('console.yes_8a798890'),
+                                                    label: consoleText('console.yes_8a798890'),
                                                 },
                                                 {
                                                     value: 'false',
-                                                    label: tc('console.no_9390298f'),
+                                                    label: consoleText('console.no_9390298f'),
                                                 },
                                             ]}
                                         />
@@ -282,7 +289,7 @@ export default function RadarRuleEditor({
                                 <Button
                                     variant="ghost"
                                     disabled={form.data.conditions.length === 1}
-                                    aria-label={tc('console.remove_this_condition_3b23e189')}
+                                    aria-label={consoleT('console.remove_this_condition_3b23e189')}
                                     onClick={() =>
                                         form.setData(
                                             'conditions',
@@ -311,53 +318,60 @@ export default function RadarRuleEditor({
                                 ])
                             }
                         >
-                            <Icon name="plus" className="w-4 h-4" />
-                            {tc('console.add_a_condition_e7c81a80')}
+                            {consoleRich('console._part1_add_a_condition_45d4471b', {
+                                part1: <Icon name="plus" className="w-4 h-4" />,
+                            })}
                         </Button>
                     </div>
                 </fieldset>
 
-                <Field label={tc('console.then_0597f441')} error={form.errors.action}>
+                <Field label={consoleT('console.then_0597f441')} error={form.errors.action}>
                     <Select
                         value={form.data.action}
                         onValueChange={(value) => form.setData('action', value)}
                         options={actions.map((value) => ({
                             value,
-                            label: ACTION_LABEL(tc)[value],
+                            label: ACTION_LABEL(consoleStaticText)[value],
                         }))}
                     />
                 </Field>
-                <Field label={tc('console.on_13001175')} error={form.errors.appliesTo}>
+                <Field
+                    label={consoleT('console.applies_to_6687458b')}
+                    error={form.errors.appliesTo}
+                >
                     <Select
                         value={form.data.appliesTo}
                         onValueChange={(value) => form.setData('appliesTo', value)}
-                        options={scopes.map((value) => ({ value, label: SCOPE_LABEL(tc)[value] }))}
+                        options={scopes.map((value) => ({
+                            value,
+                            label: SCOPE_LABEL(consoleStaticText)[value],
+                        }))}
                     />
                 </Field>
                 <Checkbox
                     checked={form.data.enabled}
                     onCheckedChange={(checked) => form.setData('enabled', checked)}
-                    label={tc('console.enabled_92c1cdfd')}
-                    hint={tc('console.a_rule_that_is_off_is_kept_and_asked_nothing_dbf2f703')}
+                    label={consoleT('console.enabled_92c1cdfd')}
+                    hint={consoleT('console.a_rule_that_is_off_is_kept_and_asked_nothing_dbf2f703')}
                 />
 
                 <div className="flex flex-wrap items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
                         {rule === null
-                            ? tc('console.add_rule_a27cff51')
-                            : tc('console.save_rule_4e62c225')}
+                            ? consoleText('console.add_rule_a27cff51')
+                            : consoleText('console.save_rule_4e62c225')}
                     </Button>
                     {destroyHref !== null && rule !== null && (
                         <>
                             <Button variant="danger" onClick={() => setDeleting(true)}>
-                                {tc('console.delete_e2d0a549')}
+                                {consoleT('console.delete_e2d0a549')}
                             </Button>
                             <ConfirmDelete
                                 open={deleting}
                                 onOpenChange={setDeleting}
                                 name={rule.name}
-                                consequence={tc(
-                                    'console.attempts_this_rule_decided_are_decided_by_th_ebfc6722',
+                                consequence={consoleUiText(
+                                    'console.attempts_this_rule_decided_are_decided_by_the_next_matc_ebfc6722',
                                 )}
                                 onConfirm={() => router.delete(destroyHref)}
                             />

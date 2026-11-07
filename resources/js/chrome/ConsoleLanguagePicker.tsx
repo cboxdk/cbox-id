@@ -1,79 +1,80 @@
-import { update } from '@routes/console/locale';
-import { update as updateEnvironment } from '@routes/environment/locale';
-import type { SharedProps } from '@/types';
-import { usePage, router } from '@inertiajs/react';
-import { DropdownMenu } from 'radix-ui';
+import { router, usePage } from '@inertiajs/react';
+import { DropdownMenu as Primitive } from 'radix-ui';
 import { useState } from 'react';
 import { useTranslator } from '@/i18n';
-import { Button, DropdownMenuContent, Icon } from '@/ui';
+import type { SharedProps } from '@/types';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, Icon } from '@/ui';
 
-/** Shared account preference, independent of the customer's hosted-language policy. */
+/** Only an explicit selection writes the signed-in person's shared language preference. */
 export function ConsoleLanguagePicker() {
-    const { locale, t } = useTranslator();
-    const { i18n, auth, shell } = usePage<SharedProps>().props;
-    const languages = i18n?.locales ?? [];
-    const [open, setOpen] = useState(false);
-    const [changing, setChanging] = useState(false);
+    const { i18n } = usePage<SharedProps>().props;
+    const { t } = useTranslator();
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const preference = i18n?.preference;
 
-    if (languages.length < 2) return null;
-    const current = languages.find((language) => language.code === locale);
+    if (!i18n || !preference || i18n.locales.length < 2) return null;
+
+    function choose(language: string) {
+        if (saving || language === i18n!.locale) return;
+        setError(null);
+        setSaving(true);
+        router.post(
+            preference!.updateUrl,
+            { language, subject_id: preference!.subjectId, version: preference!.version },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onError: (errors) => setError(Object.values(errors).join(' ')),
+                onFinish: () => setSaving(false),
+            },
+        );
+    }
 
     return (
-        <DropdownMenu.Root open={open} onOpenChange={(value) => setOpen(value && !changing)}>
-            <DropdownMenu.Trigger asChild>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    className="border-transparent bg-transparent shadow-none"
-                    data-testid="console-language-picker"
-                    aria-label={`${t('console.language')}: ${current?.name ?? locale}`}
-                    disabled={changing}
+        <div className="relative shrink-0">
+            <DropdownMenu>
+                <DropdownMenuTrigger
+                    disabled={saving}
+                    aria-label={t('hosted.language.label')}
+                    aria-busy={saving}
+                    className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-sm hover:bg-[var(--surface-hover)] disabled:opacity-50"
                 >
-                    <span lang={locale}>{current?.name ?? locale}</span>
+                    <span lang={i18n.locale}>
+                        {i18n.locales.find((option) => option.code === i18n.locale)?.name ??
+                            i18n.locale}
+                    </span>
                     <Icon name="chevron" className="h-3.5 w-3.5" />
-                </Button>
-            </DropdownMenu.Trigger>
-            <DropdownMenuContent align="end">
-                <DropdownMenu.Label className="cbx-menulabel">
-                    {t('console.language')}
-                </DropdownMenu.Label>
-                <DropdownMenu.RadioGroup
-                    value={locale}
-                    aria-label={t('console.language')}
-                    onValueChange={(value) => {
-                        setOpen(false);
-                        if (changing || value === locale) return;
-                        setChanging(true);
-                        router.post(
-                            shell?.altitude === 'environment'
-                                ? updateEnvironment.url()
-                                : update.url(),
-                            { locale: value, user_id: auth.user?.id },
-                            {
-                                preserveScroll: true,
-                                // Keep the transition lock (and entered form values) as props change.
-                                preserveState: true,
-                                onFinish: () => setChanging(false),
-                            },
-                        );
-                    }}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="max-h-[min(26rem,70dvh)] overflow-y-auto">
+                    <Primitive.RadioGroup value={i18n.locale} onValueChange={choose}>
+                        {i18n.locales.map((option) => (
+                            <Primitive.RadioItem
+                                key={option.code}
+                                value={option.code}
+                                disabled={saving}
+                                className="cbx-menuitem"
+                            >
+                                <span className="w-4 shrink-0">
+                                    <Primitive.ItemIndicator>
+                                        <Icon name="check" className="h-4 w-4" />
+                                    </Primitive.ItemIndicator>
+                                </span>
+                                <span lang={option.code}>{option.name}</span>
+                            </Primitive.RadioItem>
+                        ))}
+                    </Primitive.RadioGroup>
+                </DropdownMenuContent>
+            </DropdownMenu>
+            {error && (
+                <p
+                    role="alert"
+                    className="absolute right-0 top-full z-50 mt-1 w-64 rounded-md border p-3 text-sm"
+                    style={{ background: 'var(--surface)', color: 'var(--destructive)' }}
                 >
-                    {languages.map((language) => (
-                        <DropdownMenu.RadioItem
-                            key={language.code}
-                            value={language.code}
-                            className="cbx-menuitem"
-                        >
-                            <span lang={language.code} className="flex-1">
-                                {language.name}
-                            </span>
-                            <DropdownMenu.ItemIndicator>
-                                <Icon name="check" className="h-4 w-4" />
-                            </DropdownMenu.ItemIndicator>
-                        </DropdownMenu.RadioItem>
-                    ))}
-                </DropdownMenu.RadioGroup>
-            </DropdownMenuContent>
-        </DropdownMenu.Root>
+                    {error}
+                </p>
+            )}
+        </div>
     );
 }

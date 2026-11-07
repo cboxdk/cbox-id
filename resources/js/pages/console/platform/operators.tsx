@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -29,8 +29,12 @@ function listHref(search: string): string {
 }
 
 export default function Operators({ operators, search, storeHref, help }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [term, setTerm] = useState(search);
     const [creating, setCreating] = useState(false);
     const [confirming, setConfirming] = useState<Operator | null>(null);
@@ -55,11 +59,14 @@ export default function Operators({ operators, search, storeHref, help }: Props)
         <>
             <PageHeader
                 help={help}
-                description={tc('console.platform_operators_administer_environments_a_e0a9f173')}
+                description={consoleT(
+                    'console.platform_operators_administer_environments_across_the_w_e0a9f173',
+                )}
                 actions={
                     <Button variant="primary" onClick={() => setCreating((open) => !open)}>
-                        <Icon name="plus" className="w-4 h-4" />
-                        {tc('console.new_operator_5dfa8aa1')}
+                        {consoleRich('console._part1_new_operator_09ff58e0', {
+                            part1: <Icon name="plus" className="w-4 h-4" />,
+                        })}
                     </Button>
                 }
             />
@@ -68,8 +75,8 @@ export default function Operators({ operators, search, storeHref, help }: Props)
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder={tc('console.search_by_name_or_email_6936e681')}
-                    aria-label={tc('console.search_operators_0fde2f03')}
+                    placeholder={consoleUiText('console.search_by_name_or_email_6936e681')}
+                    aria-label={consoleT('console.search_operators_0fde2f03')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -79,11 +86,7 @@ export default function Operators({ operators, search, storeHref, help }: Props)
                     narrowed to nothing.
                 */}
                 <output className="sr-only">
-                    {operators.length}{' '}
-                    {operators.length === 1
-                        ? tc('console.operator_06e55b63')
-                        : tc('console.operators_b2db06dc')}
-                    {tc('console.found_599e25a3')}
+                    {consoleRich('console.search_results_found', { count: operators.length })}
                 </output>
             </div>
 
@@ -105,21 +108,21 @@ export default function Operators({ operators, search, storeHref, help }: Props)
                                 {operator.name ?? operator.email}
                                 {operator.isSelf && (
                                     <Pill tone="info" className="align-middle ml-1">
-                                        {tc('console.you_08b04193')}
+                                        {consoleT('console.you_08b04193')}
                                     </Pill>
                                 )}
                                 {!operator.active && (
                                     <Pill tone="destructive" className="align-middle ml-1">
-                                        {tc('console.suspended_e392a389')}
+                                        {consoleT('console.suspended_e392a389')}
                                     </Pill>
                                 )}
                             </p>
                             <p className="text-xs truncate" style={{ color: 'var(--faint)' }}>
                                 {operator.email} ·{' '}
                                 {operator.lastLogin === null
-                                    ? tc('console.never_signed_in_fde96b0e')
-                                    : tc('console.last_in_value0_f91b3125', {
-                                          value0: operator.lastLogin,
+                                    ? consoleText('console.never_signed_in_fde96b0e')
+                                    : consoleFinalText('console.last_in_part1_ffe0749b', {
+                                          part1: operator.lastLogin,
                                       })}
                             </p>
                         </div>
@@ -138,12 +141,12 @@ export default function Operators({ operators, search, storeHref, help }: Props)
                                 variant={operator.active ? 'danger' : undefined}
                                 // Named for the row: a column of buttons all announced as
                                 // "Suspend" says which action but never about whom.
-                                aria-label={`${operator.active ? 'Suspend' : 'Reactivate'} ${operator.name ?? operator.email}`}
+                                aria-label={`${operator.active ? consoleText('console.suspend_4948e134') : consoleText('console.reactivate_2dc7478f')} ${operator.name ?? operator.email}`}
                                 onClick={() => setConfirming(operator)}
                             >
                                 {operator.active
-                                    ? tc('console.suspend_4948e134')
-                                    : tc('console.reactivate_2dc7478f')}
+                                    ? consoleText('console.suspend_4948e134')
+                                    : consoleText('console.reactivate_2dc7478f')}
                             </Button>
                         )}
                     </div>
@@ -156,19 +159,23 @@ export default function Operators({ operators, search, storeHref, help }: Props)
                 title={
                     confirming === null
                         ? ''
-                        : `${confirming.active ? 'Suspend' : 'Reactivate'} ${confirming.name ?? confirming.email}?`
+                        : `${confirming.active ? consoleText('console.suspend_4948e134') : consoleText('console.reactivate_2dc7478f')} ${confirming.name ?? confirming.email}?`
                 }
                 description={
                     confirming === null
                         ? ''
                         : confirming.active
-                          ? tc('console.they_lose_access_to_every_platform_page_on_t_0e71b790')
-                          : tc('console.they_regain_full_platform_operator_access_to_925cd320')
+                          ? consoleText(
+                                'console.they_lose_access_to_every_platform_page_on_this_install_0e71b790',
+                            )
+                          : consoleText(
+                                'console.they_regain_full_platform_operator_access_to_this_insta_925cd320',
+                            )
                 }
                 footer={
                     <>
                         <Button onClick={() => setConfirming(null)}>
-                            {tc('console.cancel_19766ed6')}
+                            {consoleT('console.cancel_19766ed6')}
                         </Button>
                         <Button
                             variant={confirming?.active === true ? 'danger' : 'primary'}
@@ -182,8 +189,8 @@ export default function Operators({ operators, search, storeHref, help }: Props)
                             }}
                         >
                             {confirming?.active === true
-                                ? tc('console.suspend_4948e134')
-                                : tc('console.reactivate_2dc7478f')}
+                                ? consoleText('console.suspend_4948e134')
+                                : consoleText('console.reactivate_2dc7478f')}
                         </Button>
                     </>
                 }
@@ -193,8 +200,8 @@ export default function Operators({ operators, search, storeHref, help }: Props)
 }
 
 function CreateOperator({ href, onDone }: { href: string; onDone: () => void }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({ name: '', email: '', password: '' });
 
     return (
@@ -206,10 +213,10 @@ function CreateOperator({ href, onDone }: { href: string; onDone: () => void }) 
             }}
         >
             <div className="flex-1" style={{ minWidth: '12rem' }}>
-                <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
+                <Field label={consoleT('console.name_dcd1d522')} error={form.errors.name}>
                     <Input
                         name="name"
-                        placeholder={tc('console.grace_hopper_b2278a96')}
+                        placeholder={consoleUiText('console.grace_hopper_b2278a96')}
                         value={form.data.name}
                         onChange={(event) => form.setData('name', event.target.value)}
                     />
@@ -217,7 +224,7 @@ function CreateOperator({ href, onDone }: { href: string; onDone: () => void }) 
             </div>
 
             <div className="flex-1" style={{ minWidth: '12rem' }}>
-                <Field label={tc('console.email_969ccbd3')} error={form.errors.email}>
+                <Field label={consoleT('console.email_969ccbd3')} error={form.errors.email}>
                     <Input
                         name="email"
                         type="email"
@@ -230,15 +237,17 @@ function CreateOperator({ href, onDone }: { href: string; onDone: () => void }) 
 
             <div className="flex-1" style={{ minWidth: '12rem' }}>
                 <Field
-                    label={tc('console.password_e7cf3ef4')}
-                    hint={tc('console.at_least_12_characters_and_checked_against_k_6b10b5e5')}
+                    label={consoleT('console.password_e7cf3ef4')}
+                    hint={consoleT(
+                        'console.at_least_12_characters_and_checked_against_known_breach_6b10b5e5',
+                    )}
                     error={form.errors.password}
                 >
                     <Input
                         name="password"
                         type="password"
                         autoComplete="new-password"
-                        placeholder={tc('console.at_least_12_characters_0ced89a6')}
+                        placeholder={consoleUiText('console.at_least_12_characters_0ced89a6')}
                         value={form.data.password}
                         onChange={(event) => form.setData('password', event.target.value)}
                     />
@@ -246,10 +255,10 @@ function CreateOperator({ href, onDone }: { href: string; onDone: () => void }) 
             </div>
 
             <Button type="submit" variant="primary" loading={form.processing}>
-                {tc('console.create_4759498a')}
+                {consoleT('console.create_4759498a')}
             </Button>
             <Button type="button" onClick={onDone}>
-                {tc('console.cancel_19766ed6')}
+                {consoleT('console.cancel_19766ed6')}
             </Button>
         </form>
     );

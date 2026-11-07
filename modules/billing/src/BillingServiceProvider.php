@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Billing;
 
+use App\Platform\Billing\CaptureProductUsage;
 use App\Platform\Console\ConsoleRoutes;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Console\Kit\Facades\Console;
-use Cbox\Id\Billing\Console\SyncBilling;
+use Cbox\Id\Billing\Contracts\ProjectPayments;
 use Cbox\Id\Billing\Http\Controllers\BillingController;
-use Illuminate\Support\Facades\Route;
+use Cbox\Id\Billing\Http\Controllers\PaymentController;
+use Cbox\Id\Kernel\Events\EventDelivered;
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 
 /**
@@ -49,16 +53,20 @@ class BillingServiceProvider extends ServiceProvider
      */
     private const NAV_ORDER = 70;
 
+    /** Bind the scoped financial transport; deployment options remain in config/billing.php. */
     public function register(): void
     {
-        $this->app->bind(Contracts\ProjectPayments::class, HttpProjectPayments::class);
+        $this->app->bind(ProjectPayments::class, HttpProjectPayments::class);
     }
 
     public function boot(): void
     {
 
-        $this->commands([SyncBilling::class]);
-        Route::post('/api/billing/webhook', Http\Controllers\BillingWebhookController::class)->middleware('throttle:60,1')->name('billing.webhook');
+        Event::listen(EventDelivered::class, CaptureProductUsage::class);
+        $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
+            $schedule->command('billing:report-product-usage')->everyMinute()->withoutOverlapping();
+        });
+
         $this->registerFeature();
         $this->registerNav();
         $this->registerRoutes();
@@ -125,16 +133,18 @@ class BillingServiceProvider extends ServiceProvider
         // owes for the products they own — and an environment administrator is a
         // control-plane identity acting inside one tenant, with no bill of their own to
         // read. Serving it on that plane would render a permanently empty page.
-        foreach (['account', 'details', 'card', 'updateCard', 'preview', 'confirm', 'invoice'] as $action) {
-            $uri = in_array($action, ['preview', 'confirm'], true) ? "/billing/projects/{project}/{$action}" : "/billing/accounts/{billingOrganization}/{$action}";
-            Route::middleware('throttle:30,1')->group(static function () use ($uri, $action): void {
-                if (in_array($action, ['account', 'invoice'], true)) {
-                    ConsoleRoutes::organizationPage('billing', $uri, [Http\Controllers\PaymentController::class, $action], 'billing.'.$action);
-                } else {
-                    ConsoleRoutes::organizationAction('billing', 'post', $uri, [Http\Controllers\PaymentController::class, $action], 'billing.'.$action);
-                }
-            });
+        foreach ([
+            ['PATCH', '/billing/account', 'updateAccount', 'billing.account'],
+            ['POST', '/billing/payment-methods/setup', 'setup', 'billing.setup'],
+            ['POST', '/billing/payment-methods/complete', 'complete', 'billing.complete'],
+            ['PATCH', '/billing/payment-methods/{method}/default', 'setDefault', 'billing.payment-method.default'],
+            ['DELETE', '/billing/payment-methods/{method}', 'remove', 'billing.payment-method.remove'],
+        ] as [$verb, $uri, $method, $name]) {
+            ConsoleRoutes::organizationAction('billing', $verb, $uri, [BillingController::class, $method], $name);
         }
+        ConsoleRoutes::organizationAction('billing', 'POST', '/billing/projects/{project}/preview', [PaymentController::class, 'preview'], 'billing.preview');
+        ConsoleRoutes::organizationAction('billing', 'POST', '/billing/projects/{project}/confirm', [PaymentController::class, 'confirm'], 'billing.confirm');
+        ConsoleRoutes::organizationPage('billing', '/billing/invoices/{invoice}/download', [BillingController::class, 'invoice'], 'billing.invoice');
 
         ConsoleRoutes::organizationPage(
             feature: 'billing',

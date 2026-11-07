@@ -1,0 +1,120 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'layout' => [
+        'footer' => '© :year :brand · Acesta este un mesaj generat automat de platforma dumneavoastră de identitate.',
+    ],
+    'common' => [
+        'paste_link' => 'Sau lipiți acest link în browser:',
+    ],
+    'roles' => [
+        'owner' => 'Proprietar',
+        'admin' => 'Administrator',
+        'developer' => 'Dezvoltator',
+        'member' => 'Membru',
+        'viewer' => 'Vizualizator',
+    ],
+    'magic_link' => [
+        'subject' => 'Linkul dumneavoastră de autentificare în :brand',
+        'heading' => 'Autentificați-vă în :brand',
+        'body' => 'Apăsați butonul de mai jos pentru a vă autentifica. Linkul poate fi folosit o singură dată și expiră în 15 minute. Dacă nu l-ați solicitat, puteți ignora acest e-mail.',
+        'button' => 'Autentificați-vă în :brand',
+    ],
+    'password_reset' => [
+        'subject' => 'Resetați parola :brand',
+        'heading' => 'Resetați parola dumneavoastră',
+        'body' => 'Am primit o cerere de resetare a parolei contului dumneavoastră :brand. Apăsați butonul de mai jos pentru a alege o parolă nouă. Linkul poate fi folosit o singură dată și expiră în 60 de minute. Dacă nu ați solicitat modificarea, puteți ignora acest e-mail. Parola nu se va schimba.',
+        'button' => 'Resetați parola',
+    ],
+    'email_verification' => [
+        'subject' => 'Confirmați adresa de e-mail pentru contul :brand',
+        'heading' => 'Confirmați adresa de e-mail',
+        'body' => 'Bine ați venit la :brand. Confirmați că această adresă de e-mail vă aparține pentru a vă securiza contul. Linkul poate fi folosit o singură dată și expiră în 24 de ore.',
+        'button' => 'Confirmați adresa de e-mail',
+        'not_you' => 'Dacă nu ați creat un cont :brand, puteți ignora acest e-mail. Nu se întâmplă nimic fără folosirea linkului.',
+    ],
+    'admin_assigned_password' => [
+        'subject' => 'Parola dumneavoastră :brand a fost resetată',
+        'heading' => 'Parola dumneavoastră a fost resetată',
+        'body' => 'Un administrator a setat o nouă parolă pentru contul dumneavoastră. Autentificați-vă folosind-o mai jos.',
+        'temporary' => 'Vi se va cere imediat să alegeți o parolă proprie.',
+        'expires' => 'Această parolă încetează să funcționeze la :date, deci vă rugăm să vă autentificați înainte de aceasta.',
+        'not_expected' => 'Dacă nu vă așteptați la această modificare, contactați administratorul. A fost efectuată de cineva cu acces la consola organizației dumneavoastră și este înregistrată în jurnalul de audit.',
+    ],
+    'invitation' => [
+        'subject' => ':inviter v-a invitat să vă alăturați organizației :organization',
+        'heading' => 'Alăturați-vă organizației :organization',
+        'invited' => ':inviter v-a invitat să vă alăturați organizației :organization.',
+        'invited_as' => ':inviter v-a invitat să vă alăturați organizației :organization cu rolul :role.',
+        'accept_app' => 'Acceptați pentru a vă autentifica în :app cu contul :organization.',
+        'accept' => 'Acceptați pentru a configura contul și a vă autentifica.',
+        'button' => 'Vedeți invitația',
+        'note' => 'Link-ul deschide o pagină unde confirmați – nimic nu se întâmplă până nu confirmați. Link-ul expiră în 7 zile. Dacă nu vă așteptați la acest lucru, puteți să-l ignorați.',
+    ],
+    'organization_invite' => [
+        'subject' => ':inviter v-a invitat să administrați :organization pe :brand',
+        'heading' => 'Ajutați la administrarea organizației :organization pe :brand',
+        'invited' => ':inviter v-a invitat să administrați :organization pe :brand – consola pentru furnizorii de identitate: medii, membri și facturare. Acceptați pentru a seta o parolă și a vă autentifica.',
+        'invited_as' => ':inviter v-a invitat să administrați :organization ca :role pe :brand – consola pentru furnizorii de identitate: medii, membri și facturare. Acceptați pentru a seta o parolă și a vă autentifica.',
+        'button' => 'Acceptați invitația',
+        'note' => 'Dacă nu vă așteptați la această invitație, puteți să o ignorați – nimic nu se întâmplă până când nu o acceptați.',
+    ],
+    'portal_link' => [
+        'subject' => 'Configurați :organization pe :brand',
+        'heading' => 'Configurați :organization',
+        'lead' => 'Vă rugăm să configurați următoarele pentru :organization pe :brand. Nu este nevoie de un cont – butonul de mai jos este tot ce aveți nevoie.',
+        'intents' => [
+            'sso' => 'Autentificare unică cu furnizorul dumneavoastră de identitate',
+            'dsync' => 'Sincronizare a directorului (SCIM)',
+            'domain_verification' => 'Verificarea domeniilor dumneavoastră de e-mail',
+            'log_streams' => 'Transmiterea jurnalului de audit către sistemul SIEM',
+            'certificate_renewal' => 'Reînnoirea certificatului de semnare SAML',
+            'audit_logs' => 'Revizuirea jurnalelor de audit (doar pentru citire)',
+        ],
+        'button' => 'Începeți configurarea',
+        'expires' => 'Link-ul funcționează o singură dată, până la :date. Dacă expiră, solicitați unul nou.',
+        'not_expected' => 'Dacă nu vă așteptați la acest mesaj, îl puteți ignora. Nimic nu este configurat până când cineva folosește linkul.',
+    ],
+    'certificate_expiring' => [
+        'subject' => 'Autentificarea unică prin :connection nu va mai funcționa peste :count zi|Autentificarea unică prin :connection nu va mai funcționa peste :count zile|Autentificarea unică prin :connection nu va mai funcționa peste :count de zile',
+        'subject_expired' => 'Funcția de autentificare unică prin :connection a încetat să funcționeze',
+        'heading' => 'Certificatul dumneavoastră SAML expiră în curând',
+        'heading_expired' => 'Certificatul dumneavoastră SAML a expirat',
+        'lead' => 'Certificatul de semnare al conexiunii :connection, care asigură autentificarea unică pentru :organization, expiră la :date. După această dată, nimeni nu se va mai putea autentifica prin această conexiune.',
+        'lead_expired' => 'Certificatul de semnare al conexiunii :connection, care asigură autentificarea unică pentru :organization, a expirat la :date. Nimeni nu se poate autentifica prin această conexiune până la reînnoirea certificatului.',
+        'what_to_do' => 'Cereți persoanei care administrează furnizorul dumneavoastră de identitate noul certificat de semnare, apoi încărcați-l în consola de administrare. Puteți cere administratorului și un link către portalul de administrare pentru a încărca certificatul acolo.',
+        'why' => 'Primiți acest mesaj deoarece sunteți proprietar sau administrator al acestei organizații pe :brand.',
+    ],
+    'one_time_code' => [
+        'label' => 'Codul dumneavoastră',
+        'expires' => 'Codul expiră peste :count minut și poate fi folosit o singură dată.|Codul expiră peste :count minute și poate fi folosit o singură dată.|Codul expiră peste :count de minute și poate fi folosit o singură dată.',
+        'never_share' => 'Nu comunicați codul nimănui. :brand nu vi-l va cere niciodată prin telefon, chat sau e-mail.',
+        'not_you_title' => 'Nu ați solicitat acest lucru?',
+        'sign_in' => [
+            'subject' => 'Codul dumneavoastră de autentificare în :brand',
+            'heading' => 'Confirmați-vă identitatea',
+            'lead' => 'Introduceți acest cod pentru a finaliza autentificarea în :brand.',
+            'not_you' => 'Nu introduceți codul nicăieri și ignorați acest e-mail. Dacă aveți un cont :brand, schimbați-i parola. Persoana care a ajuns la acest pas o poate cunoaște.',
+        ],
+        'device' => [
+            'subject' => 'Codul dumneavoastră :brand pentru a aproba un dispozitiv',
+            'heading' => 'Aprobați autentificarea pe alt dispozitiv',
+            'lead' => 'Introduceți acest cod pentru a aproba autentificarea în :brand pe un alt dispozitiv, cum ar fi un televizor sau un instrument de linie de comandă.',
+            'not_you' => 'Nu introduceți codul nicăieri. Cineva ar putea încerca să vă convingă să aprobați propriul său dispozitiv. Așa începe acest tip de atac. Ignorați acest e-mail și nimic nu va fi aprobat.',
+        ],
+        'link' => [
+            'subject' => 'Codul dumneavoastră :brand pentru asocierea unei metode de autentificare',
+            'heading' => 'Asociați o metodă de autentificare',
+            'lead' => 'Introduceți acest cod pentru a asocia o nouă metodă de autentificare contului dumneavoastră :brand.',
+            'not_you' => 'Nu introduceți codul nicăieri. Cineva ar putea încerca să asocieze propria metodă de autentificare contului dumneavoastră. Ignorați acest e-mail și nimic nu va fi asociat.',
+        ],
+        'verify' => [
+            'subject' => 'Codul dumneavoastră de verificare pentru :brand',
+            'heading' => 'Codul dumneavoastră de verificare',
+            'lead' => 'Introduceți codul pe :brand pentru a confirma că adresa de e-mail este a dumneavoastră.',
+            'not_you' => 'Puteți ignora acest e-mail – nimic nu se întâmplă fără cod.',
+        ],
+    ],
+];

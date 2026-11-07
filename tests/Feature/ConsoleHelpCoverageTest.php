@@ -59,6 +59,11 @@ function pagesWithoutHelp(array $routes): array
 
     foreach ($routes as $route) {
         $response = test()->get(route($route));
+        if ($route === 'billing') {
+            $canonical = route('billing', ['organization' => app(CurrentUser::class)->organizationId()]);
+            $response->assertRedirect($canonical);
+            $response = test()->get($canonical);
+        }
 
         if ($response->status() !== 200) {
             $missing[] = "{$route}: answered {$response->status()}, so its help could not be read";

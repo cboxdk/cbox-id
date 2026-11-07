@@ -71,6 +71,11 @@ final class AuthenticateWorkspaceApi
             return $this->deny('unauthorized', 'A valid organization API key is required.', 401);
         }
 
+        $selected = $request->header('Cbox-Organization');
+        if ($selected !== null && $selected !== $key->organization_id) {
+            return $this->deny('forbidden', 'The selected organization does not match this key.', 403);
+        }
+
         if ($scope !== null) {
             // An unknown scope is refused rather than admitted, so a route that names a
             // scope nobody defined fails closed.
@@ -113,7 +118,8 @@ final class AuthenticateWorkspaceApi
         }
 
         if ($scope !== null) {
-            if (! WorkspaceScopes::roleAllows($workspace->role, $scope)) {
+            if (! WorkspaceScopes::knows($scope)
+                || ! WorkspaceScopes::holds($workspace->capabilities(), WorkspaceScopes::capability($scope))) {
                 return $this->deny('forbidden', 'Your role in this workspace may not '.(WorkspaceScopes::capability($scope) ?? 'use '.$scope).'.', 403);
             }
 

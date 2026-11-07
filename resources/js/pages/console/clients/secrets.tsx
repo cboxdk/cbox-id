@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -43,8 +43,13 @@ export default function ClientSecrets({
     rotateHref,
     stepUpCleared,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { t: consoleFinalText, locale } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     // An hour by default where the install allows one: long enough to roll a new secret
     // out, short enough that nobody forgets the old one is still alive. A leak is the
     // other case, and "Immediately" is the first choice in the list for it.
@@ -73,13 +78,17 @@ export default function ClientSecrets({
                         background: 'var(--accent-soft)',
                     }}
                 >
-                    {tc('console.your_password_is_confirmed_press_the_button__42ad1820')}
+                    {consoleT(
+                        'console.your_password_is_confirmed_press_the_button_again_to_fi_42ad1820',
+                    )}
                 </output>
             )}
 
             <Panel
-                title={tc('console.live_secrets_31a7e6b8')}
-                description={tc('console.every_secret_that_signs_this_app_in_right_no_6aceec1d')}
+                title={consoleT('console.live_secrets_31a7e6b8')}
+                description={consoleT(
+                    'console.every_secret_that_signs_this_app_in_right_now_only_a_ha_6aceec1d',
+                )}
             >
                 <ul className="space-y-3">
                     {secrets.map((secret) => (
@@ -92,19 +101,19 @@ export default function ClientSecrets({
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <span className="mono text-sm">
                                         {secret.hint !== null
-                                            ? tc('console.csec_value0_8e4ecb1d', {
-                                                  value0: secret.hint,
-                                              })
-                                            : tc(
+                                            ? `csec_…${secret.hint}`
+                                            : consoleText(
                                                   'console.a_secret_from_before_secrets_were_listed_d5e46ffa',
                                               )}
                                     </span>
                                     {secret.expiring ? (
                                         <Pill tone="warning">
-                                            {tc('console.replaced_still_working_07f500ce')}
+                                            {consoleT('console.replaced_still_working_07f500ce')}
                                         </Pill>
                                     ) : (
-                                        <Pill tone="success">{tc('console.current_e0d1b682')}</Pill>
+                                        <Pill tone="success">
+                                            {consoleT('console.current_e0d1b682')}
+                                        </Pill>
                                     )}
                                 </div>
                                 <KeyTimeline lifecycle={secret.lifecycle} />
@@ -116,7 +125,7 @@ export default function ClientSecrets({
                                     className="shrink-0"
                                     onClick={() => setRevoking(secret)}
                                 >
-                                    {tc('console.revoke_87e6d00b')}
+                                    {consoleT('console.revoke_87e6d00b')}
                                 </Button>
                             )}
                         </li>
@@ -124,17 +133,21 @@ export default function ClientSecrets({
                 </ul>
                 {secrets.length === 1 && (
                     <p className="mt-3 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        {tc('console.this_is_the_app_s_only_live_secret_so_it_can_d05986bb')}
+                        {consoleT(
+                            'console.this_is_the_app_s_only_live_secret_so_it_cannot_be_revo_d05986bb',
+                        )}
                     </p>
                 )}
             </Panel>
 
             <Panel
-                title={tc('console.rotate_secret_4405518d')}
-                description={tc('console.create_a_new_client_secret_choose_how_long_t_7788f8af')}
+                title={consoleT('console.rotate_secret_4405518d')}
+                description={consoleT(
+                    'console.create_a_new_client_secret_choose_how_long_the_current_7788f8af',
+                )}
             >
                 <RadioGroup
-                    label={tc('console.the_current_secret_stops_working_197f3bae')}
+                    label={consoleT('console.the_current_secret_stops_working_197f3bae')}
                     name="grace"
                     value={grace}
                     onValueChange={setGrace}
@@ -143,14 +156,14 @@ export default function ClientSecrets({
                         label: option.label,
                         hint:
                             option.value === 0
-                                ? tc(
-                                      'console.for_a_secret_that_has_leaked_anything_still__7b1c0246',
+                                ? consoleAttributeText(
+                                      'console.for_a_secret_that_has_leaked_anything_still_using_it_fa_7b1c0246',
                                   )
                                 : undefined,
                     }))}
                 />
                 <Button className="mt-4" size="sm" onClick={() => setRotating(true)}>
-                    {tc('console.rotate_secret_4405518d')}
+                    {consoleT('console.rotate_secret_4405518d')}
                 </Button>
             </Panel>
 
@@ -158,14 +171,22 @@ export default function ClientSecrets({
                 open={rotating}
                 onOpenChange={setRotating}
                 name={appHeader.name}
-                verb={tc('console.rotate_secret_4405518d')}
-                title={tc('console.rotate_the_secret_for_value0_e529e4a3', {
-                    value0: appHeader.name,
+                verb={consoleAttributeText('console.rotate_secret_4405518d')}
+                title={consoleFinalText('console.rotate_the_secret_for_part1_f3981281', {
+                    part1: appHeader.name,
                 })}
                 consequence={
                     immediate
-                        ? tc('console.the_current_client_secret_stops_working_imme_030370f0')
-                        : `The current client secret keeps working ${chosen.label.toLowerCase().replace('after', 'for')}, then stops. Move every deployment to the new one before then.`
+                        ? consoleAttributeText(
+                              'console.the_current_client_secret_stops_working_immediately_and_030370f0',
+                          )
+                        : consoleFinalText('console.secret_rotation_remaining_duration', {
+                              duration: new Intl.NumberFormat(locale, {
+                                  style: 'unit',
+                                  unit: chosen.value >= 86400 ? 'day' : 'hour',
+                                  unitDisplay: 'long',
+                              }).format(chosen.value / (chosen.value >= 86400 ? 86400 : 3600)),
+                          })
                 }
                 onConfirm={() => {
                     setRotating(false);
@@ -177,16 +198,18 @@ export default function ClientSecrets({
                 open={revoking !== null}
                 onOpenChange={(open) => !open && setRevoking(null)}
                 name={appHeader.name}
-                verb="Revoke"
+                verb={consoleShortText('console.revoke_87e6d00b')}
                 title={
                     revoking?.hint != null
-                        ? tc('console.revoke_the_secret_ending_in_value0_1c80da8d', {
-                              value0: revoking.hint,
+                        ? consoleFinalText('console.revoke_the_secret_ending_in_part1_c6b15a80', {
+                              part1: revoking.hint,
                           })
-                        : tc('console.revoke_this_secret_b7a2f049')
+                        : consoleText('console.revoke_this_secret_b7a2f049')
                 }
-                actionLabel={tc('console.revoke_secret_2d7f529d')}
-                consequence={tc('console.it_stops_working_immediately_anything_still__4a9caff7')}
+                actionLabel={consoleUiText('console.revoke_secret_2d7f529d')}
+                consequence={consoleUiText(
+                    'console.it_stops_working_immediately_anything_still_using_it_fa_4a9caff7',
+                )}
                 onConfirm={() => {
                     const href = revoking?.revokeHref;
                     setRevoking(null);

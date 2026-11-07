@@ -14,9 +14,9 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Baseline security headers for an identity console. The CSP is strict — no inline and
- * no remote scripts — which the app can afford because its whole client is one Vite
- * bundle served same-origin.
+ * Baseline security headers for an identity console. The app bundle is same-origin.
+ * Turnstile is admitted when configured; Stripe is admitted only on the billing
+ * document. Inline scripts still require the per-response nonce.
  *
  * Inertia writes a page's props into a `<script type="application/json">` beside the
  * mount point, and that is compatible with `script-src 'self'` rather than an exception
@@ -24,7 +24,7 @@ use Symfony\Component\HttpFoundation\Response;
  * execution, so the policy is never consulted for it. It is a data block that happens to
  * be spelled as a tag. Verified in a browser against this policy, not assumed.
  *
- * The one exception is the Vite DEV SERVER, which lives on its own origin and cannot be
+ * The Vite DEV SERVER also lives on its own origin and cannot be
  * bundled by definition. See {@see self::viteDevOrigin()}: it is admitted only when this
  * is a local install AND Vite has actually written its hot file, so no deployment can
  * reach that branch by configuration alone.
@@ -44,7 +44,9 @@ final class SecurityHeaders
     {
         $response = $next($request);
 
-        // The ONLY third-party origin this app ever allows, and only when Turnstile
+        // Turnstile is allowed only when configured. Stripe is confined to the billing
+        // document, whose controller forces a full navigation to install this policy.
+        // The challenge provider is allowed only when Turnstile
         // is actually configured: its script, and the iframe that script creates.
         // A deployment without Turnstile keys keeps the tighter same-origin policy —
         // no directive here changes shape unless the feature is switched on.
@@ -103,14 +105,14 @@ final class SecurityHeaders
                  * The only other origins admitted are the deployment's OWN asset hosts — a
                  * CDN in front of the brand-asset store, when one is configured.
                  */
-                "img-src 'self' data:".$this->imageOrigins(),
+                "img-src 'self' data:".$this->imageOrigins().($billing ? ' https://*.stripe.com https://*.link.com' : ''),
                 "font-src 'self' data:",
                 // …plus the dev server's websocket, which is how Fast Refresh reaches the
                 // page. Empty in every environment that is not a local install.
-                "connect-src 'self'".$dev.$devSocket.($billing ? ' https://api.stripe.com' : ''),
+                "connect-src 'self'".$dev.$devSocket.($billing ? ' https://api.stripe.com https://link.com https://*.link.com' : ''),
                 // Turnstile renders its challenge in an iframe from its own origin.
                 // Omitted entirely when Turnstile is off, so default-src 'self' governs.
-                ($turnstile || $billing || $support !== '') ? "frame-src 'self'".$support.($turnstile ? ' '.Turnstile::ORIGIN : '').($billing ? ' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com' : '') : null,
+                ($turnstile || $billing || $support !== '') ? "frame-src 'self'".$support.($turnstile ? ' '.Turnstile::ORIGIN : '').($billing ? ' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://link.com https://*.link.com' : '') : null,
                 "frame-ancestors 'none'",
                 "base-uri 'self'",
                 // `'self'` alone is wrong for this app, and logout is where it showed.

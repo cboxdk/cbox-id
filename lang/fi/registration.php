@@ -49,7 +49,7 @@ return [
     'use_invitation' => 'Käytä kutsua',
     'signin_description' => 'Jatka turvalliselle kirjautumissivulle. Voit myös valita toisen tilin.',
     'invalid' => 'Tarkista vastauksesi ja yritä uudelleen.',
-    'headline' => 'Identiteetti, valmiina tuotteellesi.',
+    'headline' => 'Identiteetinhallinta valmiina tuotteellesi.',
     'lead' => 'Tarjoa käyttäjillesi turvallinen kirjautumispaikka ja tiimillesi työkalut sen hallintaan.',
     'feature1_title' => 'Todenna',
     'feature1_description' => 'Tarjoa käyttäjillesi turvallinen kirjautuminen heidän suosimillaan menetelmillä.',

@@ -7,6 +7,7 @@ namespace App\Actions\Permissions;
 use App\Actions\Keys\KeyFields;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -79,7 +80,7 @@ final readonly class CreatePermission implements Action
             ->exists();
 
         if ($taken) {
-            throw ActionRefused::because('permission_taken', 'A permission with that key already exists here.', 'name');
+            throw ActionRefused::because('permission_taken', new ActionMessage('console.a_permission_with_that_key_already_exists_here_fa53c60f'), 'name');
         }
 
         $description = trim($context->string('description'));

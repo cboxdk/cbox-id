@@ -93,7 +93,7 @@ final readonly class TransferOwnership implements Action
         } catch (MembershipRefused $refused) {
             throw new ActionRefused(
                 $refused->reason->value,
-                $refused->getMessage(),
+                $refused->sourceMessage(),
                 $refused->reason === MembershipRefusalReason::NotAMember ? 422 : 409,
                 'user_id',
             );

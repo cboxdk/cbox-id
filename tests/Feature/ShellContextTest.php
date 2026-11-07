@@ -143,7 +143,8 @@ it('carries the page being read into the environment it opens', function (): voi
 it('lists only the environments a scoped member was granted', function (): void {
     $estate = contextEstate();
 
-    [, $developerId] = addMember($estate['organization']->id, MembershipRole::Developer, 'scoped@context.example');
+    [$developer, $developerId] = addMember($estate['organization']->id, MembershipRole::Developer, 'scoped@context.example');
+    grantNativeProductRoles($developer, ['developer']);
     app(PlatformRoot::class)->run(fn () => app(Memberships::class)->setEnvironmentAccess(
         $estate['organization']->id,
         $developerId,
@@ -156,15 +157,18 @@ it('lists only the environments a scoped member was granted', function (): void 
     expect(array_column(contextEnvironments(workspaceContext('projects')), 'id'))->toBe([$estate['sandbox']->id]);
 });
 
-it('offers no environment to a member who may not administer one', function (): void {
+it('offers no operational environment to a Billing-only member', function (): void {
     $estate = contextEstate();
 
-    // A Viewer reaches environments but is never handed an admin token for one —
-    // `/open/{environment}` answers 403 — so the menu must not offer the door.
-    [, $viewerId] = addMember($estate['organization']->id, MembershipRole::Viewer, 'viewer@context.example');
+    [$member, $viewerId] = addMember($estate['organization']->id, MembershipRole::Viewer, 'viewer@context.example');
+    grantNativeProductRoles($member, ['billing']);
     signInAsMember($viewerId);
 
-    $context = workspaceContext('projects');
+    test()->get('https://cboxid.com/projects')->assertForbidden();
+    $response = test()->get('https://cboxid.com/billing?organization='.$estate['organization']->id)->assertOk();
+    $context = (array) $response->inertiaProps('shell.context');
+    expect($response->inertiaProps('shell.brandHref'))
+        ->toBe('https://cboxid.com/billing?organization='.$estate['organization']->id);
 
     expect($context['projects'])->toBe([])
         ->and($context['workspaces'][0]['label'])->toBe('Acme');

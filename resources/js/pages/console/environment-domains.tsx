@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -42,8 +42,8 @@ export default function EnvironmentDomains({
     urls,
     help,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     /*
      * "DNS has not propagated" is not an error about the DOMAIN — the value is fine and
      * the record is probably right — so the server reports it under a key no input owns,
@@ -57,22 +57,24 @@ export default function EnvironmentDomains({
         <div style={{ maxWidth: '42rem' }}>
             <PageHeader
                 help={help}
-                description={tc('console.serve_an_environment_s_identity_endpoints_on_c475397f')}
+                description={consoleT(
+                    'console.serve_an_environment_s_identity_endpoints_on_your_own_d_c475397f',
+                )}
             />
 
             {environments.length === 0 ? (
                 <div className="card mt-6">
                     <EmptyState
                         icon="layers"
-                        title={tc('console.no_environments_yet_8c63cac4')}
-                        description={tc(
-                            'console.create_an_environment_first_then_you_can_giv_e7ae7f95',
+                        title={consoleT('console.no_environments_yet_8c63cac4')}
+                        description={consoleT(
+                            'console.create_an_environment_first_then_you_can_give_it_a_cust_e7ae7f95',
                         )}
                     />
                 </div>
             ) : (
                 <div className="mt-6 space-y-6">
-                    <Field label={tc('console.environment_9e471951')}>
+                    <Field label={consoleT('console.environment_9e471951')}>
                         <Select
                             value={selected}
                             onValueChange={(environment) =>
@@ -112,16 +114,24 @@ export default function EnvironmentDomains({
             <ConfirmDelete
                 open={removing}
                 onOpenChange={setRemoving}
-                name={verifiedDomain ?? challenge?.domain ?? tc('console.this_domain_d9e25fa6')}
+                name={
+                    verifiedDomain ??
+                    challenge?.domain ??
+                    consoleAttributeText('console.this_domain_d9e25fa6')
+                }
                 verb={
                     verifiedDomain !== null
-                        ? tc('console.stop_serving_339887ce')
-                        : tc('console.cancel_verification_2ce006fd')
+                        ? consoleAttributeText('console.stop_serving_339887ce')
+                        : consoleAttributeText('console.cancel_verification_2ce006fd')
                 }
                 consequence={
                     verifiedDomain !== null
-                        ? tc('console.this_environment_falls_back_to_its_default_d_201d6a2d')
-                        : tc('console.the_dns_txt_challenge_stops_being_valid_re_a_0338f0b8')
+                        ? consoleAttributeText(
+                              'console.this_environment_falls_back_to_its_default_domain_every_201d6a2d',
+                          )
+                        : consoleAttributeText(
+                              'console.the_dns_txt_challenge_stops_being_valid_re_adding_the_d_0338f0b8',
+                          )
                 }
                 onConfirm={() => {
                     setRemoving(false);
@@ -145,8 +155,8 @@ function Live({
     environment: string;
     onRemove: () => void;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <div className="space-y-4">
             <div
@@ -163,20 +173,25 @@ function Live({
                         style={{ color: 'var(--success-strong)' }}
                     />
                     <span className="font-medium">{domain}</span>
-                    <Badge>{tc('console.verified_4f783840')}</Badge>
+                    <Badge>{consoleT('console.verified_4f783840')}</Badge>
                 </div>
                 <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    {tc('console.this_environment_s_issuer_discovery_and_jwks_4b31ffd3')}{' '}
-                    <span className="mono">
-                        {tc('console.https_66dfeeed')}
-                        {domain}
-                    </span>
-                    {tc('console.point_the_host_at_your_ingress_and_terminate_aefa18ac')}
+                    {consoleRich(
+                        'console.this_environment_s_issuer_discovery_and_jwks_are_served_06e9c844',
+                        {
+                            part1: ' ',
+                            part2: (
+                                <span className="mono">
+                                    {consoleRich('console.https_part1_00ce7acb', { part1: domain })}
+                                </span>
+                            ),
+                        },
+                    )}
                 </p>
             </div>
 
             <Button variant="danger" onClick={onRemove} data-environment={environment}>
-                {tc('console.remove_domain_5ce43507')}
+                {consoleT('console.remove_domain_5ce43507')}
             </Button>
         </div>
     );
@@ -202,26 +217,33 @@ function Pending({
     urls: { verify: string };
     onCancel: () => void;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [verifying, setVerifying] = useState(false);
 
     return (
         <Panel
-            title={tc('console.prove_you_control_the_domain_d57cf229')}
+            title={consoleT('console.prove_you_control_the_domain_d57cf229')}
             description={
                 <>
-                    {tc('console.add_this_dns_41ae6113')}
-                    <b>TXT</b>
-                    {tc('console.record_at_your_domain_then_verify_it_proves__1c7dd39b')}
-                    <span className="mono">{challenge.domain}</span>.
+                    {consoleRich(
+                        'console.add_this_dns_part1_record_at_your_domain_then_verify_it_3d494578',
+                        {
+                            part1: <b>{consoleT('console.txt_d3dc6ac9')}</b>,
+                            part2: <span className="mono">{challenge.domain}</span>,
+                        },
+                    )}
                 </>
             }
         >
             <dl className="rounded-xl border" style={{ borderColor: 'var(--border)' }}>
-                <Record label={tc('console.type_baaddf70')} value="TXT" copyable={false} />
-                <Record label={tc('console.name_dcd1d522')} value={challenge.recordName} />
-                <Record label={tc('console.value_8e37953d')} value={challenge.recordValue} last />
+                <Record label={consoleT('console.type_baaddf70')} value="TXT" copyable={false} />
+                <Record label={consoleT('console.name_dcd1d522')} value={challenge.recordName} />
+                <Record
+                    label={consoleT('console.value_8e37953d')}
+                    value={challenge.recordValue}
+                    last
+                />
             </dl>
 
             {verifyError !== undefined && (
@@ -243,9 +265,9 @@ function Pending({
                         );
                     }}
                 >
-                    {tc('console.verify_eea2745e')}
+                    {consoleT('console.verify_eea2745e')}
                 </Button>
-                <Button onClick={onCancel}>{tc('console.cancel_19766ed6')}</Button>
+                <Button onClick={onCancel}>{consoleT('console.cancel_19766ed6')}</Button>
             </div>
         </Panel>
     );
@@ -283,12 +305,11 @@ function Record({
 
 /** No domain yet. */
 function RequestDomain({ environment, href }: { environment: string; href: string }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({ environment, domain: '' });
 
     return (
-        <Panel title={tc('console.add_a_domain_a86506fa')}>
+        <Panel title={consoleT('console.add_a_domain_a86506fa')}>
             <form
                 className="space-y-4"
                 onSubmit={(event) => {
@@ -300,8 +321,10 @@ function RequestDomain({ environment, href }: { environment: string; href: strin
                 }}
             >
                 <Field
-                    label={tc('console.custom_domain_d7d4c1e4')}
-                    hint={tc('console.a_hostname_you_control_usually_a_subdomain_l_01b144f8')}
+                    label={consoleT('console.custom_domain_d7d4c1e4')}
+                    hint={consoleT(
+                        'console.a_hostname_you_control_usually_a_subdomain_like_id_your_01b144f8',
+                    )}
                     error={form.errors.domain}
                 >
                     <Input
@@ -315,7 +338,7 @@ function RequestDomain({ environment, href }: { environment: string; href: strin
                 </Field>
 
                 <Button type="submit" variant="primary" loading={form.processing}>
-                    {tc('console.add_domain_d86476ae')}
+                    {consoleT('console.add_domain_d86476ae')}
                 </Button>
             </form>
         </Panel>

@@ -1,5 +1,6 @@
 import type { Translator } from '@/i18n';
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -111,8 +112,8 @@ export default function DirectoryMembers({
     organizationName,
     help,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [inviting, setInviting] = useState(false);
 
     // A refused roster write — the last owner, a role that is not offered — used to be
@@ -131,13 +132,16 @@ export default function DirectoryMembers({
         <>
             <PageHeader
                 help={help}
-                description={tc('console.everyone_who_can_sign_in_to_this_organizatio_731c2bfe')}
+                description={consoleT(
+                    'console.everyone_who_can_sign_in_to_this_organization_and_the_i_731c2bfe',
+                )}
                 actions={
                     isAdmin &&
                     !managedElsewhere && (
                         <Button variant="primary" onClick={() => setInviting((open) => !open)}>
-                            <Icon name="plus" className="w-4 h-4" />
-                            {tc('console.invite_member_08aa7a0b')}
+                            {consoleRich('console._part1_invite_member_e5b460f0', {
+                                part1: <Icon name="plus" className="w-4 h-4" />,
+                            })}
                         </Button>
                     )
                 }
@@ -160,8 +164,18 @@ export default function DirectoryMembers({
                         }}
                     >
                         <p className="text-sm">
-                            <b>{tc('console.this_organization_is_a_cbox_workspace_a78218a1')}</b>
-                            {tc('console.its_team_is_administered_under_workspace_tea_108220bc')}
+                            {consoleRich(
+                                'console._part1_its_team_is_administered_under_workspace_team_by_939d535a',
+                                {
+                                    part1: (
+                                        <b>
+                                            {consoleT(
+                                                'console.this_organization_is_a_cbox_workspace_a78218a1',
+                                            )}
+                                        </b>
+                                    ),
+                                },
+                            )}
                         </p>
                     </div>
                 )}
@@ -181,9 +195,9 @@ export default function DirectoryMembers({
 
                 {inviting && isAdmin && !managedElsewhere && (
                     <Panel
-                        title={tc('console.invite_someone_9b7639e8')}
-                        description={tc(
-                            'console.they_get_an_email_with_a_link_nothing_change_e94c64b9',
+                        title={consoleT('console.invite_someone_9b7639e8')}
+                        description={consoleT(
+                            'console.they_get_an_email_with_a_link_nothing_changes_until_the_e94c64b9',
                         )}
                     >
                         <InviteForm
@@ -242,8 +256,14 @@ function Roster({
     leaveHref: string;
     organizationName: string;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [managing, setManaging] = useState<string | null>(null);
     const [pending, setPending] = useState<Pending>(null);
 
@@ -256,8 +276,10 @@ function Roster({
         return (
             <EmptyState
                 icon="members"
-                title={tc('console.no_members_yet_669a52e9')}
-                description={tc('console.everyone_who_can_sign_in_to_this_organizatio_e47007d3')}
+                title={consoleT('console.no_members_yet_669a52e9')}
+                description={consoleT(
+                    'console.everyone_who_can_sign_in_to_this_organization_appears_h_e47007d3',
+                )}
             />
         );
     }
@@ -269,15 +291,19 @@ function Roster({
         <div className="card overflow-hidden">
             <div className="overflow-x-auto">
                 <Table
-                    caption={tc('console.everyone_in_this_organization_and_their_role_35d8fefb')}
+                    caption={consoleUiText(
+                        'console.everyone_in_this_organization_and_their_roles_one_built_35d8fefb',
+                    )}
                 >
                     <thead>
                         <tr>
-                            <Th>{tc('console.member_7c968fb7')}</Th>
-                            <Th>{tc('console.roles_c2533705')}</Th>
-                            <Th>{tc('console.joined_69318b0c')}</Th>
+                            <Th>{consoleT('console.member_7c968fb7')}</Th>
+                            <Th>{consoleT('console.roles_c2533705')}</Th>
+                            <Th>{consoleT('console.joined_69318b0c')}</Th>
                             <Th>
-                                <span className="sr-only">{tc('console.actions_ff8059dc')}</span>
+                                <span className="sr-only">
+                                    {consoleT('console.actions_ff8059dc')}
+                                </span>
                             </Th>
                         </tr>
                     </thead>
@@ -309,8 +335,6 @@ function Roster({
             <div className="p-4">
                 <Pagination
                     pagination={pagination}
-                    noun={tc('console.member_e31ab643')}
-                    pluralNoun={tc('console.members_17373ca1')}
                     href={(page) =>
                         page > 1
                             ? `${window.location.pathname}?page=${page}`
@@ -323,8 +347,10 @@ function Roster({
                 open={pending?.kind === 'remove'}
                 onOpenChange={(open) => !open && setPending(null)}
                 name={pending === null ? '' : label(pending.member)}
-                verb="Remove"
-                consequence={tc('console.they_lose_every_role_and_application_this_or_8c05da9e')}
+                verb={consoleShortText('console.remove_c3812fc4')}
+                consequence={consoleUiText(
+                    'console.they_lose_every_role_and_application_this_organization_8c05da9e',
+                )}
                 onConfirm={() => {
                     const target = pending;
                     setPending(null);
@@ -343,9 +369,12 @@ function Roster({
                 open={pending?.kind === 'transfer'}
                 onOpenChange={(open) => !open && setPending(null)}
                 name={pending === null ? '' : label(pending.member)}
-                verb={tc('console.transfer_ownership_to_db1c7dbf')}
-                actionLabel={tc('console.transfer_ownership_3667f939')}
-                consequence={`They become the owner of ${organizationName} and you become an admin. Only the new owner can hand it back.`}
+                verb={consoleAttributeText('console.transfer_ownership_to_db1c7dbf')}
+                actionLabel={consoleUiText('console.transfer_ownership_3667f939')}
+                consequence={consoleFinalText(
+                    'console.they_become_the_owner_of_part1_and_you_become_an_admin_09c4a8dc',
+                    { part1: organizationName },
+                )}
                 onConfirm={() => {
                     const target = pending;
                     setPending(null);
@@ -360,16 +389,22 @@ function Roster({
             <Dialog
                 open={pending?.kind === 'leave'}
                 onOpenChange={(open) => !open && setPending(null)}
-                title={tc('console.leave_value0_81419493', { value0: organizationName })}
+                title={consoleFinalText('console.leave_part1_9c615c04', {
+                    part1: organizationName,
+                })}
                 description={
                     isOwner
-                        ? tc('console.you_lose_access_immediately_as_its_owner_you_d51a2272')
-                        : tc('console.you_lose_access_to_this_organization_and_its_47fdba25')
+                        ? consoleText(
+                              'console.you_lose_access_immediately_as_its_owner_you_can_only_l_d51a2272',
+                          )
+                        : consoleText(
+                              'console.you_lose_access_to_this_organization_and_its_apps_immed_47fdba25',
+                          )
                 }
                 footer={
                     <>
                         <Button onClick={() => setPending(null)}>
-                            {tc('console.cancel_19766ed6')}
+                            {consoleT('console.cancel_19766ed6')}
                         </Button>
                         <Button
                             variant="danger"
@@ -378,7 +413,7 @@ function Roster({
                                 router.post(leaveHref);
                             }}
                         >
-                            {tc('console.leave_organization_ac8fd777')}
+                            {consoleT('console.leave_organization_ac8fd777')}
                         </Button>
                     </>
                 }
@@ -412,9 +447,13 @@ function RosterRow({
     onToggleManage: () => void;
     onAsk: (kind: 'remove' | 'transfer' | 'leave') => void;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
-    const label = member.name ?? member.email ?? tc('console.this_member_a802a70b');
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
+    const label = member.name ?? member.email ?? consoleT('console.this_member_a802a70b');
     const held = member.accessRoleIds;
     const rowIsOwner = member.role === 'owner';
 
@@ -439,7 +478,7 @@ function RosterRow({
                                 {member.name ?? '—'}
                                 {member.isMe && (
                                     <Badge className="ml-2" tone="info">
-                                        {tc('console.you_08b04193')}
+                                        {consoleT('console.you_08b04193')}
                                     </Badge>
                                 )}
                             </p>
@@ -462,7 +501,9 @@ function RosterRow({
                 <Td>
                     <div className="flex flex-wrap items-center gap-1">
                         <Pill>
-                            <span className="sr-only">{tc('console.built_in_role_ad05edaa')}</span>
+                            <span className="sr-only">
+                                {consoleT('console.built_in_role_5b39844c')}
+                            </span>
                             {builtIn}
                         </Pill>
 
@@ -475,8 +516,8 @@ function RosterRow({
                         {editable && (
                             <Button size="sm" aria-expanded={managing} onClick={onToggleManage}>
                                 {managing
-                                    ? tc('console.done_11a6767d')
-                                    : tc('console.edit_roles_3b3489d0')}
+                                    ? consoleText('console.done_11a6767d')
+                                    : consoleText('console.edit_roles_3b3489d0')}
                             </Button>
                         )}
                     </div>
@@ -489,7 +530,7 @@ function RosterRow({
                 <Td className="text-right">
                     {member.isMe && !managedElsewhere ? (
                         <Button size="sm" onClick={() => onAsk('leave')}>
-                            {tc('console.leave_fc6e4a40')}
+                            {consoleT('console.leave_fc6e4a40')}
                         </Button>
                     ) : (
                         (mayRemove || mayTransfer) && (
@@ -497,9 +538,10 @@ function RosterRow({
                                 <DropdownMenuTrigger asChild>
                                     <Button
                                         size="sm"
-                                        aria-label={tc('console.more_actions_for_value0_fab1edb9', {
-                                            value0: label,
-                                        })}
+                                        aria-label={consoleFinalText(
+                                            'console.more_actions_for_part1_b26d24f6',
+                                            { part1: label },
+                                        )}
                                     >
                                         ⋯
                                     </Button>
@@ -507,7 +549,7 @@ function RosterRow({
                                 <DropdownMenuContent>
                                     {mayTransfer && (
                                         <DropdownMenuItem onSelect={() => onAsk('transfer')}>
-                                            {tc('console.transfer_ownership_3667f939')}
+                                            {consoleT('console.transfer_ownership_3667f939')}
                                         </DropdownMenuItem>
                                     )}
                                     {mayRemove && (
@@ -515,7 +557,7 @@ function RosterRow({
                                             destructive
                                             onSelect={() => onAsk('remove')}
                                         >
-                                            {tc('console.remove_from_organization_2416fd1f')}
+                                            {consoleT('console.remove_from_organization_2416fd1f')}
                                         </DropdownMenuItem>
                                     )}
                                 </DropdownMenuContent>
@@ -535,26 +577,27 @@ function RosterRow({
                         }}
                     >
                         <p className="text-sm font-medium mb-3">
-                            {tc('console.roles_for_df0ef794')}
-                            {label}
+                            {consoleRich('console.roles_for_part1_6cbf3683', { part1: label })}
                         </p>
 
                         <div className="grid gap-4 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
                             <div>
-                                <p className="label mb-1">{tc('console.built_in_role_9f680a16')}</p>
+                                <p className="label mb-1">
+                                    {consoleT('console.built_in_role_9f680a16')}
+                                </p>
                                 <p
                                     className="text-xs mb-2"
                                     style={{ color: 'var(--muted-foreground)' }}
                                 >
-                                    {tc(
-                                        'console.exactly_one_it_decides_what_they_may_adminis_ebe76d54',
+                                    {consoleT(
+                                        'console.exactly_one_it_decides_what_they_may_administer_here_ebe76d54',
                                     )}
                                 </p>
                                 {roleEditable ? (
                                     <Select
-                                        aria-label={tc(
-                                            'console.built_in_role_for_value0_1ecbad27',
-                                            { value0: label },
+                                        aria-label={consoleFinalText(
+                                            'console.built_in_role_for_part1_de8e2bb3',
+                                            { part1: label },
                                         )}
                                         value={member.role}
                                         onValueChange={(role) =>
@@ -571,7 +614,9 @@ function RosterRow({
                                         <Pill>{builtIn}</Pill>{' '}
                                         <span className="text-xs" style={{ color: 'var(--faint)' }}>
                                             {rowIsOwner
-                                                ? tc('console.ownership_moves_by_transfer_ad7a21ea')
+                                                ? consoleText(
+                                                      'console.ownership_moves_by_transfer_ad7a21ea',
+                                                  )
                                                 : ''}
                                         </span>
                                     </p>
@@ -580,14 +625,14 @@ function RosterRow({
 
                             <div>
                                 <p className="label mb-1">
-                                    {tc('console.app_and_custom_roles_ecb0207e')}
+                                    {consoleT('console.app_and_custom_roles_ecb0207e')}
                                 </p>
                                 <p
                                     className="text-xs mb-2"
                                     style={{ color: 'var(--muted-foreground)' }}
                                 >
-                                    {tc(
-                                        'console.any_number_they_ride_in_the_app_tokens_and_e_19a76c8d',
+                                    {consoleT(
+                                        'console.any_number_they_ride_in_the_app_tokens_and_each_app_dec_19a76c8d',
                                     )}
                                 </p>
 
@@ -598,11 +643,11 @@ function RosterRow({
                                             className="text-xs"
                                             style={{ color: 'var(--accent-strong)' }}
                                         >
-                                            {tc('console.no_roles_defined_yet_8e7688cb')}
+                                            {consoleT('console.no_roles_defined_yet_8e7688cb')}
                                         </Link>
                                     ) : (
                                         <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                                            {tc('console.no_roles_defined_yet_99df1348')}
+                                            {consoleT('console.no_roles_defined_yet_99df1348')}
                                         </p>
                                     )
                                 ) : (

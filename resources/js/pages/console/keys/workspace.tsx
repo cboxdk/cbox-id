@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -23,7 +23,7 @@ import {
     Panel,
     Select,
 } from '@/ui';
-import { store } from '@actions/App/Http/Controllers/Console/ApiKeyController';
+import { store } from '@routes/keys/workspace';
 
 interface ApiKey {
     id: string;
@@ -44,8 +44,10 @@ type Props = PageProps<{
 }>;
 
 export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     // On the flash channel: a full-authority credential in a history entry is readable by
     // pressing Back, long after the page that showed it has gone.
     const freshKey = usePage().flash.freshKey;
@@ -63,19 +65,22 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
         <>
             <PageHeader
                 help={help}
-                description={tc('console.the_workspace_s_own_keys_for_the_workspace_a_d42a9e3f')}
+                description={consoleT(
+                    'console.the_workspace_s_own_keys_for_the_workspace_api_list_pro_d42a9e3f',
+                )}
                 actions={
                     <Button asChild size="sm">
                         <a href="/api/v1/workspace/openapi.yaml" target="_blank" rel="noreferrer">
-                            {tc('console.api_reference_484ee9bb')}
-                            <Icon name="external" className="w-3.5 h-3.5" />
+                            {consoleRich('console.api_reference_part1_8da5aee1', {
+                                part1: <Icon name="external" className="w-3.5 h-3.5" />,
+                            })}
                         </a>
                     </Button>
                 }
             />
 
             <div className="mt-4">
-                <LinkTabs tabs={tabs} label={tc('console.key_types_0562e0e6')} />
+                <LinkTabs tabs={tabs} label={consoleT('console.key_types_0562e0e6')} />
             </div>
 
             {freshKey !== undefined && (
@@ -87,7 +92,9 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                     }}
                 >
                     <p className="text-sm font-medium" style={{ color: 'var(--success-strong)' }}>
-                        {tc('console.copy_your_key_now_you_won_t_be_able_to_see_i_36d9f33f')}
+                        {consoleT(
+                            'console.copy_your_key_now_you_won_t_be_able_to_see_it_again_36d9f33f',
+                        )}
                     </p>
                     <div className="mt-3 flex items-center gap-2">
                         <code
@@ -105,14 +112,14 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
             )}
 
             <div className="mt-6 space-y-6">
-                <Panel title={tc('console.keys_f0d66a79')} flush={keys.length > 0}>
+                <Panel title={consoleT('console.keys_f0d66a79')} flush={keys.length > 0}>
                     {keys.length === 0 ? (
                         <EmptyState
                             icon="key"
                             equivalent="keys.workspace.create"
-                            title={tc('console.no_workspace_keys_yet_92b8986e')}
-                            description={tc(
-                                'console.create_a_key_to_reach_the_workspace_api_from_0addbbd5',
+                            title={consoleT('console.no_workspace_keys_yet_92b8986e')}
+                            description={consoleT(
+                                'console.create_a_key_to_reach_the_workspace_api_from_your_own_s_0addbbd5',
                             )}
                         />
                     ) : (
@@ -142,7 +149,7 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                                         className="shrink-0"
                                         onClick={() => setRevoking(key)}
                                     >
-                                        {tc('console.revoke_87e6d00b')}
+                                        {consoleT('console.revoke_87e6d00b')}
                                     </Button>
                                 )}
                             </div>
@@ -151,9 +158,9 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                 </Panel>
 
                 <Panel
-                    title={tc('console.new_key_eda5496b')}
-                    description={tc(
-                        'console.the_key_holds_the_built_in_role_you_choose_a_b7c48a4b',
+                    title={consoleT('console.new_key_eda5496b')}
+                    description={consoleT(
+                        'console.the_key_holds_the_built_in_role_you_choose_and_can_do_o_b7c48a4b',
                     )}
                 >
                     <form
@@ -167,17 +174,20 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                         }}
                     >
                         <div className="grid gap-3 sm:grid-cols-2 items-start">
-                            <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
+                            <Field
+                                label={consoleT('console.name_dcd1d522')}
+                                error={form.errors.name}
+                            >
                                 <Input
                                     name="name"
-                                    placeholder={tc('console.ci_deploy_91ef66b5')}
+                                    placeholder={consoleUiText('console.ci_deploy_91ef66b5')}
                                     value={form.data.name}
                                     onChange={(event) => form.setData('name', event.target.value)}
                                 />
                             </Field>
 
                             <Field
-                                label={tc('console.built_in_role_9f680a16')}
+                                label={consoleT('console.built_in_role_9f680a16')}
                                 error={form.errors.role}
                             >
                                 <Select
@@ -202,7 +212,7 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                         />
 
                         <Button type="submit" variant="primary" loading={form.processing}>
-                            {tc('console.create_key_b6cde903')}
+                            {consoleT('console.create_key_b6cde903')}
                         </Button>
                     </form>
                 </Panel>
@@ -212,8 +222,10 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                 open={revoking !== null}
                 onOpenChange={(open) => setRevoking(open ? revoking : null)}
                 name={revoking?.name ?? ''}
-                verb="Revoke"
-                consequence={tc('console.any_integration_still_presenting_this_key_st_2b1f7061')}
+                verb={consoleShortText('console.revoke_87e6d00b')}
+                consequence={consoleUiText(
+                    'console.any_integration_still_presenting_this_key_stops_working_2b1f7061',
+                )}
                 onConfirm={() => {
                     const key = revoking;
                     setRevoking(null);

@@ -35,10 +35,8 @@ use App\Http\Requests\Console\SaveEnvironmentUserRequest;
 use App\Http\Requests\Console\SetUserPasswordRequest;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\LikeTerm;
-use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
 use App\Platform\Staff\Contracts\StaffRoles;
@@ -103,7 +101,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
     public function index(Request $request): Response
     {
-        $this->assertEnvironmentAdmin();
+        abort_unless(app(EnvironmentAdminAuth::class)->canRead(), 403);
 
         $query = User::query()->orderBy('email');
 
@@ -134,7 +132,7 @@ final readonly class EnvironmentUserController extends ConsoleController
          */
         $page = $query->simplePaginate(self::PER_PAGE)->withQueryString();
 
-        return $this->page('environment/users/index', ConsoleStrings::text(Vocabulary::USERS), [
+        return $this->page('environment/users/index', __('console.users_6b0cc904'), [
             'help' => HelpProps::for(HelpTopic::Users),
             'users' => array_map(static fn (User $user): array => [
                 'id' => $user->id,
@@ -227,9 +225,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         $id = is_object($created) && isset($created->id) && is_string($created->id) ? $created->id : '';
 
         return to_route('environment.users.show', $id)
-            ->with('status', $request->sendLink()
-                ? __('console.user_created_a_sign_in_link_is_on_its_way_to_b08dc995').$request->email().'.'
-                : __('console.user_created_they_have_no_way_to_sign_in_unt_a612f0b1'));
+            ->with('status', $request->sendLink() ? __('console.user_created_a_sign_in_link_is_on_its_way_to_part1_340287fa', ['part1' => $request->email()]) : __('console.user_created_they_have_no_way_to_sign_in_until_you_send_a612f0b1'));
     }
 
     public function show(
@@ -242,7 +238,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         SupportAccess $support,
         SmsFactors $sms,
     ): Response {
-        $this->assertEnvironmentAdmin();
+        abort_unless(app(EnvironmentAdminAuth::class)->canRead(), 403);
 
         $model = $this->resolve($user);
 
@@ -446,7 +442,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         }
 
         if (! $request->reveal()) {
-            return back()->with('status', __('console.password_set_and_emailed_to_8e5c2651').$model->email.'.');
+            return back()->with('status', __('console.password_set_and_emailed_to_part1_2f0bf410', ['part1' => $model->email]));
         }
 
         /*
@@ -469,7 +465,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', __('console.password_reset_email_sent_to_40d4cb8a').$model->email.'.');
+            : back()->with('status', __('console.password_reset_email_sent_to_part1_5937baf4', ['part1' => $model->email]));
     }
 
     public function resendVerification(string $user): RedirectResponse
@@ -486,7 +482,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', __('console.verification_email_sent_to_376c6d2d').$model->email.'.');
+            : back()->with('status', __('console.verification_email_sent_to_part1_254c8e75', ['part1' => $model->email]));
     }
 
     public function markVerified(string $user): RedirectResponse
@@ -534,7 +530,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', __('console.two_factor_authentication_reset_the_user_mus_fa2ba178'));
+            : back()->with('status', __('console.two_factor_authentication_reset_the_user_must_re_enroll_fa2ba178'));
     }
 
     /**
@@ -561,7 +557,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', __('console.phone_number_removed_their_other_factors_and_a792580f'));
+            : back()->with('status', __('console.phone_number_removed_their_other_factors_and_recovery_c_a792580f'));
     }
 
     public function deactivate(string $user): RedirectResponse
@@ -602,7 +598,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         }
 
         if (! hash_equals($model->email, trim($request->string('confirmation')->toString()))) {
-            return back()->withErrors(['erase' => __('console.type_this_user_s_email_address_exactly_to_er_a2ee5f42')]);
+            return back()->withErrors(['erase' => __('console.type_this_user_s_email_address_exactly_to_erase_them_a2ee5f42')]);
         }
 
         $result = $this->act(EraseUser::class, ['id' => $model->id], fallback: 'erase');
@@ -613,7 +609,7 @@ final readonly class EnvironmentUserController extends ConsoleController
 
         return to_route('environment.users')->with(
             'status',
-            __('console.user_erased_their_account_is_pseudonymised_a_51e1f69a'),
+            __('console.user_erased_their_account_is_pseudonymised_and_the_eras_51e1f69a'),
         );
     }
 
@@ -666,7 +662,7 @@ final readonly class EnvironmentUserController extends ConsoleController
             'role' => $request->role()->value,
             'roles' => $request->accessRoleIds(),
         ], ['organization_id' => 'organization', 'user_id' => 'organization', 'role' => 'role', 'roles' => 'organization'], 'organization', [
-            'already_member' => __('console.the_user_is_already_a_member_of_that_organiz_781d2dbc'),
+            'already_member' => __('console.the_user_is_already_a_member_of_that_organization_781d2dbc'),
         ]);
 
         if ($result instanceof RedirectResponse) {
@@ -676,7 +672,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         // The same tier again is not an error to a machine (it is idempotent); to a person
         // who meant to add somebody, "already a member" is the answer.
         if ($result->status === 200) {
-            return back()->withErrors(['organization' => __('console.the_user_is_already_a_member_of_that_organiz_781d2dbc')]);
+            return back()->withErrors(['organization' => __('console.the_user_is_already_a_member_of_that_organization_781d2dbc')]);
         }
 
         return back()->with('status', __('console.user_added_to_the_organization_48218ecc'));
@@ -742,7 +738,7 @@ final readonly class EnvironmentUserController extends ConsoleController
         // Only a role no organization owns. The action refuses anything else too; asking
         // here first means a posted id that matches nothing is refused by name.
         if (! $staff->isGrantable($roleId)) {
-            return back()->withErrors(['staffRole' => __('console.that_role_cannot_be_granted_across_the_envir_fc38a84c')]);
+            return back()->withErrors(['staffRole' => __('console.that_role_cannot_be_granted_across_the_environment_fc38a84c')]);
         }
 
         $input = ['id' => $user, 'role_id' => $roleId];

@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import { Button, Disclosure, Icon, Pill, Progress } from '@/ui';
 
@@ -39,42 +40,44 @@ export function EnvironmentChecklist({
     href?: string;
     onDismiss?: () => void;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: tc } = usePublicTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const required = checklist.steps.filter((step) => !step.optional);
     const optional = checklist.steps.filter((step) => step.optional);
-    const steps = compact ? required.filter((step) => !step.done).slice(0, 1) : required;
+    const steps = compact ? required.filter((step) => !step.done).slice(0, 3) : required;
 
     return (
         <section className="card p-5" aria-labelledby="environment-checklist-title">
             <div className="flex flex-wrap items-center gap-3">
                 <h2 id="environment-checklist-title" className="font-semibold">
-                    {tc(checklist.isComplete ? 'console.ux_setup_ready' : 'console.ux_first_login')}
+                    {consoleT('console.get_started_61e8d44a')}
                 </h2>
                 <div className="flex flex-1 items-center gap-3 min-w-[10rem]">
                     <Progress
                         percent={checklist.percent}
-                        label={tc('console.setup_progress_e9b4495a')}
+                        label={consoleT('console.setup_progress_e9b4495a')}
                     />
                     <span
                         className="text-sm mono shrink-0"
                         style={{ color: 'var(--muted-foreground)' }}
                     >
-                        {checklist.completed}
-                        {tc('console.of_a4282e4b')}
-                        {checklist.total}
+                        {consoleRich('console._part1_of_part2_934043a7', {
+                            part1: checklist.completed,
+                            part2: checklist.total,
+                        })}
                     </span>
                 </div>
                 {compact && (
                     <div className="flex items-center gap-2">
                         {href !== undefined && (
                             <Button asChild size="sm">
-                                <Link href={href}>{tc('console.see_all_d7a8c446')}</Link>
+                                <Link href={href}>{consoleT('console.see_all_d7a8c446')}</Link>
                             </Button>
                         )}
                         {onDismiss !== undefined && (
                             <Button size="sm" variant="ghost" onClick={onDismiss}>
-                                {tc('console.hide_ac20a57b')}
+                                {consoleT('console.hide_ac20a57b')}
                             </Button>
                         )}
                     </div>
@@ -88,10 +91,14 @@ export function EnvironmentChecklist({
             )}
             {checklist.next !== null && (
                 <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    {tc('console.next_up_1eab46b7')}{' '}
-                    <span style={{ color: 'var(--foreground)', fontWeight: 500 }}>
-                        {checklist.next}
-                    </span>
+                    {consoleRich('console.next_up_part1_part2_e4c80c11', {
+                        part1: ' ',
+                        part2: (
+                            <span style={{ color: 'var(--foreground)', fontWeight: 500 }}>
+                                {checklist.next}
+                            </span>
+                        ),
+                    })}
                 </p>
             )}
 
@@ -134,7 +141,7 @@ export function EnvironmentChecklist({
                                     {step.title}
                                 </h3>
                                 {step.done && (
-                                    <Pill tone="success">{tc('console.done_11a6767d')}</Pill>
+                                    <Pill tone="success">{consoleT('console.done_11a6767d')}</Pill>
                                 )}
                             </div>
                             {

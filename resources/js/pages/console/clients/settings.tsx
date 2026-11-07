@@ -35,14 +35,18 @@ export default function ClientSettings({ appHeader, lifetime, exchange, logout, 
 }
 
 function LifetimeForm({ lifetime }: { lifetime: Props['lifetime'] }) {
-    const { t: tc } = useTranslator();
+    const { t: tc, locale } = useTranslator();
 
     const form = useForm({ minutes: lifetime.minutes === null ? '' : String(lifetime.minutes) });
 
     return (
         <Disclosure
             title={tc('console.access_token_lifetime_3d0f7e0e')}
-            summary={`${lifetime.minutes ?? lifetime.defaultMinutes} ${tc('console.minutes_4f846a84').toLowerCase()}`}
+            summary={new Intl.NumberFormat(locale, {
+                style: 'unit',
+                unit: 'minute',
+                unitDisplay: 'long',
+            }).format(lifetime.minutes ?? lifetime.defaultMinutes)}
             hasError={Boolean(form.errors.minutes)}
         >
             <p className="text-sm text-[var(--muted-foreground)] mb-4">
@@ -194,7 +198,7 @@ function LogoutForm({ logout }: { logout: Props['logout'] }) {
 }
 
 function ApiKeysForm({ apiKeys }: { apiKeys: Props['apiKeys'] }) {
-    const { t: tc } = useTranslator();
+    const { t: tc, rich } = useTranslator();
 
     const form = useForm({ prefix: apiKeys.prefix });
     const example = form.data.prefix.trim() === '' ? 'acme_live' : form.data.prefix.trim();
@@ -216,13 +220,16 @@ function ApiKeysForm({ apiKeys }: { apiKeys: Props['apiKeys'] }) {
                     optional
                     hint={
                         <>
-                            {tc('console.keys_start_with_it_so_a_key_found_in_a_log_n_c5f1fe6b')}{' '}
-                            <code className="mono">{example}_…</code>
-                            {tc('console.2_16_lowercase_letters_or_digits_then_82874c44')}
-                            <code className="mono">{tc('console.live_faa88433')}</code>
-                            {tc('console.or_a1812817')}{' '}
-                            <code className="mono">{tc('console.test_f51b9c48')}</code>
-                            {tc('console.unique_in_this_environment_setting_one_turns_1ba7348b')}
+                            {rich(
+                                'console.keys_start_with_it_so_a_key_found_in_a_log_names_this_a_8a69e3c2',
+                                {
+                                    part1: ' ',
+                                    part2: <code className="mono">{example}_…</code>,
+                                    part3: <code className="mono">live</code>,
+                                    part4: ' ',
+                                    part5: <code className="mono">test</code>,
+                                },
+                            )}
                         </>
                     }
                     error={form.errors.prefix}
@@ -232,7 +239,7 @@ function ApiKeysForm({ apiKeys }: { apiKeys: Props['apiKeys'] }) {
                         className="mono"
                         spellCheck={false}
                         autoCapitalize="off"
-                        placeholder={tc('console.acme_live_0b5e7383')}
+                        placeholder="acme_live"
                         style={{ maxWidth: '16rem' }}
                         value={form.data.prefix}
                         onChange={(event) => form.setData('prefix', event.target.value)}

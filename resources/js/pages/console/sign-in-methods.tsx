@@ -1,5 +1,6 @@
+import { useTranslator as usePublicTranslator } from '@/i18n';
 import type { Translator } from '@/i18n';
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -34,11 +35,11 @@ type Props = PageProps<{
 }>;
 
 const STATE = (
-    tc: Translator['t'],
+    t: Translator['t'],
 ): Record<MethodRow['state'], { label: string; tone: 'success' | 'neutral' | 'info' }> => ({
-    on: { label: tc('console.on_13001175'), tone: 'success' },
-    off: { label: tc('console.off_ca7981b4'), tone: 'neutral' },
-    optional: { label: tc('console.optional_59be7133'), tone: 'info' },
+    on: { label: t('console.on_13001175'), tone: 'success' },
+    off: { label: t('console.off_ca7981b4'), tone: 'neutral' },
+    optional: { label: t('console.optional_59be7133'), tone: 'info' },
 });
 
 /** Whose decision a row is — said from where the reader stands. */
@@ -78,8 +79,11 @@ export default function SignInMethods({
     sections,
     organizationsHref,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleOptionText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const onOrganization = organizationName !== null;
 
     return (
@@ -89,21 +93,25 @@ export default function SignInMethods({
                 description={
                     organizationsHref === null ? (
                         <>
-                            {tc('console.every_way_people_sign_in_to_be3c44b8')}
-                            {organizationName ?? environmentName}
-                            {tc('console.whether_it_is_on_and_where_it_is_changed_6ec88eed')}
+                            {consoleRich(
+                                'console.every_way_people_sign_in_to_part1_whether_it_is_on_and_5da64a1a',
+                                { part1: organizationName ?? environmentName },
+                            )}
                         </>
                     ) : (
                         <>
-                            {tc('console.every_way_people_sign_in_to_be3c44b8')}
-                            {environmentName}
-                            {tc(
-                                'console.whether_it_is_on_and_where_it_is_changed_org_f2585662',
-                            )}{' '}
-                            <Link href={organizationsHref}>
-                                {tc('console.see_which_have_18f4c612')}
-                            </Link>
-                            .
+                            {consoleRich(
+                                'console.every_way_people_sign_in_to_part1_whether_it_is_on_and_4dda4364',
+                                {
+                                    part1: environmentName,
+                                    part2: ' ',
+                                    part3: (
+                                        <Link href={organizationsHref}>
+                                            {consoleT('console.see_which_have_18f4c612')}
+                                        </Link>
+                                    ),
+                                },
+                            )}
                         </>
                     )
                 }
@@ -111,12 +119,19 @@ export default function SignInMethods({
 
             {ssoOnly && (
                 <p className="cbx-callout" role="note">
-                    {tc('console.enterprise_sso_is_required_e3f8c5c2')}{' '}
-                    {onOrganization
-                        ? tc('console.for_value0_ee8be362', { value0: organizationName })
-                        : tc('console.for_this_environment_fbf63da5')}
-                    {tc('console.so_every_other_way_in_is_refused_until_that__b909cd64')}{' '}
-                    <Link href={policyHref}>{tc('console.authentication_policy_07e21daf')}</Link>.
+                    {consoleRich(
+                        onOrganization
+                            ? 'console.sso_required_organization'
+                            : 'console.sso_required_environment',
+                        {
+                            organization: organizationName,
+                            policy: (
+                                <Link href={policyHref}>
+                                    {consoleT('console.authentication_policy_07e21daf')}
+                                </Link>
+                            ),
+                        },
+                    )}
                 </p>
             )}
 
@@ -133,8 +148,8 @@ export default function SignInMethods({
                                 <div className="cbx-method-main">
                                     <div className="cbx-method-title">
                                         <span className="font-medium">{row.label}</span>
-                                        <Pill tone={STATE(tc)[row.state].tone}>
-                                            {STATE(tc)[row.state].label}
+                                        <Pill tone={STATE(consoleOptionText)[row.state].tone}>
+                                            {STATE(consoleOptionText)[row.state].label}
                                         </Pill>
                                     </div>
                                     <p className="cbx-method-summary">{row.summary}</p>
@@ -155,9 +170,10 @@ export default function SignInMethods({
                                     <Link
                                         href={row.href}
                                         className="btn btn-secondary btn-sm cbx-method-action"
-                                        aria-label={`${row.hrefLabel ?? 'Change'}: ${row.label}`}
+                                        aria-label={`${row.hrefLabel ?? consoleShortText('console.change_c0bf75bd')}: ${row.label}`}
                                     >
-                                        {row.hrefLabel ?? tc('console.change_c0bf75bd')}
+                                        {row.hrefLabel ??
+                                            consoleShortText('console.change_c0bf75bd')}
                                         <Icon
                                             name="chevron"
                                             className="w-3.5 h-3.5"

@@ -33,32 +33,32 @@ enum RadarBuiltin: string
     public function label(): string
     {
         return match ($this) {
-            self::CredentialStuffing => 'Credential stuffing',
-            self::BotVelocity => 'Bot-like velocity',
-            self::AccountAttack => 'Repeated failures on one account',
-            self::ImpossibleTravel => 'Impossible travel',
-            self::NewDevice => 'New device',
-            self::AnonymousNetwork => 'Tor, VPN or open proxy',
-            self::HostingNetwork => 'Hosting or data centre network',
-            self::DisposableEmail => 'Disposable email domain',
-            self::RiskScoreReject => 'Risk score: reject',
-            self::RiskScoreElevated => 'Risk score: elevated',
+            self::CredentialStuffing => __('console.credential_stuffing_55181863'),
+            self::BotVelocity => __('console.bot_like_velocity_5598a16c'),
+            self::AccountAttack => __('console.repeated_failures_on_one_account_9a4ad01b'),
+            self::ImpossibleTravel => __('console.impossible_travel_320ad536'),
+            self::NewDevice => __('console.new_device_30d01a64'),
+            self::AnonymousNetwork => __('console.tor_vpn_or_open_proxy_2fff7c74'),
+            self::HostingNetwork => __('console.hosting_or_data_centre_network_291e0a01'),
+            self::DisposableEmail => __('console.disposable_email_domain_a9966c59'),
+            self::RiskScoreReject => __('console.risk_score_reject_bc14c1e0'),
+            self::RiskScoreElevated => __('console.risk_score_elevated_22d91dd2'),
         };
     }
 
     public function description(): string
     {
         return match ($this) {
-            self::CredentialStuffing => 'Many different addresses tried from one IP address within 10 minutes — a list of leaked credentials being worked through.',
-            self::BotVelocity => 'More attempts per minute from one IP address, or one device, than a person makes.',
-            self::AccountAttack => 'Failed sign-ins on one address within an hour, from anywhere — guessing spread across many addresses.',
-            self::ImpossibleTravel => 'The account\'s last successful sign-in was too far away, too recently, to have travelled from. Needs IP intelligence.',
-            self::NewDevice => 'An account that has signed in before, from a browser it has never signed in from.',
-            self::AnonymousNetwork => 'The address is a Tor exit node, a VPN or an open proxy. Tor is known from the local exit list; VPN and proxy need IP intelligence that reports them.',
-            self::HostingNetwork => 'The address belongs to a hosting provider or data centre, where people rarely sign in from. Needs IP intelligence that reports it.',
-            self::DisposableEmail => 'A sign-up with an address at a throwaway mail provider.',
-            self::RiskScoreReject => 'The risk score reached its reject threshold (IP reputation, honeypot, user agent, MX and the other scored signals).',
-            self::RiskScoreElevated => 'The risk score reached its challenge or step-up threshold.',
+            self::CredentialStuffing => __('console.many_different_addresses_tried_from_one_ip_address_with_68db7387'),
+            self::BotVelocity => __('console.more_attempts_per_minute_from_one_ip_address_or_one_dev_19f2637a'),
+            self::AccountAttack => __('console.failed_sign_ins_on_one_address_within_an_hour_from_anyw_cdda8940'),
+            self::ImpossibleTravel => __('console.the_account_s_last_successful_sign_in_was_too_far_away_e6d46632'),
+            self::NewDevice => __('console.an_account_that_has_signed_in_before_from_a_browser_it_7c5750f4'),
+            self::AnonymousNetwork => __('console.the_address_is_a_tor_exit_node_a_vpn_or_an_open_proxy_t_f7fc0d8a'),
+            self::HostingNetwork => __('console.the_address_belongs_to_a_hosting_provider_or_data_centr_213f7032'),
+            self::DisposableEmail => __('console.a_sign_up_with_an_address_at_a_throwaway_mail_provider_d4a56228'),
+            self::RiskScoreReject => __('console.the_risk_score_reached_its_reject_threshold_ip_reputati_e04e768d'),
+            self::RiskScoreElevated => __('console.the_risk_score_reached_its_challenge_or_step_up_thresho_fc5a2473'),
         };
     }
 

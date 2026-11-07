@@ -6,6 +6,7 @@ namespace App\Actions\Governance;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -57,17 +58,17 @@ final readonly class OpenAccessReview implements Action
     {
         if ($context->string('covers') === 'staff') {
             if (IntegrationReach::confinedTo($context->principal) !== null) {
-                throw new ActionRefused('forbidden', 'Only an environment administrator may review staff roles.', 403);
+                throw new ActionRefused('forbidden', new ActionMessage('console.only_an_environment_administrator_may_review_staff_role_bcab377b'), 403);
             }
 
             if ($context->nullableString('organization_id') !== null) {
-                throw ActionRefused::because('ambiguous_owner', 'A staff review covers no organization. Leave organization_id out.', 'organization_id');
+                throw ActionRefused::because('ambiguous_owner', new ActionMessage('console.a_staff_review_covers_no_organization_leave_organizatio_c554b0d3'), 'organization_id');
             }
 
             $organizationId = null;
         } else {
             if ($context->nullableString('organization_id') === null) {
-                throw ActionRefused::because('organization_required', 'Name an organization — a review snapshots one organization\'s access.', 'organization_id');
+                throw ActionRefused::because('organization_required', new ActionMessage('console.name_an_organization_a_review_snapshots_one_organizatio_7a11091f'), 'organization_id');
             }
 
             $organizationId = EnterpriseReach::requiredOrganization($context);

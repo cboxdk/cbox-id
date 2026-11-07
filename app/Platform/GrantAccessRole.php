@@ -12,16 +12,11 @@ use Cbox\Id\AccessControl\Exceptions\RoleNotTenantAssignable;
 /**
  * The one place a role is granted to a person from the console.
  *
- * Segregation of duties is a PRE-GRANT gate the framework publishes and the host has to
- * call — `wouldViolate()` is the whole API, and the framework's docs list "the host must
- * call it" under honest limits. The console called it on two of six grant paths: the
- * Members page and invitation acceptance. The four that skipped it were all on the
- * environment-admin plane, where the most privileged administrators work, so an env
- * admin could create exactly the toxic combination the Governance screen then reports.
- *
- * Routing every grant through this service is what makes the gate hold: a new grant
- * surface added later either uses this and is covered, or does not compile against the
- * pattern its neighbours follow.
+ * Console prechecks provide the tenant-plane refusal and descriptive conflict response.
+ * The framework repeats the policy and segregation-of-duties checks inside the locked
+ * grant transaction, so a concurrent change cannot bypass them after these prechecks.
+ * Both tenant and environment administration use this service; tenant paths must use
+ * grantAsTenant so staff-only roles remain unavailable to organization administrators.
  */
 final readonly class GrantAccessRole
 {

@@ -22,15 +22,19 @@ use App\Http\Middleware\ResolveLocale;
  *    their environment's sign-in pages default to — the one the link in the mail will
  *    open in anyway.
  *
- * There is no per-person stored preference to prefer over either: the `users` table
- * belongs to the identity package. See {@see LocaleResolver}.
+ * An administrator's own console preference does not select the recipient's language.
+ * Administrative send sites explicitly pass false; self-service follows the requester.
  */
 final readonly class MailLocale
 {
     public function __construct(private HostedLocales $locales) {}
 
-    public function forRecipient(): string
+    public function forRecipient(bool $recipientIsRequester = true): string
     {
+        if (! $recipientIsRequester) {
+            return $this->locales->default()->value;
+        }
+
         // The CURRENT request, read at send time rather than injected: a service that holds
         // this one may outlive the request it was built in on a long-lived worker.
         $hosted = request()->attributes->get(ResolveLocale::ATTRIBUTE);

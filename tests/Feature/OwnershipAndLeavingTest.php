@@ -133,7 +133,7 @@ it('lets a member leave, and signs them out when it was their only organization'
     test()->from(route('directory.members'))
         ->post(route('directory.members.leave'))
         ->assertRedirect(route('login'))
-        ->assertSessionHas('status', 'You left Acme. You are not a member of any other organization here, so you have been signed out.');
+        ->assertSessionHas('status', 'You left the organization Acme. You are not a member of any other organization here, so you have been signed out.');
 
     // One entry, the framework's: a removal the member made themselves, attributed to them.
     // The console wrote a second `organization.member_left` beside it until the framework's
@@ -156,7 +156,7 @@ it('moves a leaver to their next organization when they have one', function (): 
     test()->from(route('directory.members'))
         ->post(route('directory.members.leave'))
         ->assertRedirect(route('dashboard'))
-        ->assertSessionHas('status', 'You left Acme.');
+        ->assertSessionHas('status', 'You left the organization Acme.');
 
     expect(session(PlatformAuth::ORG_KEY))->toBe($next->id);
 });
@@ -239,7 +239,7 @@ it('lets the owner delete their own organization, behind a fresh password and it
     test()->from(route('settings'))
         ->delete(route('settings.organization.destroy'), ['name' => 'Acme'])
         ->assertRedirect(route('login'))
-        ->assertSessionHas('status', 'Acme has been deleted. You are not a member of any other organization here, so you have been signed out.');
+        ->assertSessionHas('status', 'Organization Acme has been deleted. You are not a member of any other organization here, so you have been signed out.');
 
     expect(app(Organizations::class)->find($org->id)?->status)->toBe(OrganizationStatus::Deleted)
         ->and(app(Memberships::class)->of($org->id, $meId))->not->toBeNull('archived, not erased');

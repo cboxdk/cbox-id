@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -10,8 +10,8 @@ type Props = PageProps<{
 }>;
 
 export default function CreateUser({ indexHref, storeHref }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({
         email: '',
         name: '',
@@ -21,12 +21,12 @@ export default function CreateUser({ indexHref, storeHref }: Props) {
 
     return (
         <>
-            <Breadcrumb href={indexHref} label={tc('console.users_6b0cc904')} />
+            <Breadcrumb href={indexHref} label={consoleT('console.users_6b0cc904')} />
 
             <div className="mt-2">
                 <PageHeader
-                    description={tc(
-                        'console.no_password_is_set_here_they_get_a_sign_in_l_5e488804',
+                    description={consoleT(
+                        'console.no_password_is_set_here_they_get_a_sign_in_link_by_emai_5e488804',
                     )}
                 />
             </div>
@@ -41,7 +41,7 @@ export default function CreateUser({ indexHref, storeHref }: Props) {
             >
                 <Panel>
                     <div className="space-y-4">
-                        <Field label={tc('console.email_969ccbd3')} error={form.errors.email}>
+                        <Field label={consoleT('console.email_969ccbd3')} error={form.errors.email}>
                             <Input
                                 name="email"
                                 type="email"
@@ -53,13 +53,13 @@ export default function CreateUser({ indexHref, storeHref }: Props) {
                         </Field>
 
                         <Field
-                            label={tc('console.name_dcd1d522')}
+                            label={consoleT('console.full_name_f13a64ba')}
                             optional
                             error={form.errors.name}
                         >
                             <Input
                                 name="name"
-                                placeholder={tc('console.full_name_f13a64ba')}
+                                placeholder={consoleUiText('console.full_name_f13a64ba')}
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}
                             />
@@ -68,9 +68,9 @@ export default function CreateUser({ indexHref, storeHref }: Props) {
                         <Checkbox
                             checked={form.data.sendLink}
                             onCheckedChange={(checked) => form.setData('sendLink', checked)}
-                            label={tc('console.email_them_a_sign_in_link_39a8ca7c')}
-                            hint={tc(
-                                'console.valid_once_and_short_lived_turn_this_off_onl_521114e3',
+                            label={consoleT('console.email_them_a_sign_in_link_39a8ca7c')}
+                            hint={consoleT(
+                                'console.valid_once_and_short_lived_turn_this_off_only_if_you_ar_521114e3',
                             )}
                         />
                     </div>
@@ -78,10 +78,10 @@ export default function CreateUser({ indexHref, storeHref }: Props) {
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        {tc('console.create_user_f06da128')}
+                        {consoleT('console.create_user_f06da128')}
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
+                        <Link href={indexHref}>{consoleT('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
 

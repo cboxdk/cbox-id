@@ -6,10 +6,12 @@ namespace App\Actions\Domains;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\EnvironmentWorkspace;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
@@ -48,17 +50,17 @@ final readonly class VerifyDomain implements Action
         $environment = $this->workspace->environment() ?? throw ActionRefused::notFound('environment');
 
         if ($this->domains->challenge($environment->id) === null) {
-            throw ActionRefused::because('no_pending_domain', 'There is no pending custom domain to verify. Add one first.');
+            throw ActionRefused::because('no_pending_domain', new ActionMessage('console.there_is_no_pending_custom_domain_to_verify_add_one_fir_be62636f'));
         }
 
         try {
             $result = $this->domains->verify($environment->id);
         } catch (InvalidCustomDomain $e) {
-            throw ActionRefused::because('invalid_domain', $e->getMessage(), 'domain');
+            throw ActionRefused::because('invalid_domain', FrameworkMessage::from($e), 'domain');
         }
 
         if (! $result->verified) {
-            throw ActionRefused::because('dns_not_propagated', 'The DNS TXT record isn\'t visible yet. DNS can take a few minutes to propagate — try again shortly.');
+            throw ActionRefused::because('dns_not_propagated', new ActionMessage('console.the_dns_txt_record_isn_t_visible_yet_dns_can_take_a_few_e4111709'));
         }
 
         $this->workspace->record($context->principal, $environment->id, 'organization.custom_domain_verified', ['domain' => $result->domain]);

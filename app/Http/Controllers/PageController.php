@@ -39,7 +39,7 @@ abstract readonly class PageController
             app(BrandContext::class)->atTheDoor();
         }
 
-        // Which catalogue the page is handed — its group's, or none on a console page.
+        // Select the page catalog before Inertia evaluates shared props.
         app(HostedTranslations::class)->forPage($component);
 
         return $this->inertia

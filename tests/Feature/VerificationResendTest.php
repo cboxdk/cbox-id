@@ -51,6 +51,8 @@ function rootForResend(): Environment
     ]);
 
     app(EnvironmentContext::class)->set($root);
+    syncNativeProductCatalog();
+    serveOnTestHost($root);
 
     return $root;
 }

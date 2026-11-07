@@ -6,6 +6,7 @@ namespace App\Actions\Vault;
 
 use App\Http\Resources\Environment\Timestamp;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Console\VaultScope;
@@ -69,7 +70,7 @@ final class VaultFields
     public static function assertLive(VaultSecret $secret, string $field): void
     {
         if ($secret->isRevoked()) {
-            throw ActionRefused::because('secret_revoked', 'This secret is revoked — no client can lease it, and it can no longer be changed.', $field);
+            throw ActionRefused::because('secret_revoked', new ActionMessage('console.this_secret_is_revoked_no_client_can_lease_it_and_it_ca_841248c0'), $field);
         }
     }
 

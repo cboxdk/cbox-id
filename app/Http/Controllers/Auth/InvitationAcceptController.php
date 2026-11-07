@@ -114,8 +114,8 @@ final readonly class InvitationAcceptController extends PageController
             return to_route('login');
         }
 
-        $platformRoot->run(fn () => $auth->establish(request(), $subject->id, ['invitation']));
+        $platformRoot->run(fn () => $auth->establish(request(), $subject->id, ['invitation'], $membership->organization_id));
 
-        return to_route('projects');
+        return to_route('dashboard');
     }
 }

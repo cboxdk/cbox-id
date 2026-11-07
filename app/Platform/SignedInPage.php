@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Http\Controllers\Auth\SignedOutController;
-use App\Platform\Locale\ConsoleLanguage;
 use Closure;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -46,7 +45,6 @@ final class SignedInPage
      */
     public static function serve(Request $request, Closure $next): Response
     {
-        app(ConsoleLanguage::class)->apply($request);
         Inertia::encryptHistory();
 
         try {

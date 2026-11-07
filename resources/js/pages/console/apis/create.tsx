@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
@@ -37,8 +37,10 @@ type Props = PageProps<{
 }>;
 
 export default function CreateApi({ owners, apps, organization, indexHref, storeHref }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({
         name: '',
         identifier: '',
@@ -53,12 +55,12 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
 
     return (
         <>
-            <Breadcrumb href={indexHref} label={tc('console.apis_8d266d3e')} />
+            <Breadcrumb href={indexHref} label={consoleT('console.apis_8d266d3e')} />
 
             <div className="mt-2">
                 <PageHeader
-                    description={tc(
-                        'console.a_service_of_yours_that_receives_access_toke_d93c8407',
+                    description={consoleT(
+                        'console.a_service_of_yours_that_receives_access_tokens_you_add_d93c8407',
                     )}
                 />
             </div>
@@ -73,19 +75,19 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
             >
                 <Panel>
                     <div className="space-y-4">
-                        <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
+                        <Field label={consoleT('console.name_dcd1d522')} error={form.errors.name}>
                             <Input
                                 name="name"
-                                placeholder={tc('console.invoicing_api_6c18e057')}
+                                placeholder={consoleUiText('console.invoicing_api_6c18e057')}
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}
                             />
                         </Field>
 
                         <Field
-                            label={tc('console.identifier_9b10587f')}
-                            hint={tc(
-                                'console.the_address_tokens_for_this_api_name_as_thei_cdea85aa',
+                            label={consoleT('console.identifier_9b10587f')}
+                            hint={consoleT(
+                                'console.the_address_tokens_for_this_api_name_as_their_audience_cdea85aa',
                             )}
                             error={form.errors.identifier}
                         >
@@ -102,7 +104,7 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
 
                         <div>
                             <RadioGroup
-                                label={tc('console.owner_4b1b8aa3')}
+                                label={consoleT('console.owner_4b1b8aa3')}
                                 name="owner"
                                 value={form.data.owner}
                                 onValueChange={(owner) => {
@@ -113,11 +115,11 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
                                     label: owner.label,
                                     hint:
                                         owner.value === 'environment'
-                                            ? tc(
-                                                  'console.your_own_api_you_choose_scope_by_scope_which_6f77f332',
+                                            ? consoleAttributeText(
+                                                  'console.your_own_api_you_choose_scope_by_scope_which_of_its_sco_6f77f332',
                                               )
-                                            : tc(
-                                                  'console.that_organization_s_api_only_its_own_apps_ma_9dd9b797',
+                                            : consoleAttributeText(
+                                                  'console.that_organization_s_api_only_its_own_apps_may_be_given_9dd9b797',
                                               ),
                                 }))}
                             />
@@ -130,10 +132,10 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
                                 // The organization is named here, and the page reloads with it
                                 // so the apps it can be linked to are that organization's.
                                 <Field
-                                    label={tc('console.for_which_organization_aaca2bbd')}
+                                    label={consoleT('console.for_which_organization_aaca2bbd')}
                                     className="mt-4"
-                                    hint={tc(
-                                        'console.to_register_an_api_for_one_organization_find_48b04329',
+                                    hint={consoleT(
+                                        'console.to_register_an_api_for_one_organization_find_it_here_it_48b04329',
                                     )}
                                 >
                                     <OrganizationField
@@ -163,10 +165,10 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
                         </div>
 
                         <Field
-                            label={tc('console.roles_and_permissions_from_484a0cfa')}
+                            label={consoleT('console.roles_and_permissions_from_484a0cfa')}
                             optional
-                            hint={tc(
-                                'console.the_app_whose_declared_roles_and_permissions_a1169778',
+                            hint={consoleT(
+                                'console.the_app_whose_declared_roles_and_permissions_tokens_for_a1169778',
                             )}
                             error={form.errors.clientId}
                         >
@@ -179,7 +181,7 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
                                 options={[
                                     {
                                         value: NOBODY,
-                                        label: tc('console.the_app_that_asks_4a500e90'),
+                                        label: consoleText('console.the_app_that_asks_4a500e90'),
                                     },
                                     ...linkable.map((app) => ({
                                         value: app.value,
@@ -193,10 +195,10 @@ export default function CreateApi({ owners, apps, organization, indexHref, store
 
                 <div className="flex flex-wrap gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        {tc('console.register_api_e3c6bc27')}
+                        {consoleT('console.register_api_e3c6bc27')}
                     </Button>
                     <Button asChild variant="ghost">
-                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
+                        <Link href={indexHref}>{consoleT('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
             </form>

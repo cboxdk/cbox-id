@@ -192,7 +192,7 @@ it('walks sign-up, a second team and an invitation back to the app, page by page
 
     $anna->click('button:has-text("Send invitation")')
         ->assertSee('Invitation sent to bo@nordic-survey.test.')
-        ->assertSee('for cboxtax')
+        ->assertSee(__('console.pending_invitation_application', ['application' => 'cboxtax']))
         ->assertNoJavaScriptErrors();
 
     // ── 3. Bo, in his own browser, opens the link and accepts ───────────────────────

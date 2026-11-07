@@ -21,6 +21,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipStatus;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -112,21 +113,23 @@ final class Authenticate
         }
 
         // Resolve the active org — but ONLY honour one the subject is a member of.
-        // A tampered/stale org id in the cookie must never grant a view into
-        // another tenant, so an unauthorized id is ignored and we fall back to a
-        // real membership.
+        // A revoked selection must not silently retarget an in-flight write to
+        // another organization. Only an unscoped session may choose an initial org.
         $requestedOrgId = $request->session()->get(PlatformAuth::ORG_KEY) ?? $session->organization_id;
 
         $organization = null;
         $role = null;
 
-        if (is_string($requestedOrgId) && ($membership = $this->memberships->of($requestedOrgId, $subject->id)) !== null) {
+        if (is_string($requestedOrgId)
+            && ($membership = $this->memberships->of($requestedOrgId, $subject->id)) !== null
+            && $membership->status === MembershipStatus::Active) {
             $organization = $this->organizations->find($requestedOrgId);
             $role = $membership->role;
         }
 
-        if ($organization === null) {
-            $fallbackOrgId = $this->memberships->forUser($subject->id)->first()?->organization_id;
+        if ($requestedOrgId === null) {
+            $fallbackOrgId = $this->memberships->forUser($subject->id)
+                ->firstWhere('status', MembershipStatus::Active)?->organization_id;
 
             if (is_string($fallbackOrgId)) {
                 $organization = $this->organizations->find($fallbackOrgId);
@@ -145,6 +148,7 @@ final class Authenticate
             abort(403, 'This organization has been '.$refusal.'. Contact your platform operator.');
         }
 
+        // Older sessions can fill their own missing details when that device returns.
         SessionMetadata::captureMissing($session, $request);
 
         $this->current->set($subject, $session, $organization, $role);

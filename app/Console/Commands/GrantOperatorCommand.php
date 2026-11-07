@@ -51,7 +51,8 @@ class GrantOperatorCommand extends Command
 
     public function handle(PlatformRoot $root, Subjects $subjects, PlatformOperators $operators, AuditLog $audit): int
     {
-        $email = mb_strtolower(trim((string) $this->argument('email')));
+        $argument = $this->argument('email');
+        $email = is_string($argument) ? mb_strtolower(trim($argument)) : '';
 
         if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
             $this->error('Give the email address of an existing person of the platform root.');

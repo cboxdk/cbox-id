@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Console;
 
 use App\Http\Props\Shared\LinkTabProps;
+use App\Platform\Locale\ConsoleLabels;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Enums\TokenEndpointAuthMethod;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -52,16 +53,16 @@ final readonly class AppTabs
         $manages = $this->clients->mayManage($client);
 
         $tabs = [
-            new LinkTabProps(self::OVERVIEW, 'Overview', $route('clients.show'), $current === self::OVERVIEW),
-            new LinkTabProps(self::SCOPES, 'Scopes', $route('clients.scopes'), $current === self::SCOPES),
+            new LinkTabProps(self::OVERVIEW, ConsoleLabels::navigation('Overview'), $route('clients.show'), $current === self::OVERVIEW),
+            new LinkTabProps(self::SCOPES, ConsoleLabels::navigation('Scopes'), $route('clients.scopes'), $current === self::SCOPES),
         ];
 
         if ($manages && self::holdsSharedSecret($client)) {
-            $tabs[] = new LinkTabProps(self::SECRETS, 'Secrets', $route('clients.secrets'), $current === self::SECRETS);
+            $tabs[] = new LinkTabProps(self::SECRETS, ConsoleLabels::navigation('Secrets'), $route('clients.secrets'), $current === self::SECRETS);
         }
 
         if ($manages) {
-            $tabs[] = new LinkTabProps(self::SETTINGS, 'Settings', $route('clients.settings'), $current === self::SETTINGS);
+            $tabs[] = new LinkTabProps(self::SETTINGS, ConsoleLabels::navigation('Settings'), $route('clients.settings'), $current === self::SETTINGS);
         }
 
         return $tabs;

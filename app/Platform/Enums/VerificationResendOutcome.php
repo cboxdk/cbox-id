@@ -32,7 +32,7 @@ enum VerificationResendOutcome: string
     public function message(string $email): string
     {
         return match ($this) {
-            self::Sent => __('console.a_new_confirmation_link_is_on_its_way_to_33cb7b3b').$email.__('console.it_is_valid_for_24_hours_and_replaces_any_ea_07d996d4'),
+            self::Sent => __('console.confirmation_link_resent_status', ['email' => $email]),
             self::AlreadyProvisioned => __('console.nothing_to_confirm_your_environment_is_alrea_21ddd184'),
         };
     }

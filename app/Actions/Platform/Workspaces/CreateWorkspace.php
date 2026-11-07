@@ -8,12 +8,14 @@ use App\Actions\Platform\AsOperator;
 use App\Mail\PasswordResetMail;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Locale\MailLocale;
@@ -84,7 +86,7 @@ final readonly class CreateWorkspace implements Action
         $limit = (int) $context->string('environment_limit');
 
         if (! in_array($limit, self::LIMITS, true)) {
-            throw ActionRefused::because('invalid_limit', 'Choose an environment allowance of 1, 2, 3, 5, 10 or 25.', 'environment_limit');
+            throw ActionRefused::because('invalid_limit', new ActionMessage('console.choose_an_environment_allowance_of_1_2_3_5_10_or_25_3be1f387'), 'environment_limit');
         }
 
         $ownerEmail = mb_strtolower(trim($context->string('owner_email')));
@@ -101,7 +103,7 @@ final readonly class CreateWorkspace implements Action
         } catch (EnvironmentLimitReached|InvalidArgumentException $e) {
             // A domain already in use, or a deployment with no platform root ("run the
             // installer"): both sentences somebody can act on.
-            throw ActionRefused::because('not_provisioned', $e->getMessage(), 'name');
+            throw ActionRefused::because('not_provisioned', FrameworkMessage::from($e), 'name');
         }
 
         // The owner is a subject of the PLATFORM ROOT, wherever the operator's console is
@@ -110,7 +112,7 @@ final readonly class CreateWorkspace implements Action
 
         if ($token !== null) {
             $link = $this->links->route('password.reset', $token);
-            $locale = app(MailLocale::class)->forRecipient();
+            $locale = app(MailLocale::class)->forRecipient(false);
 
             DB::afterCommit(static fn () => Mail::to($ownerEmail)->locale($locale)->send(new PasswordResetMail($link)));
         }

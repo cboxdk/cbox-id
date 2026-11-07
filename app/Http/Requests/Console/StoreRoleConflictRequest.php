@@ -41,8 +41,8 @@ final class StoreRoleConflictRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'roles.required' => __('console.select_at_least_two_roles_for_a_mutually_exc_24e4b9c6'),
-            'roles.min' => __('console.select_at_least_two_roles_for_a_mutually_exc_24e4b9c6'),
+            'roles.required' => __('console.select_at_least_two_roles_for_a_mutually_exclusive_set_24e4b9c6'),
+            'roles.min' => __('console.select_at_least_two_roles_for_a_mutually_exclusive_set_24e4b9c6'),
         ];
     }
 

@@ -7,6 +7,7 @@ namespace App\Actions\Workspace\Team;
 use App\Actions\Workspace\InWorkspace;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
@@ -33,7 +34,7 @@ use Cbox\Id\Platform\PlatformRoot;
  */
 #[AsAction(
     name: 'team.transfer_ownership',
-    summary: 'Make another member the workspace\'s owner; the current owner stays on as an admin. Only the owner, signed in, may do this.',
+    summary: 'Transfer shared organization ownership. Existing app roles are preserved; the previous owner may lose native ID access. Only the current owner, signed in, may do this.',
     scope: 'team:write',
     danger: Danger::Critical,
     plane: ActionPlane::Workspace,
@@ -66,11 +67,11 @@ final readonly class TransferOwnership implements Action
         $target = InWorkspace::member($workspaceId, $context->string('id'));
 
         if (! $principal instanceof ConsoleSessionPrincipal || $ownerId === null || $principal->scope()->membershipRole() !== MembershipRole::Owner) {
-            throw new ActionRefused('owner_only', 'Only the workspace\'s owner can hand it over, signed in to the console.', 403);
+            throw new ActionRefused('owner_only', new ActionMessage('console.only_the_workspace_s_owner_can_hand_it_over_signed_in_t_eae1f61a'), 403);
         }
 
         if ($target->user_id === $ownerId) {
-            throw ActionRefused::because('already_owner', 'You already own this workspace.');
+            throw ActionRefused::because('already_owner', new ActionMessage('console.you_already_own_this_workspace_81bb6c42'));
         }
 
         try {
@@ -78,7 +79,7 @@ final readonly class TransferOwnership implements Action
                 fn () => $this->lifecycle->transferOwnership($workspaceId, $target->user_id, $ownerId, $ownerId),
             );
         } catch (MembershipRefused $refused) {
-            throw ActionRefused::because($refused->reason->value, $refused->getMessage());
+            throw ActionRefused::because($refused->reason->value, $refused->sourceMessage());
         }
 
         return ActionResult::none($target);

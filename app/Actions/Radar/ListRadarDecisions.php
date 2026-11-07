@@ -7,6 +7,7 @@ namespace App\Actions\Radar;
 use App\Models\RiskDecision;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -95,7 +96,7 @@ final readonly class ListRadarDecisions implements Action
         try {
             return Carbon::parse($value);
         } catch (Throwable) {
-            throw ActionRefused::because('invalid_filter', "{$field} must be an ISO 8601 date and time.", $field);
+            throw ActionRefused::because('invalid_filter', new ActionMessage('console._part1_must_be_an_iso_8601_date_and_time_1158875c', ['part1' => (string) ($field)]), $field);
         }
     }
 }
