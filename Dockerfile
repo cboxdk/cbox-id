@@ -32,7 +32,15 @@ COPY . .
 RUN npm run build && rm -rf node_modules
 
 # ---- runtime image ----
-FROM ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1
+# Pin and verify the released process supervisor and metrics exporter.
+FROM build AS runtime-tools
+ARG TARGETARCH
+COPY docker-runtime-tools.sh /tmp/download-runtime-tools.sh
+RUN sh /tmp/download-runtime-tools.sh "$TARGETARCH" /tmp/cbox-runtime-tools
+
+FROM ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1@sha256:0a34ef64c5f1c48cd0ca8999c0c395b683f9d4c9b1835b35ad1b712ef142a3b8
+COPY --from=runtime-tools --chmod=0755 /tmp/cbox-runtime-tools/cbox-init /usr/local/bin/cbox-init
+COPY --from=runtime-tools --chmod=0755 /tmp/cbox-runtime-tools/fpm-exporter /usr/local/bin/fpm-exporter
 WORKDIR /var/www/html
 COPY --from=build --chown=www-data:www-data /var/www/html /var/www/html
 
