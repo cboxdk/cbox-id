@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "d58fa575524bd32734cb17cdd47dc736",
+    "content-hash": "ee43baeb739e6d59098b8978c2dd0759",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -431,6 +431,65 @@
                 "source": "https://github.com/cboxdk/dns/tree/v1.0.0"
             },
             "time": "2026-09-04T12:54:32+00:00"
+        },
+        {
+            "name": "cboxdk/laravel-assistant-client",
+            "version": "v0.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cboxdk/laravel-assistant-client.git",
+                "reference": "de56184b1bbd0132f4eda8cb5d76f104d5e3c8fb"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cboxdk/laravel-assistant-client/zipball/de56184b1bbd0132f4eda8cb5d76f104d5e3c8fb",
+                "reference": "de56184b1bbd0132f4eda8cb5d76f104d5e3c8fb",
+                "shasum": ""
+            },
+            "require": {
+                "ext-sodium": "*",
+                "firebase/php-jwt": "^7.2",
+                "illuminate/cache": "^12.0 || ^13.0",
+                "illuminate/console": "^12.0 || ^13.0",
+                "illuminate/database": "^12.0 || ^13.0",
+                "illuminate/http": "^12.0 || ^13.0",
+                "illuminate/routing": "^12.0 || ^13.0",
+                "illuminate/support": "^12.0 || ^13.0",
+                "illuminate/view": "^12.0 || ^13.0",
+                "php": "^8.4"
+            },
+            "require-dev": {
+                "larastan/larastan": "^3.14",
+                "laravel/pint": "^1.32",
+                "orchestra/testbench": "^10.0 || ^11.0",
+                "pestphp/pest": "^3.5 || ^4.0 || ^5.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "AiAssistant": "Cbox\\AiAssistant\\Connector\\Facades\\AiAssistant"
+                    },
+                    "providers": [
+                        "Cbox\\AiAssistant\\Connector\\AiAssistantConnectorServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Cbox\\AiAssistant\\Connector\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Cbox Assistant client for Laravel: signed tools, product support and curated knowledge.",
+            "support": {
+                "issues": "https://github.com/cboxdk/laravel-assistant-client/issues",
+                "source": "https://github.com/cboxdk/laravel-assistant-client/tree/v0.1.0"
+            },
+            "time": "2026-11-07T08:31:03+00:00"
         },
         {
             "name": "cboxdk/laravel-audit-chain",
@@ -14395,7 +14454,7 @@
     "platform": {
         "php": "^8.5"
     },
-    "platform-dev": [],
+    "platform-dev": {},
     "platform-overrides": {
         "php": "8.5.0"
     },

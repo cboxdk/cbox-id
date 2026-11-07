@@ -91,6 +91,8 @@ final class CustomerConsole
      * @var list<string>
      */
     private const WITHHELD = [
+        // Cbox product support is for workspace operators, not customer admin portals.
+        'support.session',
         'get-started',
         'get-started.dismiss',
         'dashboard.checklist.dismiss',

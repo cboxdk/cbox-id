@@ -57,6 +57,9 @@ jobs:
           cp .env.example .env || true
           php artisan key:generate --force
 
+      - name: Approved Assistant guides match their sources
+        run: php bin/prepare-assistant-docs.php --check
+
       - name: Lint (Pint)
         run: vendor/bin/pint --test
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Assistant\SupportContext;
 use App\Http\Props\Console\ApiEquivalentProps;
 use App\Http\Props\Shared\AuthProps;
 use App\Http\Props\Shared\EnvironmentProps;
@@ -62,6 +63,7 @@ final class HandleInertiaRequests extends Middleware
      * @var list<string>
      */
     public const SHARED_KEYS = [
+        'supportSessionUrl',
         'app',
         'theme',
         'auth',
@@ -147,6 +149,7 @@ final class HandleInertiaRequests extends Middleware
              * A closure, so a guest request never reaches the console-kit registry or the
              * membership lookups behind it. See {@see ShellPayload} for what goes in.
              */
+            'supportSessionUrl' => fn (): ?string => app(SupportContext::class)->sessionUrl($request),
             'shell' => fn (): ?ShellProps => app(ShellPayload::class)->build(),
             'appCatalog' => fn (): array => app(AppLauncher::class)->apps(),
 

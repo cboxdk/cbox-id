@@ -1,0 +1,70 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Assistant\ServiceProvider;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Platform\PlatformRoot;
+use Cbox\Id\Platform\TenantProvisioner;
+use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+
+beforeEach(function (): void {
+    $this->withoutVite();
+    config(['ai-assistant-connector.support.enabled' => true, 'ai-assistant-connector.support.widget' => 'id-support',
+        'ai-assistant-connector.support.identity_namespace' => 'cbox-production',
+        'ai-assistant-connector.platform.url' => 'https://assistant.example', 'ai-assistant-connector.handshake_secret' => str_repeat('s', 48),
+        'ai-assistant-connector.audience' => 'localhost', 'ai-assistant-connector.jwks_url' => 'https://assistant.example/jwks']);
+    new ServiceProvider(app())->boot();
+    $this->root = platformRootEnvironment();
+    Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]);
+    $this->workspace = app(TenantProvisioner::class)->provision(new TenantBlueprint(organizationName: 'Acme', ownerEmail: 'owner@acme.example', ownerName: 'Owner', ownerPassword: 'support-fixture-12345'));
+    $pair = sodium_crypto_sign_keypair();
+    $this->signingKey = base64_encode(sodium_crypto_sign_secretkey($pair));
+    Http::fake(['https://assistant.example/jwks' => Http::response(['keys' => [[
+        'kid' => 'support', 'kty' => 'OKP', 'crv' => 'Ed25519', 'alg' => 'EdDSA',
+        'x' => rtrim(strtr(base64_encode(sodium_crypto_sign_publickey($pair)), '+/', '-_'), '='),
+    ]]])]);
+    $this->claims = ['sub' => $this->workspace->owner->id, 'account_id' => $this->workspace->organization->id, 'verified' => true,
+        'context' => ['service' => 'cbox-id', 'tenant' => $this->workspace->organization->id, 'environment' => $this->root->id]];
+});
+
+function idSupportToken(mixed $test, array $principal, string $tool = 'id_environment_status'): string
+{
+    return JWT::encode(['aud' => 'localhost', 'iat' => time(), 'exp' => time() + 120, 'jti' => Str::uuid()->toString(),
+        'cnt' => str_repeat('s', 48), 'tool' => $tool, 'principal' => $principal, 'arguments' => []], $test->signingKey, 'EdDSA', 'support');
+}
+
+it('binds the embedded support session to the signed-in workspace and root subject', function (): void {
+    signInAsMember($this->workspace->owner->id);
+    $response = $this->getJson('/support/session')->assertOk();
+    $identity = JWT::decode($response->json('identity'), new Key(str_repeat('s', 48), 'HS256'));
+    expect($identity->sub)->toBe($this->workspace->owner->id)
+        ->and($identity->account_id)->toBe($this->workspace->organization->id)
+        ->and($identity->service_context->environment)->toBe($this->root->id)
+        ->and($response->headers->get('Cache-Control'))->toContain('no-store');
+});
+
+it('executes a signed bridge tool and limits environments to the members current grants', function (): void {
+    $token = idSupportToken($this, $this->claims);
+    $this->withToken($token)->postJson('/ai-assistant/hook')->assertOk()->assertJsonPath('result.organization', 'Acme')->assertJsonCount(1, 'result.projects.0.environments');
+    $this->withToken($token)->postJson('/ai-assistant/hook')->assertUnauthorized();
+    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->setEnvironmentAccess($this->workspace->organization->id, $this->workspace->owner->id, false, []));
+    $this->withToken(idSupportToken($this, $this->claims))->postJson('/ai-assistant/hook')->assertOk()->assertJsonCount(0, 'result.projects.0.environments');
+});
+
+it('rejects another account, a foreign environment and a revoked membership', function (): void {
+    $this->withToken(idSupportToken($this, [...$this->claims, 'account_id' => 'other']))->postJson('/ai-assistant/hook')->assertForbidden();
+    $bad = [...$this->claims, 'context' => [...$this->claims['context'], 'environment' => 'other-env']];
+    $this->withToken(idSupportToken($this, $bad))->postJson('/ai-assistant/hook')->assertForbidden();
+    app(PlatformRoot::class)->run(fn () => $this->workspace->membership->delete());
+    $this->withToken(idSupportToken($this, $this->claims))->postJson('/ai-assistant/hook')->assertForbidden();
+});
+
+it('serves only the approved generated guides', function (): void {
+    $this->get('/ai-assistant/guides/id-laravel')->assertOk()->assertSee('Create the app');
+    $this->get('/ai-assistant/guides/private')->assertNotFound();
+});
