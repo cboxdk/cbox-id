@@ -77,9 +77,20 @@ it('adds, corrects, renames and cancels independent apps on a phone-sized screen
     $page->assertNoJavaScriptErrors();
     $currentLocale = 'en';
     foreach (['da' => 'Dansk', 'de' => 'Deutsch', 'sv' => 'Svenska', 'nb' => 'Norsk bokmål', 'fr' => 'Français', 'fi' => 'Suomi', 'es' => 'Español', 'it' => 'Italiano', 'nl' => 'Nederlands'] as $locale => $language) {
-        $page->click('button[aria-label="'.__('hosted.language.label', [], $currentLocale).'"]')
-            ->click('[role="menuitemradio"]:has-text("'.$language.'")')
+        $picker = 'button[aria-label="'.__('hosted.language.label', [], $currentLocale).'"]';
+        $nextPicker = 'button[aria-label="'.__('hosted.language.label', [], $locale).'"]';
+        $option = '[role="menuitemradio"]:has-text("'.$language.'")';
+        // Finish each preference write and menu close before toggling the next language.
+        $page->assertAttribute($picker, 'aria-busy', 'false')
+            ->assertAttribute($picker, 'aria-expanded', 'false')
+            ->click($picker)
+            ->assertAttribute($picker, 'aria-expanded', 'true')
+            ->assertVisible($option)
+            ->click($option)
+            ->assertScript('document.documentElement.lang', $locale)
             ->assertSee(__('console.totp_apps', [], $locale))
+            ->assertAttribute($nextPicker, 'aria-busy', 'false')
+            ->assertAttribute($nextPicker, 'aria-expanded', 'false')
             ->assertNoJavaScriptErrors();
         $currentLocale = $locale;
         expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
