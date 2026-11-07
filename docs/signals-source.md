@@ -84,3 +84,18 @@ row locks serialize observation with deletion; source privacy locks and retained
 tombstones prevent an erased subject from returning. Inactive members and other
 environments are excluded. A bounded scan's end is not proof of historical
 completeness, and overall source coverage remains partial until its doors qualify.
+
+## Machine-readable capture limits
+
+Every record page now includes `meta.capture` version `source-capture/1` and
+`meta.history.retained_after` / `retention_days`. The capture object reports the
+actual journal strategy and explicit reasons that event-time coverage is still
+unqualified. `event_time_watermark`, `lateness_bound_seconds` and
+`clock_skew_bound_seconds` remain null. A drained commit cursor, fresh heartbeat
+or journal creation timestamp cannot replace these guarantees. The family list
+declares supported record types, not proof that every public path emitted them.
+
+This additive metadata does not change record identity, replay, retention,
+authority or source activation. Older consumers may ignore it. Consumers must
+retain the observation time and represent an empty caught-up page as unknown
+coverage, never a measured zero or a qualified normal-behavior baseline.

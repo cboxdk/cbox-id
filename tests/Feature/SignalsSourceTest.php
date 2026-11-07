@@ -84,6 +84,21 @@ it('denies missing foreign wrong-scope and revoked credentials at the source end
     $this->withToken($issued->plaintext)->getJson('/api/v1/signals/source')->assertUnauthorized();
 });
 
+it('keeps a caught-up empty source unqualified with explicit producer limits', function (): void {
+    $this->freezeTime();
+    $page = $this->withToken(signalsSourceKey())->getJson('/api/v1/signals/source')->assertOk()
+        ->assertJsonCount(0, 'data')->assertJsonPath('meta.has_more', false)
+        ->assertJsonPath('meta.coverage', 'partial')->assertJsonPath('meta.capture.version', 'source-capture/1')
+        ->assertJsonPath('meta.capture.strategy', 'owner_outbox')
+        ->assertJsonPath('meta.capture.event_time_watermark', null)
+        ->assertJsonPath('meta.capture.lateness_bound_seconds', null)
+        ->assertJsonPath('meta.capture.clock_skew_bound_seconds', null)
+        ->assertJsonPath('meta.history.retained_after', '0');
+    expect($page->json('meta.capture.reasons'))->toContain('capture_doors_unqualified', 'owner_transaction_lateness_unbounded');
+    config(['signals-data.environments' => []]);
+    $this->getJson('/api/v1/signals/source')->assertServiceUnavailable();
+});
+
 it('keeps equal-time pages stable and rejects forged and stale-generation cursors', function (): void {
     $this->freezeTime();
     for ($i = 0; $i < 3; $i++) {
