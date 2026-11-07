@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
 beforeEach(function (): void {
     $this->withoutVite();
     config(['ai-assistant-connector.support.enabled' => true, 'ai-assistant-connector.support.widget' => 'id-support',
-        'ai-assistant-connector.support.identity_namespace' => 'cbox-production',
+        'ai-assistant-connector.support.identity_namespace' => 'cbox-id-platform-root',
         'ai-assistant-connector.platform.url' => 'https://assistant.example', 'ai-assistant-connector.handshake_secret' => str_repeat('s', 48),
         'ai-assistant-connector.audience' => 'localhost', 'ai-assistant-connector.jwks_url' => 'https://assistant.example/jwks']);
     new ServiceProvider(app())->boot();
@@ -43,6 +43,7 @@ it('binds the embedded support session to the signed-in workspace and root subje
     $response = $this->getJson('/support/session')->assertOk();
     $identity = JWT::decode($response->json('identity'), new Key(str_repeat('s', 48), 'HS256'));
     expect($identity->sub)->toBe($this->workspace->owner->id)
+        ->and($identity->identity_namespace)->toBe('cbox-id-platform-root')
         ->and($identity->account_id)->toBe($this->workspace->organization->id)
         ->and($identity->service_context->environment)->toBe($this->root->id)
         ->and($response->headers->get('Cache-Control'))->toContain('no-store');
@@ -67,4 +68,18 @@ it('rejects another account, a foreign environment and a revoked membership', fu
 it('serves only the approved generated guides', function (): void {
     $this->get('/ai-assistant/guides/id-laravel')->assertOk()->assertSee('Create the app');
     $this->get('/ai-assistant/guides/private')->assertNotFound();
+});
+
+it('hydrates the signed workspace card using current membership and rejects forged scope and replays', function (): void {
+    $url = '/ai-assistant/inbox/id_workspace';
+    $token = idSupportToken($this, $this->claims);
+    $this->withToken($token)->getJson($url)->assertOk()
+        ->assertJsonPath('data.organization', 'Acme')->assertJsonPath('data.role', 'owner');
+    $this->withToken($token)->getJson($url)->assertUnauthorized();
+    $this->withToken(idSupportToken($this, [...$this->claims, 'verified' => false]))->getJson($url)->assertForbidden();
+    $this->withToken(idSupportToken($this, [...$this->claims, 'account_id' => 'other']))->getJson($url)->assertForbidden();
+    $bad = [...$this->claims, 'context' => [...$this->claims['context'], 'service' => 'cbox-billing']];
+    $this->withToken(idSupportToken($this, $bad))->getJson($url)->assertForbidden();
+    app(PlatformRoot::class)->run(fn () => $this->workspace->membership->delete());
+    $this->withToken(idSupportToken($this, $this->claims))->getJson($url)->assertForbidden();
 });

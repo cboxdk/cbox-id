@@ -23,5 +23,14 @@ final class ServiceProvider extends Provider
                 ->guard(fn (ToolContext $context): bool => app(SupportContext::class)->allowed($context, $withEnvironments))
                 ->handle(fn (array $arguments, ToolContext $context): array => app(SupportContext::class)->read($context, $withEnvironments));
         }
+
+        AiAssistant::inboxCard('id_workspace')->title('Cbox ID workspace')
+            ->schema(['fields' => [
+                ['key' => 'organization', 'label' => 'Organization'],
+                ['key' => 'role', 'label' => 'Member role'],
+                ['key' => 'observed_at', 'label' => 'Checked'],
+            ]])
+            ->guard(fn (ToolContext $context): bool => app(SupportContext::class)->allowed($context))
+            ->handle(fn (array $arguments, ToolContext $context): array => app(SupportContext::class)->read($context, false));
     }
 }

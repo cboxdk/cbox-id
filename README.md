@@ -149,9 +149,9 @@ own customers, get in touch about a commercial licence.
 
 ## Product support with Cbox Assistant
 
-Cbox ID uses the public MIT `cboxdk/laravel-assistant-client` package for its signed SDK bridge and global console support drawer. It exposes workspace status and environment status; every tool rechecks the subject, workspace membership, product admission and current environment grants. Hosted customer sign-in pages do not expose workspace support.
+Cbox ID uses the public MIT `cboxdk/laravel-assistant-client` package for its signed SDK bridge and global console support drawer. It exposes workspace status and environment status; every tool rechecks the subject, workspace membership, product admission and current environment grants. The signed `id_workspace` inbox card exposes the same authorized workspace and member role to support staff. Hosted customer sign-in pages do not expose workspace support.
 
-Configure `AI_ASSISTANT_SUPPORT_ENABLED`, the support widget/profile/product IDs, `AI_ASSISTANT_PLATFORM_URL`, `AI_ASSISTANT_JWKS_URL`, the exact service audience, a dedicated connector handshake and a server knowledge API key. Use the identity namespace configured by the support workspace (`cbox-production` for Cbox's production setup). Provision the connection and product-scoped widget in Assistant before enabling the host. No server key is exposed to the browser.
+Configure `AI_ASSISTANT_SUPPORT_ENABLED`, the support widget/profile/product IDs, `AI_ASSISTANT_PLATFORM_URL`, `AI_ASSISTANT_JWKS_URL`, the exact service audience, a dedicated connector handshake and a server knowledge API key. Use `AI_ASSISTANT_IDENTITY_NAMESPACE=cbox-id-platform-root` for Cbox's platform console: its root subjects and organizations differ from the product issuer consumed by Billing and Engage. Never join these accounts by matching email or organization name. Provision the connection and product-scoped widget in Assistant before enabling the host. No server key is exposed to the browser.
 
 The support session comes from the existing authenticated workspace or environment-admin session. Changing subject, workspace or environment replaces its scope URL and closes the old support frame. The host CSP allows only the configured Assistant origin.
 
