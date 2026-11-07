@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "fb72752ffaf55bd459b8f510f8e61f22",
+    "content-hash": "5bbacdbf6238d2a249a2ad2d7b903785",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -1499,11 +1499,11 @@
         },
         {
             "name": "cboxdk/laravel-signals-client",
-            "version": "dev-sd/security-tenant-context",
+            "version": "dev-sd/signals-managed-integration",
             "dist": {
                 "type": "path",
                 "url": "packages/signals-client",
-                "reference": "1dc44b07434853297c066ee2c031f8e9e31bd514"
+                "reference": "e697d4066d20c03e221de8c48932cb415c796e47"
             },
             "require": {
                 "cboxdk/laravel-webhook-signature": "^0.1",

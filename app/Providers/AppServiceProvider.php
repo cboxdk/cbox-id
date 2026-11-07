@@ -30,6 +30,8 @@ use App\Platform\OAuth\RootMcpAudiences;
 use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
 use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\Platform\WorkspaceApiContext;
+use App\SignalsData\Bundled\IdMachineCredential;
+use App\SignalsData\Bundled\IdManagedSources;
 use Cbox\Dns\Dns;
 use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
 use Cbox\Id\Api\Http\Controllers\DiscoveryController;
@@ -43,7 +45,11 @@ use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Support\SelfRegisteredScopes;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
+use Cbox\Signals\Contracts\ManagedCredential;
+use Cbox\Signals\Contracts\ManagedSources;
+use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
@@ -94,6 +100,15 @@ class AppServiceProvider extends ServiceProvider
         // The scopes a management key may carry: the framework's core set plus the ones
         // this app's actions guard. The framework refuses to mint anything else.
         $this->app->singleton(ManagementScopes::class, AppManagementScopes::class);
+
+        // Bundled Cbox Signals integration: this deployment enrols its live source
+        // environments itself, authenticating as a confidential Cbox ID client.
+        $this->app->bind(ManagedSources::class, IdManagedSources::class);
+        $this->app->bind(ManagedCredential::class, static function (Application $app): IdMachineCredential {
+            $resource = config('signals.bundled.resource');
+
+            return new IdMachineCredential($app->make(Factory::class), $app->make(Repository::class), config()->string('signals.bundled.client_id', ''), config()->string('signals.bundled.client_secret', ''), config()->string('signals.bundled.token_url', ''), is_string($resource) && $resource !== '' ? $resource : null);
+        });
 
         $this->app->singleton(DnsResolver::class, function (Application $app): DnsResolver {
             return new AuthoritativeDnsResolver($app->make(Dns::class)->authoritative());

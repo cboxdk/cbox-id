@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.cboxsignals.com/interval/v1/count.schema.json",
+  "title": "Cbox Signals closed count interval revision",
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "const": "count-interval/1"
+    },
+    "scope": {
+      "$ref": "#/$defs/scope"
+    },
+    "source_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "series_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+    },
+    "series_revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000000
+    },
+    "entity": {
+      "$ref": "#/$defs/entity"
+    },
+    "dimensions": {
+      "type": "object",
+      "maxProperties": 12,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_.-]{0,63}$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 128
+      }
+    },
+    "start": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "end": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 64
+    },
+    "previous_hash": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "count": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]{0,19})$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "coverage": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "complete",
+            "partial",
+            "unknown"
+          ]
+        },
+        "observed_through": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "Z$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reasons": {
+          "type": "array",
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "export_incomplete",
+              "source_unavailable",
+              "late_data",
+              "clock_untrusted",
+              "missing_population"
+            ]
+          }
+        }
+      },
+      "required": [
+        "status",
+        "observed_through",
+        "reasons"
+      ],
+      "additionalProperties": false
+    },
+    "privacy_subjects": {
+      "type": "array",
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/entity"
+      }
+    }
+  },
+  "required": [
+    "contract_version",
+    "scope",
+    "source_id",
+    "series_id",
+    "series_revision",
+    "entity",
+    "dimensions",
+    "start",
+    "end",
+    "recorded_at",
+    "revision",
+    "previous_hash",
+    "count",
+    "coverage",
+    "privacy_subjects"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "scope": {
+      "type": "object",
+      "properties": {
+        "project_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "environment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "audience": {
+          "enum": [
+            "tenant",
+            "environment"
+          ]
+        },
+        "tenant_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "project_id",
+        "environment_id",
+        "audience"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "audience": {
+                "const": "tenant"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "tenant_id"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "tenant_id"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "entity": {
+      "type": "object",
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "type": {
+          "enum": [
+            "user",
+            "organization",
+            "team",
+            "token",
+            "service",
+            "resource",
+            "customer",
+            "application"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "namespace",
+        "type",
+        "id"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

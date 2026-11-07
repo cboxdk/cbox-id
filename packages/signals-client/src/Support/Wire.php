@@ -37,6 +37,17 @@ final class Wire
         return $value;
     }
 
+    /** A path-safe identifier (provider, owner, source ids): no separators, no traversal. */
+    public static function identifier(mixed $value): string
+    {
+        $text = self::text($value);
+        if (preg_match('/^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/D', $text) !== 1) {
+            self::fail();
+        }
+
+        return $text;
+    }
+
     public static function integer(mixed $value, int $minimum = 0): int
     {
         if (! is_int($value) || $value < $minimum) {

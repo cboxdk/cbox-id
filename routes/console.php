@@ -90,6 +90,8 @@ Schedule::command('cbox-id:sso:certificate-expiry')
 
 Schedule::command('signals:source-maintain')->everyMinute()->withoutOverlapping()->onOneServer()
     ->when(static fn (): bool => config()->array('signals-data.environments') !== [] || SourceHead::query()->exists());
+Schedule::command('signals:managed-reconcile')->hourly()->withoutOverlapping()->onOneServer()
+    ->when(static fn (): bool => config()->string('signals.bundled.client_id', '') !== '' && (config()->array('signals-data.environments') !== [] || SourceHead::query()->exists()));
 
 // Metrics and the bounded OTLP spool need a shipper even when no request arrives.
 // The Redis store is shared by replicas, so only one scheduler flushes it.
