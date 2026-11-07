@@ -15,7 +15,8 @@ Cbox Billing owns prices, tax and subscription state. Publish a **Cbox ID** cata
 Set these through the deployment secret store:
 
 ```dotenv
-CBOX_ID_ENTITLEMENTS=metered
+CBOX_ID_ENTITLEMENTS=inclusive
+CBOX_ID_REQUIRE_SUBSCRIPTION=true
 CBOX_BILLING_ENABLED=true
 CBOX_BILLING_PRODUCT=cbox-id
 CBOX_BILLING_CURRENCY=DKK
@@ -25,13 +26,15 @@ BILLING_CLIENT_API_TOKEN=<product-bound management token>
 CBOX_BILLING_WEBHOOK_SECRET=<shared webhook signing secret>
 ```
 
+Keep `CBOX_ID_REQUIRE_SUBSCRIPTION` disabled during a waitlist-only pilot until approved customers have a usable private plan and the payment acceptance below has passed. Enabling it against an inactive or empty public catalog blocks project creation. `inclusive` grants the known ID security features independently of a paid tier; it does not grant arbitrary application features or bypass service admission.
+
 The Billing deployment must support `customer_account` upserts that ignore the caller’s `name` when reading an existing account and apply explicit `invoice_name` edits. Verify saving an invoice name and then reloading preserves it; the SDK fake does not implement this server rule.
 
 Use a token restricted to the Cbox ID product. Subscriptions use the workspace organization as payment account and the project ID as `reference`. Cards and invoice details belong to the payment account and are shared across projects. Buyer-specific prices use that account’s locked currency; `CBOX_BILLING_CURRENCY` selects the catalog synchronization currency, not a forced currency for existing buyers.
 
-Run migrations, then `php artisan billing:sync-catalog --subscriptions`. Run `php artisan cbox-id:doctor` under the **actual production configuration**. The metered configuration check fails on missing secrets, an empty/invalid catalog or a subscription reconciliation older than 15 minutes. The scheduler reconciles every five minutes. The signed webhook at `POST /api/billing/webhook` queues the same reconciliation. Configure Billing to deliver it with `X-Cbox-Signature: t=<unix>,v1=<HMAC-SHA256(timestamp.raw_body)>`.
+Run migrations, then `php artisan billing:sync-catalog --subscriptions`. Run `php artisan cbox-id:doctor` under the **actual production configuration**. The subscription-admission check fails on missing secrets, an empty/invalid catalog or a subscription reconciliation older than 15 minutes. The scheduler reconciles every five minutes. The signed webhook at `POST /api/billing/webhook` queues the same reconciliation. Configure Billing to deliver it with `X-Cbox-Signature: t=<unix>,v1=<HMAC-SHA256(timestamp.raw_body)>`.
 
-New metered projects start with **zero** environment allowance. A synchronized active or trialing subscription applies the catalog allowance. The workspace API cannot choose the allowance. Missing subscriptions, unknown plans and transport failures preserve existing grants. An explicit ended subscription sets the new-environment allowance to zero; existing environments and identity data remain intact. Payment failure does not delete customer identity infrastructure. Decide the support/suspension policy separately before selling a contractual service.
+New projects requiring a subscription start with **zero** environment allowance. A synchronized active or trialing subscription applies the catalog allowance. The workspace API cannot choose the allowance. Missing subscriptions, unknown plans and transport failures preserve existing grants. An explicit ended subscription sets the new-environment allowance to zero; existing environments and identity data remain intact. Payment failure does not delete customer identity infrastructure. Decide the support/suspension policy separately before selling a contractual service.
 
 `CBOX_ID_ENTITLEMENTS=open` is the self-hosted mode. It does not enforce commercial feature entitlements. Do not sell usage limits or feature tiers until those exact meters/feature projections have been configured and verified end to end. The project allowance integration alone does not enforce a users/logins quota.
 
