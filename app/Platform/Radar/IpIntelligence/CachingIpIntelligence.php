@@ -16,7 +16,7 @@ use Illuminate\Contracts\Cache\Repository as Cache;
  * into a fresh API call. Private, loopback and reserved addresses are never looked up at all:
  * no source knows anything about them, and asking would only send them somewhere.
  */
-final readonly class CachingIpIntelligence implements IpIntelligence
+final readonly class CachingIpIntelligence implements IpIntelligence, OfflineIpIntelligence
 {
     private const string UNKNOWN = 'unknown';
 
@@ -28,6 +28,16 @@ final readonly class CachingIpIntelligence implements IpIntelligence
     ) {}
 
     public function lookup(string $ip): ?IpProfile
+    {
+        return $this->resolve($ip, false);
+    }
+
+    public function lookupOffline(string $ip): ?IpProfile
+    {
+        return $this->resolve($ip, true);
+    }
+
+    private function resolve(string $ip, bool $offline): ?IpProfile
     {
         if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
             return null;
@@ -42,6 +52,12 @@ final readonly class CachingIpIntelligence implements IpIntelligence
 
         if (is_array($cached)) {
             return IpProfile::fromArray($cached);
+        }
+
+        if ($offline && ! $this->inner instanceof MaxMindIpIntelligence && ! $this->inner instanceof NullIpIntelligence) {
+            // No evidence yet. Do not cache this as a provider's negative
+            // answer: Radar may still perform its ordinary bounded lookup.
+            return null;
         }
 
         $profile = $this->inner->lookup($ip);
