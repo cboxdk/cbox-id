@@ -3,6 +3,7 @@ import { update as updateEnvironment } from '@routes/environment/locale';
 import type { SharedProps } from '@/types';
 import { usePage, router } from '@inertiajs/react';
 import { DropdownMenu } from 'radix-ui';
+import { useState } from 'react';
 import { useTranslator } from '@/i18n';
 import { Button, DropdownMenuContent, Icon } from '@/ui';
 
@@ -11,12 +12,14 @@ export function ConsoleLanguagePicker() {
     const { locale, t } = useTranslator();
     const { i18n, auth, shell } = usePage<SharedProps>().props;
     const languages = i18n?.locales ?? [];
+    const [open, setOpen] = useState(false);
+    const [changing, setChanging] = useState(false);
 
     if (languages.length < 2) return null;
     const current = languages.find((language) => language.code === locale);
 
     return (
-        <DropdownMenu.Root>
+        <DropdownMenu.Root open={open} onOpenChange={(value) => setOpen(value && !changing)}>
             <DropdownMenu.Trigger asChild>
                 <Button
                     variant="ghost"
@@ -24,6 +27,7 @@ export function ConsoleLanguagePicker() {
                     className="border-transparent bg-transparent shadow-none"
                     data-testid="console-language-picker"
                     aria-label={`${t('console.language')}: ${current?.name ?? locale}`}
+                    disabled={changing}
                 >
                     <span lang={locale}>{current?.name ?? locale}</span>
                     <Icon name="chevron" className="h-3.5 w-3.5" />
@@ -36,15 +40,23 @@ export function ConsoleLanguagePicker() {
                 <DropdownMenu.RadioGroup
                     value={locale}
                     aria-label={t('console.language')}
-                    onValueChange={(value) =>
+                    onValueChange={(value) => {
+                        setOpen(false);
+                        if (changing || value === locale) return;
+                        setChanging(true);
                         router.post(
                             shell?.altitude === 'environment'
                                 ? updateEnvironment.url()
                                 : update.url(),
                             { locale: value, user_id: auth.user?.id },
-                            { preserveScroll: true, preserveState: false },
-                        )
-                    }
+                            {
+                                preserveScroll: true,
+                                // Keep the transition lock (and entered form values) as props change.
+                                preserveState: true,
+                                onFinish: () => setChanging(false),
+                            },
+                        );
+                    }}
                 >
                     {languages.map((language) => (
                         <DropdownMenu.RadioItem
