@@ -6,12 +6,13 @@ namespace App\Platform\Radar\Testing;
 
 use App\Platform\Radar\IpIntelligence\IpIntelligence;
 use App\Platform\Radar\IpIntelligence\IpProfile;
+use App\Platform\Radar\IpIntelligence\OfflineIpIntelligence;
 
 /**
  * An intelligence source that knows exactly the addresses a test tells it about, and counts
  * how often it was asked.
  */
-final class FakeIpIntelligence implements IpIntelligence
+final class FakeIpIntelligence implements IpIntelligence, OfflineIpIntelligence
 {
     /** @var array<string, IpProfile> */
     private array $profiles = [];
@@ -40,5 +41,10 @@ final class FakeIpIntelligence implements IpIntelligence
         $this->lookups++;
 
         return $this->profiles[$ip] ?? null;
+    }
+
+    public function lookupOffline(string $ip): ?IpProfile
+    {
+        return $this->lookup($ip);
     }
 }

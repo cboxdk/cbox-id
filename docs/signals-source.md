@@ -22,8 +22,12 @@ the issuer's explicit reuse refusal and its committed family revocation; an inva
 request alone is not reuse. Token values, digests and encrypted successors are not exported.
 
 Device IDs reuse the first-party, environment-keyed device cookie. Only coarse browser
-and OS fields are retained from the user agent. Cached Radar enrichment is reused; no
-additional network lookup runs on login. Locations require a reported accuracy radius,
+and OS fields are retained from the user agent. Context version `id-context-2` also
+resolves local MaxMind or cached provider evidence for account, session, token and
+activity transitions outside Radar. It never initiates an external geo lookup.
+Unknown results and cache failures stay unknown; Radar can still run its usual lookup.
+An explicit session address cannot inherit another request address's profile or device.
+Locations require a reported accuracy radius,
 are rounded, and expand that radius to cover rounding. Unknown stays unknown.
 
 The producer retains immutable replay records for at most seven days, bounded by raw-IP
