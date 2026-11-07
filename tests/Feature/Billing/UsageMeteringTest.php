@@ -107,7 +107,7 @@ it('sends a workspace batch with its quantity, distinct key and dimensions and k
     $sent = collect($transport->recordedUsageEvents($workspace->id))->keyBy('id');
     expect($sent->keys()->sort()->values()->all())->toBe(['evt_x', 'evt_x:active'])
         ->and($sent['evt_x:active']['unique_key'])->toBe('usr_9')
-        ->and($sent['evt_x']['dimensions'])->toBe(['environment' => $environment->id, 'method' => 'password'])
+        ->and($sent['evt_x']['dimensions'])->toEqual(['environment' => $environment->id, 'method' => 'password'])
         ->and(DB::table('product_billing_usage_outbox')->where('event_id', 'evt_y')->value('last_error'))->toBe('archived_meter')
         ->and(DB::table('product_billing_usage_outbox')->where('event_id', 'evt_y')->value('reported_at'))->toBeNull();
 
