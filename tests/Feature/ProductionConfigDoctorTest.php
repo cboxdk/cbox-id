@@ -228,3 +228,10 @@ it('fails metered production without a working billing configuration', function 
     expect(productionVerdicts([...soundProductionConfig(), 'cbox-id.entitlements.mode' => 'metered', 'billing-client.api_token' => null]))
         ->toHaveKey('Billing admission', 'fail');
 });
+
+it('checks billing readiness independently of the identity security policy', function (): void {
+    expect(productionVerdicts([...soundProductionConfig(),
+        'cbox-id.entitlements.mode' => 'inclusive', 'billing.require_subscription' => true,
+        'billing-client.api_token' => null,
+    ]))->toHaveKey('Billing admission', 'fail');
+});

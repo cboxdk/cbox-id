@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Health;
 
+use App\Platform\SubscriptionAdmission;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Billing\Models\BillingPlan;
 use Cbox\Id\Billing\PlanCatalog;
@@ -71,11 +72,11 @@ class ProductionConfigDoctorCheck implements HealthCheck
 
     private function billing(): HealthResult
     {
-        if (config('cbox-id.entitlements.mode') !== 'metered') {
-            return HealthResult::ok('Billing admission', 'Open self-hosted access; commercial plan enforcement is disabled.');
+        if (! SubscriptionAdmission::required()) {
+            return HealthResult::ok('Billing admission', 'Project subscription admission is disabled.');
         }
         if (config('billing.enabled') !== true || ! $this->string('billing-client.base_url') || ! $this->string('billing-client.api_token') || ! $this->string('billing.webhook_secret')) {
-            return HealthResult::fail('Billing admission', 'Metered access requires Billing, a management URL/token and a webhook signing secret.');
+            return HealthResult::fail('Billing admission', 'Subscription admission requires Billing, a management URL/token and a webhook signing secret.');
         }
         if (! Schema::hasTable('id_billing_plans') || ! BillingPlan::query()->where('sold', true)->exists()) {
             return HealthResult::fail('Billing admission', 'No sellable catalog. Run migrations and billing:sync-catalog --subscriptions.');

@@ -179,7 +179,7 @@ final class PlatformServiceProvider extends ServiceProvider
             $app->make(Memberships::class),
         ));
 
-        // Entitlements: grant-by-default unless this deployment is metered.
+        // Live feature defaults; hosted inclusive security is independent of billing admission.
         //
         // A fresh BIND rather than extend(): the framework registers
         // EntitlementReader and EntitlementWriter as two ALIASES of the same

@@ -4,50 +4,22 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
-use Cbox\Id\Kernel\Authorization\CachedEntitlements;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
-use Cbox\Id\Kernel\Authorization\DefaultPolicyDecisionPoint;
 use Cbox\Id\Kernel\Authorization\Enums\EnforcementMode;
 use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
 use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementValue;
 use Illuminate\Contracts\Config\Repository;
 
 /**
- * Turns the entitlement projection's deny-by-default into grant-by-default, for a
- * deployment that has no billing plane to say otherwise.
+ * Live feature defaults, separate from project subscription admission.
  *
- * A FLOOR, NOT AN OVERRIDE. An explicit row always wins, so a self-hoster can still
- * differentiate organizations by writing entitlements by hand — including revoking
- * one by storing `enabled: false`. Only the ABSENCE of a row changes meaning: it
- * used to mean "denied", and here it means "nobody has said otherwise, so yes".
+ * Open installs grant absent keys. Inclusive hosted installs grant only the configured
+ * ID security keys, leaving application entitlements deny-by-default. Metered installs
+ * retain the legacy deny-by-default policy. Explicit values always take precedence.
  *
- * Wrapped around {@see CachedEntitlements} unconditionally, and inert unless
- * `cbox-id.entitlements.mode` is `open` — the default, and what every self-host
- * runs. The hosted plane sets `metered`, keeps deny-by-default, and lets the
- * billing projection feed it.
- *
- * SAFE BECAUSE ENTITLEMENTS ARE NOT AN ISOLATION CONTROL. The authorization path,
- * {@see DefaultPolicyDecisionPoint::decide()}, resolves
- * allow/deny purely from the relationship store; entitlements sit beside it as a
- * separate accessor. Tenant isolation comes from the environment scope and
- * organization scoping, and every entitlement read is already keyed by an
- * organization id the caller had to prove (the decision endpoint takes it from the
- * introspected token, never from the request body). Granting an absent key
- * therefore widens which FEATURES an org sees, never whose DATA it can reach.
- *
- * Two deliberate asymmetries:
- *
- *  - `all()` is passed through untouched. The key space is open, so there is no
- *    set of "all possible entitlements" to synthesise — and because the token
- *    issuer mints the `ent` claim from `all()`, this also keeps tokens honest:
- *    they carry only entitlements someone actually granted, and do not balloon.
- *  - a synthesised grant is {@see EnforcementMode::DecisionApi}, never `Claims`,
- *    so it is resolved live on every check and can never be baked into a token
- *    that would outlive a later decision to start metering.
- *
- * Numeric limits are NOT fabricated: the synthesised value carries `enabled` and
- * nothing else, so `EntitlementValue::int('seats')` stays null — "no limit was
- * stated" — rather than inventing a number a caller might enforce.
+ * This never grants authorization: relationship and environment checks still decide
+ * whose data a caller can reach. Defaults contain no numeric limits and are never
+ * synthesized into token claims; all() returns only the stored projection.
  */
 final class OpenEntitlements implements EntitlementReader
 {
@@ -60,7 +32,7 @@ final class OpenEntitlements implements EntitlementReader
     {
         $explicit = $this->inner->get($organizationId, $key);
 
-        if ($explicit !== null || $this->metered()) {
+        if ($explicit !== null || ! $this->included($key)) {
             return $explicit;
         }
 
@@ -73,18 +45,22 @@ final class OpenEntitlements implements EntitlementReader
         );
     }
 
-    /**
-     * Read per call, not per construction. This decorator is installed
-     * unconditionally and is a pass-through under `metered`, because the mode is
-     * consulted here rather than when the binding resolves. Deciding at bind time
-     * looked tidier and was wrong: JwtTokenIssuer and DefaultPolicyDecisionPoint
-     * are singletons that capture the reader in their constructors, so a
-     * deployment (or a test) that changed the mode after they were first resolved
-     * would keep the old behaviour with nothing to show for it.
-     */
-    private function metered(): bool
+    /** Resolve per call: singleton token issuers may already hold this reader. */
+    private function included(string $key): bool
     {
-        return $this->config->get('cbox-id.entitlements.mode') === 'metered';
+        $mode = $this->config->get('cbox-id.entitlements.mode');
+
+        if ($mode === 'open') {
+            return true;
+        }
+
+        // Hosted plans include identity security, not arbitrary entitlements belonging
+        // to applications using ID. Explicit operational denials still take precedence.
+        return $mode === 'inclusive' && $key !== '' && in_array($key, [
+            $this->config->get('cbox-id.entitlements.sso'),
+            $this->config->get('cbox-id.entitlements.scim'),
+            $this->config->get('cbox-id.entitlements.audit_logs'),
+        ], true);
     }
 
     /**
