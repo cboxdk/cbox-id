@@ -406,3 +406,12 @@ jobs:
           php artisan key:generate --force
       - name: Qualify source transactions and public feed on PostgreSQL
         run: vendor/bin/pest tests/Integration/SourceCommitOrderTest.php tests/Feature/SignalsSourceTest.php
+
+  image-handoff:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify immutable multi-architecture image handoff
+        run: python3 .github/tests/test_image_handoff.py

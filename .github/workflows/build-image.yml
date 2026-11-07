@@ -90,29 +90,28 @@ jobs:
       - name: Build and push by digest
         id: build
         uses: docker/build-push-action@v6
+        env:
+          DOCKER_BUILD_RECORD_UPLOAD: "false"
         with:
           context: .
           platforms: linux/${{ matrix.arch }}
-          labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=max
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            io.cbox.build.run-id=${{ github.run_id }}
+            io.cbox.build.run-attempt=${{ github.run_attempt }}
           build-args: |
             APP_VERSION=${{ steps.version.outputs.version }}
           outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=cbox-id-${{ matrix.arch }}
           cache-to: type=gha,mode=max,scope=cbox-id-${{ matrix.arch }}
 
-      - name: Record the digest
-        run: |
-          mkdir -p "$RUNNER_TEMP/digests"
-          touch "$RUNNER_TEMP/digests/${DIGEST#sha256:}"
+      - name: Publish verified architecture handoff
+        run: python3 .github/scripts/image_handoff.py publish
         env:
+          ARCH: ${{ matrix.arch }}
           DIGEST: ${{ steps.build.outputs.digest }}
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: digest-${{ matrix.arch }}
-          path: ${{ runner.temp }}/digests/*
-          if-no-files-found: error
-          retention-days: 1
 
   merge:
     needs: build
@@ -123,11 +122,7 @@ jobs:
       packages: write
 
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          path: ${{ runner.temp }}/digests
-          pattern: digest-*
-          merge-multiple: true
+      - uses: actions/checkout@v4
 
       - name: Docker metadata
         id: meta
@@ -151,11 +146,4 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Multi-arch manifest
-        working-directory: ${{ runner.temp }}/digests
-        run: |
-          set -euo pipefail
-          mapfile -t tags < <(jq -r '.tags[] | "--tag=" + .' <<<"$DOCKER_METADATA_OUTPUT_JSON")
-          sources=()
-          for digest in *; do sources+=("${IMAGE}@sha256:${digest}"); done
-          docker buildx imagetools create "${tags[@]}" "${sources[@]}"
-          docker buildx imagetools inspect "${IMAGE}:sha-${GITHUB_SHA::7}"
+        run: python3 .github/scripts/image_handoff.py merge
