@@ -65,6 +65,7 @@ class BillingServiceProvider extends ServiceProvider
         Event::listen(EventDelivered::class, CaptureProductUsage::class);
         $this->callAfterResolving(Schedule::class, static function (Schedule $schedule): void {
             $schedule->command('billing:report-product-usage')->everyMinute()->withoutOverlapping();
+            $schedule->command('billing:snapshot-product-usage')->hourlyAt(5)->withoutOverlapping()->onOneServer();
         });
 
         $this->registerFeature();
