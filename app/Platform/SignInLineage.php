@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use Cbox\Id\Identity\Contracts\MfaVerification;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Contracts\Encryption\DecryptException;
@@ -123,15 +124,36 @@ final class SignInLineage
      */
     public function vouches(string $subjectId, array $parentSessionIds): bool
     {
-        return $this->platformRoot->run(function () use ($subjectId, $parentSessionIds): bool {
+        return $this->authenticationMethods($subjectId, $parentSessionIds) !== null;
+    }
+
+    /**
+     * Inherit authentication only from a live session of the exact handoff subject.
+     * Recheck today's MFA requirement; neither the token nor a posted AMR proves MFA.
+     * Never combine evidence from separate sessions or accounts.
+     *
+     * @param  list<string>  $parentSessionIds
+     * @return list<string>|null
+     */
+    public function authenticationMethods(string $subjectId, array $parentSessionIds): ?array
+    {
+        return $this->platformRoot->run(function () use ($subjectId, $parentSessionIds): ?array {
             foreach ($parentSessionIds as $id) {
-                if ($this->sessions->active($id)?->user_id === $subjectId) {
-                    return true;
+                $session = $this->sessions->active($id);
+
+                if ($session === null || $session->user_id !== $subjectId) {
+                    continue;
+                }
+
+                $amr = array_values($session->amr);
+
+                if (! app(MfaVerification::class)->requiresVerification($subjectId, $amr)) {
+                    return $amr;
                 }
             }
 
-            return false;
-        }) === true;
+            return null;
+        });
     }
 
     /**

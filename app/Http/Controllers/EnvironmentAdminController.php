@@ -148,11 +148,13 @@ final class EnvironmentAdminController extends Controller
         // again from a live session or sends the person to sign in.
         $parents = $lineage->open($token, $request->request->get(SignInLineage::FIELD));
 
-        if ($parents === null || ! $lineage->vouches($grant->subjectId, $parents)) {
+        $amr = $parents === null ? null : $lineage->authenticationMethods($grant->subjectId, $parents);
+
+        if ($parents === null || $amr === null) {
             return $this->sealed(redirect()->route('admin.login'));
         }
 
-        $auth->establish($grant->subjectId, $hostEnv);
+        $auth->establish($grant->subjectId, $hostEnv, array_values(array_unique([...$amr, 'handoff'])));
 
         // …and tie the console session to it, so signing out on either host ends both.
         $consoleSession = session()->get(EnvironmentAdminAuth::SESSION_KEY);
