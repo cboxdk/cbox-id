@@ -142,7 +142,7 @@ it('runs from the working copy on the base image the production image is built f
 
     expect($manifest['source'])->toBeTrue()
         ->and($manifest['image'])->toBe('ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1')
-        ->and($dockerfile)->toContain("\nFROM {$manifest['image']}\n")
+        ->and($dockerfile)->toContain("\nFROM {$manifest['image']}@sha256:0a34ef64c5f1c48cd0ca8999c0c395b683f9d4c9b1835b35ad1b712ef142a3b8\n")
         ->and($manifest['env']['LOG_CHANNEL'])->toBe('stderr');
 });
 
