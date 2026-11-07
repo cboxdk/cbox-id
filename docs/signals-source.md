@@ -22,8 +22,12 @@ the issuer's explicit reuse refusal and its committed family revocation; an inva
 request alone is not reuse. Token values, digests and encrypted successors are not exported.
 
 Device IDs reuse the first-party, environment-keyed device cookie. Only coarse browser
-and OS fields are retained from the user agent. Cached Radar enrichment is reused; no
-additional network lookup runs on login. Locations require a reported accuracy radius,
+and OS fields are retained from the user agent. Context version `id-context-2` also
+resolves local MaxMind or cached provider evidence for account, session, token and
+activity transitions outside Radar. It never initiates an external geo lookup.
+Unknown results and cache failures stay unknown; Radar can still run its usual lookup.
+An explicit session address cannot inherit another request address's profile or device.
+Locations require a reported accuracy radius,
 are rounded, and expand that radius to cover rounding. Unknown stays unknown.
 
 The producer retains immutable replay records for at most seven days, bounded by raw-IP
@@ -84,3 +88,18 @@ row locks serialize observation with deletion; source privacy locks and retained
 tombstones prevent an erased subject from returning. Inactive members and other
 environments are excluded. A bounded scan's end is not proof of historical
 completeness, and overall source coverage remains partial until its doors qualify.
+
+## Machine-readable capture limits
+
+Every record page now includes `meta.capture` version `source-capture/1` and
+`meta.history.retained_after` / `retention_days`. The capture object reports the
+actual journal strategy and explicit reasons that event-time coverage is still
+unqualified. `event_time_watermark`, `lateness_bound_seconds` and
+`clock_skew_bound_seconds` remain null. A drained commit cursor, fresh heartbeat
+or journal creation timestamp cannot replace these guarantees. The family list
+declares supported record types, not proof that every public path emitted them.
+
+This additive metadata does not change record identity, replay, retention,
+authority or source activation. Older consumers may ignore it. Consumers must
+retain the observation time and represent an empty caught-up page as unknown
+coverage, never a measured zero or a qualified normal-behavior baseline.

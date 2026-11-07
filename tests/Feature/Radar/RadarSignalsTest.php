@@ -52,6 +52,24 @@ it('knows nothing about any address by default, and sends nothing anywhere', fun
     Http::assertNothingSent();
 });
 
+it('uses cached external evidence offline without starting or negatively caching an external lookup', function (): void {
+    $source = new class implements IpIntelligence
+    {
+        public int $lookups = 0;
+
+        public function lookup(string $ip): ?IpProfile
+        {
+            $this->lookups++;
+
+            return new IpProfile(country: 'DK', asn: 64500);
+        }
+    };
+    $cache = new CachingIpIntelligence($source, new Repository(new ArrayStore), app(RadarPseudonyms::class));
+    expect($cache->lookupOffline('81.7.3.4'))->toBeNull()->and($source->lookups)->toBe(0)
+        ->and($cache->lookup('81.7.3.4')?->country)->toBe('DK')->and($source->lookups)->toBe(1)
+        ->and($cache->lookupOffline('81.7.3.4')?->asn)->toBe(64500)->and($source->lookups)->toBe(1);
+});
+
 it('reads geo, network and anonymiser flags from local MaxMind database files', function (): void {
     $dir = sys_get_temp_dir().'/radar-mmdb-'.bin2hex(random_bytes(4));
     File::ensureDirectoryExists($dir);
@@ -68,6 +86,8 @@ it('reads geo, network and anonymiser flags from local MaxMind database files', 
 
     $maxmind = new MaxMindIpIntelligence($dir.'/city.mmdb', $dir.'/asn.mmdb', $dir.'/anonymous.mmdb');
     $profile = $maxmind->lookup('81.7.3.4');
+    $cache = new CachingIpIntelligence($maxmind, new Repository(new ArrayStore), app(RadarPseudonyms::class));
+    expect($cache->lookupOffline('81.7.3.4')?->country)->toBe('DK');
 
     expect($profile)->not->toBeNull()
         ->and($profile?->country)->toBe('DK')
