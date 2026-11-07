@@ -8,6 +8,7 @@ use App\Assistant\SupportContext;
 use App\Http\Controllers\Controller;
 use App\Models\OnboardingDismissal;
 use App\Platform\Onboarding\IntegrationProgress;
+use App\Platform\Onboarding\LifecycleSupport;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
@@ -57,6 +58,6 @@ final class OnboardingEligibilityController extends Controller
             });
         });
 
-        return response()->json(['eligible' => $eligible === true, 'observed_at' => now()->toIso8601String()])->header('Cache-Control', 'no-store');
+        return response()->json(['eligible' => $eligible === true && app(LifecycleSupport::class)->canRemind($data['workspace_id']), 'observed_at' => now()->toIso8601String()])->header('Cache-Control', 'no-store');
     }
 }

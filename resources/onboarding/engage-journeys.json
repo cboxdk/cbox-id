@@ -16,7 +16,7 @@
   "max_evidence_age_seconds": 120,
   "dispatch_guard": "POST /api/v1/onboarding/eligibility with the dedicated read-only service credential; Engage resolves platform-root identities from its configured external-ID source. Failed or unavailable checks refuse sending.",
   "blockers": [
-    "Configure and verify the implemented Engage correlation and final-state check; related Assistant support pause/snooze remains unimplemented",
+    "Configure and verify the implemented Engage correlation, final-state check and Assistant support pause in production",
     "Resolve platform-root identities through a verified Engage source; never join a different issuer by email",
     "Configure brand, verified sending domain, preferences, finite frequency caps and scoped resume links",
     "Verify live Assistant knowledge sync, signed onboarding tool and human handoff on the candidate deployment"

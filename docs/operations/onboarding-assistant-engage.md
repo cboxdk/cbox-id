@@ -61,8 +61,10 @@ that message rather than sending or indefinitely retrying it.
 Remaining activation acceptance:
 
 1. Verify the platform-root source namespace and configure an events-only ingest key.
-2. Connect related Assistant support-case pause/snooze before publishing reminders;
-   the current eligibility check does not claim that capability.
+2. Verify the Assistant support-activity endpoint in production. ID checks it on every
+   eligible reminder and refuses on outage, missing configuration or open/snoozed cases.
+   The pause is conservative: any active case for the same product, identity namespace
+   and workspace pauses reminders for the whole team until the case is closed.
 3. Configure brand/domain, consent, caps, quiet hours, templates and scoped next links.
 4. Run a controlled-recipient live test, including completion after enqueue and removed
    access. The local tests cover these guards but do not prove production wiring.

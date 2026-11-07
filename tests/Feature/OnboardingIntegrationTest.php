@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\OnboardingDismissal;
 use App\Platform\Onboarding\IntegrationProgress;
+use App\Platform\Onboarding\LifecycleSupport;
 use Cbox\Engage\Contracts\ProductEvents;
 use Cbox\Engage\Events\ProductEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -12,6 +13,7 @@ use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\PlatformRoot;
+use Illuminate\Support\Facades\Http;
 
 it('shares tenant scoped facts without calling a configured redirect production ready', function (): void {
     multiTenantDeployment();
@@ -86,7 +88,8 @@ it('checks reminder eligibility against current access goal and dismissal withou
         'project_id' => $tenant['project']->id, 'environment_id' => $tenant['environment']->id, 'check' => 'cbox_id_first_sign_in_pending'];
     $url = '/api/v1/onboarding/eligibility';
     $this->postJson($url, $payload)->assertUnauthorized();
-    config(['onboarding.eligibility_key' => str_repeat('s', 48)]);
+    config(['onboarding.eligibility_key' => str_repeat('s', 48), 'ai-assistant-connector.platform.url' => 'https://assistant.example', 'ai-assistant-connector.api_key' => 'test-key', 'ai-assistant-connector.support.assistant' => 'id']);
+    Http::fake(['https://assistant.example/*' => Http::response(['data' => ['paused' => false]])]);
     $this->withToken(str_repeat('s', 48))->postJson($url, $payload)->assertOk()->assertJsonPath('eligible', false);
     app(EnvironmentContext::class)->runAs($tenant['environment'], fn () => app(ClientRegistry::class)->register(new NewClient('App')));
     $this->postJson($url, $payload)->assertOk()->assertJsonPath('eligible', true);
@@ -96,4 +99,14 @@ it('checks reminder eligibility against current access goal and dismissal withou
     $this->postJson($url, $payload)->assertOk()->assertJsonPath('eligible', false);
     app(PlatformRoot::class)->run(fn () => $tenant['member']->delete());
     $this->postJson($url, $payload)->assertOk()->assertJsonPath('eligible', false);
+});
+
+it('refuses reminders while support is active or its state cannot be verified', function (): void {
+    config(['ai-assistant-connector.platform.url' => 'https://assistant.example', 'ai-assistant-connector.api_key' => 'test-key', 'ai-assistant-connector.support.assistant' => 'id']);
+    Http::fakeSequence()->push(['data' => ['paused' => true]])->push([], 503)->push(['data' => ['paused' => 'false']])->push(['data' => ['paused' => false]]);
+    $support = app(LifecycleSupport::class);
+    expect($support->canRemind('workspace'))->toBeFalse()
+        ->and($support->canRemind('workspace'))->toBeFalse()
+        ->and($support->canRemind('workspace'))->toBeFalse()
+        ->and($support->canRemind('workspace'))->toBeTrue();
 });
