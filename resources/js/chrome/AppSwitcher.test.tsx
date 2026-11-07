@@ -43,4 +43,28 @@ describe('AppSwitcher', () => {
         expect(container.querySelector('img')).toBeNull();
         expect(screen.getByText('CB')).toBeInTheDocument();
     });
+    it('shows immediate feedback while preserving the real SSO link, and resets on Back', async () => {
+        setPageProps({ appCatalog: [app] });
+        render(<AppSwitcher />);
+        await userEvent.click(screen.getByRole('button', { name: 'Switch app' }));
+        const link = screen.getByRole('link', { name: 'Billing' });
+        // Cancel jsdom navigation after the React handler, as a stalled browser navigation would.
+        const cancel = (event: Event) => event.preventDefault();
+        document.addEventListener('click', cancel, { once: true });
+        fireEvent.click(link);
+        expect(link).toHaveAttribute('aria-busy', 'true');
+        expect(link).toHaveAttribute('href', app.launch_url);
+        expect(screen.getByRole('status')).toHaveTextContent('Loading · Billing');
+        fireEvent(window, new Event('pageshow'));
+        expect(link).not.toHaveAttribute('aria-busy');
+        expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    });
+    it('does not mark the current page as navigating when opening a new tab', async () => {
+        setPageProps({ appCatalog: [app] });
+        render(<AppSwitcher />);
+        await userEvent.click(screen.getByRole('button', { name: 'Switch app' }));
+        document.addEventListener('click', (event) => event.preventDefault(), { once: true });
+        fireEvent.click(screen.getByRole('link', { name: 'Billing' }), { metaKey: true });
+        expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    });
 });
