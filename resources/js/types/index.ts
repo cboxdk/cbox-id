@@ -369,6 +369,7 @@ export interface CatalogApp {
 }
 
 export interface SharedProps {
+    supportSessionUrl?: string | null;
     appCatalog: CatalogApp[];
     /**
      * Inertia's own `PageProps` is an open record, and `createInertiaApp` will not accept

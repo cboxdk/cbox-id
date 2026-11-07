@@ -722,6 +722,7 @@ Route::get('/switch-app', AppsController::class)
     ->middleware(['plane:console', 'platform.auth', 'console.customer'])->name('apps');
 
 Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth', 'console.customer', 'console.root'])->group(function (): void {
+    Route::get('/support/session', App\Assistant\SessionController::class)->middleware('throttle:30,1')->name('support.session');
     Route::post('/console/locale', ConsoleLocaleController::class)->middleware('throttle:30,1')->name('console.locale.update');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/checklist/dismiss', [DashboardController::class, 'dismissChecklist'])->name('dashboard.checklist.dismiss');
@@ -1338,6 +1339,7 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
     // (organizations, users, connections…). Gated by an env-admin session; a subject
     // session grants nothing here.
     Route::middleware('env.admin')->group(function (): void {
+        Route::get('/support/session', App\Assistant\SessionController::class)->middleware('throttle:30,1')->name('environment.support.session');
         Route::post('/locale', ConsoleLocaleController::class)->middleware('throttle:30,1')->name('environment.locale.update');
         // `admin.login` is the name every "send them to the door" redirect uses — the
         // handoff's refusals, logout, the sudo screen. It is BEHIND the gate on purpose:

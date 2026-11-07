@@ -86,6 +86,9 @@
          otherwise. Registered by the console kit. --}}
     @consoleBrandingStyle
 
+    @if (config('ai-assistant-connector.support.enabled'))
+        <script defer src="{{ route('ai-assistant-connector.support-script') }}"></script>
+    @endif
     @inertiaHead
 </head>
 {{--

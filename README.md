@@ -146,3 +146,15 @@ The framework it is built on, [`cboxdk/laravel-id`](https://github.com/cboxdk/la
 **MIT**, so building your own identity product on the framework is unrestricted. The
 Elastic-2.0 terms apply to this deployable app. To run Cbox ID as a managed service for your
 own customers, get in touch about a commercial licence.
+
+## Product support with Cbox Assistant
+
+Cbox ID uses the public MIT `cboxdk/laravel-assistant-client` package for its signed SDK bridge and global console support drawer. It exposes workspace status and environment status; every tool rechecks the subject, workspace membership, product admission and current environment grants. Hosted customer sign-in pages do not expose workspace support.
+
+Configure `AI_ASSISTANT_SUPPORT_ENABLED`, the support widget/profile/product IDs, `AI_ASSISTANT_PLATFORM_URL`, `AI_ASSISTANT_JWKS_URL`, the exact service audience, a dedicated connector handshake and a server knowledge API key. Use the identity namespace configured by the support workspace (`cbox-production` for Cbox's production setup). Provision the connection and product-scoped widget in Assistant before enabling the host. No server key is exposed to the browser.
+
+The support session comes from the existing authenticated workspace or environment-admin session. Changing subject, workspace or environment replaces its scope URL and closes the old support frame. The host CSP allows only the configured Assistant origin.
+
+`resources/assistant/manifest.php` is an explicit customer-safe source allowlist. Run `php bin/prepare-assistant-docs.php` after changing an approved source and increase the relevant document revision. CI checks the generated guides with `--check`; `/ai-assistant/guides/{key}` provides stable public citations. Run `php artisan assistant:sync-support` after a successful deployment and fail the release if indexing fails. Remove withdrawn sources explicitly in Assistant before omitting them from the manifest; omission alone does not delete indexed content.
+
+A complete rollout requires a live cited answer, an authorized SDK tool call, rejection of a different workspace/environment, and human handover with a reply visible in the original console conversation.

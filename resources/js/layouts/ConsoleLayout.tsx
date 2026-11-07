@@ -1,3 +1,4 @@
+import { SupportLauncher } from '@/components/support/SupportLauncher';
 import { UiTranslationProvider } from '@/i18n/ui';
 import { StepUpDialog } from '@/chrome/StepUpDialog';
 import { Head, Link, usePage } from '@inertiajs/react';
@@ -62,7 +63,7 @@ export default function ConsoleLayout(props: ConsoleLayoutProps) {
 function ConsoleShell({ children: page }: ConsoleLayoutProps) {
     const { t: tc } = useTranslator();
 
-    const { shell, auth, title, environment, organizationHub } = usePage<SharedProps>().props;
+    const { shell, auth, title, environment, organizationHub, supportSessionUrl } = usePage<SharedProps>().props;
 
     // A page under `/admin/organizations/{organization}/…` is a tab of that organization's
     // page: its header and tabs go around it, whichever page it is.
@@ -221,6 +222,7 @@ function ConsoleShell({ children: page }: ConsoleLayoutProps) {
                             <CommandPalette areas={shell.areas} />
                             <ConsoleLanguagePicker />
 
+                            <SupportLauncher sessionUrl={supportSessionUrl ?? null} />
                             <AppSwitcher />
                             <AccountMenu
                                 user={auth.user}

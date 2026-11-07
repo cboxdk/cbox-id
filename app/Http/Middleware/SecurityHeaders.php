@@ -8,6 +8,7 @@ use App\Platform\Appearance\BrandImages;
 use App\Platform\CspNonce;
 use App\Platform\PlaneResolver;
 use App\Platform\Turnstile;
+use Cbox\AiAssistant\Connector\Support\SupportSession;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -51,6 +52,7 @@ final class SecurityHeaders
         // https://docs.stripe.com/security/guide#content-security-policy
         $billing = $request->routeIs('billing') && (bool) config('billing-client.api_token');
         $turnstile = $this->turnstile->configured();
+        $support = config('ai-assistant-connector.support.enabled') === true ? ' '.app(SupportSession::class)->frameOrigin() : '';
 
         // The Vite dev server, and ONLY on a local install that is actually running it.
         // Empty everywhere else, so the deployed policy is byte-for-byte what it was.
@@ -108,7 +110,7 @@ final class SecurityHeaders
                 "connect-src 'self'".$dev.$devSocket.($billing ? ' https://api.stripe.com' : ''),
                 // Turnstile renders its challenge in an iframe from its own origin.
                 // Omitted entirely when Turnstile is off, so default-src 'self' governs.
-                ($turnstile || $billing) ? "frame-src 'self'".($turnstile ? ' '.Turnstile::ORIGIN : '').($billing ? ' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com' : '') : null,
+                ($turnstile || $billing || $support !== '') ? "frame-src 'self'".$support.($turnstile ? ' '.Turnstile::ORIGIN : '').($billing ? ' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com' : '') : null,
                 "frame-ancestors 'none'",
                 "base-uri 'self'",
                 // `'self'` alone is wrong for this app, and logout is where it showed.
