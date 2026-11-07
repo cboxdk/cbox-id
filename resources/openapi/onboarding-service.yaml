@@ -31,15 +31,18 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required: [eligible, observed_at]
-                properties:
-                  eligible: { type: boolean }
-                  observed_at: { type: string, format: date-time }
+                $ref: '#/components/schemas/EligibilityResult'
         '401': { description: Dedicated service credential missing or invalid }
         '422': { description: Invalid request }
         '429': { description: Rate limit exceeded }
 components:
+  schemas:
+    EligibilityResult:
+      type: object
+      required: [eligible, observed_at]
+      properties:
+        eligible: { type: boolean }
+        observed_at: { type: string, format: date-time }
   securitySchemes:
     OnboardingServiceKey:
       type: http
