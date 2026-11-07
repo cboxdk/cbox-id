@@ -178,6 +178,13 @@ final readonly class SourceLedger
             // The capture manifest will qualify each public door; never infer complete
             // history merely because this page reached the current head.
             'coverage' => 'partial',
+            'capture' => [
+                'version' => 'source-capture/1', 'strategy' => 'owner_outbox',
+                'event_time_watermark' => null, 'lateness_bound_seconds' => null,
+                'max_accepted_event_age_seconds' => null, 'clock_skew_bound_seconds' => null,
+                'reasons' => ['capture_doors_unqualified', 'owner_transaction_lateness_unbounded'],
+            ],
+            'history' => ['retained_after' => (string) $head->retained_after, 'retention_days' => $this->retentionDays()],
         ]];
     }
 
