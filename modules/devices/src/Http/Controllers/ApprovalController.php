@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Id\Devices\Http\Controllers;
 
 use Cbox\Id\Devices\Models\ApprovalReport;
+use Cbox\Id\Devices\Support\DeviceApprovalEvidence;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
@@ -114,6 +115,11 @@ final class ApprovalController
                 'error' => 'approval_not_actionable',
                 'message' => 'This request is no longer pending. It may have expired or already been answered.',
             ], 409);
+        }
+
+        $token = $request->attributes->get('cbox_token');
+        if ($approve && $token instanceof Introspection) {
+            app(DeviceApprovalEvidence::class)->record($id, $token);
         }
 
         if ($reported) {

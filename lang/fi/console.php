@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 return [
+    'mobile_approval_start' => 'Hyväksy puhelimella',
+    'mobile_approval_compare' => 'Avaa Cbox ID Authenticator. Hyväksy vain, jos tämä koodi vastaa puhelimellasi olevan pyynnön koodia.',
     '_optional_0059798b' => '(valinnainen)',
     'access_key_id_14eb0f96' => 'Käyttöavaimen tunnus',
     'action_64cff131' => 'Toiminto',

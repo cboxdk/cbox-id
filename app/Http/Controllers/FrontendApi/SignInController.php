@@ -204,6 +204,18 @@ class SignInController
             return $this->refuse();
         }
 
+        // Phone approval is bound to a hosted browser session. A cross-origin SDK
+        // must use its OIDC redirect rather than receive an unusable code-only challenge.
+        if ($stage === 'pending_mfa') {
+            $factors = $this->auth->pendingMfaFactors($request);
+            if ($factors['mobile'] && ! $factors['totp'] && ! $factors['sms']) {
+                return new JsonResponse([
+                    'status' => 'hosted_sign_in_required',
+                    'message' => 'Continue through hosted OIDC sign-in to approve on your phone or use a passkey.',
+                ]);
+            }
+        }
+
         $body = [
             'status' => $status,
             'mfa_token' => $this->tickets->mintPending($key, $subjectId, [AuthMethod::Password->value], $stage),

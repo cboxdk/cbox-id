@@ -6,6 +6,7 @@ namespace App\Platform;
 
 use App\Platform\AccountLinking\LinkHold;
 use App\Platform\Enums\AttemptOutcome;
+use App\Platform\Mfa\BrowserApproval;
 use App\Platform\Radar\Radar;
 use App\Platform\Signals\SignalsStepUpRequired;
 use App\SignalsData\IdentityCapture;
@@ -418,20 +419,22 @@ final class PlatformAuth
      */
     public function hasSecondFactor(string $subjectId): bool
     {
-        return $this->mfa->hasConfirmedTotp($subjectId) || $this->sms->isUsable($subjectId);
+        return $this->mfa->hasConfirmedTotp($subjectId) || $this->sms->isUsable($subjectId)
+            || app(BrowserApproval::class)->available($subjectId);
     }
 
     /**
      * Which second factors the pending subject can answer with, for the challenge page to
      * offer. Never the number itself — the masked form only, once a code has been sent.
      *
-     * @return array{totp: bool, sms: bool}
+     * @return array{totp: bool, sms: bool, mobile: bool}
      */
     public function pendingMfaFactors(Request $request): array
     {
         $subjectId = $this->pendingMfaSubject($request);
 
         return [
+            'mobile' => $subjectId !== null && app(BrowserApproval::class)->available($subjectId),
             'totp' => $subjectId !== null && $this->mfa->hasConfirmedTotp($subjectId),
             'sms' => $subjectId !== null && $this->sms->isUsable($subjectId),
         ];
@@ -488,6 +491,28 @@ final class PlatformAuth
         return $this->finishMfa($request, $subjectId, [AuthMethod::Sms->value, AuthMethod::MultiFactor->value]);
     }
 
+    public function completeMfaWithMobile(Request $request): bool
+    {
+        $subject = $this->pendingMfaSubject($request);
+        if ($subject === null || $this->loginAttempts->isLockedOut($subject)
+            || ! app(BrowserApproval::class)->consume($request, 'login', $subject, $this->pendingMfaChallenge($request))) {
+            return false;
+        }
+
+        return $this->finishMfa($request, $subject, ['device', AuthMethod::MultiFactor->value]);
+    }
+
+    public function pendingMfaChallenge(Request $request): string
+    {
+        $challenge = $request->session()->get('cbox.mfa_challenge');
+        if (! is_string($challenge)) {
+            $challenge = bin2hex(random_bytes(32));
+            $request->session()->put('cbox.mfa_challenge', $challenge);
+        }
+
+        return $challenge;
+    }
+
     public function pendingMfaSubject(Request $request): ?string
     {
         $id = session()->get(self::MFA_PENDING_KEY);
@@ -513,6 +538,7 @@ final class PlatformAuth
      */
     public function holdForMfa(Request $request, string $subjectId, array $amr = ['pwd']): void
     {
+        $request->session()->put('cbox.mfa_challenge', bin2hex(random_bytes(32)));
         $request->session()->put(self::MFA_PENDING_KEY, $subjectId);
         $request->session()->put(self::MFA_AMR_KEY, $amr);
     }

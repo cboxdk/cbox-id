@@ -1,6 +1,8 @@
 <?php
 
 return [
+    'mobile_approval_start' => 'Godkend på mobilen',
+    'mobile_approval_compare' => 'Åbn Cbox ID Authenticator. Godkend kun, hvis denne kode matcher anmodningen på din telefon.',
     '1_hour_f8b8883f' => '1 time',
     '1_register_this_redirect_uri_9c27ff08' => '1. Registrer denne redirect-URI',
     '1_what_are_you_building_61edf71c' => '1. Hvad bygger du?',

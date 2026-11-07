@@ -16,6 +16,7 @@ use App\Http\Controllers\Auth\InvitationAcceptController;
 use App\Http\Controllers\Auth\LinkAccountController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MfaController;
+use App\Http\Controllers\Auth\MobileApprovalController;
 use App\Http\Controllers\Auth\OtpStepUpController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\SignedOutController;
@@ -456,6 +457,7 @@ Route::middleware(['plane:console', 'platform.guest', 'locale'])->group(function
 // authorization; there is no guard here that could ask a better question.
 Route::get('/mfa', [MfaController::class, 'show'])->middleware('locale')->name('mfa');
 Route::post('/mfa', [MfaController::class, 'verify'])->middleware('locale')->name('mfa.verify');
+Route::match(['GET', 'POST'], '/mfa/mobile', MobileApprovalController::class)->defaults('purpose', 'login')->middleware(['throttle:60,1', BlockDuringImpersonation::class])->name('mfa.mobile');
 Route::post('/mfa/recovery', [MfaController::class, 'recover'])->middleware('locale')->name('mfa.recover');
 // A texted code: one request to send it, one to check it. Sending is bounded by the SMS
 // toll-fraud guard and the OTP issue caps; checking shares the challenge's throttle.
@@ -1284,6 +1286,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::middleware(BlockDuringImpersonation::class)->group(function (): void {
         Route::get('/sudo', [SudoController::class, 'show'])->name('sudo');
         Route::post('/sudo', [SudoController::class, 'confirm'])->name('sudo.confirm');
+        Route::match(['GET', 'POST'], '/sudo/mobile', MobileApprovalController::class)->defaults('purpose', 'organization')->middleware(['throttle:60,1', BlockDuringImpersonation::class])->name('sudo.mobile');
     });
 
     // Blocked while impersonating: the subject session is pinned to the one org the
@@ -1786,6 +1789,7 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::middleware(BlockDuringImpersonation::class)->group(function (): void {
             Route::get('/sudo', [SudoController::class, 'showEnvironment'])->name('environment.sudo');
             Route::post('/sudo', [SudoController::class, 'confirmEnvironment'])->name('environment.sudo.confirm');
+            Route::match(['GET', 'POST'], '/sudo/mobile', MobileApprovalController::class)->defaults('purpose', 'environment')->middleware(['throttle:60,1', BlockDuringImpersonation::class])->name('environment.sudo.mobile');
         });
 
         // Activity log — the merged component. The route NAME is preserved on both

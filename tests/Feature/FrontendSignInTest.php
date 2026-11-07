@@ -8,6 +8,7 @@ use App\Platform\FrontendApi\LoginTickets;
 use App\Platform\FrontendApi\SignInWithTicket;
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
+use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\FrontendApi\Contracts\PublishableKeys;
 use Cbox\Id\FrontendApi\Enums\KeyMode;
 use Cbox\Id\FrontendApi\FrontendApiServiceProvider;
@@ -29,6 +30,7 @@ use Cbox\Risk\ValueObjects\RiskAssessment;
 use Cbox\Risk\ValueObjects\RiskContext;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 
 uses(RefreshDatabase::class);
@@ -547,3 +549,15 @@ it('completes an emailed step-up with the code that was actually sent', function
     $response->assertOk();
     expect($response->json('login_ticket'))->toBeString();
 })->group('security');
+
+it('requires hosted sign in for a phone-only factor rather than bypassing it or issuing a code-only ticket', function (): void {
+    config(['id-devices.enabled' => true]);
+    Device::query()->create([
+        'subject_id' => $this->subject->id, 'install_id' => (string) Str::ulid(),
+        'platform' => 'ios', 'name' => 'My phone', 'status' => 'active', 'dpop_jkt' => 'a-device-key',
+    ]);
+    frontendSignIn(['email' => 'ada@acme.test', 'password' => 'a-strong-unbreached-passphrase'])
+        ->assertOk()->assertJsonPath('status', 'hosted_sign_in_required')
+        ->assertJsonMissingPath('login_ticket')->assertJsonMissingPath('mfa_token');
+    expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
+});

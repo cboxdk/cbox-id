@@ -1,3 +1,4 @@
+import { MobileApproval } from '@/components/auth/MobileApproval';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { useTranslator } from '@/i18n';
@@ -8,11 +9,11 @@ import { logout } from '@routes';
 import { recover, verify } from '@routes/mfa';
 import { send as sendSms, verify as verifySms } from '@routes/mfa/sms';
 
-type Method = 'totp' | 'sms' | 'recovery';
+type Method = 'totp' | 'sms' | 'recovery' | 'mobile';
 
 type Props = PageProps<{
     /** Which second factors this person can answer with. Recovery codes are always offered. */
-    factors: { totp: boolean; sms: boolean };
+    factors: { totp: boolean; sms: boolean; mobile: boolean };
 }>;
 
 /**
@@ -29,7 +30,13 @@ type Props = PageProps<{
  * prefetch repeats; a text costs money and starts a cooldown, so it is a button.
  */
 export default function Mfa({ factors }: Props) {
-    const initial: Method = factors.totp ? 'totp' : factors.sms ? 'sms' : 'recovery';
+    const initial: Method = factors.mobile
+        ? 'mobile'
+        : factors.totp
+          ? 'totp'
+          : factors.sms
+            ? 'sms'
+            : 'recovery';
     const [method, setMethod] = useState<Method>(initial);
     const { t, rich } = useTranslator();
 
@@ -267,6 +274,39 @@ export default function Mfa({ factors }: Props) {
                     </SwitchLink>
                 </>
             )}
+
+            {method === 'mobile' ? (
+                <>
+                    <MobileApproval
+                        endpoint="/mfa/mobile"
+                        onConfirmed={(url) => window.location.assign(url)}
+                    />
+                    {factors.totp && (
+                        <SwitchLink onClick={() => setMethod('totp')}>
+                            {t('auth.mfa.sms.switch')}
+                        </SwitchLink>
+                    )}
+                    {factors.sms && (
+                        <SwitchLink onClick={() => setMethod('sms')}>
+                            {t('auth.mfa.code.sms_switch')}
+                        </SwitchLink>
+                    )}
+                    <SwitchLink onClick={() => setMethod('recovery')}>
+                        {t('auth.mfa.code.switch')}
+                    </SwitchLink>
+                </>
+            ) : (
+                factors.mobile && (
+                    <SwitchLink onClick={() => setMethod('mobile')}>
+                        {t('console.mobile_approval_start')}
+                    </SwitchLink>
+                )
+            )}
+            <div className="mt-4">
+                <a href="/login" className="text-sm underline underline-offset-2">
+                    {t('auth.login.passkey')}
+                </a>
+            </div>
 
             <div className="mt-6">
                 <button

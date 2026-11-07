@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 return [
+    'mobile_approval_start' => 'Auf dem Handy bestätigen',
+    'mobile_approval_compare' => 'Öffne Cbox ID Authenticator. Bestätige nur, wenn dieser Code mit der Anfrage auf deinem Handy übereinstimmt.',
     '_optional_0059798b' => '(optional)',
     'access_key_id_14eb0f96' => 'Zugriffsschlüssel-ID',
     'action_64cff131' => 'Aktion',

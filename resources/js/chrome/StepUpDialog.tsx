@@ -1,3 +1,4 @@
+import { MobileApproval } from '@/components/auth/MobileApproval';
 import { useTranslator as usePublicTranslator } from '@/i18n';
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
@@ -35,11 +36,8 @@ export function StepUpDialog() {
 
 function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
     const { t: tc } = usePublicTranslator();
-    const { t: consoleNestedText } = useConsoleTranslator();
-    const { t: consoleFinalText } = useConsoleTranslator();
 
     const { t: consoleText } = useConsoleTranslator();
-    const { rich: consoleRich } = useConsoleTranslator();
     const { t: consoleT } = useConsoleTranslator();
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
@@ -111,14 +109,7 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
             description={
                 continuing
                     ? consoleText('console.you_are_confirmed_for_the_next_few_minutes_7b76614c')
-                    : consoleFinalText(
-                          'console._part1_re_enter_your_password_to_continue_36247bd0',
-                          {
-                              part1:
-                                  prompt.challenge.reason ??
-                                  consoleNestedText('console.this_is_a_protected_action_b796636f'),
-                          },
-                      )
+                    : (prompt.challenge.reason ?? consoleT('console.confirm_it_s_you_6176eec2'))
             }
             footer={
                 continuing ? (
@@ -151,18 +142,12 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
         >
             {continuing ? (
                 <output className="flex items-center gap-2 text-sm">
-                    {consoleRich(
-                        'console._part1_password_confirmed_continue_when_you_are_ready_c193202c',
-                        {
-                            part1: (
-                                <Icon
-                                    name="check"
-                                    className="w-4 h-4 shrink-0"
-                                    style={{ color: 'var(--success-strong)' }}
-                                />
-                            ),
-                        },
-                    )}
+                    <Icon
+                        name="check"
+                        className="w-4 h-4 shrink-0"
+                        style={{ color: 'var(--success-strong)' }}
+                    />
+                    {consoleT('console.you_are_confirmed_for_the_next_few_minutes_7b76614c')}
                 </output>
             ) : (
                 <form id="cbx-step-up" noValidate onSubmit={(event) => void submit(event)}>
@@ -174,6 +159,10 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
                         error={error}
                         value={password}
                         onChange={(event) => setPassword(event.target.value)}
+                    />
+                    <MobileApproval
+                        endpoint={prompt.challenge.confirm + '/mobile'}
+                        onConfirmed={() => stepUpConfirmed()}
                     />
                 </form>
             )}
