@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 return [
+    'mobile_approval_start' => 'Approva sul telefono',
+    'mobile_approval_compare' => 'Apri Cbox ID Authenticator. Approva solo se questo codice corrisponde alla richiesta sul telefono.',
     '_optional_0059798b' => '(opzionale)',
     'access_key_id_14eb0f96' => 'ID chiave di accesso',
     'action_64cff131' => 'Azione',

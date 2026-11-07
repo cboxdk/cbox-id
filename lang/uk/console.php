@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 return [
+    'mobile_approval_start' => 'Підтвердити на телефоні',
+    'mobile_approval_compare' => 'Відкрийте Cbox ID Authenticator. Підтверджуйте лише якщо цей код збігається із запитом на телефоні.',
     '_optional_0059798b' => '(необов’язково)',
     'access_key_id_14eb0f96' => 'Ідентифікатор ключа доступу',
     'action_64cff131' => 'Дія',

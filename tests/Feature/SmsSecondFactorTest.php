@@ -108,7 +108,7 @@ it('holds a password sign-in for a phone number and completes it with the texted
     expect(session()->has(PlatformAuth::SESSION_KEY))->toBeFalse();
 
     $page = $this->get(route('mfa'))->assertOk()->inertiaProps();
-    expect($page['factors'])->toBe(['totp' => false, 'sms' => true]);
+    expect($page['factors'])->toBe(['mobile' => false, 'totp' => false, 'sms' => true]);
 
     // Opening the page sends nothing: the text is a button.
     $this->sms->assertSentCount(1);
@@ -135,7 +135,7 @@ it('offers the authenticator first and SMS beside it when a person has both', fu
 
     smsfSignIn()->assertRedirect(route('mfa'));
 
-    expect($this->get(route('mfa'))->inertiaProps()['factors'])->toBe(['totp' => true, 'sms' => true]);
+    expect($this->get(route('mfa'))->inertiaProps()['factors'])->toBe(['mobile' => false, 'totp' => true, 'sms' => true]);
 });
 
 it('does not hold anybody for a number the environment no longer accepts', function (): void {

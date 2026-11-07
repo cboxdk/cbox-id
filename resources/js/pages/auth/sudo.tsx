@@ -1,3 +1,4 @@
+import { MobileApproval } from '@/components/auth/MobileApproval';
 import { useTranslator as usePublicTranslator } from '@/i18n';
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { useForm } from '@inertiajs/react';
@@ -52,7 +53,6 @@ export default function Sudo({ reason, plane }: Props) {
                 </h1>
                 <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                     {reason ?? tc('console.this_is_a_protected_action_b796636f')}
-                    {tc('console.re_enter_your_password_to_continue_1aaad37f')}
                 </p>
             </div>
 
@@ -85,6 +85,13 @@ export default function Sudo({ reason, plane }: Props) {
                         {consoleUiText('console.confirm_eebdd24a')}
                     </Button>
                 </form>
+                <MobileApproval
+                    endpoint={
+                        (plane === 'environment' ? confirmEnvironment.url() : confirm.url()) +
+                        '/mobile'
+                    }
+                    onConfirmed={(url) => window.location.assign(url)}
+                />
             </Panel>
         </div>
     );

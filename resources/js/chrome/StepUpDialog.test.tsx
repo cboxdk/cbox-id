@@ -34,7 +34,7 @@ describe('StepUpDialog', () => {
 
         expect(dialog).toHaveAccessibleName("Confirm it's you");
         expect(dialog).toHaveAccessibleDescription(
-            'Adding a passkey gives you a new way to sign in. Re-enter your password to continue.',
+            'Adding a passkey gives you a new way to sign in.',
         );
         await waitFor(() => expect(screen.getByLabelText('Password')).toHaveFocus());
         await expect(dialog).toHaveNoAxeViolations();

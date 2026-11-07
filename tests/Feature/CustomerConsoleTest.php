@@ -334,7 +334,7 @@ it('lets nothing through on a customer\'s console but the admin portal, the pers
         'password.change', 'password.change.update',
         'search',
         'social.connect', 'social.connect.callback',
-        'sudo', 'sudo.confirm',
+        'sudo', 'sudo.confirm', 'sudo.mobile',
     ];
 
     $door = app(EnforceCustomerConsole::class);

@@ -2720,6 +2720,8 @@ export type MessageKey =
     | 'console.missing_resource_user'
     | 'console.missing_resource_webhook_endpoint'
     | 'console.missing_resource_workspace'
+    | 'console.mobile_approval_compare'
+    | 'console.mobile_approval_start'
     | 'console.mode_5e23ec6a'
     | 'console.monitor_4c2e1df4'
     | 'console.monitor_only_398d456f'

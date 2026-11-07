@@ -81,6 +81,35 @@ A user opens **My account → Trusted devices** and scans the enrolment QR with 
 Nothing is required of an administrator. **Sign-in → Trusted devices** (Authentication → Trusted devices in an environment console)
 (`/trusted-devices`) in the console shows the fleet: who enrolled what, when it was last seen, and every notification sent to it.
 
+## Approve a browser sign-in or security confirmation
+
+An enrolled phone can also complete the second factor after a correct password, or
+confirm a protected console action. Choose **Approve on phone**, open the existing
+Cbox ID Authenticator app, compare the code on both screens, and approve there.
+The browser continues automatically. Opening the page does not send a notification.
+
+The request expires after five minutes. Denying it, cancelling it in the browser,
+or removing the phone prevents completion. Existing authenticator codes, SMS and
+recovery codes remain available where enrolled; passkeys remain available at sign-in.
+A console's password confirmation also remains available.
+
+This uses the existing approval API and push delivery; it requires no new mobile API
+or authenticator application. An approval in the web console does **not** count as the
+phone factor: completion requires evidence from the enrolled device's DPoP-protected
+API. Approvals are bound to the initiating browser, person, environment and login or
+console session, and can be consumed only once. Organization and environment admin
+confirmation windows remain separate. Three new requests per person and environment
+are allowed in five minutes; repeated clicks reuse a pending request.
+
+Mobile login approval uses hosted sign-in (the OIDC redirect supported by every stack).
+The embedded Frontend API retains its code-based second factors; for a person whose
+only enrolled factor is a phone, it returns `hosted_sign_in_required` instead of issuing
+a completed login ticket. Start the application's normal hosted OIDC flow in that case.
+
+If push is unavailable, open the app's approvals list. A retired push token does not
+revoke the device key; a removed phone does. Keep an independent recovery method
+before relying on a single phone.
+
 ## When a push cannot be delivered
 
 This is the part worth understanding before you are debugging it at 2am.

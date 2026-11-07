@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 return [
+    'mobile_approval_start' => 'Telefonda onayla',
+    'mobile_approval_compare' => 'Cbox ID Authenticator uygulamasını açın. Yalnızca bu kod telefonunuzdaki istekle eşleşiyorsa onaylayın.',
     '_optional_0059798b' => '(isteğe bağlı)',
     'access_key_id_14eb0f96' => 'Erişim anahtarı kimliği',
     'action_64cff131' => 'İşlem',
