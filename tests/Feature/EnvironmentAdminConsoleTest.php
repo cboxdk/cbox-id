@@ -6,12 +6,15 @@ use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
+use App\Platform\SignInLineage;
+use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
+use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
@@ -563,3 +566,36 @@ it('exempts exactly the handoff redemption from CSRF', function (): void {
         ->and(collect($patterns)->filter(fn (string $p): bool => str_starts_with($p, 'admin'))->values()->all())
         ->toBe(['admin/handoff']);
 })->group('security');
+
+it('preserves a verified operators MFA when handing off into the tenant console', function (): void {
+    ['subjectId' => $subject, 'env' => $env, 'envId' => $envId] = envAdminSetup();
+    $operator = app(PlatformOperators::class)->create('owner@acme.example', 'a-strong-unbreached-passphrase', 'Owner');
+    expect($operator->subject_id)->toBe($subject);
+    signInAsStrongOperator($subject);
+    $parent = session(PlatformAuth::SESSION_KEY);
+    serveOnTestHost($env);
+    $token = app(EnvironmentAdminHandoff::class)->mint($subject, $envId);
+    $this->post('/admin/handoff', handoffFields($token, $subject, $parent))->assertRedirect(route('environment.home'));
+    $sessionId = session(EnvironmentAdminAuth::SESSION_KEY);
+    $session = app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->active($sessionId));
+    expect($session->amr)->toContain('otp', 'handoff');
+    $this->get('/admin')->assertOk();
+});
+
+it('does not borrow another subjects MFA or trust posted MFA claims during handoff', function (): void {
+    ['subjectId' => $subject, 'env' => $env, 'envId' => $envId] = envAdminSetup();
+    app(PlatformOperators::class)->create('owner@acme.example', 'a-strong-unbreached-passphrase', 'Owner');
+    [$weak, $foreign] = app(PlatformRoot::class)->run(function () use ($subject): array {
+        $other = app(Subjects::class)->create('other@acme.example', 'Other');
+        $sessions = app(SessionManager::class);
+
+        return [$sessions->start($subject, null, ['pwd'])->id, $sessions->start($other->id, null, ['pwd', 'otp'])->id];
+    });
+    serveOnTestHost($env);
+    $token = app(EnvironmentAdminHandoff::class)->mint($subject, $envId);
+    $this->post('/admin/handoff', ['token' => $token,
+        SignInLineage::FIELD => app(SignInLineage::class)->seal($token, [$foreign, $weak]),
+        'amr' => ['pwd', 'otp'],
+    ])->assertRedirect(route('admin.login'));
+    expect(session(EnvironmentAdminAuth::SESSION_KEY))->toBeNull();
+});
