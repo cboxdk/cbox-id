@@ -50,7 +50,7 @@ Pulled in automatically by `composer install`:
 | `cboxdk/laravel-billing-client` | `^0.4.14` | Billing catalog, account and subscription management. |
 | `symfony/intl` | `^8.0` | Country validation and localized country names for invoice addresses. |
 | `cboxdk/laravel-id` | `^2.0` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
-| `cboxdk/laravel-signals-client` | `dev-sd/security-tenant-context` | Public Signals assessment client (feature disabled until configured). |
+| `cboxdk/laravel-signals-client` | `dev-sd/signals-managed-integration` | Public Signals assessment client (feature disabled until configured). |
 | `cboxdk/laravel-postal` | `^0.1.1` | Transactional mail delivery via Postal. |
 | `cboxdk/laravel-ssrf` | `^1.1.1` | The outbound URL guard: DNS pinning and private-range refusal. |
 | `firebase/php-jwt` | `^7.0` | JWT encode/verify beneath the token signer (vetted, not hand-rolled). |
