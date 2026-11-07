@@ -145,6 +145,8 @@ it('offers every environment-console page somewhere in its rail', function (): v
                 // Chrome and ceremony rather than pages: the console's own front door, the
                 // step-up screen, the sign-out post, the handoff.
                 'environment.home', 'environment.sudo', 'environment.logout', 'environment.impersonate',
+                // The step-up screen polls this JSON endpoint for mobile approval.
+                'environment.sudo.mobile',
                 // An ACTION, not a page: the signed handoff that opens this environment's
                 // console from the account plane. It has no rail entry because it is not
                 // somewhere you navigate to.
