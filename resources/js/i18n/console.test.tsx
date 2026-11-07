@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { router } from '@inertiajs/react';
@@ -21,6 +21,33 @@ function inDanish(children: React.ReactNode) {
 }
 
 describe('console languages', () => {
+    it('waits for the language visit to finish before accepting another selection', async () => {
+        setPageProps({ i18n: consoleI18n('en') });
+        const post = vi.spyOn(router, 'post').mockImplementation(() => {});
+        const view = render(<ConsoleLanguagePicker />);
+        await userEvent.click(screen.getByRole('button', { name: 'Language: English' }));
+        await userEvent.click(screen.getByRole('menuitemradio', { name: 'Dansk' }));
+
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+        const trigger = screen.getByRole('button', { name: 'Language: English' });
+        expect(trigger).toBeDisabled();
+        await userEvent.click(trigger);
+        expect(post).toHaveBeenCalledOnce();
+
+        // Props can arrive before Inertia has completed navigation and focus cleanup.
+        setPageProps({ i18n: consoleI18n('da') });
+        view.rerender(<ConsoleLanguagePicker />);
+        expect(screen.getByRole('button', { name: 'Sprog: Dansk' })).toBeDisabled();
+        await act(async () => {
+            const finish = post.mock.calls[0]?.[2]?.onFinish;
+            if (!finish) throw new Error('The language visit must unlock on completion');
+            finish({} as Parameters<typeof finish>[0]);
+        });
+        await userEvent.click(screen.getByRole('button', { name: 'Sprog: Dansk' }));
+        expect(screen.getByRole('menuitemradio', { name: 'Deutsch' })).toBeInTheDocument();
+        post.mockRestore();
+    });
+
     it('switches language from a keyboard accessible topbar menu', async () => {
         setPageProps({ i18n: consoleI18n('en') });
         const post = vi.spyOn(router, 'post').mockImplementation(() => {});
@@ -36,7 +63,7 @@ describe('console languages', () => {
         expect(post).toHaveBeenCalledWith(
             '/console/locale',
             { locale: 'da' },
-            { preserveScroll: true, preserveState: false },
+            { preserveScroll: true, preserveState: true, onFinish: expect.any(Function) },
         );
     });
 

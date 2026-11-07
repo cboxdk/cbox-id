@@ -195,12 +195,14 @@ jobs:
       - name: Tests (Browser — axe-core a11y, real-browser smoke, visual)
         run: vendor/bin/pest --testsuite=Browser --exclude-group=docs-screenshots
 
-      - name: Keep the visual diff when a browser comparison fails
+      - name: Keep screenshots and visual diffs when a browser test fails
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: browser-visual-diff
-          path: tests/Browser/Screenshots/ImageDiffView/*.html
+          path: |
+            tests/Browser/Screenshots/ImageDiffView/*.html
+            tests/Browser/Screenshots/it_*.png
           if-no-files-found: ignore
           retention-days: 3
 
