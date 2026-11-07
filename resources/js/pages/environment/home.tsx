@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useFormatTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -14,15 +15,15 @@ type Props = PageProps<{
 }>;
 
 export default function EnvironmentHome({ stats, quickActions, help, checklist }: Props) {
-    const { locale } = useTranslator();
-
-    const { t: tc } = useTranslator();
-
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <>
             <PageHeader
                 help={help}
-                description={tc('console.everything_in_this_environment_organizations_d394a033')}
+                description={consoleT(
+                    'console.everything_in_this_environment_organizations_users_and_d394a033',
+                )}
             />
 
             {checklist !== null && (
@@ -46,7 +47,7 @@ export default function EnvironmentHome({ stats, quickActions, help, checklist }
                         label={stat.label}
                         // Grouped, because five figures and six are the same width at a
                         // glance and this page exists to be read at a glance.
-                        value={stat.count.toLocaleString(locale)}
+                        value={stat.count.toLocaleString(consoleLocale)}
                         href={stat.href}
                     />
                 ))}
@@ -57,7 +58,7 @@ export default function EnvironmentHome({ stats, quickActions, help, checklist }
                     className="text-xs font-semibold uppercase tracking-wide"
                     style={{ color: 'var(--faint)' }}
                 >
-                    {tc('console.quick_actions_1810407f')}
+                    {consoleT('console.quick_actions_1810407f')}
                 </h2>
                 <div className="mt-3 flex flex-wrap gap-2">
                     {quickActions.map((action) => (

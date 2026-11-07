@@ -6,7 +6,6 @@ namespace App\Http\Props\Shared;
 
 use App\Http\Props\Prop;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
-use App\Platform\Locale\ConsoleStrings;
 
 /**
  * One row of "invited, not joined yet", as every invite surface draws it — with the two
@@ -34,7 +33,7 @@ final readonly class PendingInvitationProps implements Prop
         return new self(
             id: $summary->id,
             email: $summary->email,
-            roleLabel: ConsoleStrings::text($summary->role->label()),
+            roleLabel: $summary->appRoleLabel ?? $summary->role->label(),
             expiresAt: $summary->expiresAt->toIso8601String(),
             invitedAt: $summary->invitedAt?->toIso8601String(),
             inviterName: $summary->inviterName,

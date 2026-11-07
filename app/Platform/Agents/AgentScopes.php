@@ -8,10 +8,9 @@ use App\Http\Props\Console\EnvironmentScopeProps;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
-use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\Danger;
 use App\Platform\EnvironmentKeyScopes;
-use Cbox\Id\Platform\Enums\EnvironmentApiScope;
+use App\Platform\Locale\ConsoleScopeCopy;
 
 /**
  * What each scope an agent can be given would LET IT DO, ranked by how much harm that is.
@@ -30,30 +29,6 @@ use Cbox\Id\Platform\Enums\EnvironmentApiScope;
  */
 final readonly class AgentScopes
 {
-    /** What the resource part of a scope is called on screen. */
-    private const array RESOURCES = [
-        'organizations' => 'Organizations',
-        'users' => 'Users',
-        'members' => 'Members',
-        'invitations' => 'Invitations',
-        'roles' => 'Roles',
-        'apps' => 'Applications',
-        'apis' => 'APIs',
-        'api_keys' => 'Member API keys',
-        'support' => 'Support sessions',
-        'keys' => 'Management keys',
-        'webhooks' => 'Webhooks',
-        'hooks' => 'Hooks',
-        'log_streams' => 'Log streams',
-        'events' => 'Events',
-        'audit' => 'Audit log',
-        'signin' => 'Sign-in',
-        'frontend_keys' => 'Frontend keys',
-        'saml_apps' => 'SAML apps',
-        'branding' => 'Branding',
-        'domains' => 'Domains',
-    ];
-
     public function __construct(private ActionRegistry $registry) {}
 
     /**
@@ -73,7 +48,7 @@ final readonly class AgentScopes
                 label: EnvironmentScopeProps::offered($value)->label,
                 description: self::description($value),
                 resource: self::resource($value),
-                resourceLabel: self::RESOURCES[self::resource($value)] ?? ucfirst(str_replace('_', ' ', self::resource($value))),
+                resourceLabel: ConsoleScopeCopy::resource(self::resource($value)),
                 risk: $this->riskOf($value, $actions[$value] ?? []),
                 held: isset($actions[$value]),
                 actions: $actions[$value] ?? [],
@@ -203,7 +178,6 @@ final readonly class AgentScopes
 
     private static function description(string $scope): ?string
     {
-        return AppManagementScopes::APP_SCOPES[$scope]['description']
-            ?? EnvironmentApiScope::tryFrom($scope)?->description();
+        return ConsoleScopeCopy::description($scope);
     }
 }

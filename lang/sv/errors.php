@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 // Swedish: the error pages (see lang/en/errors.php).
 return [
+    'locale_conflict' => 'Dina inställningar eller kontot du är inloggad på har ändrats. Ladda om sidan och välj språk igen.',
     'layout' => [
         'default_title' => 'Fel',
         'default_heading' => 'Något gick fel',

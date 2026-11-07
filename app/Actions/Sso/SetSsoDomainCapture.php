@@ -6,6 +6,7 @@ namespace App\Actions\Sso;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -53,7 +54,7 @@ final readonly class SetSsoDomainCapture implements Action
         $domain = SsoFields::domain($context);
 
         if (! $domain->isVerified()) {
-            throw new ActionRefused('domain_unverified', 'Verify the domain before capturing it.', 403, 'capture');
+            throw new ActionRefused('domain_unverified', new ActionMessage('console.verify_the_domain_before_capturing_it_1d581f8a'), 403, 'capture');
         }
 
         $this->domains->setCapture($domain->id, $context->boolean('capture'));

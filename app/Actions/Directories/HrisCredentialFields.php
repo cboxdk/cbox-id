@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Directories;
 
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use Cbox\Id\Directory\DirectoryConnectors;
 use Cbox\Id\Directory\Enums\DirectoryProvider;
@@ -58,19 +60,19 @@ final class HrisCredentialFields
         try {
             $credentials = HrisCatalog::credentialsFrom($provider, $given);
         } catch (IncompleteHrisCredentials $e) {
-            throw ActionRefused::because('incomplete_credentials', $e->getMessage(), 'credentials');
+            throw ActionRefused::because('incomplete_credentials', FrameworkMessage::from($e), 'credentials');
         }
 
         $connector = $connectors->has($provider) ? $connectors->for($provider) : null;
 
         if (! $connector instanceof HrisProvider) {
-            throw ActionRefused::because('unknown_provider', 'Choose an HR system.', 'provider');
+            throw ActionRefused::because('unknown_provider', new ActionMessage('console.choose_an_hr_system_63795f98'), 'provider');
         }
 
         try {
             $connector->probe($credentials);
         } catch (DirectoryConnectionFailed $e) {
-            throw ActionRefused::because('credentials_rejected', $e->getMessage(), 'credentials');
+            throw ActionRefused::because('credentials_rejected', FrameworkMessage::from($e), 'credentials');
         }
 
         return $credentials;

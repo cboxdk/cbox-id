@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\AccessControl\Manifest\ManifestParser;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
@@ -42,6 +43,9 @@ function pushBody(): array
 it('pushes a manifest and syncs the app catalog under its own client id', function (): void {
     $this->postJson('/api/v1/apps/manifest', pushBody(), ['Authorization' => 'Bearer manifest-tok'])
         ->assertOk()
+        ->assertJsonPath('client_id', 'app_billing')
+        ->assertJsonPath('version', '1')
+        ->assertJsonPath('checksum', app(ManifestParser::class)->parse(pushBody())->checksum())
         ->assertJson(['roles_declared' => 1, 'permissions_declared' => 1, 'unchanged' => false]);
 
     expect(Role::query()->where('client_id', 'app_billing')->where('key', 'viewer')->exists())->toBeTrue();
@@ -62,4 +66,18 @@ it('rejects a malformed manifest with 422', function (): void {
 
 it('rejects a push with no token', function (): void {
     $this->postJson('/api/v1/apps/manifest', pushBody())->assertStatus(401);
+});
+
+it('acknowledges the exact manifest on an idempotent repeat and when retiring every definition', function (): void {
+    $headers = ['Authorization' => 'Bearer manifest-tok'];
+    $this->postJson('/api/v1/apps/manifest', pushBody(), $headers)->assertOk();
+    $this->postJson('/api/v1/apps/manifest', pushBody(), $headers)->assertOk()
+        ->assertJsonPath('unchanged', true)
+        ->assertJsonPath('client_id', 'app_billing')
+        ->assertJsonPath('checksum', app(ManifestParser::class)->parse(pushBody())->checksum());
+    $empty = ['version' => 'empty', 'roles' => [], 'permissions' => []];
+    $this->postJson('/api/v1/apps/manifest', $empty, $headers)->assertOk()
+        ->assertJsonPath('version', 'empty')
+        ->assertJsonPath('checksum', app(ManifestParser::class)->parse($empty)->checksum())
+        ->assertJsonPath('orphaned_roles', ['viewer']);
 });

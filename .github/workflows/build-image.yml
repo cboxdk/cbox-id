@@ -61,8 +61,8 @@ jobs:
         id: version
         run: echo "version=$(git describe --tags --always | sed 's/^v//')" >> "$GITHUB_OUTPUT"
 
-      - name: Unpack reviewed integration packages
-        run: php bin/unpack-signals-packages.php "$RUNNER_TEMP/signals/signals-client"
+      - name: Verify reviewed integration packages
+        run: php bin/verify-signals-sdk.php
 
       - name: Docker metadata
         id: meta
@@ -92,8 +92,6 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          build-contexts: |
-            signals-client=${{ runner.temp }}/signals/signals-client
           platforms: linux/${{ matrix.arch }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |

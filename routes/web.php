@@ -146,6 +146,7 @@ use Cbox\Id\Api\Http\Middleware\NoStore;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment as ApiResolveEnvironment;
 use Cbox\Id\FrontendApi\Http\Middleware\AuthenticateFrontendApi;
+use Illuminate\Routing\RedirectController;
 use Illuminate\Support\Facades\Route;
 
 // EMBEDDED SIGN-IN — registered at the TOP LEVEL, deliberately outside every group.
@@ -719,11 +720,11 @@ Route::middleware(['plane:console', 'locale'])->group(function (): void {
  * group is the only console there is. See {@see \App\Platform\Console\CustomerConsole}.
  */
 Route::get('/switch-app', AppsController::class)
-    ->middleware(['plane:console', 'platform.auth', 'console.customer'])->name('apps');
+    ->middleware(['plane:console', 'platform.auth', 'locale.console', 'console.customer'])->name('apps');
 
-Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth', 'console.customer', 'console.root'])->group(function (): void {
+Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth', 'locale.console', 'console.customer', 'console.root'])->group(function (): void {
     Route::get('/support/session', App\Assistant\SessionController::class)->middleware('throttle:30,1')->name('support.session');
-    Route::post('/console/locale', ConsoleLocaleController::class)->middleware('throttle:30,1')->name('console.locale.update');
+    Route::post('/interface-language', ConsoleLocaleController::class)->name('console.locale.update');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/checklist/dismiss', [DashboardController::class, 'dismissChecklist'])->name('dashboard.checklist.dismiss');
 
@@ -980,7 +981,8 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     //
     // A redirect rather than a deletion: this URL is in bookmarks and in links from the
     // organization pages, and the destination is the same information.
-    Route::permanentRedirect('/activity', '/audit')->name('activity');
+    Route::get('/activity', RedirectController::class)
+        ->defaults('destination', '/audit')->defaults('status', 301)->name('activity');
     // `/billing` is NOT here. It is the billing module's route, registered by
     // {@see \Cbox\Id\Billing\BillingServiceProvider} through the same ConsoleRoutes
     // socket a third-party plugin would use — so a deployment that does not bill, or an
@@ -1065,6 +1067,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::post('/roles', [RoleController::class, 'store'])->name('roles.store');
     Route::get('/roles/{role}', [RoleController::class, 'show'])->name('roles.show');
     Route::patch('/roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+    Route::post('/roles/{role}/definition/activate', [RoleController::class, 'activateDefinition'])->name('roles.definition.activate');
     // Grant or revoke ONE permission, said explicitly rather than toggled. Both the
     // detail page's checkbox and the list's picker post here, and a toggle turns a
     // double-click — or a retried request — into a silent flip back.
@@ -1338,9 +1341,9 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
     // The ENVIRONMENT control plane — the account-member admin's env-scoped console
     // (organizations, users, connections…). Gated by an env-admin session; a subject
     // session grants nothing here.
-    Route::middleware('env.admin')->group(function (): void {
+    Route::middleware(['env.admin', 'locale.console'])->group(function (): void {
         Route::get('/support/session', App\Assistant\SessionController::class)->middleware('throttle:30,1')->name('environment.support.session');
-        Route::post('/locale', ConsoleLocaleController::class)->middleware('throttle:30,1')->name('environment.locale.update');
+        Route::post('/interface-language', ConsoleLocaleController::class)->name('environment.locale.update');
         // `admin.login` is the name every "send them to the door" redirect uses — the
         // handoff's refusals, logout, the sudo screen. It is BEHIND the gate on purpose:
         // the gate IS the door now. Unauthenticated, `AuthenticateEnvironmentAdmin`
@@ -1579,6 +1582,7 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
         Route::post('/roles', [RoleController::class, 'store'])->name('environment.roles.store');
         Route::get('/roles/{role}', [RoleController::class, 'show'])->name('environment.roles.show');
         Route::patch('/roles/{role}', [RoleController::class, 'update'])->name('environment.roles.update');
+        Route::post('/roles/{role}/definition/activate', [RoleController::class, 'activateDefinition'])->name('environment.roles.definition.activate');
         Route::post('/roles/{role}/permissions', [RoleController::class, 'permissions'])->name('environment.roles.permissions');
         Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->name('environment.roles.destroy');
 
@@ -1970,11 +1974,13 @@ Route::prefix('admin/platform')->middleware('plane:operator')->group(function ()
     //
     // TargetEnvironment comes last: the console's chosen plane must not be ambient while
     // the operator's own (platform-root) session is being looked up.
-    Route::middleware(['platform.auth:optional', AuthenticateOperator::class])->group(function (): void {
+    Route::middleware(['platform.auth:optional', AuthenticateOperator::class, 'locale.console'])->group(function (): void {
+        Route::post('/interface-language', ConsoleLocaleController::class)->name('platform.locale.update');
         // The area's own address lands on its first page, the way the rail's icon does.
         // Inside the gate, so a non-operator gets the same 404 here as on every page behind
         // it; a redirect controller rather than a closure, like every console route.
-        Route::redirect('/', '/admin/platform/workspaces')->name('platform.home');
+        Route::get('/', RedirectController::class)
+            ->defaults('destination', '/admin/platform/workspaces')->defaults('status', 302)->name('platform.home');
 
         // WORKSPACES — the customers on the install. `/customers` until the console's own
         // word for a customer became the URL's too; the old paths answer 301 (see the
@@ -2042,7 +2048,8 @@ Route::prefix('admin/platform')->middleware('plane:operator')->group(function ()
  * checks. See the note in ConsoleServiceProvider. On `plane:operator`, like the section it
  * was part of.
  */
-Route::permanentRedirect('/platform/security', '/account')->middleware('plane:operator')->name('platform.security');
+Route::get('/platform/security', RedirectController::class)
+    ->defaults('destination', '/account')->defaults('status', 301)->middleware('plane:operator')->name('platform.security');
 
 /*
 |--------------------------------------------------------------------------

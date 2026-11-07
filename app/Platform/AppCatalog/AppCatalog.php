@@ -39,31 +39,34 @@ final readonly class AppCatalog
     public function save(string $key, CatalogEntryData $data, ?AuditActor $actor = null): CatalogEntry
     {
         if (preg_match('/\A[a-z][a-z0-9_-]{0,63}\z/D', $key) !== 1) {
-            throw ValidationException::withMessages(['key' => 'Use a lowercase app key, starting with a letter (up to 64 characters).']);
+            throw ValidationException::withMessages(['key' => __('console.catalog_invalid_key')]);
         }
         foreach ($data->organizations as $id) {
             if (! Organization::query()->whereKey($id)->exists()) {
-                throw ValidationException::withMessages(['organization_ids' => 'Choose organizations in this environment.']);
+                throw ValidationException::withMessages(['organization_ids' => __('console.catalog_choose_organizations')]);
             }
         }
         foreach ($data->users as $id) {
             if ($this->subjects->find($id) === null) {
-                throw ValidationException::withMessages(['user_ids' => 'Choose users in this environment.']);
+                throw ValidationException::withMessages(['user_ids' => __('console.catalog_choose_users')]);
             }
         }
         foreach ($data->clients as $id) {
             if (! Client::query()->where('client_id', $id)->whereNull('organization_id')->exists()) {
-                throw ValidationException::withMessages(['client_ids' => 'Choose environment-wide OAuth clients in this environment.']);
+                throw ValidationException::withMessages(['client_ids' => __('console.catalog_choose_clients')]);
             }
         }
         if ($data->requiredFeature !== null && $this->flags->findByKey($data->requiredFeature) === null) {
-            throw ValidationException::withMessages(['required_feature' => 'Choose a feature flag in this environment.']);
+            throw ValidationException::withMessages(['required_feature' => __('console.catalog_choose_feature')]);
         }
         try {
             return DB::transaction(function () use ($key, $data, $actor): CatalogEntry {
                 $entry = CatalogEntry::query()->where('key', $key)->lockForUpdate()->first();
+                if ($entry === null && $data->version !== 0) {
+                    throw ActionRefused::notFound('catalog_app');
+                }
                 if (($entry->version ?? 0) !== $data->version) {
-                    throw new ActionRefused('version_conflict', 'The app changed. Reload it before saving.', 409);
+                    throw new ActionRefused('version_conflict', __('console.catalog_changed_save'), 409);
                 }
                 $entry ??= new CatalogEntry;
                 $entry->fill(['key' => $key, 'name' => $data->name, 'description' => $data->description ?: null,
@@ -83,7 +86,7 @@ final readonly class AppCatalog
             });
         } catch (QueryException $e) {
             if (in_array($e->getCode(), ['23000', '23505'], true)) {
-                throw new ActionRefused('version_conflict', 'This app key was created concurrently. Reload the catalog.', 409);
+                throw new ActionRefused('version_conflict', __('console.catalog_created_concurrently'), 409);
             }
             throw $e;
         }
@@ -94,7 +97,7 @@ final readonly class AppCatalog
         DB::transaction(function () use ($key, $version, $actor): void {
             $entry = CatalogEntry::query()->where('key', $key)->lockForUpdate()->firstOrFail();
             if ($entry->version !== $version) {
-                throw new ActionRefused('version_conflict', 'The app changed. Reload it before deleting.', 409);
+                throw new ActionRefused('version_conflict', __('console.catalog_changed_delete'), 409);
             }
             $entry->delete();
             $this->record('app_catalog.deleted', $entry, $actor);
@@ -129,7 +132,7 @@ final readonly class AppCatalog
             ->whereIn('id', $membershipIds)->where('status', 'active')->get()
             ->map(static fn (Organization $organization): string => $organization->id)->all());
         if ($organizationId !== null && ! in_array($organizationId, $organizations, true)) {
-            throw new AuthorizationException('Choose an active organization you belong to.');
+            throw new AuthorizationException(__('console.catalog_choose_membership'));
         }
         $organizations = $organizationId === null ? $organizations : [$organizationId];
         $apps = [];

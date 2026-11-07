@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Platform\Invitations\ValueObjects\Inviter;
+use App\Platform\NativeProduct\NativeTeamInvitations;
 use App\Platform\Sudo;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\SignInProviders;
@@ -12,11 +14,11 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
-use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -76,10 +78,11 @@ function signedInForAudit(): void
         // A PRODUCT: the Identity-platform pages belong to a CUSTOMER, and an
         // organization that owns none is refused them.
         app(Projects::class)->createForOrganization($org->id, 'Acme');
+        grantProductEnvironmentAllowance($org->id, 100);
 
         // One invitation nobody has accepted, and one more member than a page holds — so
         // the panel and the pager are both on screen when axe runs.
-        app(Invitations::class)->invite($org->id, 'pending@acme.test', MembershipRole::Member, null);
+        app(NativeTeamInvitations::class)->send($org->id, 'pending@acme.test', ['viewer'], new Inviter($subject->id, 'Audit Owner'), AuditActor::user($subject->id));
 
         foreach (range(1, 26) as $i) {
             $member = app(Subjects::class)->create("a11y-member-{$i}@acme.test", "Member {$i}");

@@ -33,6 +33,7 @@ use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
@@ -85,9 +86,10 @@ const SWEEP_FOREIGN_ENVIRONMENT = 'env_sweep_foreign';
  * @var array<string, string>
  */
 const SWEEP_UNSWEPT = [
-    'account.waitlists.leave' => 'Programme IDs belong to Billing. ServiceWaitlistsTest covers foreign-team refusal, session-derived identity and suspended membership for withdrawal.',
-    'account.waitlists.join' => 'A programme is a shared published Billing resource, not another person’s ID record. ServiceWaitlistsTest proves person identity, delegated scope and environment isolation; Billing PublicWaitlistTest proves programme/product/tenant boundaries.',
-    'app_catalog.save' => 'PUT creates an environment-local app key; GET and DELETE are swept, and grant references are validated by AppCatalogTest.',
+    'billing.payment_method.default' => 'Billing owns payment method IDs; Billing/ProductPaymentTest checks foreign-workspace and missing IDs through the scoped provider list.',
+    'billing.payment_method.remove' => 'Billing owns payment method IDs; Billing/ProductPaymentTest checks foreign-workspace and missing IDs through the scoped provider list.',
+    'account.waitlists.leave' => 'Billing program IDs are external; ServiceWaitlistsTest checks exact subject and active organization membership.',
+    'account.waitlists.join' => 'Billing program IDs are external; ServiceWaitlistsTest checks subject, delegated scope and environment isolation.',
     'user_property_namespaces.configure' => 'PUT upserts a namespace name in the caller environment; GET is swept and namespace grants validate app and endpoint environment ownership.',
     // Its id is a NAME the caller chooses, and the request defines it: there is no foreign
     // one. The parent `{id}` is swept like any other.
@@ -180,6 +182,7 @@ function sweepBody(ActionDefinition $action, array $own): array
 
     return [...$body, ...(match ($action->name) {
         'account.api_keys.create' => ['client_id' => $own['application'] ?? '', 'name' => 'Sweep key'],
+        'app_catalog.save' => ['launch_url' => 'https://sweep.example', 'version' => 1],
         'apps.scopes.set' => ['scopes' => ['openid']],
         'apps.copy' => ['environment_id' => 'env_test', 'name' => 'Copy'],
         'apps.secrets.rotate' => ['grace_seconds' => 0],
@@ -354,6 +357,7 @@ it('answers 404 to every id from another environment, for every action that take
 it('renders another environment\'s id as the API\'s 404 envelope over REST', function (): void {
     $foreign = CrossTenantSweep::world(SWEEP_FOREIGN_ENVIRONMENT, 'Foreign');
     $own = CrossTenantSweep::world('env_test', 'Own');
+    serveOnTestHost(Environment::query()->findOrFail('env_test'));
     $token = app(EnvironmentApiKeys::class)->issue('env_test', 'Sweep caller', CrossTenantSweep::environmentScopes())->plaintext;
     $wrong = [];
 
@@ -508,7 +512,7 @@ function sweepWorkspace(string $email): array
         'environment' => $account['environment']->id,
         'project' => $account['project']->id,
         'team_member' => (string) $member->id,
-        'team_invitation' => $run('team.invite', ['email' => "invitee-{$slug}@sweep.example", 'role' => 'developer'])['id'],
+        'team_invitation' => $run('team.invite', ['email' => "invitee-{$slug}@sweep.example", 'roles' => ['developer']])['id'],
         'workspace_key' => (string) app(OrganizationApiKeys::class)->issue($workspace->id, 'Sweep other', MembershipRole::Viewer)->key->id,
         'environment_key' => $run('keys.environment.create', ['environment_id' => $account['environment']->id, 'name' => 'Sweep env key', 'scopes' => ['users:read']])['id'],
     ];

@@ -192,7 +192,6 @@ function undocumentedByDesign(): array
         // both), which is exactly why it rotted unnoticed — and a debt list with entries
         // that are not debt stops meaning anything. Removed; the fourth test below now
         // holds the list to only-real-routes, and this one to only-real-debt.
-        'POST /api/v1/apps/manifest',
     ];
 }
 

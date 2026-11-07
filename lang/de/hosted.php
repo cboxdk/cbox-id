@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-// German: the chrome every hosted page shares (footer, hero, language picker).
 return [
     'layout' => [
+        'hero_title' => 'Eine Identitätsebene für alle Ihre Apps.',
         'secured_by' => 'Geschützt durch :name',
         'theme' => 'Design',
         'toggle_theme' => 'Zwischen hellem und dunklem Design wechseln',
@@ -17,10 +17,8 @@ return [
             'audit' => 'Hash-verkettetes Audit-Log mit Manipulationserkennung',
         ],
     ],
-
     'language' => [
         'label' => 'Sprache',
     ],
-
     'skip_to_content' => 'Zum Inhalt springen',
 ];

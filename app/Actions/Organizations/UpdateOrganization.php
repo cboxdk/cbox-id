@@ -6,6 +6,7 @@ namespace App\Actions\Organizations;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -84,7 +85,7 @@ final readonly class UpdateOrganization implements Action
             try {
                 $organization = $this->organizations->update($organization->id, $changes, $actor->id);
             } catch (SlugAlreadyTaken) {
-                throw ActionRefused::because('slug_taken', 'That slug is already in use in this environment.', 'slug');
+                throw ActionRefused::because('slug_taken', new ActionMessage('console.that_slug_is_already_in_use_in_this_environment_1bff4d6b'), 'slug');
             }
 
             $nameChanged = $organization->name !== $before['name'];

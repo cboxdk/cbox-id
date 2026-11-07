@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -15,20 +15,28 @@ type Props = PageProps<{
  * The header and tabs are the layout's (`../frame.tsx`).
  */
 export default function OrganizationSupport({ supportSessions, usersHref }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <Panel
-            title={tc('console.support_sessions_b9144532')}
-            description={tc('console.signed_in_to_an_app_as_one_of_this_organizat_d9c070c7')}
+            title={consoleT('console.support_sessions_b9144532')}
+            description={consoleT(
+                'console.signed_in_to_an_app_as_one_of_this_organization_s_peopl_d9c070c7',
+            )}
         >
             {supportSessions.length === 0 ? (
                 <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                    {tc('console.nobody_is_signed_in_to_an_app_as_one_of_its__f1fa3c37')}{' '}
-                    <Link href={usersHref} className="underline underline-offset-2">
-                        {tc('console.users_6b0cc904')}
-                    </Link>
-                    .
+                    {consoleRich(
+                        'console.nobody_is_signed_in_to_an_app_as_one_of_its_people_star_a41ae388',
+                        {
+                            part1: ' ',
+                            part2: (
+                                <Link href={usersHref} className="underline underline-offset-2">
+                                    {consoleT('console.users_6b0cc904')}
+                                </Link>
+                            ),
+                        },
+                    )}
                 </p>
             ) : (
                 <SupportSessions sessions={supportSessions} lead="user" />

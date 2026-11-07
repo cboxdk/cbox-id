@@ -6,6 +6,7 @@ namespace App\Actions\SignIn;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -65,7 +66,7 @@ final readonly class UpdateSocialProvider implements Action
     {
         $connection = SocialProviderFields::reachable($context);
         $template = SocialProviderFields::loginTemplate((string) $connection->provider)
-            ?? throw ActionRefused::because('unknown_provider', 'That provider is no longer in the catalogue; remove it instead.');
+            ?? throw ActionRefused::because('unknown_provider', new ActionMessage('console.that_provider_is_no_longer_in_the_catalogue_remove_it_i_40a3d4aa'));
 
         $current = $this->connections->config($connection);
         $config = $current;
@@ -75,7 +76,7 @@ final readonly class UpdateSocialProvider implements Action
 
         if ($context->has('client_id')) {
             if ($clientId === '') {
-                throw ActionRefused::because('client_id_required', 'The client id cannot be blank.', 'client_id');
+                throw ActionRefused::because('client_id_required', new ActionMessage('console.the_client_id_cannot_be_blank_aecd71f9'), 'client_id');
             }
 
             if ($clientId !== ($current['client_id'] ?? null)) {

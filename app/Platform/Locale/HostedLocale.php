@@ -30,6 +30,17 @@ enum HostedLocale: string
     case Spanish = 'es';
     case Italian = 'it';
     case Dutch = 'nl';
+    case Portuguese = 'pt';
+    case Polish = 'pl';
+    case Romanian = 'ro';
+    case Czech = 'cs';
+    case Hungarian = 'hu';
+    case Greek = 'el';
+    case Bulgarian = 'bg';
+    case Croatian = 'hr';
+    case Slovak = 'sk';
+    case Turkish = 'tr';
+    case Ukrainian = 'uk';
 
     /**
      * The language's name IN ITSELF — what the picker shows.
@@ -50,6 +61,17 @@ enum HostedLocale: string
             self::Spanish => 'Español',
             self::Italian => 'Italiano',
             self::Dutch => 'Nederlands',
+            self::Portuguese => 'Português',
+            self::Polish => 'Polski',
+            self::Romanian => 'Română',
+            self::Czech => 'Čeština',
+            self::Hungarian => 'Magyar',
+            self::Greek => 'Ελληνικά',
+            self::Bulgarian => 'Български',
+            self::Croatian => 'Hrvatski',
+            self::Slovak => 'Slovenčina',
+            self::Turkish => 'Türkçe',
+            self::Ukrainian => 'Українська',
         };
     }
 

@@ -5,14 +5,26 @@ declare(strict_types=1);
 namespace App\Platform\Locale;
 
 use App\Http\Controllers\PageController;
+use App\Http\Middleware\ResolveConsoleLocale;
 use App\Http\Props\Shared\I18nProps;
+use App\Platform\Appearance\BrandContext;
+use Cbox\Id\UserProperties\ValueObjects\PropertySnapshot;
 use Illuminate\Translation\Translator;
 
 /**
- * Per-surface catalogues shared with Inertia. Hosted groups receive their existing
- * namespaces; signed-in pages receive the console catalogue in the selected language.
- * Scoped to the request: PageController marks the component before props are resolved.
- * Missing translations fall back per key to English; catalogue parity is tested.
+ * The translations for each hosted or console page and its shared UI.
+ *
+ * A page names its group by being rendered ({@see PageController}),
+ * the same way it names its layout: `auth/*` is the sign-in group, `oauth/*` the consent
+ * group, `portal/*` the Admin Portal. Pages receive their own namespace plus shared
+ * UI strings, flattened to dot keys. Console pages receive the console catalog.
+ *
+ * FALLBACK IS PER KEY, to English. LangParityTest keeps every catalogue complete, so in a
+ * release this never fires; it is what keeps a key added in English and not yet
+ * translated from rendering as `auth.login.title` in the meantime.
+ *
+ * Scoped to the request, like {@see BrandContext}: the controller
+ * marks the page, the shared-prop closure reads the mark when Inertia builds the response.
  */
 final class HostedTranslations
 {
@@ -22,7 +34,7 @@ final class HostedTranslations
      *
      * @var list<string>
      */
-    public const CLIENT_NAMESPACES = ['hosted', 'auth', 'oauth', 'portal', 'console', 'service_access'];
+    public const CLIENT_NAMESPACES = ['hosted', 'auth', 'oauth', 'portal', 'console', 'service_access', 'billing', 'errors'];
 
     /** @var list<string>|null */
     private ?array $namespaces = null;
@@ -32,7 +44,10 @@ final class HostedTranslations
         private readonly HostedLocales $locales,
     ) {}
 
-    /** Select the catalogue for the component being rendered. */
+    /**
+     * Choose the page catalog by component name. Shared primitives use console keys
+     * on both hosted and authenticated pages.
+     */
     public function forPage(string $component): void
     {
         $this->namespaces = self::namespacesFor($component);
@@ -43,14 +58,15 @@ final class HostedTranslations
      */
     public static function namespacesFor(string $component): array
     {
-        return match (true) {
-            $component === 'account/services' => ['console', 'service_access'],
-            $component === 'auth/sudo' => ['console', 'auth'],
-            str_starts_with($component, 'auth/') => ['hosted', 'auth'],
-            str_starts_with($component, 'oauth/') => ['hosted', 'oauth'],
-            str_starts_with($component, 'portal/') => ['hosted', 'portal'],
-            default => ['console'],
-        };
+        return [...match (true) {
+            in_array($component, ['billing::billing', 'console/projects/show'], true) => ['hosted', 'console', 'billing'],
+            $component === 'account/services' => ['hosted', 'console', 'service_access'],
+            $component === 'auth/sudo' => ['hosted', 'console'],
+            str_starts_with($component, 'auth/') => ['hosted', 'auth', 'console'],
+            str_starts_with($component, 'oauth/') => ['hosted', 'oauth', 'console'],
+            str_starts_with($component, 'portal/') => ['hosted', 'portal', 'console'],
+            default => ['hosted', 'console'],
+        }, 'errors'];
     }
 
     public function toProps(): ?I18nProps
@@ -70,12 +86,18 @@ final class HostedTranslations
             ];
         }
 
+        $snapshot = request()->attributes->get(ResolveConsoleLocale::ATTRIBUTE);
+        $preference = $snapshot instanceof PropertySnapshot ? [
+            'subjectId' => $snapshot->userId,
+            'version' => $snapshot->version,
+            'updateUrl' => route(request()->routeIs('platform.*') ? 'platform.locale.update' : (request()->is('admin', 'admin/*') ? 'environment.locale.update' : 'console.locale.update')),
+        ] : null;
+
         return new I18nProps(
             locale: $locale,
-            locales: in_array('console', $this->namespaces, true)
-                ? HostedLocale::cases()
-                : $this->locales->enabled(),
+            locales: $preference !== null ? HostedLocale::cases() : $this->locales->enabled(),
             messages: $messages,
+            preference: $preference,
         );
     }
 

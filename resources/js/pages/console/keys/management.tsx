@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -70,8 +70,9 @@ export default function ManagementKeys({
     storeHref,
     help,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     // Shown once: only a hash is stored, and props are written into the browser's history
     // entry, so the plaintext rides the flash channel and nowhere else. The SAME key the
     // account-plane API keys page uses — one management-plane credential channel, so the
@@ -107,34 +108,39 @@ export default function ManagementKeys({
         <>
             <PageHeader
                 help={help}
-                description={tc('console.keys_for_an_environment_s_management_api_run_6197b6d2')}
+                description={consoleT(
+                    'console.keys_for_an_environment_s_management_api_run_one_enviro_6197b6d2',
+                )}
                 actions={
                     <Button asChild size="sm" className="shrink-0">
                         <a href="/api/v1/environment/openapi.yaml" target="_blank" rel="noreferrer">
-                            {tc('console.api_reference_f05394ed')}
+                            {consoleT('console.api_reference_f05394ed')}
                         </a>
                     </Button>
                 }
             />
 
             <div className="mt-4">
-                <LinkTabs tabs={tabs} label={tc('console.key_types_0562e0e6')} />
+                <LinkTabs tabs={tabs} label={consoleT('console.key_types_0562e0e6')} />
             </div>
 
             {environments.length === 0 ? (
                 <div className="card mt-6">
                     <EmptyState
                         icon="layers"
-                        title={tc('console.no_environments_yet_8c63cac4')}
-                        description={tc(
-                            'console.create_an_environment_first_then_you_can_cre_6b259c9b',
+                        title={consoleT('console.no_environments_yet_8c63cac4')}
+                        description={consoleT(
+                            'console.create_an_environment_first_then_you_can_create_keys_sc_6b259c9b',
                         )}
                     />
                 </div>
             ) : (
                 <div className="mt-6 space-y-6">
                     {pickEnvironment && (
-                        <Field label={tc('console.environment_9e471951')} className="max-w-sm">
+                        <Field
+                            label={consoleT('console.environment_9e471951')}
+                            className="max-w-sm"
+                        >
                             <Select
                                 value={selected}
                                 onValueChange={(environment) =>
@@ -158,10 +164,10 @@ export default function ManagementKeys({
 
                     {freshKey !== undefined && <RevealedKey value={freshKey} />}
 
-                    <Panel title={tc('console.keys_f0d66a79')} flush={keys.length > 0}>
+                    <Panel title={consoleT('console.keys_f0d66a79')} flush={keys.length > 0}>
                         {keys.length === 0 ? (
                             <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                                {tc('console.no_keys_for_this_environment_yet_3faf26a6')}
+                                {consoleT('console.no_keys_for_this_environment_yet_3faf26a6')}
                             </p>
                         ) : (
                             <div>
@@ -184,7 +190,7 @@ export default function ManagementKeys({
                                             </div>
                                             <ul
                                                 className="flex flex-wrap gap-1.5"
-                                                aria-label={tc('console.scopes_0d5644ff')}
+                                                aria-label={consoleT('console.scopes_0d5644ff')}
                                             >
                                                 {key.scopes.map((scope) => (
                                                     <li key={scope.value}>
@@ -221,7 +227,7 @@ export default function ManagementKeys({
                                                 className="shrink-0"
                                                 onClick={() => setRevoking(key)}
                                             >
-                                                {tc('console.revoke_87e6d00b')}
+                                                {consoleT('console.revoke_87e6d00b')}
                                             </Button>
                                         )}
                                     </div>
@@ -231,9 +237,9 @@ export default function ManagementKeys({
                     </Panel>
 
                     <Panel
-                        title={tc('console.new_key_eda5496b')}
-                        description={tc(
-                            'console.the_key_can_do_only_what_its_scopes_allow_re_78fe4757',
+                        title={consoleT('console.new_key_eda5496b')}
+                        description={consoleT(
+                            'console.the_key_can_do_only_what_its_scopes_allow_read_never_im_78fe4757',
                         )}
                     >
                         <form
@@ -246,10 +252,15 @@ export default function ManagementKeys({
                                 });
                             }}
                         >
-                            <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
+                            <Field
+                                label={consoleT('console.name_dcd1d522')}
+                                error={form.errors.name}
+                            >
                                 <Input
                                     name="name"
-                                    placeholder={tc('console.provisioning_worker_5872a034')}
+                                    placeholder={consoleUiText(
+                                        'console.provisioning_worker_5872a034',
+                                    )}
                                     value={form.data.name}
                                     onChange={(event) => form.setData('name', event.target.value)}
                                 />
@@ -258,7 +269,7 @@ export default function ManagementKeys({
                             <div>
                                 <fieldset>
                                     <legend className="label">
-                                        {tc('console.scopes_0d5644ff')}
+                                        {consoleT('console.scopes_0d5644ff')}
                                     </legend>
                                     <div className="mt-1 grid gap-2 sm:grid-cols-2">
                                         {scopes.map((scope) => (
@@ -288,14 +299,16 @@ export default function ManagementKeys({
                                                         */}
                                                         {scope.critical ? (
                                                             <Badge tone="danger">
-                                                                {tc(
+                                                                {consoleT(
                                                                     'console.critical_cannot_be_undone_2f6dd900',
                                                                 )}
                                                             </Badge>
                                                         ) : (
                                                             scope.writes && (
                                                                 <Badge tone="warn">
-                                                                    {tc('console.writes_531995e8')}
+                                                                    {consoleT(
+                                                                        'console.writes_531995e8',
+                                                                    )}
                                                                 </Badge>
                                                             )
                                                         )}
@@ -323,7 +336,7 @@ export default function ManagementKeys({
                             />
 
                             <Button type="submit" variant="primary" loading={form.processing}>
-                                {tc('console.create_key_b6cde903')}
+                                {consoleT('console.create_key_b6cde903')}
                             </Button>
                         </form>
                     </Panel>
@@ -334,8 +347,10 @@ export default function ManagementKeys({
                 open={revoking !== null}
                 onOpenChange={(open) => !open && setRevoking(null)}
                 name={revoking?.name ?? ''}
-                verb="Revoke"
-                consequence={tc('console.whatever_is_using_this_key_stops_working_imm_8e55e6f5')}
+                verb={consoleShortText('console.revoke_87e6d00b')}
+                consequence={consoleUiText(
+                    'console.whatever_is_using_this_key_stops_working_immediately_th_8e55e6f5',
+                )}
                 onConfirm={() => {
                     const key = revoking;
                     setRevoking(null);

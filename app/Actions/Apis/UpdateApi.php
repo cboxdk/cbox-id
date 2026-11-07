@@ -11,6 +11,7 @@ use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Apis\ApiAdministration;
@@ -88,7 +89,7 @@ final readonly class UpdateApi implements Action
                 }
             }
         } catch (InvalidApiDefinition $refused) {
-            throw ActionRefused::because('invalid_api', $refused->getMessage(), 'name');
+            throw ActionRefused::because('invalid_api', FrameworkMessage::from($refused), 'name');
         }
 
         $fresh = $this->apis->find($api->id) ?? $api;

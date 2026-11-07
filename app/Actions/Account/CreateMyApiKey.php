@@ -88,7 +88,7 @@ final readonly class CreateMyApiKey implements Action
 
             $explanation = RefusalExplanation::of($refused, $this->apps->offered($organizationId, $clientId)?->name);
 
-            throw ActionRefused::because($refused->reason->value, $explanation->message, $explanation->field === 'expiresOn' ? 'expires_at' : $explanation->field);
+            throw ActionRefused::because($refused->reason->value, $explanation->sourceMessage, $explanation->field === 'expiresOn' ? 'expires_at' : $explanation->field);
         }
 
         return ActionResult::item($issued, [...self::present($issued->key), 'token' => $issued->plaintext]);

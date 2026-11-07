@@ -8,6 +8,7 @@ use App\Actions\Roles\RoleFields;
 use App\Http\Resources\Environment\RoleAssignmentResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -51,7 +52,7 @@ final readonly class ShowStaffRole implements Action
             ->first();
 
         if ($role === null || $grant === null) {
-            throw new ActionRefused('not_found', 'That user does not hold that role everywhere.', 404);
+            throw new ActionRefused('not_found', new ActionMessage('console.that_user_does_not_hold_that_role_everywhere_735f551c'), 404);
         }
 
         return ActionResult::item($grant, RoleAssignmentResource::from($role, $user->id, null, $grant->source));

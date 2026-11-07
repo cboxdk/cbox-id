@@ -24,10 +24,9 @@ return [
         'check_your_inbox' => 'Check your inbox',
         'verify' => 'Verify',
         'cancel_and_sign_out' => 'Cancel and sign out',
-        // Two forms that are the same in English, which has always said "1 seconds" here;
-        // a language that inflects the noun gets to.
-        'too_many_attempts' => 'Too many attempts. Try again in :count seconds.|Too many attempts. Try again in :count seconds.',
-        'too_many_requests' => 'Too many requests. Try again in :count seconds.|Too many requests. Try again in :count seconds.',
+        // Keep singular and plural forms separate for translated countdowns.
+        'too_many_attempts' => 'Too many attempts. Try again in :count second.|Too many attempts. Try again in :count seconds.',
+        'too_many_requests' => 'Too many requests. Try again in :count second.|Too many requests. Try again in :count seconds.',
         'could_not_process' => 'We could not process this request. Please try again later.',
         'code_incorrect' => 'That code is incorrect or has expired.',
     ],
@@ -90,7 +89,7 @@ return [
         'passkey_failed' => 'Passkey sign-in failed.',
         'new_organization' => 'New organization?',
         'create_one' => 'Create one',
-        'invalid_credentials' => 'Those credentials do not match our records.',
+        'invalid_credentials' => 'The email address or password is incorrect.',
         // Answered by the passkey sign-in endpoint and shown under its button.
         'passkey_errors' => [
             'challenge_expired' => 'Sign-in challenge expired. Try again.',

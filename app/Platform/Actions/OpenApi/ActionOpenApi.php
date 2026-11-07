@@ -78,10 +78,14 @@ final readonly class ActionOpenApi
                     $paths[$path][$method] = $this->fromTheRoot($paths[$path][$method], $action);
                 }
 
+                if (is_array($paths[$path][$method])) {
+                    $paths[$path][$method] = self::admissionFailure($paths[$path][$method], $action);
+                }
+
                 continue;
             }
 
-            $paths[$path][$method] = $this->operation($action);
+            $paths[$path][$method] = self::admissionFailure($this->operation($action), $action);
 
             $tag = $this->tag($action);
 
@@ -96,6 +100,39 @@ final readonly class ActionOpenApi
         $base['paths'] = $paths;
 
         return $base;
+    }
+
+    /**
+     * Preserve hand-written operation fields while documenting admission failures.
+     *
+     * @param  array<array-key, mixed>  $operation
+     * @return array<array-key, mixed>
+     */
+    private static function admissionFailure(array $operation, ActionDefinition $action): array
+    {
+        if (in_array($action->plane, [ActionPlane::Workspace, ActionPlane::Environment], true)) {
+            $parameters = is_array($operation['parameters'] ?? null) ? array_values($operation['parameters']) : [];
+            $selector = [
+                'name' => 'Cbox-Organization', 'in' => 'header', 'required' => false,
+                'description' => 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.',
+                'schema' => ['type' => 'string', 'minLength' => 1],
+            ];
+            if (! in_array($selector, $parameters, true)) {
+                $parameters[] = $selector;
+            }
+            $operation['parameters'] = $parameters;
+        }
+
+        if ($action->plane === ActionPlane::Environment
+            || ($action->plane === ActionPlane::Workspace && in_array($action->scope, ['workspace:read', 'projects:write', 'environments:write', 'keys:write'], true))) {
+            $responses = is_array($operation['responses'] ?? null) ? $operation['responses'] : [];
+            $operation['responses'] = self::withResponse($responses, 503, [
+                'description' => 'Product admission could not be verified. The request is refused; retry later.',
+                'content' => ['application/json' => ['schema' => ['$ref' => '#/components/schemas/Error']]],
+            ]);
+        }
+
+        return $operation;
     }
 
     /**

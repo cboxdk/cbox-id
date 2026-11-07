@@ -19,10 +19,8 @@ use App\Http\Requests\Console\StoreWebhookRequest;
 use App\Http\Requests\Console\UpdateWebhookRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
-use App\Platform\Console\Vocabulary;
 use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Webhooks\Enums\EndpointStatus;
@@ -103,7 +101,7 @@ final readonly class WebhookController extends ConsoleController
         // enumerate the environment's other tenants.
         $names = $this->scope->organizationNames($endpoints->pluck('organization_id'));
 
-        return $this->page('console/webhooks/index', ConsoleStrings::text(Vocabulary::WEBHOOKS), [
+        return $this->page('console/webhooks/index', __('console.webhooks_45808d75'), [
             'endpoints' => array_map(
                 fn (WebhookEndpoint $endpoint): WebhookRowProps => WebhookRowProps::from(
                     $endpoint,
@@ -289,7 +287,7 @@ final readonly class WebhookController extends ConsoleController
 
         $result = $this->act(PauseWebhook::class, ['id' => $endpoint->id]);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.endpoint_paused_it_will_stop_receiving_event_ed25465c'));
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.endpoint_paused_it_will_stop_receiving_events_ed25465c'));
     }
 
     /**
@@ -350,7 +348,7 @@ final readonly class WebhookController extends ConsoleController
         // Shown once on the next render; the sealed form is all that persists.
         $this->inertia->flash('newSecret', $rotated->secret);
 
-        return back()->with('status', __('console.signing_secret_rotated_update_your_endpoint__1c8ec83c'));
+        return back()->with('status', __('console.signing_secret_rotated_update_your_endpoint_now_1c8ec83c'));
     }
 
     /**
@@ -370,7 +368,7 @@ final readonly class WebhookController extends ConsoleController
             'signature_scheme' => (string) $request->string('signatureScheme'),
         ], ['signature_scheme' => 'signatureScheme']);
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.signature_scheme_changed_deliveries_are_sign_9a0fb26a'));
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.signature_scheme_changed_deliveries_are_signed_the_new_9a0fb26a'));
     }
 
     public function destroy(string $webhook): RedirectResponse

@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -26,8 +26,9 @@ type Props = PageProps<{
  * The header and tabs are the layout's (`../frame.tsx`).
  */
 export default function OrganizationSettings({ organization, urls }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [deleting, setDeleting] = useState(false);
 
     const suspended = organization.status === 'suspended';
@@ -39,13 +40,17 @@ export default function OrganizationSettings({ organization, urls }: Props) {
             <Panel
                 title={
                     suspended
-                        ? tc('console.reactivate_organization_7a2cb32e')
-                        : tc('console.suspend_organization_33c2d142')
+                        ? consoleText('console.reactivate_organization_7a2cb32e')
+                        : consoleText('console.suspend_organization_33c2d142')
                 }
                 description={
                     suspended
-                        ? tc('console.its_people_can_sign_in_again_with_the_access_dceea1d5')
-                        : tc('console.its_people_are_refused_at_every_door_sign_in_5c2c7648')
+                        ? consoleText(
+                              'console.its_people_can_sign_in_again_with_the_access_they_had_dceea1d5',
+                          )
+                        : consoleText(
+                              'console.its_people_are_refused_at_every_door_sign_in_the_device_5c2c7648',
+                          )
                 }
             >
                 <Button
@@ -58,16 +63,20 @@ export default function OrganizationSettings({ organization, urls }: Props) {
                         )
                     }
                 >
-                    {suspended ? tc('console.reactivate_2dc7478f') : tc('console.suspend_4948e134')}
+                    {suspended
+                        ? consoleText('console.reactivate_2dc7478f')
+                        : consoleText('console.suspend_4948e134')}
                 </Button>
             </Panel>
 
             <Panel
-                title={tc('console.delete_organization_a70d189a')}
-                description={tc('console.it_disappears_from_every_list_and_its_people_49a9035c')}
+                title={consoleT('console.delete_organization_a70d189a')}
+                description={consoleT(
+                    'console.it_disappears_from_every_list_and_its_people_are_refuse_49a9035c',
+                )}
             >
                 <Button size="sm" variant="danger" onClick={() => setDeleting(true)}>
-                    {tc('console.delete_organization_a70d189a')}
+                    {consoleT('console.delete_organization_a70d189a')}
                 </Button>
             </Panel>
 
@@ -75,7 +84,9 @@ export default function OrganizationSettings({ organization, urls }: Props) {
                 open={deleting}
                 onOpenChange={setDeleting}
                 name={organization.name}
-                consequence="Everyone in this organization is refused at every door immediately, and it disappears from every list. This cannot be undone from the console."
+                consequence={consoleUiText(
+                    'console.everyone_in_this_organization_is_refused_at_every_door_40e035a5',
+                )}
                 onConfirm={() => {
                     setDeleting(false);
                     router.delete(urls.destroy);
@@ -86,8 +97,7 @@ export default function OrganizationSettings({ organization, urls }: Props) {
 }
 
 function Details({ organization, href }: { organization: Props['organization']; href: string }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({
         name: organization.name,
         slug: organization.slug,
@@ -95,7 +105,7 @@ function Details({ organization, href }: { organization: Props['organization']; 
     });
 
     return (
-        <Panel title={tc('console.details_45989de4')}>
+        <Panel title={consoleT('console.details_45989de4')}>
             <form
                 className="space-y-4"
                 onSubmit={(event) => {
@@ -104,7 +114,7 @@ function Details({ organization, href }: { organization: Props['organization']; 
                 }}
             >
                 <div className="grid gap-4 sm:grid-cols-2">
-                    <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
+                    <Field label={consoleT('console.name_dcd1d522')} error={form.errors.name}>
                         <Input
                             name="name"
                             value={form.data.name}
@@ -113,8 +123,10 @@ function Details({ organization, href }: { organization: Props['organization']; 
                     </Field>
 
                     <Field
-                        label={tc('console.url_handle_0b9f3241')}
-                        hint={tc('console.other_systems_may_be_using_this_changing_it__41e0f485')}
+                        label={consoleT('console.url_handle_0b9f3241')}
+                        hint={consoleT(
+                            'console.other_systems_may_be_using_this_changing_it_changes_the_41e0f485',
+                        )}
                         error={form.errors.slug}
                     >
                         <Input
@@ -129,11 +141,13 @@ function Details({ organization, href }: { organization: Props['organization']; 
                 <MetadataRows
                     rows={form.data.metadata}
                     onChange={(rows) => form.setData('metadata', rows)}
-                    hint={tc('console.anything_your_own_systems_need_to_keep_again_c911b38e')}
+                    hint={consoleT(
+                        'console.anything_your_own_systems_need_to_keep_against_this_org_c911b38e',
+                    )}
                 />
 
                 <Button type="submit" variant="primary" loading={form.processing}>
-                    {tc('console.save_changes_dd0ae7a5')}
+                    {consoleT('console.save_changes_dd0ae7a5')}
                 </Button>
             </form>
         </Panel>

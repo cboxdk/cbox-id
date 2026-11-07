@@ -25,6 +25,7 @@ final class SetEnvironmentAccessRequest extends FormRequest
     {
         return [
             'all' => ['required', 'boolean'],
+            'environment_access_version' => ['required', 'string', 'size:64'],
             'environmentIds' => ['array'],
             'environmentIds.*' => ['string'],
         ];

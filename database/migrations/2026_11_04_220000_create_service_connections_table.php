@@ -12,10 +12,10 @@ return new class extends Migration
     {
         Schema::create('service_connections', function (Blueprint $table): void {
             $table->string('id', 26)->primary();
-            $table->string('environment_id', 128);
-            $table->string('organization_id', 128);
-            $table->string('consumer_client_id', 128);
-            $table->string('service', 64);
+            $table->string('environment_id');
+            $table->string('organization_id');
+            $table->string('consumer_client_id');
+            $table->string('service');
             $table->string('service_client_id');
             $table->string('audience');
             $table->json('scopes');

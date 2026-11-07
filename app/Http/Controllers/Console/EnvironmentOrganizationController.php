@@ -31,11 +31,9 @@ use App\Http\Requests\Console\InviteOrganizationMemberRequest;
 use App\Http\Requests\Console\SaveOrganizationRequest;
 use App\Http\Requests\Console\StoreOrganizationRequest;
 use App\Platform\Actions\ActionRefused;
-use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Invitations\ValueObjects\SentInvitation;
-use App\Platform\Locale\ConsoleStrings;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
 use Cbox\Id\AccessControl\Models\Role;
@@ -78,7 +76,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
     public function index(Request $request): Response
     {
-        $this->assertEnvironmentAdmin();
+        abort_unless(app(EnvironmentAdminAuth::class)->canRead(), 403);
 
         // Soft-deleted tenants are gone from every list: `Deleted` refuses their members
         // at the request pipeline, so a row here would be one nothing behind it honours.
@@ -96,7 +94,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
         $page = $query->paginate(self::PER_PAGE)->withQueryString();
 
-        return $this->page('environment/organizations/index', ConsoleStrings::text(Vocabulary::ORGANIZATIONS), [
+        return $this->page('environment/organizations/index', __('console.organizations_2730183d'), [
             'help' => HelpProps::for(HelpTopic::Organizations),
             'organizations' => array_map(static fn (Organization $organization): array => [
                 'id' => $organization->id,
@@ -164,7 +162,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             'slug' => Str::slug($request->slug()),
             'metadata' => $request->metadata(),
         ], ['name' => 'name', 'slug' => 'slug', 'metadata' => 'metadata'], 'name', [
-            'slug_taken' => __('console.that_url_handle_is_already_used_by_another_o_f2791721'),
+            'slug_taken' => __('console.that_url_handle_is_already_used_by_another_organization_f2791721'),
         ]);
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.organization_updated_86eb8ecc'));
@@ -337,7 +335,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', __('console.invitation_sent_to_1294f712').$request->email().'.');
+        return back()->with('status', __('console.invitation_sent_to_part1_5b76ee7f', ['part1' => $request->email()]));
     }
 
     public function resendInvitation(string $invitation): RedirectResponse
@@ -354,7 +352,9 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
         $sent = $result->value;
 
-        return back()->with('status', __('console.invitation_sent_again_31ffca77').($sent instanceof SentInvitation ? ' to '.$sent->invitation->email : '').'.');
+        return back()->with('status', $sent instanceof SentInvitation
+            ? __('console.invitation_sent_again_to_part1_eefdfbca', ['part1' => $sent->invitation->email])
+            : __('console.invitation_sent_again_31ffca77'));
     }
 
     public function revokeInvitation(string $invitation): RedirectResponse
@@ -403,7 +403,7 @@ final readonly class EnvironmentOrganizationController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', __('console.domain_added_add_the_dns_txt_record_shown_be_6b181a34'));
+            : back()->with('status', __('console.domain_added_add_the_dns_txt_record_shown_below_then_ve_6b181a34'));
     }
 
     public function verifyDomain(string $domain): RedirectResponse

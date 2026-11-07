@@ -1,5 +1,5 @@
 import type { Translator } from '@/i18n';
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -29,15 +29,11 @@ function summary(flag: FlagRow, tc: Translator['t']): string {
     const parts: string[] = [];
 
     if (flag.organizationRules > 0) {
-        parts.push(
-            `${flag.organizationRules} ${flag.organizationRules === 1 ? tc('console.organization_af3a1bb3') : tc('console.organizations_f8a665a9')}`,
-        );
+        parts.push(tc('console.flag_organization_rules_count', { count: flag.organizationRules }));
     }
 
     if (flag.userRules > 0) {
-        parts.push(
-            `${flag.userRules} ${flag.userRules === 1 ? tc('console.user_04f8996d') : tc('console.users_7dfb4cf6')}`,
-        );
+        parts.push(tc('console.flag_user_rules_count', { count: flag.userRules }));
     }
 
     if (flag.rolloutPercentage !== null) {
@@ -48,18 +44,23 @@ function summary(flag: FlagRow, tc: Translator['t']): string {
 }
 
 export default function FeatureFlags({ help, flags, createHref }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <>
             <PageHeader
                 help={help}
-                description={tc('console.switches_your_apps_ask_about_for_one_person__e232d9a9')}
+                description={consoleT(
+                    'console.switches_your_apps_ask_about_for_one_person_in_one_orga_e232d9a9',
+                )}
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>
-                            <Icon name="plus" className="w-4 h-4" />
-                            {tc('console.new_flag_b3369217')}
+                            {consoleRich('console._part1_new_flag_85bcb848', {
+                                part1: <Icon name="plus" className="w-4 h-4" />,
+                            })}
                         </Link>
                     </Button>
                 }
@@ -76,20 +77,27 @@ export default function FeatureFlags({ help, flags, createHref }: Props) {
                         actions={
                             <Button asChild variant="primary">
                                 <Link href={createHref}>
-                                    <Icon name="plus" className="w-4 h-4" />
-                                    {tc('console.new_flag_b3369217')}
+                                    {consoleRich('console._part1_new_flag_85bcb848', {
+                                        part1: <Icon name="plus" className="w-4 h-4" />,
+                                    })}
                                 </Link>
                             </Button>
                         }
-                        title={tc('console.no_feature_flags_yet_ceaa8b06')}
+                        title={consoleT('console.no_feature_flags_yet_ceaa8b06')}
                         help={help}
-                        description={tc(
-                            'console.a_flag_lets_you_ship_a_feature_dark_and_turn_77bad22e',
+                        description={consoleT(
+                            'console.a_flag_lets_you_ship_a_feature_dark_and_turn_it_on_for_77bad22e',
                         )}
                         steps={[
-                            tc('console.create_a_flag_with_the_key_your_code_will_as_958496bd'),
-                            tc('console.turn_it_on_for_a_beta_organization_a_few_use_bea36395'),
-                            tc('console.give_your_app_the_feature_flags_scope_and_re_a6908f11'),
+                            consoleRuntimeText(
+                                'console.create_a_flag_with_the_key_your_code_will_ask_for_for_e_958496bd',
+                            ),
+                            consoleRuntimeText(
+                                'console.turn_it_on_for_a_beta_organization_a_few_users_or_a_per_bea36395',
+                            ),
+                            consoleRuntimeText(
+                                'console.give_your_app_the_feature_flags_scope_and_read_the_feat_a6908f11',
+                            ),
                         ]}
                     />
                 ) : (
@@ -115,19 +123,22 @@ export default function FeatureFlags({ help, flags, createHref }: Props) {
                                     </p>
                                 )}
                                 <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                                    <Badge>{summary(flag, tc)}</Badge>
+                                    <Badge>{summary(flag, consoleT)}</Badge>
                                     <Badge>
-                                        {tc('console.default_f12bc6ea')}
-                                        {flag.defaultValue
-                                            ? tc('console.on_b8d31e85')
-                                            : tc('console.off_b4dc66dd')}
+                                        {consoleRich('console.default_part1_a0a77763', {
+                                            part1: flag.defaultValue
+                                                ? consoleText('console.on_b8d31e85')
+                                                : consoleText('console.off_b4dc66dd'),
+                                        })}
                                     </Badge>
                                 </div>
                             </div>
                             {flag.enabled ? (
-                                <Badge tone="success">{tc('console.on_13001175')}</Badge>
+                                <Badge tone="success">{consoleT('console.on_13001175')}</Badge>
                             ) : (
-                                <Badge tone="warn">{tc('console.switched_off_183c899d')}</Badge>
+                                <Badge tone="warn">
+                                    {consoleT('console.switched_off_183c899d')}
+                                </Badge>
                             )}
                             <Icon
                                 name="chevron"

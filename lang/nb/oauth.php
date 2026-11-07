@@ -2,11 +2,9 @@
 
 declare(strict_types=1);
 
-// Norwegian Bokmål: the OAuth authorization pages (pages/oauth/*).
 return [
     'signed_in_as' => 'Logget inn som :account',
     'cancel_and_return' => 'Avbryt og gå tilbake til :client',
-
     'consent' => [
         'title' => 'Godkjenn',
         'heading' => 'Godkjenn :client',
@@ -18,16 +16,13 @@ return [
         'cancel' => 'Avbryt',
         'authorize' => 'Godkjenn',
         'redirect_notice' => 'Du blir sendt videre til :host etter godkjenningen.',
-        // A client that registered itself (RFC 7591, or a client ID metadata document).
         'self_registered_owner' => 'appen selv',
         'self_registered' => 'Denne appen har registrert seg selv. Ingen hos :account har gjennomgått den — fortsett bare hvis du selv startet denne påloggingen.',
         'published_by' => 'Beskrevet av :host — det eneste ved denne appen som er kontrollert.',
         'about_app' => 'Om denne appen',
-        // Management-plane scopes an agent acts with as the person.
         'critical' => 'Kritisk',
         'acts_as_you' => 'Alt den gjør som deg, er begrenset til det du selv har lov til, og blir ført i revisjonsloggen.',
         'critical_notice' => 'Kritiske handlinger venter fortsatt på din godkjenning på enheten din, hver gang.',
-
         'scopes' => [
             'openid' => 'Bekrefte identiteten din',
             'profile' => 'Navnet ditt',
@@ -38,7 +33,6 @@ return [
             'feature_flags' => 'Hvilke funksjoner som er slått på for deg',
         ],
     ],
-
     'failure' => [
         'title' => 'Godkjenningen mislyktes',
         'heading' => 'Godkjenningen mislyktes',
@@ -54,7 +48,6 @@ return [
         'step_up' => 'Denne applikasjonen krever en nyere eller sterkere innlogging. Start på nytt.',
         'no_workspace' => 'Denne innloggingen kobler en agent til et arbeidsområde på Cbox ID, og kontoen din er ikke med i teamet til noe arbeidsområde. Be en eier av arbeidsområdet om å invitere deg, eller koble agenten til miljøets egen adresse i stedet.',
     ],
-
     'organization' => [
         'title' => 'Velg en organisasjon',
         'heading' => 'Velg en organisasjon',
@@ -75,7 +68,6 @@ return [
             'viewer' => 'Leser',
         ],
     ],
-
     'create_organization' => [
         'title' => 'Opprett en organisasjon',
         'heading' => 'Opprett en organisasjon',
@@ -97,7 +89,7 @@ return [
         'next_note' => 'Du ser hvilken app som spør før noe blir koblet til.',
         'code_required' => 'Skriv inn koden som vises på enheten din.',
         'invalid' => 'Koden er ugyldig eller utløpt. Sjekk koden på enheten din og prøv igjen.',
-        'too_many' => 'For mange forsøk. Prøv igjen om :seconds sekunder.',
+        'too_many' => 'For mange forsøk. Ventetid før neste forsøk i sekunder: :seconds.',
         'link_expired' => 'Påloggingsforespørselen er utløpt eller allerede fullført. Skriv inn koden som vises på enheten din.',
         'consent_heading' => 'Logge inn på :client?',
         'consent_lead' => ':client på en annen enhet ber om å logge inn på kontoen din.',

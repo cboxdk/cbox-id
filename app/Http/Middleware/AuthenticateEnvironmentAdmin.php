@@ -81,6 +81,8 @@ final class AuthenticateEnvironmentAdmin
         }
 
         if ($this->auth->membership() !== null) {
+            abort_unless($request->isMethodSafe() || $this->auth->check(), 403);
+
             return SignedInPage::serve($request, $next);
         }
 

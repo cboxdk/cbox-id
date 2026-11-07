@@ -1,0 +1,120 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'layout' => [
+        'footer' => '© :year :brand · To automatyczne powiadomienie z Twojej platformy tożsamości.',
+    ],
+    'common' => [
+        'paste_link' => 'Lub wklej ten link do przeglądarki:',
+    ],
+    'roles' => [
+        'owner' => 'Właściciel',
+        'admin' => 'Administrator',
+        'developer' => 'Programista',
+        'member' => 'Członek',
+        'viewer' => 'Czytelnik',
+    ],
+    'magic_link' => [
+        'subject' => 'Twój link do logowania w :brand',
+        'heading' => 'Zaloguj się do :brand',
+        'body' => 'Kliknij przycisk poniżej, aby się zalogować. Link jest jednorazowy i wygasa za 15 minut. Jeśli to nie Twoja prośba, możesz zignorować tę wiadomość.',
+        'button' => 'Zaloguj się do :brand',
+    ],
+    'password_reset' => [
+        'subject' => 'Zresetuj swoje hasło :brand',
+        'heading' => 'Zresetuj swoje hasło',
+        'body' => 'Otrzymaliśmy prośbę o zresetowanie hasła do Twojego konta :brand. Kliknij przycisk poniżej, aby wybrać nowe hasło. Link jest jednorazowy i wygasa za 60 minut. Jeśli to nie Twoja prośba, możesz zignorować tę wiadomość. Hasło nie zostanie zmienione.',
+        'button' => 'Zresetuj hasło',
+    ],
+    'email_verification' => [
+        'subject' => 'Potwierdź swój adres e-mail w :brand',
+        'heading' => 'Potwierdź swój adres e-mail',
+        'body' => 'Witaj w :brand. Potwierdź, że ten adres e-mail należy do Ciebie, aby zabezpieczyć konto. Link jest jednorazowy i wygasa za 24 godziny.',
+        'button' => 'Potwierdź adres e-mail',
+        'not_you' => 'Jeśli nie utworzyłeś/aś konta :brand, możesz zignorować tę wiadomość – nic się nie stanie bez linku.',
+    ],
+    'admin_assigned_password' => [
+        'subject' => 'Hasło do Twojego konta :brand zostało zresetowane',
+        'heading' => 'Twoje hasło zostało zresetowane',
+        'body' => 'Administrator ustawił nowe hasło dla Twojego konta. Zaloguj się z nim poniżej.',
+        'temporary' => 'Od razu poprosimy Cię o wybranie własnego hasła.',
+        'expires' => 'To hasło przestaje działać po :date, dlatego zaloguj się przedtem.',
+        'not_expected' => 'Jeśli ta zmiana Cię zaskoczyła, skontaktuj się z administratorem. Wprowadziła ją osoba z dostępem do konsoli Twojej organizacji. Zmiana została zapisana w dzienniku audytu.',
+    ],
+    'invitation' => [
+        'subject' => ':inviter zaprasza Cię do organizacji :organization',
+        'heading' => 'Dołącz do organizacji :organization',
+        'invited' => ':inviter zaprasza Cię do organizacji :organization.',
+        'invited_as' => ':inviter zaprasza Cię do organizacji :organization z rolą :role.',
+        'accept_app' => 'Zaakceptuj zaproszenie, aby zalogować się do :app przy użyciu konta organizacji :organization.',
+        'accept' => 'Zaakceptuj, aby skonfigurować swoje konto i zalogować się.',
+        'button' => 'Przejrzyj zaproszenie',
+        'note' => 'Link otwiera stronę, na której możesz potwierdzić zaproszenie. Nic się nie stanie, dopóki tego nie zrobisz. Link wygasa za 7 dni. Jeśli nie oczekujesz tego zaproszenia, możesz je zignorować.',
+    ],
+    'organization_invite' => [
+        'subject' => ':inviter zaprasza Cię do zarządzania organizacją :organization w :brand',
+        'heading' => 'Pomóż zarządzać organizacją :organization w :brand',
+        'invited' => ':inviter zaprasza Cię do zarządzania organizacją :organization w :brand, konsoli jej dostawców tożsamości, środowisk, członków i rozliczeń. Zaakceptuj zaproszenie, aby ustawić hasło i się zalogować.',
+        'invited_as' => ':inviter zaprasza Cię do zarządzania organizacją :organization z rolą :role w :brand, konsoli jej dostawców tożsamości, środowisk, członków i rozliczeń. Zaakceptuj zaproszenie, aby ustawić hasło i się zalogować.',
+        'button' => 'Zaakceptuj zaproszenie',
+        'note' => 'Jeśli nie oczekujesz tego zaproszenia, możesz je zignorować. Nic się nie stanie, dopóki go nie zaakceptujesz.',
+    ],
+    'portal_link' => [
+        'subject' => 'Skonfiguruj :organization na :brand',
+        'heading' => 'Skonfiguruj organizację :organization',
+        'lead' => 'Zostałeś poproszony o skonfigurowanie następujących ustawień dla :organization w :brand. Nie potrzebujesz konta – poniższy przycisk wystarczy.',
+        'intents' => [
+            'sso' => 'Jednokrotne logowanie u Twojego dostawcy tożsamości',
+            'dsync' => 'Synchronizacja katalogu (SCIM)',
+            'domain_verification' => 'Weryfikacja Twoich domen poczty elektronicznej',
+            'log_streams' => 'Przesyłanie logów audytowych do Twojego SIEM',
+            'certificate_renewal' => 'Odnowienie certyfikatu podpisywania SAML',
+            'audit_logs' => 'Przegląd logów audytowych (tylko do odczytu)',
+        ],
+        'button' => 'Rozpocznij konfigurację',
+        'expires' => 'Link jest jednorazowy i pozostaje ważny do :date. Jeśli wygaśnie, poproś o nowy.',
+        'not_expected' => 'Jeśli nie oczekujesz tej wiadomości, możesz ją zignorować. Nic nie zostanie skonfigurowane, dopóki ktoś nie użyje linku.',
+    ],
+    'certificate_expiring' => [
+        'subject' => 'Logowanie jednokrotne przez :connection przestanie działać za :count dzień|Logowanie jednokrotne przez :connection przestanie działać za :count dni|Logowanie jednokrotne przez :connection przestanie działać za :count dni',
+        'subject_expired' => 'Jednokrotne logowanie przez :connection przestało działać',
+        'heading' => 'Twój certyfikat SAML wkrótce wygaśnie',
+        'heading_expired' => 'Twój certyfikat SAML wygasł',
+        'lead' => 'Certyfikat podpisujący połączenia :connection, które zapewnia jednokrotne logowanie dla organizacji :organization, wygasa :date. Po tej dacie nikt nie będzie mógł zalogować się przez to połączenie.',
+        'lead_expired' => 'Certyfikat podpisujący połączenia :connection, które zapewnia jednokrotne logowanie dla :organization, wygasł :date. Nikt nie może zalogować się przez to połączenie, dopóki certyfikat nie zostanie odnowiony.',
+        'what_to_do' => 'Poproś administratora Twojego dostawcy tożsamości o nowy certyfikat podpisujący i prześlij go w konsoli administracyjnej. Możesz też poprosić administratora o link do portalu administracyjnego i przesłać certyfikat tam.',
+        'why' => 'Otrzymujesz tę wiadomość, ponieważ jesteś właścicielem lub administratorem tej organizacji w :brand.',
+    ],
+    'one_time_code' => [
+        'label' => 'Twój kod',
+        'expires' => 'Kod wygasa za :count minutę i można go użyć tylko raz.|Kod wygasa za :count minuty i można go użyć tylko raz.|Kod wygasa za :count minut i można go użyć tylko raz.',
+        'never_share' => 'Nie udostępniaj tego nikomu – :brand nigdy nie poprosi o to telefonicznie, przez czat lub e-mail.',
+        'not_you_title' => 'Nie poprosiłeś o to?',
+        'sign_in' => [
+            'subject' => 'Twój kod logowania do :brand',
+            'heading' => 'Potwierdź swoją tożsamość',
+            'lead' => 'Wprowadź ten kod, aby zakończyć logowanie do :brand.',
+            'not_you' => 'Nie wpisuj kodu w żadnym miejscu i zignoruj tę wiadomość. Jeśli masz konto w :brand, zmień jego hasło. Osoba, która dotarła do tego kroku, może je znać.',
+        ],
+        'device' => [
+            'subject' => 'Twój kod :brand do zatwierdzenia urządzenia',
+            'heading' => 'Zatwierdź logowanie na innym urządzeniu',
+            'lead' => 'Wprowadź ten kod, aby zatwierdzić zalogowanie do :brand na innym urządzeniu, np. telewizorze lub narzędziu wiersza poleceń.',
+            'not_you' => 'Nie wpisuj kodu w żadnym miejscu. Ktoś może próbować nakłonić Cię do zatwierdzenia swojego urządzenia. Tak zaczyna się ten rodzaj ataku. Zignoruj tę wiadomość, a nic nie zostanie zatwierdzone.',
+        ],
+        'link' => [
+            'subject' => 'Twój kod :brand do powiązania metody logowania',
+            'heading' => 'Połącz metodę logowania',
+            'lead' => 'Wprowadź ten kod, aby powiązać nową metodę logowania z Twoim kontem :brand.',
+            'not_you' => 'Nie wpisuj kodu w żadnym miejscu. Ktoś może próbować powiązać swoją metodę logowania z Twoim kontem. Zignoruj tę wiadomość, a nic nie zostanie powiązane.',
+        ],
+        'verify' => [
+            'subject' => 'Twój kod weryfikacyjny dla :brand',
+            'heading' => 'Twój kod weryfikacyjny',
+            'lead' => 'Wprowadź ten kod w :brand, aby potwierdzić, że ten adres e-mail należy do Ciebie.',
+            'not_you' => 'Możesz pominąć tę wiadomość – nic się nie stanie bez kodu.',
+        ],
+    ],
+];

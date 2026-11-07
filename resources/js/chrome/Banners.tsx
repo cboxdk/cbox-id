@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import type { SharedProps } from '@/types';
@@ -9,8 +9,8 @@ import { Icon } from '@/ui';
  * it for the sign-in their customers use.
  */
 export function SandboxBanner() {
-    const { t: tc } = useTranslator();
-
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const { environment } = usePage<SharedProps>().props;
 
     if (!environment.sandbox) {
@@ -34,9 +34,10 @@ export function SandboxBanner() {
         >
             <Icon name="shield" className="w-3.5 h-3.5 shrink-0" />
             <span>
-                {tc('console.sandbox_environment_for_testing_only_this_is_a3021800')}
-                <strong>{tc('console.not_254bb97b')}</strong>
-                {tc('console.your_production_sign_in_and_no_real_emails_a_aeb1af1b')}
+                {consoleRich(
+                    'console.sandbox_environment_for_testing_only_this_is_part1_your_4efdd306',
+                    { part1: <strong>{consoleT('console.not_254bb97b')}</strong> },
+                )}
             </span>
         </div>
     );
@@ -51,8 +52,9 @@ export function SandboxBanner() {
  * the one click that resolves it.
  */
 export function EmailConfirmationBanner() {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const { auth } = usePage<SharedProps>().props;
     const [sending, setSending] = useState(false);
     const user = auth.user;
@@ -75,9 +77,10 @@ export function EmailConfirmationBanner() {
         >
             <Icon name="mail" className="w-3.5 h-3.5 shrink-0" />
             <span>
-                {tc('console.confirm_your_email_address_b835b7d6')}
-                {user.email ? ` (${user.email})` : ''}
-                {tc('console.to_make_changes_in_the_console_a92ad729')}
+                {consoleRich(
+                    'console.confirm_your_email_address_part1_to_make_changes_in_the_7b9d8809',
+                    { part1: user.email ? ` (${user.email})` : '' },
+                )}
             </span>
             {confirmUrl !== null ? (
                 <button
@@ -97,12 +100,12 @@ export function EmailConfirmationBanner() {
                     }
                 >
                     {sending
-                        ? tc('console.sending_b8ed5279')
-                        : tc('console.send_confirmation_link_356b897b')}
+                        ? consoleText('console.sending_b8ed5279')
+                        : consoleText('console.send_confirmation_link_356b897b')}
                 </button>
             ) : accountUrl !== null ? (
                 <a className="underline underline-offset-2" href={accountUrl}>
-                    {tc('console.send_a_link_from_your_account_31162742')}
+                    {consoleT('console.send_a_link_from_your_account_31162742')}
                 </a>
             ) : null}
         </div>
@@ -123,8 +126,8 @@ export function EmailConfirmationBanner() {
  * nothing at all.
  */
 export function ImpersonationBanner({ exitUrl }: { exitUrl: string }) {
-    const { t: tc } = useTranslator();
-
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const { impersonation } = usePage<SharedProps>().props;
     const granted = impersonation?.expiresInSeconds ?? 0;
 
@@ -179,21 +182,37 @@ export function ImpersonationBanner({ exitUrl }: { exitUrl: string }) {
             }}
         >
             <span>
-                <span aria-hidden="true">⚠</span>
-                {tc('console.you_are_impersonating_db99f334')}{' '}
-                {impersonation.email ?? impersonation.subject}
-                {tc('console.for_support_everything_you_do_is_logged_1cdff084')}
-                {impersonation.reason !== null && (
-                    <span style={{ fontWeight: 400, opacity: 0.9 }}>
-                        {' '}
-                        {tc('console.reason_e93057d6')}
-                        {impersonation.reason})
-                    </span>
-                )}{' '}
-                <span style={{ fontWeight: 400, opacity: 0.9, fontVariantNumeric: 'tabular-nums' }}>
-                    — {minutes}:{String(seconds).padStart(2, '0')}
-                    {tc('console.left_bce319cf')}
-                </span>
+                {consoleRich(
+                    'console._part1_you_are_impersonating_part2_part3_for_support_ev_aaad4d39',
+                    {
+                        part1: <span aria-hidden="true">⚠</span>,
+                        part2: ' ',
+                        part3: impersonation.email ?? impersonation.subject,
+                        part4: impersonation.reason !== null && (
+                            <span style={{ fontWeight: 400, opacity: 0.9 }}>
+                                {consoleRich('console._part1_reason_part2_895e8305', {
+                                    part1: ' ',
+                                    part2: impersonation.reason,
+                                })}
+                            </span>
+                        ),
+                        part5: ' ',
+                        part6: (
+                            <span
+                                style={{
+                                    fontWeight: 400,
+                                    opacity: 0.9,
+                                    fontVariantNumeric: 'tabular-nums',
+                                }}
+                            >
+                                {consoleRich('console._part1_part2_left_ecae8383', {
+                                    part1: minutes,
+                                    part2: String(seconds).padStart(2, '0'),
+                                })}
+                            </span>
+                        ),
+                    },
+                )}
             </span>
 
             <button
@@ -209,7 +228,7 @@ export function ImpersonationBanner({ exitUrl }: { exitUrl: string }) {
                     cursor: 'pointer',
                 }}
             >
-                {tc('console.exit_impersonation_357bef8f')}
+                {consoleT('console.exit_impersonation_357bef8f')}
             </button>
         </div>
     );

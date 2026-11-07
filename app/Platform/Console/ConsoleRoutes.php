@@ -125,6 +125,7 @@ final class ConsoleRoutes
             // be a door, and it should not be a differently-shaped door either.
             'multi.tenant',
             'env.admin',
+            'locale.console',
             'console.feature:'.$feature,
         ])->prefix('admin')->group(function () use ($environmentUri, $uri, $component, $name): void {
             self::get($environmentUri ?? $uri, $component)->name('environment.'.$name);
@@ -165,6 +166,7 @@ final class ConsoleRoutes
             // guard's allowlist and nothing else stops them.
             EnforceImpersonationWindow::class,
             'platform.auth',
+            'locale.console',
             // The same narrowing the host's own console group carries: on a customer's
             // environment host a module page outside the admin portal is not there. Read
             // from the rail's own areas, so a module never has to know that console exists.
@@ -206,6 +208,7 @@ final class ConsoleRoutes
             'plane:environment',
             'multi.tenant',
             'env.admin',
+            'locale.console',
             'console.feature:'.$feature,
         ])->prefix('admin')->group(function () use ($verb, $environmentUri, $uri, $action, $name): void {
             self::verb($verb, $environmentUri ?? $uri, $action)->name('environment.'.$name);
@@ -244,6 +247,7 @@ final class ConsoleRoutes
             'plane:console',
             EnforceImpersonationWindow::class,
             'platform.auth',
+            'locale.console',
             'console.customer',
             'console.root',
             'console.feature:'.$feature,

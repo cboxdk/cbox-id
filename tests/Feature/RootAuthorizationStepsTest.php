@@ -39,6 +39,7 @@ beforeEach(function (): void {
     Environment::query()->create(['name' => 'Acme', 'slug' => 'acme', 'status' => 'active', 'is_default' => false]);
     $root = Environment::query()->create(['name' => 'Platform', 'slug' => 'platform', 'status' => 'active']);
     $root->makeDefault();
+    syncNativeProductCatalog();
 });
 
 /**

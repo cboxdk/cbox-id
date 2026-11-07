@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Sso;
 
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Sso\ConnectionCertificates;
 use Cbox\Id\Federation\Enums\ConnectionType;
@@ -27,7 +28,7 @@ final class SsoCertificateFields
         $connection = $changing ? SsoFields::changeable($context) : SsoFields::connection($context);
 
         if ($connection->type !== ConnectionType::Saml) {
-            throw ActionRefused::because('not_saml', 'Only a SAML connection has signing certificates to renew.');
+            throw ActionRefused::because('not_saml', new ActionMessage('console.only_a_saml_connection_has_signing_certificates_to_rene_833f5253'));
         }
 
         return $connection;

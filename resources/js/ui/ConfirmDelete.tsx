@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { usePage } from '@inertiajs/react';
 import { type ReactNode, useId, useState } from 'react';
 import type { SharedProps } from '@/types';
@@ -42,7 +42,7 @@ export interface ConfirmDeleteProps {
     onConfirm: () => void;
     /**
      * The dialog's own words, for a page drawn in the visitor's language — the hosted Admin
-     * Portal. Each defaults to the console's English, so a console caller passes none.
+     * Portal. Each defaults to the selected language; a caller may supply a more specific label.
      */
     cancelLabel?: string;
     /** The field's label; defaults to "Type <name> to confirm". */
@@ -88,17 +88,16 @@ function Confirmation({
     environment,
     confirming = false,
     onConfirm,
-    cancelLabel: suppliedCancellabel,
+    cancelLabel: suppliedCancelLabel,
     typeToConfirmLabel,
     hint,
 }: Omit<ConfirmDeleteProps, 'open'>) {
-    const { t: tc } = useUiTranslator();
-    const verb = suppliedVerb ?? tc('console.delete_e2d0a549', 'Delete');
+    const { t: consoleFinalText } = useConsoleTranslator();
+    const verb = suppliedVerb ?? consoleFinalText('console.delete_e2d0a549');
     const consequence =
-        suppliedConsequence ??
-        tc('console.this_cannot_be_undone_b545dd16', 'This cannot be undone.');
-    const cancelLabel = suppliedCancellabel ?? tc('console.cancel_19766ed6', 'Cancel');
-
+        suppliedConsequence ?? consoleFinalText('console.this_cannot_be_undone_b545dd16');
+    const cancelLabel = suppliedCancelLabel ?? consoleFinalText('console.cancel_19766ed6');
+    const { rich: consoleRich } = useConsoleTranslator();
     const shared = usePage<SharedProps>().props.environment;
     const realm = environment === undefined ? shared.name : environment;
 
@@ -125,7 +124,13 @@ function Confirmation({
             open
             onOpenChange={onOpenChange}
             size="sm"
-            title={title ?? `${verb} ${name}?`}
+            title={
+                title ??
+                consoleFinalText('console.confirm_action_for', {
+                    action: actionLabel ?? verb,
+                    name,
+                })
+            }
             description={consequence}
             footer={
                 <>
@@ -150,8 +155,9 @@ function Confirmation({
                         color: 'var(--muted-foreground)',
                     }}
                 >
-                    {tc('console.in_environment_d2d5eab3', 'In environment ')}
-                    <strong style={{ color: 'var(--foreground)' }}>{realm}</strong>.
+                    {consoleRich('console.in_environment_part1_5435b6f3', {
+                        part1: <strong style={{ color: 'var(--foreground)' }}>{realm}</strong>,
+                    })}
                 </p>
             )}
 
@@ -160,18 +166,17 @@ function Confirmation({
                 label={
                     typeToConfirmLabel ?? (
                         <>
-                            {tc('console.type_068e513f', 'Type ')}
-                            <span className="mono">{name}</span>
-                            {tc('console.to_confirm_faa2486f', ' to confirm')}
+                            {consoleRich('console.type_part1_to_confirm_25ad7324', {
+                                part1: <span className="mono">{name}</span>,
+                            })}
                         </>
                     )
                 }
                 hint={
                     hint ??
-                    tc(
-                        'console.exactly_as_shown_action_stays_disabled_until_4b51c65a',
-                        'Exactly as shown — :action stays disabled until it matches.',
-                        { action: actionLabel ?? verb },
+                    consoleFinalText(
+                        'console.exactly_as_shown_part1_stays_disabled_until_it_matches_fa10ae07',
+                        { part1: actionLabel ?? verb },
                     )
                 }
             >

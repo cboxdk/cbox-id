@@ -12,9 +12,8 @@ use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\StoreHookRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
-use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
+use App\Platform\Locale\ConsoleLabels;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\ExternalActions\Contracts\ExternalActions;
 use Cbox\Id\ExternalActions\Enums\ActionEndpointStatus;
@@ -96,13 +95,13 @@ final readonly class HookController extends ConsoleController
         // enumerate the environment's other tenants.
         $owners = $this->scope->organizationNames($page->getCollection()->pluck('organization_id'));
 
-        return $this->page('console/hooks/index', ConsoleStrings::text(Vocabulary::HOOKS), [
+        return $this->page('console/hooks/index', __('console.hooks_d412a062'), [
             'help' => HelpProps::for(HelpTopic::InlineHooks),
             'hooks' => array_map(fn (ExternalActionEndpoint $endpoint): array => [
                 'id' => $endpoint->id,
                 'url' => $endpoint->url,
-                'point' => $endpoint->hook_point->label(),
-                'pointDescription' => $endpoint->hook_point->description(),
+                'point' => ConsoleLabels::navigation($endpoint->hook_point->label()),
+                'pointDescription' => ConsoleLabels::navigation($endpoint->hook_point->description()),
                 'owner' => $endpoint->organization_id !== null
                     ? ($owners[$endpoint->organization_id] ?? $endpoint->organization_id)
                     : null,
@@ -132,8 +131,8 @@ final readonly class HookController extends ConsoleController
         return $this->page('console/hooks/create', __('console.new_hook_8279aa8b'), [
             'points' => array_map(static fn (HookPoint $point): array => [
                 'value' => $point->value,
-                'label' => $point->label(),
-                'description' => $point->description(),
+                'label' => ConsoleLabels::navigation($point->label()),
+                'description' => ConsoleLabels::navigation($point->description()),
             ], HookPoint::cases()),
             /*
              * Whether registering an endpoint for the WHOLE environment is even on offer.
@@ -224,8 +223,8 @@ final readonly class HookController extends ConsoleController
             'hook' => [
                 'id' => $endpoint->id,
                 'url' => $endpoint->url,
-                'point' => $endpoint->hook_point->label(),
-                'pointDescription' => $endpoint->hook_point->description(),
+                'point' => ConsoleLabels::navigation($endpoint->hook_point->label()),
+                'pointDescription' => ConsoleLabels::navigation($endpoint->hook_point->description()),
                 'owner' => is_string($owner) ? $owner : null,
                 'active' => $endpoint->status === ActionEndpointStatus::Active,
             ],
@@ -261,9 +260,7 @@ final readonly class HookController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', $activate
-            ? __('console.endpoint_activated_664ccd32')
-            : __('console.endpoint_paused_it_will_stop_being_called_at_f3df6248'));
+        return back()->with('status', $activate ? __('console.endpoint_activated_664ccd32') : __('console.endpoint_paused_it_will_stop_being_called_at_the_hook_p_f3df6248'));
     }
 
     public function destroy(string $hook): RedirectResponse

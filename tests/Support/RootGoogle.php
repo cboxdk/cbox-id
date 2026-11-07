@@ -144,7 +144,13 @@ final class RootGoogle
             $start = test()->get((string) $start->headers->get('Location'));
         }
 
-        FederationBrowser::carryFlowCookie($start);
+        // Carry the host-only browser binding issued by the real redirect.
+        foreach ($start->headers->getCookies() as $cookie) {
+            if (str_starts_with($cookie->getName(), '__Host-cbox_fed_')) {
+                test()->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
+            }
+        }
+
         $authorize = (string) $start->headers->get('Location');
         parse_str((string) parse_url($authorize, PHP_URL_QUERY), $query);
 

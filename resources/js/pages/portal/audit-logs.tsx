@@ -51,7 +51,7 @@ export default function PortalAuditLogs({
     finishHref,
     homeHref,
 }: Props) {
-    const { t } = useTranslator();
+    const { t, locale } = useTranslator();
     const [draft, setDraft] = useState<Filters>(filters);
     const finish = useForm({});
     const filtered = Object.values(filters).some((value) => value !== '');
@@ -94,7 +94,7 @@ export default function PortalAuditLogs({
                 }
             />
             <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
-                {t('portal.audit_logs.export_note', { limit: exportLimit.toLocaleString() })}
+                {t('portal.audit_logs.export_note', { limit: exportLimit.toLocaleString(locale) })}
             </p>
 
             <form onSubmit={apply} className="mt-6 grid gap-3 sm:grid-cols-5 items-end">

@@ -6,6 +6,7 @@ namespace App\Actions\Directories;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -74,7 +75,7 @@ final readonly class ReplaceDirectoryCredentials implements Action
         $provider = $directory->provider;
 
         if (! $provider->isPull()) {
-            throw ActionRefused::because('not_pull', 'A SCIM directory has no provider credentials; rotate its bearer token instead.');
+            throw ActionRefused::because('not_pull', new ActionMessage('console.a_scim_directory_has_no_provider_credentials_rotate_its_8f4770c7'));
         }
 
         if ($provider->isHris()) {
@@ -83,7 +84,7 @@ final readonly class ReplaceDirectoryCredentials implements Action
             $credentials = ConnectPullDirectory::credentialsFor($provider, $context->array('credentials'));
 
             if (! $this->connectors->has($provider) || ! $this->connectors->for($provider)->verify($credentials)) {
-                throw ActionRefused::because('credentials_rejected', 'Could not connect to '.$provider->label().' — check the credentials and admin consent.', 'credentials');
+                throw ActionRefused::because('credentials_rejected', new ActionMessage('console.could_not_connect_to_part1_check_the_credentials_and_ad_a9882761', ['part1' => (string) ($provider->label())]), 'credentials');
             }
         }
 

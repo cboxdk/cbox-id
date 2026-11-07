@@ -94,7 +94,7 @@ void createInertiaApp<SharedProps>({
 
     setup({ el, App, props }) {
         const app = (
-            <AppErrorBoundary>
+            <AppErrorBoundary i18n={(props.initialPage.props as unknown as SharedProps).i18n}>
                 <App {...props} />
             </AppErrorBoundary>
         );

@@ -58,6 +58,8 @@ function vocabularySources(): array
         }
     }
 
+    // Translated console text lives here now; inspecting only its call sites
+    // would miss the strings visitors actually read.
     $php = [base_path('app/Providers/ConsoleServiceProvider.php'), base_path('lang/en/console.php')];
 
     foreach ([
@@ -129,6 +131,9 @@ const VOCABULARY_ALLOWED = [
     // Microsoft's own name for the field somebody copies out of the Entra portal. Renaming
     // it would send them looking for a value that does not exist under our name.
     ['resources/js/pages/console/directories/create.tsx', 'Tenant ID', 'Entra calls it that'],
+    ['lang/en/console.php', 'Tenant ID', 'The translated Entra field keeps Microsoft’s name'],
+    ['lang/en/console.php', 'Entra tenant ID', 'The translated setup instruction names the same Microsoft field'],
+    ['lang/en/console.php', '{tenant}', 'Workday requires this literal placeholder in its report endpoint path'],
     ['app/Http/Requests/Console/ConnectDirectoryRequest.php', 'Entra tenant ID', 'Entra calls it that'],
     ['lang/en/console.php', 'Entra tenant ID', 'Entra calls it that'],
     ['lang/en/console.php', 'Tenant ID', 'Entra calls it that'],
@@ -179,6 +184,7 @@ it('reads copy and not code', function (): void {
     $copy = UiCopy::fromTsx(<<<'TSX'
         import { tenant } from '@/tenants';
         // The tenant rail was retired here.
+        const note = () => t('console.description');
         export function Page({ customer }: { customer: Customer }) {
             const key = 'customer';
             return (
@@ -191,7 +197,8 @@ it('reads copy and not code', function (): void {
 
     expect($copy)->toContain('Every organization', 'Owned by … today', 'Your team')
         ->and(implode(' ', $copy))->not->toContain('tenant')
-        ->and(implode(' ', $copy))->not->toContain('customer');
+        ->and(implode(' ', $copy))->not->toContain('customer')
+        ->and(implode(' ', $copy))->not->toContain('Page');
 
     expect(UiCopy::fromPhp("<?php\n// Tenant plane history.\n\$route = 'platform.customers';\nreturn \$this->page('x', 'Workspaces');"))
         ->toBe(['Workspaces']);

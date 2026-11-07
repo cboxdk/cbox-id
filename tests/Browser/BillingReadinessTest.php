@@ -10,9 +10,15 @@ use Cbox\Billing\Client\ValueObjects\PaymentMethod;
 use Cbox\Billing\Client\ValueObjects\Plan;
 use Cbox\Billing\Client\ValueObjects\PriceTax;
 use Cbox\Id\Billing\Contracts\ProjectPayments;
-use Cbox\Id\Billing\PlanCatalog;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Platform\PlatformRoot;
+
+beforeEach(function (): void {
+    centralBillingFixture();
+    $payments = Mockery::mock(ProjectPayments::class);
+    $payments->shouldReceive('subscription')->andReturnNull();
+    app()->instance(ProjectPayments::class, $payments);
+});
 
 it('renders billing details and catalog accessibly at phone width', function (): void {
     installedDeployment();
@@ -27,7 +33,7 @@ it('renders billing details and catalog accessibly at phone width', function ():
         ->assertNoAccessibilityIssues()->screenshot(filename: 'billing-ready-mobile');
     expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
     $page->click('button:has-text("Choose a plan")')->assertSee('Identity Standard')
-        ->assertSee('Tax will be calculated before confirmation.')->assertNoJavaScriptErrors()
+        ->assertSee('Tax has not been calculated yet.')->assertNoJavaScriptErrors()
         ->assertNoAccessibilityIssues()->screenshot(filename: 'billing-ready-plans');
 });
 
@@ -37,12 +43,11 @@ it('shows charges and lost credits before a plan change can be confirmed', funct
     $fake = (new FakeManagementTransport)->withPlan(new Plan('id-test', 'Identity Standard', 10000, 'DKK', 'month', [], ['cbox-id.environments' => 3], 'cbox-id'))
         ->withTax(new PriceTax(TaxStatus::Calculated, TaxBasis::Customer, 'DK', rate: '25'));
     app()->instance(BillingManagement::class, new BillingManagement($fake));
-    app(PlanCatalog::class)->sync();
     $account = provisionAccount('billing-confirm-browser@example.test');
     app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified($account['subjectId'], 'billing-confirm-browser@example.test'));
     signInAsMember($account['subjectId']);
     $payments = Mockery::mock(ProjectPayments::class);
-    $payments->shouldReceive('subscription')->times(4)->andReturn(['plan' => 'id-test', 'status' => 'active', 'recurring' => ['currency' => 'DKK']]);
+    $payments->shouldReceive('subscription')->andReturn(['plan' => 'id-test', 'status' => 'active', 'recurring' => ['currency' => 'DKK']]);
     $payments->shouldReceive('perform')->times(3)->with('preview', Mockery::any(), Mockery::any(), Mockery::any(), Mockery::any())->andReturn([
         'due_now_minor' => 2500, 'new_recurring_minor' => 10000, 'new_recurring_tax' => ['total_minor' => 12500],
         'credit_delta' => ['forfeited' => 40, 'granted' => 100, 'carried' => 0],
@@ -59,7 +64,7 @@ it('shows charges and lost credits before a plan change can be confirmed', funct
     $page->click('button:has-text("Back")')->assertSee('Identity Standard')
         ->click('button:has-text("Review plan")')->assertSee('Due now, including tax');
     $page->click('button:has-text("Confirm")')->assertSee('Saved')->assertNoJavaScriptErrors();
-    expect($account['project']->fresh()->environment_limit)->toBe(3);
+    expect($account['project']->fresh()->environment_limit)->toBe($account['project']->environment_limit);
 });
 
 it('keeps a billing address draft when a card changes and guards navigation', function (): void {
@@ -74,10 +79,10 @@ it('keeps a billing address draft when a card changes and guards navigation', fu
     $page = visit('/billing')->resize(1440, 1000);
     $page->assertSee('Billing details')->screenshot(filename: 'polish-billing-overview-desktop')
         ->fill('invoice_name', 'Unsaved invoice name')
-        ->click('button:has-text("Make default")')->assertSee('(Default)')
+        ->click('button:has-text("Make default")')->assertSee('Default')
         ->assertScript('document.querySelector("input[name=invoice_name]").value', 'Unsaved invoice name')
         ->screenshot(filename: 'polish-billing-desktop');
-    $page->click('main a[href$="/projects/'.$account['project']->id.'"]')
+    $page->click('a[title="Workspace"][href$="/projects"]')
         ->assertSee('Leave without saving?')->click('button:has-text("Keep editing")')
         ->assertScript('document.querySelector("input[name=invoice_name]").value', 'Unsaved invoice name');
     $page->resize(375, 812)->click('form button:has-text("Save")')

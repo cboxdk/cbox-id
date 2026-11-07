@@ -7,6 +7,7 @@ namespace App\Actions\Members;
 use App\Actions\Organizations\OrganizationFields;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -72,7 +73,7 @@ final readonly class AddMember implements Action
         $refusal = OrganizationAccess::refusalPhrase($organization->status);
 
         if ($refusal !== null) {
-            throw new ActionRefused('organization_inactive', 'That organization has been '.$refusal.' and cannot take new members.', 409, 'organization_id');
+            throw new ActionRefused('organization_inactive', new ActionMessage($refusal === 'suspended' ? 'console.that_organization_has_been_suspended_and_cannot_take_ne_0504f283' : 'console.that_organization_has_been_deleted_and_cannot_take_new_52858567'), 409, 'organization_id');
         }
 
         $role = MembershipRole::tryFrom($context->string('role')) ?? MembershipRole::Member;
@@ -81,7 +82,9 @@ final readonly class AddMember implements Action
         $existing = $this->memberships->of($organization->id, $userId);
 
         if ($existing !== null && $existing->role !== $role) {
-            throw new ActionRefused('already_member', 'That user is already a member, as '.$existing->role->value.'. Change their tier with PATCH.', 409, 'user_id');
+            throw new ActionRefused('already_member', new ActionMessage('console.that_user_is_already_a_member_as_part1_change_their_tie_1632ba60', ['part1' => new ActionMessage(match ($existing->role) {
+                MembershipRole::Owner => 'console.owner_4c102969', MembershipRole::Admin => 'console.admin_8c6976e5', MembershipRole::Developer => 'console.developer_88fa0d75', MembershipRole::Member => 'console.member_e31ab643', MembershipRole::Viewer => 'console.viewer_d35ca505',
+            })]), 409, 'user_id');
         }
 
         $membership = $existing ?? $this->memberships->add($organization->id, $userId, $role);
@@ -107,7 +110,7 @@ final readonly class AddMember implements Action
         if ($id !== null) {
             return User::query()->whereKey($id)->exists()
                 ? $id
-                : throw ActionRefused::because('user_not_found', 'No user with that user_id exists in this environment.', 'user_id');
+                : throw ActionRefused::because('user_not_found', new ActionMessage('console.no_user_with_that_user_id_exists_in_this_environment_2d0b29cc'), 'user_id');
         }
 
         $email = $context->nullableString('email');
@@ -120,6 +123,6 @@ final readonly class AddMember implements Action
 
         return $user !== null
             ? $user->id
-            : throw ActionRefused::because('user_not_found', 'No user with that email in this environment. Create the user first.', 'email');
+            : throw ActionRefused::because('user_not_found', new ActionMessage('console.no_user_with_that_email_in_this_environment_create_the_c8a9a675'), 'email');
     }
 }

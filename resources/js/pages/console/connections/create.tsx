@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { useEffect } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -34,8 +35,9 @@ export default function CreateConnection({
     storeHref,
     importHref,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     // The importer's answer, on the flash channel: it is the result of one action and it
     // fills the form rather than describing the page.
     const imported = usePage().flash.metadata;
@@ -80,20 +82,22 @@ export default function CreateConnection({
 
     return (
         <>
-            <Breadcrumb href={indexHref} label={tc('console.enterprise_sso_0f8d7e8e')} />
+            <Breadcrumb href={indexHref} label={consoleT('console.enterprise_sso_0f8d7e8e')} />
 
-            <h1 className="cbx-page-title mt-2">{tc('console.new_connection_729bceee')}</h1>
+            <h1 className="cbx-page-title mt-2">{consoleT('console.new_connection_729bceee')}</h1>
             <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                {tc('console.point_cbox_id_at_the_identity_provider_your__f4f844a5')}
+                {consoleT(
+                    'console.point_cbox_id_at_the_identity_provider_your_company_alr_f4f844a5',
+                )}
             </p>
 
             {!entitled ? (
                 <div className="card mt-6">
                     <EmptyState
                         icon="connections"
-                        title={tc('console.single_sign_on_is_an_enterprise_feature_26381303')}
-                        description={tc(
-                            'console.contact_your_account_team_to_enable_it_for_t_c4ba4d29',
+                        title={consoleT('console.single_sign_on_is_an_enterprise_feature_26381303')}
+                        description={consoleT(
+                            'console.contact_your_account_team_to_enable_it_for_this_organiz_c4ba4d29',
                         )}
                     />
                 </div>
@@ -113,16 +117,16 @@ export default function CreateConnection({
                                     picker={organization}
                                     error={form.errors.organization}
                                     onChange={(id) => form.setData('organization', id)}
-                                    hint={tc(
-                                        'console.whose_people_sign_in_through_it_its_domains__9c461a3e',
+                                    hint={consoleT(
+                                        'console.whose_people_sign_in_through_it_its_domains_and_admin_p_9c461a3e',
                                     )}
                                 />
                             </div>
                         )}
 
                         <Field
-                            label={tc('console.name_dcd1d522')}
-                            hint={tc(
+                            label={consoleT('console.name_dcd1d522')}
+                            hint={consoleT(
                                 'console.what_your_team_will_see_on_the_sign_in_page_0d444954',
                             )}
                             error={form.errors.name}
@@ -137,21 +141,21 @@ export default function CreateConnection({
 
                         <div className="mt-5">
                             <RadioGroup
-                                label={tc('console.protocol_cf088334')}
+                                label={consoleT('console.protocol_cf088334')}
                                 value={form.data.type}
                                 onValueChange={(type) => form.setData('type', type)}
                                 options={[
                                     {
                                         value: 'saml',
-                                        label: 'SAML 2.0',
-                                        hint: tc(
+                                        label: consoleText('console.saml_2_0_48634c26'),
+                                        hint: consoleText(
                                             'console.entra_id_okta_adfs_most_enterprise_idps_728a6133',
                                         ),
                                     },
                                     {
                                         value: 'oidc',
-                                        label: tc('console.openid_connect_50a8a027'),
-                                        hint: tc(
+                                        label: consoleText('console.openid_connect_50a8a027'),
+                                        hint: consoleText(
                                             'console.google_workspace_auth0_anything_oidc_native_adb52125',
                                         ),
                                     },
@@ -166,11 +170,11 @@ export default function CreateConnection({
                                     onCheckedChange={(checked) =>
                                         form.setData('environmentWide', checked)
                                     }
-                                    label={tc(
-                                        'console.owned_by_this_environment_rather_than_by_an__60be3a32',
+                                    label={consoleT(
+                                        'console.owned_by_this_environment_rather_than_by_an_organizatio_60be3a32',
                                     )}
-                                    hint={tc(
-                                        'console.for_an_environment_that_does_not_use_organiz_c25b56bc',
+                                    hint={consoleT(
+                                        'console.for_an_environment_that_does_not_use_organizations_it_s_c25b56bc',
                                     )}
                                 />
                             </div>
@@ -179,13 +183,13 @@ export default function CreateConnection({
 
                     {saml && (
                         <Panel
-                            title={tc('console.import_from_metadata_a962413a')}
-                            description={tc(
-                                'console.paste_the_provider_s_metadata_xml_or_its_met_70d6c8b8',
+                            title={consoleT('console.import_from_metadata_a962413a')}
+                            description={consoleT(
+                                'console.paste_the_provider_s_metadata_xml_or_its_metadata_url_a_70d6c8b8',
                             )}
                         >
                             <Field
-                                label={tc('console.metadata_9eddf573')}
+                                label={consoleT('console.metadata_9eddf573')}
                                 error={metadata.errors.metadata}
                             >
                                 <Textarea
@@ -207,16 +211,16 @@ export default function CreateConnection({
                                 loading={metadata.processing}
                                 onClick={() => metadata.post(importHref, { preserveScroll: true })}
                             >
-                                {tc('console.import_2cff9baa')}
+                                {consoleT('console.import_2cff9baa')}
                             </Button>
                         </Panel>
                     )}
 
                     {saml ? (
-                        <Panel title={tc('console.saml_configuration_e4e7d0f2')}>
+                        <Panel title={consoleT('console.saml_configuration_e4e7d0f2')}>
                             <div className="space-y-4">
                                 <Field
-                                    label={tc('console.idp_entity_id_81723d4d')}
+                                    label={consoleT('console.idp_entity_id_81723d4d')}
                                     error={form.errors.idp_entity_id}
                                 >
                                     <Input
@@ -231,7 +235,7 @@ export default function CreateConnection({
                                 </Field>
 
                                 <Field
-                                    label={tc('console.idp_sign_on_url_20143c91')}
+                                    label={consoleT('console.idp_sign_on_url_20143c91')}
                                     error={form.errors.idp_sso_url}
                                 >
                                     <Input
@@ -247,8 +251,8 @@ export default function CreateConnection({
                                 </Field>
 
                                 <Field
-                                    label={tc('console.idp_signing_certificate_c84000cd')}
-                                    hint={tc(
+                                    label={consoleT('console.idp_signing_certificate_c84000cd')}
+                                    hint={consoleT(
                                         'console.the_x_509_certificate_pem_or_base64_06293319',
                                     )}
                                     error={form.errors.idp_x509cert}
@@ -266,7 +270,7 @@ export default function CreateConnection({
                                 </Field>
 
                                 <Field
-                                    label={tc('console.service_provider_entity_id_ab95ad33')}
+                                    label={consoleT('console.service_provider_entity_id_ab95ad33')}
                                     error={form.errors.sp_entity_id}
                                 >
                                     <Input
@@ -281,9 +285,11 @@ export default function CreateConnection({
                                 </Field>
 
                                 <Field
-                                    label={tc('console.assertion_consumer_service_url_1810c53d')}
-                                    hint={tc(
-                                        'console.where_the_provider_posts_its_assertion_give__5b098f34',
+                                    label={consoleT(
+                                        'console.assertion_consumer_service_url_1810c53d',
+                                    )}
+                                    hint={consoleT(
+                                        'console.where_the_provider_posts_its_assertion_give_this_to_who_5b098f34',
                                     )}
                                     error={form.errors.sp_acs_url}
                                 >
@@ -302,14 +308,14 @@ export default function CreateConnection({
                         </Panel>
                     ) : (
                         <Panel
-                            title={tc('console.openid_connect_configuration_de16da78')}
-                            description={tc(
-                                'console.the_authorization_and_token_endpoints_are_di_f26237b1',
+                            title={consoleT('console.openid_connect_configuration_de16da78')}
+                            description={consoleT(
+                                'console.the_authorization_and_token_endpoints_are_discovered_fr_f26237b1',
                             )}
                         >
                             <div className="space-y-4">
                                 <Field
-                                    label={tc('console.issuer_39e02c46')}
+                                    label={consoleT('console.issuer_39e02c46')}
                                     error={form.errors.issuer}
                                 >
                                     <Input
@@ -326,7 +332,7 @@ export default function CreateConnection({
                                 </Field>
 
                                 <Field
-                                    label={tc('console.client_id_8726db01')}
+                                    label={consoleT('console.client_id_8726db01')}
                                     error={form.errors.client_id}
                                 >
                                     <Input
@@ -341,7 +347,7 @@ export default function CreateConnection({
                                 </Field>
 
                                 <Field
-                                    label={tc('console.client_secret_4aded5fa')}
+                                    label={consoleT('console.client_secret_4aded5fa')}
                                     error={form.errors.client_secret}
                                 >
                                     <Input
@@ -357,10 +363,10 @@ export default function CreateConnection({
                                 </Field>
 
                                 <Field
-                                    label={tc('console.signing_key_49395b95')}
+                                    label={consoleT('console.signing_key_49395b95')}
                                     optional
-                                    hint={tc(
-                                        'console.leave_it_empty_for_almost_every_provider_its_e39d64b9',
+                                    hint={consoleT(
+                                        'console.leave_it_empty_for_almost_every_provider_its_id_tokens_e39d64b9',
                                     )}
                                     error={form.errors.signing_key}
                                 >
@@ -381,10 +387,10 @@ export default function CreateConnection({
 
                     <div className="flex items-center gap-2">
                         <Button type="submit" variant="primary" loading={form.processing}>
-                            {tc('console.create_connection_755acdc9')}
+                            {consoleT('console.create_connection_755acdc9')}
                         </Button>
                         <Button asChild>
-                            <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
+                            <Link href={indexHref}>{consoleT('console.cancel_19766ed6')}</Link>
                         </Button>
                     </div>
                 </form>

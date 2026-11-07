@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
 import {
@@ -35,13 +35,15 @@ export default function OrganizationInvitations({
     apps,
     inviteHref,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleLastText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <div className="space-y-6">
             <Panel
-                title={tc('console.invite_someone_9b7639e8')}
-                description={tc('console.the_invitee_accepts_by_email_nobody_is_added_04408aaf')}
+                title={consoleT('console.invite_someone_9b7639e8')}
+                description={consoleT(
+                    'console.the_invitee_accepts_by_email_nobody_is_added_to_an_orga_04408aaf',
+                )}
             >
                 <InviteForm
                     href={inviteHref}
@@ -49,7 +51,7 @@ export default function OrganizationInvitations({
                     accessRoles={inviteAccessRoles.map((role) => ({
                         id: role.id,
                         name: role.name,
-                        group: role.app ?? tc('console.all_apps_01bed311'),
+                        group: role.app ?? consoleLastText('console.all_apps_01bed311'),
                     }))}
                     apps={apps}
                 />

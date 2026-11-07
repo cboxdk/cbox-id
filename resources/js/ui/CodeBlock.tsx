@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import type { ReactNode } from 'react';
 import { CopyButton } from './CopyButton';
 
@@ -20,9 +20,15 @@ export interface CodeBlockProps {
  * copy button sits OUTSIDE the scrolling box, so on a phone it stays where the thumb is
  * however long the line.
  */
-export function CodeBlock({ code, install, copyLabel = 'Copy', caption }: CodeBlockProps) {
-    const { t: tc } = useUiTranslator();
-
+export function CodeBlock({
+    code,
+    install,
+    copyLabel: suppliedCopyLabel,
+    caption,
+}: CodeBlockProps) {
+    const { t: consoleFinalText } = useConsoleTranslator();
+    const copyLabel = suppliedCopyLabel ?? consoleFinalText('console.copy_e21f935f');
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <div>
             {install != null && install !== '' && (
@@ -39,11 +45,8 @@ export function CodeBlock({ code, install, copyLabel = 'Copy', caption }: CodeBl
                     </p>
                     <CopyButton
                         value={install}
-                        label={tc('console.copy_e21f935f', 'Copy')}
-                        aria-label={tc(
-                            'console.copy_install_command_d8222d32',
-                            'Copy install command',
-                        )}
+                        label={consoleT('console.copy_e21f935f')}
+                        aria-label={consoleT('console.copy_install_command_d8222d32')}
                     />
                 </div>
             )}
@@ -56,7 +59,7 @@ export function CodeBlock({ code, install, copyLabel = 'Copy', caption }: CodeBl
 
                     // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
                     tabIndex={0}
-                    aria-label={tc('console.code_340f4630', 'Code')}
+                    aria-label={consoleT('console.code_340f4630')}
                     className="rounded-lg p-3 overflow-x-auto text-xs mono flex-1 min-w-0"
                     style={{
                         background: 'var(--surface-2)',

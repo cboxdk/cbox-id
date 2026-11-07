@@ -7,10 +7,12 @@ namespace App\Actions\SupportSessions;
 use App\Http\Resources\Environment\SupportSessionResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use Cbox\Id\OAuthServer\Contracts\SupportSessions;
@@ -78,7 +80,7 @@ final readonly class StartSupportSession implements Action
         $organizationId = $context->string('organization_id');
 
         if (Organization::query()->whereKey($organizationId)->doesntExist()) {
-            throw ActionRefused::because('organization_not_found', 'No organization with that organization_id exists in this environment.', 'organization_id');
+            throw ActionRefused::because('organization_not_found', new ActionMessage('console.no_organization_with_that_organization_id_exists_in_thi_5c5c6245'), 'organization_id');
         }
 
         $code = $this->codeRequest($context);
@@ -98,9 +100,9 @@ final readonly class StartSupportSession implements Action
         } catch (InvalidAudience $audience) {
             // Scopes of two registered APIs cannot be audienced to one token, so no code this
             // session minted could be redeemed: refused before anything starts.
-            throw ActionRefused::because($audience->error, $audience->getMessage(), 'scopes');
+            throw ActionRefused::because($audience->error, FrameworkMessage::from($audience), 'scopes');
         } catch (SupportSessionRefused $refused) {
-            throw new ActionRefused($refused->refusal->value, $refused->getMessage(), match ($refused->refusal) {
+            throw new ActionRefused($refused->refusal->value, FrameworkMessage::from($refused), match ($refused->refusal) {
                 SupportSessionRefusal::NotPermitted => 403,
                 SupportSessionRefusal::OrganizationInactive,
                 SupportSessionRefusal::SessionNotActive => 409,

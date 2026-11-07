@@ -102,7 +102,7 @@ Override the wordmark/hero without editing Blade.
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
 | `CBOX_ID_BRAND_NAME` | Replaces "Cbox ID" in the wordmark and page titles. | `Cbox ID` | Set to your product name. |
-| `CBOX_ID_BRAND_TAGLINE` | The sign-in hero headline. | `One identity layer for every app you ship.` | Set to your own tagline. |
+| `CBOX_ID_BRAND_TAGLINE` | The sign-in hero headline. The shipped headline follows the page language; custom wording is kept as authored. | `One identity layer for every app you ship.` | Set to your own tagline. |
 | `CBOX_ID_BRAND_TRUST_LINE` | Free text under the hero (e.g. a compliance note). | *(empty — on purpose)* | Set **only** if the claim is actually true for your deployment. Never ship an unearned certification badge. |
 
 `CBOX_ID_BRAND_NAME` is also the product name on the error pages, and in the hosted emails
@@ -133,7 +133,7 @@ in its own settings. See the [languages guide](../guides/languages.md).
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
 | `CBOX_ID_DEFAULT_LOCALE` | The language used when neither the app (`ui_locales`), the visitor's own pick nor their browser names one that is switched on. Also the language of emails an administrator sends. | `en` | When most of your users share a language other than English. |
-| `CBOX_ID_LOCALES` | Comma-separated list of the languages that are switched on. The order sets the order of the language menu. Supported: `en`, `da`, `de`, `sv`, `nb`, `fr`, `fi`, `es`, `it`, `nl`; other codes are ignored. | `en,da,de,sv,nb,fr,fi,es,it,nl` | To leave out languages you cannot support people in. |
+| `CBOX_ID_LOCALES` | Comma-separated list of the languages that are switched on. The order sets the order of the language menu. See the [supported languages](../guides/languages.md); other codes are ignored. | `en,da,de,sv,nb,fi,fr,es,it,nl,pt,pl,ro,cs,hu,el,bg,hr,sk,tr,uk` | To leave out languages you cannot support people in. |
 
 ## Login lockout
 
@@ -609,3 +609,9 @@ public half is published at `/.well-known/jwks.json`.
 - Framework config reference: `config/cbox-id.php` in the `cboxdk/laravel-id`
   package
   ([installation guide](https://github.com/cboxdk/laravel-id/blob/main/docs/getting-started/installation.md)).
+
+### Resource-server introspection
+
+`CBOX_ID_INTROSPECTION_RESOURCE_SERVERS` is an optional JSON object mapping exact OAuth caller client IDs to lists of exact API audience identifiers, for example `{"cid_example":["https://cboxdomains.com"]}`. The default is `{}`. This requires laravel-id 1.27 or later. It authorizes a configured resource server to inspect user tokens issued to other clients for that resource; it does not authorize general cross-client token inspection. The framework rejects issuer audiences, malformed/multiple audiences, revoked tokens and inactive memberships. Existing own-client introspection needs no entry.
+
+Apply a reviewed mapping through the deployment configuration and roll both web and worker processes. Registering an API or linking an API to a client alone does not grant introspection. Do not enable dynamic clients for the Domains resource as part of this setting.

@@ -1,0 +1,120 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'layout' => [
+        'footer' => '© :year :brand · Esta é uma mensagem automatizada da sua plataforma de identidade.',
+    ],
+    'common' => [
+        'paste_link' => 'Ou cole esta ligação no seu navegador:',
+    ],
+    'roles' => [
+        'owner' => 'Proprietário',
+        'admin' => 'Administrador',
+        'developer' => 'Programador',
+        'member' => 'Membro',
+        'viewer' => 'Leitor',
+    ],
+    'magic_link' => [
+        'subject' => 'A sua ligação para iniciar sessão em :brand',
+        'heading' => 'Iniciar sessão em :brand',
+        'body' => 'Clique no botão abaixo para iniciar sessão. Esta ligação só pode ser utilizada uma vez e expira dentro de 15 minutos. Se não a solicitou, pode ignorar este e-mail.',
+        'button' => 'Iniciar sessão em :brand',
+    ],
+    'password_reset' => [
+        'subject' => 'Reponha a sua palavra-passe de :brand',
+        'heading' => 'Reponha a sua palavra-passe',
+        'body' => 'Recebemos um pedido para repor a palavra-passe da sua conta :brand. Clique no botão abaixo para escolher uma nova. Esta ligação só pode ser utilizada uma vez e expira dentro de 60 minutos. Se não pediu esta alteração, pode ignorar este e-mail. A sua palavra-passe não será alterada.',
+        'button' => 'Repor palavra-passe',
+    ],
+    'email_verification' => [
+        'subject' => 'Confirme o seu endereço de e-mail :brand',
+        'heading' => 'Confirme o seu e-mail',
+        'body' => 'Bem-vindo a :brand. Confirme que este é o seu endereço de e-mail para proteger a sua conta. Esta ligação só pode ser utilizada uma vez e expira dentro de 24 horas.',
+        'button' => 'Confirme o endereço de e-mail',
+        'not_you' => 'Se não criou uma conta :brand, pode ignorar este e-mail – nada acontece sem o link.',
+    ],
+    'admin_assigned_password' => [
+        'subject' => 'A sua palavra-passe de :brand foi reposta',
+        'heading' => 'A sua palavra-passe foi reposta',
+        'body' => 'Um administrador definiu uma nova palavra-passe na sua conta. Inicie sessão utilizando-a abaixo.',
+        'temporary' => 'Ser-lhe-á pedido que escolha imediatamente uma palavra-passe pessoal.',
+        'expires' => 'Esta palavra-passe deixa de funcionar a partir de :date, por favor, inicie sessão antes.',
+        'not_expected' => 'Se não esperava isto, contacte o seu administrador — alguém com acesso à consola da sua organização fez esta alteração, e está registada no registo de auditoria.',
+    ],
+    'invitation' => [
+        'subject' => ':inviter enviou-lhe um convite para aderir a :organization',
+        'heading' => 'Aderir a :organization',
+        'invited' => ':inviter enviou-lhe um convite para aderir a :organization.',
+        'invited_as' => ':inviter enviou-lhe um convite para aderir a :organization com a função :role.',
+        'accept_app' => 'Aceite para iniciar sessão em :app com a sua conta :organization.',
+        'accept' => 'Aceite para configurar a sua conta e iniciar sessão.',
+        'button' => 'Ver convite',
+        'note' => 'O link abre uma página onde confirma — nada acontece até que o faça. Expira em 7 dias. Se não esperava isto, pode ignorá-lo.',
+    ],
+    'organization_invite' => [
+        'subject' => ':inviter enviou-lhe um convite para administrar :organization em :brand',
+        'heading' => 'Ajude a gerir :organization em :brand',
+        'invited' => ':inviter enviou-lhe um convite para administrar :organization em :brand, a consola dos seus fornecedores de identidade, ambientes, membros e faturação. Aceite para definir uma palavra-passe e iniciar sessão.',
+        'invited_as' => ':inviter enviou-lhe um convite para administrar :organization com a função :role em :brand, a consola dos seus fornecedores de identidade, ambientes, membros e faturação. Aceite para definir uma palavra-passe e iniciar sessão.',
+        'button' => 'Aceitar convite',
+        'note' => 'Se não esperava este convite, pode ignorá-lo – nada acontece até que o aceite.',
+    ],
+    'portal_link' => [
+        'subject' => 'Configure :organization em :brand',
+        'heading' => 'Configure :organization',
+        'lead' => 'Foi-lhe pedido que configure os seguintes elementos para :organization em :brand. Não precisa de uma conta. Basta usar o botão abaixo.',
+        'intents' => [
+            'sso' => 'Início de sessão único com o seu fornecedor de identidade',
+            'dsync' => 'Sincronização de diretório (SCIM)',
+            'domain_verification' => 'Verificação dos seus domínios de e-mail',
+            'log_streams' => 'Transmissão do seu registo de auditoria para o seu SIEM',
+            'certificate_renewal' => 'Renovação do seu certificado de assinatura SAML',
+            'audit_logs' => 'Consulta dos seus registos de auditoria (só de leitura)',
+        ],
+        'button' => 'Iniciar configuração',
+        'expires' => 'O link funciona uma vez, até :date. Se expirar, peça um novo.',
+        'not_expected' => 'Se não esperava isto, pode ignorar — nada é configurado até que alguém utilize o link.',
+    ],
+    'certificate_expiring' => [
+        'subject' => 'O início de sessão único através de :connection deixa de funcionar dentro de :count dia|O início de sessão único através de :connection deixa de funcionar dentro de :count dias',
+        'subject_expired' => 'O início de sessão único através de :connection deixou de funcionar',
+        'heading' => 'O seu certificado SAML está prestes a expirar',
+        'heading_expired' => 'O seu certificado SAML expirou',
+        'lead' => 'O certificado de assinatura de :connection, a ligação de início de sessão único de :organization, expira em :date. Depois dessa data, ninguém poderá iniciar sessão através desta ligação.',
+        'lead_expired' => 'O certificado de assinatura de :connection, a ligação de início de sessão único de :organization, expirou em :date. Ninguém pode iniciar sessão através desta ligação até o certificado ser renovado.',
+        'what_to_do' => 'Peça o novo certificado de assinatura à pessoa que gere o seu fornecedor de identidade e carregue-o na consola de administração. Também pode pedir ao administrador uma ligação para o portal de administração e carregar o certificado aí.',
+        'why' => 'Recebe esta mensagem porque é proprietário ou administrador desta organização em :brand.',
+    ],
+    'one_time_code' => [
+        'label' => 'O seu código',
+        'expires' => 'Expira dentro de :count minuto e só pode ser utilizado uma vez.|Expira dentro de :count minutos e só pode ser utilizado uma vez.',
+        'never_share' => 'Não o partilhe com ninguém. :brand nunca lhe pedirá este código por telefone, chat ou e-mail.',
+        'not_you_title' => 'Não pediu este código?',
+        'sign_in' => [
+            'subject' => 'O seu código para iniciar sessão em :brand',
+            'heading' => 'Confirme a sua identidade',
+            'lead' => 'Introduza este código para concluir o início de sessão em :brand.',
+            'not_you' => 'Não introduza o código em lado nenhum e ignore este e-mail. Se tem uma conta :brand, altere a palavra-passe. Alguém que chegou a este passo pode conhecê-la.',
+        ],
+        'device' => [
+            'subject' => 'O seu código :brand para aprovar um dispositivo',
+            'heading' => 'Aprovar o início de sessão noutro dispositivo',
+            'lead' => 'Introduza este código para aprovar o início de sessão em :brand noutro dispositivo, como uma televisão ou uma ferramenta de linha de comandos.',
+            'not_you' => 'Não introduza o código em lado nenhum. Alguém pode estar a tentar levá-lo a aprovar um dispositivo dessa pessoa. É assim que este tipo de ataque começa. Ignore este e-mail e nada será aprovado.',
+        ],
+        'link' => [
+            'subject' => 'O seu código de :brand para associar um método de início de sessão',
+            'heading' => 'Associar um método de início de sessão',
+            'lead' => 'Introduza este código para associar um novo método de início de sessão à sua conta :brand.',
+            'not_you' => 'Não introduza o código em lado nenhum. Alguém pode estar a tentar associar o seu próprio método de início de sessão à sua conta. Ignore este e-mail e nada será associado.',
+        ],
+        'verify' => [
+            'subject' => 'O seu código de verificação :brand',
+            'heading' => 'O seu código de verificação',
+            'lead' => 'Insira este código em :brand para confirmar que este endereço de e-mail é seu.',
+            'not_you' => 'Pode ignorar este e-mail – nada acontece sem o código.',
+        ],
+    ],
+];

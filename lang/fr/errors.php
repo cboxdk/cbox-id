@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 // French: the error pages. `:brand` is the deployment's configured product name.
 return [
+    'locale_conflict' => 'Vos paramètres ou le compte connecté ont changé. Rechargez la page et choisissez à nouveau une langue.',
     'layout' => [
         'default_title' => 'Erreur',
         'default_heading' => 'Une erreur s’est produite',

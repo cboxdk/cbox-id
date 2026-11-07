@@ -2,41 +2,41 @@
 
 declare(strict_types=1);
 
-// Translation provenance and review scope: docs/guides/languages.md.
 return [
+    'locale_conflict' => 'Tus ajustes o la cuenta con la que has iniciado sesión han cambiado. Vuelve a cargar la página y selecciona el idioma de nuevo.',
     'layout' => [
         'default_title' => 'Error',
-        'default_heading' => 'Algo salió mal.',
-        'default_message' => 'Ocurrió un error inesperado. Inténtelo de nuevo.',
-        'home' => 'Volver al panel de mando',
+        'default_heading' => 'Algo salió mal',
+        'default_message' => 'Se ha producido un error inesperado. Inténtalo de nuevo.',
+        'home' => 'Volver al panel principal',
         'reload' => 'Recargar',
-        'share_trace' => 'Comparta esto con apoyo para ayudarnos a rastrear lo que pasó.',
-        'copy_trace' => 'Copiar el identificador de traza',
-        'trace_id' => 'Identificación de la traza',
+        'share_trace' => 'Comparte este identificador con el equipo de soporte para ayudarnos a averiguar qué ocurrió.',
+        'copy_trace' => 'Copiar ID de seguimiento',
+        'trace_id' => 'ID de seguimiento',
         'copied' => 'Copiado',
     ],
-    '403' => [
+    403 => [
         'title' => 'Acceso denegado',
-        'message' => 'Usted no tiene permiso para ver esta página. Si usted piensa que esto es un error, póngase en contacto con su administrador.',
+        'message' => 'No tienes permiso para ver esta página. Si crees que se trata de un error, contacta con tu administrador.',
     ],
-    '404' => [
+    404 => [
         'title' => 'Página no encontrada',
-        'message' => 'No pudimos encontrar la página que estabas buscando. Puede que se haya movido o ya no exista.',
+        'message' => 'No encontramos la página que buscas. Puede que se haya movido o que ya no exista.',
     ],
-    '419' => [
-        'title' => 'Su sesión expiró.',
-        'message' => 'Por su seguridad fue retirado después de un período de inactividad. Recargar la página para continuar.',
+    419 => [
+        'title' => 'Tu sesión ha expirado',
+        'message' => 'Por tu seguridad, se ha cerrado la sesión tras un período de inactividad. Recarga la página para continuar.',
     ],
-    '429' => [
-        'title' => 'Demasiadas peticiones',
-        'message' => 'Has hecho muchas peticiones en poco tiempo. Espera un momento, luego inténtalo de nuevo.',
+    429 => [
+        'title' => 'Demasiadas solicitudes',
+        'message' => 'Has enviado muchas solicitudes en poco tiempo. Espera un momento e inténtalo de nuevo.',
     ],
-    '500' => [
-        'title' => 'Algo salió mal.',
-        'message' => 'Un error inesperado ocurrió de nuestro lado. El equipo ha sido notificado — la recarga por lo general ayuda.',
+    500 => [
+        'title' => 'Algo salió mal',
+        'message' => 'Se ha producido un error inesperado en nuestro sistema. Hemos avisado al equipo. Recargar la página suele ayudar.',
     ],
-    '503' => [
-        'title' => 'Abajo para mantenimiento',
-        'message' => ':brand no está disponible brevemente mientras realizamos el mantenimiento. Pruebe de nuevo en un momento.',
+    503 => [
+        'title' => 'En mantenimiento',
+        'message' => ':brand no está disponible temporalmente por mantenimiento. Inténtalo de nuevo en unos momentos.',
     ],
 ];

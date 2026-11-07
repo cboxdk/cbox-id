@@ -62,7 +62,12 @@ function hrisKey(array $scopes = HRIS_SCOPES, string $environmentId = 'env_test'
 
 function hrisOrg(string $slug = 'acme-hris'): string
 {
-    return app(Organizations::class)->create(new NewOrganization('Acme', $slug.'-'.Str::lower(Str::random(4))))->id;
+    $organization = app(Organizations::class)->create(new NewOrganization('Acme', $slug.'-'.Str::lower(Str::random(4))));
+    if ($organization->environment_id === 'env_test') {
+        grantFeature($organization->id, 'cbox-id-scim');
+    }
+
+    return $organization->id;
 }
 
 /** BambooHR answering as documented: two active people, one leaver, two departments. */
@@ -107,6 +112,7 @@ function hrisOrgAdmin(string $slug = 'acme-hris-console'): array
     $subject = app(Subjects::class)->find($subject->id) ?? $subject;
 
     $org = app(Organizations::class)->create(new NewOrganization('Acme', $slug));
+    grantFeature($org->id, 'cbox-id-scim');
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);

@@ -9,6 +9,7 @@ use App\Actions\Workspace\Environments\RequestEnvironmentDomain;
 use App\Actions\Workspace\Environments\VerifyEnvironmentDomain;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\RequestEnvironmentDomainRequest;
+use App\Platform\Console\WorkspaceLanding;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -44,7 +45,7 @@ final readonly class EnvironmentDomainController extends ConsoleController
     public function index(Request $request, Memberships $members, EnvironmentDomains $domains): Response|RedirectResponse
     {
         if ($this->scope->capabilities()?->canManageEnvironments() !== true) {
-            return to_route('projects');
+            return redirect()->to(app(WorkspaceLanding::class)->url());
         }
 
         $reachable = $this->reachable($members);
@@ -125,7 +126,7 @@ final readonly class EnvironmentDomainController extends ConsoleController
         /** @var array{domain: string|null} $domain */
         $domain = $result->payload;
 
-        return back()->with('status', ($domain['domain'] ?? __('console.the_domain_fe68c612')).__('console.is_verified_and_now_serves_this_environment_16af6e99'));
+        return back()->with('status', __('console._part1_is_verified_and_now_serves_this_environment_acb1a79c', ['part1' => $domain['domain'] ?? 'The domain']));
     }
 
     /** Remove the domain through {@see RemoveEnvironmentDomain}, recorded on the workspace's trail. */

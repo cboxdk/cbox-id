@@ -8,6 +8,7 @@ use App\Actions\Roles\RoleFields;
 use App\Http\Resources\Environment\RoleAssignmentResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -64,13 +65,13 @@ final readonly class GrantStaffRole implements Action
 
         // Asked of the database, never of a page: a posted id is anything a client sends.
         if (! $this->staff->isGrantable($role->id)) {
-            throw ActionRefused::because('role_not_assignable', "The role [{$role->name}] belongs to one organization and cannot be granted everywhere.", 'role_id');
+            throw ActionRefused::because('role_not_assignable', new ActionMessage('console.the_role_part1_belongs_to_one_organization_and_cannot_b_e2bba059', ['part1' => (string) ($role->name)]), 'role_id');
         }
 
         $refusal = $this->staff->grant($user->id, $role->id);
 
         if ($refusal !== null) {
-            throw new ActionRefused('role_conflict', $refusal->message(), 409, 'role_id');
+            throw new ActionRefused('role_conflict', $refusal->sourceMessage(), 409, 'role_id');
         }
 
         $source = EnvironmentRoleAssignment::query()

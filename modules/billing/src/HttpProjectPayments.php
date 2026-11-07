@@ -47,11 +47,11 @@ final class HttpProjectPayments implements ProjectPayments
         $url = config('billing-client.base_url');
         $token = config('billing-client.api_token');
         if (! is_string($url) || $url === '' || ! is_string($token) || $token === '') {
-            throw new RuntimeException('Payments are not configured.');
+            throw TransportException::malformed('project-subscription', 'payments are not configured');
         }
 
         return Http::baseUrl(rtrim($url, '/'))->acceptJson()->asJson()->withToken($token)
-            ->connectTimeout(3)->timeout(Config::integer('billing-client.timeout', 10));
+            ->withoutRedirecting()->connectTimeout(3)->timeout(Config::integer('billing-client.timeout', 10));
     }
 
     /** @return array<string, mixed> */
@@ -62,7 +62,7 @@ final class HttpProjectPayments implements ProjectPayments
         }
         $body = $response->json();
         if (! is_array($body) || array_is_list($body)) {
-            throw new RuntimeException('Payment service returned an invalid response.');
+            throw TransportException::malformed('project-subscription', 'expected an object');
         }
 
         return array_filter($body, is_string(...), ARRAY_FILTER_USE_KEY);

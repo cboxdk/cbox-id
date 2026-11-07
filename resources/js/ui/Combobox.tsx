@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Command } from 'cmdk';
 import { type ReactNode, useMemo, useState } from 'react';
 import { cn } from '@/lib/cn';
@@ -41,19 +41,18 @@ export function Combobox<T extends string>({
     onValueChange,
     options,
     placeholder: suppliedPlaceholder,
-    searchPlaceholder: suppliedSearchplaceholder,
+    searchPlaceholder: suppliedSearchPlaceholder,
     emptyMessage: suppliedEmptyMessage,
     disabled,
     className,
     ...props
 }: ComboboxProps<T>) {
-    const { t: tc } = useUiTranslator();
-    const emptyMessage =
-        suppliedEmptyMessage ??
-        tc('console.nothing_matches_that_291c6b6d', 'Nothing matches that.');
-    const placeholder = suppliedPlaceholder ?? tc('console.select_731fe041', 'Select\u2026');
+    const { t: consoleFinalText } = useConsoleTranslator();
+    const placeholder = suppliedPlaceholder ?? consoleFinalText('console.select_731fe041');
     const searchPlaceholder =
-        suppliedSearchplaceholder ?? tc('console.search_7336265a', 'Search\u2026');
+        suppliedSearchPlaceholder ?? consoleFinalText('console.search_7336265a');
+    const emptyMessage =
+        suppliedEmptyMessage ?? consoleFinalText('console.nothing_matches_that_291c6b6d');
     const [open, setOpen] = useState(false);
     const field = useFieldControl();
     const selected = options.find((option) => option.value === value);

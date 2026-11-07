@@ -127,12 +127,12 @@ final readonly class ClientPromotionController extends ConsoleController
         ], ['environment_id' => 'environment', 'name' => 'name', 'redirect_uris' => 'redirectUris'], 'environment');
 
         if ($result instanceof ActionRefused) {
-            return back()->withInput()->with('error', __('console.not_copied_17898433').lcfirst(strtr($result->getMessage(), [
-                __('console.invalid_client_blueprint_549830c5') => '',
-                'api_key_prefix' => __('console.the_key_prefix_ca81dd91'),
-                'backchannel_logout_uri' => __('console.the_logout_uri_1187e902'),
-                __('console.import_with_another_prefix_or_none_4c73b15f') => __('console.clear_it_on_the_settings_tab_of_either_app_t_c60eb0e9'),
-            ])));
+            return back()->withInput()->with('error', __('console.not_copied_part1_e285cc71', ['part1' => lcfirst(strtr($result->getMessage(), [
+                'Invalid client blueprint: ' => '',
+                'api_key_prefix' => 'the key prefix',
+                'backchannel_logout_uri' => 'the logout URI',
+                '; import with another prefix (or none)' => ' — clear it on the Settings tab of either app, then copy again',
+            ]))]));
         }
 
         /** @var RegisteredClient $copied */

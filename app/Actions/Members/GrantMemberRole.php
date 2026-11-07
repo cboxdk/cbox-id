@@ -14,6 +14,7 @@ use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\GrantAccessRole;
@@ -83,13 +84,13 @@ final readonly class GrantMemberRole implements Action
             try {
                 $refusal = $this->grants->grantAsTenant($organization->id, $member->user_id, $role->id, GrantSource::Manual);
             } catch (GrantRefused $refused) {
-                throw new ActionRefused('role_conflict', $refused->getMessage(), 409, 'role_id');
+                throw new ActionRefused('role_conflict', FrameworkMessage::from($refused), 409, 'role_id');
             } catch (UnknownRole) {
                 throw ActionRefused::because('role_not_assignable', OrgAccessRoles::NOT_OFFERED, 'role_id');
             }
 
             if ($refusal !== null) {
-                throw new ActionRefused('role_conflict', $refusal->message(), 409, 'role_id');
+                throw new ActionRefused('role_conflict', $refusal->sourceMessage(), 409, 'role_id');
             }
 
             return ActionResult::item($role, RoleAssignmentResource::from($role, $member->user_id, $organization->id, GrantSource::Manual));

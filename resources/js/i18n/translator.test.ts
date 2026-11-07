@@ -47,3 +47,42 @@ describe('the hosted translator', () => {
         expect(pluralise('one|other', 0, 'en')).toBe('other');
     });
 });
+
+describe('European plural forms', () => {
+    it.each([
+        ['pl', 1, 'one'],
+        ['pl', 2, 'few'],
+        ['pl', 5, 'other'],
+        ['pl', 12, 'other'],
+        ['pl', 22, 'few'],
+        ['pl', 21, 'other'],
+        ['uk', 21, 'one'],
+        ['uk', 22, 'few'],
+        ['uk', 11, 'other'],
+        ['hr', 21, 'one'],
+        ['hr', 24, 'few'],
+        ['hr', 14, 'other'],
+        ['cs', 2, 'few'],
+        ['cs', 5, 'other'],
+        ['sk', 3, 'few'],
+        ['ro', 0, 'few'],
+        ['ro', 19, 'few'],
+        ['ro', 20, 'other'],
+    ])('selects %s at %i', (locale, count, expected) => {
+        expect(pluralise('one|few|other', Number(count), String(locale))).toBe(expected);
+    });
+
+    it('uses European Portuguese and invariant Turkish like Laravel', () => {
+        expect(pluralise('one|other', 0, 'pt')).toBe('other');
+        expect(pluralise('one|other', 5, 'tr')).toBe('one');
+    });
+});
+
+it('does not reinterpret placeholders inside user-supplied values', () => {
+    expect(interpolate(':name — :role', { name: 'Acme :role', role: 'Admin' })).toBe(
+        'Acme :role — Admin',
+    );
+    expect(
+        interpolate(':organization / :org', { organization: ':org company', org: 'customer' }),
+    ).toBe(':org company / customer');
+});

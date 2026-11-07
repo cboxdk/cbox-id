@@ -15,15 +15,15 @@ export const signatureSchemeLabels: Record<SignatureScheme, string> = {
     standard_webhooks: 'Standard Webhooks',
 };
 
-export const signatureSchemeOptions = (tc: Translator['t']): RadioOption<SignatureScheme>[] => [
+export const signatureSchemeOptions = (t: Translator['t']): RadioOption<SignatureScheme>[] => [
     {
         value: 'cbox',
         label: signatureSchemeLabels.cbox,
-        hint: tc('console.x_cbox_signature_with_a_hex_hmac_the_default_3bc267fa'),
+        hint: t('console.x_cbox_signature_with_a_hex_hmac_the_default_verified_w_3bc267fa'),
     },
     {
         value: 'standard_webhooks',
         label: signatureSchemeLabels.standard_webhooks,
-        hint: tc('console.webhook_id_webhook_timestamp_and_webhook_sig_73e511b0'),
+        hint: t('console.webhook_id_webhook_timestamp_and_webhook_signature_with_73e511b0'),
     },
 ];

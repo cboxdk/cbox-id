@@ -18,17 +18,17 @@ uses(RefreshDatabase::class, InteractsWithEntitlements::class);
  * which is now the default.
  */
 
-it('grants an unset entitlement in open mode', function (): void {
+it('keeps the shared identity projection open independently of product grants', function (): void {
     config(['cbox-id.entitlements.mode' => 'open']);
 
-    expect(app(Entitlements::class)->entitled('org_open', 'sso'))->toBeTrue()
-        ->and(app(Entitlements::class)->entitled('org_open', 'scim'))->toBeTrue();
+    expect((app(EntitlementReader::class)->get('org_open', 'cbox-id-sso')?->bool() ?? false))->toBeTrue()
+        ->and((app(EntitlementReader::class)->get('org_open', 'cbox-id-scim')?->bool() ?? false))->toBeTrue();
 });
 
 it('denies an unset entitlement in metered mode', function (): void {
     config(['cbox-id.entitlements.mode' => 'metered']);
 
-    expect(app(Entitlements::class)->entitled('org_metered', 'sso'))->toBeFalse();
+    expect((app(EntitlementReader::class)->get('org_metered', 'cbox-id-sso')?->bool() ?? false))->toBeFalse();
 });
 
 it('is a floor, not an override: an explicit denial still denies in open mode', function (): void {
@@ -39,7 +39,7 @@ it('is a floor, not an override: an explicit denial still denies in open mode', 
     // otherwise "open" would mean "ungovernable" rather than "unlimited".
     $this->grantEntitlement('org_revoked', 'cbox-id-sso', ['enabled' => false]);
 
-    expect(app(Entitlements::class)->entitled('org_revoked', 'sso'))->toBeFalse();
+    expect((app(EntitlementReader::class)->get('org_revoked', 'cbox-id-sso')?->bool() ?? false))->toBeFalse();
 });
 
 it('lets an explicit grant win in open mode too', function (): void {
@@ -47,7 +47,7 @@ it('lets an explicit grant win in open mode too', function (): void {
 
     $this->grantEntitlement('org_granted', 'cbox-id-sso', ['enabled' => true]);
 
-    expect(app(Entitlements::class)->entitled('org_granted', 'sso'))->toBeTrue();
+    expect((app(EntitlementReader::class)->get('org_granted', 'cbox-id-sso')?->bool() ?? false))->toBeTrue();
 });
 
 it('marks a synthesised grant as system-sourced and live-checked, never a token claim', function (): void {
@@ -87,13 +87,14 @@ it('never synthesises into all(), so tokens carry only real grants', function ()
 });
 
 it('includes identity security in hosted plans while keeping application entitlements closed', function (): void {
-    config(['cbox-id.entitlements.mode' => 'inclusive', 'billing.require_subscription' => true]);
+    config(['cbox-id.entitlements.mode' => 'inclusive']);
 
-    foreach (['sso', 'scim', 'audit_logs'] as $feature) {
-        expect(app(Entitlements::class)->entitled('startup', $feature))->toBeTrue();
+    foreach (['sso', 'scim', 'audit-logs'] as $feature) {
+        expect(app(EntitlementReader::class)->get('startup', 'cbox-id-'.$feature)?->bool())->toBeTrue();
     }
     expect(app(EntitlementReader::class)->get('startup', 'another-app.paid-feature'))->toBeNull()
         ->and(app(EntitlementReader::class)->all('startup'))->toBe([])
+        ->and(app(EntitlementReader::class)->get('startup', 'unknown'))->toBeNull()
         ->and(app(Entitlements::class)->entitled('', 'sso'))->toBeFalse()
         ->and(app(Entitlements::class)->entitled('startup', 'unknown'))->toBeFalse();
 });
@@ -101,8 +102,8 @@ it('includes identity security in hosted plans while keeping application entitle
 it('preserves explicit operational restrictions with inclusive security', function (): void {
     config(['cbox-id.entitlements.mode' => 'inclusive']);
     $this->grantEntitlement('restricted', 'cbox-id-scim', ['enabled' => false]);
-    expect(app(Entitlements::class)->entitled('restricted', 'scim'))->toBeFalse()
-        ->and(app(Entitlements::class)->entitled('restricted', 'sso'))->toBeTrue();
+    expect(app(EntitlementReader::class)->get('restricted', 'cbox-id-scim')?->bool())->toBeFalse()
+        ->and(app(EntitlementReader::class)->get('restricted', 'cbox-id-sso')?->bool())->toBeTrue();
 });
 
 it('uses configured security keys without granting obsolete or empty keys', function (): void {

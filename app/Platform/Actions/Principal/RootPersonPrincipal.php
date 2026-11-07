@@ -18,6 +18,7 @@ use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OAuth\ValueObjects\RootSignIn;
 use App\Platform\OAuth\ValueObjects\RootWorkspace;
 use App\Platform\OrganizationCapabilities;
+use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
@@ -111,7 +112,8 @@ readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, T
     public function reachesEnvironmentAction(ActionDefinition $action): bool
     {
         return $action->plane === ActionPlane::Environment
-            && $this->workspace?->administersEnvironments() === true
+            && $this->workspace?->capabilities()->canReadEnvironments() === true
+            && (! $action->danger->writes() || $this->workspace->capabilities()->canManageEnvironments())
             && EnvironmentMemberPrincipal::consoleRuns($action)
             && app(ManagementScopes::class)->knows($action->scope)
             && $this->signIn->grants($action->scope);
@@ -132,7 +134,7 @@ readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, T
     {
         $workspace = $this->workspace ?? throw new AuthorizationException('You are not on a workspace\'s team, so there is no environment to act in.');
 
-        if (! $workspace->capabilities()->canManageEnvironments()) {
+        if (! $workspace->capabilities()->canReadEnvironments()) {
             throw new AuthorizationException('Your role in this workspace does not administer environments.');
         }
 
@@ -163,7 +165,7 @@ readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, T
     {
         $workspace = $this->workspace;
 
-        if ($workspace === null || ! $workspace->administersEnvironments()) {
+        if ($workspace === null || ! $workspace->capabilities()->canReadEnvironments()) {
             return [];
         }
 
@@ -302,7 +304,9 @@ readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, T
      */
     private function assertWorkspaceMember(ActionDefinition $action): void
     {
-        $workspace = $this->workspace ?? throw new AuthorizationException('You are not on a workspace\'s team.');
+        $workspaceId = $this->workspace->id ?? throw new AuthorizationException('You are not on a workspace\'s team.');
+        $workspace = app(RootDelegatedAccess::class)->workspaceOf($this->signIn->subjectId, $workspaceId)
+            ?? throw new AuthorizationException('You are not on this workspace\'s team.');
         $can = $workspace->capabilities();
 
         foreach ([WorkspaceScopes::capability($action->scope), $action->consoleGate->capability()] as $capability) {
@@ -312,6 +316,9 @@ readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, T
         }
 
         $this->assertGranted(WorkspaceScopes::knows($action->scope), $action->scope);
+        if (in_array($action->scope, ['workspace:read', 'projects:write', 'environments:write', 'keys:write'], true)) {
+            app(ProductAdmission::class)->assertGranted($this->signIn->subjectId, $workspace->id);
+        }
     }
 
     /** @throws AuthorizationException */

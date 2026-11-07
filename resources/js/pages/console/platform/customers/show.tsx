@@ -1,6 +1,5 @@
-import { useConsoleCount } from '@/i18n/count';
 import type { Translator } from '@/i18n';
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -70,11 +69,11 @@ type Props = PageProps<{
 }>;
 
 /** What a control that repoints the console has to say before it does it. */
-const TARGET_COPY = (tc: Translator['t']) =>
-    tc('console.every_page_you_open_from_now_on_organization_7ba726d3');
+const TARGET_COPY = (t: Translator['t']) =>
+    t('console.every_page_you_open_from_now_on_organizations_usage_org_7ba726d3');
 
-const OPEN_COPY = (tc: Translator['t']) =>
-    tc('console.the_console_is_pointed_at_this_environment_a_4d2a0145');
+const OPEN_COPY = (t: Translator['t']) =>
+    t('console.the_console_is_pointed_at_this_environment_and_every_pa_4d2a0145');
 
 export default function Customer({
     customer,
@@ -86,9 +85,23 @@ export default function Customer({
     indexHref,
     toggleHref,
 }: Props) {
-    const { t: tc } = useTranslator();
-    const plural = useConsoleCount();
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { choice: consoleChoice } = useConsoleTranslator();
+    function plural(count: number, noun: 'member' | 'project' | 'environment'): string {
+        const keys = {
+            member: 'console.count_members',
+            project: 'console.count_projects',
+            environment: 'console.count_environments',
+        } as const;
+        return consoleChoice(keys[noun], count);
+    }
 
+    const { t: consoleFinalText } = useConsoleTranslator();
+
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [suspending, setSuspending] = useState(false);
     const [confirming, setConfirming] = useState<{
         href: string;
@@ -105,8 +118,9 @@ export default function Customer({
                     className="inline-flex items-center gap-1 text-sm"
                     style={{ color: 'var(--muted)' }}
                 >
-                    <span aria-hidden="true">{tc('console.larr_848fc0e7')}</span>
-                    {tc('console.back_to_workspaces_279ec831')}
+                    {consoleRich('console._part1_back_to_workspaces_9c031d6c', {
+                        part1: <span aria-hidden="true">{consoleT('console._larr_848fc0e7')}</span>,
+                    })}
                 </Link>
             </div>
 
@@ -116,15 +130,17 @@ export default function Customer({
                 the label from there.
             */}
             <PageHeader
-                description={tc('console.one_workspace_on_this_install_its_team_its_p_e343ed1c')}
+                description={consoleT(
+                    'console.one_workspace_on_this_install_its_team_its_projects_and_e343ed1c',
+                )}
                 actions={
                     <Button
                         variant={customer.active ? 'danger' : 'primary'}
                         onClick={() => setSuspending(true)}
                     >
                         {customer.active
-                            ? tc('console.suspend_4948e134')
-                            : tc('console.reactivate_2dc7478f')}
+                            ? consoleText('console.suspend_4948e134')
+                            : consoleText('console.reactivate_2dc7478f')}
                     </Button>
                 }
             />
@@ -132,31 +148,31 @@ export default function Customer({
             <Panel title={customer.name} className="mb-5 mt-8">
                 <div className="flex flex-wrap items-center gap-2 mb-4">
                     {customer.active ? (
-                        <Pill tone="success">{tc('console.active_92340695')}</Pill>
+                        <Pill tone="success">{consoleT('console.active_92340695')}</Pill>
                     ) : (
-                        <Pill tone="destructive">{tc('console.suspended_e392a389')}</Pill>
+                        <Pill tone="destructive">{consoleT('console.suspended_e392a389')}</Pill>
                     )}
                 </div>
 
                 <KvList>
-                    <Kv label={tc('console.organization_id_1f466322')}>{customer.id}</Kv>
-                    <Kv label={tc('console.members_1044a4c0')} prose>
+                    <Kv label={consoleT('console.organization_id_1f466322')}>{customer.id}</Kv>
+                    <Kv label={consoleT('console.members_1044a4c0')} prose>
                         {memberTotal}
                     </Kv>
-                    <Kv label={tc('console.projects_04e2a972')} prose>
+                    <Kv label={consoleT('console.projects_04e2a972')} prose>
                         {projects.length}
                     </Kv>
-                    <Kv label={tc('console.environments_07437cd6')} prose>
+                    <Kv label={consoleT('console.environments_07437cd6')} prose>
                         {environmentTotal}
                     </Kv>
                     {customer.createdAt !== null && (
-                        <Kv label={tc('console.created_d70b9e24')}>{customer.createdAt}</Kv>
+                        <Kv label={consoleT('console.created_d70b9e24')}>{customer.createdAt}</Kv>
                     )}
                 </KvList>
             </Panel>
 
             <Panel
-                title={tc('console.team_5985039f')}
+                title={consoleT('console.team_5985039f')}
                 flush
                 action={
                     <span className="text-xs" style={{ color: 'var(--faint)' }}>
@@ -170,18 +186,25 @@ export default function Customer({
                         className="px-5 py-8 text-center text-sm"
                         style={{ color: 'var(--faint)' }}
                     >
-                        {tc('console.nobody_is_on_this_workspace_it_has_no_owner__554101fb')}
+                        {consoleT(
+                            'console.nobody_is_on_this_workspace_it_has_no_owner_so_nobody_c_554101fb',
+                        )}
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <Table caption={`The people on ${customer.name}, and what each may reach.`}>
+                        <Table
+                            caption={consoleFinalText(
+                                'console.the_people_on_part1_and_what_each_may_reach_474ab0a4',
+                                { part1: customer.name },
+                            )}
+                        >
                             <thead>
                                 <tr>
-                                    <Th>{tc('console.member_7c968fb7')}</Th>
-                                    <Th>{tc('console.built_in_role_9f680a16')}</Th>
-                                    <Th>{tc('console.status_920e413c')}</Th>
-                                    <Th>{tc('console.environments_07437cd6')}</Th>
-                                    <Th>{tc('console.last_sign_in_0b70af7a')}</Th>
+                                    <Th>{consoleT('console.member_7c968fb7')}</Th>
+                                    <Th>{consoleT('console.built_in_role_9f680a16')}</Th>
+                                    <Th>{consoleT('console.status_920e413c')}</Th>
+                                    <Th>{consoleT('console.environments_07437cd6')}</Th>
+                                    <Th>{consoleT('console.last_sign_in_0b70af7a')}</Th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -209,14 +232,15 @@ export default function Customer({
                                             style={{ color: 'var(--muted)' }}
                                         >
                                             {member.allEnvironments
-                                                ? tc('console.all_a52ace42')
-                                                : tc('console.selected_only_e624c530')}
+                                                ? consoleText('console.all_a52ace42')
+                                                : consoleText('console.selected_only_e624c530')}
                                         </Td>
                                         <Td
                                             className="whitespace-nowrap text-xs"
                                             style={{ color: 'var(--faint)' }}
                                         >
-                                            {member.lastLogin ?? tc('console.never_6300ef80')}
+                                            {member.lastLogin ??
+                                                consoleShortText('console.never_6300ef80')}
                                         </Td>
                                     </tr>
                                 ))}
@@ -233,7 +257,7 @@ export default function Customer({
             <section>
                 <div className="flex flex-wrap items-baseline justify-between gap-2 mb-3">
                     <h2 className="text-sm font-semibold">
-                        {tc('console.projects_amp_environments_bba149d1')}
+                        {consoleT('console.projects_environments_4183db87')}
                     </h2>
                     <output className="text-xs" style={{ color: 'var(--faint)' }}>
                         {plural(projects.length, 'project')},{' '}
@@ -244,9 +268,9 @@ export default function Customer({
                 {projects.length === 0 && unfiledEnvironments.length === 0 && (
                     <EmptyState
                         icon="layers"
-                        title={tc('console.no_projects_yet_f83c8065')}
-                        description={tc(
-                            'console.a_project_is_one_idp_product_this_workspace__a5e40dff',
+                        title={consoleT('console.no_projects_yet_f83c8065')}
+                        description={consoleT(
+                            'console.a_project_is_one_idp_product_this_workspace_owns_and_it_a5e40dff',
                         )}
                     />
                 )}
@@ -260,21 +284,23 @@ export default function Customer({
                             <span className="flex flex-wrap items-center gap-2 min-w-0">
                                 {project.name}
                                 {project.active ? (
-                                    <Pill tone="success">{tc('console.active_92340695')}</Pill>
+                                    <Pill tone="success">
+                                        {consoleT('console.active_92340695')}
+                                    </Pill>
                                 ) : (
                                     <Pill tone="destructive">
-                                        {tc('console.suspended_e392a389')}
+                                        {consoleT('console.suspended_e392a389')}
                                     </Pill>
                                 )}
                             </span>
                         }
                         action={
                             <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                                {project.environments.length}
-                                {tc('console.of_a4282e4b')}
-                                {project.environmentLimit} {tc('console.environments_84c2d9c8')}
-                                {project.remaining}
-                                {tc('console.left_on_plan_6bf538d4')}
+                                {consoleRich('console.environment_plan_usage', {
+                                    used: project.environments.length,
+                                    limit: project.environmentLimit,
+                                    remaining: project.remaining,
+                                })}
                             </span>
                         }
                     >
@@ -283,13 +309,16 @@ export default function Customer({
                                 className="px-5 py-8 text-center text-sm"
                                 style={{ color: 'var(--faint)' }}
                             >
-                                {tc(
-                                    'console.this_project_has_no_environments_yet_nothing_a2247eb5',
+                                {consoleT(
+                                    'console.this_project_has_no_environments_yet_nothing_under_it_s_a2247eb5',
                                 )}
                             </div>
                         ) : (
                             <EnvironmentTable
-                                caption={`Environments under ${project.name}.`}
+                                caption={consoleFinalText(
+                                    'console.environments_under_part1_e3767a68',
+                                    { part1: project.name },
+                                )}
                                 environments={project.environments}
                                 onConfirm={setConfirming}
                             />
@@ -301,31 +330,20 @@ export default function Customer({
                     <Panel
                         flush
                         className="mb-5"
-                        title={tc('console.not_in_a_project_894f81c5')}
-                        action={<Pill tone="warning">{tc('console.unfiled_d64dc9ae')}</Pill>}
+                        title={consoleT('console.not_in_a_project_894f81c5')}
+                        action={<Pill tone="warning">{consoleT('console.unfiled_d64dc9ae')}</Pill>}
                     >
                         <div className="px-5 pt-4 text-sm" style={{ color: 'var(--muted)' }}>
-                            {tc('console.this_workspace_owns_02f34b4d')}{' '}
-                            {plural(unfiledEnvironments.length, 'environment')}
-                            {tc('console.that_no_project_holds_so_nothing_bills_for_a4fae307')}{' '}
-                            {unfiledEnvironments.length === 1
-                                ? tc('console.it_2ad8a704')
-                                : tc('console.them_c9a8dc33')}
-                            {tc('console.and_2e5f7696')}{' '}
-                            {unfiledEnvironments.length === 1
-                                ? tc('console.it_does_386ef68e')
-                                : tc('console.they_do_b2ef8abf')}
-                            {tc('console.not_appear_on_the_customer_rsquo_s_own_proje_d4a73b77')}{' '}
-                            {unfiledEnvironments.length === 1
-                                ? tc('console.it_2ad8a704')
-                                : tc('console.them_c9a8dc33')}
-                            .
+                            {consoleChoice(
+                                'console.unfiled_environments_explanation',
+                                unfiledEnvironments.length,
+                            )}
                         </div>
 
                         <div className="mt-4">
                             <EnvironmentTable
-                                caption={tc(
-                                    'console.environments_this_workspace_owns_that_no_pro_c28359ff',
+                                caption={consoleUiText(
+                                    'console.environments_this_workspace_owns_that_no_project_holds_c28359ff',
                                 )}
                                 environments={unfiledEnvironments}
                                 onConfirm={setConfirming}
@@ -337,25 +355,32 @@ export default function Customer({
             </section>
 
             <p className="mt-4 text-xs" style={{ color: 'var(--faint)' }}>
-                {tc('console.suspension_is_the_only_thing_this_page_chang_4b1a3610')}
+                {consoleT(
+                    'console.suspension_is_the_only_thing_this_page_changes_and_it_i_4b1a3610',
+                )}
             </p>
 
             <Dialog
                 open={suspending}
                 onOpenChange={setSuspending}
-                title={`${customer.active ? 'Suspend' : 'Reactivate'} ${customer.name}?`}
+                title={`${customer.active ? consoleText('console.suspend_4948e134') : consoleText('console.reactivate_2dc7478f')} ${customer.name}?`}
                 description={
                     customer.active
-                        ? tc('console.its_value0_are_signed_out_and_all_value1_it__24f1c9af', {
-                              value0: plural(memberTotal, 'member'),
-                              value1: plural(environmentTotal, 'environment'),
-                          })
-                        : tc('console.its_members_can_sign_in_again_and_its_enviro_d369bd33')
+                        ? consoleFinalText(
+                              'console.its_part1_are_signed_out_and_all_part2_it_owns_stop_ser_c1a0c179',
+                              {
+                                  part1: plural(memberTotal, 'member'),
+                                  part2: plural(environmentTotal, 'environment'),
+                              },
+                          )
+                        : consoleText(
+                              'console.its_members_can_sign_in_again_and_its_environments_resu_d369bd33',
+                          )
                 }
                 footer={
                     <>
                         <Button onClick={() => setSuspending(false)}>
-                            {tc('console.cancel_19766ed6')}
+                            {consoleT('console.cancel_19766ed6')}
                         </Button>
                         <Button
                             variant={customer.active ? 'danger' : 'primary'}
@@ -365,8 +390,8 @@ export default function Customer({
                             }}
                         >
                             {customer.active
-                                ? tc('console.suspend_4948e134')
-                                : tc('console.reactivate_2dc7478f')}
+                                ? consoleText('console.suspend_4948e134')
+                                : consoleText('console.reactivate_2dc7478f')}
                         </Button>
                     </>
                 }
@@ -385,7 +410,7 @@ export default function Customer({
                 footer={
                     <>
                         <Button onClick={() => setConfirming(null)}>
-                            {tc('console.cancel_19766ed6')}
+                            {consoleT('console.cancel_19766ed6')}
                         </Button>
                         <Button
                             variant="primary"
@@ -423,19 +448,22 @@ function EnvironmentTable({
     }) => void;
     openOnly?: boolean;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleStaticText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <div className="overflow-x-auto">
             <Table caption={caption}>
                 <thead>
                     <tr>
-                        <Th>{tc('console.environment_9e471951')}</Th>
-                        <Th>{tc('console.domain_79fa3361')}</Th>
-                        <Th className="text-right">{tc('console.orgs_ff9e49b5')}</Th>
-                        <Th className="text-right">{tc('console.users_6b0cc904')}</Th>
+                        <Th>{consoleT('console.environment_9e471951')}</Th>
+                        <Th>{consoleT('console.domain_79fa3361')}</Th>
+                        <Th className="text-right">{consoleT('console.orgs_ff9e49b5')}</Th>
+                        <Th className="text-right">{consoleT('console.users_6b0cc904')}</Th>
                         <Th>
-                            <span className="sr-only">{tc('console.actions_ff8059dc')}</span>
+                            <span className="sr-only">{consoleT('console.actions_ff8059dc')}</span>
                         </Th>
                     </tr>
                 </thead>
@@ -461,12 +489,12 @@ function EnvironmentTable({
                                             {environment.name}
                                             {environment.isTarget && (
                                                 <Pill tone="success" className="align-middle ml-1">
-                                                    {tc('console.target_978354db')}
+                                                    {consoleT('console.target_978354db')}
                                                 </Pill>
                                             )}
                                             {environment.sandbox && (
                                                 <Pill dot={false} className="align-middle ml-1">
-                                                    {tc('console.sandbox_67fc6249')}
+                                                    {consoleT('console.sandbox_67fc6249')}
                                                 </Pill>
                                             )}
                                             {!environment.serving && (
@@ -474,7 +502,7 @@ function EnvironmentTable({
                                                     tone="destructive"
                                                     className="align-middle ml-1"
                                                 >
-                                                    {tc('console.suspended_e392a389')}
+                                                    {consoleT('console.suspended_e392a389')}
                                                 </Pill>
                                             )}
                                         </p>
@@ -489,27 +517,33 @@ function EnvironmentTable({
                             </Td>
                             <Td style={{ color: 'var(--muted)' }}>
                                 {environment.domain ??
-                                    tc('console.none_served_on_the_fallback_host_7c84367e')}
+                                    consoleRuntimeText(
+                                        'console.none_served_on_the_fallback_host_7c84367e',
+                                    )}
                             </Td>
                             <Td className="text-right tabular-nums">{environment.orgs}</Td>
                             <Td className="text-right tabular-nums">{environment.users}</Td>
                             <Td className="text-right whitespace-nowrap">
                                 <Button
                                     size="sm"
-                                    aria-label={tc(
-                                        'console.open_the_organizations_in_value0_bfb4f4bd',
-                                        { value0: environment.name },
+                                    aria-label={consoleFinalText(
+                                        'console.open_the_organizations_in_part1_ba9b05cd',
+                                        { part1: environment.name },
                                     )}
                                     onClick={() =>
                                         onConfirm({
                                             href: environment.openHref,
-                                            title: `Open ${environment.name}?`,
-                                            description: OPEN_COPY(tc),
-                                            action: tc('console.open_organizations_c2db39e8'),
+                                            title: consoleFinalText('console.open_part1_c8575135', {
+                                                part1: environment.name,
+                                            }),
+                                            description: OPEN_COPY(consoleStaticText),
+                                            action: consoleFinalText(
+                                                'console.open_organizations_c2db39e8',
+                                            ),
                                         })
                                     }
                                 >
-                                    {tc('console.open_organizations_c2db39e8')}
+                                    {consoleT('console.open_organizations_c2db39e8')}
                                 </Button>
 
                                 {openOnly ? null : environment.isTarget ? (
@@ -517,26 +551,29 @@ function EnvironmentTable({
                                         className="text-xs ml-2"
                                         style={{ color: 'var(--faint)' }}
                                     >
-                                        {tc('console.target_978354db')}
+                                        {consoleT('console.target_978354db')}
                                     </span>
                                 ) : (
                                     <Button
                                         size="sm"
                                         className="ml-2"
-                                        aria-label={tc(
-                                            'console.point_this_console_at_value0_7211e979',
-                                            { value0: environment.name },
+                                        aria-label={consoleFinalText(
+                                            'console.point_this_console_at_part1_a53811c7',
+                                            { part1: environment.name },
                                         )}
                                         onClick={() =>
                                             onConfirm({
                                                 href: environment.targetHref,
-                                                title: `Point this console at ${environment.name}?`,
-                                                description: TARGET_COPY(tc),
+                                                title: consoleFinalText(
+                                                    'console.point_this_console_at_part1_6614bd12',
+                                                    { part1: environment.name },
+                                                ),
+                                                description: TARGET_COPY(consoleStaticText),
                                                 action: 'Target',
                                             })
                                         }
                                     >
-                                        {tc('console.target_978354db')}
+                                        {consoleT('console.target_978354db')}
                                     </Button>
                                 )}
                             </Td>

@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\PointAtFirstRun;
+use App\Platform\Actions\ActionRefused;
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
+use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -15,6 +17,7 @@ use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\Models\Project;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
@@ -73,7 +76,7 @@ it('takes the verified waitlist identity from its session', function (): void {
 it('redeems an invitation for the actual member team without joining the waitlist', function (): void {
     [$person, $team] = productSignupPerson(true);
     Http::fake(['*/admit' => Http::response(['allowed' => true])]);
-    $this->post(route('product-signup.admit'), ['code' => 'invite-demo', 'organization' => 'other-team', 'subject' => 'other-person', 'email' => 'fake@example.test'])->assertSessionHasNoErrors()->assertRedirect(route('projects'));
+    $this->post(route('product-signup.admit'), ['code' => 'invite-demo', 'organization' => 'other-team', 'subject' => 'other-person', 'email' => 'fake@example.test'])->assertSessionHasNoErrors()->assertRedirect(route('dashboard'));
     Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/admit') && $request['subject'] === $person->id && $request['organization'] === $team->id && $request['email'] === 'ada@example.test' && $request->hasHeader('Authorization', 'Bearer test-service-secret'));
     Http::assertSentCount(1);
 });
@@ -117,3 +120,36 @@ it('gates direct product creation through workspace API keys before writing', fu
         ->and(Environment::query()->withoutGlobalScopes()->count())->toBe($environments);
     Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/check') && $request['organization'] === $account['organization']->id && $request->hasHeader('Authorization', 'Bearer test-service-secret'));
 })->with(['waitlisted' => [200, 403], 'billing unavailable' => [503, 503]]);
+
+it('lets an admitted root team create its first project and revokes its next read', function (): void {
+    multiTenantDeployment();
+    $root = platformRootEnvironment();
+    serveOnTestHost($root);
+    config(['service-access.identity_environment' => $root->id]);
+    [$person, $team] = app(PlatformRoot::class)->run(fn (): array => productSignupPerson(true));
+    grantProductEnvironmentAllowance($team->id, 2);
+    $allowed = true;
+    Http::fake(['*/check' => function () use (&$allowed) {
+        return Http::response(['allowed' => $allowed]);
+    }]);
+
+    $this->post(route('projects.store'), ['name' => 'First product'])->assertSessionHasNoErrors()->assertRedirect();
+    $project = Project::query()->where('organization_id', $team->id)->where('name', 'First product')->first();
+    expect($project)->not->toBeNull();
+    $this->get(route('projects.show', $project->id))->assertOk();
+    Http::assertSent(fn (Request $request): bool => $request['subject'] === $person->id && $request['organization'] === $team->id);
+
+    $allowed = false;
+    nextRequest();
+    $this->get(route('projects.show', $project->id))->assertForbidden();
+});
+
+it('does not disable admission in production when the configuration flag is false', function (): void {
+    $root = platformRootEnvironment();
+    $this->app->instance('env', 'production');
+    config(['service-access.product_enabled' => false, 'service-access.identity_environment' => $root->id]);
+    Http::fake(['*/check' => Http::response(['allowed' => false])]);
+    expect(fn () => app(ProductAdmission::class)->assertGranted('actual-person', 'actual-team'))
+        ->toThrow(ActionRefused::class);
+    Http::assertSent(fn (Request $request): bool => $request['subject'] === 'actual-person' && $request['organization'] === 'actual-team');
+});

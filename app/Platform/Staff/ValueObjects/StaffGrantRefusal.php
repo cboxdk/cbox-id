@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Staff\ValueObjects;
 
+use App\Platform\Actions\ActionMessage;
 use App\Platform\SodRefusal;
 
 /**
@@ -21,6 +22,13 @@ readonly class StaffGrantRefusal
         /** Null when the conflict is between staff roles, which belong to no organization. */
         public ?string $organizationName = null,
     ) {}
+
+    public function sourceMessage(): ActionMessage
+    {
+        return $this->organizationName === null
+            ? new ActionMessage('console.framework_84d94f06c614', ['conflict' => $this->conflict->sourceMessage()], sourceEnglish: $this->message())
+            : new ActionMessage('console.framework_01d524c06aec', ['organization' => $this->organizationName, 'conflict' => $this->conflict->sourceMessage()], sourceEnglish: $this->message());
+    }
 
     public function message(): string
     {

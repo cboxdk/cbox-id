@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useCanManageEnvironment } from '@/ui/EnvironmentReadOnly';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -53,8 +54,12 @@ export default function OrganizationsIndex({
     createHref,
     help,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const canManage = useCanManageEnvironment();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -77,14 +82,19 @@ export default function OrganizationsIndex({
         <>
             <PageHeader
                 help={help}
-                description={tc('console.the_teams_using_your_product_each_is_a_compa_91579359')}
+                description={consoleT(
+                    'console.the_teams_using_your_product_each_is_a_company_or_group_91579359',
+                )}
                 actions={
-                    <Button asChild variant="primary" className="shrink-0">
-                        <Link href={createHref}>
-                            <Icon name="plus" className="w-4 h-4" />
-                            {tc('console.new_organization_62e34b70')}
-                        </Link>
-                    </Button>
+                    canManage && (
+                        <Button asChild variant="primary" className="shrink-0">
+                            <Link href={createHref}>
+                                {consoleRich('console._part1_new_organization_c7c173b3', {
+                                    part1: <Icon name="plus" className="w-4 h-4" />,
+                                })}
+                            </Link>
+                        </Button>
+                    )
                 }
             />
 
@@ -100,8 +110,8 @@ export default function OrganizationsIndex({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder={tc('console.search_by_name_or_handle_e1341737')}
-                    aria-label={tc('console.search_organizations_c1b2693a')}
+                    placeholder={consoleUiText('console.search_by_name_or_handle_e1341737')}
+                    aria-label={consoleT('console.search_organizations_c1b2693a')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -111,11 +121,7 @@ export default function OrganizationsIndex({
                     narrowed to nothing.
                 */}
                 <output className="sr-only">
-                    {pagination.total}{' '}
-                    {pagination.total === 1
-                        ? tc('console.organization_af3a1bb3')
-                        : tc('console.organizations_f8a665a9')}{' '}
-                    {tc('console.found_ddbb3871')}
+                    {consoleRich('console.search_results_found', { count: pagination.total })}
                 </output>
             </div>
 
@@ -127,26 +133,32 @@ export default function OrganizationsIndex({
                     search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={tc('console.no_matches_2df01a03')}
-                            description={tc(
-                                'console.no_organizations_match_value0_try_a_differen_57e45e0c',
-                                { value0: search },
+                            title={consoleT('console.no_matches_2df01a03')}
+                            description={consoleFinalText(
+                                'console.no_organizations_match_part1_try_a_different_name_or_ha_72ccc404',
+                                { part1: search },
                             )}
                         />
                     ) : (
                         <EmptyState
                             icon="layers"
-                            title={tc('console.no_organizations_yet_5b7a7cbd')}
-                            description={tc(
-                                'console.each_organization_is_a_company_or_team_using_7719f059',
+                            title={consoleT('console.no_organizations_yet_5b7a7cbd')}
+                            description={consoleT(
+                                'console.each_organization_is_a_company_or_team_using_your_produ_7719f059',
                             )}
                             actions={
-                                <Button asChild variant="primary">
-                                    <Link href={createHref}>
-                                        <Icon name="plus" className="w-4 h-4" />
-                                        {tc('console.new_organization_62e34b70')}
-                                    </Link>
-                                </Button>
+                                canManage && (
+                                    <Button asChild variant="primary">
+                                        <Link href={createHref}>
+                                            {consoleRich(
+                                                'console._part1_new_organization_c7c173b3',
+                                                {
+                                                    part1: <Icon name="plus" className="w-4 h-4" />,
+                                                },
+                                            )}
+                                        </Link>
+                                    </Button>
+                                )
                             }
                         />
                     )
@@ -188,8 +200,6 @@ export default function OrganizationsIndex({
 
             <Pagination
                 pagination={pagination}
-                noun={tc('console.organization_af3a1bb3')}
-                pluralNoun={tc('console.organizations_f8a665a9')}
                 href={(page) => listHref(search, page)}
             />
         </>

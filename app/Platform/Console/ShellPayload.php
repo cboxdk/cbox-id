@@ -15,10 +15,10 @@ use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Navigation\ConsoleNav;
 use App\Platform\Navigation\ConsoleNavigation;
-use App\Platform\OrganizationCapabilities;
 use App\Platform\PlaneResolver;
 use App\Providers\ConsoleServiceProvider;
 use Cbox\Console\Kit\Facades\Console;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
@@ -239,16 +239,13 @@ final readonly class ShellPayload
             section: $platformPage ? Vocabulary::PLATFORM : null,
             context: $this->context->forOrganizationPlane($this->activePageRoute($active)),
             isOperator: $isOperator,
-            // A workspace's home is Projects; `dashboard` would hand it straight on to an
-            // environment, which is not what clicking the brand mark in its own console
-            // means.
-            brandHref: route($workspace ? 'projects' : 'dashboard'),
+            brandHref: $workspace ? app(WorkspaceLanding::class)->url() : route('dashboard'),
             navPinned: NavPin::pinned($this->request),
             accountHref: route('account'),
             switchUserHref: route('accounts'),
             altitude: $workspace ? ConsoleAltitude::Workspace : ConsoleAltitude::Organization,
             workspaceSettingsHref: $this->scope->membershipRole() !== null
-                && $this->scope->capabilities()?->canManageMembers() === true
+                && $this->scope->capabilities()?->isOwner() === true
                 && Route::has('organization-settings')
                     ? route('organization-settings')
                     : null,
@@ -448,7 +445,7 @@ final readonly class ShellPayload
             accountHref: $this->context->onWorkspaceHost('account'),
             switchUserHref: $this->context->onWorkspaceHost('accounts'),
             altitude: ConsoleAltitude::Environment,
-            workspaceSettingsHref: $membership !== null && OrganizationCapabilities::of($membership->role)->canManageMembers()
+            workspaceSettingsHref: $membership !== null && $membership->role === MembershipRole::Owner
                 ? $this->context->onWorkspaceHost('organization-settings')
                 : null,
             // Platform admin is one click away from the console of the environment a tenant
@@ -476,12 +473,12 @@ final readonly class ShellPayload
             return new ShellActsOnProps(
                 kind: 'environment',
                 label: $name,
-                detail: __('console.the_platform_s_own_environment_on_433acd6a').$host.__('console.how_every_workspace_owner_and_every_operator_e9fcbcc4'),
+                detail: __('console.the_platform_s_own_environment_on_part1_how_every_works_07c8a7ac', ['part1' => $host]),
                 critical: true,
             );
         }
 
-        return new ShellActsOnProps(kind: 'environment', label: $name, detail: __('console.environment_on_8fc82076').$host);
+        return new ShellActsOnProps(kind: 'environment', label: $name, detail: __('console.environment_on_part1_b0934787', ['part1' => $host]));
     }
 
     /**
@@ -498,7 +495,7 @@ final readonly class ShellPayload
         return new ShellActsOnProps(
             kind: 'platform',
             label: __('console.the_whole_deployment_3cbe949f'),
-            detail: __('console.every_workspace_environment_and_operator_on_76c0e982').$this->request->getHost().__('console.a_suspension_a_new_environment_or_an_operato_07c51641'),
+            detail: __('console.every_workspace_environment_and_operator_on_part1_a_sus_e4247a2d', ['part1' => $this->request->getHost()]),
             critical: true,
         );
     }
@@ -522,14 +519,12 @@ final readonly class ShellPayload
             return new ShellActsOnProps(
                 kind: 'workspace',
                 label: $name,
-                detail: $teamSignIn
-                    ? __('console.how_your_workspace_s_own_team_signs_in_to_cb_8f578e9b')
-                    : __('console.your_workspace_its_projects_team_keys_and_bi_d55c648f'),
+                detail: $teamSignIn ? __('console.how_your_workspace_s_own_team_signs_in_to_cbox_id_not_y_8f578e9b') : __('console.your_workspace_its_projects_team_keys_and_billing_sign_d55c648f'),
             );
         }
 
         if ($this->scope->ownsIdentityProviders()) {
-            return new ShellActsOnProps(kind: 'workspace', label: $name, detail: 'Workspace');
+            return new ShellActsOnProps(kind: 'workspace', label: $name, detail: __('console.workspace_87bb59ba'));
         }
 
         $environment = $this->environmentName();
@@ -537,7 +532,7 @@ final readonly class ShellPayload
         return new ShellActsOnProps(
             kind: 'organization',
             label: $name,
-            detail: $environment === null ? 'Organization' : __('console.organization_in_b5bb405d').$environment,
+            detail: $environment === null ? __('console.organization_d764d425') : __('console.organization_in_part1_d6e673cc', ['part1' => $environment]),
         );
     }
 

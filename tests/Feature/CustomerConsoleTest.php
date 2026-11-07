@@ -38,7 +38,7 @@ uses(RefreshDatabase::class);
  *
  * @return array{environmentId: string, vendorId: string, organizationId: string}
  */
-function aCustomerAdministrator(MembershipRole $role = MembershipRole::Owner): array
+function aCustomerAdministrator(MembershipRole $role = MembershipRole::Owner, bool $auditLogs = true): array
 {
     multiTenantDeployment();
 
@@ -50,6 +50,11 @@ function aCustomerAdministrator(MembershipRole $role = MembershipRole::Owner): a
 
     // …and their customer's administrator, a subject OF that environment.
     [, $organization] = actingAsRole($role);
+    grantFeature($organization->id, 'cbox-id-sso');
+    grantFeature($organization->id, 'cbox-id-scim');
+    if ($auditLogs) {
+        grantFeature($organization->id, 'cbox-id-audit-logs');
+    }
 
     return [
         'environmentId' => $vendor['environment']->id,
@@ -129,7 +134,7 @@ it('draws a customer\'s console as an admin portal and the person\'s own pages',
         // The landing page and the Approvals waiting on this person — their own.
         ->and($rail['overview'])->toBe(['dashboard', 'approvals'])
         // EXACTLY the admin portal: Members, Enterprise SSO, Domains, Directory Sync,
-        // Roles, the Audit log — and App audit logs, which an open install grants.
+        // Roles, the Audit log — and App audit logs, explicitly granted to this positive fixture.
         ->and($rail['directory'])->toBe(['directory.members', 'roles'])
         ->and($rail['authentication'])->toBe(['connections', 'domains', 'directories'])
         ->and($rail['audit'])->toBe(['audit', 'audit-logs'])
@@ -160,8 +165,7 @@ it('names a customer\'s console in the console\'s own words', function (): void 
  * the moment the entitlement lands, both open.
  */
 it('offers a customer App audit logs only when their plan includes them', function (): void {
-    config(['cbox-id.entitlements.mode' => 'metered']);
-    ['organizationId' => $organizationId] = aCustomerAdministrator();
+    ['organizationId' => $organizationId] = aCustomerAdministrator(auditLogs: false);
 
     expect(customerRail('dashboard')['audit'])->toBe(['audit']);
     $this->get(route('audit-logs'))->assertNotFound();
@@ -320,11 +324,10 @@ it('lets nothing through on a customer\'s console but the admin portal, the pers
 
     $ceremonies = [
         'accounts', 'accounts.add', 'accounts.switch',
-        // The person's shared interface language, available in every console.
         'console.locale.update',
-        'apps',
         'activity',
         'device', 'device.lookup', 'device.approve', 'device.deny', 'device.verify',
+        'apps',
         'environment.open',
         'organization.switch',
         'passkeys.register', 'passkeys.register.options',

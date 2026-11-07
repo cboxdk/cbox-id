@@ -1,5 +1,6 @@
-import { useTranslator } from '@/i18n';
-import { Link, router, useForm } from '@inertiajs/react';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
+import { store as storeEnvironment } from '@routes/projects/environments';
+import { router, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
 import {
@@ -15,12 +16,7 @@ import {
     Select,
 } from '@/ui';
 import { useState } from 'react';
-import {
-    reactivate,
-    rename,
-    storeEnvironment,
-    suspend,
-} from '@actions/App/Http/Controllers/Console/ProjectController';
+import { reactivate, rename, suspend } from '@routes/projects';
 
 interface EnvironmentRow {
     id: string;
@@ -47,7 +43,6 @@ type Props = PageProps<{
     remaining: number;
     indexHref: string;
     billingHref: string | null;
-    manageBillingLabel: string;
 }>;
 
 export default function ProjectDetail({
@@ -58,10 +53,14 @@ export default function ProjectDetail({
     remaining,
     indexHref,
     billingHref,
-    manageBillingLabel,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [suspending, setSuspending] = useState(false);
 
     const environmentForm = useForm({ name: '', type: 'production' });
@@ -72,7 +71,7 @@ export default function ProjectDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={indexHref} label={tc('console.projects_04e2a972')} />
+                <Breadcrumb href={indexHref} label={consoleT('console.projects_04e2a972')} />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     {/*
                         The h1 is the project's name rather than the word "Project", and
@@ -91,15 +90,17 @@ export default function ProjectDetail({
             </div>
 
             <Panel
-                title={tc('console.environments_07437cd6')}
-                description={tc('console.each_is_an_isolated_stage_production_or_sand_c8b3283a')}
+                title={consoleT('console.environments_07437cd6')}
+                description={consoleText(
+                    'console.each_is_an_isolated_stage_production_or_sandbox_with_it_c8b3283a',
+                )}
                 action={
                     scoped ? undefined : (
                         <span className="text-xs shrink-0" style={{ color: 'var(--faint)' }}>
-                            {environments.length}
-                            {tc('console.of_a4282e4b')}
-                            {project.limit}
-                            {tc('console.used_f194a918')}
+                            {consoleRich('console._part1_of_part2_used_33343377', {
+                                part1: environments.length,
+                                part2: project.limit,
+                            })}
                         </span>
                     )
                 }
@@ -108,13 +109,9 @@ export default function ProjectDetail({
                     {environments.length === 0 ? (
                         <EmptyState
                             icon="layers"
-                            title={tc('console.no_environments_yet_8c63cac4')}
-                            description={tc(
-                                project.suspended
-                                    ? 'console.existing_environments_stay_live_but_no_new_o_0becaa18'
-                                    : full
-                                      ? 'console.this_project_has_used_every_environment_its__b891ec0b'
-                                      : 'console.create_an_environment_below_to_start_issuing_008d04ea',
+                            title={consoleT('console.no_environments_yet_8c63cac4')}
+                            description={consoleT(
+                                'console.create_an_environment_below_to_start_issuing_keys_and_s_008d04ea',
                             )}
                         />
                     ) : (
@@ -131,7 +128,7 @@ export default function ProjectDetail({
                                         </span>
                                         {environment.sandbox && (
                                             <Badge tone="warn">
-                                                {tc('console.sandbox_67fc6249')}
+                                                {consoleT('console.sandbox_67fc6249')}
                                             </Badge>
                                         )}
                                         <Badge>{environment.status}</Badge>
@@ -150,8 +147,9 @@ export default function ProjectDetail({
                                 <Button asChild variant="primary" size="sm" className="shrink-0">
                                     {/* A signed handoff to another host — a navigation, not a page. */}
                                     <a href={environment.openHref}>
-                                        {tc('console.open_ed077f3d')}
-                                        <Icon name="external" className="w-3.5 h-3.5" />
+                                        {consoleRich('console.open_part1_10c0f8b9', {
+                                            part1: <Icon name="external" className="w-3.5 h-3.5" />,
+                                        })}
                                     </a>
                                 </Button>
                             </div>
@@ -176,12 +174,16 @@ export default function ProjectDetail({
                         >
                             <div className="min-w-0">
                                 <Field
-                                    label={<span>{tc('console.environment_name_03cb80d1')}</span>}
+                                    label={
+                                        <span className="sr-only">
+                                            {consoleT('console.environment_name_03cb80d1')}
+                                        </span>
+                                    }
                                     error={environmentForm.errors.name}
                                 >
                                     <Input
                                         name="name"
-                                        placeholder={tc('console.staging_a8e7ac92')}
+                                        placeholder={consoleUiText('console.staging_a8e7ac92')}
                                         disabled={full || project.suspended}
                                         value={environmentForm.data.name}
                                         onChange={(event) =>
@@ -192,7 +194,11 @@ export default function ProjectDetail({
                             </div>
 
                             <Field
-                                label={<span>{tc('console.environment_type_7c9f3eba')}</span>}
+                                label={
+                                    <span className="sr-only">
+                                        {consoleT('console.environment_type_7c9f3eba')}
+                                    </span>
+                                }
                                 error={environmentForm.errors.type}
                             >
                                 <Select
@@ -202,11 +208,14 @@ export default function ProjectDetail({
                                     options={[
                                         {
                                             value: 'production',
-                                            label: tc('console.production_13a7c655'),
+                                            label: consoleText('console.production_13a7c655'),
                                         },
-                                        { value: 'sandbox', label: tc('console.sandbox_67fc6249') },
+                                        {
+                                            value: 'sandbox',
+                                            label: consoleText('console.sandbox_67fc6249'),
+                                        },
                                     ]}
-                                    aria-label={tc('console.environment_type_7c9f3eba')}
+                                    aria-label={consoleT('console.environment_type_7c9f3eba')}
                                 />
                             </Field>
 
@@ -216,49 +225,46 @@ export default function ProjectDetail({
                                 disabled={full || project.suspended}
                                 loading={environmentForm.processing}
                             >
-                                {tc('console.add_environment_dcbe4c44')}
+                                {consoleT('console.add_environment_dcbe4c44')}
                             </Button>
                         </form>
 
                         <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
                             {project.suspended
-                                ? tc(
+                                ? consoleText(
                                       'console.existing_environments_stay_live_but_no_new_o_0becaa18',
                                   )
                                 : full
-                                  ? tc(
-                                        'console.this_project_has_used_every_environment_its__b891ec0b',
+                                  ? consoleText(
+                                        'console.this_project_has_used_every_environment_its_plan_allows_b891ec0b',
                                     )
-                                  : tc(
-                                        'console.sandbox_environments_allow_localhost_urls_an_021f74f7',
-                                        { value0: remaining },
+                                  : consoleFinalText(
+                                        'console.sandbox_environments_allow_localhost_urls_and_never_sen_299fef2d',
+                                        { part1: remaining },
                                     )}
                         </p>
                     </>
                 )}
             </Panel>
 
-            {/*
-                The plan sits on the PROJECT, because the project is the billing anchor:
-                one account, separately-billed products.
-            */}
-            <Panel title={tc('console.plan_fa8ed0bd')}>
+            <Panel title={consoleT('billing.allowance')}>
                 <div className="flex items-center justify-between gap-4">
                     <div>
-                        <p className="text-sm">
-                            {project.limit} {tc('console.environments_d5f6d542')}
+                        <p className="text-sm font-medium">{project.limit}</p>
+                        <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
+                            {consoleT('billing.allowance_description')}
                         </p>
                     </div>
                     {billingHref && (
-                        <Button asChild size="sm" className="shrink-0">
-                            <Link href={billingHref}>{manageBillingLabel}</Link>
+                        <Button size="sm" asChild>
+                            <a href={billingHref}>{consoleT('console.billing_3ac8bbca')}</a>
                         </Button>
                     )}
                 </div>
             </Panel>
 
             {canManage && (
-                <Panel title={tc('console.settings_74a883a0')}>
+                <Panel title={consoleT('console.settings_74a883a0')}>
                     <form
                         className="grid sm:grid-cols-[1fr_auto] gap-2 items-end"
                         onSubmit={(event) => {
@@ -269,7 +275,7 @@ export default function ProjectDetail({
                         }}
                     >
                         <Field
-                            label={tc('console.project_name_25498193')}
+                            label={consoleT('console.project_name_25498193')}
                             error={nameForm.errors.name}
                         >
                             <Input
@@ -284,7 +290,7 @@ export default function ProjectDetail({
                             className="shrink-0"
                             loading={nameForm.processing}
                         >
-                            {tc('console.save_1509f561')}
+                            {consoleT('console.save_1509f561')}
                         </Button>
                     </form>
 
@@ -295,16 +301,16 @@ export default function ProjectDetail({
                         <div>
                             <p className="text-sm font-medium">
                                 {project.suspended
-                                    ? tc('console.reactivate_project_8c8f7a7b')
-                                    : tc('console.suspend_project_9e1e10fb')}
+                                    ? consoleText('console.reactivate_project_8c8f7a7b')
+                                    : consoleText('console.suspend_project_9e1e10fb')}
                             </p>
                             <p className="mt-1 text-xs" style={{ color: 'var(--faint)' }}>
                                 {project.suspended
-                                    ? tc(
-                                          'console.bring_the_project_back_new_environments_can__2b5117fe',
+                                    ? consoleText(
+                                          'console.bring_the_project_back_new_environments_can_be_added_ag_2b5117fe',
                                       )
-                                    : tc(
-                                          'console.existing_environments_stay_live_but_no_new_o_0becaa18',
+                                    : consoleText(
+                                          'console.existing_environments_stay_live_but_no_new_ones_can_be_0becaa18',
                                       )}
                             </p>
                         </div>
@@ -321,7 +327,7 @@ export default function ProjectDetail({
                                     )
                                 }
                             >
-                                {tc('console.reactivate_2dc7478f')}
+                                {consoleT('console.reactivate_2dc7478f')}
                             </Button>
                         ) : (
                             <>
@@ -331,16 +337,16 @@ export default function ProjectDetail({
                                     style={{ color: 'var(--destructive)' }}
                                     onClick={() => setSuspending(true)}
                                 >
-                                    {tc('console.suspend_4948e134')}
+                                    {consoleT('console.suspend_4948e134')}
                                 </Button>
 
                                 <ConfirmDelete
                                     open={suspending}
                                     onOpenChange={setSuspending}
                                     name={project.name}
-                                    verb="Suspend"
-                                    consequence={tc(
-                                        'console.existing_environments_stay_live_but_no_new_o_ed87b1df',
+                                    verb={consoleShortText('console.suspend_4948e134')}
+                                    consequence={consoleUiText(
+                                        'console.existing_environments_stay_live_but_no_new_ones_can_be_ed87b1df',
                                     )}
                                     onConfirm={() => {
                                         setSuspending(false);

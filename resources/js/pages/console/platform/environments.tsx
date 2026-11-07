@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -80,8 +81,11 @@ export default function Environments({
     customersHref,
     help,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [term, setTerm] = useState(search);
     const [creating, setCreating] = useState(false);
     const [provisioning, setProvisioning] = useState<string | null>(null);
@@ -107,11 +111,14 @@ export default function Environments({
         <>
             <PageHeader
                 help={help}
-                description={tc('console.every_environment_on_this_install_and_who_ow_78b48199')}
+                description={consoleT(
+                    'console.every_environment_on_this_install_and_who_owns_it_creat_78b48199',
+                )}
                 actions={
                     <Button variant="primary" onClick={() => setCreating((open) => !open)}>
-                        <Icon name="plus" className="w-4 h-4" />
-                        {tc('console.new_environment_39fe4fa8')}
+                        {consoleRich('console._part1_new_environment_3f6f97e1', {
+                            part1: <Icon name="plus" className="w-4 h-4" />,
+                        })}
                     </Button>
                 }
             />
@@ -120,8 +127,8 @@ export default function Environments({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder={tc('console.search_by_name_slug_or_domain_e09d660c')}
-                    aria-label={tc('console.search_environments_58b59caa')}
+                    placeholder={consoleUiText('console.search_by_name_slug_or_domain_e09d660c')}
+                    aria-label={consoleT('console.search_environments_58b59caa')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -131,11 +138,7 @@ export default function Environments({
                     narrowed to nothing.
                 */}
                 <output className="sr-only">
-                    {pagination.count}{' '}
-                    {pagination.count === 1
-                        ? tc('console.environment_ba528516')
-                        : tc('console.environments_d5f6d542')}
-                    {tc('console.on_this_page_d8ae7c64')}
+                    {consoleRich('console.results_on_page', { count: pagination.count })}
                 </output>
             </div>
 
@@ -146,24 +149,26 @@ export default function Environments({
                     {search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={tc('console.no_environments_match_value0_016e4e16', {
-                                value0: search,
-                            })}
-                            description={tc(
-                                'console.try_part_of_the_name_the_routing_slug_or_a_c_7c76fa0d',
+                            title={consoleFinalText(
+                                'console.no_environments_match_part1_fdc05598',
+                                { part1: search },
+                            )}
+                            description={consoleT(
+                                'console.try_part_of_the_name_the_routing_slug_or_a_custom_domai_7c76fa0d',
                             )}
                         />
                     ) : (
                         <EmptyState
                             icon="layers"
-                            title={tc('console.no_environments_yet_8c63cac4')}
-                            description={tc(
-                                'console.an_environment_is_fully_isolated_its_own_use_bc49f6f9',
+                            title={consoleT('console.no_environments_yet_8c63cac4')}
+                            description={consoleT(
+                                'console.an_environment_is_fully_isolated_its_own_users_keys_sig_bc49f6f9',
                             )}
                             actions={
                                 <Button variant="primary" onClick={() => setCreating(true)}>
-                                    <Icon name="plus" className="w-4 h-4" />
-                                    {tc('console.new_environment_39fe4fa8')}
+                                    {consoleRich('console._part1_new_environment_3f6f97e1', {
+                                        part1: <Icon name="plus" className="w-4 h-4" />,
+                                    })}
                                 </Button>
                             }
                         />
@@ -174,24 +179,24 @@ export default function Environments({
                     <div className="cbx-panel overflow-hidden mt-8">
                         <div className="overflow-x-auto">
                             <Table
-                                caption={tc(
-                                    'console.environments_on_this_install_with_their_owne_2d6dd3c5',
+                                caption={consoleUiText(
+                                    'console.environments_on_this_install_with_their_owner_custom_do_2d6dd3c5',
                                 )}
                             >
                                 <thead>
                                     <tr>
-                                        <Th>{tc('console.environment_9e471951')}</Th>
-                                        <Th>{tc('console.belongs_to_5c9c76cb')}</Th>
-                                        <Th>{tc('console.domain_79fa3361')}</Th>
+                                        <Th>{consoleT('console.environment_9e471951')}</Th>
+                                        <Th>{consoleT('console.belongs_to_5c9c76cb')}</Th>
+                                        <Th>{consoleT('console.domain_79fa3361')}</Th>
                                         <Th className="text-right">
-                                            {tc('console.orgs_ff9e49b5')}
+                                            {consoleT('console.orgs_ff9e49b5')}
                                         </Th>
                                         <Th className="text-right">
-                                            {tc('console.users_6b0cc904')}
+                                            {consoleT('console.users_6b0cc904')}
                                         </Th>
                                         <Th>
                                             <span className="sr-only">
-                                                {tc('console.actions_ff8059dc')}
+                                                {consoleT('console.actions_ff8059dc')}
                                             </span>
                                         </Th>
                                     </tr>
@@ -216,8 +221,6 @@ export default function Environments({
                     <div className="mt-4">
                         <SimplePagination
                             pagination={pagination}
-                            noun={tc('console.environment_ba528516')}
-                            pluralNoun={tc('console.environments_d5f6d542')}
                             href={(page) => listHref(search, page)}
                         />
                     </div>
@@ -225,15 +228,21 @@ export default function Environments({
             )}
 
             <p className="mt-6 text-xs" style={{ color: 'var(--faint)' }}>
-                {tc('console.environments_nest_under_a_project_and_a_proj_71416d24')}{' '}
-                <Link href={customersHref} className="underline">
-                    {tc('console.workspace_21a3230e')}
-                </Link>{' '}
-                {tc('console.start_there_to_see_one_workspace_rsquo_s_who_ea9d463c')}
-                <strong>{tc('console.platform_root_1289b7b2')}</strong>
-                {tc('console.is_the_environment_this_deployment_itself_ru_975cfa3e')}{' '}
-                <strong>{tc('console.unattached_fa556749')}</strong>
-                {tc('console.environment_has_no_project_so_nothing_bills__199b4e13')}
+                {consoleRich(
+                    'console.environments_nest_under_a_project_and_a_project_under_a_03ba63b6',
+                    {
+                        part1: ' ',
+                        part2: (
+                            <Link href={customersHref} className="underline">
+                                {consoleT('console.workspace_21a3230e')}
+                            </Link>
+                        ),
+                        part3: ' ',
+                        part4: <strong>{consoleT('console.platform_root_1289b7b2')}</strong>,
+                        part5: ' ',
+                        part6: <strong>{consoleT('console.unattached_fa556749')}</strong>,
+                    },
+                )}
             </p>
 
             {/*
@@ -248,15 +257,17 @@ export default function Environments({
                 title={
                     targeting === null
                         ? ''
-                        : tc('console.point_this_console_at_value0_f148c7bb', {
-                              value0: targeting.name,
+                        : consoleFinalText('console.point_this_console_at_part1_6614bd12', {
+                              part1: targeting.name,
                           })
                 }
-                description={tc('console.every_page_you_open_from_now_on_organization_7ba726d3')}
+                description={consoleT(
+                    'console.every_page_you_open_from_now_on_organizations_usage_org_7ba726d3',
+                )}
                 footer={
                     <>
                         <Button onClick={() => setTargeting(null)}>
-                            {tc('console.cancel_19766ed6')}
+                            {consoleT('console.cancel_19766ed6')}
                         </Button>
                         <Button
                             variant="primary"
@@ -269,7 +280,7 @@ export default function Environments({
                                 }
                             }}
                         >
-                            {tc('console.target_978354db')}
+                            {consoleT('console.target_978354db')}
                         </Button>
                     </>
                 }
@@ -293,8 +304,10 @@ function EnvironmentRows({
     onProvisionDone: () => void;
     onTarget: () => void;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleT } = useConsoleTranslator();
     const { lineage } = environment;
 
     return (
@@ -325,7 +338,7 @@ function EnvironmentRows({
                                 {environment.qualifiedName}
                                 {isTarget && (
                                     <Pill tone="success" className="align-middle ml-1">
-                                        {tc('console.target_978354db')}
+                                        {consoleT('console.target_978354db')}
                                     </Pill>
                                 )}
                             </p>
@@ -353,12 +366,13 @@ function EnvironmentRows({
                                 {lineage.organizationName}
                             </Link>
                             <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                                {lineage.projectName ?? tc('console.no_project_f34c2be0')}
+                                {lineage.projectName ??
+                                    consoleRuntimeText('console.no_project_f34c2be0')}
                             </p>
                         </>
                     ) : lineage.isPlatformRoot ? (
                         <>
-                            <Pill>{tc('console.platform_root_7ee14f2f')}</Pill>
+                            <Pill>{consoleT('console.platform_root_7ee14f2f')}</Pill>
                             {/*
                                 Said in the cell, not in a `title` tooltip as this column
                                 used to: a tooltip is unreachable by touch and gone the
@@ -367,21 +381,27 @@ function EnvironmentRows({
                             */}
                             <p className="text-xs" style={{ color: 'var(--faint)' }}>
                                 {lineage.note ??
-                                    tc('console.this_deployment_s_own_environment_6e61c77d')}
+                                    consoleRuntimeText(
+                                        'console.this_deployment_s_own_environment_6e61c77d',
+                                    )}
                             </p>
                         </>
                     ) : (
                         <>
-                            <Pill tone="warning">{tc('console.unattached_43c83268')}</Pill>
+                            <Pill tone="warning">{consoleT('console.unattached_43c83268')}</Pill>
                             <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                                {lineage.note ?? tc('console.no_project_so_no_workspace_305f3951')}
+                                {lineage.note ??
+                                    consoleRuntimeText(
+                                        'console.no_project_so_no_workspace_305f3951',
+                                    )}
                             </p>
                         </>
                     )}
                 </Td>
 
                 <Td style={{ color: 'var(--muted)' }}>
-                    {environment.domain ?? tc('console.none_served_on_the_fallback_host_7c84367e')}
+                    {environment.domain ??
+                        consoleRuntimeText('console.none_served_on_the_fallback_host_7c84367e')}
                 </Td>
                 <Td className="text-right tabular-nums">{environment.orgs}</Td>
                 <Td className="text-right tabular-nums">{environment.users}</Td>
@@ -391,38 +411,39 @@ function EnvironmentRows({
                         <a
                             href={environment.consoleHref}
                             className="text-sm font-medium hover:underline mr-3"
-                            aria-label={tc(
-                                'console.open_the_console_of_value0_the_platform_s_ow_4a3495b0',
-                                { value0: environment.name },
+                            aria-label={consoleFinalText(
+                                'console.open_the_console_of_part1_the_platform_s_own_environmen_37fd9a5c',
+                                { part1: environment.name },
                             )}
                         >
-                            {tc('console.open_console_f4063d1b')}
+                            {consoleT('console.open_console_f4063d1b')}
                         </a>
                     )}
                     <Button
                         size="sm"
                         onClick={onProvision}
                         aria-expanded={provisioning}
-                        aria-label={tc('console.provision_admin_in_value0_abf89791', {
-                            value0: environment.name,
+                        aria-label={consoleFinalText('console.provision_admin_in_part1_afd97e30', {
+                            part1: environment.name,
                         })}
                     >
-                        {tc('console.provision_admin_72aea71a')}
+                        {consoleT('console.provision_admin_72aea71a')}
                     </Button>
                     {isTarget ? (
                         <span className="text-xs ml-2" style={{ color: 'var(--faint)' }}>
-                            {tc('console.target_978354db')}
+                            {consoleT('console.target_978354db')}
                         </span>
                     ) : (
                         <Button
                             size="sm"
                             className="ml-2"
                             onClick={onTarget}
-                            aria-label={tc('console.point_this_console_at_value0_7211e979', {
-                                value0: environment.name,
-                            })}
+                            aria-label={consoleFinalText(
+                                'console.point_this_console_at_part1_a53811c7',
+                                { part1: environment.name },
+                            )}
                         >
-                            {tc('console.target_978354db')}
+                            {consoleT('console.target_978354db')}
                         </Button>
                     )}
                 </Td>
@@ -440,8 +461,8 @@ function EnvironmentRows({
 }
 
 function CreateEnvironment({ href, onDone }: { href: string; onDone: () => void }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({ name: '', domain: '' });
     const name = useRef<HTMLInputElement>(null);
 
@@ -462,11 +483,11 @@ function CreateEnvironment({ href, onDone }: { href: string; onDone: () => void 
             }}
         >
             <div className="flex-1" style={{ minWidth: '14rem' }}>
-                <Field label={tc('console.name_dcd1d522')} error={form.errors.name}>
+                <Field label={consoleT('console.name_dcd1d522')} error={form.errors.name}>
                     <Input
                         ref={name}
                         name="name"
-                        placeholder={tc('console.production_13a7c655')}
+                        placeholder={consoleUiText('console.production_13a7c655')}
                         value={form.data.name}
                         onChange={(event) => form.setData('name', event.target.value)}
                     />
@@ -475,8 +496,10 @@ function CreateEnvironment({ href, onDone }: { href: string; onDone: () => void 
 
             <div className="flex-1" style={{ minWidth: '14rem' }}>
                 <Field
-                    label={tc('console.custom_domain_optional_2e942026')}
-                    hint={tc('console.recorded_not_routed_the_environment_serves_i_1e644612')}
+                    label={consoleT('console.custom_domain_optional_2e942026')}
+                    hint={consoleT(
+                        'console.recorded_not_routed_the_environment_serves_its_own_issu_1e644612',
+                    )}
                     error={form.errors.domain}
                 >
                     <Input
@@ -489,10 +512,10 @@ function CreateEnvironment({ href, onDone }: { href: string; onDone: () => void 
             </div>
 
             <Button type="submit" variant="primary" loading={form.processing}>
-                {tc('console.create_4759498a')}
+                {consoleT('console.create_4759498a')}
             </Button>
             <Button type="button" onClick={onDone}>
-                {tc('console.cancel_19766ed6')}
+                {consoleT('console.cancel_19766ed6')}
             </Button>
         </form>
     );
@@ -505,8 +528,10 @@ function ProvisionAdmin({
     environment: EnvironmentRow;
     onDone: () => void;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({ orgName: '', adminName: '', adminEmail: '', adminPassword: '' });
 
     return (
@@ -520,13 +545,16 @@ function ProvisionAdmin({
             }}
         >
             <p className="text-sm font-semibold mb-3">
-                {tc('console.bootstrap_493af033')}
-                {environment.name}
-                {tc('console.first_organization_amp_admin_59899cc7')}
+                {consoleRich('console.bootstrap_part1_first_organization_admin_7459ca65', {
+                    part1: environment.name,
+                })}
             </p>
 
             <div className="grid gap-3 sm:grid-cols-2">
-                <Field label={tc('console.organization_name_9a807d52')} error={form.errors.orgName}>
+                <Field
+                    label={consoleT('console.organization_name_9a807d52')}
+                    error={form.errors.orgName}
+                >
                     <Input
                         name="orgName"
                         placeholder={tc('console.acme_inc_42cf7a26')}
@@ -535,16 +563,22 @@ function ProvisionAdmin({
                     />
                 </Field>
 
-                <Field label={tc('console.admin_name_78402a23')} error={form.errors.adminName}>
+                <Field
+                    label={consoleT('console.admin_name_78402a23')}
+                    error={form.errors.adminName}
+                >
                     <Input
                         name="adminName"
-                        placeholder={tc('console.ada_lovelace_76740216')}
+                        placeholder={consoleUiText('console.ada_lovelace_76740216')}
                         value={form.data.adminName}
                         onChange={(event) => form.setData('adminName', event.target.value)}
                     />
                 </Field>
 
-                <Field label={tc('console.admin_email_f7d29082')} error={form.errors.adminEmail}>
+                <Field
+                    label={consoleT('console.admin_email_f7d29082')}
+                    error={form.errors.adminEmail}
+                >
                     <Input
                         name="adminEmail"
                         type="email"
@@ -560,15 +594,17 @@ function ProvisionAdmin({
                     reports the plane's own rule against this field.
                 */}
                 <Field
-                    label={tc('console.admin_password_f1514ea5')}
-                    hint={tc('console.checked_against_the_target_environment_s_own_6a4d22da')}
+                    label={consoleT('console.admin_password_f1514ea5')}
+                    hint={consoleT(
+                        'console.checked_against_the_target_environment_s_own_password_p_6a4d22da',
+                    )}
                     error={form.errors.adminPassword}
                 >
                     <Input
                         name="adminPassword"
                         type="password"
                         autoComplete="new-password"
-                        placeholder={tc('console.at_least_12_characters_0ced89a6')}
+                        placeholder={consoleUiText('console.at_least_12_characters_0ced89a6')}
                         value={form.data.adminPassword}
                         onChange={(event) => form.setData('adminPassword', event.target.value)}
                     />
@@ -577,10 +613,10 @@ function ProvisionAdmin({
 
             <div className="mt-3 flex gap-2">
                 <Button type="submit" variant="primary" size="sm" loading={form.processing}>
-                    {tc('console.provision_41112adc')}
+                    {consoleT('console.provision_41112adc')}
                 </Button>
                 <Button type="button" size="sm" onClick={onDone}>
-                    {tc('console.cancel_19766ed6')}
+                    {consoleT('console.cancel_19766ed6')}
                 </Button>
             </div>
         </form>

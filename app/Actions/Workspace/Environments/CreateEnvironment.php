@@ -16,14 +16,18 @@ use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\Principal\SignedInPerson;
+use App\Platform\Billing\ProductBilling;
 use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Exceptions\EnvironmentLimitReached;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\TenantProvisioner;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Add an environment to one of the workspace's projects — and, with `initial_key`, mint
@@ -83,7 +87,7 @@ final readonly class CreateEnvironment implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $workspaceId = InWorkspace::id($context->principal);
-        app(ProductAdmission::class)->assertGranted($context->principal->id(), $workspaceId);
+        app(ProductAdmission::class)->assertGranted($context->principal instanceof SignedInPerson ? $context->principal->subjectId() : $context->principal->id(), $workspaceId);
         $project = $this->project($workspaceId, $context->nullableString('project_id'));
 
         InWorkspace::assertUnscoped($context->principal, $workspaceId);
@@ -97,9 +101,14 @@ final readonly class CreateEnvironment implements Action
         $expiresAt = $wantsKey ? EnvironmentKeyIssuer::expiry($context, 'initial_key.expires_at') : null;
 
         try {
-            $environment = $this->provisioner->addEnvironment($project, $name, type: $type);
+            $environment = DB::transaction(function () use ($project, $workspaceId, $name, $type) {
+                $locked = Project::query()->whereKey($project->id)->lockForUpdate()->firstOrFail();
+                app(ProductBilling::class)->assertEnvironmentCapacity($workspaceId, $locked);
+
+                return $this->provisioner->addEnvironment($locked, $name, type: $type);
+            });
         } catch (EnvironmentLimitReached $refused) {
-            throw ActionRefused::because('environment_limit_reached', $refused->getMessage(), 'name');
+            throw ActionRefused::because('environment_limit_reached', FrameworkMessage::from($refused), 'name');
         }
 
         InWorkspace::record($context->principal, $workspaceId, 'organization.environment_created', 'environment', $environment->id, [

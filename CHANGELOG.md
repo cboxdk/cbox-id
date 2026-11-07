@@ -8,47 +8,13 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
-### Added
+### Configuration
 
-- Separate named authenticator apps in account security: add, confirm, rename and
-  remove individual TOTP credentials, with setup cancellation and ten-minute expiry.
-  Existing apps and recovery codes remain valid when another app is added. The last
-  confirmed app cannot be removed before another is ready. All ten console languages
-  cover the flow; management API and MCP use the same owner-scoped actions.
-
-### Fixed
-
-- Return keyboard focus to the edited profile field after saving, disable busy
-  buttons consistently, and prevent old confirmations from replaying on Back.
-  Mobile user rows place status badges below the email so addresses stay readable.
-- Save the signed-in console language to the canonical `preferences.language`
-  document and notify connected apps through the existing property outbox. Read
-  that preference ahead of browser cookies; preserve unrelated preferences and
-  reject writes from tabs belonging to another account. Environment administrators
-  update their own root identity, not a user in the environment they administer.
-- Record browser and IP details for email-link and SSO sessions, and store Cloudflare country/city headers from trusted proxies. Sessions & activity now shows location, IP, sign-in method and activity in readable fields; returning devices can fill only their own missing metadata.
-- Upgrade Pest's browser plugin to 5.2, fixing hidden screenshot-cleanup warnings that returned exit code 1 after passing browser tests. Warning and risky-test failures remain enabled.
-- Position searchable pickers on animation frames to avoid ResizeObserver loops during opening. Clear cached browser-test controllers between requests and wait for save-bar animations before checking contrast.
-- Upgrade the identity engine to published `laravel-id v1.27.3`, allowing ChatGPT MCP connections to request the advertised `openid email` scopes. Remove the temporary identity-engine path alias and bundled source; retain the separate Signals client integration.
-
-### Security
-
-- Update Symfony Filesystem, HttpFoundation, HttpKernel, Routing and the development YAML parser to patched 8.1.11 releases following the November 4 advisories.
-
-### Fixed
-
-- Normalize repeated URI aliases and support Laravel’s `QUERY` method in generated Wayfinder helpers. Frontend typechecking and component tests now run in browser CI.
+- Optional `CBOX_ID_INTROSPECTION_RESOURCE_SERVERS` JSON mapping for explicit resource-server grants in laravel-id 1.27. Default empty; existing own-client introspection is unchanged. No deployment grant is created by this configuration adapter.
 
 ### Added
 
-- Optional public marketing website on a separate host, with application links, sitemap and method-preserving redirects for old console URLs. Hosted console moves to `app.cboxid.com` while existing tenant issuers remain unchanged.
-
-- German, Swedish, Norwegian Bokmål, Finnish, French, Spanish, Italian and Dutch in the signed-in app. Finnish, Spanish, Italian and Dutch also cover hosted login, the Admin Portal, mail and validation. Core terms are reviewed; the new catalogues are machine-translated and checked for key, placeholder and plural parity.
-
-- Danish and English throughout the signed-in app, including organization and platform administration. Choose a language in the top-right language menu; the browser remembers it independently of hosted sign-in language settings.
-- Central app catalog with environment administration, uploaded icons, versioned management actions, personal `/api/v1/me/apps` filtering, and a shared desktop/mobile navigation selector. The dashboard uses the same published catalog. Includes an additive migration and rollout guide.
-
-- Shared user preferences and custom metadata via laravel-id 1.27.0. Namespace-management actions grant app-group reader/writer and webhook access; versioned OAuth patches and filtered change notifications synchronize consumers. Includes the additive namespace/document migration and integration guide.
+- Shared user preferences and app-defined metadata namespaces, with management actions for explicit reader/writer app groups and webhook recipients. The data API, versioned patches, restricted change events and erasure support live in the companion `laravel-id` change; deploy with that package release and migration.
 
 - **`idp_hint` on `/oauth/authorize`.** An app that draws its own "Continue with Google" sends `idp_hint=google`, and a signed-out person goes straight to that provider instead of to the sign-in page where they had to press Google again. Only a provider the sign-in page would offer is honoured; anything else shows the page. A failed provider sign-in lands on the sign-in page, and the resumed request carries no hint, so it cannot loop. `laravel-id-client` 0.15.1 sends it as `redirect(idpHint: 'google')`.
 - **Name your passkeys.** A new passkey is named after the password manager or authenticator that made it, read from its AAGUID (*iCloud Keychain*, *Google Password Manager*, *1Password*, *Windows Hello*, *Bitwarden*, *YubiKey*…), or after the browser and system when it does not say (*Passkey on Chrome · macOS*). Right after adding one, My account offers the name to keep or change. **Rename** on every passkey in the list changes it later; the list shows the name, the date added and when it last signed you in. Names are trimmed, 1 to 64 characters, with no control characters or direction overrides. New action `account.passkeys.rename` (`PATCH /api/v1/me/passkeys/{passkey_id}`, MCP, scope `account:sign_in:write`, audit `user.passkey_renamed`, shown on Sessions & activity); console route `account.passkeys.update`, which needs no step-up because a name is not a credential. "Last used" is stamped on every passkey sign-in (`RecordsPasskeyUse` around the framework's `Passkeys`) in a new nullable `webauthn_credentials.last_used_at` column added by this app; the framework's table already had `name`.
@@ -212,10 +178,9 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Security
 
-- Upgrade to laravel-id 1.27.2 and require the initiating browser’s host-only cookie before accepting an SP-initiated SAML login. The federation security update also uses protected, expiring, single-use OIDC flow cookies; pending federated sign-ins must restart after deployment.
-
 - Require an enrolled second factor after magic-link login and reject password-only login when required MFA is satisfied only by an enrolled passkey. Recheck existing sessions and OAuth consent, preserving the actual authentication methods after step-up. Factor enrolment rotates the session after proving possession.
-- Upgrade to laravel-id 1.26.6: reject code redemption, refresh and token issuance for inactive subjects and invalidate outstanding codes on deactivation. Regression coverage exercises all three bypasses and successful sign-ins.
+- Pair with the laravel-id security fix that rejects authorization-code redemption, refresh and token issuance for inactive subjects and invalidates outstanding codes on deactivation. Regression coverage exercises all three bypasses and successful sign-ins.
+
 
 - **Log out now logs you out of the context you are in, everywhere it reached.** Logging out of a tenant's environment console (`{tenant}/admin`) ended only that host's session. The account host (`cboxid.com`) stayed signed in, the console's gate sent the person to the account host's open-environment door, and the door minted a fresh handoff straight back into the console. There are two contexts, and a sign-out now ends exactly one of them:
   - **Admin context** (the account host, its consoles and My account, and every `{tenant}/admin` console handed off from it): logging out of any of them ends the root session, every account the browser holds there, and every console session handed off from those, in every tab. Each handoff carries the sign-in it was minted from, encrypted and bound to its token, and the environment's host refuses a handoff without it or whose sign-in has ended, so an unspent handoff is worthless after logging out too. New table `session_lineage`. The console's Sign out posts to `admin.logout` (`shell.logoutHref`).

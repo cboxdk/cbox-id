@@ -37,7 +37,7 @@ function usageOwner(): string
 it('renders the usage dashboard with recorded metrics under human labels', function (): void {
     $orgId = usageOwner();
     app(UsageMeter::class)->record('auth.login', 5, $orgId);
-    app(UsageMeter::class)->record('auth.id_token', 12, $orgId);
+    app(UsageMeter::class)->record('auth.session', 12, $orgId);
 
     test()->get(route('usage'))
         ->assertOk()
@@ -47,7 +47,7 @@ it('renders the usage dashboard with recorded metrics under human labels', funct
             ->where('metrics', fn (Collection $rows): bool => $rows
                 ->firstWhere('key', 'auth.login') === ['key' => 'auth.login', 'label' => 'Sign-ins', 'total' => 5])
             ->where('metrics', fn (Collection $rows): bool => $rows
-                ->firstWhere('key', 'auth.id_token') === ['key' => 'auth.id_token', 'label' => 'Tokens issued', 'total' => 12]));
+                ->firstWhere('key', 'auth.session') === ['key' => 'auth.session', 'label' => 'Sessions', 'total' => 12]));
 });
 
 it('shows an empty state when there is no usage yet', function (): void {

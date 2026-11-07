@@ -35,16 +35,17 @@ it('names the organization and the inviter when inviting somebody to join it', f
     });
 });
 
-it('says ADMINISTER, and signs with a name, when inviting a teammate to a customer account', function (): void {
-    ['subjectId' => $ownerId] = provisionAccount('owner@acme.example');
+it('names the native app and selected role when inviting a teammate', function (): void {
+    ['organization' => $organization, 'subjectId' => $ownerId] = provisionAccount('owner@acme.example');
     signInAsMember($ownerId);
 
     test()->from(route('members'))
-        ->post(route('members.invite'), ['email' => 'new@acme.example', 'role' => 'developer'])
+        ->post(route('members.invite', ['organization' => $organization->id]), ['email' => 'new@acme.example', 'roles' => ['developer', 'billing']])
         ->assertSessionHasNoErrors();
 
-    Mail::assertSent(OrganizationInviteMail::class, function (OrganizationInviteMail $mail) use ($ownerId): bool {
-        $mail->assertHasSubject('Owner invited you to administer Acme on Cbox ID');
+    Mail::assertSent(InvitationMail::class, function (InvitationMail $mail) use ($ownerId): bool {
+        $mail->assertHasSubject('Owner invited you to join Acme');
+        expect($mail->app)->toBe('Cbox ID')->and($mail->role)->toBe('Billing, Editor');
 
         // The subject id is exactly what used to sit where the name belongs.
         expect($mail->inviter)->toBe('Owner')->not->toBe($ownerId);
@@ -52,5 +53,5 @@ it('says ADMINISTER, and signs with a name, when inviting a teammate to a custom
         return true;
     });
 
-    Mail::assertNotSent(InvitationMail::class);
+    Mail::assertNotSent(OrganizationInviteMail::class);
 });

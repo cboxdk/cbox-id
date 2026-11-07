@@ -7,6 +7,7 @@ namespace App\Actions\Apps;
 use App\Http\Resources\Environment\AppResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -62,7 +63,7 @@ final readonly class SetAppApiKeyPrefix implements Action
         $prefix = $prefix === null ? null : (trim($prefix) ?: null);
 
         if ($prefix !== null && Client::query()->where('api_key_prefix', $prefix)->whereKeyNot($client->id)->exists()) {
-            throw ActionRefused::because('api_key_prefix_taken', self::TAKEN, 'prefix');
+            throw ActionRefused::because('api_key_prefix_taken', new ActionMessage('console.another_app_in_this_environment_already_uses_this_prefi_e8f83cff'), 'prefix');
         }
 
         try {

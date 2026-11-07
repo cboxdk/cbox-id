@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -47,8 +47,13 @@ export default function AccessReviewsIndex({
     help,
     organizationFilter,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -71,12 +76,15 @@ export default function AccessReviewsIndex({
         <>
             <PageHeader
                 help={help}
-                description={tc('console.periodically_certify_who_holds_which_role_an_ebedf1d0')}
+                description={consoleT(
+                    'console.periodically_certify_who_holds_which_role_and_membershi_ebedf1d0',
+                )}
                 actions={
                     <Button asChild variant="primary" className="shrink-0">
                         <Link href={createHref}>
-                            <Icon name="plus" className="w-4 h-4" />
-                            {tc('console.new_review_23a525d3')}
+                            {consoleRich('console._part1_new_review_e07cc37f', {
+                                part1: <Icon name="plus" className="w-4 h-4" />,
+                            })}
                         </Link>
                     </Button>
                 }
@@ -91,8 +99,8 @@ export default function AccessReviewsIndex({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder={tc('console.search_by_name_4ae2b333')}
-                    aria-label={tc('console.search_access_reviews_0759160d')}
+                    placeholder={consoleUiText('console.search_by_name_4ae2b333')}
+                    aria-label={consoleT('console.search_access_reviews_0759160d')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -102,11 +110,7 @@ export default function AccessReviewsIndex({
                     narrowed to nothing.
                 */}
                 <output className="sr-only">
-                    {reviews.length}{' '}
-                    {reviews.length === 1
-                        ? tc('console.review_c97ace4c')
-                        : tc('console.reviews_54641051')}
-                    {tc('console.found_599e25a3')}
+                    {consoleRich('console.search_results_found', { count: reviews.length })}
                 </output>
             </div>
 
@@ -118,30 +122,37 @@ export default function AccessReviewsIndex({
                     search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={tc('console.no_reviews_match_value0_b8be1761', {
-                                value0: search,
+                            title={consoleFinalText('console.no_reviews_match_part1_825a58bd', {
+                                part1: search,
                             })}
-                            description={tc(
-                                'console.no_access_review_matches_that_name_try_a_dif_752eb9ce',
+                            description={consoleT(
+                                'console.no_access_review_matches_that_name_try_a_different_sear_752eb9ce',
                             )}
                         />
                     ) : (
                         <EmptyState
                             icon="shield"
-                            title={tc('console.no_access_reviews_yet_66466767')}
-                            description={tc(
-                                'console.access_accumulates_people_change_teams_and_k_cd6b423c',
+                            title={consoleT('console.no_access_reviews_yet_66466767')}
+                            description={consoleT(
+                                'console.access_accumulates_people_change_teams_and_keep_what_th_cd6b423c',
                             )}
                             steps={[
-                                tc('console.open_a_review_it_snapshots_every_role_and_me_2bcb5eed'),
-                                tc('console.work_through_the_list_certify_what_is_still__9bcc79ab'),
-                                tc('console.close_it_every_revoke_is_applied_for_real_an_b4db8386'),
+                                consoleRuntimeText(
+                                    'console.open_a_review_it_snapshots_every_role_and_membership_in_2bcb5eed',
+                                ),
+                                consoleRuntimeText(
+                                    'console.work_through_the_list_certify_what_is_still_needed_revo_9bcc79ab',
+                                ),
+                                consoleRuntimeText(
+                                    'console.close_it_every_revoke_is_applied_for_real_and_anything_b4db8386',
+                                ),
                             ]}
                             actions={
                                 <Button asChild variant="primary">
                                     <Link href={createHref}>
-                                        <Icon name="plus" className="w-4 h-4" />
-                                        {tc('console.new_review_23a525d3')}
+                                        {consoleRich('console._part1_new_review_e07cc37f', {
+                                            part1: <Icon name="plus" className="w-4 h-4" />,
+                                        })}
                                     </Link>
                                 </Button>
                             }
@@ -166,7 +177,7 @@ export default function AccessReviewsIndex({
                                 )}
                                 {review.staff && (
                                     <Badge tone="info" className="ml-2">
-                                        {tc('console.admin_support_roles_19f22d25')}
+                                        {consoleT('console.admin_support_roles_19f22d25')}
                                     </Badge>
                                 )}
                                 {review.dueAt !== null && (
@@ -179,8 +190,8 @@ export default function AccessReviewsIndex({
                                         }}
                                     >
                                         {review.open
-                                            ? tc('console.due_9071738f')
-                                            : tc('console.was_due_678bb0d7')}{' '}
+                                            ? consoleText('console.due_9071738f')
+                                            : consoleText('console.was_due_678bb0d7')}{' '}
                                         {review.dueAt}
                                     </p>
                                 )}
@@ -196,10 +207,10 @@ export default function AccessReviewsIndex({
                                 }
                             >
                                 {review.overdue
-                                    ? tc('console.overdue_d660945b')
+                                    ? consoleText('console.overdue_d660945b')
                                     : review.open
-                                      ? tc('console.open_ed077f3d')
-                                      : tc('console.closed_c21ead06')}
+                                      ? consoleText('console.open_ed077f3d')
+                                      : consoleText('console.closed_c21ead06')}
                             </Pill>
 
                             <Icon

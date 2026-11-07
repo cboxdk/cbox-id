@@ -54,7 +54,7 @@ final readonly class SendVerification implements Action
         if ($user->email_verified_at === null) {
             $token = $this->verification->issue($user->id, $user->email);
 
-            Mail::to($user->email)->locale(app(MailLocale::class)->forRecipient())->send(new EmailVerificationMail($this->links->route('verification.verify', $token)));
+            Mail::to($user->email)->locale(app(MailLocale::class)->forRecipient(false))->send(new EmailVerificationMail($this->links->route('verification.verify', $token)));
         }
 
         return ActionResult::none($user);

@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { useForm, usePage } from '@inertiajs/react';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import {
@@ -54,8 +54,9 @@ export function AppFrame({
     issuer?: string;
     children: ReactNode;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     // The plaintext, on the flash channel and nowhere else: page props are written into
     // the browser's history entry, where a live credential outlives the page that showed
     // it and is retrievable by pressing Back.
@@ -65,7 +66,10 @@ export function AppFrame({
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={app.indexHref} label={tc('console.applications_98e33b0f')} />
+                <Breadcrumb
+                    href={app.indexHref}
+                    label={consoleT('console.applications_98e33b0f')}
+                />
                 <div className="mt-2 flex items-start justify-between gap-3 flex-wrap">
                     <div style={{ minWidth: 0 }}>
                         <div className="flex items-center gap-3 flex-wrap">
@@ -80,13 +84,13 @@ export function AppFrame({
                                         color: 'var(--accent-strong)',
                                     }}
                                 >
-                                    {tc('console.first_party_ee374836')}
+                                    {consoleT('console.first_party_ee374836')}
                                 </span>
                             )}
                             <Badge>
                                 {app.confidential
-                                    ? tc('console.confidential_a3e83aee')
-                                    : tc('console.public_591935b1')}
+                                    ? consoleText('console.confidential_a3e83aee')
+                                    : consoleText('console.public_591935b1')}
                             </Badge>
                         </div>
                         <p
@@ -103,15 +107,18 @@ export function AppFrame({
                                 // A plain link, not an Inertia visit: the answer is a file.
                                 <Button asChild size="sm">
                                     <a href={app.blueprintHref} download>
-                                        <Icon name="download" className="w-4 h-4" />
-                                        {tc('console.download_blueprint_7893c89c')}
+                                        {consoleRich('console._part1_download_blueprint_c69304ea', {
+                                            part1: <Icon name="download" className="w-4 h-4" />,
+                                        })}
                                     </a>
                                 </Button>
                             )}
                             {app.copy !== null && (
                                 <Button size="sm" onClick={() => setCopying(true)}>
-                                    <Icon name="copy" className="w-4 h-4" />
-                                    {tc('console.copy_to_another_environment_7be50452')}
+                                    {consoleRich(
+                                        'console._part1_copy_to_another_environment_436403fe',
+                                        { part1: <Icon name="copy" className="w-4 h-4" /> },
+                                    )}
                                 </Button>
                             )}
                         </div>
@@ -129,7 +136,7 @@ export function AppFrame({
 
             {flash.copiedApp !== undefined && <CopiedApp copied={flash.copiedApp} />}
 
-            <LinkTabs tabs={app.tabs} label={tc('console.app_pages_aed6f37d')} />
+            <LinkTabs tabs={app.tabs} label={consoleT('console.app_pages_aed6f37d')} />
 
             {children}
 
@@ -163,8 +170,7 @@ function CopyDialog({
     name: string;
     copy: NonNullable<AppHeaderData['copy']>;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({
         environment: copy.targets[0]?.id ?? '',
         name,
@@ -182,21 +188,23 @@ function CopyDialog({
         <Dialog
             open={open}
             onOpenChange={onOpenChange}
-            title={tc('console.copy_to_another_environment_7be50452')}
-            description={tc('console.registers_this_app_again_in_another_environm_51c6eaab')}
+            title={consoleT('console.copy_to_another_environment_7be50452')}
+            description={consoleT(
+                'console.registers_this_app_again_in_another_environment_of_this_51c6eaab',
+            )}
             footer={
                 copy.unavailable === null ? (
                     <>
                         <DialogClose asChild>
-                            <Button>{tc('console.cancel_19766ed6')}</Button>
+                            <Button>{consoleT('console.cancel_19766ed6')}</Button>
                         </DialogClose>
                         <Button variant="primary" loading={form.processing} onClick={submit}>
-                            {tc('console.copy_app_96779d3d')}
+                            {consoleT('console.copy_app_96779d3d')}
                         </Button>
                     </>
                 ) : (
                     <DialogClose asChild>
-                        <Button>{tc('console.close_7d9eb7ac')}</Button>
+                        <Button>{consoleT('console.close_7d9eb7ac')}</Button>
                     </DialogClose>
                 )
             }
@@ -214,7 +222,7 @@ function CopyDialog({
                     }}
                 >
                     <Field
-                        label={tc('console.environment_9e471951')}
+                        label={consoleT('console.environment_9e471951')}
                         error={form.errors.environment}
                     >
                         <Select
@@ -227,7 +235,7 @@ function CopyDialog({
                             }))}
                         />
                     </Field>
-                    <Field label={tc('console.name_there_78fd9c3c')} error={form.errors.name}>
+                    <Field label={consoleT('console.name_there_78fd9c3c')} error={form.errors.name}>
                         <Input
                             name="name"
                             value={form.data.name}
@@ -235,8 +243,10 @@ function CopyDialog({
                         />
                     </Field>
                     <Field
-                        label={tc('console.redirect_uris_there_5644959f')}
-                        hint={tc('console.one_per_line_the_other_environment_s_own_add_35a99044')}
+                        label={consoleT('console.redirect_uris_there_5644959f')}
+                        hint={consoleT(
+                            'console.one_per_line_the_other_environment_s_own_addresses_what_35a99044',
+                        )}
                         error={form.errors.redirectUris}
                     >
                         <Textarea
@@ -249,7 +259,9 @@ function CopyDialog({
                         />
                     </Field>
                     <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        {tc('console.scopes_sign_out_uris_token_settings_and_the__c736e69a')}
+                        {consoleT(
+                            'console.scopes_sign_out_uris_token_settings_and_the_roles_manif_c736e69a',
+                        )}
                     </p>
                 </form>
             )}
@@ -274,8 +286,7 @@ function RevealedSecret({
     issuer?: string;
     clientId: string;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const card = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -294,10 +305,12 @@ function RevealedSecret({
             }}
         >
             <p className="text-sm font-semibold" style={{ color: 'var(--warning-strong)' }}>
-                {tc('console.copy_your_client_secret_now_37b34f05')}
+                {consoleT('console.copy_your_client_secret_now_37b34f05')}
             </p>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                {tc('console.only_a_hash_is_stored_so_it_won_t_be_shown_a_39d515ea')}
+                {consoleT(
+                    'console.only_a_hash_is_stored_so_it_won_t_be_shown_again_if_you_39d515ea',
+                )}
             </p>
 
             {/*
@@ -308,12 +321,22 @@ function RevealedSecret({
             */}
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {issuer !== undefined && (
-                    <CopyableValue label={tc('console.issuer_39e02c46')} value={issuer} boxed />
+                    <CopyableValue
+                        label={consoleT('console.issuer_39e02c46')}
+                        value={issuer}
+                        boxed
+                    />
                 )}
-                <CopyableValue label={tc('console.client_id_8726db01')} value={clientId} boxed />
+                <CopyableValue
+                    label={consoleT('console.client_id_8726db01')}
+                    value={clientId}
+                    boxed
+                />
                 <div className="sm:col-span-2">
                     <CopyableValue
-                        label={tc('console.client_secret_copy_it_now_it_won_t_be_shown__83a749be')}
+                        label={consoleT(
+                            'console.client_secret_copy_it_now_it_won_t_be_shown_again_83a749be',
+                        )}
                         value={secret}
                         boxed
                         emphatic
@@ -336,8 +359,9 @@ function CopiedApp({
         secret: string | null;
     };
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const card = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -356,28 +380,40 @@ function CopiedApp({
             }}
         >
             <p className="text-sm font-semibold" style={{ color: 'var(--warning-strong)' }}>
-                "{copied.name}
-                {tc('console.now_exists_in_cced8d97')}
-                {copied.environment}
+                {consoleRich('console._part1_now_exists_in_part2_e3b8f982', {
+                    part1: copied.name,
+                    part2: copied.environment,
+                })}
             </p>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                {tc('console.these_are_its_own_credentials_for_that_envir_2a74898d')}
-                {copied.secret !== null
-                    ? tc('console.copy_the_secret_now_only_a_hash_is_stored_so_94f8a33b')
-                    : ''}
+                {consoleRich(
+                    'console.these_are_its_own_credentials_for_that_environment_s_co_a68e7d01',
+                    {
+                        part1:
+                            copied.secret !== null
+                                ? consoleText(
+                                      'console._copy_the_secret_now_only_a_hash_is_stored_so_it_won_t_94f8a33b',
+                                  )
+                                : '',
+                    },
+                )}
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <CopyableValue label={tc('console.issuer_39e02c46')} value={copied.issuer} boxed />
                 <CopyableValue
-                    label={tc('console.client_id_8726db01')}
+                    label={consoleT('console.issuer_39e02c46')}
+                    value={copied.issuer}
+                    boxed
+                />
+                <CopyableValue
+                    label={consoleT('console.client_id_8726db01')}
                     value={copied.clientId}
                     boxed
                 />
                 {copied.secret !== null && (
                     <div className="sm:col-span-2">
                         <CopyableValue
-                            label={tc(
-                                'console.client_secret_copy_it_now_it_won_t_be_shown__83a749be',
+                            label={consoleT(
+                                'console.client_secret_copy_it_now_it_won_t_be_shown_again_83a749be',
                             )}
                             value={copied.secret}
                             boxed
@@ -403,8 +439,7 @@ export function CopyableValue({
     boxed?: boolean;
     emphatic?: boolean;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleText } = useConsoleTranslator();
     return (
         <div
             className={boxed ? 'rounded-lg p-3' : undefined}
@@ -432,7 +467,9 @@ export function CopyableValue({
                     value={value}
                     variant={emphatic ? 'primary' : 'ghost'}
                     label={
-                        emphatic ? tc('console.copy_secret_9b80d4b3') : tc('console.copy_e21f935f')
+                        emphatic
+                            ? consoleText('console.copy_secret_9b80d4b3')
+                            : consoleText('console.copy_e21f935f')
                     }
                 />
             </div>

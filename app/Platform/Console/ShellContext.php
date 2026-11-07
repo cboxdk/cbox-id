@@ -11,6 +11,9 @@ use App\Http\Props\Shell\ShellContextProps;
 use App\Http\Props\Shell\SwitchOptionProps;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\Locale\ConsoleLabels;
+use App\Platform\NativeProduct\NativeEnvironmentAccess;
+use App\Platform\NativeProduct\NativeProductAccess;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -113,7 +116,7 @@ final readonly class ShellContext
         }
 
         return new ShellContextProps(
-            noun: $workspace ? 'Workspace' : 'Organization',
+            noun: $workspace ? __('console.workspace_87bb59ba') : __('console.organization_d764d425'),
             workspaces: $this->workspaceOptions($memberships, $currentId, fallbackName: $this->user->organization()?->name),
             switchUrl: Route::has('organization.switch') ? route('organization.switch') : null,
             projects: $projects,
@@ -149,7 +152,7 @@ final readonly class ShellContext
         $projects = $membership === null ? [] : $this->root->run(fn (): array => $this->projectsOf(
             organizationId: $membership->organization_id,
             subjectId: $subjectId,
-            capabilities: OrganizationCapabilities::of($membership->role),
+            capabilities: app(NativeProductAccess::class)->forWebSubject($subjectId, $membership->organization_id),
             currentEnvironmentId: $currentEnvironmentId,
             href: fn (string $id): string => $this->withTarget($this->onWorkspaceHost('environment.open', ['environment' => $id]), $to),
         )) ?? [];
@@ -164,14 +167,14 @@ final readonly class ShellContext
             array_unshift($workspaces, new SwitchOptionProps(
                 id: 'platform',
                 label: __('console.platform_admin_69652f55'),
-                caption: 'Operator',
+                caption: __('console.operator_291101a0'),
                 current: true,
                 openHref: Route::has('platform.workspaces') ? $this->onWorkspaceHost('platform.workspaces') : null,
             ));
         }
 
         return new ShellContextProps(
-            noun: $onRoot ? 'Platform' : 'Workspace',
+            noun: $onRoot ? __('console.platform_c78ffe19') : __('console.workspace_87bb59ba'),
             workspaces: $workspaces,
             switchUrl: null,
             projects: $projects,
@@ -202,7 +205,7 @@ final readonly class ShellContext
             current: $current,
             environments: [new ContextEnvironmentProps(
                 id: is_string($id = $environment?->getKey()) ? $id : 'platform',
-                name: is_string($name = $environment?->name) && $name !== '' ? $name : 'Platform',
+                name: is_string($name = $environment?->name) && $name !== '' ? $name : __('console.platform_c78ffe19'),
                 type: $environment?->type->value ?? 'production',
                 current: $current,
                 href: $href,
@@ -304,7 +307,7 @@ final readonly class ShellContext
             return [new SwitchOptionProps(
                 id: $currentId,
                 label: $fallbackName,
-                caption: $membership?->role->label(),
+                caption: $membership === null ? null : ConsoleLabels::navigation($membership->role->label()),
                 current: true,
                 openHref: $openHref,
             )];
@@ -333,7 +336,7 @@ final readonly class ShellContext
             $options[] = new SwitchOptionProps(
                 id: $membership->organization_id,
                 label: $organization->name,
-                caption: $membership->role->label(),
+                caption: ConsoleLabels::navigation($membership->role->label()),
                 current: $membership->organization_id === $currentId,
                 openHref: $openHref,
             );
@@ -361,11 +364,11 @@ final readonly class ShellContext
         ?string $currentEnvironmentId,
         callable $href,
     ): array {
-        if ($capabilities?->canManageEnvironments() !== true) {
+        if ($capabilities?->canReadEnvironments() !== true) {
             return [];
         }
 
-        $accessible = $this->memberships->accessibleEnvironmentIds($organizationId, $subjectId);
+        $accessible = app(NativeEnvironmentAccess::class)->ids($organizationId, $subjectId);
 
         if ($accessible === []) {
             return [];

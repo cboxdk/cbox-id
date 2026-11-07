@@ -48,15 +48,15 @@ enum EnvironmentStep: string
     public function description(): string
     {
         return match ($this) {
-            self::CreateApp => __('console.pick_your_framework_and_get_an_app_with_a_lo_70977d3d'),
-            self::AddRedirect => __('console.an_app_signs_people_in_only_to_the_urls_it_l_a7f88d2a'),
-            self::FirstSignIn => __('console.run_your_app_and_sign_in_ticks_the_moment_an_018461b4'),
-            self::BrandSignIn => __('console.your_colours_and_logo_on_the_hosted_sign_in__54995b02'),
-            self::CreateOrganization => __('console.an_organization_is_one_of_the_teams_that_use_509fd742'),
-            self::ConnectSso => __('console.let_an_organization_sign_in_with_okta_entra__cf114dfb'),
-            self::ConnectAgent => __('console.point_claude_code_cursor_or_your_own_bot_at__7beb8319'),
-            self::InviteTeammate => __('console.somebody_else_who_can_open_this_console_when_784e0dd9'),
-            self::GoLive => __('console.ticks_once_an_app_sends_people_back_to_a_rea_248c1799'),
+            self::CreateApp => __('console.pick_your_framework_and_get_an_app_with_a_localhost_red_70977d3d'),
+            self::AddRedirect => __('console.an_app_signs_people_in_only_to_the_urls_it_lists_charac_a7f88d2a'),
+            self::FirstSignIn => __('console.run_your_app_and_sign_in_ticks_the_moment_anybody_signs_018461b4'),
+            self::BrandSignIn => __('console.your_colours_and_logo_on_the_hosted_sign_in_page_checke_54995b02'),
+            self::CreateOrganization => __('console.an_organization_is_one_of_the_teams_that_use_your_produ_509fd742'),
+            self::ConnectSso => __('console.let_an_organization_sign_in_with_okta_entra_id_or_googl_cf114dfb'),
+            self::ConnectAgent => __('console.point_claude_code_cursor_or_your_own_bot_at_this_enviro_7beb8319'),
+            self::InviteTeammate => __('console.somebody_else_who_can_open_this_console_when_you_are_aw_784e0dd9'),
+            self::GoLive => __('console.ticks_once_an_app_sends_people_back_to_a_real_https_add_248c1799'),
         };
     }
 

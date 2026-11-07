@@ -1,5 +1,6 @@
+import { useTranslator as useFormatTranslator } from '@/i18n';
 import type { Translator } from '@/i18n';
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -121,8 +122,11 @@ export default function DirectoryDetail({
     indexHref,
     urls,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     // The bearer token, on the flash channel and nowhere else: it authenticates every
     // inbound provisioning call, and props are written into the history entry.
     const newToken = usePage().flash.newToken;
@@ -134,12 +138,14 @@ export default function DirectoryDetail({
     return (
         <div className="space-y-6">
             <div>
-                <Breadcrumb href={indexHref} label={tc('console.directory_sync_ea18bba8')} />
+                <Breadcrumb href={indexHref} label={consoleT('console.directory_sync_ea18bba8')} />
                 <div className="mt-2 flex items-center gap-3 flex-wrap">
                     <h1 className="cbx-page-title">{directory.name}</h1>
                     <Badge>{directory.providerLabel}</Badge>
                     <Pill tone={directory.active ? 'success' : 'warning'}>
-                        {directory.active ? tc('console.active_92340695') : directory.status}
+                        {directory.active
+                            ? consoleText('console.active_92340695')
+                            : directory.status}
                     </Pill>
                 </div>
                 <p className="mt-1 text-sm" style={{ color: 'var(--faint)' }}>
@@ -157,13 +163,14 @@ export default function DirectoryDetail({
             */}
             {directory.lastSyncError !== null && (
                 <Panel
-                    title={tc('console.last_sync_failed_d3f551a0')}
+                    title={consoleT('console.last_sync_failed_d3f551a0')}
                     action={
                         setup !== null ? (
                             <Button asChild size="sm" className="shrink-0">
                                 <a href={setup.docs} target="_blank" rel="noreferrer">
-                                    {tc('console.provider_guide_56aa8a4b')}
-                                    <Icon name="external" className="w-3.5 h-3.5" />
+                                    {consoleRich('console.provider_guide_part1_f602d1f9', {
+                                        part1: <Icon name="external" className="w-3.5 h-3.5" />,
+                                    })}
                                 </a>
                             </Button>
                         ) : undefined
@@ -186,9 +193,9 @@ export default function DirectoryDetail({
 
             {directory.scim && (
                 <Panel
-                    title={tc('console.scim_endpoint_59109538')}
-                    description={tc(
-                        'console.what_your_identity_provider_posts_to_the_bea_f1cd1c83',
+                    title={consoleT('console.scim_endpoint_59109538')}
+                    description={consoleT(
+                        'console.what_your_identity_provider_posts_to_the_bearer_token_i_f1cd1c83',
                     )}
                 >
                     <div className="flex items-center gap-2">
@@ -204,15 +211,17 @@ export default function DirectoryDetail({
                 team has and leaving it takes it away.
             */}
             <Panel
-                title={tc('console.groups_39bbb719')}
-                description={tc('console.map_a_group_onto_the_roles_everyone_in_it_sh_1a407a38')}
+                title={consoleT('console.groups_39bbb719')}
+                description={consoleT(
+                    'console.map_a_group_onto_the_roles_everyone_in_it_should_hold_m_1a407a38',
+                )}
             >
                 {groups.length === 0 ? (
                     <EmptyState
                         icon="directory"
-                        title={tc('console.no_groups_synced_yet_910ebab2')}
-                        description={tc(
-                            'console.groups_appear_here_after_the_first_sync_that_d8006c0f',
+                        title={consoleT('console.no_groups_synced_yet_910ebab2')}
+                        description={consoleT(
+                            'console.groups_appear_here_after_the_first_sync_that_includes_t_d8006c0f',
                         )}
                     />
                 ) : (
@@ -227,17 +236,20 @@ export default function DirectoryDetail({
 
                                 {roles.length === 0 ? (
                                     <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
-                                        {tc(
-                                            'console.no_roles_to_map_onto_yet_define_one_under_5428593a',
-                                        )}{' '}
-                                        {rolesHref === null ? (
-                                            tc('console.roles_c2533705')
-                                        ) : (
-                                            <Link href={rolesHref}>
-                                                {tc('console.roles_c2533705')}
-                                            </Link>
+                                        {consoleRich(
+                                            'console.no_roles_to_map_onto_yet_define_one_under_part1_part2_o_9b9aba76',
+                                            {
+                                                part1: ' ',
+                                                part2:
+                                                    rolesHref === null ? (
+                                                        consoleShortText('console.roles_c2533705')
+                                                    ) : (
+                                                        <Link href={rolesHref}>
+                                                            {consoleT('console.roles_c2533705')}
+                                                        </Link>
+                                                    ),
+                                            },
                                         )}
-                                        {tc('console.or_have_an_app_declare_its_own_2331d70f')}
                                     </p>
                                 ) : (
                                     <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -271,7 +283,7 @@ export default function DirectoryDetail({
 
             {mayChange && (
                 <>
-                    <Panel title={tc('console.details_45989de4')}>
+                    <Panel title={consoleT('console.details_45989de4')}>
                         <form
                             className="grid sm:grid-cols-[1fr_auto] gap-2 items-end"
                             onSubmit={(event) => {
@@ -280,7 +292,7 @@ export default function DirectoryDetail({
                             }}
                         >
                             <Field
-                                label={tc('console.directory_name_96fff2c7')}
+                                label={consoleT('console.directory_name_96fff2c7')}
                                 error={nameForm.errors.name}
                             >
                                 <Input
@@ -297,7 +309,7 @@ export default function DirectoryDetail({
                                 className="shrink-0"
                                 loading={nameForm.processing}
                             >
-                                {tc('console.save_1509f561')}
+                                {consoleT('console.save_1509f561')}
                             </Button>
                         </form>
                     </Panel>
@@ -321,16 +333,16 @@ export default function DirectoryDetail({
                     <Panel
                         title={
                             directory.active
-                                ? tc('console.pause_provisioning_236a712f')
-                                : tc('console.resume_provisioning_d29e677b')
+                                ? consoleText('console.pause_provisioning_236a712f')
+                                : consoleText('console.resume_provisioning_d29e677b')
                         }
                         description={
                             directory.active
-                                ? tc(
-                                      'console.inbound_changes_stop_being_applied_nobody_is_1aadb259',
+                                ? consoleText(
+                                      'console.inbound_changes_stop_being_applied_nobody_is_deactivate_1aadb259',
                                   )
-                                : tc(
-                                      'console.inbound_changes_are_applied_again_from_the_n_2ee5ab2e',
+                                : consoleText(
+                                      'console.inbound_changes_are_applied_again_from_the_next_sync_2ee5ab2e',
                                   )
                         }
                     >
@@ -339,8 +351,8 @@ export default function DirectoryDetail({
                             onClick={() => router.post(urls.toggle, {}, { preserveScroll: true })}
                         >
                             {directory.active
-                                ? tc('console.pause_858e4ba7')
-                                : tc('console.resume_d640c742')}
+                                ? consoleText('console.pause_858e4ba7')
+                                : consoleText('console.resume_d640c742')}
                         </Button>
                     </Panel>
 
@@ -350,25 +362,25 @@ export default function DirectoryDetail({
                     */}
                     {directory.scim && (
                         <Panel
-                            title={tc('console.rotate_bearer_token_19caa3e4')}
-                            description={tc(
-                                'console.issue_a_fresh_token_the_one_your_identity_pr_c37da34e',
+                            title={consoleT('console.rotate_bearer_token_19caa3e4')}
+                            description={consoleT(
+                                'console.issue_a_fresh_token_the_one_your_identity_provider_hold_c37da34e',
                             )}
                         >
                             <Button size="sm" onClick={() => setConfirming('rotate')}>
-                                {tc('console.rotate_token_4ade7882')}
+                                {consoleT('console.rotate_token_4ade7882')}
                             </Button>
                         </Panel>
                     )}
 
                     <Panel
-                        title={tc('console.delete_directory_b1d3db9c')}
-                        description={tc(
-                            'console.provisioning_stops_and_the_group_mappings_go_b562bdb6',
+                        title={consoleT('console.delete_directory_b1d3db9c')}
+                        description={consoleT(
+                            'console.provisioning_stops_and_the_group_mappings_go_with_it_th_b562bdb6',
                         )}
                     >
                         <Button size="sm" variant="danger" onClick={() => setConfirming('delete')}>
-                            {tc('console.delete_directory_b1d3db9c')}
+                            {consoleT('console.delete_directory_b1d3db9c')}
                         </Button>
                     </Panel>
                 </>
@@ -378,8 +390,10 @@ export default function DirectoryDetail({
                 open={confirming === 'rotate'}
                 onOpenChange={(open) => !open && setConfirming(null)}
                 name={directory.name}
-                verb="Rotate"
-                consequence={tc('console.the_token_your_identity_provider_currently_h_5458b580')}
+                verb={consoleShortText('console.rotate_c3613b17')}
+                consequence={consoleUiText(
+                    'console.the_token_your_identity_provider_currently_holds_stops_5458b580',
+                )}
                 onConfirm={() => {
                     setConfirming(null);
                     router.post(urls.rotate, {}, { preserveScroll: true });
@@ -390,7 +404,9 @@ export default function DirectoryDetail({
                 open={confirming === 'delete'}
                 onOpenChange={(open) => !open && setConfirming(null)}
                 name={directory.name}
-                consequence={tc('console.provisioning_stops_immediately_and_every_gro_7a323b54')}
+                consequence={consoleUiText(
+                    'console.provisioning_stops_immediately_and_every_group_mapping_7a323b54',
+                )}
                 onConfirm={() => {
                     setConfirming(null);
                     router.delete(urls.destroy);
@@ -401,12 +417,12 @@ export default function DirectoryDetail({
 }
 
 const STATUS = (
-    tc: Translator['t'],
+    t: Translator['t'],
 ): Record<NonNullable<SyncState['status']>, { label: string; tone: PillTone }> => ({
-    running: { label: tc('console.syncing_5c8b9e1c'), tone: 'info' },
-    succeeded: { label: tc('console.synced_5da22fe4'), tone: 'success' },
-    partial: { label: tc('console.synced_with_problems_4c8d98e6'), tone: 'warning' },
-    failed: { label: tc('console.failed_031a8f0f'), tone: 'destructive' },
+    running: { label: t('console.syncing_5c8b9e1c'), tone: 'info' },
+    succeeded: { label: t('console.synced_5da22fe4'), tone: 'success' },
+    partial: { label: t('console.synced_with_problems_4c8d98e6'), tone: 'warning' },
+    failed: { label: t('console.failed_031a8f0f'), tone: 'destructive' },
 });
 
 function when(iso: string | null, locale: string): string {
@@ -430,21 +446,29 @@ function SyncPanel({
     mayChange: boolean;
     href: string;
 }) {
-    const { t: tc, locale } = useTranslator();
+    const { t: consoleNestedText } = useConsoleTranslator();
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
-    const status = sync.status === null ? null : STATUS(tc)[sync.status];
+    const { t: consoleOptionText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
+    const status = sync.status === null ? null : STATUS(consoleOptionText)[sync.status];
     const stats = sync.stats;
 
     return (
         <Panel
-            title={tc('console.sync_8d261a37')}
+            title={consoleT('console.sync_8d261a37')}
             description={
                 sync.intervalMinutes === null
                     ? undefined
-                    : tc('console.pulled_every_value0_minutes_value1_220223d2', {
-                          value0: sync.intervalMinutes,
-                          value1: incremental
-                              ? tc('console.asking_only_for_what_changed_between_daily_f_ab388149')
+                    : consoleFinalText('console.pulled_every_part1_minutes_part2_6b827aa7', {
+                          part1: sync.intervalMinutes,
+                          part2: incremental
+                              ? consoleText(
+                                    'console._asking_only_for_what_changed_between_daily_full_pulls_ab388149',
+                                )
                               : '',
                       })
             }
@@ -458,7 +482,7 @@ function SyncPanel({
                                     router.post(href, { full: true }, { preserveScroll: true })
                                 }
                             >
-                                {tc('console.full_sync_8e3a6a14')}
+                                {consoleT('console.full_sync_8e3a6a14')}
                             </Button>
                         )}
                         <Button
@@ -466,7 +490,7 @@ function SyncPanel({
                             variant="primary"
                             onClick={() => router.post(href, {}, { preserveScroll: true })}
                         >
-                            {tc('console.sync_now_885e8f48')}
+                            {consoleT('console.sync_now_885e8f48')}
                         </Button>
                     </div>
                 ) : undefined
@@ -475,39 +499,46 @@ function SyncPanel({
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
                 <span>
                     {status === null ? (
-                        <Pill tone="neutral">{tc('console.not_synced_yet_c1052985')}</Pill>
+                        <Pill tone="neutral">{consoleT('console.not_synced_yet_c1052985')}</Pill>
                     ) : (
                         <Pill tone={status.tone}>{status.label}</Pill>
                     )}
                 </span>
                 <span style={{ color: 'var(--muted-foreground)' }}>
-                    {tc('console.last_run_672069af')}
-                    {when(sync.startedAt, locale)}
+                    {consoleRich('console.last_run_part1_2c2c51d1', {
+                        part1: when(sync.startedAt, consoleLocale),
+                    })}
                 </span>
                 <span style={{ color: 'var(--muted-foreground)' }}>
-                    {tc('console.next_cd447acb')}
-                    {when(sync.nextAt, locale)}
+                    {consoleRich('console.next_part1_c0df1ece', {
+                        part1: when(sync.nextAt, consoleLocale),
+                    })}
                 </span>
             </div>
 
             {stats !== null && (
                 <p className="mt-3 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    {stats.mode === 'incremental'
-                        ? tc('console.changes_only_8cd33e8f')
-                        : tc('console.everybody_d980065b')}
-                    {stats.provisioned}
-                    {tc('console.up_to_date_387d9fee')}
-                    {stats.deprovisioned}
-                    {tc('console.deprovisioned_1a0e73ea')} {stats.skipped}
-                    {tc('console.skipped_2b8f7024')}
-                    {stats.groups}
-                    {tc('console.groups_5f6d556d')}
-                    {stats.failed > 0
-                        ? tc('console.value0_could_not_be_synced_12304741', {
-                              value0: stats.failed,
-                          })
-                        : ''}
-                    .
+                    {consoleRich(
+                        'console._part1_part2_up_to_date_part3_deprovisioned_part4_part5_5604a19e',
+                        {
+                            part1:
+                                stats.mode === 'incremental'
+                                    ? consoleText('console.changes_only_8cd33e8f')
+                                    : consoleText('console.everybody_d980065b'),
+                            part2: stats.provisioned,
+                            part3: stats.deprovisioned,
+                            part4: ' ',
+                            part5: stats.skipped,
+                            part6: stats.groups,
+                            part7:
+                                stats.failed > 0
+                                    ? consoleNestedText(
+                                          'console._part1_could_not_be_synced_a1be610d',
+                                          { part1: stats.failed },
+                                      )
+                                    : '',
+                        },
+                    )}
                 </p>
             )}
 
@@ -531,8 +562,10 @@ const INTERVALS = ['15', '30', '60', '120', '240', '720', '1440'] as const;
 
 /** The pace, and — for an HR system — the fields copied onto people verbatim. */
 function SyncSettings({ sync, hris, href }: { sync: SyncState; hris: boolean; href: string }) {
-    const { t: tc } = useTranslator();
+    const { choice: consoleDuration } = useConsoleTranslator();
 
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({
         interval: String(sync.intervalMinutes ?? 60),
         customAttributes: sync.customAttributes.join('\n'),
@@ -540,11 +573,13 @@ function SyncSettings({ sync, hris, href }: { sync: SyncState; hris: boolean; hr
 
     return (
         <Panel
-            title={tc('console.sync_settings_77b268e8')}
+            title={consoleT('console.sync_settings_77b268e8')}
             description={
                 hris
-                    ? tc('console.how_often_to_pull_and_which_of_the_hr_system_54dd88fe')
-                    : tc('console.how_often_to_pull_f8232314')
+                    ? consoleText(
+                          'console.how_often_to_pull_and_which_of_the_hr_system_s_own_fiel_54dd88fe',
+                      )
+                    : consoleText('console.how_often_to_pull_f8232314')
             }
         >
             <form
@@ -554,7 +589,7 @@ function SyncSettings({ sync, hris, href }: { sync: SyncState; hris: boolean; hr
                     form.patch(href, { preserveScroll: true });
                 }}
             >
-                <Field label={tc('console.pull_every_59fafc55')} error={form.errors.interval}>
+                <Field label={consoleT('console.pull_every_59fafc55')} error={form.errors.interval}>
                     <Select
                         name="interval"
                         value={form.data.interval}
@@ -563,17 +598,17 @@ function SyncSettings({ sync, hris, href }: { sync: SyncState; hris: boolean; hr
                             value: minutes,
                             label:
                                 Number(minutes) < 60
-                                    ? `${minutes} minutes`
-                                    : Number(minutes) === 60
-                                      ? 'hour'
-                                      : `${Number(minutes) / 60} hours`,
+                                    ? consoleDuration('console.duration_minute', Number(minutes))
+                                    : consoleDuration('console.duration_hour', Number(minutes) / 60),
                         }))}
                     />
                 </Field>
                 {hris && (
                     <Field
-                        label={tc('console.fields_to_pass_through_c1be63cc')}
-                        hint={tc('console.the_hr_system_s_own_field_names_one_per_line_a77675b4')}
+                        label={consoleT('console.fields_to_pass_through_c1be63cc')}
+                        hint={consoleT(
+                            'console.the_hr_system_s_own_field_names_one_per_line_a77675b4',
+                        )}
                         error={form.errors.customAttributes}
                     >
                         <Textarea
@@ -589,7 +624,7 @@ function SyncSettings({ sync, hris, href }: { sync: SyncState; hris: boolean; hr
                     </Field>
                 )}
                 <Button type="submit" variant="primary" size="sm" loading={form.processing}>
-                    {tc('console.save_1509f561')}
+                    {consoleT('console.save_1509f561')}
                 </Button>
             </form>
         </Panel>
@@ -610,18 +645,20 @@ function ReplaceCredentials({
     credentials: SetupCredential[];
     href: string;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm<{ credentials: Record<string, string> }>({ credentials: {} });
     const credentialError = usePage().props.errors.credentials;
 
     return (
         <Panel
-            title={tc('console.replace_credentials_ae90fd4a')}
-            description={tc('console.new_value0_credentials_checked_against_value_74ec926b', {
-                value0: providerLabel,
-                value1: providerLabel,
-            })}
+            title={consoleT('console.replace_credentials_ae90fd4a')}
+            description={consoleFinalText(
+                'console.new_part1_credentials_checked_against_part2_before_the_a56c958b',
+                { part1: providerLabel, part2: providerLabel },
+            )}
         >
             <form
                 className="space-y-4"
@@ -633,7 +670,10 @@ function ReplaceCredentials({
                 {credentials.map((credential, index) => (
                     <Field
                         key={credential.key}
-                        label={credential.label + (credential.required ? '' : ' (optional)')}
+                        label={
+                            credential.label +
+                            (credential.required ? '' : consoleText('console._optional_edbfc3dc'))
+                        }
                         hint={credential.help}
                         error={index === 0 ? credentialError : undefined}
                     >
@@ -654,7 +694,7 @@ function ReplaceCredentials({
                     </Field>
                 ))}
                 <Button type="submit" variant="primary" size="sm" loading={form.processing}>
-                    {tc('console.verify_and_replace_c857fd95')}
+                    {consoleT('console.verify_and_replace_c857fd95')}
                 </Button>
             </form>
         </Panel>
@@ -669,8 +709,7 @@ function ReplaceCredentials({
  * viewport was a toast in the opposite corner.
  */
 function RevealedToken({ token, endpoint }: { token: string; endpoint: string }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const card = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -689,10 +728,12 @@ function RevealedToken({ token, endpoint }: { token: string; endpoint: string })
             }}
         >
             <p className="text-sm font-semibold" style={{ color: 'var(--warning-strong)' }}>
-                {tc('console.copy_this_bearer_token_now_48416103')}
+                {consoleT('console.copy_this_bearer_token_now_48416103')}
             </p>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                {tc('console.only_a_hash_is_stored_so_it_will_not_be_show_901ca5cd')}
+                {consoleT(
+                    'console.only_a_hash_is_stored_so_it_will_not_be_shown_again_pas_901ca5cd',
+                )}
             </p>
 
             <div className="mt-4 space-y-3">
@@ -701,7 +742,7 @@ function RevealedToken({ token, endpoint }: { token: string; endpoint: string })
                     style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
                 >
                     <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        {tc('console.scim_endpoint_59109538')}
+                        {consoleT('console.scim_endpoint_59109538')}
                     </p>
                     <div className="mt-1 flex items-start gap-2">
                         <code className="mono text-sm break-all select-all flex-1">{endpoint}</code>
@@ -714,14 +755,16 @@ function RevealedToken({ token, endpoint }: { token: string; endpoint: string })
                     style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
                 >
                     <p className="text-xs font-semibold" style={{ color: 'var(--warning-strong)' }}>
-                        {tc('console.bearer_token_copy_it_now_it_won_t_be_shown_a_9d0d35a9')}
+                        {consoleT(
+                            'console.bearer_token_copy_it_now_it_won_t_be_shown_again_9d0d35a9',
+                        )}
                     </p>
                     <div className="mt-1 flex items-start gap-2">
                         <code className="mono text-sm break-all select-all flex-1">{token}</code>
                         <CopyButton
                             value={token}
                             variant="primary"
-                            label={tc('console.copy_token_d35b4ef7')}
+                            label={consoleT('console.copy_token_d35b4ef7')}
                         />
                     </div>
                 </div>

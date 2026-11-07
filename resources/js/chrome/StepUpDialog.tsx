@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import {
     confirmStepUp,
@@ -33,8 +34,13 @@ export function StepUpDialog() {
 }
 
 function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
-    const { t: tc } = useTranslator();
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleNestedText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [password, setPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
@@ -101,20 +107,25 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
                     stepUpCancelled();
                 }
             }}
-            title={tc('console.confirm_it_s_you_6176eec2')}
+            title={consoleT('console.confirm_it_s_you_6176eec2')}
             description={
                 continuing
-                    ? tc('console.you_are_confirmed_for_the_next_few_minutes_7b76614c')
-                    : tc('console.value0_re_enter_your_password_to_continue_2263dcfb', {
-                          value0:
-                              prompt.challenge.reason ??
-                              tc('console.this_is_a_protected_action_b796636f'),
-                      })
+                    ? consoleText('console.you_are_confirmed_for_the_next_few_minutes_7b76614c')
+                    : consoleFinalText(
+                          'console._part1_re_enter_your_password_to_continue_36247bd0',
+                          {
+                              part1:
+                                  prompt.challenge.reason ??
+                                  consoleNestedText('console.this_is_a_protected_action_b796636f'),
+                          },
+                      )
             }
             footer={
                 continuing ? (
                     <>
-                        <Button onClick={stepUpCancelled}>{tc('console.cancel_19766ed6')}</Button>
+                        <Button onClick={stepUpCancelled}>
+                            {consoleT('console.cancel_19766ed6')}
+                        </Button>
                         <Button
                             ref={carryOn}
                             variant="primary"
@@ -128,9 +139,11 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
                     </>
                 ) : (
                     <>
-                        <Button onClick={stepUpCancelled}>{tc('console.cancel_19766ed6')}</Button>
+                        <Button onClick={stepUpCancelled}>
+                            {consoleT('console.cancel_19766ed6')}
+                        </Button>
                         <Button type="submit" form="cbx-step-up" variant="primary" loading={busy}>
-                            {tc('console.confirm_eebdd24a')}
+                            {consoleT('console.confirm_eebdd24a')}
                         </Button>
                     </>
                 )
@@ -138,18 +151,24 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
         >
             {continuing ? (
                 <output className="flex items-center gap-2 text-sm">
-                    <Icon
-                        name="check"
-                        className="w-4 h-4 shrink-0"
-                        style={{ color: 'var(--success-strong)' }}
-                    />
-                    {tc('console.password_confirmed_continue_when_you_are_rea_b96fdf24')}
+                    {consoleRich(
+                        'console._part1_password_confirmed_continue_when_you_are_ready_c193202c',
+                        {
+                            part1: (
+                                <Icon
+                                    name="check"
+                                    className="w-4 h-4 shrink-0"
+                                    style={{ color: 'var(--success-strong)' }}
+                                />
+                            ),
+                        },
+                    )}
                 </output>
             ) : (
                 <form id="cbx-step-up" noValidate onSubmit={(event) => void submit(event)}>
                     <PasswordField
                         ref={field}
-                        label={tc('console.password_e7cf3ef4')}
+                        label={consoleT('console.password_e7cf3ef4')}
                         name="password"
                         autoComplete="current-password"
                         error={error}

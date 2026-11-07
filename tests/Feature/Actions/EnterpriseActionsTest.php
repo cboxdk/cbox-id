@@ -65,9 +65,15 @@ function entKey(array $scopes, string $environmentId = 'env_test'): array
     return [$issued->plaintext, (string) $issued->key->id];
 }
 
-function entOrg(string $slug = 'acme-enterprise'): string
+function entOrg(string $slug = 'acme-enterprise', bool $entitled = true): string
 {
-    return app(Organizations::class)->create(new NewOrganization('Acme', $slug.'-'.Str::lower(Str::random(4))))->id;
+    $organization = app(Organizations::class)->create(new NewOrganization('Acme', $slug.'-'.Str::lower(Str::random(4))));
+    if ($entitled && $organization->environment_id === 'env_test') {
+        grantFeature($organization->id, 'cbox-id-sso');
+        grantFeature($organization->id, 'cbox-id-scim');
+    }
+
+    return $organization->id;
 }
 
 /** @return list<AuditEntry> */
@@ -94,6 +100,8 @@ function entOrgAdmin(string $slug = 'acme-console'): array
     $subject = app(Subjects::class)->find($subject->id) ?? $subject;
 
     $org = app(Organizations::class)->create(new NewOrganization('Acme', $slug));
+    grantFeature($org->id, 'cbox-id-sso');
+    grantFeature($org->id, 'cbox-id-scim');
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
@@ -360,7 +368,7 @@ it('refuses a portal link for a feature the organization\'s plan does not includ
     config(['cbox-id.entitlements.mode' => 'metered']);
     [$key] = entKey(['portal_links:write']);
 
-    $this->withToken($key)->postJson('/api/v1/organizations/'.entOrg().'/portal-links', ['intents' => ['dsync']])
+    $this->withToken($key)->postJson('/api/v1/organizations/'.entOrg(entitled: false).'/portal-links', ['intents' => ['dsync']])
         ->assertForbidden()->assertJsonPath('error', 'not_entitled');
 
     expect(entTrail('portal_link.created'))->toBe([]);
@@ -399,7 +407,7 @@ it('says what happened to the portal link mail: sent, or suppressed by a sandbox
 
     // The same request in a sandbox: the mail is dropped, and the answer says so rather than
     // naming an inbox the link never reached.
-    (new Environment)->forceFill([
+    (Environment::query()->find('env_test') ?? new Environment)->forceFill([
         'id' => 'env_test', 'name' => 'Test', 'slug' => 'env-test', 'type' => EnvironmentType::Sandbox,
         'status' => EnvironmentStatus::Active, 'is_default' => false, 'settings' => [],
     ])->save();
@@ -666,6 +674,7 @@ it('records an organization administrator\'s SSO and directory changes as theirs
 it('records an environment administrator\'s console changes the way the API records a key\'s', function (): void {
     craftedEnvAdmin();
     $org = entOrg();
+    grantFeature($org, 'cbox-id-sso');
 
     $this->from(route('environment.connections.create'))->post(route('environment.connections.store'), [...entSaml(), 'environmentWide' => true])
         ->assertSessionHasNoErrors();

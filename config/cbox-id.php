@@ -40,6 +40,12 @@ return [
          */
         'authorization_endpoint_path' => '/oauth/authorize',
 
+        // Explicit caller-client -> exact resource audiences. Requires laravel-id 1.27.
+        // Empty by default; ordinary own-client introspection does not need a grant.
+        'introspection' => [
+            'resource_servers' => (array) json_decode((string) env('CBOX_ID_INTROSPECTION_RESOURCE_SERVERS', '{}'), true),
+        ],
+
         /*
          * Dynamic Client Registration (RFC 7591) at `/oauth/register`, in the `mcp`
          * profile by default: anybody may register, but only a PUBLIC client (no secret,
@@ -232,8 +238,8 @@ return [
      * its own settings (`default_locale`, `enabled_locales`), which is where a vendor
      * whose end users are all in one country says so; see docs/guides/languages.md.
      *
-     * `enabled` is a comma-separated list of the supported codes — en, da, de, sv, nb,
-     * fr, fi, es, it, nl. A code outside that list is ignored rather than trusted: there is no catalogue
+     * `enabled` is a comma-separated list of codes from HostedLocale.
+     * A code outside that list is ignored rather than trusted: there is no catalogue
      * to show for it, and a page in a half-supported language is worse than English.
      */
     /*
@@ -251,7 +257,7 @@ return [
 
     'locales' => [
         'default' => env('CBOX_ID_DEFAULT_LOCALE', 'en'),
-        'enabled' => env('CBOX_ID_LOCALES', 'en,da,de,sv,nb,fr,fi,es,it,nl'),
+        'enabled' => env('CBOX_ID_LOCALES', 'en,da,de,sv,nb,fi,fr,es,it,nl,pt,pl,ro,cs,hu,el,bg,hr,sk,tr,uk'),
     ],
 
     /*
@@ -331,8 +337,8 @@ return [
      *                        (including revoking with `enabled: false`) keeps working.
      *   inclusive          — SSO, SCIM and audit access are included on every plan.
      *                        Other absent keys are denied; explicit rows still win.
-     *                        Project admission is controlled separately by
-     *                        CBOX_ID_REQUIRE_SUBSCRIPTION.
+     *                        Product admission and environment allowances are
+     *                        checked separately against central Billing.
      *   metered            — unset means denied, and the billing projection is the
      *                        only thing that grants (legacy deployment policy).
      *

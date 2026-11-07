@@ -5,6 +5,7 @@ declare(strict_types=1);
 // Danish: the chrome every hosted page shares (see lang/en/hosted.php).
 return [
     'layout' => [
+        'hero_title' => 'Ét identitetslag til alle dine apps.',
         'secured_by' => 'Sikret af :name',
         'theme' => 'Tema',
         'toggle_theme' => 'Skift mellem lyst og mørkt tema',

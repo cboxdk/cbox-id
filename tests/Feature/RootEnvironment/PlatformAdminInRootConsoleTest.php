@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 use App\Http\Middleware\AuthenticateOperator;
 use App\Platform\Impersonation;
+use App\Platform\NativeProduct\NativeProductMembers;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
@@ -196,7 +199,8 @@ it('runs a support session from the organization tree end to end, on the root ho
         ->assertRedirect(route('dashboard'));
     nextRequest();
 
-    $page = $this->get('https://cboxid.com/dashboard')->assertOk();
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('account'));
+    $page = $this->get(route('account'))->assertOk();
 
     expect($page->inertiaProps('impersonation.email'))->toBe('member@acme.test')
         ->and($page->inertiaProps('shell'))->not->toBeNull();
@@ -214,6 +218,26 @@ it('runs a support session from the organization tree end to end, on the root ho
     expect(session(Impersonation::SESSION_KEY))->toBeNull()
         ->and($shell['altitude'])->toBe('environment')
         ->and($shell['activeArea'])->toBe('platform');
+})->group('security');
+
+it('lands a support session on the targets current native access and honors revocation', function (): void {
+    rootPlatformWorld();
+    [$organization, $subject] = impersonationMember();
+    $member = app(PlatformRoot::class)->run(fn () => app(Memberships::class)->of($organization->id, $subject->id));
+    grantNativeProductRoles($member, ['viewer']);
+    $this->post('https://cboxid.com/admin/platform/environments/root/impersonate/'.$subject->id, [
+        'organization' => $organization->id, 'reason' => IMPERSONATION_REASON,
+    ])->assertRedirect(route('dashboard'));
+    nextRequest();
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('projects'));
+    expect($this->get(route('projects'))->assertOk()->inertiaProps('impersonation.email'))->toBe($subject->email);
+
+    $roles = app(NativeProductMembers::class);
+    $roles->replace($member, [], $roles->access($member)['roles_version'], AuditActor::system());
+    nextRequest();
+    $this->get(route('projects'))->assertForbidden();
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('account'));
+    expect($this->get(route('account'))->assertOk()->inertiaProps('impersonation.email'))->toBe($subject->email);
 })->group('security');
 
 it('ends a support session that outlives its window back in platform admin', function (): void {
@@ -246,7 +270,8 @@ it('runs a support session from the platform environment\'s own Users page, land
         ->assertRedirect(route('dashboard'));
     nextRequest();
 
-    expect($this->get('https://cboxid.com/dashboard')->assertOk()->inertiaProps('impersonation.email'))->toBe('member@acme.test');
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('account'));
+    expect($this->get(route('account'))->assertOk()->inertiaProps('impersonation.email'))->toBe('member@acme.test');
 
     $this->post('https://cboxid.com/impersonation/exit')->assertRedirect(route('environment.home'));
     nextRequest();

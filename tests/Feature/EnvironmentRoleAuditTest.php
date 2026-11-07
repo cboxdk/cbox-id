@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\AccessControl\Contracts\AppManifests;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\RoleSource;
+use Cbox\Id\AccessControl\Manifest\ManifestParser;
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
@@ -16,8 +18,51 @@ use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
+
+function pendingAppRoleDefinition(): Role
+{
+    $parser = app(ManifestParser::class);
+    $manifests = app(AppManifests::class);
+    foreach ([['sites:read'], ['sites:read', 'sites:publish']] as $permissions) {
+        $manifests->sync('sites', $parser->parse([
+            'version' => 'test',
+            'permissions' => [['key' => 'sites:read'], ['key' => 'sites:publish']],
+            'roles' => [['key' => 'editor', 'name' => 'Editor', 'permissions' => $permissions]],
+        ]));
+    }
+
+    return Role::query()->where('client_id', 'sites')->where('key', 'editor')->sole();
+}
+
+it('shows the pending app role difference and explicitly activates the reviewed version', function (): void {
+    $role = pendingAppRoleDefinition();
+    $this->get(route('environment.roles.show', $role->id))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('pendingDefinition.currentPermissions', ['sites:read'])
+            ->where('pendingDefinition.permissions', ['sites:publish', 'sites:read'])
+            ->where('pendingDefinition.version', $role->pending_definition_version));
+
+    $this->from(route('environment.roles.show', $role->id))
+        ->post(route('environment.roles.definition.activate', $role->id), ['version' => $role->pending_definition_version])
+        ->assertSessionHasNoErrors()->assertRedirect();
+
+    expect($role->refresh()->pending_definition_version)->toBeNull()
+        ->and(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(2)
+        ->and(AuditEntry::query()->where('action', 'role.definition_activated')->count())->toBe(1);
+});
+
+it('refuses activation of an unreviewed role version', function (): void {
+    $role = pendingAppRoleDefinition();
+    $this->from(route('environment.roles.show', $role->id))
+        ->post(route('environment.roles.definition.activate', $role->id), ['version' => str_repeat('a', 64)])
+        ->assertSessionHasErrors('version');
+
+    expect($role->refresh()->pending_definition_version)->not->toBeNull()
+        ->and(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(1);
+});
 
 beforeEach(function (): void {
     Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]);

@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -54,8 +54,13 @@ export default function DomainsOverview({
     organizationsHref,
     ssoHref,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -80,9 +85,17 @@ export default function DomainsOverview({
                 help={help}
                 description={
                     <>
-                        {tc('console.the_email_domains_your_organizations_have_cl_5dee8f00')}{' '}
-                        <Link href={ssoHref}>{tc('console.enterprise_sso_0f8d7e8e')}</Link>
-                        {tc('console.each_one_is_verified_on_its_organization_s_p_11878ff6')}
+                        {consoleRich(
+                            'console.the_email_domains_your_organizations_have_claimed_a_ver_97773852',
+                            {
+                                part1: ' ',
+                                part2: (
+                                    <Link href={ssoHref}>
+                                        {consoleT('console.enterprise_sso_0f8d7e8e')}
+                                    </Link>
+                                ),
+                            },
+                        )}
                     </>
                 }
             />
@@ -97,17 +110,13 @@ export default function DomainsOverview({
                     <Input
                         type="search"
                         style={{ maxWidth: '24rem' }}
-                        placeholder={tc('console.search_by_domain_8457a6d8')}
-                        aria-label={tc('console.search_domains_df3b2794')}
+                        placeholder={consoleUiText('console.search_by_domain_8457a6d8')}
+                        aria-label={consoleT('console.search_domains_df3b2794')}
                         value={term}
                         onChange={(event) => setTerm(event.target.value)}
                     />
                     <output className="sr-only">
-                        {pagination.total}{' '}
-                        {pagination.total === 1
-                            ? tc('console.domain_f2ff8386')
-                            : tc('console.domains_1b0ec195')}
-                        {tc('console.found_599e25a3')}
+                        {consoleRich('console.search_results_found', { count: pagination.total })}
                     </output>
                 </div>
 
@@ -119,36 +128,36 @@ export default function DomainsOverview({
                         search !== '' ? (
                             <EmptyState
                                 icon="search"
-                                title={tc('console.no_matches_for_value0_617e79ef', {
-                                    value0: search,
+                                title={consoleFinalText('console.no_matches_for_part1_42a992b5', {
+                                    part1: search,
                                 })}
-                                description={tc(
-                                    'console.no_claimed_domain_matches_that_try_part_of_t_1212eb45',
+                                description={consoleT(
+                                    'console.no_claimed_domain_matches_that_try_part_of_the_domain_w_1212eb45',
                                 )}
                             />
                         ) : (
                             <EmptyState
                                 icon="building"
-                                title={tc(
+                                title={consoleT(
                                     'console.no_organization_has_claimed_a_domain_yet_707e5ab8',
                                 )}
-                                description={tc(
-                                    'console.a_domain_is_claimed_by_one_organization_and__85c4b058',
+                                description={consoleT(
+                                    'console.a_domain_is_claimed_by_one_organization_and_proved_with_85c4b058',
                                 )}
                                 steps={[
-                                    tc(
+                                    consoleRuntimeText(
                                         'console.open_the_organization_and_its_domains_tab_185d9406',
                                     ),
-                                    tc(
-                                        'console.add_the_domain_and_publish_the_txt_record_it_ddb14174',
+                                    consoleRuntimeText(
+                                        'console.add_the_domain_and_publish_the_txt_record_it_shows_or_s_ddb14174',
                                     ),
-                                    tc(
-                                        'console.verify_it_then_turn_on_capture_to_route_ever_f88a6ce1',
+                                    consoleRuntimeText(
+                                        'console.verify_it_then_turn_on_capture_to_route_everyone_on_it_f88a6ce1',
                                     ),
                                 ]}
                                 actions={
                                     <Link href={organizationsHref} className="btn btn-primary">
-                                        {tc('console.open_organizations_db4241ab')}
+                                        {consoleT('console.open_organizations_db4241ab')}
                                     </Link>
                                 }
                             />
@@ -178,11 +187,13 @@ export default function DomainsOverview({
                                 </div>
                                 <Pill tone={domain.verified ? 'success' : 'warning'}>
                                     {domain.verified
-                                        ? tc('console.verified_4f783840')
-                                        : tc('console.waiting_for_dns_38500dff')}
+                                        ? consoleText('console.verified_4f783840')
+                                        : consoleText('console.waiting_for_dns_38500dff')}
                                 </Pill>
                                 {domain.capture && (
-                                    <Badge tone="info">{tc('console.capture_on_f676810d')}</Badge>
+                                    <Badge tone="info">
+                                        {consoleT('console.capture_on_f676810d')}
+                                    </Badge>
                                 )}
                                 <Icon
                                     name="chevron"
@@ -196,8 +207,6 @@ export default function DomainsOverview({
 
                 <Pagination
                     pagination={pagination}
-                    noun={tc('console.domain_f2ff8386')}
-                    pluralNoun={tc('console.domains_1b0ec195')}
                     href={(page) => listHref(search, page)}
                 />
             </div>

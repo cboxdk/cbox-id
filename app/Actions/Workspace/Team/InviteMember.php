@@ -14,9 +14,9 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
-use App\Platform\Invitations\Contracts\TeamInvitations;
 use App\Platform\Invitations\Exceptions\InvitationRefused;
-use Cbox\Id\Organization\Enums\MembershipRole;
+use App\Platform\NativeProduct\NativeProductManifest;
+use App\Platform\NativeProduct\NativeTeamInvitations as TeamInvitations;
 
 /**
  * Invite somebody onto the workspace's team — through {@see TeamInvitations}, so the mail,
@@ -33,7 +33,7 @@ use Cbox\Id\Organization\Enums\MembershipRole;
     status: 201,
     consoleRoutes: ['members.invite'],
     consoleGate: ConsoleGate::ManageMembers,
-    schema: 'Member',
+    schema: 'TeamInvitationReceipt',
     tag: 'Team',
 )]
 final readonly class InviteMember implements Action
@@ -45,7 +45,7 @@ final readonly class InviteMember implements Action
         return InputSchema::of([
             Field::string('email')->required()->format('email')->max(190),
             Field::string('name')->nullable()->max(120),
-            Field::string('role')->required()->oneOf(self::roles()),
+            Field::list('roles', Field::string('role')->oneOf(array_keys(NativeProductManifest::ROLES)))->required(),
         ]);
     }
 
@@ -53,10 +53,10 @@ final readonly class InviteMember implements Action
     {
         $workspaceId = InWorkspace::id($context->principal);
         $email = trim($context->string('email'));
-        $role = MembershipRole::tryFrom($context->string('role')) ?? MembershipRole::Viewer;
+        $roles = array_values(array_filter($context->array('roles'), 'is_string'));
 
         try {
-            $invitation = $this->team->send($workspaceId, $email, $role, InWorkspace::inviter($context->principal), InWorkspace::actor($context->principal));
+            $invitation = $this->team->send($workspaceId, $email, $roles, InWorkspace::inviter($context->principal), InWorkspace::actor($context->principal));
         } catch (InvitationRefused $refused) {
             throw InvitationRefusal::of($refused);
         }
@@ -64,14 +64,8 @@ final readonly class InviteMember implements Action
         return ActionResult::item($invitation, [
             'id' => $invitation->id,
             'email' => $email,
-            'role' => $role->value,
+            'roles' => $this->team->roles($invitation),
             'status' => 'invited',
         ]);
-    }
-
-    /** @return list<string> */
-    private static function roles(): array
-    {
-        return array_map(static fn (MembershipRole $role): string => $role->value, MembershipRole::assignable());
     }
 }

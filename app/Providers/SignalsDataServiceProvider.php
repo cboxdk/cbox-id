@@ -34,7 +34,7 @@ final class SignalsDataServiceProvider extends ServiceProvider
         $this->app->bind(DatabaseSubjectPseudonymiser::class, static function (Application $app): DatabaseSubjectPseudonymiser {
             $subjects = $app->make(Subjects::class);
 
-            return new DatabaseSubjectPseudonymiser($subjects instanceof SourceSubjects ? $subjects->underlying() : $subjects);
+            return new DatabaseSubjectPseudonymiser(self::storageSubjects($subjects));
         });
         $this->app->extend(Subjects::class, static fn (Subjects $inner, Application $app): Subjects => new SourceSubjects($inner, $app->make(SourceLedger::class)));
         $this->app->extend(SessionManager::class, static fn (SessionManager $inner, Application $app): SessionManager => new SourceSessions(
@@ -46,5 +46,10 @@ final class SignalsDataServiceProvider extends ServiceProvider
         $this->app->extend(EventBus::class, static fn (EventBus $inner, Application $app): EventBus => new SourceEvents(
             $inner, $app->make(SourceLedger::class), $app->make(IdentityCapture::class), $app->make(SourceRelationships::class), static fn (): Request => $app->make(Request::class),
         ));
+    }
+
+    private static function storageSubjects(Subjects $subjects): Subjects
+    {
+        return $subjects instanceof SourceSubjects ? $subjects->underlying() : $subjects;
     }
 }

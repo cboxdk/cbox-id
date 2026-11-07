@@ -72,7 +72,7 @@ final readonly class OrganizationOverviewController extends OrganizationTabContr
             'setup' => [
                 [
                     'key' => 'sso',
-                    'label' => __('console.enterprise_sso_0f8d7e8e'),
+                    'label' => __('console.single_sign_on_connected_e71377e3'),
                     'done' => $connections->contains(static fn (Connection $connection): bool => $connection->status === ConnectionStatus::Active),
                     'available' => $entitlements->entitled($organization->id, 'sso'),
                     'detail' => $connections->isEmpty()
@@ -83,7 +83,7 @@ final readonly class OrganizationOverviewController extends OrganizationTabContr
                 ],
                 [
                     'key' => 'domain',
-                    'label' => __('console.domains_ced67718'),
+                    'label' => __('console.domain_verified_08e0df67'),
                     'done' => $verified !== [],
                     'available' => true,
                     'detail' => $verified === []
@@ -93,7 +93,7 @@ final readonly class OrganizationOverviewController extends OrganizationTabContr
                 ],
                 [
                     'key' => 'directory',
-                    'label' => __('console.directory_sync_ea18bba8'),
+                    'label' => __('console.directory_syncing_56537431'),
                     'done' => $directories->contains(static fn (Directory $directory): bool => $directory->status === DirectoryStatus::Active),
                     'available' => $entitlements->entitled($organization->id, 'scim'),
                     'detail' => $directories->isEmpty()

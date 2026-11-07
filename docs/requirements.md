@@ -46,11 +46,11 @@ Pulled in automatically by `composer install`:
 | Package | Version | Used for |
 |---|---|---|
 | `cboxdk/laravel-engage-client` | `^0.1.1` | Asynchronous, scoped onboarding observations for Engage. |
-| `cboxdk/laravel-assistant-client` | `^0.1` | Product support, signed tools and curated documentation sync. |
-| `cboxdk/laravel-billing-client` | `^0.4.13` | Billing catalog, account and subscription management. |
+| `cboxdk/laravel-assistant-client` | `^0.1.1` | Product support, signed tools and curated documentation sync. |
+| `cboxdk/laravel-billing-client` | `^0.4.14` | Billing catalog, account and subscription management. |
 | `symfony/intl` | `^8.0` | Country validation and localized country names for invoice addresses. |
-| `cboxdk/laravel-id` | `^1.28.0` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
-| `cboxdk/laravel-signals-client` | `dev-sd/signals-implementation as 0.1.0` | Public Signals assessment client (feature disabled until configured). |
+| `cboxdk/laravel-id` | `^2.0` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
+| `cboxdk/laravel-signals-client` | `dev-sd/security-tenant-context` | Public Signals assessment client (feature disabled until configured). |
 | `cboxdk/laravel-postal` | `^0.1.1` | Transactional mail delivery via Postal. |
 | `cboxdk/laravel-ssrf` | `^1.1.1` | The outbound URL guard: DNS pinning and private-range refusal. |
 | `firebase/php-jwt` | `^7.0` | JWT encode/verify beneath the token signer (vetted, not hand-rolled). |
@@ -121,4 +121,4 @@ production's major. `tests/Feature/DeploymentManifestTest.php` fails if that maj
 the local manifest (`cbox.yaml`) runs and the one named on this page drift apart. See
 [Deployment](operations/deployment.md).
 
-The identity engine uses the published `cboxdk/laravel-id` release `^1.28.0`, including independent named authenticator apps. The optional Signals enforcement integration still uses the reviewed, unpublished `cboxdk/laravel-signals-client` source at `dev-sd/signals-implementation as 0.1.0`; that client is a development branch alias. See [Signals authentication](integrations/signals-authentication.md) for the explicit build contexts and activation requirements.
+The identity engine uses the published `cboxdk/laravel-id` release `^2.0`, including independent named authenticator apps. The optional Signals enforcement integration still uses the reviewed, unpublished `cboxdk/laravel-signals-client` source at `dev-sd/security-tenant-context`; that client is bundled from a reviewed immutable source and retains its development identity. See [Signals authentication](integrations/signals-authentication.md) for the explicit build contexts and activation requirements.

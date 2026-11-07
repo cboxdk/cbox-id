@@ -22,6 +22,7 @@ use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\Models\SupportSession;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\CustomerApiKeys;
+use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\InvitationStatus;
@@ -918,3 +919,21 @@ it('refuses to register an app holding a platform scope reserved for the console
 
     expect(Client::query()->where('name', 'like', 'Sneaky%')->exists())->toBeFalse();
 })->with(['vault.manage', 'decisions:read'])->group('security');
+
+it('returns a subject-bound invitation receipt without leaking another organization', function (): void {
+    [$key] = tenancyKey([EnvironmentApiScope::InvitationsRead]);
+    $org = tenancyOrg('Receipt organization');
+    $other = tenancyOrg('Other receipt organization');
+    $subject = tenancyUser('accepted@example.test');
+    $pending = app(Invitations::class)->invite($org->id, 'accepted@example.test', MembershipRole::Member);
+    app(Invitations::class)->accept($pending->token, $subject);
+    $path = '/api/v1/organizations/'.$org->id.'/invitations/'.$pending->invitation->id;
+    $this->withToken($key)->getJson($path)->assertOk()
+        ->assertJsonPath('data.status', 'accepted')
+        ->assertJsonPath('data.accepted_by', $subject)
+        ->assertJsonPath('data.organization_id', $org->id)
+        ->assertJsonMissingPath('data.token_hash');
+    $this->withToken($key)->getJson('/api/v1/organizations/'.$other->id.'/invitations/'.$pending->invitation->id)->assertNotFound();
+    [$wrongScope] = tenancyKey([EnvironmentApiScope::OrganizationsRead]);
+    $this->withToken($wrongScope)->getJson($path)->assertForbidden();
+});

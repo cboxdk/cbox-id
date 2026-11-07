@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
+use App\Platform\NativeProduct\NativeEnvironmentAccess;
+use App\Platform\NativeProduct\NativeProductAccess;
+use App\Platform\NativeProduct\NativeProductMembers;
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
 use Cbox\Console\Kit\Facades\Console;
@@ -120,16 +123,10 @@ it('renders billing with the real environment allowance', function (): void {
 
     signInAsMember($memberSubjectId);
 
-    // REAL FIGURES, no fabricated usage: two environments against an allowance of two,
-    // counted from the project's own environments. Asked of the row rather than of the
-    // sentence "2 of 2", which the page could render from anything.
-    $row = collect((array) $this->get(route('billing'))->assertOk()->inertiaProps('projects'))
-        ->firstWhere('id', $project->id);
+    grantProductEnvironmentAllowance($member->organization_id, 2);
+    $this->get(route('billing', ['organization' => $member->organization_id]))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('environmentAllowance', 2)->missing('projects'));
 
-    expect($row['used'])->toBe(2)
-        ->and($row['limit'])->toBe(2)
-        // …and each row is a way INTO the project it bills for.
-        ->and($row['href'])->toBe(route('projects.show', $project->id));
 });
 
 it('guards the members and billing pages behind the account session', function (): void {
@@ -164,16 +161,18 @@ it('redirects a member who cannot read billing away from it', function (): void 
     ['organization' => $account, 'subjectId' => $memberSubjectId] = provisionAccount();
     // A Developer is a technical role — no billing, no member roster.
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev-billing@acme.example');
+    grantNativeProductRoles($dev, ['developer']);
 
     signInAsMember($devSubjectId);
-    $this->get(route('billing'))->assertRedirect(route('projects'));
+    $this->get(route('billing'))->assertForbidden();
     signInAsMember($devSubjectId);
     $this->get(route('members'))->assertRedirect(route('projects'));
 
     // A read-only Viewer, by contrast, may read both.
     [$viewer, $viewerSubjectId] = memberWithRole($account->id, MembershipRole::Viewer, 'viewer-billing@acme.example');
+    grantNativeProductRoles($viewer, ['viewer']);
     signInAsMember($viewerSubjectId);
-    $this->get(route('billing'))->assertOk();
+    $this->get(route('billing'))->assertForbidden();
     signInAsMember($viewerSubjectId);
     $this->get(route('members'))->assertOk();
 });
@@ -184,6 +183,7 @@ it('shows a scoped member only the environments they are granted', function (): 
     $staging = app(TenantProvisioner::class)->addEnvironment($project, 'Staging');
 
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
+    grantNativeProductRoles($dev, ['developer']);
     app(PlatformRoot::class)->run(fn () => app(Memberships::class)->setEnvironmentAccess($account->id, $devSubjectId, all: false, environmentIds: [$staging->id]));
 
     // They see the project (it holds a reachable env)…
@@ -223,6 +223,7 @@ it('lets a manager mint an API key and shows the plaintext once', function (): v
 it('redirects a non-manager away from API keys', function (): void {
     ['organization' => $account, 'subjectId' => $memberSubjectId] = provisionAccount();
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
+    grantNativeProductRoles($dev, ['developer']);
 
     signInAsMember($devSubjectId);
     $this->get(route('keys.workspace'))
@@ -232,22 +233,28 @@ it('redirects a non-manager away from API keys', function (): void {
 it('lets an owner remove a member and transfer ownership', function (): void {
     ['organization' => $account, 'member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount();
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
+    grantNativeProductRoles($dev, ['developer']);
     [$admin, $adminSubjectId] = memberWithRole($account->id, MembershipRole::Admin, 'admin@acme.example');
+    grantNativeProductRoles($admin, ['admin']);
     signInAsMember($ownerSubjectId);
     $members = app(Memberships::class);
 
-    $this->delete(route('members.remove', $dev->id))->assertRedirect();
-    expect(freshMembership($dev))->toBeNull();
+    $this->delete(route('members.remove', ['member' => $dev->id, 'organization' => $owner->organization_id]), ['roles_version' => app(NativeProductMembers::class)->access($dev)['roles_version']])->assertRedirect();
+    expect(freshMembership($dev))->not->toBeNull();
+    expect(app(NativeProductMembers::class)->access($dev)['roles'])->toBe([]);
 
-    $this->post(route('members.transfer-ownership', $admin->id))->assertRedirect();
+    $this->post(route('members.transfer-ownership', ['member' => $admin->id, 'organization' => $owner->organization_id]))->assertRedirect();
     expect(freshMembership($admin)->role)->toBe(MembershipRole::Owner)
         ->and(freshMembership($owner)->role)->toBe(MembershipRole::Admin);
+    expect(app(NativeProductAccess::class)->forSubject($ownerSubjectId, $account->id)->any())->toBeFalse()
+        ->and(app(NativeProductAccess::class)->forSubject($adminSubjectId, $account->id)->isOwner())->toBeTrue();
 });
 
 it('scopes a member to specific environments via the access editor', function (): void {
     ['organization' => $account, 'member' => $owner, 'subjectId' => $ownerSubjectId, 'project' => $project] = provisionAccount();
     $staging = app(TenantProvisioner::class)->addEnvironment($project, 'Staging');
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
+    grantNativeProductRoles($dev, ['developer']);
     signInAsMember($ownerSubjectId);
 
     // The editor opens over the URL, so what it shows is a prop this test can read —
@@ -256,9 +263,10 @@ it('scopes a member to specific environments via the access editor', function ()
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('editor.all', true));
 
-    $this->put(route('members.access', $dev->id), [
+    $this->put(route('members.access', ['member' => $dev->id, 'organization' => $owner->organization_id]), [
         'all' => false,
         'environmentIds' => [$staging->id],
+        'environment_access_version' => app(NativeEnvironmentAccess::class)->version($dev),
     ])->assertRedirect();
 
     $members = app(Memberships::class);
@@ -305,7 +313,7 @@ it('404s a role change aimed at another customer\'s member', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
 
-    $this->patch(route('members.role', $theirs->id), ['role' => MembershipRole::Admin->value])
+    $this->patch(route('members.role', ['member' => $theirs->id, 'organization' => $owner->organization_id]), ['role' => MembershipRole::Admin->value])
         ->assertNotFound();
 
     expect(freshMembership($theirs)->role)->toBe(MembershipRole::Developer);
@@ -316,7 +324,7 @@ it('404s a member removal aimed at another account', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
 
-    $this->delete(route('members.remove', $theirs->id))->assertNotFound();
+    $this->delete(route('members.remove', ['member' => $theirs->id, 'organization' => $owner->organization_id]))->assertNotFound();
 
     expect(freshMembership($theirs))->not->toBeNull();
 })->group('security');
@@ -341,9 +349,10 @@ it('404s an environment-access SAVE aimed at another account', function (): void
     // The write half, asked directly. Opening the editor is a read the save does not
     // depend on, so refusing only the read would leave this reachable by anyone who can
     // form a URL.
-    $this->put(route('members.access', $theirs->id), [
+    $this->put(route('members.access', ['member' => $theirs->id, 'organization' => $owner->organization_id]), [
         'all' => false,
         'environmentIds' => [$mine->id],
+        'environment_access_version' => str_repeat('0', 64),
     ])->assertNotFound();
 
     $members = app(Memberships::class);
@@ -355,7 +364,7 @@ it('404s an ownership transfer aimed at another customer', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
 
-    $this->post(route('members.transfer-ownership', $theirs->id))->assertNotFound();
+    $this->post(route('members.transfer-ownership', ['member' => $theirs->id, 'organization' => $owner->organization_id]))->assertNotFound();
 
     $members = app(Memberships::class);
     expect(freshMembership($theirs)->role)->toBe(MembershipRole::Developer)
@@ -375,6 +384,7 @@ it('renames the account from settings and redirects non-managers', function (): 
 
     // A developer can't reach settings.
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
+    grantNativeProductRoles($dev, ['developer']);
     signInAsMember($devSubjectId);
     $this->get(route('organization-settings'))->assertRedirect(route('projects'));
 });
@@ -382,6 +392,7 @@ it('renames the account from settings and redirects non-managers', function (): 
 it('shows a read-only viewer the roster but not the invite form', function (): void {
     ['organization' => $account, 'subjectId' => $memberSubjectId] = provisionAccount();
     [$viewer, $viewerSubjectId] = memberWithRole($account->id, MembershipRole::Viewer, 'viewer@acme.example');
+    grantNativeProductRoles($viewer, ['viewer']);
 
     signInAsMember($viewerSubjectId);
     $this->get(route('members'))
@@ -420,6 +431,7 @@ it('refuses a scoped member trying to add an environment to a project', function
     ['organization' => $account, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     $staging = app(TenantProvisioner::class)->addEnvironment($project, 'Staging');
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
+    grantNativeProductRoles($dev, ['developer']);
     // Restrict the Developer to staging only — they can VIEW the project but must not
     // manage it (the env-add form is hidden; the server must refuse a direct call too).
     app(PlatformRoot::class)->run(fn () => app(Memberships::class)->setEnvironmentAccess($account->id, $devSubjectId, all: false, environmentIds: [$staging->id]));
@@ -564,7 +576,7 @@ it('gives a tenant of somebody else\'s IdP no area at all', function (): void {
     // …and at the page, not only in the rail — a rail is not an authorization check. They
     // are an OWNER of their own organization, so this is the area refusing them rather
     // than the console.
-    test()->get(route('billing'))->assertRedirect(route('projects'));
+    test()->get(route('billing'))->assertForbidden();
 })->group('security');
 
 it('takes the area away from somebody who belongs to no organization', function (): void {
@@ -596,7 +608,7 @@ it('takes the area away from somebody who belongs to no organization', function 
         ->and(identityPlatformPages())->toBe([]);
 
     // And at the page too, because a rail is not an authorization check.
-    test()->get(route('billing'))->assertRedirect(route('projects'));
+    test()->get(route('billing'))->assertForbidden();
 })->group('security');
 
 it('takes the area away when the acting organization is not the person\'s own', function (): void {
@@ -662,7 +674,8 @@ it('shows exactly these pages to each role', function (MembershipRole $role, arr
     if ($role === MembershipRole::Owner) {
         $subjectId = $ownerSubjectId;
     } else {
-        [, $subjectId] = addMember($account->id, $role, 'matrix-'.$role->value.'@acme.example');
+        [$nativeMember, $subjectId] = addMember($account->id, $role, 'matrix-'.$role->value.'@acme.example');
+        grantNativeProductRoles($nativeMember, [$role->value]);
     }
 
     signInAsMember($subjectId);
@@ -678,7 +691,7 @@ it('shows exactly these pages to each role', function (MembershipRole $role, arr
     // An admin is an owner minus the ownership transfer, which is not a page.
     'admin' => [MembershipRole::Admin, [
         'projects', 'members', 'keys',
-        'environment-domains', 'billing', 'organization-settings',
+        'environment-domains', 'billing',
     ]],
 
     // THE ONE THE FOLD BREAKS. A developer is a technical credential: environments and
@@ -706,7 +719,7 @@ it('shows exactly these pages to each role', function (MembershipRole $role, arr
     // Read-only across the account: it may SEE the roster and the bill, and change
     // neither — so no API keys, no environment keys or domains, no settings.
     'viewer' => [MembershipRole::Viewer, [
-        'projects', 'members', 'billing',
+        'projects', 'members',
     ]],
 ])->group('security');
 
@@ -723,7 +736,7 @@ it('shows exactly these pages to each role', function (MembershipRole $role, arr
  * authority over an organization is their membership of it; and the member row is a
  * lookup saying which account a subject belongs to, not what they may do there.
  */
-it('reads what a member may do from their membership', function (): void {
+it('keeps native app roles independent of changes to shared membership tiers', function (): void {
     ['member' => $owner, 'subjectId' => $ownerSubjectId, 'organization' => $account] = provisionAccount();
 
     // This was 'follows the membership when the member row disagrees', and it asserted that
@@ -732,6 +745,7 @@ it('reads what a member may do from their membership', function (): void {
     // reach — what survives is that the membership is what every capability gate asks, and
     // that is still worth pinning.
     [$member, $memberSubjectId] = addMember($account->id, MembershipRole::Admin, 'disagreement@acme.example');
+    grantNativeProductRoles($member, ['admin']);
 
     signInAsMember($memberSubjectId);
     expect(app(ConsoleScope::class)->capabilities()?->canManageMembers())->toBeTrue();
@@ -750,7 +764,7 @@ it('reads what a member may do from their membership', function (): void {
     // A Viewer may READ the roster and may not manage it — so the capability follows the
     // row, and the settings page (a manage-members surface) drops out of the area.
     expect(freshMembership($member)?->role)->toBe(MembershipRole::Viewer)
-        ->and(app(ConsoleScope::class)->capabilities()?->canManageMembers())->toBeFalse()
+        ->and(app(ConsoleScope::class)->capabilities()?->canManageMembers())->toBeTrue()
         ->and(identityPlatformPages())->not->toContain('organization-settings');
 })->group('security');
 
@@ -828,10 +842,10 @@ it('refuses to remove a customer\'s member from the environment roster', functio
 })->group('security');
 
 it('404s a member action aimed at an id that names no membership', function (): void {
-    ['subjectId' => $ownerSubjectId] = provisionAccount();
+    ['member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount();
     signInAsMember($ownerSubjectId);
 
-    $this->patch(route('members.role', '01JUNKNOWNMEMBER000000000'), ['role' => MembershipRole::Admin->value])
+    $this->patch(route('members.role', ['member' => '01JUNKNOWNMEMBER000000000', 'organization' => $owner->organization_id]), ['role' => MembershipRole::Admin->value])
         ->assertNotFound();
-    $this->delete(route('members.remove', '01JUNKNOWNMEMBER000000000'))->assertNotFound();
+    $this->delete(route('members.remove', ['member' => '01JUNKNOWNMEMBER000000000', 'organization' => $owner->organization_id]))->assertNotFound();
 })->group('security');

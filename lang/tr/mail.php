@@ -1,0 +1,120 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'layout' => [
+        'footer' => '© :year :brand · Kimlik platformunuzdan otomatik olarak gönderilmiştir.',
+    ],
+    'common' => [
+        'paste_link' => 'Bu bağlantıyı tarayıcınıza yapıştırın:',
+    ],
+    'roles' => [
+        'owner' => 'Sahip',
+        'admin' => 'Yönetici',
+        'developer' => 'Geliştirici',
+        'member' => 'Üye',
+        'viewer' => 'Görüntüleyici',
+    ],
+    'magic_link' => [
+        'subject' => ':brand giriş bağlantınız',
+        'heading' => ':brand hesabınıza giriş yapın',
+        'body' => 'Giriş yapmak için aşağıdaki düğmeye tıklayın. Bu bağlantı tek kullanımlıktır ve 15 dakika sonra geçerliliğini yitirir. Bağlantıyı siz istemediyseniz bu mesajı yok sayabilirsiniz.',
+        'button' => ':brand hesabınıza giriş yapın',
+    ],
+    'password_reset' => [
+        'subject' => ':brand şifrenizi sıfırlayın',
+        'heading' => 'Şifrenizi sıfırlayın',
+        'body' => ':brand şifrenizi sıfırlama isteği aldık. Yeni bir şifre belirlemek için aşağıdaki düğmeye tıklayın. Bu bağlantı tek kullanımlıktır ve 60 dakika sonra geçerliliğini yitirir. İsteği siz yapmadıysanız mesajı yok sayabilirsiniz; şifreniz değişmez.',
+        'button' => 'Şifreyi sıfırla',
+    ],
+    'email_verification' => [
+        'subject' => ':brand e-posta adresinizi doğrulayın',
+        'heading' => 'E-posta adresinizi doğrulayın',
+        'body' => ':brand hizmetine hoş geldiniz. Hesabınızı güvenceye almak için bu e-posta adresinin size ait olduğunu doğrulayın. Bağlantı tek kullanımlıktır ve 24 saat sonra geçerliliğini yitirir.',
+        'button' => 'E-posta adresini doğrulayın',
+        'not_you' => ':brand hesabı oluşturmadıysanız bu e-postayı yok sayabilirsiniz. Bağlantı kullanılmadan hiçbir işlem yapılmaz.',
+    ],
+    'admin_assigned_password' => [
+        'subject' => ':brand şifreniz sıfırlandı',
+        'heading' => 'Şifreniz sıfırlandı',
+        'body' => 'Bir yönetici hesabınız için yeni bir şifre belirledi. Aşağıdaki şifreyle giriş yapın.',
+        'temporary' => 'Giriş yaptıktan hemen sonra kendi şifrenizi belirlemeniz gerekecek.',
+        'expires' => 'Bu şifrenin geçerliliği :date tarihinde sona eriyor. Lütfen bu tarihten önce giriş yapın.',
+        'not_expected' => 'Bu mesajı beklemiyorsanız yöneticinizle iletişime geçin. Değişiklik kuruluşunuzun konsoluna erişimi olan biri tarafından yapıldı ve denetim kaydına işlendi.',
+    ],
+    'invitation' => [
+        'subject' => ':inviter sizi :organization kuruluşuna katılmaya davet etti',
+        'heading' => ':organization kuruluşuna katılın',
+        'invited' => ':inviter, sizi :organization kuruluşuna katılmaya davet etti.',
+        'invited_as' => ':inviter, sizi :organization kuruluşuna :role rolüyle katılmaya davet etti.',
+        'accept_app' => ':organization hesabınızla :app uygulamasına giriş yapmak için daveti kabul edin.',
+        'accept' => 'Hesabınızı oluşturup giriş yapmak için daveti kabul edin.',
+        'button' => 'Daveti görüntüle',
+        'note' => 'Bağlantı bir onay sayfası açar; onay vermedikçe hiçbir işlem yapılmaz. Bağlantı 7 gün sonra geçerliliğini yitirir. Bu mesajı beklemiyorsanız yok sayabilirsiniz.',
+    ],
+    'organization_invite' => [
+        'subject' => ':inviter, sizi :brand üzerinde :organization kuruluşunu yönetmeye davet etti',
+        'heading' => ':brand üzerinde :organization kuruluşunun yönetimine katılın',
+        'invited' => ':inviter, sizi :brand konsolunda :organization kuruluşunu yönetmeye davet etti: kimlik sağlayıcıları, ortamlar, üyeler ve faturalandırma. Daveti kabul edip bir şifre belirleyerek giriş yapın.',
+        'invited_as' => ':inviter, sizi :brand konsolunda :organization kuruluşunu :role rolüyle yönetmeye davet etti: kimlik sağlayıcıları, ortamlar, üyeler ve faturalandırma. Daveti kabul edip bir şifre belirleyerek giriş yapın.',
+        'button' => 'Daveti kabul et',
+        'note' => 'Bu daveti beklemiyorsanız yok sayabilirsiniz. Kabul etmedikçe hiçbir işlem yapılmaz.',
+    ],
+    'portal_link' => [
+        'subject' => ':brand üzerinde :organization kuruluşunu yapılandırın',
+        'heading' => ':organization kuruluşunu yapılandırın',
+        'lead' => ':brand üzerinde :organization için aşağıdaki ayarları yapmanız istendi. Hesabınız olması gerekmiyor; aşağıdaki düğme yeterli.',
+        'intents' => [
+            'sso' => 'Kimlik sağlayıcınızla tek oturum açma',
+            'dsync' => 'Dizin eşitleme (SCIM)',
+            'domain_verification' => 'E-posta alan adlarınızı doğrulama',
+            'log_streams' => 'Denetim kayıtlarının SIEM sisteminize aktarılması',
+            'certificate_renewal' => 'SAML imzalama sertifikanızı yenileme',
+            'audit_logs' => 'Denetim kayıtlarınızın görüntülenmesi (salt okunur)',
+        ],
+        'button' => 'Kurulumu başlat',
+        'expires' => 'Bağlantı :date tarihine kadar bir kez kullanılabilir. Süresi dolarsa yeni bir bağlantı isteyin.',
+        'not_expected' => 'Bu mesajı beklemiyorsanız yok sayabilirsiniz. Bağlantıyı kullanana kadar hiçbir ayar değiştirilmez.',
+    ],
+    'certificate_expiring' => [
+        'subject' => ':connection üzerinden tek oturum açma :count gün sonra çalışmayı durduracak|:connection üzerinden tek oturum açma :count gün sonra çalışmayı durduracak',
+        'subject_expired' => ':connection üzerinden tek oturum açma çalışmayı durdurdu',
+        'heading' => 'SAML sertifikanızın süresi dolmak üzere',
+        'heading_expired' => 'SAML sertifikanızın süresi doldu',
+        'lead' => ':organization için tek oturum açmayı sağlayan :connection bağlantısının imzalama sertifikası :date tarihinde geçerliliğini yitiriyor. Bu tarihten sonra bu bağlantı üzerinden kimse giriş yapamaz.',
+        'lead_expired' => ':organization için tek oturum açmayı sağlayan :connection bağlantısının imzalama sertifikasının süresi :date tarihinde doldu. Sertifika yenilenene kadar bu bağlantı üzerinden kimse giriş yapamaz.',
+        'what_to_do' => 'Kimlik sağlayıcınızı yöneten kişiden yeni imzalama sertifikasını isteyin ve yönetim konsoluna yükleyin. Bunun yerine yöneticinizden Yönetici Portalı bağlantısı isteyip sertifikayı oraya da yükleyebilirsiniz.',
+        'why' => ':brand üzerindeki bu kuruluşun sahibi veya yöneticisi olduğunuz için bu mesajı alıyorsunuz.',
+    ],
+    'one_time_code' => [
+        'label' => 'Kodunuz',
+        'expires' => 'Kod :count dakika geçerlidir ve yalnızca bir kez kullanılabilir.|Kod :count dakika geçerlidir ve yalnızca bir kez kullanılabilir.',
+        'never_share' => 'Kodu kimseyle paylaşmayın. :brand bu kodu telefonla, sohbet yoluyla veya e-postayla asla istemez.',
+        'not_you_title' => 'Bu isteği siz yapmadınız mı?',
+        'sign_in' => [
+            'subject' => ':brand giriş kodu',
+            'heading' => 'Kimliğinizi doğrulayın',
+            'lead' => ':brand hesabınıza girişi tamamlamak için bu kodu girin.',
+            'not_you' => 'Bu kodu hiçbir yere girmeyin ve mesajı yok sayın. :brand hesabınız varsa şifresini değiştirin; bu işlemi başlatan kişi şifrenizi biliyor olabilir.',
+        ],
+        'device' => [
+            'subject' => ':brand cihaz onay kodunuz',
+            'heading' => 'Başka bir cihazdaki girişi onaylayın',
+            'lead' => 'Televizyon veya komut satırı aracı gibi başka bir cihazda :brand girişini onaylamak için bu kodu girin.',
+            'not_you' => 'Bu kodu hiçbir yere girmeyin. Birisi sizi kendi cihazını onaylamaya yönlendiriyor olabilir; bu tür saldırılar böyle başlar. Mesajı yok sayın ve hiçbir şeyi onaylamayın.',
+        ],
+        'link' => [
+            'subject' => ':brand giriş yöntemi bağlama kodunuz',
+            'heading' => 'Giriş yöntemini bağla',
+            'lead' => ':brand hesabınıza yeni bir giriş yöntemi bağlamak için bu kodu girin.',
+            'not_you' => 'Bu kodu hiçbir yere girmeyin. Birisi kendi giriş yöntemini hesabınıza bağlamaya çalışıyor olabilir. Mesajı yok sayarsanız bağlantı kurulmaz.',
+        ],
+        'verify' => [
+            'subject' => ':brand doğrulama kodunuz',
+            'heading' => 'Doğrulama kodunuz',
+            'lead' => 'Bu e-posta adresinin size ait olduğunu doğrulamak için kodu :brand üzerinde girin.',
+            'not_you' => 'Bu e-postayı yok sayabilirsiniz. Kod girilmeden hiçbir işlem yapılmaz.',
+        ],
+    ],
+];

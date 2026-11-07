@@ -9,6 +9,8 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\NativeProduct\NativeEnvironmentAccess;
+use App\Platform\NativeProduct\NativeProductAccess;
 use App\Platform\Onboarding\IntegrationProgress;
 use App\Platform\OrganizationAccess;
 use App\Platform\PlatformAuth;
@@ -81,20 +83,24 @@ final readonly class SupportContext
                 || $this->memberships->activeRole($account, $subject) === null) {
                 return false;
             }
-            if ($withEnvironments) {
-                try {
-                    app(ProductAdmission::class)->assertGranted($subject, $account);
-                } catch (ActionRefused) {
+            try {
+                $access = app(NativeProductAccess::class)->forSubject($subject, $account);
+                if (! $access->any() || ($withEnvironments && ! $access->canReadEnvironments())) {
                     return false;
                 }
+                if ($withEnvironments) {
+                    app(ProductAdmission::class)->assertGranted($subject, $account);
+                }
+            } catch (ActionRefused) {
+                return false;
             }
             if ($scope['environment'] === $this->root->environment()?->environmentKey()) {
                 return true;
             }
             $environment = Environment::query()->find($scope['environment']);
 
-            return $environment instanceof Environment && $environment->status->canServe()
-                && in_array($environment->id, $this->memberships->accessibleEnvironmentIds($account, $subject), true);
+            return $access->canReadEnvironments() && $environment instanceof Environment && $environment->status->canServe()
+                && in_array($environment->id, app(NativeEnvironmentAccess::class)->ids($account, $subject), true);
         }) === true;
     }
 
@@ -114,12 +120,16 @@ final readonly class SupportContext
                 return $base;
             }
             $projects = app(OrganizationProjects::class)->forOrganization($account);
-            $allowed = $this->memberships->accessibleEnvironmentIds($account, $subject);
+            $allowed = app(NativeEnvironmentAccess::class)->ids($account, $subject);
             $scope = (array) ($context->principal['context'] ?? []);
             $active = $scope['environment'] ?? null;
             $environments = Environment::query()->whereIn('id', $allowed)
                 ->when($active !== $this->root->environment()?->environmentKey(), fn ($query) => $query->whereKey($active))
                 ->whereIn('project_id', $projects->pluck('id')->all())->orderBy('name')->get()->groupBy('project_id');
+
+            if (! app(NativeProductAccess::class)->forSubject($subject, $account)->isOwner()) {
+                $projects = $projects->filter(fn (Project $project): bool => $environments->has($project->id));
+            }
 
             return [...$base, 'projects' => $projects->map(fn (Project $project): array => [
                 'name' => $project->name, 'status' => $project->status->value,
@@ -143,7 +153,7 @@ final readonly class SupportContext
             $account = $context->accountId();
             $subject = $context->userId();
             abort_unless($account !== null && $subject !== null, 403);
-            $allowed = $this->memberships->accessibleEnvironmentIds($account, $subject);
+            $allowed = app(NativeEnvironmentAccess::class)->ids($account, $subject);
             $projects = app(OrganizationProjects::class)->forOrganization($account)->pluck('id')->all();
             $scope = $context->principal['context'] ?? [];
             $active = is_array($scope) ? ($scope['environment'] ?? null) : null;

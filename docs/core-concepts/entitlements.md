@@ -104,7 +104,7 @@ alone does not prove a live payment flow. Preserve all service waitlists during 
 ## `metered`
 
 Deny-by-default, and the billing projection is the only thing that grants. Retained for installations that deliberately gate features through the projection.
-Cbox hosted plans use `inclusive` and independent subscription admission instead.
+Cbox hosted plans may use `inclusive` for these identity-security defaults. Product admission and environment allowances remain separate, live checks against central Billing; no local subscription projection grants product access.
 
 ## Entitlements are not a tenancy control
 

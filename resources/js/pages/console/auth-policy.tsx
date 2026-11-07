@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -137,8 +138,15 @@ export default function AuthPolicyPage({
     environmentName,
     help,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleNestedText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich, choice: consoleChoice } = useConsoleTranslator();
+    const { t: consoleT, locale } = useConsoleTranslator();
     const form = useForm<Policy>(policy);
     const [confirming, setConfirming] = useState<'lockout' | 'inherit' | 'signup' | null>(null);
 
@@ -159,7 +167,7 @@ export default function AuthPolicyPage({
 
     const badge = (field: string) =>
         overridden.includes(field) ? (
-            <Badge className="ml-1">{tc('console.overridden_62a03f09')}</Badge>
+            <Badge className="ml-1">{consoleT('console.overridden_62a03f09')}</Badge>
         ) : null;
 
     return (
@@ -168,10 +176,13 @@ export default function AuthPolicyPage({
                 help={help}
                 description={
                     onEnvironmentPlane
-                        ? tc('console.the_baseline_every_organization_in_this_envi_75711a2d')
-                        : tc('console.how_people_sign_in_to_value0_these_start_as__c9e4acbf', {
-                              value0: scopeName,
-                          })
+                        ? consoleText(
+                              'console.the_baseline_every_organization_in_this_environment_inh_75711a2d',
+                          )
+                        : consoleFinalText(
+                              'console.how_people_sign_in_to_part1_these_start_as_your_environ_133e7090',
+                              { part1: scopeName },
+                          )
                 }
             />
 
@@ -188,33 +199,36 @@ export default function AuthPolicyPage({
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                         {inheriting ? (
                             <>
-                                <strong style={{ color: 'var(--foreground)' }}>
-                                    {tc('console.using_your_environment_s_defaults_caa183bc')}
-                                </strong>{' '}
-                                {tc('console.nothing_here_is_set_by_3c4318b0')}
-                                {scopeName}
-                                {tc(
-                                    'console.yet_change_anything_below_and_it_becomes_thi_472d5907',
+                                {consoleRich(
+                                    'console._part1_part2_nothing_here_is_set_by_part3_yet_change_an_a8ead075',
+                                    {
+                                        part1: (
+                                            <strong style={{ color: 'var(--foreground)' }}>
+                                                {consoleT(
+                                                    'console.using_your_environment_s_defaults_caa183bc',
+                                                )}
+                                            </strong>
+                                        ),
+                                        part2: ' ',
+                                        part3: scopeName,
+                                    },
                                 )}
                             </>
                         ) : (
                             <>
                                 <strong style={{ color: 'var(--foreground)' }}>
-                                    {scopeName}
-                                    {tc('console.has_its_own_rules_eabdbf0a')}
+                                    {consoleRich('console._part1_has_its_own_rules_2979eb4e', {
+                                        part1: scopeName,
+                                    })}
                                 </strong>{' '}
-                                {overridden.length}{' '}
-                                {overridden.length === 1
-                                    ? tc('console.setting_differs_9901f740')
-                                    : tc('console.settings_differ_bd913a9c')}{' '}
-                                {tc('console.from_your_environment_s_defaults_d638e385')}
+                                {consoleChoice('console.auth_settings_differ', overridden.length)}
                             </>
                         )}
                     </p>
 
                     {!inheriting && (
                         <Button size="sm" onClick={() => setConfirming('inherit')}>
-                            {tc('console.use_environment_defaults_458238c0')}
+                            {consoleT('console.use_environment_defaults_458238c0')}
                         </Button>
                     )}
                 </div>
@@ -240,17 +254,18 @@ export default function AuthPolicyPage({
                         id="min-length"
                         label={
                             <>
-                                {tc('console.minimum_password_length_212329b7')}
-                                {badge('minLength')}
+                                {consoleRich('console.minimum_password_length_part1_17210255', {
+                                    part1: badge('minLength'),
+                                })}
                             </>
                         }
                         error={form.errors.minLength}
                         hint={
                             onEnvironmentPlane
                                 ? undefined
-                                : tc(
-                                      'console.environment_default_value0_you_can_require_m_8d5f9e39',
-                                      { value0: baseline.minLength },
+                                : consoleFinalText(
+                                      'console.environment_default_part1_you_can_require_more_not_fewe_8d900b4b',
+                                      { part1: baseline.minLength },
                                   )
                         }
                     >
@@ -271,18 +286,22 @@ export default function AuthPolicyPage({
                         id="reuse-history"
                         label={
                             <>
-                                {tc('console.block_reuse_of_the_last_e8e45b8a')}
-                                {badge('reuseHistory')}
+                                {consoleRich('console.password_reuse_label', {
+                                    part1: badge('reuseHistory'),
+                                })}
                             </>
                         }
                         error={form.errors.reuseHistory}
                         hint={
                             <>
-                                {tc(
-                                    'console.passwords_0_turns_reuse_checking_off_only_ha_f9522130',
-                                )}
-                                {!onEnvironmentPlane &&
-                                    ` Environment default: ${baseline.reuseHistory}.`}
+                                {consoleRich('console.password_reuse_hint', {
+                                    part1:
+                                        !onEnvironmentPlane &&
+                                        consoleNestedText(
+                                            'console._environment_default_part1_3f0792ae',
+                                            { part1: baseline.reuseHistory },
+                                        ),
+                                })}
                             </>
                         }
                     >
@@ -303,16 +322,30 @@ export default function AuthPolicyPage({
                         id="max-age"
                         label={
                             <>
-                                {tc('console.force_a_change_after_58b2d52e')}
-                                {badge('maxAgeDays')}
+                                {consoleRich('console.password_validity_label', {
+                                    part1: badge('maxAgeDays'),
+                                })}
                             </>
                         }
                         error={form.errors.maxAgeDays}
                         hint={
                             <>
-                                {tc('console.days_leave_empty_to_never_force_a_rotation_bbc4f068')}
-                                {!onEnvironmentPlane &&
-                                    ` Environment default: ${baseline.maxAgeDays === '' ? 'never' : `${baseline.maxAgeDays} days`}.`}
+                                {consoleRich('console.password_validity_hint', {
+                                    part1:
+                                        !onEnvironmentPlane &&
+                                        consoleNestedText(
+                                            'console._environment_default_part1_3f0792ae',
+                                            {
+                                                part1:
+                                                    baseline.maxAgeDays === ''
+                                                        ? consoleText('console.never_6497e4b3')
+                                                        : duration(
+                                                              Number(baseline.maxAgeDays) * 1440,
+                                                              locale,
+                                                          ),
+                                            },
+                                        ),
+                                })}
                             </>
                         }
                     >
@@ -322,7 +355,7 @@ export default function AuthPolicyPage({
                             type="number"
                             min={1}
                             max={3650}
-                            placeholder={tc('console.never_6300ef80')}
+                            placeholder={consoleUiText('console.never_6300ef80')}
                             value={form.data.maxAgeDays}
                             onChange={(event) => form.setData('maxAgeDays', event.target.value)}
                         />
@@ -332,33 +365,40 @@ export default function AuthPolicyPage({
                         id="lockout"
                         label={
                             <>
-                                {tc('console.lock_out_after_bc9e496f')}
-                                {badge('lockoutThreshold')}
+                                {consoleRich('console.lockout_attempts_label', {
+                                    part1: badge('lockoutThreshold'),
+                                })}
                             </>
                         }
                         error={form.errors.lockoutThreshold}
                         hint={
                             <>
-                                {/*
-                                    EMPTY IS NOT "OFF". It is the deployment's default, which
-                                    is on unless the operator switched it off — the page used
-                                    to say the opposite.
-                                */}
-                                {tc('console.failed_attempts_within_b198b8a6')}
-                                {lockoutDefault.windowMinutes}
-                                {tc('console.minutes_the_account_then_locks_for_2901d638')}
-                                {lockoutDefault.durationMinutes}
-                                {tc('console.minutes_014f602d')}{' '}
-                                {lockoutDefault.threshold === null
-                                    ? tc(
-                                          'console.leave_empty_for_no_lockout_this_deployment_h_d1f1a3e9',
-                                      )
-                                    : tc(
-                                          'console.leave_empty_for_this_deployment_s_default_of_d2ead774',
-                                          { value0: lockoutDefault.threshold },
-                                      )}
-                                {!onEnvironmentPlane &&
-                                    ` Environment default: ${baseline.lockoutThreshold === '' ? (lockoutDefault.threshold ?? 'off') : baseline.lockoutThreshold}.`}
+                                {consoleRich('console.lockout_window_hint', {
+                                    part1: duration(lockoutDefault.windowMinutes, locale),
+                                    part2: duration(lockoutDefault.durationMinutes, locale),
+                                    part3: ' ',
+                                    part4:
+                                        lockoutDefault.threshold === null
+                                            ? consoleText(
+                                                  'console.leave_empty_for_no_lockout_this_deployment_has_switched_d1f1a3e9',
+                                              )
+                                            : consoleNestedText(
+                                                  'console.leave_empty_for_this_deployment_s_default_of_part1_f391c886',
+                                                  { part1: lockoutDefault.threshold },
+                                              ),
+                                    part5:
+                                        !onEnvironmentPlane &&
+                                        consoleNestedText(
+                                            'console._environment_default_part1_3f0792ae',
+                                            {
+                                                part1:
+                                                    baseline.lockoutThreshold === ''
+                                                        ? (lockoutDefault.threshold ??
+                                                          consoleText('console.off_ca7981b4'))
+                                                        : baseline.lockoutThreshold,
+                                            },
+                                        ),
+                                })}
                             </>
                         }
                     >
@@ -370,9 +410,9 @@ export default function AuthPolicyPage({
                             max={100}
                             placeholder={
                                 lockoutDefault.threshold === null
-                                    ? tc('console.off_ca7981b4')
-                                    : tc('console.value0_default_63685080', {
-                                          value0: lockoutDefault.threshold,
+                                    ? consoleShortText('console.off_ca7981b4')
+                                    : consoleFinalText('console._part1_default_aeb03a88', {
+                                          part1: lockoutDefault.threshold,
                                       })
                             }
                             value={form.data.lockoutThreshold}
@@ -385,8 +425,9 @@ export default function AuthPolicyPage({
                     <Field
                         label={
                             <>
-                                {tc('console.two_factor_authentication_64eac237')}
-                                {badge('mfa')}
+                                {consoleRich('console.two_factor_authentication_part1_8c022f7b', {
+                                    part1: badge('mfa'),
+                                })}
                             </>
                         }
                         error={form.errors.mfa}
@@ -395,15 +436,16 @@ export default function AuthPolicyPage({
                             value={form.data.mfa}
                             onValueChange={(mfa) => form.setData('mfa', mfa)}
                             options={mfaOptions}
-                            aria-label={tc('console.two_factor_authentication_b6824cc8')}
+                            aria-label={consoleT('console.two_factor_authentication_b6824cc8')}
                         />
                     </Field>
 
                     <Field
                         label={
                             <>
-                                {tc('console.enterprise_sso_bd67f181')}
-                                {badge('sso')}
+                                {consoleRich('console.enterprise_sso_part1_ef8e20aa', {
+                                    part1: badge('sso'),
+                                })}
                             </>
                         }
                         error={form.errors.sso}
@@ -412,7 +454,7 @@ export default function AuthPolicyPage({
                             value={form.data.sso}
                             onValueChange={(sso) => form.setData('sso', sso)}
                             options={ssoOptions}
-                            aria-label={tc('console.enterprise_sso_0f8d7e8e')}
+                            aria-label={consoleT('console.enterprise_sso_0f8d7e8e')}
                         />
                     </Field>
                 </div>
@@ -420,7 +462,9 @@ export default function AuthPolicyPage({
                 <Checkbox
                     checked={form.data.requireBreachCheck}
                     onCheckedChange={(checked) => form.setData('requireBreachCheck', checked)}
-                    label={tc('console.refuse_passwords_found_in_known_data_breache_db4c6959')}
+                    label={consoleT(
+                        'console.refuse_passwords_found_in_known_data_breaches_checked_a_db4c6959',
+                    )}
                 />
                 {form.errors.requireBreachCheck !== undefined && (
                     <p className="field-error" role="alert">
@@ -430,7 +474,7 @@ export default function AuthPolicyPage({
 
                 <div>
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        {tc('console.save_rules_e5dbdffb')}
+                        {consoleT('console.save_rules_e5dbdffb')}
                     </Button>
                 </div>
             </form>
@@ -443,13 +487,13 @@ export default function AuthPolicyPage({
             {!onEnvironmentPlane && signInMethods !== null && (
                 <div className="pt-2">
                     <h2 className="text-base font-semibold">
-                        {tc('console.for_the_whole_environment_5b97e28f')}
+                        {consoleT('console.for_the_whole_environment_5b97e28f')}
                     </h2>
                     <p className="text-sm mt-1" style={{ color: 'var(--muted-foreground)' }}>
-                        {tc('console.these_apply_to_every_organization_in_3f27386c')}
-                        {environmentName}
-                        {tc('console.not_only_6a5ac048')}
-                        {scopeName}.
+                        {consoleRich(
+                            'console.these_apply_to_every_organization_in_part1_not_only_par_ac56590d',
+                            { part1: environmentName, part2: scopeName },
+                        )}
                     </p>
                 </div>
             )}
@@ -474,22 +518,22 @@ export default function AuthPolicyPage({
             {onEnvironmentPlane && organizations !== null && (
                 <Panel
                     id="organizations"
-                    title={tc('console.per_organization_8cb1cd51')}
-                    description={tc(
-                        'console.the_rules_in_force_after_this_environment_s__278c536a',
+                    title={consoleT('console.per_organization_8cb1cd51')}
+                    description={consoleT(
+                        'console.the_rules_in_force_after_this_environment_s_baseline_is_278c536a',
                     )}
                 >
                     <div className="overflow-x-auto">
                         <Table
-                            caption={tc(
-                                'console.authentication_policy_in_force_per_organizat_1463aba6',
+                            caption={consoleUiText(
+                                'console.authentication_policy_in_force_per_organization_1463aba6',
                             )}
                         >
                             <thead>
                                 <tr>
-                                    <Th>{tc('console.organization_d764d425')}</Th>
-                                    <Th>{tc('console.min_length_483ad8e5')}</Th>
-                                    <Th>2FA</Th>
+                                    <Th>{consoleT('console.organization_d764d425')}</Th>
+                                    <Th>{consoleT('console.min_length_483ad8e5')}</Th>
+                                    <Th>{consoleT('console.2fa_8ce118ca')}</Th>
                                     <Th>SSO</Th>
                                 </tr>
                             </thead>
@@ -497,7 +541,7 @@ export default function AuthPolicyPage({
                                 {organizations.length === 0 ? (
                                     <tr>
                                         <Td colSpan={4} style={{ color: 'var(--faint)' }}>
-                                            {tc(
+                                            {consoleT(
                                                 'console.no_organizations_in_this_environment_yet_483d8509',
                                             )}
                                         </Td>
@@ -508,13 +552,15 @@ export default function AuthPolicyPage({
                                             <Td>
                                                 <Link href={row.href}>{row.name}</Link>{' '}
                                                 {row.overridden ? (
-                                                    <Badge>{tc('console.override_43bc0f5f')}</Badge>
+                                                    <Badge>
+                                                        {consoleT('console.override_43bc0f5f')}
+                                                    </Badge>
                                                 ) : (
                                                     <span
                                                         className="text-xs"
                                                         style={{ color: 'var(--faint)' }}
                                                     >
-                                                        {tc('console.inherited_46b2e93c')}
+                                                        {consoleT('console.inherited_46b2e93c')}
                                                     </span>
                                                 )}
                                             </Td>
@@ -534,8 +580,6 @@ export default function AuthPolicyPage({
                         <div className="mt-4">
                             <Pagination
                                 pagination={organizationsPagination}
-                                noun={tc('console.organization_af3a1bb3')}
-                                pluralNoun={tc('console.organizations_f8a665a9')}
                                 href={(page) => `${window.location.pathname}?page=${page}`}
                             />
                         </div>
@@ -552,26 +596,44 @@ export default function AuthPolicyPage({
             <Dialog
                 open={confirming === 'lockout'}
                 onOpenChange={(open) => !open && setConfirming(null)}
-                title={tc('console.this_will_sign_people_out_of_value0_167bd637', {
-                    value0: scopeName,
+                title={consoleFinalText('console.this_will_sign_people_out_of_part1_c2cac70c', {
+                    part1: scopeName,
                 })}
-                description={tc('console.requiring_sso_refuses_every_other_way_in_and_7d9d14ef')}
+                description={consoleT(
+                    'console.requiring_sso_refuses_every_other_way_in_and_ends_the_s_7d9d14ef',
+                )}
                 footer={
                     <>
                         <Button onClick={() => setConfirming(null)}>
-                            {tc('console.keep_passwords_working_b57484cf')}
+                            {consoleT('console.keep_passwords_working_b57484cf')}
                         </Button>
                         <Button variant="danger" onClick={save}>
-                            {tc('console.require_sso_and_sign_everyone_out_474ac7df')}
+                            {consoleT('console.require_sso_and_sign_everyone_out_474ac7df')}
                         </Button>
                     </>
                 }
             >
                 <ul className="space-y-1 text-sm list-disc pl-5">
                     <li>
-                        {tc('console.password_sign_in_stops_working_for_everyone__dd89ee54')}
-                        {scopeName}
-                        {tc('console.immediately_175925af')}
+                        {consoleRich(
+                            'console.password_sign_in_stops_working_for_everyone_in_part1_im_adc97716',
+                            { part1: scopeName },
+                        )}
+                    </li>
+                    <li>
+                        {consoleT(
+                            'console.every_session_that_was_opened_with_a_password_ends_incl_cf05d595',
+                        )}
+                    </li>
+                    <li>
+                        {consoleT(
+                            'console.people_get_back_in_through_your_identity_provider_anyon_6fd7e521',
+                        )}
+                    </li>
+                    <li>
+                        {consoleT(
+                            'console.you_can_set_this_back_to_prefer_sso_or_both_available_a_b84203a4',
+                        )}
                     </li>
                     <li>{tc('console.every_session_that_was_opened_with_a_passwor_cf05d595')}</li>
                     <li>{tc('console.people_get_back_in_through_your_identity_pro_6fd7e521')}</li>
@@ -589,16 +651,16 @@ export default function AuthPolicyPage({
                 <Dialog
                     open={confirming === 'signup'}
                     onOpenChange={(open) => !open && setConfirming(null)}
-                    title={tc('console.let_people_sign_up_to_value0_dfabb5ad', {
-                        value0: environmentName,
+                    title={consoleFinalText('console.let_people_sign_up_to_part1_6978f3c6', {
+                        part1: environmentName,
                     })}
-                    description={tc(
-                        'console.anyone_who_reaches_one_of_your_apps_can_crea_eeb28c84',
+                    description={consoleT(
+                        'console.anyone_who_reaches_one_of_your_apps_can_create_an_accou_eeb28c84',
                     )}
                     footer={
                         <>
                             <Button onClick={() => setConfirming(null)}>
-                                {tc('console.keep_invitation_only_2cf257d6')}
+                                {consoleT('console.keep_invitation_only_2cf257d6')}
                             </Button>
                             <Button
                                 variant="primary"
@@ -611,22 +673,28 @@ export default function AuthPolicyPage({
                                     );
                                 }}
                             >
-                                {tc('console.turn_on_sign_up_487bb553')}
+                                {consoleT('console.turn_on_sign_up_487bb553')}
                             </Button>
                         </>
                     }
                 >
                     <ul className="space-y-1 text-sm list-disc pl-5">
                         <li>
-                            {tc('console.your_sign_in_page_gets_a_ldquo_create_an_acc_020878e6')}
-                            <code>{tc('console.prompt_create_46ad4d3f')}</code>.
+                            {consoleRich(
+                                'console.your_sign_in_page_gets_a_create_an_account_link_and_app_8a665905',
+                                { part1: <code>{'prompt=create'}</code> },
+                            )}
                         </li>
                         <li>
-                            {tc('console.each_new_account_creates_its_own_organizatio_45ebf9cf')}{' '}
-                            <code>{tc('console.prompt_create_organization_2a7488dc')}</code>.
+                            {consoleRich(
+                                'console.each_new_account_creates_its_own_organization_and_owns_3528fda3',
+                                { part1: ' ', part2: <code>{'prompt=create_organization'}</code> },
+                            )}
                         </li>
                         <li>
-                            {tc('console.your_authentication_policy_still_applies_pas_84825ce9')}
+                            {consoleT(
+                                'console.your_authentication_policy_still_applies_password_stren_84825ce9',
+                            )}
                         </li>
                     </ul>
                 </Dialog>
@@ -635,14 +703,17 @@ export default function AuthPolicyPage({
             <Dialog
                 open={confirming === 'inherit'}
                 onOpenChange={(open) => !open && setConfirming(null)}
-                title={tc('console.use_your_environment_s_defaults_for_value0_616d87ac', {
-                    value0: scopeName,
-                })}
-                description={tc('console.this_organization_s_own_authentication_polic_a12f3b55')}
+                title={consoleFinalText(
+                    'console.use_your_environment_s_defaults_for_part1_c214943d',
+                    { part1: scopeName },
+                )}
+                description={consoleT(
+                    'console.this_organization_s_own_authentication_policy_is_droppe_a12f3b55',
+                )}
                 footer={
                     <>
                         <Button onClick={() => setConfirming(null)}>
-                            {tc('console.cancel_19766ed6')}
+                            {consoleT('console.cancel_19766ed6')}
                         </Button>
                         <Button
                             variant="danger"
@@ -654,7 +725,7 @@ export default function AuthPolicyPage({
                                 }
                             }}
                         >
-                            {tc('console.use_environment_defaults_458238c0')}
+                            {consoleT('console.use_environment_defaults_458238c0')}
                         </Button>
                     </>
                 }
@@ -681,19 +752,27 @@ function SelfServiceSignupPanel({
     scopeName: string;
     onEnable: () => void;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [saving, setSaving] = useState(false);
 
     if (!setting.decidedHere) {
         return (
             <Panel
                 id="sign-up"
-                title={tc('console.self_service_sign_up_613527ff')}
-                description={tc('console.decided_by_this_deployment_s_cbox_id_signup__3d142130', {
-                    value0: setting.mode,
-                    value1: setting.open ? 'open' : 'closed',
-                })}
+                title={consoleT('console.self_service_sign_up_613527ff')}
+                description={consoleFinalText(
+                    'console.decided_by_this_deployment_s_cbox_id_signup_mode_which_5691d2c8',
+                    {
+                        part1: setting.mode,
+                        part2: setting.open
+                            ? consoleText('console.open_2348f998')
+                            : consoleText('console.closed_c3eefb58'),
+                    },
+                )}
             />
         );
     }
@@ -701,19 +780,20 @@ function SelfServiceSignupPanel({
     return (
         <Panel
             id="sign-up"
-            title={tc('console.self_service_sign_up_613527ff')}
+            title={consoleT('console.self_service_sign_up_613527ff')}
             description={
                 setting.enabled
-                    ? tc('console.anyone_can_create_an_account_in_value0_and_b_f8d282a6', {
-                          value0: scopeName,
-                      })
-                    : tc('console.people_join_value0_by_invitation_only_a4644606', {
-                          value0: scopeName,
+                    ? consoleFinalText(
+                          'console.anyone_can_create_an_account_in_part1_and_becomes_the_o_ff47cb27',
+                          { part1: scopeName },
+                      )
+                    : consoleFinalText('console.people_join_part1_by_invitation_only_a1970c4f', {
+                          part1: scopeName,
                       })
             }
             action={
                 <Switch
-                    aria-label={tc('console.self_service_sign_up_613527ff')}
+                    aria-label={consoleT('console.self_service_sign_up_613527ff')}
                     checked={setting.enabled}
                     disabled={saving}
                     onCheckedChange={(checked) => {
@@ -735,35 +815,31 @@ function SelfServiceSignupPanel({
         >
             {setting.enabled && !setting.open && (
                 <p className="text-sm" style={{ color: 'var(--warning-strong)' }}>
-                    {tc('console.on_here_but_this_deployment_has_closed_sign__270a24b1')}
+                    {consoleT(
+                        'console.on_here_but_this_deployment_has_closed_sign_up_everywhe_270a24b1',
+                    )}
                 </p>
             )}
             <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                {tc('console.apps_send_people_to_sign_up_with_8606caef')}
-                <code>{tc('console.prompt_create_46ad4d3f')}</code>
-                {tc('console.and_ask_a_signed_in_person_to_create_an_orga_b13d58d0')}
-                <code>{tc('console.prompt_create_organization_2a7488dc')}</code>
-                {tc('console.both_are_offered_only_while_this_is_on_134a8203')}
+                {consoleRich(
+                    'console.apps_send_people_to_sign_up_with_part1_and_ask_a_signed_e3725846',
+                    {
+                        part1: <code>{'prompt=create'}</code>,
+                        part2: <code>{'prompt=create_organization'}</code>,
+                    },
+                )}
             </p>
         </Panel>
     );
 }
 
 /** "90 minutes", "8 hours", "2 days" — whichever reads whole. */
-function duration(minutes: number): string {
-    if (minutes % 1440 === 0) {
-        const days = minutes / 1440;
-
-        return `${days} ${days === 1 ? 'day' : 'days'}`;
-    }
-
-    if (minutes % 60 === 0) {
-        const hours = minutes / 60;
-
-        return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
-    }
-
-    return `${minutes} minutes`;
+function duration(minutes: number, locale: string): string {
+    const unit = minutes % 1440 === 0 ? 'day' : minutes % 60 === 0 ? 'hour' : 'minute';
+    const value = unit === 'day' ? minutes / 1440 : unit === 'hour' ? minutes / 60 : minutes;
+    return new Intl.NumberFormat(locale, { style: 'unit', unit, unitDisplay: 'long' }).format(
+        value,
+    );
 }
 
 /**
@@ -781,8 +857,11 @@ function SignInMethodsPanel({
     setting: SignInMethodsSetting;
     scopeName: string;
 }) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT, locale } = useConsoleTranslator();
     const form = useForm({
         passkeys: setting.passkeys,
         magicLink: setting.magicLink,
@@ -798,19 +877,21 @@ function SignInMethodsPanel({
 
     const deploymentOff = (variable: string) => (
         <>
-            {tc('console.off_for_this_whole_deployment_6fda971a')}
-            <code className="mono">{variable}</code>
-            {tc('console.which_wins_over_this_setting_8282e10b')}
+            {consoleRich(
+                'console.off_for_this_whole_deployment_part1_which_wins_over_thi_8cd60ca5',
+                { part1: <code className="mono">{variable}</code> },
+            )}
         </>
     );
 
     return (
         <Panel
             id="sign-in-methods"
-            title={tc('console.sign_in_methods_and_sessions_66ef22a6')}
-            description={tc('console.which_ways_in_value0_offers_besides_a_passwo_4ead969c', {
-                value0: scopeName,
-            })}
+            title={consoleT('console.sign_in_methods_and_sessions_66ef22a6')}
+            description={consoleFinalText(
+                'console.which_ways_in_part1_offers_besides_a_password_and_how_l_37522a30',
+                { part1: scopeName },
+            )}
         >
             <form
                 className="space-y-5"
@@ -821,11 +902,11 @@ function SignInMethodsPanel({
             >
                 <div className="space-y-4">
                     <Checkbox
-                        label={tc('console.passkeys_c87ccdb4')}
+                        label={consoleT('console.passkeys_c87ccdb4')}
                         hint={
                             deployment.passkeys
-                                ? tc(
-                                      'console.face_id_touch_id_windows_hello_or_a_security_6e23006c',
+                                ? consoleText(
+                                      'console.face_id_touch_id_windows_hello_or_a_security_key_turnin_6e23006c',
                                   )
                                 : deploymentOff('CBOX_ID_PASSKEYS_ENABLED')
                         }
@@ -834,11 +915,11 @@ function SignInMethodsPanel({
                         onCheckedChange={(checked) => form.setData('passkeys', checked)}
                     />
                     <Checkbox
-                        label={tc('console.magic_link_a8a8b124')}
+                        label={consoleT('console.magic_link_a8a8b124')}
                         hint={
                             deployment.magicLink
-                                ? tc(
-                                      'console.a_one_time_sign_in_link_by_email_turning_thi_eeae7dbf',
+                                ? consoleText(
+                                      'console.a_one_time_sign_in_link_by_email_turning_this_off_also_eeae7dbf',
                                   )
                                 : deploymentOff('CBOX_ID_MAGIC_LINK_ENABLED')
                         }
@@ -847,14 +928,14 @@ function SignInMethodsPanel({
                         onCheckedChange={(checked) => form.setData('magicLink', checked)}
                     />
                     <Checkbox
-                        label={tc('console.bot_challenge_ed4b037c')}
+                        label={consoleT('console.bot_challenge_ed4b037c')}
                         hint={
                             deployment.botChallenge
-                                ? tc(
-                                      'console.ask_a_sign_up_radar_flags_to_prove_it_is_a_p_5b5f2963',
+                                ? consoleText(
+                                      'console.ask_a_sign_up_radar_flags_to_prove_it_is_a_person_cloud_5b5f2963',
                                   )
-                                : tc(
-                                      'console.this_deployment_has_no_turnstile_keys_cbox_i_9ceda61f',
+                                : consoleText(
+                                      'console.this_deployment_has_no_turnstile_keys_cbox_id_turnstile_9ceda61f',
                                   )
                         }
                         checked={deployment.botChallenge && form.data.botChallenge}
@@ -866,19 +947,24 @@ function SignInMethodsPanel({
                 <div className="grid sm:grid-cols-2 gap-5">
                     <Field
                         id="session-idle"
-                        label={tc('console.end_a_session_after_this_long_without_activi_40e79de1')}
+                        label={consoleT(
+                            'console.end_a_session_after_this_long_without_activity_40e79de1',
+                        )}
                         error={form.errors.sessionIdleMinutes}
-                        hint={tc('console.minutes_at_most_value0_empty_uses_the_deploy_3f932b31', {
-                            value0: idleCeiling,
-                            value1:
-                                deployment.sessionIdleMinutes > 0
-                                    ? duration(deployment.sessionIdleMinutes)
-                                    : tc('console.setting_no_idle_timeout_9ce693ee'),
-                            value2:
-                                setting.inForce.sessionIdleMinutes > 0
-                                    ? duration(setting.inForce.sessionIdleMinutes)
-                                    : 'none',
-                        })}
+                        hint={consoleFinalText(
+                            'console.minutes_at_most_part1_empty_uses_the_deployment_s_part2_3412e91d',
+                            {
+                                part1: idleCeiling,
+                                part2:
+                                    deployment.sessionIdleMinutes > 0
+                                        ? duration(deployment.sessionIdleMinutes, locale)
+                                        : consoleText('console.setting_no_idle_timeout_9ce693ee'),
+                                part3:
+                                    setting.inForce.sessionIdleMinutes > 0
+                                        ? duration(setting.inForce.sessionIdleMinutes, locale)
+                                        : consoleText('console.none_140bedbf'),
+                            },
+                        )}
                     >
                         <Input
                             id="session-idle"
@@ -888,10 +974,10 @@ function SignInMethodsPanel({
                             max={idleCeiling}
                             placeholder={
                                 deployment.sessionIdleMinutes > 0
-                                    ? tc('console.value0_deployment_c0ab2754', {
-                                          value0: deployment.sessionIdleMinutes,
+                                    ? consoleFinalText('console._part1_deployment_be39447b', {
+                                          part1: deployment.sessionIdleMinutes,
                                       })
-                                    : tc('console.none_deployment_64577084')
+                                    : consoleText('console.none_deployment_64577084')
                             }
                             value={form.data.sessionIdleMinutes}
                             onChange={(event) =>
@@ -902,12 +988,17 @@ function SignInMethodsPanel({
 
                     <Field
                         id="session-absolute"
-                        label={tc('console.end_a_session_after_this_long_however_active_40352264')}
+                        label={consoleT(
+                            'console.end_a_session_after_this_long_however_active_40352264',
+                        )}
                         error={form.errors.sessionAbsoluteMinutes}
-                        hint={tc('console.minutes_at_most_value0_empty_uses_the_deploy_6b686e82', {
-                            value0: deployment.sessionAbsoluteMinutes,
-                            value1: duration(deployment.sessionAbsoluteMinutes),
-                        })}
+                        hint={consoleFinalText(
+                            'console.minutes_at_most_part1_empty_uses_the_deployment_s_part2_2c261db9',
+                            {
+                                part1: deployment.sessionAbsoluteMinutes,
+                                part2: duration(deployment.sessionAbsoluteMinutes, locale),
+                            },
+                        )}
                     >
                         <Input
                             id="session-absolute"
@@ -915,8 +1006,8 @@ function SignInMethodsPanel({
                             type="number"
                             min={5}
                             max={deployment.sessionAbsoluteMinutes}
-                            placeholder={tc('console.value0_deployment_c0ab2754', {
-                                value0: deployment.sessionAbsoluteMinutes,
+                            placeholder={consoleFinalText('console._part1_deployment_be39447b', {
+                                part1: deployment.sessionAbsoluteMinutes,
                             })}
                             value={form.data.sessionAbsoluteMinutes}
                             onChange={(event) =>
@@ -935,7 +1026,7 @@ function SignInMethodsPanel({
 
                 <div>
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        {tc('console.save_sign_in_methods_a02553c8')}
+                        {consoleT('console.save_sign_in_methods_a02553c8')}
                     </Button>
                 </div>
             </form>
@@ -953,8 +1044,12 @@ function SignInMethodsPanel({
  * page cannot show "on" for a setting nobody can enrol under.
  */
 function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; scopeName: string }) {
-    const { t: tc } = useTranslator();
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({
         enabled: setting.enabled,
         allowedCountries: setting.allowedCountries,
@@ -977,15 +1072,17 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
     return (
         <Panel
             id="sms"
-            title={tc('console.text_message_codes_9f1561f0')}
+            title={consoleT('console.text_message_codes_9f1561f0')}
             description={
                 setting.enabled
-                    ? tc('console.people_in_value0_can_add_a_phone_number_and__2faf8f5f', {
-                          value0: scopeName,
-                      })
-                    : tc('console.off_people_in_value0_use_an_authenticator_ap_b459eb63', {
-                          value0: scopeName,
-                      })
+                    ? consoleFinalText(
+                          'console.people_in_part1_can_add_a_phone_number_and_receive_sign_dbeee425',
+                          { part1: scopeName },
+                      )
+                    : consoleFinalText(
+                          'console.off_people_in_part1_use_an_authenticator_app_a_passkey_27c6b7ea',
+                          { part1: scopeName },
+                      )
             }
         >
             <form
@@ -1000,28 +1097,47 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
                     style={{ border: '1px solid var(--border)', color: 'var(--muted-foreground)' }}
                 >
                     <p>
-                        <b>{tc('console.sms_is_the_weakest_second_factor_offered_her_5a90b3ee')}</b>
-                        {tc('console.a_code_can_be_taken_by_a_sim_swap_or_number__3d096b96')}
+                        {consoleRich(
+                            'console._part1_a_code_can_be_taken_by_a_sim_swap_or_number_port_690b2597',
+                            {
+                                part1: (
+                                    <b>
+                                        {consoleT(
+                                            'console.sms_is_the_weakest_second_factor_offered_here_5a90b3ee',
+                                        )}
+                                    </b>
+                                ),
+                            },
+                        )}
+                    </p>
+                    <p>
+                        {consoleT(
+                            'console.every_text_costs_money_codes_go_only_to_the_countries_l_171894a6',
+                        )}
                     </p>
                     <p>{tc('console.every_text_costs_money_codes_go_only_to_the__171894a6')}</p>
                 </div>
 
                 <Checkbox
-                    label={tc('console.accept_text_message_codes_as_a_second_factor_af308439')}
+                    label={consoleT(
+                        'console.accept_text_message_codes_as_a_second_factor_af308439',
+                    )}
                     checked={form.data.enabled}
                     onCheckedChange={(checked) => form.setData('enabled', checked)}
                 />
 
                 <Field
-                    label={tc('console.countries_8faf7ec7')}
-                    hint={tc('console.only_numbers_in_these_countries_can_be_added_4859ca3c')}
+                    label={consoleT('console.countries_8faf7ec7')}
+                    hint={consoleT(
+                        'console.only_numbers_in_these_countries_can_be_added_and_texted_4859ca3c',
+                    )}
                     error={form.errors.allowedCountries}
                 >
                     <Combobox
-                        aria-label={tc('console.add_a_country_3891b432')}
+                        aria-label={consoleT('console.add_a_country_3891b432')}
                         value={adding}
-                        placeholder={tc('console.add_a_country_fde01a47')}
-                        searchPlaceholder={tc('console.search_countries_1a765360')}
+                        placeholder={consoleUiText('console.add_a_country_fde01a47')}
+                        searchPlaceholder={consoleT('console.search_countries_1a765360')}
                         options={options}
                         onValueChange={(code) => {
                             setAdding(undefined);
@@ -1033,7 +1149,7 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
                 {form.data.allowedCountries.length > 0 ? (
                     <ul
                         className="flex flex-wrap gap-2"
-                        aria-label={tc('console.allowed_countries_d7d6903b')}
+                        aria-label={consoleT('console.allowed_countries_d7d6903b')}
                     >
                         {form.data.allowedCountries.map((code) => (
                             <li key={code}>
@@ -1042,9 +1158,10 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
                                     <button
                                         type="button"
                                         className="ml-1.5"
-                                        aria-label={tc('console.remove_value0_b597e5fb', {
-                                            value0: label(code),
-                                        })}
+                                        aria-label={consoleFinalText(
+                                            'console.remove_part1_369983dd',
+                                            { part1: label(code) },
+                                        )}
                                         onClick={() =>
                                             form.setData(
                                                 'allowedCountries',
@@ -1062,23 +1179,31 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
                     </ul>
                 ) : (
                     <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                        {tc('console.no_countries_yet_add_at_least_one_before_tur_c9f87d37')}
+                        {consoleT(
+                            'console.no_countries_yet_add_at_least_one_before_turning_text_m_c9f87d37',
+                        )}
                     </p>
                 )}
 
                 {outsideDeployment.length > 0 && (
                     <p className="text-sm" style={{ color: 'var(--warning-strong)' }}>
-                        {tc('console.this_deployment_only_texts_5852449e')}
-                        {setting.deploymentCountries.join(', ')}
-                        {tc('console.so_numbers_in_6914049a')}
-                        {outsideDeployment.map(label).join(', ')}
-                        {tc('console.cannot_receive_codes_until_cbox_id_sms_allow_5bba04f1')}
+                        {consoleRich(
+                            'console.this_deployment_only_texts_part1_so_numbers_in_part2_ca_6cb21f4d',
+                            {
+                                part1: setting.deploymentCountries.join(', '),
+                                part2: outsideDeployment.map(label).join(', '),
+                            },
+                        )}
                     </p>
                 )}
 
                 <Checkbox
-                    label={tc('console.owners_and_admins_need_an_authenticator_app__a1f2b392')}
-                    hint={tc('console.an_owner_or_admin_can_add_sms_only_next_to_a_07347449')}
+                    label={consoleT(
+                        'console.owners_and_admins_need_an_authenticator_app_or_a_passke_a1f2b392',
+                    )}
+                    hint={consoleT(
+                        'console.an_owner_or_admin_can_add_sms_only_next_to_a_stronger_f_07347449',
+                    )}
                     checked={form.data.privilegedNeedStrongerFactor}
                     onCheckedChange={(checked) =>
                         form.setData('privilegedNeedStrongerFactor', checked)
@@ -1087,7 +1212,7 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
 
                 <div>
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        {tc('console.save_text_message_settings_79884210')}
+                        {consoleT('console.save_text_message_settings_79884210')}
                     </Button>
                 </div>
             </form>

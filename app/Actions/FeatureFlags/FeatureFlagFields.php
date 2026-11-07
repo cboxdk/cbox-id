@@ -7,6 +7,7 @@ namespace App\Actions\FeatureFlags;
 use App\Http\Resources\Environment\Timestamp;
 use App\Platform\Actions\ActionContext;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use Cbox\Id\FeatureFlags\Contracts\FeatureFlags;
 use Cbox\Id\FeatureFlags\Exceptions\InvalidFeatureFlag;
@@ -81,7 +82,7 @@ final class FeatureFlagFields
             default => $invalid->field,
         };
 
-        return ActionRefused::because($invalid->reason, $invalid->getMessage(), $field);
+        return ActionRefused::because($invalid->reason, FrameworkMessage::from($invalid), $field);
     }
 
     /**

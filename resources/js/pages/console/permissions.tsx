@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -67,8 +68,12 @@ export default function Permissions({
     clientsHref,
     urls,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -93,7 +98,9 @@ export default function Permissions({
         <div className="space-y-6">
             <PageHeader
                 help={help}
-                description={tc('console.everything_a_role_can_be_allowed_to_do_write_233ea6c4')}
+                description={consoleT(
+                    'console.everything_a_role_can_be_allowed_to_do_write_your_own_b_233ea6c4',
+                )}
             />
 
             {/*
@@ -103,15 +110,19 @@ export default function Permissions({
                 at.
             */}
             <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                {tc('console.a_permission_is_what_a_be68069f')}
-                <b>{tc('console.person_38a81e87')}</b>
-                {tc('console.may_do_once_signed_in_what_an_cb52a7c0')}
-                <b>{tc('console.app_a172cedc')}</b>
-                {tc('console.may_ask_for_is_a_scope_set_when_you_register_ac316cd6')}{' '}
-                <Link href={clientsHref} className="underline">
-                    {tc('console.apps_89dd7484')}
-                </Link>
-                .
+                {consoleRich(
+                    'console.a_permission_is_what_a_part1_may_do_once_signed_in_what_d4afab64',
+                    {
+                        part1: <b>{consoleT('console.person_38a81e87')}</b>,
+                        part2: <b>{consoleT('console.app_a172cedc')}</b>,
+                        part3: ' ',
+                        part4: (
+                            <Link href={clientsHref} className="underline">
+                                {consoleT('console.apps_89dd7484')}
+                            </Link>
+                        ),
+                    },
+                )}
             </p>
 
             <NewPermission sharesEnvironment={sharesEnvironment} storeHref={urls.store} />
@@ -120,8 +131,12 @@ export default function Permissions({
                 <Input
                     type="search"
                     className="w-full"
-                    aria-label={tc('console.search_permissions_by_key_or_description_b2c0aa0c')}
-                    placeholder={tc('console.search_permissions_by_key_or_description_b2c0aa0c')}
+                    aria-label={consoleT(
+                        'console.search_permissions_by_key_or_description_b2c0aa0c',
+                    )}
+                    placeholder={consoleUiText(
+                        'console.search_permissions_by_key_or_description_b2c0aa0c',
+                    )}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -132,23 +147,25 @@ export default function Permissions({
                 */}
                 <output className="mt-1 block text-xs" style={{ color: 'var(--faint)' }}>
                     {search !== '' &&
-                        `${matching} matching ${matching === 1 ? 'permission' : 'permissions'}`}
+                        consoleFinalText('console.search_results_found', { count: matching })}
                 </output>
             </div>
 
             <Panel
                 title={
-                    sharesEnvironment ? tc('console.manual_b0b9fe24') : tc('console.yours_54b26f7d')
+                    sharesEnvironment
+                        ? consoleText('console.manual_b0b9fe24')
+                        : consoleText('console.yours_54b26f7d')
                 }
-                description={tc('console.authored_here_editable_and_removable_1870b92e')}
+                description={consoleT('console.authored_here_editable_and_removable_1870b92e')}
                 action={<Badge>{mine.length}</Badge>}
             >
                 {mine.length === 0 ? (
                     <EmptyState
                         icon="key"
-                        title={tc('console.you_haven_t_written_any_yet_7136efde')}
-                        description={tc(
-                            'console.add_one_above_to_build_your_own_roles_no_int_7a7954a8',
+                        title={consoleT('console.you_haven_t_written_any_yet_7136efde')}
+                        description={consoleT(
+                            'console.add_one_above_to_build_your_own_roles_no_integration_re_7a7954a8',
                         )}
                     />
                 ) : (
@@ -175,18 +192,18 @@ export default function Permissions({
             */}
             {!sharesEnvironment && (
                 <Panel
-                    title={tc('console.from_your_environment_cb0abff0')}
-                    description={tc(
-                        'console.provided_for_every_organization_here_yours_t_7d86c809',
+                    title={consoleT('console.from_your_environment_cb0abff0')}
+                    description={consoleT(
+                        'console.provided_for_every_organization_here_yours_to_use_in_ro_7d86c809',
                     )}
                     action={<Badge>{inherited.length}</Badge>}
                 >
                     {inherited.length === 0 ? (
                         <EmptyState
                             icon="key"
-                            title={tc('console.nothing_shared_with_you_yet_df9f8d1a')}
-                            description={tc(
-                                'console.permissions_your_environment_publishes_for_e_eabd41a4',
+                            title={consoleT('console.nothing_shared_with_you_yet_df9f8d1a')}
+                            description={consoleT(
+                                'console.permissions_your_environment_publishes_for_every_organi_eabd41a4',
                             )}
                         />
                     ) : (
@@ -196,7 +213,7 @@ export default function Permissions({
                                     key={permission.id}
                                     permission={permission}
                                     tone="Shared"
-                                    usageSuffix={tc('console.of_your_9cec8b5e')}
+                                    ownRoles
                                 />
                             ))}
                         </div>
@@ -205,27 +222,30 @@ export default function Permissions({
             )}
 
             <Panel
-                title={tc('console.app_declared_573cf28e')}
-                description={tc('console.synced_from_each_app_s_manifest_over_the_sdk_4af9333b')}
+                title={consoleT('console.app_declared_573cf28e')}
+                description={consoleT(
+                    'console.synced_from_each_app_s_manifest_over_the_sdk_or_api_rea_4af9333b',
+                )}
                 action={<Badge>{declaredTotal}</Badge>}
             >
                 {declared.length === 0 ? (
                     search !== '' ? (
                         <EmptyState
                             icon="key"
-                            title={tc('console.no_app_permission_matches_value0_4ef9b1ee', {
-                                value0: search,
-                            })}
-                            description={tc(
+                            title={consoleFinalText(
+                                'console.no_app_permission_matches_part1_1f84fe32',
+                                { part1: search },
+                            )}
+                            description={consoleT(
                                 'console.clear_the_search_to_see_the_whole_catalog_ebbf157e',
                             )}
                         />
                     ) : (
                         <EmptyState
                             icon="key"
-                            title={tc('console.no_app_has_registered_a_catalog_yet_877fed0b')}
-                            description={tc(
-                                'console.once_an_app_declares_its_permissions_through_2001981d',
+                            title={consoleT('console.no_app_has_registered_a_catalog_yet_877fed0b')}
+                            description={consoleT(
+                                'console.once_an_app_declares_its_permissions_through_the_sdk_or_2001981d',
                             )}
                         />
                     )
@@ -252,11 +272,10 @@ export default function Permissions({
 
                         {declaredShown < declaredTotal && (
                             <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                                {tc('console.showing_7282e1fb')}
-                                {declaredShown}
-                                {tc('console.of_a4282e4b')}
-                                {declaredTotal}
-                                {tc('console.search_to_reach_the_rest_598edbc6')}
+                                {consoleRich(
+                                    'console.showing_part1_of_part2_search_to_reach_the_rest_1f9063d8',
+                                    { part1: declaredShown, part2: declaredTotal },
+                                )}
                             </p>
                         )}
                     </div>
@@ -275,29 +294,37 @@ function NewPermission({
     sharesEnvironment: boolean;
     storeHref: string;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({ name: '', description: '', tenantAssignable: true });
 
     return (
         <Panel
-            title={tc('console.new_permission_8ef9b408')}
+            title={consoleT('console.new_permission_8ef9b408')}
             description={
                 <>
-                    A <code className="mono">{tc('console.feature_action_b0ceaf12')}</code>
-                    {tc('console.key_you_can_compose_into_roles_e_g_ea9aef3f')}
-                    <code className="mono">{tc('console.invoices_create_be35ad14')}</code>.{' '}
-                    {/*
-                        Says who gets it, before the button is pressed. The two planes write
-                        into different tiers and the form is otherwise identical, which is
-                        exactly the invisible difference that had a tenant admin editing the
-                        whole environment's catalogue believing it was their own.
-                    */}
-                    <b>
-                        {sharesEnvironment
-                            ? tc('console.available_to_every_organization_in_this_envi_91f07f63')
-                            : tc('console.yours_alone_other_organizations_never_see_it_fba9d3ce')}
-                    </b>
+                    {consoleRich(
+                        'console.a_part1_key_you_can_compose_into_roles_e_g_part2_part3_2714a35b',
+                        {
+                            part1: <code className="mono">{'feature:action'}</code>,
+                            part2: <code className="mono">{'invoices:create'}</code>,
+                            part3: ' ',
+                            part4: (
+                                <b>
+                                    {sharesEnvironment
+                                        ? consoleText(
+                                              'console.available_to_every_organization_in_this_environment_91f07f63',
+                                          )
+                                        : consoleText(
+                                              'console.yours_alone_other_organizations_never_see_it_fba9d3ce',
+                                          )}
+                                </b>
+                            ),
+                        },
+                    )}
                 </>
             }
         >
@@ -312,7 +339,10 @@ function NewPermission({
                 }}
             >
                 <div className="grid sm:grid-cols-[1fr_1.4fr_auto] gap-2 items-start">
-                    <Field label={tc('console.permission_key_1e6e7d30')} error={form.errors.name}>
+                    <Field
+                        label={consoleT('console.permission_key_1e6e7d30')}
+                        error={form.errors.name}
+                    >
                         <Input
                             name="name"
                             className="mono"
@@ -322,13 +352,13 @@ function NewPermission({
                         />
                     </Field>
                     <Field
-                        label={tc('console.description_526e0087')}
+                        label={consoleT('console.description_526e0087')}
                         optional
                         error={form.errors.description}
                     >
                         <Input
                             name="description"
-                            placeholder={tc('console.create_invoices_92872624')}
+                            placeholder={consoleUiText('console.create_invoices_92872624')}
                             value={form.data.description}
                             onChange={(event) => form.setData('description', event.target.value)}
                         />
@@ -339,7 +369,7 @@ function NewPermission({
                         className="shrink-0 self-end"
                         loading={form.processing}
                     >
-                        {tc('console.add_permission_60183b7c')}
+                        {consoleT('console.add_permission_60183b7c')}
                     </Button>
                 </div>
 
@@ -353,8 +383,10 @@ function NewPermission({
                     <Checkbox
                         checked={form.data.tenantAssignable}
                         onCheckedChange={(checked) => form.setData('tenantAssignable', checked)}
-                        label={tc('console.organizations_may_assign_4fdd115e')}
-                        hint={tc('console.organization_admins_may_compose_this_into_th_73f4e50e')}
+                        label={consoleT('console.organizations_may_assign_4fdd115e')}
+                        hint={consoleT(
+                            'console.organization_admins_may_compose_this_into_their_own_rol_73f4e50e',
+                        )}
                     />
                 )}
             </form>
@@ -370,8 +402,8 @@ function ManualRow({
     permission: PermissionRow;
     sharesEnvironment: boolean;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [editing, setEditing] = useState(false);
     const [confirming, setConfirming] = useState(false);
 
@@ -411,7 +443,7 @@ function ManualRow({
                     <p className="text-sm mono">{permission.name}</p>
 
                     <Field
-                        label={tc('console.description_526e0087')}
+                        label={consoleT('console.description_526e0087')}
                         optional
                         error={form.errors.description}
                     >
@@ -427,13 +459,13 @@ function ManualRow({
                         <Checkbox
                             checked={form.data.tenantAssignable}
                             onCheckedChange={(checked) => form.setData('tenantAssignable', checked)}
-                            label={tc('console.organizations_may_assign_4fdd115e')}
+                            label={consoleT('console.organizations_may_assign_4fdd115e')}
                         />
                     )}
 
                     <div className="flex items-center gap-2">
                         <Button type="submit" variant="primary" size="sm" loading={form.processing}>
-                            {tc('console.save_1509f561')}
+                            {consoleT('console.save_1509f561')}
                         </Button>
                         <Button
                             type="button"
@@ -443,7 +475,7 @@ function ManualRow({
                                 setEditing(false);
                             }}
                         >
-                            {tc('console.cancel_19766ed6')}
+                            {consoleT('console.cancel_19766ed6')}
                         </Button>
                     </div>
                 </form>
@@ -452,9 +484,9 @@ function ManualRow({
                     <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-sm mono truncate">{permission.name}</span>
-                            <Badge>{tc('console.manual_b0b9fe24')}</Badge>
+                            <Badge>{consoleT('console.manual_b0b9fe24')}</Badge>
                             {!permission.tenantAssignable && (
-                                <Badge tone="warn">{tc('console.internal_2ea1842b')}</Badge>
+                                <Badge tone="warn">{consoleT('console.internal_2ea1842b')}</Badge>
                             )}
                             <RoleCount count={permission.roleCount} />
                         </div>
@@ -466,7 +498,7 @@ function ManualRow({
                     </div>
 
                     <Button size="sm" className="shrink-0" onClick={() => setEditing(true)}>
-                        {tc('console.edit_464c4ffd')}
+                        {consoleT('console.edit_464c4ffd')}
                     </Button>
                     <Button
                         size="sm"
@@ -474,7 +506,7 @@ function ManualRow({
                         className="shrink-0"
                         onClick={() => setConfirming(true)}
                     >
-                        {tc('console.delete_e2d0a549')}
+                        {consoleT('console.delete_e2d0a549')}
                     </Button>
                 </div>
             )}
@@ -483,7 +515,9 @@ function ManualRow({
                 open={confirming}
                 onOpenChange={setConfirming}
                 name={permission.name}
-                consequence={tc('console.this_permission_is_removed_from_every_role_t_d88d6738')}
+                consequence={consoleUiText(
+                    'console.this_permission_is_removed_from_every_role_that_current_d88d6738',
+                )}
                 onConfirm={() => {
                     setConfirming(false);
                     router.delete(permission.urls.destroy, { preserveScroll: true });
@@ -497,14 +531,13 @@ function ManualRow({
 function ReadOnlyRow({
     permission,
     tone = 'App',
-    usageSuffix,
+    ownRoles,
 }: {
     permission: PermissionRow;
     tone?: string;
-    usageSuffix?: string;
+    ownRoles?: boolean;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <div
             className="flex items-center gap-2 rounded-lg border px-3 py-2"
@@ -513,14 +546,18 @@ function ReadOnlyRow({
             <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm mono truncate">{permission.name}</span>
-                    <Badge tone={tone === 'App' ? 'info' : 'neutral'}>{tone}</Badge>
+                    <Badge tone={tone === 'App' ? 'info' : 'neutral'}>
+                        {tone === 'App'
+                            ? consoleT('console.app_0d04bfeb')
+                            : consoleT('console.shared')}
+                    </Badge>
                     {permission.orphaned && (
-                        <Badge tone="warn">{tc('console.orphaned_8d827807')}</Badge>
+                        <Badge tone="warn">{consoleT('console.orphaned_8d827807')}</Badge>
                     )}
                     {!permission.tenantAssignable && (
-                        <Badge>{tc('console.internal_2ea1842b')}</Badge>
+                        <Badge>{consoleT('console.internal_2ea1842b')}</Badge>
                     )}
-                    <RoleCount count={permission.roleCount} suffix={usageSuffix} />
+                    <RoleCount count={permission.roleCount} ownRoles={ownRoles} />
                 </div>
                 {permission.description !== null && (
                     <p className="text-xs truncate" style={{ color: 'var(--faint)' }}>
@@ -533,18 +570,15 @@ function ReadOnlyRow({
 }
 
 /** What deleting this would strip: how many of the roles in view grant it. */
-function RoleCount({ count, suffix }: { count: number; suffix?: string }) {
-    const { t: tc } = useTranslator();
-
-    if (count === 0) {
-        return null;
-    }
-
+function RoleCount({ count, ownRoles = false }: { count: number; ownRoles?: boolean }) {
+    const { choice } = useConsoleTranslator();
+    if (count === 0) return null;
     return (
         <span className="text-xs" style={{ color: 'var(--faint)' }}>
-            {tc('console.in_74241f65')}
-            {count} {suffix !== undefined && `${suffix} `}
-            {count === 1 ? tc('console.role_4b168d88') : tc('console.roles_66cf5513')}
+            {choice(
+                ownRoles ? 'console.your_roles_using_permission' : 'console.roles_using_permission',
+                count,
+            )}
         </span>
     );
 }

@@ -1,4 +1,6 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useFormatTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import { relativeTime } from '@/lib/time';
@@ -41,27 +43,31 @@ export default function AuditLogSchemas({
     eventsHref,
     help,
 }: Props) {
-    const { locale } = useTranslator();
-
-    const { t: tc } = useTranslator();
-
+    const { t: tc } = usePublicTranslator();
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <>
             <PageHeader
                 help={help}
-                description={tc('console.a_schema_says_what_an_action_s_events_must_l_d27be344')}
+                description={consoleT(
+                    'console.a_schema_says_what_an_action_s_events_must_look_like_wh_d27be344',
+                )}
                 actions={
                     <div className="flex items-center gap-2">
                         <Button asChild>
                             <Link href={eventsHref}>
-                                <Icon name="arrow-left" className="w-4 h-4" />
-                                {tc('console.events_8d14f6e7')}
+                                {consoleRich('console._part1_events_f8824754', {
+                                    part1: <Icon name="arrow-left" className="w-4 h-4" />,
+                                })}
                             </Link>
                         </Button>
                         <Button asChild variant="primary">
                             <Link href={createHref}>
-                                <Icon name="plus" className="w-4 h-4" />
-                                {tc('console.new_schema_d5c1fa19')}
+                                {consoleRich('console._part1_new_schema_77b0a594', {
+                                    part1: <Icon name="plus" className="w-4 h-4" />,
+                                })}
                             </Link>
                         </Button>
                     </div>
@@ -77,14 +83,15 @@ export default function AuditLogSchemas({
                             actions={
                                 <Button asChild variant="primary">
                                     <Link href={createHref}>
-                                        <Icon name="plus" className="w-4 h-4" />
-                                        {tc('console.new_schema_d5c1fa19')}
+                                        {consoleRich('console._part1_new_schema_77b0a594', {
+                                            part1: <Icon name="plus" className="w-4 h-4" />,
+                                        })}
                                     </Link>
                                 </Button>
                             }
-                            title={tc('console.no_schemas_yet_5d0ea9f3')}
-                            description={tc(
-                                'console.every_action_is_accepted_as_your_app_sends_i_fce48faa',
+                            title={consoleT('console.no_schemas_yet_5d0ea9f3')}
+                            description={consoleT(
+                                'console.every_action_is_accepted_as_your_app_sends_it_add_a_sch_fce48faa',
                             )}
                         />
                     </div>
@@ -119,8 +126,9 @@ export default function AuditLogSchemas({
                                         className="ml-auto text-xs"
                                         style={{ color: 'var(--faint)' }}
                                     >
-                                        {tc('console.updated_a919c7c2')}
-                                        {relativeTime(schema.updatedAt, locale)}
+                                        {consoleRich('console.updated_part1_275f47a3', {
+                                            part1: relativeTime(schema.updatedAt, consoleLocale),
+                                        })}
                                     </span>
                                 </Link>
                             </li>
@@ -132,10 +140,12 @@ export default function AuditLogSchemas({
             {unschematized.length > 0 && (
                 <section className="mt-8">
                     <h2 className="text-sm font-semibold">
-                        {tc('console.recent_actions_without_a_schema_fee7781b')}
+                        {consoleT('console.recent_actions_without_a_schema_fee7781b')}
                     </h2>
                     <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-                        {tc('console.seen_among_the_newest_events_each_is_accepte_1b4df3ab')}
+                        {consoleT(
+                            'console.seen_among_the_newest_events_each_is_accepted_as_sent_u_1b4df3ab',
+                        )}
                     </p>
                     <ul className="mt-3 flex flex-wrap gap-2">
                         {unschematized.map((seen) => (
@@ -160,8 +170,8 @@ export default function AuditLogSchemas({
 }
 
 function SettingsForm({ settings }: { settings: Props['settings'] }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({
         retentionDays: settings.retentionDays,
         strictSchemas: settings.strictSchemas,
@@ -171,7 +181,7 @@ function SettingsForm({ settings }: { settings: Props['settings'] }) {
     return (
         <section className="mt-10 card p-5">
             <h2 className="text-sm font-semibold">
-                {tc('console.retention_and_strict_mode_bd4d0e96')}
+                {consoleT('console.retention_and_strict_mode_bd4d0e96')}
             </h2>
             <form
                 className="mt-4 grid gap-4"
@@ -181,12 +191,16 @@ function SettingsForm({ settings }: { settings: Props['settings'] }) {
                 }}
             >
                 <Field
-                    label={tc('console.keep_events_for_days_84ce0a6f')}
+                    label={consoleT('console.keep_events_for_days_84ce0a6f')}
                     error={form.errors.retentionDays}
                     hint={
                         shortening
-                            ? tc('console.shorter_than_today_events_older_than_this_ar_8cf235f8')
-                            : tc('console.counted_from_when_each_event_arrived_1_to_36_d2725cda')
+                            ? consoleText(
+                                  'console.shorter_than_today_events_older_than_this_are_deleted_f_8cf235f8',
+                              )
+                            : consoleText(
+                                  'console.counted_from_when_each_event_arrived_1_to_3650_d2725cda',
+                              )
                     }
                 >
                     <Input
@@ -206,8 +220,10 @@ function SettingsForm({ settings }: { settings: Props['settings'] }) {
                 <Checkbox
                     checked={form.data.strictSchemas}
                     onCheckedChange={(checked) => form.setData('strictSchemas', checked)}
-                    label={tc('console.strict_mode_9f19fe13')}
-                    hint={tc('console.refuse_events_whose_action_has_no_schema_tur_c5af42c9')}
+                    label={consoleT('console.strict_mode_9f19fe13')}
+                    hint={consoleT(
+                        'console.refuse_events_whose_action_has_no_schema_turn_on_once_e_c5af42c9',
+                    )}
                 />
                 {form.errors.strictSchemas !== undefined && (
                     <p role="alert" className="field-error">
@@ -221,7 +237,7 @@ function SettingsForm({ settings }: { settings: Props['settings'] }) {
                         loading={form.processing}
                         disabled={!form.isDirty}
                     >
-                        {tc('console.save_settings_7f3a3b14')}
+                        {consoleT('console.save_settings_7f3a3b14')}
                     </Button>
                 </div>
             </form>

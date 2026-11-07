@@ -426,7 +426,7 @@ it('offers every action in the registry as a tool, with its own input schema', f
     foreach (app(ActionRegistry::class)->forPlane(ActionPlane::Workspace) as $action) {
         expect($tools)->not->toHaveKey($action->toolName());
 
-        if ($action->name !== 'team.transfer_ownership') {
+        if (! in_array($action->name, ['team.transfer_ownership', 'workspace.settings.update'], true)) {
             expect($workspaceTools)->toHaveKey($action->toolName(), message: "Workspace action {$action->name} has no MCP tool.");
         }
     }
@@ -434,8 +434,10 @@ it('offers every action in the registry as a tool, with its own input schema', f
     $tools = [...$workspaceTools, ...$tools];
 
     foreach (app(ActionRegistry::class)->all() as $action) {
-        if ($action->name === 'team.transfer_ownership') {
-            continue; // Only the owner, in the console: no key holds the Owner role.
+        if (in_array($action->name, ['team.transfer_ownership', 'workspace.settings.update'], true)) {
+            expect($tools)->not->toHaveKey($action->toolName());
+
+            continue; // Shared ownership operations require the current human owner.
         }
 
         // The operator's and the person's own planes are no key's: never a tool for one.

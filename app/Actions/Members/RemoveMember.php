@@ -7,6 +7,7 @@ namespace App\Actions\Members;
 use App\Actions\Organizations\OrganizationFields;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -64,7 +65,7 @@ final readonly class RemoveMember implements Action
 
         if ($confined) {
             if ($member->user_id === TenantRoster::personId($context->principal)) {
-                throw new ActionRefused('remove_self', 'To remove yourself, use "Leave organization".', 422, 'user_id');
+                throw new ActionRefused('remove_self', new ActionMessage('console.to_remove_yourself_use_leave_organization_df693873'), 422, 'user_id');
             }
 
             TenantRoster::assertMayActOn($context->principal, $organization->id, $member);
@@ -73,7 +74,7 @@ final readonly class RemoveMember implements Action
         try {
             $this->memberships->remove($organization->id, $member->user_id);
         } catch (LastOwner) {
-            throw new ActionRefused('last_owner', 'An organization must keep its owner. Transfer ownership to someone else first.', 409, 'user_id');
+            throw new ActionRefused('last_owner', new ActionMessage('console.an_organization_must_keep_its_owner_transfer_ownership_56601a23'), 409, 'user_id');
         }
 
         return ActionResult::none($member);

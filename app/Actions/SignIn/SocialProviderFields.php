@@ -6,7 +6,9 @@ namespace App\Actions\SignIn;
 
 use App\Http\Resources\Environment\Timestamp;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Enterprise\EnterpriseReach;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -110,7 +112,7 @@ final class SocialProviderFields
             }
 
             if (preg_match('/^[\x21\x23-\x5B\x5D-\x7E]+$/', $scope) !== 1) {
-                throw ActionRefused::because('invalid_scope', '"'.$scope.'" is not a scope: no spaces, quotes or backslashes.', 'scopes');
+                throw ActionRefused::because('invalid_scope', new ActionMessage('console._part1_is_not_a_scope_no_spaces_quotes_or_backslashes_5acfdc43', ['part1' => (string) ($scope)]), 'scopes');
             }
 
             $scopes[] = $scope;
@@ -204,12 +206,12 @@ final class SocialProviderFields
         }
 
         $issuer = $template->issuerFor($values)
-            ?? throw ActionRefused::because('incomplete_parameters', 'Fill in every field before enabling '.$template->name.'.', 'client_id');
+            ?? throw ActionRefused::because('incomplete_parameters', new ActionMessage('console.fill_in_every_field_before_enabling_part1_dbf2e13d', ['part1' => (string) ($template->name)]), 'client_id');
 
         try {
             return app(OidcDiscovery::class)->fromIssuer($issuer, $template->discoveryUrlFor($values))->toConfig();
         } catch (Throwable $e) {
-            throw ActionRefused::because('discovery_failed', 'We could not reach '.$template->name.' at '.$issuer.' — check the details. ('.$e->getMessage().')', 'client_id');
+            throw ActionRefused::because('discovery_failed', new ActionMessage('console.we_could_not_reach_part1_at_part2_check_the_details_par_c1087a18', ['part1' => (string) ($template->name), 'part2' => (string) ($issuer), 'part3' => FrameworkMessage::from($e)]), 'client_id');
         }
     }
 

@@ -6,6 +6,7 @@ namespace App\Actions\Organizations;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -60,7 +61,7 @@ final readonly class SetDomainCapture implements Action
             try {
                 $this->domains->setCapture($domain->id, $enabled);
             } catch (DomainNotVerified) {
-                throw ActionRefused::because('domain_not_verified', 'Verify the domain before turning capture on.', 'domain');
+                throw ActionRefused::because('domain_not_verified', new ActionMessage('console.verify_the_domain_before_turning_capture_on_191a3cdd'), 'domain');
             }
         }
 

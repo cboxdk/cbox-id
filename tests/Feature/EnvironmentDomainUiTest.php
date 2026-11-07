@@ -99,7 +99,7 @@ it('refuses the domains page to a member who cannot manage environments', functi
 
     signInAsMember($viewerSubjectId);
     $this->get(route('environment-domains'))
-        ->assertRedirect(route('projects'));
+        ->assertRedirect(route('account'));
 });
 
 /**

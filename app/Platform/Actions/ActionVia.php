@@ -74,11 +74,11 @@ enum ActionVia: string
     public function label(): string
     {
         return match ($this) {
-            self::Console => 'Console',
-            self::Rest => 'REST API',
-            self::Mcp => 'MCP',
-            self::Cli => 'CLI',
-            self::Portal => 'Admin Portal',
+            self::Console => __('console.console_29a40861'),
+            self::Rest => __('console.rest_api_41a52587'),
+            self::Mcp => __('console.mcp_53f13ae9'),
+            self::Cli => __('console.cli_e7597933'),
+            self::Portal => __('console.admin_portal_0199cddf'),
         };
     }
 }

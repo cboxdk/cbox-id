@@ -2,9 +2,6 @@
 
 declare(strict_types=1);
 
-// Danish: the sign-in group (see lang/en/auth.php for keys and context). Terminology is
-// fixed in docs/guides/languages.md ("Danish terminology"): "log ind" as the verb, "login"
-// as the noun, "adgangskode", "adgangsnøgle", "totrinsbekræftelse", du-form throughout.
 return [
     'common' => [
         'email' => 'E-mail',
@@ -21,13 +18,11 @@ return [
         'could_not_process' => 'Vi kunne ikke behandle anmodningen. Prøv igen senere.',
         'code_incorrect' => 'Koden er forkert eller udløbet.',
     ],
-
     'password_field' => [
         'show' => 'Vis adgangskode',
         'hide' => 'Skjul adgangskode',
         'policy' => 'Mindst :count tegn',
     ],
-
     'login' => [
         'title' => 'Log ind',
         'purpose' => [
@@ -62,8 +57,6 @@ return [
         'forgot_password' => 'Glemt adgangskode?',
         'or' => 'ELLER',
         'continue_with' => 'Fortsæt med :provider',
-        // The badge on the sign-in method this device used last, and what it means said in full
-        // for a screen reader.
         'last_used' => 'Sidst brugt',
         'last_used_hint' => 'Sådan loggede du ind sidste gang på denne enhed.',
         'magic_link' => 'Send mig et loginlink',
@@ -79,13 +72,11 @@ return [
             'unverified' => 'Adgangsnøglen kunne ikke bekræftes.',
             'failed' => 'Noget gik galt under login.',
         ],
-        // Answered by a passkey or magic-link door the environment has switched off.
         'method_off' => [
             'passkeys' => 'Adgangsnøgler er slået fra her. Log ind på en anden måde.',
             'magic_link' => 'Loginlinks på e-mail er slået fra her. Log ind på en anden måde.',
         ],
     ],
-
     'signup' => [
         'title' => 'Kom i gang',
         'heading' => [
@@ -123,7 +114,6 @@ return [
             'closed' => 'Tilmelding er lukket lige nu.',
         ],
     ],
-
     'forgot_password' => [
         'title' => 'Nulstil adgangskode',
         'heading' => 'Nulstil din adgangskode',
@@ -133,7 +123,6 @@ return [
         'remembered' => 'Kom du i tanke om den?',
         'throttled' => 'For mange forsøg. Vent et par minutter, og prøv igen.',
     ],
-
     'reset_password' => [
         'title' => 'Vælg en ny adgangskode',
         'lead' => 'Vælg en stærk adgangskode på mindst :count tegn.',
@@ -142,14 +131,12 @@ return [
         'invalid_link' => 'Linket til nulstilling er ugyldigt eller udløbet. Bed om et nyt.',
         'done' => 'Din adgangskode er nulstillet. Log ind med din nye adgangskode.',
     ],
-
     'change_password' => [
         'title' => 'Vælg en ny adgangskode',
         'lead' => 'Du loggede ind med en adgangskode fra en administrator. Vælg en ny som kun du kender, inden du fortsætter.',
         'submit' => 'Opdater adgangskode',
         'mismatch' => 'Adgangskoderne er ikke ens.',
     ],
-
     'mfa' => [
         'title' => 'Totrinsbekræftelse',
         'code' => [
@@ -178,7 +165,6 @@ return [
             'unavailable' => 'Sms-koder er ikke tilgængelige for denne konto.',
         ],
     ],
-
     'otp_step_up' => [
         'title' => 'Ekstra bekræftelse',
         'lead' => 'Dette login så usædvanligt ud, så vi har sendt en engangskode til :email. Indtast den for at fortsætte.',
@@ -189,20 +175,17 @@ return [
         'resent' => 'Vi har sendt en ny kode til :email.',
         'too_many_codes' => 'Du har bedt om for mange koder. Vent lidt, og prøv igen.',
     ],
-
     'accounts' => [
         'title' => 'Skift bruger',
         'lead' => 'Alle der er logget ind på denne enhed. Vælg en, eller log ind som en anden.',
         'active' => 'Aktiv',
         'add' => 'Log ind som en anden',
     ],
-
     'signed_out' => [
         'title' => 'Logget ud',
         'heading' => 'Du er logget ud',
         'lead' => 'Du er logget ud på denne enhed, også fra alle de konsoller, du åbnede fra dette login. Log ind igen for at fortsætte.',
     ],
-
     'accept_invite' => [
         'title' => 'Accepter invitation',
         'heading' => 'Accepter din invitation',
@@ -216,17 +199,15 @@ return [
         'invalid' => 'Invitationen er ugyldig eller udløbet.',
         'not_completed' => 'Invitationen kunne ikke gennemføres.',
     ],
-
     'confirm_email' => [
         'title' => 'Bekræft din e-mail',
         'heading' => 'Bekræft din e-mailadresse',
-        'lead' => 'Du har åbnet det bekræftelseslink vi sendte dig. Bekræft adressen for at gøre det færdigt.',
+        'lead' => 'Du har åbnet det bekræftelseslink, vi sendte dig. Bekræft e-mailadressen for at afslutte bekræftelsen.',
         'action' => 'Bekræft e-mailadresse',
         'invalid' => 'Bekræftelseslinket er ugyldigt eller udløbet.',
         'verified_sign_in' => 'Din e-mail er bekræftet. Log ind for at åbne dit miljø.',
         'verified' => 'Din e-mail er bekræftet. Du kan nu logge ind.',
     ],
-
     'confirm_sign_in' => [
         'title' => 'Log ind',
         'heading' => 'Gennemfør login',
@@ -235,7 +216,6 @@ return [
         'note' => 'Linket virker kun én gang. Hvis du ikke har bedt om at logge ind, så luk denne side. Der sker ingenting før du trykker på knappen.',
         'invalid' => 'Loginlinket er ugyldigt eller udløbet.',
     ],
-
     'first_run' => [
         'title' => 'Sæt Cbox ID op',
         'lead' => 'Denne installation er tom. Tag den i brug fra den maskine den kører på – det kan kun gøres én gang.',
@@ -249,7 +229,7 @@ return [
         ],
         'token_notice' => [
             'title' => 'Hvor er opsætningstokenet?',
-            'body' => 'Kør :command på serveren — på en hvilken som helst instans af installationen — og indsæt det, der bliver skrevet ud. Hver kørsel skriver et nyt token ud, som gælder i en time. Det vises aldrig på denne side.',
+            'body' => 'Kør :command på serveren, på en hvilken som helst instans af installationen, og indsæt det token, der vises. Hver kørsel genererer et nyt token, der gælder i en time. Det vises aldrig på denne side.',
         ],
         'cli_hint' => 'Foretrækker du kommandolinjen? :install gør det samme og er den eneste måde der også kan vælge og gemme installationens opbygning.',
         'token_label' => 'Opsætningstoken',
@@ -264,9 +244,8 @@ return [
         'organization_hint' => 'Installationen er konfigureret som multi-tenant, så den opretter også det første arbejdsområde: den organisation der ejer miljøer og fakturering.',
         'organization_placeholder' => 'Din virksomhed',
         'submit' => 'Start installationen',
-        'token_mismatch' => 'Opsætningstokenet passer ikke til installationens, eller det er udløbet. Skriv et nyt ud med php artisan cbox-id:setup-token.',
+        'token_mismatch' => 'Opsætningstokenet passer ikke til denne installation, eller det er udløbet. Generer et nyt med php artisan cbox-id:setup-token.',
     ],
-
     'join_organization' => [
         'title' => 'Bliv medlem af :organization',
         'heading' => 'Vil du være medlem af :organization?',
@@ -285,16 +264,15 @@ return [
         ],
         'invalid' => 'Invitationen er ugyldig eller udløbet.',
     ],
-
     'federation' => [
         'this_provider' => 'identitetsudbyderen',
-        'expired' => 'Login tog for lang tid eller er allerede brugt. Log ind igen.',
+        'expired' => 'Loginforsøget tog for lang tid eller er allerede afsluttet. Log ind igen.',
         'rejected' => 'Vi kunne ikke bekræfte login med :provider. Prøv igen, eller kontakt din administrator.',
         'inactive' => 'Login med :provider er ikke længere tilgængeligt her. Log ind på en anden måde, eller bed din administrator om at slå det til igen.',
         'cancelled' => 'Login med :provider blev annulleret eller blev ikke fuldført. Prøv igen.',
         'unavailable' => ':provider kan ikke nås lige nu. Prøv igen om lidt, eller log ind på en anden måde.',
         'incomplete' => 'Svaret fra :provider var ufuldstændigt. Start forfra hos din identitetsudbyder.',
-        'unverified' => ':provider har ikke bekræftet, at :email er din, så vi kan ikke knytte den til kontoen, der bruger den adresse. Log ind på en anden måde, og forbind derefter :provider under My account › Sign-in methods.',
+        'unverified' => ':provider har ikke bekræftet, at :email er din e-mailadresse, så vi kan ikke tilknytte den til kontoen med den adresse. Log ind på en anden måde, og forbind derefter :provider under Min konto › Loginmetoder.',
         'already_linked' => 'Den :provider-konto er allerede knyttet til en anden konto her.',
         'account_disabled' => 'Denne konto er deaktiveret. Kontakt din administrator.',
         'link_expired' => 'Anmodningen om at knytte :provider er udløbet eller allerede brugt. Log ind med :provider igen for at starte forfra.',
@@ -302,11 +280,10 @@ return [
         'refused' => 'Vi kunne ikke behandle dette login. Prøv igen senere.',
         'connect_session_changed' => 'Du blev logget ud eller logget ind som en anden, mens du forbandt :provider, så intet blev knyttet. Log ind, og prøv igen.',
     ],
-
     'link_account' => [
         'title' => 'Knyt din :provider-konto',
         'heading' => 'Knyt din :provider-konto til :email?',
-        'lead' => 'Du har allerede en konto med denne e-mailadresse. Bekræft, at den er din, så knytter vi :provider til den — derefter kan du logge ind med begge.',
+        'lead' => 'Du har allerede en konto med denne e-mailadresse. Bekræft, at kontoen er din, så tilknytter vi :provider. Derefter kan du bruge begge loginmetoder.',
         'challenged' => 'Dette login ser usædvanligt ud, så vi skal bruge en kode i stedet for din adgangskode.',
         'totp_label' => 'Kode fra din godkendelsesapp',
         'recovery_label' => 'Gendannelseskode',
@@ -327,10 +304,9 @@ return [
         'cancel' => 'Knyt ikke',
         'not_you' => 'Har du ikke lige logget ind med :provider? Vælg Knyt ikke — intet ændres på din konto.',
         'wrong_password' => 'Adgangskoden er forkert.',
-        'linked' => ':provider er nu knyttet til din konto. Du kan logge ind med den fra nu af.',
+        'linked' => ':provider er nu tilknyttet din konto. Du kan fremover logge ind med :provider.',
         'cancelled' => 'Intet blev knyttet. Din konto er præcis som før.',
     ],
-
     'open_portal_setup' => [
         'title' => 'Opsætning for administratorer',
         'heading' => 'Sæt login op for jeres organisation',
@@ -338,7 +314,6 @@ return [
         'action' => 'Åbn opsætning',
         'note' => 'Linket virker kun én gang, og den opsætningssession det åbner, udløber. Åbn det når du er klar til at gøre opsætningen færdig.',
     ],
-
     'connected_services' => [
         'title' => 'Forbundne tjenester',
         'heading' => 'Forbundne tjenester',
@@ -362,7 +337,6 @@ return [
         'failed' => ':provider kunne ikke forbindes. Prøv igen.',
         'disconnected' => 'Forbindelsen til :provider er fjernet.',
     ],
-
     'connect_service' => [
         'title' => 'Forbind :provider',
         'heading' => 'Forbind din :provider-konto',

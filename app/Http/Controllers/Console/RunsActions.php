@@ -50,6 +50,7 @@ trait RunsActions
             return $this->runAction($action, $input, $asEnvironment);
         } catch (ActionRefused $refused) {
             abort_if($refused->status === 404, 404);
+            abort_if($refused->status === 409 && request()->expectsJson() && ! request()->hasHeader('X-Inertia'), 409, $refused->getMessage());
 
             if ($refused->fields !== []) {
                 $errors = [];
@@ -95,9 +96,10 @@ trait RunsActions
     protected function attempt(string $action, array $input, array $fields = [], string $fallback = 'form'): ActionResult|ActionRefused
     {
         try {
-            return app(ActionRunner::class)->run($action, new ConsoleSessionPrincipal(app(ConsoleScope::class)), $input, via: ActionVia::Console);
+            return $this->runAction($action, $input);
         } catch (ActionRefused $refused) {
             abort_if($refused->status === 404, 404);
+            abort_if($refused->status === 409 && request()->expectsJson() && ! request()->hasHeader('X-Inertia'), 409, $refused->getMessage());
 
             return $refused;
         } catch (ValidationException $invalid) {
@@ -132,6 +134,10 @@ trait RunsActions
         $scope = app(ConsoleScope::class);
         $principal = $asEnvironment ? ConsoleSessionPrincipal::forEnvironment($scope) : new ConsoleSessionPrincipal($scope);
 
-        return app(ActionRunner::class)->run($action, $principal, $input, via: ActionVia::Console);
+        try {
+            return app(ActionRunner::class)->run($action, $principal, $input, via: ActionVia::Console);
+        } catch (ActionRefused $refused) {
+            throw $refused->forConsole();
+        }
     }
 }

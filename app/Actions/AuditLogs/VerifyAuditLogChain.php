@@ -6,6 +6,7 @@ namespace App\Actions\AuditLogs;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -51,7 +52,7 @@ final readonly class VerifyAuditLogChain implements Action
         $organizationId = AuditLogReach::organization($context);
 
         if ($organizationId === null) {
-            throw ActionRefused::because('organization_required', 'A chain is one organization\'s: send organization_id.', 'organization_id');
+            throw ActionRefused::because('organization_required', new ActionMessage('console.a_chain_is_one_organization_s_send_organization_id_f35ed1e5'), 'organization_id');
         }
 
         $from = $context->input['from_sequence'] ?? null;

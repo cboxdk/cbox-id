@@ -6,11 +6,13 @@ namespace App\Actions\Radar;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Radar\Enums\RadarList;
@@ -67,7 +69,7 @@ final readonly class AddRadarListEntry implements Action
             try {
                 $expires = Carbon::parse($context->string('expires_at'));
             } catch (Throwable) {
-                throw ActionRefused::because('invalid_entry', 'expires_at must be an ISO 8601 date and time.', 'expires_at');
+                throw ActionRefused::because('invalid_entry', new ActionMessage('console.expires_at_must_be_an_iso_8601_date_and_time_bed29e70'), 'expires_at');
             }
         }
 
@@ -80,7 +82,7 @@ final readonly class AddRadarListEntry implements Action
                 $expires,
             );
         } catch (RadarRuleInvalid $invalid) {
-            throw ActionRefused::because('invalid_entry', $invalid->getMessage(), 'value');
+            throw ActionRefused::because('invalid_entry', FrameworkMessage::from($invalid), 'value');
         }
 
         $this->trail->record(RadarTrail::LIST_ENTRY_ADDED, 'radar_list_entry', $entry->id, $context->actor(), [

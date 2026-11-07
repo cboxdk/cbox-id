@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 use App\Models\AdminPortalLink;
 use App\Platform\AdminPortal;
+use App\Platform\Billing\ProductBilling;
 use App\Platform\Enums\PortalIntent;
 use App\Platform\Enums\PortalScope;
+use Cbox\Billing\Client\Enums\FeatureType;
+use Cbox\Billing\Client\ValueObjects\FeatureEntitlement;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Testing\FakeAuditLog;
-use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
-use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
@@ -192,7 +193,7 @@ it('refuses redemption when the org is no longer entitled', function () {
     grantFeature($orgId, 'cbox-id-sso');
     $token = app(AdminPortal::class)->generate($orgId, PortalScope::only(PortalIntent::Sso), 'sub_creator');
 
-    app(EntitlementWriter::class)->revoke($orgId, 'cbox-id-sso', EntitlementSource::Manual);
+    centralBillingFixture()->feature(app(ProductBilling::class)->owningWorkspace($orgId), new FeatureEntitlement('cbox-id.sso', FeatureType::Boolean, false));
 
     $this->post(route('portal.enter.store', $token))->assertRedirect(route('portal.expired'));
     expect(app(AdminPortal::class)->redeem($token))->toBeNull();
@@ -232,10 +233,7 @@ it('the setup screen redirects to the expired page without a portal session', fu
  * verified domain or SCIM directory it creates is stamped with THEIR environment.
  */
 it('refuses a setup link minted in another environment, on the service and over HTTP', function () {
-    $envA = Environment::query()->create([
-        'name' => 'Env A', 'slug' => 'portal-xenv-a', 'type' => EnvironmentType::Production,
-        'status' => EnvironmentStatus::Active, 'is_default' => false, 'settings' => [],
-    ]);
+    $envA = provisionAccount()['environment'];
     $envB = Environment::query()->create([
         'name' => 'Env B', 'slug' => 'portal-xenv-b', 'type' => EnvironmentType::Production,
         'status' => EnvironmentStatus::Active, 'is_default' => false, 'settings' => [],

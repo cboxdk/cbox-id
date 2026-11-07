@@ -1,5 +1,7 @@
 import type { Translator } from '@/i18n';
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useFormatTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -51,10 +53,14 @@ const PLACEHOLDER = (tc: Translator['t']): Record<Entry['kind'], string> => ({
  * test accounts, not for a whole country.
  */
 export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Props) {
-    const { locale } = useTranslator();
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
-    const { t: tc } = useTranslator();
-
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [removing, setRemoving] = useState<Entry | null>(null);
     const form = useForm({
         list: 'deny' as Entry['list'],
@@ -68,7 +74,9 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
         <RadarFrame
             help={help}
             tabs={tabs}
-            description={tc('console.asked_before_every_rule_a_deny_entry_blocks__e80b3f61')}
+            description={consoleT(
+                'console.asked_before_every_rule_a_deny_entry_blocks_an_allow_en_e80b3f61',
+            )}
         >
             <form
                 className="mt-6 card p-5 grid gap-3 sm:grid-cols-6 items-end"
@@ -80,17 +88,17 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                     });
                 }}
             >
-                <Field label={tc('console.list_6f202f54')} error={form.errors.list}>
+                <Field label={consoleT('console.list_6f202f54')} error={form.errors.list}>
                     <Select
                         value={form.data.list}
                         onValueChange={(value) => form.setData('list', value)}
                         options={[
-                            { value: 'deny', label: tc('console.deny_05a2d733') },
-                            { value: 'allow', label: tc('console.allow_e213c161') },
+                            { value: 'deny', label: consoleText('console.deny_05a2d733') },
+                            { value: 'allow', label: consoleText('console.allow_e213c161') },
                         ]}
                     />
                 </Field>
-                <Field label={tc('console.kind_f5387f9b')} error={form.errors.kind}>
+                <Field label={consoleT('console.kind_f5387f9b')} error={form.errors.kind}>
                     <Select
                         value={form.data.kind}
                         onValueChange={(value) => form.setData('kind', value)}
@@ -98,7 +106,7 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                     />
                 </Field>
                 <Field
-                    label={tc('console.value_8e37953d')}
+                    label={consoleT('console.value_8e37953d')}
                     className="sm:col-span-2"
                     error={form.errors.value}
                 >
@@ -110,9 +118,9 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                     />
                 </Field>
                 <Field
-                    label={tc('console.expires_f6725f3a')}
+                    label={consoleT('console.expires_f6725f3a')}
                     error={form.errors.expiresAt}
-                    hint={tc('console.optional_a9aaf97c')}
+                    hint={consoleT('console.optional_a9aaf97c')}
                 >
                     <Input
                         type="date"
@@ -120,7 +128,7 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                         onChange={(event) => form.setData('expiresAt', event.target.value)}
                     />
                 </Field>
-                <Field label={tc('console.note_d8da2c49')} error={form.errors.note}>
+                <Field label={consoleT('console.note_d8da2c49')} error={form.errors.note}>
                     <Input
                         value={form.data.note}
                         onChange={(event) => form.setData('note', event.target.value)}
@@ -128,7 +136,7 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                 </Field>
                 <div className="sm:col-span-6">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        {tc('console.add_to_list_c84c5a54')}
+                        {consoleT('console.add_to_list_c84c5a54')}
                     </Button>
                 </div>
             </form>
@@ -139,9 +147,9 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                         <EmptyState
                             icon="shield"
                             equivalent="radar.lists.add"
-                            title={tc('console.both_lists_are_empty_746c845b')}
-                            description={tc(
-                                'console.nothing_is_always_refused_and_nothing_skips__6699d9d9',
+                            title={consoleT('console.both_lists_are_empty_746c845b')}
+                            description={consoleT(
+                                'console.nothing_is_always_refused_and_nothing_skips_the_rules_d_6699d9d9',
                             )}
                         />
                     </div>
@@ -162,7 +170,9 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                                 </Pill>
                                 <Badge tone="info">{entry.kind.replace('_', ' ')}</Badge>
                                 <span className="mono text-sm break-all">{entry.value}</span>
-                                {!entry.active && <Badge>{tc('console.expired_fa64ea1e')}</Badge>}
+                                {!entry.active && (
+                                    <Badge>{consoleT('console.expired_fa64ea1e')}</Badge>
+                                )}
                                 {entry.note !== null && (
                                     <span className="text-xs" style={{ color: 'var(--muted)' }}>
                                         {entry.note}
@@ -170,17 +180,17 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                                 )}
                                 <span className="ml-auto text-xs" style={{ color: 'var(--faint)' }}>
                                     {entry.expires_at !== null
-                                        ? tc('console.until_value0_607ce3f2', {
-                                              value0: absoluteTime(entry.expires_at, locale),
+                                        ? consoleFinalText('console.until_part1_ca03d4b6', {
+                                              part1: absoluteTime(entry.expires_at, consoleLocale),
                                           })
-                                        : tc('console.no_expiry_dd848d43')}
+                                        : consoleText('console.no_expiry_dd848d43')}
                                 </span>
                                 <Button
                                     size="sm"
                                     variant="ghost"
                                     onClick={() => setRemoving(entry)}
                                 >
-                                    {tc('console.remove_c3812fc4')}
+                                    {consoleT('console.remove_c3812fc4')}
                                 </Button>
                             </li>
                         ))}
@@ -193,11 +203,15 @@ export default function RadarLists({ help, tabs, entries, kinds, storeHref }: Pr
                     open
                     onOpenChange={(open) => setRemoving(open ? removing : null)}
                     name={removing.value}
-                    verb="Remove"
+                    verb={consoleShortText('console.remove_c3812fc4')}
                     consequence={
                         removing.list === 'deny'
-                            ? tc('console.from_the_next_attempt_this_is_judged_by_the__c6aad838')
-                            : tc('console.from_the_next_attempt_this_is_judged_by_the__8374d2aa')
+                            ? consoleAttributeText(
+                                  'console.from_the_next_attempt_this_is_judged_by_the_rules_again_c6aad838',
+                              )
+                            : consoleAttributeText(
+                                  'console.from_the_next_attempt_this_is_judged_by_the_rules_again_8374d2aa',
+                              )
                     }
                     onConfirm={() =>
                         router.delete(removing.destroyHref, {

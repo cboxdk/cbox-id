@@ -15,9 +15,9 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\NativeProduct\NativeProductManifest;
+use App\Platform\NativeProduct\NativeProductMembers;
 use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\PlatformRoot;
 
 /**
@@ -28,7 +28,7 @@ use Cbox\Id\Platform\PlatformRoot;
  */
 #[AsAction(
     name: 'team.role',
-    summary: 'Change a team member\'s role (admin, developer, member or viewer). The owner\'s role changes only by transferring ownership.',
+    summary: 'Replace native ID app roles atomically. Shared organization membership is preserved.',
     scope: 'team:write',
     danger: Danger::Write,
     plane: ActionPlane::Workspace,
@@ -41,7 +41,7 @@ use Cbox\Id\Platform\PlatformRoot;
 final readonly class ChangeMemberRole implements Action
 {
     public function __construct(
-        private Memberships $members,
+        private NativeProductMembers $members,
         private Subjects $subjects,
         private PlatformRoot $platformRoot,
     ) {}
@@ -50,7 +50,8 @@ final readonly class ChangeMemberRole implements Action
     {
         return InputSchema::of([
             Field::string('id')->inPath(),
-            Field::string('role')->required()->oneOf(array_map(static fn (MembershipRole $role): string => $role->value, MembershipRole::assignable())),
+            Field::list('roles', Field::string('role')->oneOf(array_keys(NativeProductManifest::ROLES)))->required(),
+            Field::string('roles_version')->required(),
         ]);
     }
 
@@ -58,13 +59,8 @@ final readonly class ChangeMemberRole implements Action
     {
         $workspaceId = InWorkspace::id($context->principal);
         $target = ManageableMember::resolve($context->principal, $workspaceId, $context->string('id'));
-        $role = MembershipRole::from($context->string('role'));
-
-        $updated = $this->platformRoot->run(fn () => $this->members->changeRole($workspaceId, $target->user_id, $role)) ?? $target;
-
-        InWorkspace::record($context->principal, $workspaceId, 'organization.member_role_changed', 'membership', $target->id, [
-            'role' => $role->value,
-        ]);
+        $this->members->replace($target, array_values(array_filter($context->array('roles'), 'is_string')), $context->string('roles_version'), $context->actor());
+        $updated = $target;
 
         $person = $this->platformRoot->run(fn () => $this->subjects->find($target->user_id));
 

@@ -73,7 +73,7 @@ it('rotates with the overlap chosen, so the old secret keeps working until then'
     test()->from(route('clients.secrets', $client->id))
         ->post(route('clients.rotate', $client->id), ['grace' => 3600])
         ->assertSessionHasNoErrors()
-        ->assertSessionHas('status', 'Secret rotated. The previous one keeps working for another hour. Copy the new one now — it will not be shown again.');
+        ->assertSessionHas('status', 'Secret rotated. Remaining validity of the previous secret: 1 hour. Copy the new secret now — it will not be shown again.');
 
     $registry = app(ClientRegistry::class);
     $fresh = $client->fresh() ?? $client;

@@ -262,7 +262,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Pin the current environment (session-selected) for the console + hosted UI.
         $middleware->appendToGroup('web', SetEnvironment::class);
-        $middleware->appendToGroup('web', ResolveConsoleLocale::class);
 
         // An app's RP-initiated sign-out on a tenant's host ends the tenant's END USER and
         // nothing else: the environment console's administrator sharing the cookie is
@@ -333,9 +332,10 @@ return Application::configure(basePath: dirname(__DIR__))
             // environment host — the rest is the environment console's (see the class).
             'console.customer' => EnforceCustomerConsole::class,
             'console.root' => EnforceRootHostConsole::class,
-            // The hosted surfaces' language. Named so the route file can say which groups
-            // are hosted — and the console groups, by not saying it, stay English.
+            // Hosted routes follow visitor preferences; console routes follow the
+            // authenticated subject's shared language preference.
             'locale' => ResolveLocale::class,
+            'locale.console' => ResolveConsoleLocale::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

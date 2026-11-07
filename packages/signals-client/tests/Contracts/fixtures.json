@@ -1,0 +1,422 @@
+[
+  {
+    "name": "customer-events",
+    "schema": "EventBatch",
+    "valid": true,
+    "data": {
+      "source_id": "shop",
+      "events": [
+        {
+          "id": "order-check-1",
+          "name": "shop.document_blocked",
+          "schema_version": 1,
+          "occurred_at": "2026-11-04T12:00:00.123456Z",
+          "data": {
+            "customer": "customer-1",
+            "document": "document-1"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "customer-memory",
+    "schema": "MetricBatch",
+    "valid": true,
+    "data": {
+      "source_id": "customer-runtime",
+      "samples": [
+        {
+          "id": "sample-1",
+          "name": "runtime.memory",
+          "value": 1048576,
+          "unit": "bytes",
+          "kind": "gauge",
+          "observed_at": "2026-11-04T12:00:00.123456Z",
+          "entity": {
+            "namespace": "shop",
+            "type": "user",
+            "id": "customer-1"
+          },
+          "dimensions": {
+            "instance": "worker-1",
+            "deployment": "release-1",
+            "restart": "boot-1"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "login-evaluation",
+    "schema": "EvaluationRequest",
+    "valid": true,
+    "data": {
+      "request_id": "attempt-1",
+      "subject": {
+        "namespace": "shop",
+        "type": "user",
+        "id": "customer-1"
+      },
+      "action": "auth.login",
+      "context": {
+        "device_id": "device-1"
+      }
+    }
+  },
+  {
+    "name": "customer-mapping",
+    "schema": "MappingPreviewRequest",
+    "valid": true,
+    "data": {
+      "mapping": {
+        "source_id": "shop",
+        "id": "customer-access",
+        "version": 1,
+        "event": "shop.document_blocked",
+        "schema_version": 1,
+        "observation": "access.attempt",
+        "subject": {
+          "namespace": {
+            "constant": "shop"
+          },
+          "type": {
+            "constant": "user"
+          },
+          "id": {
+            "path": "$.data.customer"
+          }
+        },
+        "resource": {
+          "namespace": {
+            "constant": "shop"
+          },
+          "type": {
+            "constant": "document"
+          },
+          "id": {
+            "path": "$.data.document"
+          }
+        },
+        "fields": {
+          "outcome": {
+            "constant": "denied"
+          }
+        }
+      },
+      "event": {
+        "id": "order-check-1",
+        "name": "shop.document_blocked",
+        "schema_version": 1,
+        "occurred_at": "2026-11-04T12:00:00.123456Z",
+        "data": {
+          "customer": "customer-1",
+          "document": "document-1"
+        }
+      },
+      "source_id": "shop"
+    }
+  },
+  {
+    "name": "created-webhook",
+    "schema": "Webhook",
+    "valid": true,
+    "data": {
+      "delivery_id": "delivery-1",
+      "type": "signal.created",
+      "occurred_at": "2026-11-04T12:00:00.123456Z",
+      "data": {
+        "id": "sig_example",
+        "project": "customer-project",
+        "environment": "sandbox",
+        "subject": {
+          "namespace": "shop",
+          "type": "user",
+          "id": "customer-1"
+        },
+        "detector_id": "probe",
+        "detector_version": 1,
+        "mapping_version": 1,
+        "type": "access.resource_probing",
+        "severity": "medium",
+        "reasons": [
+          "distinct_denied_targets"
+        ],
+        "evidence": [
+          {
+            "measure": "distinct_denied_targets",
+            "value": 2,
+            "occurrences": [
+              "one",
+              "two"
+            ]
+          }
+        ],
+        "status": "active",
+        "revision": 1,
+        "mode": "active",
+        "first_seen_at": "2026-11-04T12:00:00.123456Z",
+        "last_seen_at": "2026-11-04T12:00:00.123456Z",
+        "expires_at": "2026-11-04T12:15:00.123456Z",
+        "definition_hash": "example-definition-hash",
+        "configuration_revision": 1
+      }
+    }
+  },
+  {
+    "name": "event-scope-injection",
+    "schema": "EventBatch",
+    "valid": false,
+    "data": {
+      "source_id": "shop",
+      "events": [
+        {
+          "id": "order-check-1",
+          "name": "shop.document_blocked",
+          "schema_version": 1,
+          "occurred_at": "2026-11-04T12:00:00.123456Z",
+          "data": {
+            "customer": "customer-1",
+            "document": "document-1"
+          }
+        }
+      ],
+      "project": "foreign"
+    }
+  },
+  {
+    "name": "metric-numeric-string",
+    "schema": "MetricBatch",
+    "valid": false,
+    "data": {
+      "source_id": "customer-runtime",
+      "samples": [
+        {
+          "id": "sample-1",
+          "name": "runtime.memory",
+          "value": "1048576",
+          "unit": "bytes",
+          "kind": "gauge",
+          "observed_at": "2026-11-04T12:00:00.123456Z",
+          "entity": {
+            "namespace": "shop",
+            "type": "user",
+            "id": "customer-1"
+          },
+          "dimensions": {
+            "instance": "worker-1",
+            "deployment": "release-1",
+            "restart": "boot-1"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "invalid-webhook-revision",
+    "schema": "Webhook",
+    "valid": false,
+    "data": {
+      "delivery_id": "delivery-1",
+      "type": "signal.created",
+      "occurred_at": "2026-11-04T12:00:00.123456Z",
+      "data": {
+        "id": "sig_example",
+        "project": "customer-project",
+        "environment": "sandbox",
+        "subject": {
+          "namespace": "shop",
+          "type": "user",
+          "id": "customer-1"
+        },
+        "detector_id": "probe",
+        "detector_version": 1,
+        "mapping_version": 1,
+        "type": "access.resource_probing",
+        "severity": "medium",
+        "reasons": [
+          "distinct_denied_targets"
+        ],
+        "evidence": [
+          {
+            "measure": "distinct_denied_targets",
+            "value": 2,
+            "occurrences": [
+              "one",
+              "two"
+            ]
+          }
+        ],
+        "status": "active",
+        "revision": 0,
+        "mode": "active",
+        "first_seen_at": "2026-11-04T12:00:00.123456Z",
+        "last_seen_at": "2026-11-04T12:00:00.123456Z",
+        "expires_at": "2026-11-04T12:15:00.123456Z",
+        "definition_hash": "example-definition-hash",
+        "configuration_revision": 1
+      }
+    }
+  },
+  {
+    "name": "unsupported-evaluation-action",
+    "schema": "EvaluationRequest",
+    "valid": false,
+    "data": {
+      "request_id": "attempt-1",
+      "subject": {
+        "namespace": "shop",
+        "type": "user",
+        "id": "customer-1"
+      },
+      "action": "billing.refund",
+      "context": {
+        "device_id": "device-1"
+      }
+    }
+  },
+  {
+    "name": "retention-pending-history",
+    "schema": "RetentionState",
+    "valid": true,
+    "data": {
+      "retention_days": 7,
+      "status": "pending_history",
+      "operational_purged_before": "2026-10-28T10:00:00Z",
+      "history_purged_before": null,
+      "last_completed_at": null,
+      "next_run_at": "2026-11-04T11:00:00Z"
+    }
+  },
+  {
+    "name": "retention-missing-watermarks",
+    "schema": "RetentionState",
+    "valid": false,
+    "data": {
+      "retention_days": 7,
+      "status": "ready"
+    }
+  },
+  {
+    "name": "management-read",
+    "schema": "ManagementRecord",
+    "valid": true,
+    "data": {
+      "id": "7e4602dd-563e-4c76-8192-b4b84a592dc1",
+      "version": 1,
+      "status": "draft",
+      "name": "Production receiver",
+      "definition": {
+        "url": "https://example.test/receive",
+        "types": [
+          "signal.created"
+        ]
+      }
+    }
+  },
+  {
+    "name": "management-must-not-leak-secret",
+    "schema": "ManagementRecord",
+    "valid": false,
+    "data": {
+      "id": "7e4602dd-563e-4c76-8192-b4b84a592dc1",
+      "version": 1,
+      "status": "draft",
+      "name": "Production receiver",
+      "definition": {
+        "url": "https://example.test/receive",
+        "types": [
+          "signal.created"
+        ]
+      },
+      "secret": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  },
+  {
+    "name": "management-must-not-leak-reference",
+    "schema": "ManagementRecord",
+    "valid": false,
+    "data": {
+      "id": "7e4602dd-563e-4c76-8192-b4b84a592dc1",
+      "version": 1,
+      "status": "draft",
+      "name": "Production receiver",
+      "definition": {
+        "secret_reference": "private"
+      }
+    }
+  },
+  {
+    "name": "management-creation-secret",
+    "schema": "ManagementCreated",
+    "valid": true,
+    "data": {
+      "id": "7e4602dd-563e-4c76-8192-b4b84a592dc1",
+      "version": 1,
+      "status": "draft",
+      "name": "Production receiver",
+      "definition": {
+        "url": "https://example.test/receive",
+        "types": [
+          "signal.created"
+        ]
+      },
+      "secret": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  },
+  {
+    "name": "management-customer-connection",
+    "schema": "ManagementCreate",
+    "valid": true,
+    "data": {
+      "name": "Customer",
+      "definition": {
+        "type": "events_api",
+        "source_id": "customer"
+      }
+    }
+  },
+  {
+    "name": "management-foreign-scope",
+    "schema": "ManagementCreate",
+    "valid": false,
+    "data": {
+      "name": "Injected",
+      "project": "foreign",
+      "definition": {
+        "type": "events_api",
+        "source_id": "customer"
+      }
+    }
+  },
+  {
+    "name": "comparison-before-outcome-map",
+    "schema": "Expression",
+    "valid": true,
+    "data": {
+      "path": "$.data.code",
+      "compare": {
+        "type": "integer",
+        "operator": "gte",
+        "value": "400"
+      },
+      "enum": {
+        "true": "denied",
+        "false": "allowed"
+      }
+    }
+  },
+  {
+    "name": "text-cannot-be-ordered",
+    "schema": "Expression",
+    "valid": false,
+    "data": {
+      "path": "$.data.code",
+      "compare": {
+        "type": "string",
+        "operator": "lt",
+        "value": "abc"
+      }
+    }
+  }
+]

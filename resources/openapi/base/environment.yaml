@@ -2951,6 +2951,12 @@ components:
           type: array
           description: Ids of the access roles granted when the invitation is accepted.
           items: { type: string }
+        accepted_by:
+          type: [string, 'null']
+          description: The subject that accepted this invitation. Null for pending or historical invitations without a receipt.
+        accepted_at:
+          type: [string, 'null']
+          format: date-time
         status: { type: string, enum: [pending, accepted, revoked] }
         client_id: { type: ["string", "null"], description: "The app it came from." }
         return_to: { type: ["string", "null"], description: "Where the person is sent after accepting." }
@@ -2974,6 +2980,20 @@ components:
         permissions:
           type: array
           items: { type: string }
+        active_definition_version:
+          type: ["string", "null"]
+          description: The activated app definition. Publishing a new manifest does not change existing holders' permissions.
+        pending_definition:
+          type: ["object", "null"]
+          description: A published change waiting for an environment administrator to explicitly activate this version.
+          required: [version, permissions, tenant_assignable]
+          properties:
+            version: { type: string }
+            permissions: { type: array, items: { type: string } }
+            tenant_assignable: { type: boolean }
+    RoleAssignments:
+      type: array
+      items: { $ref: '#/components/schemas/RoleAssignment' }
     RoleAssignment:
       type: object
       required: [role_id, name, user_id, source]

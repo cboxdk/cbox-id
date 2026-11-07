@@ -29,6 +29,7 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
+use Cbox\Id\Platform\Contracts\Projects;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\KeyProvenance;
 use Cbox\Id\Provisioning\Contracts\ProvisioningConnections;
@@ -402,6 +403,10 @@ it('holds every Critical enterprise change for its owner\'s approval, and change
 it('holds a change to how an organization signs in, and lets a Write through', function (): void {
     $key = govSupervisedKey(['sso:read', 'sso:write']);
     $org = govOrg();
+    $workspace = app(PlatformRoot::class)->run(fn () => app(Organizations::class)->create(new NewOrganization('Enterprise workspace', 'enterprise-workspace')));
+    $project = app(Projects::class)->createForOrganization($workspace->id, 'Enterprise');
+    Environment::query()->whereKey('env_test')->update(['project_id' => $project->id]);
+    grantFeature($org, 'cbox-id-sso');
     $connection = app(Connections::class)->create($org, ConnectionType::Saml, 'Okta', [
         'idp_entity_id' => 'https://idp.example', 'idp_sso_url' => 'https://idp.example/sso', 'idp_x509cert' => 'MIIC',
         'sp_entity_id' => 'https://sp.example', 'sp_acs_url' => 'https://sp.example/acs',

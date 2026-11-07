@@ -6,6 +6,7 @@ namespace App\Actions\Directories;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -63,11 +64,11 @@ final readonly class SyncDirectoryNow implements Action
         $directory = DirectoryFields::changeable($context);
 
         if (! $directory->provider->isPull()) {
-            throw ActionRefused::because('not_pull', 'A SCIM directory is pushed to by its identity provider; there is nothing to pull.');
+            throw ActionRefused::because('not_pull', new ActionMessage('console.a_scim_directory_is_pushed_to_by_its_identity_provider_173549c3'));
         }
 
         if ($directory->status !== DirectoryStatus::Active) {
-            throw ActionRefused::because('directory_paused', 'Resume the directory before syncing it.');
+            throw ActionRefused::because('directory_paused', new ActionMessage('console.resume_the_directory_before_syncing_it_ca870e14'));
         }
 
         $full = $context->boolean('full');

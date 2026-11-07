@@ -12,6 +12,7 @@ use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Radar\RadarRuleInvalid;
@@ -55,7 +56,7 @@ final readonly class ReorderRadarRules implements Action
         try {
             $this->rules->reorder($ids);
         } catch (RadarRuleInvalid $invalid) {
-            throw ActionRefused::because('invalid_order', $invalid->getMessage(), 'rule_ids');
+            throw ActionRefused::because('invalid_order', FrameworkMessage::from($invalid), 'rule_ids');
         }
 
         if ($before !== $ids) {

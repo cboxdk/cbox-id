@@ -42,7 +42,7 @@ final class StartSupportSessionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'reason.required' => __('console.say_why_the_organization_sees_this_on_its_au_3cdf11d6'),
+            'reason.required' => __('console.say_why_the_organization_sees_this_on_its_audit_log_3cdf11d6'),
             'minutes.max' => __('console.a_support_session_lasts_at_most_max_minutes_069774e6'),
         ];
     }

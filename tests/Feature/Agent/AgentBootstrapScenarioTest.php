@@ -268,6 +268,8 @@ it('sets up an enterprise customer: an app, an organization with SSO, a domain, 
     expect($organization['status'])->toBe('ok');
 
     $orgId = $organization['data']['id'];
+    grantFeature($orgId, 'cbox-id-sso');
+    grantFeature($orgId, 'cbox-id-scim');
 
     // Its SSO connection: a SAML draft first — the service provider's details to hand the
     // customer's IT — then the identity provider's, read from its metadata.

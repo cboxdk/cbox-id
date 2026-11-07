@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -38,8 +38,11 @@ export default function FgaSchemaEditor({
     validateHref,
     indexHref,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     // Validating posts and comes back to this page with state preserved, so the text being
     // edited survives the round trip.
     const form = useForm({ schema: source });
@@ -48,20 +51,16 @@ export default function FgaSchemaEditor({
         <>
             <PageHeader
                 help={help}
-                badge={
-                    defined ? (
-                        <Badge>
-                            {tc('console.v_4c94485e')}
-                            {version}
-                        </Badge>
-                    ) : undefined
-                }
-                description={tc('console.one_type_per_resource_type_its_relation_s_be_18943de8')}
+                badge={defined ? <Badge>v{version}</Badge> : undefined}
+                description={consoleT(
+                    'console.one_type_per_resource_type_its_relation_s_below_it_a_re_18943de8',
+                )}
                 actions={
                     <Button asChild>
                         <Link href={indexHref}>
-                            <Icon name="arrow-left" className="w-4 h-4" />
-                            {tc('console.overview_d4b1ea57')}
+                            {consoleRich('console._part1_overview_0ade1da7', {
+                                part1: <Icon name="arrow-left" className="w-4 h-4" />,
+                            })}
                         </Link>
                     </Button>
                 }
@@ -74,7 +73,7 @@ export default function FgaSchemaEditor({
                     form.put(updateHref, { preserveScroll: true });
                 }}
             >
-                <Field label={tc('console.schema_07b091a3')} error={form.errors.schema}>
+                <Field label={consoleT('console.schema_07b091a3')} error={form.errors.schema}>
                     <Textarea
                         className="mono text-xs"
                         rows={24}
@@ -88,28 +87,32 @@ export default function FgaSchemaEditor({
                     <output className="card p-4 block">
                         {validation.valid ? (
                             <p className="flex items-center gap-2 text-sm">
-                                <Badge tone="success">{tc('console.valid_f5162206')}</Badge>
-                                {tc(
-                                    'console.every_name_it_uses_is_defined_and_nothing_su_a169d152',
+                                {consoleRich(
+                                    'console._part1_every_name_it_uses_is_defined_and_nothing_subtra_9ef8bb73',
+                                    {
+                                        part1: (
+                                            <Badge tone="success">
+                                                {consoleT('console.valid_f5162206')}
+                                            </Badge>
+                                        ),
+                                    },
                                 )}
                             </p>
                         ) : (
                             <>
                                 <p className="flex items-center gap-2 text-sm">
                                     <Badge tone="danger">
-                                        {validation.errors.length === 1
-                                            ? tc('console.1_problem_41ac3c60')
-                                            : tc('console.value0_problems_c91917d2', {
-                                                  value0: validation.errors.length,
-                                              })}
+                                        {consoleFinalText('console.problems_count', {
+                                            count: validation.errors.length,
+                                        })}
                                     </Badge>
                                 </p>
                                 <ul className="mt-2 grid gap-1 text-xs">
                                     {validation.errors.map((error) => (
                                         <li key={`${error.line}:${error.message}`} className="mono">
                                             {error.line > 0
-                                                ? tc('console.line_value0_20717ce8', {
-                                                      value0: error.line,
+                                                ? consoleFinalText('console.line_part1_8c02d91a', {
+                                                      part1: error.line,
                                                   })
                                                 : ''}
                                             {error.message}
@@ -137,13 +140,14 @@ export default function FgaSchemaEditor({
                             )
                         }
                     >
-                        <Icon name="check" className="w-4 h-4" />
-                        {tc('console.validate_40611abb')}
+                        {consoleRich('console._part1_validate_4be424e7', {
+                            part1: <Icon name="check" className="w-4 h-4" />,
+                        })}
                     </Button>
                     <Button type="submit" variant="danger" loading={form.processing}>
                         {defined
-                            ? tc('console.save_every_check_uses_it_at_once_29bf6473')
-                            : tc('console.save_schema_325690c5')}
+                            ? consoleText('console.save_every_check_uses_it_at_once_29bf6473')
+                            : consoleText('console.save_schema_325690c5')}
                     </Button>
                 </div>
             </form>

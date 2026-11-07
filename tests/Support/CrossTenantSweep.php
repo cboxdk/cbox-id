@@ -25,6 +25,9 @@ use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\SupportSession;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\CustomerApiKeys;
+use Cbox\Id\Organization\Enums\EnvironmentStatus;
+use Cbox\Id\Organization\Enums\EnvironmentType;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewCustomerApiKey;
 use Cbox\Id\Pipes\Contracts\Pipes;
 use Cbox\Id\Pipes\Enums\PipeConnectionStatus;
@@ -76,6 +79,7 @@ final class CrossTenantSweep
             'scopes:key' => 'api_scope',
             'agent-requests:request_id' => 'agent_request',
             'apps:id' => 'app',
+            'apps:client_id' => 'app_client_id',
             'secrets:secret_id' => 'app_secret',
             'exports:id' => 'audit_export',
             'feature-flags:id' => 'feature_flag',
@@ -119,6 +123,7 @@ final class CrossTenantSweep
             'decisions:id' => 'radar_decision',
         ],
         'workspace' => [
+            'payment-methods:id' => 'payment_method',
             'environments:environment_id' => 'environment',
             'keys:id' => 'workspace_key',
             'projects:id' => 'project',
@@ -243,12 +248,24 @@ final class CrossTenantSweep
         $context->set(GenericEnvironment::of($environmentId));
 
         try {
+            if (! Environment::query()->whereKey($environmentId)->exists()) {
+                $account = \provisionAccount('sweep-owner-'.$environmentId.'@sweep.example');
+                Environment::query()->create([
+                    'id' => $environmentId, 'name' => $environmentId, 'slug' => str_replace('_', '-', $environmentId),
+                    'project_id' => $account['project']->id, 'is_default' => false,
+                    'type' => EnvironmentType::Production,
+                    'status' => EnvironmentStatus::Active, 'settings' => [],
+                ]);
+            }
             $principal = new EnvironmentKeyPrincipal(self::key($environmentId, 'Sweep '.$label));
             $run = static fn (string $action, array $input): array => self::payload(app(ActionRunner::class)->run(app(ActionRegistry::class)->named($action), $principal, $input)->payload);
             $slug = Str::lower($label).'-'.Str::lower(Str::random(5));
             $w = [];
 
             $w['organization'] = $run('organizations.create', ['name' => 'Sweep '.$label, 'slug' => 'sweep-'.$slug])['id'];
+            foreach (['cbox-id-sso', 'cbox-id-scim', 'cbox-id-audit-logs'] as $feature) {
+                \grantFeature($w['organization'], $feature);
+            }
             $w['member'] = $run('users.create', ['email' => "member-{$slug}@sweep.example", 'name' => 'Member '.$label])['id'];
             $run('members.add', ['organization_id' => $w['organization'], 'user_id' => $w['member'], 'role' => 'member']);
             // Domain verification needs no plan, so the link mints on any environment.
@@ -264,10 +281,10 @@ final class CrossTenantSweep
             $w['invitation'] = $run('invitations.send', ['organization_id' => $w['organization'], 'email' => "invitee-{$slug}@sweep.example"])['id'];
             $w['organization_domain'] = $run('organizations.domains.add', ['organization_id' => $w['organization'], 'domain' => "org-{$slug}.sweep.example"])['id'];
 
-            $w['catalog_app'] = 'sweep-'.strtolower($slug);
-            $run('app_catalog.save', ['key' => $w['catalog_app'], 'version' => 0, 'name' => 'Sweep app', 'launch_url' => 'https://sweep.example', 'position' => 0, 'enabled' => false, 'audience' => 'everyone']);
             $w['user_property_namespace'] = 'sweep-'.strtolower($slug);
             $run('user_property_namespaces.configure', ['name' => $w['user_property_namespace']]);
+            $w['catalog_app'] = 'sweep-'.strtolower($slug);
+            $run('app_catalog.save', ['key' => $w['catalog_app'], 'version' => 0, 'name' => 'Sweep app', 'launch_url' => 'https://sweep.example', 'position' => 0, 'enabled' => false, 'audience' => 'everyone']);
             $w['api_scope'] = "sweep:{$slug}";
             $w['api'] = $run('apis.create', ['identifier' => "https://api-{$slug}.sweep.example", 'name' => 'Sweep API '.$label, 'scopes' => [['key' => $w['api_scope'], 'description' => 'Sweep']]])['id'];
 

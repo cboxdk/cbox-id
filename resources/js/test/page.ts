@@ -1,5 +1,5 @@
-import { consoleI18n } from './catalogue';
 import type { SharedProps } from '@/types';
+import { consoleMessages } from './console-messages';
 
 /**
  * THE SHARED PROPS A COMPONENT TEST RUNS AGAINST.
@@ -27,7 +27,7 @@ export const DEFAULT_PAGE_PROPS: SharedProps = {
     impersonation: null,
     flash: { status: null, error: null },
     shell: null,
-    i18n: consoleI18n(),
+    i18n: { locale: 'en', locales: [], messages: consoleMessages, preference: null },
     apiEquivalents: {},
     errors: {},
 };

@@ -6,6 +6,7 @@ namespace App\Actions\Account;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
@@ -73,8 +74,7 @@ final readonly class SendEmailConfirmation implements Action
         $key = 'email-confirmation:'.$subjectId;
 
         if (RateLimiter::tooManyAttempts($key, self::ATTEMPTS)) {
-            throw new ActionRefused('too_soon', 'We have sent a few links already. Try again in '
-                .RateLimiter::availableIn($key).' seconds, or check your spam folder in the meantime.', 429);
+            throw new ActionRefused('too_soon', new ActionMessage('console.we_have_sent_a_few_links_already_try_again_in_part1_sec_a84fe552', ['part1' => (string) (RateLimiter::availableIn($key))]), 429);
         }
 
         RateLimiter::hit($key, self::DECAY_SECONDS);
@@ -88,7 +88,7 @@ final readonly class SendEmailConfirmation implements Action
             RateLimiter::clear($key);
             Log::error('Could not send an email confirmation link', ['subject' => $subjectId, 'error' => $e->getMessage()]);
 
-            throw new ActionRefused('mail_unavailable', 'We could not send the email right now — this deployment cannot reach its mail server. Try again later; an administrator can also confirm your address with `php artisan cbox-id:users:confirm-email`.', 503);
+            throw new ActionRefused('mail_unavailable', new ActionMessage('console.we_could_not_send_the_email_right_now_this_deployment_c_03e046b9'), 503);
         }
 
         return ActionResult::item($subject, ['outcome' => 'sent', 'email' => $subject->email]);

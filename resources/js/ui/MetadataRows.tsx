@@ -1,5 +1,7 @@
-import { useUiTranslator } from '@/i18n/ui';
-import { Button, Icon, Input } from '.';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
+import { Button } from './Button';
+import { Icon } from './Icon';
+import { Input } from './Input';
 
 export interface MetadataRow {
     key: string;
@@ -22,9 +24,9 @@ export function MetadataRows({
     onChange,
     label: suppliedLabel,
     hint,
-    keyLabel: suppliedKeylabel,
-    valueLabel: suppliedValuelabel,
-    addLabel: suppliedAddlabel,
+    keyLabel: suppliedKeyLabel,
+    valueLabel: suppliedValueLabel,
+    addLabel: suppliedAddLabel,
 }: {
     rows: MetadataRow[];
     onChange: (rows: MetadataRow[]) => void;
@@ -42,11 +44,11 @@ export function MetadataRows({
     valueLabel?: string;
     addLabel?: string;
 }) {
-    const { t: tc } = useUiTranslator();
-    const label = suppliedLabel ?? tc('console.metadata_9eddf573', 'Metadata');
-    const keyLabel = suppliedKeylabel ?? tc('console.key_99a52df3', 'Key');
-    const valueLabel = suppliedValuelabel ?? tc('console.value_8e37953d', 'Value');
-    const addLabel = suppliedAddlabel ?? tc('console.add_row_1868a8dd', 'Add row');
+    const { t: consoleFinalText } = useConsoleTranslator();
+    const label = suppliedLabel ?? consoleFinalText('console.metadata_9eddf573');
+    const keyLabel = suppliedKeyLabel ?? consoleFinalText('console.key_99a52df3');
+    const valueLabel = suppliedValueLabel ?? consoleFinalText('console.value_8e37953d');
+    const addLabel = suppliedAddLabel ?? consoleFinalText('console.add_row_1868a8dd');
     const update = (index: number, patch: Partial<MetadataRow>): void => {
         onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
     };
@@ -82,7 +84,9 @@ export function MetadataRows({
                             type="button"
                             size="sm"
                             className="shrink-0"
-                            aria-label={`Remove row ${index + 1}`}
+                            aria-label={consoleFinalText('console.remove_row_part1_91358cbb', {
+                                part1: index + 1,
+                            })}
                             onClick={() => onChange(rows.filter((_, i) => i !== index))}
                         >
                             <Icon name="close" className="w-3.5 h-3.5" />

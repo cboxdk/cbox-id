@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Actions\Apps;
 
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Apps\AppScopes;
@@ -92,7 +94,7 @@ final class AppFields
         }
 
         if ($organizationId !== null && Organization::query()->whereKey($organizationId)->doesntExist()) {
-            throw ActionRefused::because('organization_not_found', 'No organization with that organization_id exists in this environment.', 'organization_id');
+            throw ActionRefused::because('organization_not_found', new ActionMessage('console.no_organization_with_that_organization_id_exists_in_thi_5c5c6245'), 'organization_id');
         }
     }
 
@@ -122,7 +124,7 @@ final class AppFields
         if ($reserved !== []) {
             throw ActionRefused::because(
                 'scope_not_grantable',
-                'Only the console can give an app '.implode(', ', $reserved).': not a management key, and not an agent acting for you. Grant it in the console, on the app\'s Scopes page.',
+                new ActionMessage('console.only_the_console_can_give_an_app_part1_not_a_management_e9037160', ['part1' => (string) (implode(', ', $reserved))]),
                 $field,
             );
         }
@@ -140,6 +142,6 @@ final class AppFields
     /** The registry's refusal, under its own code (`invalid_client_metadata`, `invalid_redirect_uri`). */
     public static function invalid(InvalidClientMetadata $refused, ?string $field = null): ActionRefused
     {
-        return ActionRefused::because($refused->error, $refused->getMessage(), $field);
+        return ActionRefused::because($refused->error, FrameworkMessage::from($refused), $field);
     }
 }

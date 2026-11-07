@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import type { ReactNode } from 'react';
 import type { HelpContent } from '@/types';
 import { ApiEquivalent } from './ApiEquivalent';
@@ -42,8 +42,7 @@ export function EmptyState({
     actions,
     equivalent,
 }: EmptyStateProps) {
-    const { t: tc } = useUiTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <div className="cbx-empty">
             {icon !== undefined && (
@@ -75,7 +74,7 @@ export function EmptyState({
                 <div className="cbx-empty-equivalent">
                     <ApiEquivalent
                         action={equivalent}
-                        label={tc('console.or_from_code_33930236', 'Or from code')}
+                        label={consoleT('console.or_from_code_33930236')}
                     />
                 </div>
             )}

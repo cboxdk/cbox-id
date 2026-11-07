@@ -16,10 +16,8 @@ use App\Http\Requests\Console\EnableSocialProviderRequest;
 use App\Http\Requests\Console\UpdateSocialProviderRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
-use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use App\Platform\PlaneResolver;
 use App\Platform\Social\ProviderSetupSteps;
 use App\Platform\VerifiedEmailGate;
@@ -111,7 +109,7 @@ final readonly class SocialProviderController extends ConsoleController
             ? $environmentKeys
             : array_map(static fn (Connection $connection): string => (string) $connection->provider, $own);
 
-        return $this->page('console/social-providers', ConsoleStrings::text(Vocabulary::SOCIAL_LOGIN), [
+        return $this->page('console/social-providers', __('console.social_login_267d75d3'), [
             'view' => $environmentView ? 'environment' : 'organization',
             'organizationName' => $environmentView ? null : $filter->name,
             'environmentProviders' => $environmentView || $managesEnvironment
@@ -241,14 +239,19 @@ final readonly class SocialProviderController extends ConsoleController
         $enabled = $result->value;
         $request->session()->forget(self::RESERVED.$request->provider());
 
-        $where = $enabled->organization_id === null
-            ? __('console.every_sign_in_page_in_this_environment_589e274d')
-            : (($this->scope->organizationNames([$enabled->organization_id])[$enabled->organization_id] ?? __('console.this_organization_cab32fc4')).__('console.s_sign_in_page_223b642e'));
+        $organizationName = $enabled->organization_id === null
+            ? null
+            : ($this->scope->organizationNames([$enabled->organization_id])[$enabled->organization_id] ?? null);
+        $statusKey = match (true) {
+            $enabled->organization_id === null => 'console.social_provider_enabled_environment',
+            $organizationName === null => 'console.social_provider_enabled_current_organization',
+            default => 'console.social_provider_enabled_organization',
+        };
 
         return to_route($this->scope->routeName('social-providers'), $this->scope->plane() === ConsolePlane::Environment && $enabled->organization_id !== null
             ? ['organization' => $enabled->organization_id]
             : [])
-            ->with('status', $enabled->name.__('console.is_now_offered_on_6d448b55').$where.'.');
+            ->with('status', __($statusKey, ['provider' => $enabled->name, 'organization' => $organizationName ?? '']));
     }
 
     /** New credentials, values or scopes, through {@see UpdateSocialProvider}. */
@@ -278,7 +281,7 @@ final readonly class SocialProviderController extends ConsoleController
             && $request->boolean('fromOrganization');
 
         return redirect($this->url('social-providers', $backToOrganization ? ['organization' => $updated->organization_id] : null))
-            ->with('status', $updated->name.__('console.is_saved_a8f6fd28'));
+            ->with('status', __('console._part1_is_saved_89666a1d', ['part1' => $updated->name]));
     }
 
     public function enable(string $connection): RedirectResponse
@@ -295,7 +298,7 @@ final readonly class SocialProviderController extends ConsoleController
         /** @var Connection $enabled */
         $enabled = $result->value;
 
-        return back()->with('status', $enabled->name.__('console.is_on_again_e0875ef1'));
+        return back()->with('status', __('console._part1_is_on_again_af2fc1ce', ['part1' => $enabled->name]));
     }
 
     public function disable(string $connection): RedirectResponse
@@ -312,9 +315,7 @@ final readonly class SocialProviderController extends ConsoleController
         /** @var Connection $disabled */
         $disabled = $result->value;
 
-        return back()->with('status', $disabled->organization_id === null
-            ? $disabled->name.__('console.is_off_on_every_sign_in_page_its_credentials_73afb0b0')
-            : $disabled->name.__('console.is_off_on_this_organization_s_sign_in_page_i_f5572371'));
+        return back()->with('status', $disabled->organization_id === null ? __('console._part1_is_off_on_every_sign_in_page_its_credentials_are_2dc58cfc', ['part1' => $disabled->name]) : __('console._part1_is_off_on_this_organization_s_sign_in_page_its_c_5a7d1345', ['part1' => $disabled->name]));
     }
 
     public function destroy(string $connection): RedirectResponse
@@ -345,7 +346,7 @@ final readonly class SocialProviderController extends ConsoleController
 
         return back()->with(
             'status',
-            $removed->name.__('console.is_no_longer_offered_anyone_who_signed_in_wi_6111f3bf'),
+            __('console._part1_is_no_longer_offered_anyone_who_signed_in_with_i_b1a43020', ['part1' => $removed->name]),
         );
     }
 
@@ -371,9 +372,7 @@ final readonly class SocialProviderController extends ConsoleController
 
         $name = ProviderCatalog::find($provider)->name ?? $provider;
 
-        return back()->with('status', $offered
-            ? $name.__('console.from_the_environment_is_offered_on_this_orga_81dad653')
-            : $name.__('console.from_the_environment_is_no_longer_offered_on_78d9af04'));
+        return back()->with('status', $offered ? __('console._part1_from_the_environment_is_offered_on_this_organiza_d3320a78', ['part1' => $name]) : __('console._part1_from_the_environment_is_no_longer_offered_on_thi_2b5c99c4', ['part1' => $name]));
     }
 
     /**

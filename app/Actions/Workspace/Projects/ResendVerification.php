@@ -7,6 +7,7 @@ namespace App\Actions\Workspace\Projects;
 use App\Actions\Workspace\InWorkspace;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
@@ -76,8 +77,7 @@ final readonly class ResendVerification implements Action
         $key = 'organization-verify-resend|'.$subject->id;
 
         if (RateLimiter::tooManyAttempts($key, self::ATTEMPTS)) {
-            throw new ActionRefused('too_soon', 'That is a lot of emails. Try again in '
-                .RateLimiter::availableIn($key).' seconds, or check your spam folder in the meantime.', 429);
+            throw new ActionRefused('too_soon', new ActionMessage('console.that_is_a_lot_of_emails_try_again_in_part1_seconds_or_c_1e69af47', ['part1' => (string) (RateLimiter::availableIn($key))]), 429);
         }
 
         RateLimiter::hit($key, self::DECAY_SECONDS);

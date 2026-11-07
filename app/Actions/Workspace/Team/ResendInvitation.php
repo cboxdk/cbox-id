@@ -14,8 +14,8 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
-use App\Platform\Invitations\Contracts\TeamInvitations;
 use App\Platform\Invitations\Exceptions\InvitationRefused;
+use App\Platform\NativeProduct\NativeTeamInvitations as TeamInvitations;
 
 /**
  * Send a pending invitation again, with a fresh link — the earlier one stops working and
@@ -31,7 +31,7 @@ use App\Platform\Invitations\Exceptions\InvitationRefused;
     rest: ['POST', '/invitations/{id}/resend'],
     consoleRoutes: ['members.invitations.resend'],
     consoleGate: ConsoleGate::ManageMembers,
-    schema: 'Member',
+    schema: 'TeamInvitationReceipt',
     tag: 'Team',
 )]
 final readonly class ResendInvitation implements Action
@@ -59,7 +59,7 @@ final readonly class ResendInvitation implements Action
         return ActionResult::item($sent, [
             'id' => $sent->id,
             'email' => $sent->email,
-            'role' => $sent->role->value,
+            'roles' => $this->team->roles($sent),
             'status' => 'invited',
         ]);
     }

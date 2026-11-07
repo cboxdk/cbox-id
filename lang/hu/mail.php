@@ -1,0 +1,120 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'layout' => [
+        'footer' => '© :year :brand · Automatikus üzenet az identitáskezelő rendszeredtől.',
+    ],
+    'common' => [
+        'paste_link' => 'Vagy illeszd be ezt a hivatkozást a böngésződbe:',
+    ],
+    'roles' => [
+        'owner' => 'Tulajdonos',
+        'admin' => 'Adminisztrátor',
+        'developer' => 'Fejlesztő',
+        'member' => 'Tag',
+        'viewer' => 'Megtekintő',
+    ],
+    'magic_link' => [
+        'subject' => 'A bejelentkezési hivatkozásod: :brand',
+        'heading' => 'Bejelentkezés: :brand',
+        'body' => 'A bejelentkezéshez kattints az alábbi gombra. A hivatkozás egyszer használható, és 15 perc múlva lejár. Ha nem te kérted, nyugodtan hagyd figyelmen kívül ezt az e-mailt.',
+        'button' => 'Bejelentkezés: :brand',
+    ],
+    'password_reset' => [
+        'subject' => 'Jelszó-visszaállítás: :brand',
+        'heading' => 'Állítsd vissza a jelszavadat',
+        'body' => 'Kérést kaptunk a :brand-fiókod jelszavának visszaállítására. Új jelszó választásához kattints az alábbi gombra. A hivatkozás egyszer használható, és 60 perc múlva lejár. Ha nem te kérted, nyugodtan hagyd figyelmen kívül az e-mailt; a jelszavad nem változik.',
+        'button' => 'Jelszó visszaállítása',
+    ],
+    'email_verification' => [
+        'subject' => 'Erősítsd meg az e-mail-címedet: :brand',
+        'heading' => 'Erősítsd meg az e-mail-címedet',
+        'body' => 'Üdvözlünk itt: :brand. A fiókod biztonságának beállításához erősítsd meg, hogy ez az e-mail-cím a tiéd. A hivatkozás egyszer használható, és 24 óra múlva lejár.',
+        'button' => 'E-mail-cím megerősítése',
+        'not_you' => 'Ha nem hoztál létre :brand-fiókot, hagyd figyelmen kívül ezt az e-mailt. A hivatkozás használata nélkül semmi sem történik.',
+    ],
+    'admin_assigned_password' => [
+        'subject' => 'Visszaállították a jelszavadat: :brand',
+        'heading' => 'Visszaállították a jelszavadat',
+        'body' => 'Egy rendszergazda új jelszót állított be a fiókodhoz. Az alábbiakban ezzel jelentkezhetsz be.',
+        'temporary' => 'A bejelentkezés után azonnal saját jelszót kell választanod.',
+        'expires' => 'Ez a jelszó ekkor lejár: :date. Kérjük, előtte jelentkezz be.',
+        'not_expected' => 'Ha nem számítottál erre, fordulj a rendszergazdádhoz. A változtatást a szervezeted konzoljához hozzáférő személy végezte, és azt az auditnapló rögzítette.',
+    ],
+    'invitation' => [
+        'subject' => ':inviter meghívott ebbe a szervezetbe: :organization',
+        'heading' => 'Csatlakozás: :organization',
+        'invited' => ':inviter meghívott ebbe a szervezetbe: :organization.',
+        'invited_as' => ':inviter meghívott ebbe a szervezetbe: :organization. A szerepköröd: :role.',
+        'accept_app' => 'Az elfogadás után a :organization-fiókoddal jelentkezhetsz be ide: :app.',
+        'accept' => 'Fogadd el a meghívást a fiókod beállításához és a bejelentkezéshez.',
+        'button' => 'Meghívás megtekintése',
+        'note' => 'A hivatkozás egy megerősítő oldalt nyit meg. A megerősítésig semmi sem történik. A hivatkozás 7 nap múlva lejár. Ha nem számítottál erre, figyelmen kívül hagyhatod.',
+    ],
+    'organization_invite' => [
+        'subject' => ':inviter meghívott a(z) :organization szervezet kezelésére ebben a rendszerben: :brand',
+        'heading' => 'Segíts a(z) :organization szervezet kezelésében itt: :brand',
+        'invited' => ':inviter meghívott a :organization kezelésére a következő rendszerben: :brand. Ebben a konzolban kezelhetők a szervezet azonosításszolgáltatói, környezetei, tagjai és számlázása. Fogadd el a meghívást, állíts be jelszót, és jelentkezz be.',
+        'invited_as' => ':inviter meghívott a :organization kezelésére :role szerepkörben a következő rendszerben: :brand. Ebben a konzolban kezelhetők a szervezet azonosításszolgáltatói, környezetei, tagjai és számlázása. Fogadd el a meghívást, állíts be jelszót, és jelentkezz be.',
+        'button' => 'Meghívás elfogadása',
+        'note' => 'Ha nem számítottál erre a meghívásra, hagyd figyelmen kívül. Az elfogadásig semmi sem történik.',
+    ],
+    'portal_link' => [
+        'subject' => ':organization beállítása itt: :brand',
+        'heading' => ':organization beállítása',
+        'lead' => 'Arra kértek, hogy végezd el az alábbi beállításokat a :organization számára a következő rendszerben: :brand. Nincs szükséged fiókra, csak az alábbi gombra.',
+        'intents' => [
+            'sso' => 'Egyszeri bejelentkezés az azonosításszolgáltatóddal',
+            'dsync' => 'Címtárszinkronizálás (SCIM)',
+            'domain_verification' => 'E-mail-domainjeid ellenőrzése',
+            'log_streams' => 'Az auditnapló továbbítása a SIEM-rendszeredbe',
+            'certificate_renewal' => 'A SAML-aláíró tanúsítványod megújítása',
+            'audit_logs' => 'Auditnaplók áttekintése (csak olvasható)',
+        ],
+        'button' => 'Beállítás indítása',
+        'expires' => 'A hivatkozás egyszer használható, eddig: :date. Ha lejár, kérj újat.',
+        'not_expected' => 'Ha nem számítottál erre, hagyd figyelmen kívül. Semmi sem lesz beállítva, amíg valaki nem használja a hivatkozást.',
+    ],
+    'certificate_expiring' => [
+        'subject' => 'Az egyszeri bejelentkezés :count nap múlva leáll ezen a kapcsolaton: :connection|Az egyszeri bejelentkezés :count nap múlva leáll ezen a kapcsolaton: :connection',
+        'subject_expired' => 'Az egyszeri bejelentkezés leállt ezen a kapcsolaton: :connection',
+        'heading' => 'A SAML-tanúsítványod hamarosan lejár',
+        'heading_expired' => 'A SAML-tanúsítványod lejárt',
+        'lead' => 'A(z) :organization szervezet egyszeri bejelentkezési kapcsolatának (:connection) aláíró tanúsítványa ekkor lejár: :date. Ezután senki sem tud ezen keresztül bejelentkezni.',
+        'lead_expired' => 'A(z) :organization szervezet egyszeri bejelentkezési kapcsolatának (:connection) aláíró tanúsítványa ekkor lejárt: :date. A megújításig senki sem tud ezen keresztül bejelentkezni.',
+        'what_to_do' => 'Kérd el az új aláíró tanúsítványt az azonosításszolgáltatód üzemeltetőjétől, majd töltsd fel a rendszergazdai konzolban. A rendszergazdádtól is kérhetsz hozzáférési hivatkozást az adminisztrátori portálhoz a feltöltéshez.',
+        'why' => 'Azért kapod ezt az üzenetet, mert a szervezet tulajdonosa vagy rendszergazdája vagy a következő rendszerben: :brand.',
+    ],
+    'one_time_code' => [
+        'label' => 'A kódod',
+        'expires' => 'A kód :count perc múlva lejár, és csak egyszer használható.|A kód :count perc múlva lejár, és csak egyszer használható.',
+        'never_share' => 'Ne oszd meg senkivel. A :brand soha nem kéri el telefonon, csevegésben vagy e-mailben.',
+        'not_you_title' => 'Nem kérted?',
+        'sign_in' => [
+            'subject' => 'A bejelentkezési kódod: :brand',
+            'heading' => 'Erősítsd meg, hogy te vagy az',
+            'lead' => 'A bejelentkezés befejezéséhez add meg ezt a kódot itt: :brand.',
+            'not_you' => 'Ne add meg sehol a kódot, és hagyd figyelmen kívül az e-mailt. Ha van :brand-fiókod, változtasd meg a jelszavát, mert aki idáig eljutott, ismerheti azt.',
+        ],
+        'device' => [
+            'subject' => 'Az eszköz jóváhagyási kódja: :brand',
+            'heading' => 'Bejelentkezés jóváhagyása másik eszközön',
+            'lead' => 'Ezzel a kóddal jóváhagyhatod a :brand rendszerbe való bejelentkezést egy másik eszközön, például tévén vagy parancssori eszközön.',
+            'not_you' => 'Ne add meg sehol a kódot. Lehet, hogy valaki a saját eszközének jóváhagyására próbál rávenni; így kezdődik az ilyen támadás. Hagyd figyelmen kívül az e-mailt, és semmit sem hagysz jóvá.',
+        ],
+        'link' => [
+            'subject' => 'Kód bejelentkezési mód csatlakoztatásához: :brand',
+            'heading' => 'Bejelentkezési mód csatlakoztatása',
+            'lead' => 'Ezzel a kóddal új bejelentkezési módot csatlakoztathatsz a :brand-fiókodhoz.',
+            'not_you' => 'Ne add meg sehol a kódot. Lehet, hogy valaki a saját bejelentkezését próbálja a fiókodhoz kapcsolni. Hagyd figyelmen kívül az e-mailt, és semmit sem kapcsolunk össze.',
+        ],
+        'verify' => [
+            'subject' => 'Az ellenőrző kódod: :brand',
+            'heading' => 'Az ellenőrző kódod',
+            'lead' => 'Add meg ezt a kódot itt: :brand, hogy megerősítsd, ez az e-mail-cím a tiéd.',
+            'not_you' => 'Hagyd figyelmen kívül ezt az e-mailt. A kód használata nélkül semmi sem történik.',
+        ],
+    ],
+];

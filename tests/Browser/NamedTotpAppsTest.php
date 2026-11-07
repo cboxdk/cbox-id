@@ -75,11 +75,13 @@ it('adds, corrects, renames and cancels independent apps on a phone-sized screen
         ->assertDontSee('Complete setup within');
     expect(app(PlatformRoot::class)->run(fn (): int => MfaFactor::query()->where('user_id', $subjectId)->count()))->toBe(1);
     $page->assertNoJavaScriptErrors();
+    $currentLocale = 'en';
     foreach (['da' => 'Dansk', 'de' => 'Deutsch', 'sv' => 'Svenska', 'nb' => 'Norsk bokmål', 'fr' => 'Français', 'fi' => 'Suomi', 'es' => 'Español', 'it' => 'Italiano', 'nl' => 'Nederlands'] as $locale => $language) {
-        $page->click('[data-testid="console-language-picker"]')
+        $page->click('button[aria-label="'.__('hosted.language.label', [], $currentLocale).'"]')
             ->click('[role="menuitemradio"]:has-text("'.$language.'")')
             ->assertSee(__('console.totp_apps', [], $locale))
             ->assertNoJavaScriptErrors();
+        $currentLocale = $locale;
         expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
         if (in_array($locale, ['da', 'de', 'fi'], true)) {
             $page->screenshotElement('section:has(h2:has-text("'.__('console.totp_apps', [], $locale).'"))', 'named-authenticator-apps-'.$locale);

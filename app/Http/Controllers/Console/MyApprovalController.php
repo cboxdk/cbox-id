@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Http\Props\Shared\HelpProps;
-use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -40,10 +38,10 @@ final readonly class MyApprovalController extends ConsoleController
      * worried about.
      */
     private const SCOPE_LABELS = [
-        'openid' => 'Verify your identity',
-        'profile' => 'Your name',
-        'email' => 'Your email address',
-        'offline_access' => 'Stay signed in',
+        'openid' => 'console.verify_your_identity_ed32a9b2',
+        'profile' => 'console.your_name_2c6b2e25',
+        'email' => 'console.your_email_address_3fa7c5ef',
+        'offline_access' => 'console.stay_signed_in_b0a1ca80',
     ];
 
     public function index(): Response
@@ -70,7 +68,7 @@ final readonly class MyApprovalController extends ConsoleController
             $names[(string) $client->client_id] = (string) $client->name;
         }
 
-        return $this->page('console/approvals', ConsoleStrings::text(Vocabulary::APPROVALS), [
+        return $this->page('console/approvals', __('console.approvals_2bfc3471'), [
             'requests' => $requests->map(function (BackchannelAuthRequest $request) use ($names): array {
                 $clientId = (string) $request->client_id;
 
@@ -80,7 +78,7 @@ final readonly class MyApprovalController extends ConsoleController
                     'bindingMessage' => $request->binding_message,
                     'scopes' => array_map(static fn (string $scope): array => [
                         'value' => $scope,
-                        'label' => ConsoleStrings::text(self::SCOPE_LABELS[$scope] ?? $scope),
+                        'label' => isset(self::SCOPE_LABELS[$scope]) ? __(self::SCOPE_LABELS[$scope]) : $scope,
                     ], array_values(array_filter($request->scopes, 'is_string'))),
                     'urls' => [
                         'approve' => route('approvals.approve', $request->id),

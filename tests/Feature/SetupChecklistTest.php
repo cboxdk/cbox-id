@@ -139,9 +139,7 @@ it('keeps dismissal per admin, not per organization', function (): void {
  * so the filtering it was written to prove was never exercised.
  */
 it('leaves out steps the organization is not entitled to, so the list can reach 100%', function (): void {
-    // Deny-by-default. `open` is the shipped default and grants everything, which is why
-    // this has to be stated: the assertion below is about what happens when it is not.
-    config(['cbox-id.entitlements.mode' => 'metered']);
+    // No central feature assignment means no entitlement.
 
     $org = checklistOrg();
 
@@ -155,9 +153,9 @@ it('leaves out steps the organization is not entitled to, so the list can reach 
 });
 
 it('lists the entitled steps once the organization has them', function (): void {
-    config(['cbox-id.entitlements.mode' => 'open']);
-
     $org = checklistOrg();
+    grantFeature($org->id, 'cbox-id-sso');
+    grantFeature($org->id, 'cbox-id-scim');
 
     $keys = array_map(fn ($s) => $s->key, app(SetupChecklist::class)->for($org->id)->steps);
 

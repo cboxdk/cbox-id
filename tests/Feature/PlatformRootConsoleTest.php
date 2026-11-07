@@ -43,6 +43,7 @@ function rootConsoleShape(): Environment
 
     $root = Environment::query()->create(['name' => 'Platform', 'slug' => 'platform', 'status' => 'active']);
     $root->makeDefault();
+    syncNativeProductCatalog();
 
     return $root;
 }
@@ -157,7 +158,8 @@ it('serves the ordinary console to a member of an organization in the root envir
     $subjectId = actAsRootSubject($organizationId);
 
     app(PlatformRoot::class)->run(function () use ($organizationId, $subjectId): void {
-        app(Memberships::class)->add($organizationId, $subjectId, MembershipRole::Admin);
+        $member = app(Memberships::class)->add($organizationId, $subjectId, MembershipRole::Admin);
+        grantNativeProductRoles($member, ['admin']);
     });
 
     rootConsoleLanding('http://cboxid.com/dashboard')

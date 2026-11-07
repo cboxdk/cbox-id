@@ -6,6 +6,7 @@ namespace App\Actions\Directories;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -71,7 +72,7 @@ final readonly class ConfigureDirectorySync implements Action
         $directory = DirectoryFields::changeable($context);
 
         if (! $directory->provider->isPull()) {
-            throw ActionRefused::because('not_pull', 'A SCIM directory is pushed to by its identity provider; it has no pull schedule.');
+            throw ActionRefused::because('not_pull', new ActionMessage('console.a_scim_directory_is_pushed_to_by_its_identity_provider_ceadcc6f'));
         }
 
         $changed = [];
@@ -84,7 +85,7 @@ final readonly class ConfigureDirectorySync implements Action
 
         if ($context->has('custom_attributes') || $context->has('field_map')) {
             if (! $directory->provider->isHris()) {
-                throw ActionRefused::because('not_hris', 'Only an HR-system directory passes fields through.', 'custom_attributes');
+                throw ActionRefused::because('not_hris', new ActionMessage('console.only_an_hr_system_directory_passes_fields_through_da269d4d'), 'custom_attributes');
             }
 
             $current = DirectoryFields::hrisOptions($directory);

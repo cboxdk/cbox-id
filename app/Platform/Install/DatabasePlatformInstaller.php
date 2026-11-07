@@ -8,7 +8,10 @@ use App\Platform\Install\Contracts\PlatformInstaller;
 use App\Platform\Install\Enums\PlatformOccupant;
 use App\Platform\Install\Enums\SchemaState;
 use App\Platform\Install\Exceptions\PlatformNotEmpty;
+use App\Platform\NativeProduct\NativeProductClient;
+use App\Platform\NativeProduct\NativeProductManifest;
 use App\Providers\PlatformServiceProvider;
+use Cbox\Id\AccessControl\Contracts\AppManifests;
 use Cbox\Id\Identity\Models\User;
 use Cbox\Id\Kernel\Crypto\Contracts\KeyManager;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -52,6 +55,9 @@ final class DatabasePlatformInstaller implements PlatformInstaller
         private readonly PlatformOperators $operators,
         private readonly TenantProvisioner $accounts,
         private readonly KeyManager $keys,
+        private readonly NativeProductClient $nativeClient,
+        private readonly NativeProductManifest $nativeManifest,
+        private readonly AppManifests $manifests,
     ) {}
 
     public function ready(): bool
@@ -167,6 +173,7 @@ final class DatabasePlatformInstaller implements PlatformInstaller
 
         return DB::transaction(function () use ($plan): InstalledPlatform {
             $root = $this->platformRoot($plan);
+            $this->nativeClient->synchronize($this->manifests, $this->nativeManifest);
 
             // Only now: the operator's subject lands in the root above, and the account
             // members provisioned below are homed in its organization.

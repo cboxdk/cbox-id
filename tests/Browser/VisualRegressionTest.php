@@ -76,6 +76,10 @@ function anOwnerForPictures(): void
         app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
         app(Projects::class)->createForOrganization($org->id, 'Acme');
 
+        // The visual checklist covers all six cards; enterprise features are explicit grants.
+        grantFeature($org->id, 'cbox-id-sso');
+        grantFeature($org->id, 'cbox-id-scim');
+
         return $subject;
     });
 

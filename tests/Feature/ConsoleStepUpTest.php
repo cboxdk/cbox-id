@@ -143,7 +143,7 @@ it('refuses to rotate an app secret with no step-up, and rotates with one', func
 
 it('refuses to rotate a SCIM bearer token with no step-up, and rotates with one', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Tenant', 'tenant-scim'));
-    grantFeature($org->id, 'scim');
+    grantFeature($org->id, 'cbox-id-scim');
     $directory = app(Directories::class)->register($org->id, 'Okta')->directory;
 
     $url = route('environment.directories.show', ['directory' => $directory->id]);
@@ -240,7 +240,7 @@ it('refuses to register an app with no step-up, and registers with one', functio
 
 it('refuses to register a SCIM directory with no step-up, and registers with one', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Tenant', 'tenant-newdir'));
-    grantFeature($org->id, 'scim');
+    grantFeature($org->id, 'cbox-id-scim');
     FormOrganization::$id = $org->id;
 
     app(EnvironmentSudo::class)->forget();

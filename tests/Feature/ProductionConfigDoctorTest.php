@@ -25,6 +25,9 @@ function productionVerdicts(array $config): array
 function soundProductionConfig(): array
 {
     return [
+        'billing-client.base_url' => 'https://billing.example.test',
+        'billing-client.api_token' => 'fixture-feature-reader',
+        'service-access.product_billing_token' => 'fixture-admission-reader',
         'mail.default' => 'smtp',
         'cache.default' => 'redis',
         'session.driver' => 'redis',
@@ -229,9 +232,7 @@ it('fails metered production without a working billing configuration', function 
         ->toHaveKey('Billing admission', 'fail');
 });
 
-it('checks billing readiness independently of the identity security policy', function (): void {
-    expect(productionVerdicts([...soundProductionConfig(),
-        'cbox-id.entitlements.mode' => 'inclusive', 'billing.require_subscription' => true,
-        'billing-client.api_token' => null,
-    ]))->toHaveKey('Billing admission', 'fail');
-});
+it('fails production without either central feature or product admission credentials', function (string $key): void {
+    expect(productionVerdicts([...soundProductionConfig(), $key => null]))
+        ->toHaveKey('Billing admission', 'fail');
+})->with(['billing-client.base_url', 'billing-client.api_token', 'service-access.product_billing_token']);

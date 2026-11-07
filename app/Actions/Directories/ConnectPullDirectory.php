@@ -6,6 +6,7 @@ namespace App\Actions\Directories;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -79,13 +80,13 @@ final readonly class ConnectPullDirectory implements Action
         $provider = DirectoryProvider::from($context->string('provider'));
 
         if (! $provider->isPull() || ! $this->connectors->has($provider)) {
-            throw ActionRefused::because('unknown_provider', 'Choose a directory provider.', 'provider');
+            throw ActionRefused::because('unknown_provider', new ActionMessage('console.choose_a_directory_provider_d3411404'), 'provider');
         }
 
         $credentials = self::credentials($provider, $context->array('credentials'));
 
         if (! $this->connectors->for($provider)->verify($credentials)) {
-            throw ActionRefused::because('credentials_rejected', 'Could not connect to '.$provider->label().' — check the credentials and admin consent.', 'credentials');
+            throw ActionRefused::because('credentials_rejected', new ActionMessage('console.could_not_connect_to_part1_check_the_credentials_and_ad_a9882761', ['part1' => (string) ($provider->label())]), 'credentials');
         }
 
         $directory = $this->directories->registerPull($organizationId, $provider->label(), $provider, $credentials);
@@ -137,11 +138,11 @@ final readonly class ConnectPullDirectory implements Action
             $serviceAccount = json_decode($value('service_account_json'), true);
 
             if ($value('admin_email') === '') {
-                throw ActionRefused::because('incomplete_credentials', 'Enter the admin email to impersonate.', 'credentials');
+                throw ActionRefused::because('incomplete_credentials', new ActionMessage('console.enter_the_admin_email_to_impersonate_cf555100'), 'credentials');
             }
 
             if (! is_array($serviceAccount) || ! is_string($serviceAccount['client_email'] ?? null) || ! is_string($serviceAccount['private_key'] ?? null)) {
-                throw ActionRefused::because('incomplete_credentials', 'Paste the full service-account JSON key (it must contain client_email and private_key).', 'credentials');
+                throw ActionRefused::because('incomplete_credentials', new ActionMessage('console.paste_the_full_service_account_json_key_it_must_contain_9ffc8f83'), 'credentials');
             }
 
             return [
@@ -153,7 +154,7 @@ final readonly class ConnectPullDirectory implements Action
 
         foreach (['tenant_id', 'client_id', 'client_secret'] as $key) {
             if ($value($key) === '') {
-                throw ActionRefused::because('incomplete_credentials', 'Enter the Entra tenant ID, client ID, and client secret.', 'credentials');
+                throw ActionRefused::because('incomplete_credentials', new ActionMessage('console.enter_the_entra_tenant_id_client_id_and_client_secret_318905a2'), 'credentials');
             }
         }
 

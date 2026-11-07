@@ -54,7 +54,7 @@ final readonly class EmailVerificationController extends PageController
         $membership = $members->forUser($subjectId)->first();
 
         if ($membership !== null) {
-            $environment = $provisioner->releaseEnvironment($membership->organization_id);
+            $environment = $provisioner->releaseEnvironment($membership->organization_id, $subjectId);
 
             // The ONE session, asked at the cookie rather than through CurrentUser: this
             // route is deliberately outside the auth middleware (the token is the proof,
@@ -62,7 +62,7 @@ final readonly class EmailVerificationController extends PageController
             // decides where to land, not whether to admit — a wrong guess costs a
             // redundant sign-in page, never access.
             return session()->has(PlatformAuth::SESSION_KEY)
-                ? redirect()->route($environment === null ? 'account' : 'projects')->with('status', __($environment === null ? 'auth.confirm_email.verified' : 'console.email_verified_your_environment_is_ready_4b512252'))
+                ? redirect()->route($environment === null ? 'account' : 'projects')->with('status', __('auth.confirm_email.verified'))
                 : redirect()->route('login')->with('status', __('auth.confirm_email.verified_sign_in'));
         }
 

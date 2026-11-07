@@ -6,6 +6,7 @@ namespace App\Actions\Organizations;
 
 use App\Http\Resources\Environment\OrganizationResource;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\OrganizationTarget;
 use Cbox\Id\Organization\Models\Organization;
@@ -91,13 +92,13 @@ final class OrganizationFields
             }
 
             if (! is_string($value) && ! is_int($value) && ! is_float($value) && ! is_bool($value)) {
-                throw ActionRefused::because('invalid_metadata', "The metadata value for [{$key}] must be text.", 'metadata');
+                throw ActionRefused::because('invalid_metadata', new ActionMessage('console.the_metadata_value_for_part1_must_be_text_63748730', ['part1' => (string) ($key)]), 'metadata');
             }
 
             $value = trim(is_bool($value) ? ($value ? 'true' : 'false') : (string) $value);
 
             if (mb_strlen($key) > self::KEY_MAX || mb_strlen($value) > self::VALUE_MAX) {
-                throw ActionRefused::because('invalid_metadata', 'A metadata key may be at most '.self::KEY_MAX.' characters and a value at most '.self::VALUE_MAX.'.', 'metadata');
+                throw ActionRefused::because('invalid_metadata', new ActionMessage('console.a_metadata_key_may_be_at_most_part1_characters_and_a_va_e02a76ec', ['part1' => (string) (self::KEY_MAX), 'part2' => (string) (self::VALUE_MAX)]), 'metadata');
             }
 
             $out[$key] = $value;

@@ -4,39 +4,39 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Platform\Locale\ConsolePreferences;
 use App\Platform\Locale\HostedLocale;
-use App\Platform\Locale\LocaleResolver;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-/** Console preference is independent of a customer's hosted-language policy. */
-final class ResolveConsoleLocale
+final readonly class ResolveConsoleLocale
 {
-    public const COOKIE = 'cbox_console_locale';
+    public const ATTRIBUTE = 'cbox.console_preferences';
+
+    public function __construct(private ConsolePreferences $preferences) {}
 
     /** @param Closure(Request): Response $next */
     public function handle(Request $request, Closure $next): Response
     {
-        $candidates = [$request->cookie(self::COOKIE), $request->cookie(LocaleResolver::COOKIE), ...$request->getLanguages()];
-        $locale = HostedLocale::English;
-
-        foreach ($candidates as $candidate) {
-            $accepted = HostedLocale::fromTag(is_string($candidate) ? $candidate : null);
-
-            if ($accepted !== null) {
-                $locale = $accepted;
-                break;
+        $snapshot = $this->preferences->read();
+        $language = $snapshot->data->language ?? null;
+        $locale = HostedLocale::fromTag(is_string($language) ? $language : null);
+        if ($locale === null) {
+            foreach ($request->getLanguages() as $tag) {
+                $locale = HostedLocale::fromTag($tag);
+                if ($locale !== null) {
+                    break;
+                }
             }
         }
-
+        $default = config('cbox-id.locales.default');
+        $locale ??= HostedLocale::fromTag(is_string($default) ? $default : null) ?? HostedLocale::English;
         app()->setLocale($locale->value);
+        $request->attributes->set(ResolveLocale::ATTRIBUTE, $locale);
+        $request->attributes->set(self::ATTRIBUTE, $snapshot);
         $response = $next($request);
-
-        // Hosted routes resolve their own language later in the middleware stack.
-        if (! $response->headers->has('Content-Language')) {
-            $response->headers->set('Content-Language', app()->getLocale());
-        }
+        $response->headers->set('Content-Language', $locale->value);
 
         return $response;
     }

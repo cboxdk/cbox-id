@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useFormatTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -67,10 +68,16 @@ export default function WebhookDetail({
     indexHref,
     urls,
 }: Props) {
-    const { locale } = useTranslator();
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
-    const { t: tc } = useTranslator();
-
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleOptionText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     /*
      * THE PLAINTEXT SECRET, on the flash channel and nowhere else.
      *
@@ -103,7 +110,7 @@ export default function WebhookDetail({
         <>
             <div className="space-y-6">
                 <div>
-                    <Breadcrumb href={indexHref} label={tc('console.webhooks_45808d75')} />
+                    <Breadcrumb href={indexHref} label={consoleT('console.webhooks_45808d75')} />
 
                     <div className="mt-2 flex items-center gap-3 flex-wrap">
                         <h1
@@ -114,10 +121,13 @@ export default function WebhookDetail({
                         </h1>
                         <Pill tone={endpoint.active ? 'success' : 'warning'}>
                             {endpoint.active
-                                ? tc('console.active_92340695')
-                                : tc('console.paused_e159b061')}
+                                ? consoleText('console.active_92340695')
+                                : consoleText('console.paused_e159b061')}
                         </Pill>
-                        <Badge>{endpoint.owner ?? tc('console.all_organizations_e3002b23')}</Badge>
+                        <Badge>
+                            {endpoint.owner ??
+                                consoleRuntimeText('console.all_organizations_e3002b23')}
+                        </Badge>
                         <Badge>{signatureSchemeLabels[endpoint.signatureScheme]}</Badge>
                     </div>
 
@@ -151,8 +161,8 @@ export default function WebhookDetail({
                                     className="text-sm font-semibold"
                                     style={{ color: 'var(--warning-strong)' }}
                                 >
-                                    {tc(
-                                        'console.copy_this_signing_secret_now_it_won_t_be_sho_2331f9ee',
+                                    {consoleT(
+                                        'console.copy_this_signing_secret_now_it_won_t_be_shown_again_2331f9ee',
                                     )}
                                 </p>
                                 <p className="mt-3 mono text-sm break-all select-all">
@@ -162,8 +172,8 @@ export default function WebhookDetail({
                                     className="mt-3 text-xs"
                                     style={{ color: 'var(--warning-strong)' }}
                                 >
-                                    {tc(
-                                        'console.every_delivery_carries_an_hmac_computed_with_9e1a90b1',
+                                    {consoleT(
+                                        'console.every_delivery_carries_an_hmac_computed_with_this_secre_9e1a90b1',
                                     )}
                                 </p>
                                 <div className="mt-3">
@@ -176,13 +186,13 @@ export default function WebhookDetail({
                                 className="shrink-0"
                                 onClick={() => setSecretVisible(false)}
                             >
-                                {tc('console.dismiss_48845bff')}
+                                {consoleT('console.dismiss_48845bff')}
                             </Button>
                         </div>
                     </div>
                 )}
 
-                <Panel title={tc('console.subscription_4999c6c6')}>
+                <Panel title={consoleT('console.subscription_4999c6c6')}>
                     {mayManage ? (
                         <form
                             className="space-y-4"
@@ -192,7 +202,7 @@ export default function WebhookDetail({
                             }}
                         >
                             <Field
-                                label={tc('console.endpoint_url_2578179d')}
+                                label={consoleT('console.endpoint_url_2578179d')}
                                 error={form.errors.url}
                                 required
                             >
@@ -206,7 +216,7 @@ export default function WebhookDetail({
 
                             <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
                                 <legend className="label">
-                                    {tc('console.event_types_8f338cc0')}
+                                    {consoleT('console.event_types_8f338cc0')}
                                 </legend>
 
                                 <div
@@ -237,7 +247,7 @@ export default function WebhookDetail({
                             </fieldset>
 
                             <Button type="submit" variant="primary" loading={form.processing}>
-                                {tc('console.save_changes_dd0ae7a5')}
+                                {consoleT('console.save_changes_dd0ae7a5')}
                             </Button>
                         </form>
                     ) : (
@@ -253,8 +263,8 @@ export default function WebhookDetail({
                                 className="mt-4 text-sm"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                {tc(
-                                    'console.this_endpoint_belongs_to_the_environment_and_f1dc8df9',
+                                {consoleT(
+                                    'console.this_endpoint_belongs_to_the_environment_and_receives_e_f1dc8df9',
                                 )}
                             </p>
                         </>
@@ -264,9 +274,9 @@ export default function WebhookDetail({
                 {mayManage && (
                     <>
                         <Panel
-                            title={tc('console.signing_secret_e7ee22e1')}
-                            description={tc(
-                                'console.the_secret_signs_every_delivery_s_hmac_it_is_830c30dd',
+                            title={consoleT('console.signing_secret_e7ee22e1')}
+                            description={consoleT(
+                                'console.the_secret_signs_every_delivery_s_hmac_it_is_stored_sea_830c30dd',
                             )}
                         >
                             <Button
@@ -274,38 +284,42 @@ export default function WebhookDetail({
                                 icon="refresh"
                                 onClick={() => setConfirming('rotate')}
                             >
-                                {tc('console.rotate_secret_4405518d')}
+                                {consoleT('console.rotate_secret_4405518d')}
                             </Button>
                         </Panel>
 
                         <Panel
-                            title={tc('console.signature_scheme_c432c67a')}
-                            description={tc(
-                                'console.which_headers_every_delivery_carries_changin_5a2ff32e',
+                            title={consoleT('console.signature_scheme_c432c67a')}
+                            description={consoleT(
+                                'console.which_headers_every_delivery_carries_changing_it_issues_5a2ff32e',
                             )}
                         >
                             <div className="space-y-4">
                                 <RadioGroup
-                                    label={tc('console.sign_deliveries_with_bf5fa8db')}
+                                    label={consoleT('console.sign_deliveries_with_bf5fa8db')}
                                     name="signatureScheme"
                                     value={scheme}
                                     onValueChange={setScheme}
-                                    options={signatureSchemeOptions(tc)}
+                                    options={signatureSchemeOptions(consoleOptionText)}
                                 />
                                 {scheme !== endpoint.signatureScheme && (
                                     <p
                                         className="text-sm"
                                         style={{ color: 'var(--muted-foreground)' }}
                                     >
-                                        {scheme === 'standard_webhooks'
-                                            ? tc(
-                                                  'console.your_receiver_keeps_the_same_secret_a_64_cha_c0d890ee',
-                                              )
-                                            : tc(
-                                                  'console.your_receiver_keeps_the_same_secret_used_exa_431d83f5',
-                                              )}{' '}
-                                        {tc(
-                                            'console.update_your_receiver_first_from_the_next_att_11a2b061',
+                                        {consoleRich(
+                                            'console._part1_part2_update_your_receiver_first_from_the_next_a_d1d60a6e',
+                                            {
+                                                part1:
+                                                    scheme === 'standard_webhooks'
+                                                        ? consoleText(
+                                                              'console.your_receiver_keeps_the_same_secret_a_64_character_hex_c0d890ee',
+                                                          )
+                                                        : consoleText(
+                                                              'console.your_receiver_keeps_the_same_secret_used_exactly_as_wri_431d83f5',
+                                                          ),
+                                                part2: ' ',
+                                            },
                                         )}
                                     </p>
                                 )}
@@ -314,15 +328,15 @@ export default function WebhookDetail({
                                     disabled={scheme === endpoint.signatureScheme}
                                     onClick={() => setConfirming('scheme')}
                                 >
-                                    {tc('console.change_scheme_6816bb41')}
+                                    {consoleT('console.change_scheme_6816bb41')}
                                 </Button>
                             </div>
                         </Panel>
 
-                        <Panel title={tc('console.recent_deliveries_9d067ec8')}>
+                        <Panel title={consoleT('console.recent_deliveries_9d067ec8')}>
                             {deliveries.length === 0 ? (
                                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                                    {tc('console.no_deliveries_yet_835fd2f4')}
+                                    {consoleT('console.no_deliveries_yet_835fd2f4')}
                                 </p>
                             ) : (
                                 <div className="space-y-2">
@@ -340,25 +354,37 @@ export default function WebhookDetail({
                                                     className="text-xs"
                                                     style={{ color: 'var(--faint)' }}
                                                 >
-                                                    {tc('console.attempt_51c78c77')}
-                                                    {delivery.attempt}
-                                                    {delivery.responseCode !== null &&
-                                                        ` · HTTP ${delivery.responseCode}`}
-                                                    {delivery.deliveredAt !== null
-                                                        ? tc('console.delivered_value0_78c6d946', {
-                                                              value0: relativeTime(
-                                                                  delivery.deliveredAt,
-                                                                  locale,
-                                                              ),
-                                                          })
-                                                        : delivery.nextRetryAt !== null
-                                                          ? tc('console.retry_value0_31685fff', {
-                                                                value0: relativeTime(
-                                                                    delivery.nextRetryAt,
-                                                                    locale,
-                                                                ),
-                                                            })
-                                                          : ''}
+                                                    {consoleRich(
+                                                        'console.attempt_part1_part2_part3_a162fa99',
+                                                        {
+                                                            part1: delivery.attempt,
+                                                            part2:
+                                                                delivery.responseCode !== null &&
+                                                                ` · HTTP ${delivery.responseCode}`,
+                                                            part3:
+                                                                delivery.deliveredAt !== null
+                                                                    ? consoleT(
+                                                                          'console.webhook_delivered_at',
+                                                                          {
+                                                                              time: relativeTime(
+                                                                                  delivery.deliveredAt,
+                                                                                  consoleLocale,
+                                                                              ),
+                                                                          },
+                                                                      )
+                                                                    : delivery.nextRetryAt !== null
+                                                                      ? consoleT(
+                                                                            'console.webhook_retry_at',
+                                                                            {
+                                                                                time: relativeTime(
+                                                                                    delivery.nextRetryAt,
+                                                                                    consoleLocale,
+                                                                                ),
+                                                                            },
+                                                                        )
+                                                                      : '',
+                                                        },
+                                                    )}
                                                 </p>
                                             </div>
 
@@ -367,7 +393,7 @@ export default function WebhookDetail({
                                                 className="shrink-0"
                                             >
                                                 {delivery.delivered
-                                                    ? tc('console.delivered_90611565')
+                                                    ? consoleText('console.delivered_90611565')
                                                     : capitalise(delivery.status)}
                                             </Pill>
                                         </div>
@@ -376,7 +402,7 @@ export default function WebhookDetail({
                             )}
                         </Panel>
 
-                        <Panel title={tc('console.lifecycle_46459b1f')}>
+                        <Panel title={consoleT('console.lifecycle_46459b1f')}>
                             <div className="flex flex-wrap gap-2">
                                 {/*
                                     Pause and resume get a plain button, not a typed
@@ -391,7 +417,7 @@ export default function WebhookDetail({
                                             router.post(urls.pause, {}, { preserveScroll: true })
                                         }
                                     >
-                                        {tc('console.pause_858e4ba7')}
+                                        {consoleT('console.pause_858e4ba7')}
                                     </Button>
                                 ) : (
                                     <Button
@@ -400,7 +426,7 @@ export default function WebhookDetail({
                                             router.post(urls.resume, {}, { preserveScroll: true })
                                         }
                                     >
-                                        {tc('console.resume_d640c742')}
+                                        {consoleT('console.resume_d640c742')}
                                     </Button>
                                 )}
 
@@ -409,7 +435,7 @@ export default function WebhookDetail({
                                     variant="danger"
                                     onClick={() => setConfirming('delete')}
                                 >
-                                    {tc('console.delete_endpoint_6772d678')}
+                                    {consoleT('console.delete_endpoint_6772d678')}
                                 </Button>
                             </div>
                         </Panel>
@@ -421,9 +447,11 @@ export default function WebhookDetail({
                 open={confirming === 'rotate'}
                 onOpenChange={(open) => setConfirming(open ? 'rotate' : null)}
                 name={endpoint.url}
-                verb={tc('console.rotate_secret_4405518d')}
-                title={tc('console.rotate_this_endpoint_s_signing_secret_18226fc7')}
-                consequence={tc('console.the_current_signing_secret_stops_verifying_i_54edeb63')}
+                verb={consoleAttributeText('console.rotate_secret_4405518d')}
+                title={consoleT('console.rotate_this_endpoint_s_signing_secret_18226fc7')}
+                consequence={consoleUiText(
+                    'console.the_current_signing_secret_stops_verifying_immediately_54edeb63',
+                )}
                 onConfirm={() => {
                     setConfirming(null);
                     router.post(urls.rotate);
@@ -434,11 +462,14 @@ export default function WebhookDetail({
                 open={confirming === 'scheme'}
                 onOpenChange={(open) => setConfirming(open ? 'scheme' : null)}
                 name={endpoint.url}
-                verb={tc('console.change_scheme_6816bb41')}
-                title={tc('console.sign_this_endpoint_s_deliveries_with_value0_34d681d1', {
-                    value0: signatureSchemeLabels[scheme],
-                })}
-                consequence={tc('console.no_new_secret_is_issued_from_the_next_attemp_eba13c7b')}
+                verb={consoleAttributeText('console.change_scheme_6816bb41')}
+                title={consoleFinalText(
+                    'console.sign_this_endpoint_s_deliveries_with_part1_bf8f1f3e',
+                    { part1: signatureSchemeLabels[scheme] },
+                )}
+                consequence={consoleUiText(
+                    'console.no_new_secret_is_issued_from_the_next_attempt_retries_i_eba13c7b',
+                )}
                 onConfirm={() => {
                     setConfirming(null);
                     router.post(urls.scheme, { signatureScheme: scheme }, { preserveScroll: true });
@@ -449,7 +480,9 @@ export default function WebhookDetail({
                 open={confirming === 'delete'}
                 onOpenChange={(open) => setConfirming(open ? 'delete' : null)}
                 name={endpoint.url}
-                consequence={tc('console.this_endpoint_stops_receiving_events_and_its_b6a65cf3')}
+                consequence={consoleUiText(
+                    'console.this_endpoint_stops_receiving_events_and_its_delivery_h_b6a65cf3',
+                )}
                 onConfirm={() => {
                     setConfirming(null);
                     router.delete(urls.destroy);

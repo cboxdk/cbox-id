@@ -37,10 +37,12 @@ final class ParityAllowlist
     public static function ceremonies(): array
     {
         return [
-            // Provider-hosted card setup/3DS and the person's consent to a priced,
-            // short-lived quote bound to this browser. Address/card management has
-            // separate public actions; an agent cannot confirm its own purchase.
-            'billing.card',
+            // Payment-provider consent/3DS requires this browser's pending setup state.
+            // Account and stored-card management remain Workspace actions.
+            'billing.setup',
+            'billing.complete',
+            // Project checkout binds its short-lived economic quote and confirmation
+            // to this authenticated browser, actor and explicitly named workspace.
             'billing.preview',
             'billing.confirm',
             // Connecting a third-party account (Pipes): the person consents at the provider
@@ -209,9 +211,10 @@ final class ParityAllowlist
             // Which organization the environment console is looking at.
             // The hosted pages' language picker: a cookie for the next render, nothing more.
             'locale.update',
-            // The signed-in person's shared interface language, in either console.
+            // The signed-in person's display language, on each console plane.
             'console.locale.update',
             'environment.locale.update',
+            'platform.locale.update',
             // Which organization the console is looking at.
             'organization.switch',
             // Which environment the operator's console is pointed at — from the switcher, or

@@ -55,7 +55,7 @@ final readonly class SendPasswordReset implements Action
         $token = $this->resets->request($user->email);
 
         if (is_string($token)) {
-            Mail::to($user->email)->locale(app(MailLocale::class)->forRecipient())->send(new PasswordResetMail($this->links->route('password.reset', $token)));
+            Mail::to($user->email)->locale(app(MailLocale::class)->forRecipient(false))->send(new PasswordResetMail($this->links->route('password.reset', $token)));
         }
 
         return ActionResult::none($user);

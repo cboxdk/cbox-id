@@ -26,6 +26,7 @@ use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Lang;
 use Inertia\Response;
 
 /**
@@ -152,7 +153,7 @@ final readonly class ApiController extends ConsoleController
         $created = $result->value;
 
         return to_route('environment.apis.show', $created->id)
-            ->with('status', 'API "'.$created->name.__('console.registered_add_the_scopes_it_owns_below_3cbd6336'));
+            ->with('status', __('console.api_part1_registered_add_the_scopes_it_owns_below_6163866c', ['part1' => $created->name]));
     }
 
     public function show(string $api): Response
@@ -228,7 +229,7 @@ final readonly class ApiController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', 'Scope "'.$row->key.__('console.removed_apps_that_held_it_keep_it_as_a_typed_e221195c'));
+            : back()->with('status', __('console.scope_part1_removed_apps_that_held_it_keep_it_as_a_type_7572a80d', ['part1' => $row->key]));
     }
 
     public function destroy(string $api): RedirectResponse
@@ -239,7 +240,7 @@ final readonly class ApiController extends ConsoleController
 
         return $result instanceof RedirectResponse
             ? $result
-            : to_route('environment.apis')->with('status', 'API "'.$model->name.'" deleted.');
+            : to_route('environment.apis')->with('status', __('console.api_part1_deleted_b3f02cb1', ['part1' => $model->name]));
     }
 
     /**
@@ -313,6 +314,6 @@ final readonly class ApiController extends ConsoleController
      */
     private function ownerLabel(?string $organizationId, array $owners): string
     {
-        return $organizationId === null ? __('console.this_environment_549c0268') : ($owners[$organizationId] ?? __('console.an_organization_c46fba8e'));
+        return $organizationId === null ? Lang::string('console.this_environment_549c0268') : ($owners[$organizationId] ?? Lang::string('console.organization_fallback'));
     }
 }

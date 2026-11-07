@@ -8,6 +8,7 @@ use App\Actions\Platform\AsOperator;
 use App\Http\Resources\Environment\Timestamp;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
@@ -71,11 +72,11 @@ final readonly class CreatePlatformEnvironment implements Action
         $domain = $domain === null ? null : strtolower(trim($domain));
 
         if ($domain !== null && preg_match('/^[a-z0-9.-]+\.[a-z]{2,}$/i', $domain) !== 1) {
-            throw ActionRefused::because('invalid_domain', 'Enter a domain such as login.example.com.', 'domain');
+            throw ActionRefused::because('invalid_domain', new ActionMessage('console.enter_a_domain_such_as_login_example_com_4f04d8ff'), 'domain');
         }
 
         if ($domain !== null && $this->context->withoutScope(static fn (): bool => Environment::query()->where('domain', $domain)->exists())) {
-            throw ActionRefused::because('domain_taken', 'That domain is already routed to another environment.', 'domain');
+            throw ActionRefused::because('domain_taken', new ActionMessage('console.that_domain_is_already_routed_to_another_environment_23c137e9'), 'domain');
         }
 
         $environment = Environment::query()->create([

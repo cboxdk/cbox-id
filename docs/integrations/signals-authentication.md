@@ -24,25 +24,20 @@ Already issued JWT access tokens are not retroactively invalidated by this asses
 
 Run the ordinary feature suite and `tests/Integration/signals-auth-roundtrip.py` from the Signals app checkout. The latter provisions a new isolated engine scope, imports customer-defined events via the public SDK, verifies actual high-risk password refusal and actual TOTP completion, and revokes its test API key. It requires the real local PostgreSQL/NATS/ClickHouse stack; it refuses a non-loopback engine. Add `--browser` to verify the hosted password/no-factor and actual TOTP flow, then read the final outcome from the public scoped event API and import it through the public Signals SDK. The proof waits for durable history before asserting ready coverage.
 
-Before a reviewed image build, export source-only contexts from clean reviewed commits. The exporter refuses dirty checkouts and private/development paths; it records exact commit IDs:
+The build is self-contained. `packages/signals-client` contains the reviewed source at
+commit `454786bc445423f123aec2358bd4c7e6b7381e06`, with the original archive and manifest
+under `build/dependencies`. Its Composer version is `dev-sd/security-tenant-context`;
+there is no published-version alias. The identity engine uses `laravel-id ^1.28.0`.
 
-```sh
-python3 bin/prepare-signals-contexts.py --signals-client ../../laravel-signals-client --output /tmp/id-signals-contexts
-docker buildx build --build-context signals-client=/tmp/id-signals-contexts/signals-client \
-  -t cbox-id:signals-qualified .
-```
+Run `php bin/verify-signals-sdk.php` before installation. CI and Docker run this same
+check: the archive hash, every extracted file, unexpected files and symlinks are
+validated before Composer can install the dependency. Docker needs only the repository
+context; no sibling checkout, credentials or additional BuildKit context is required.
+The optional source exporter remains available for reviewing a replacement snapshot.
+Public release and production activation require separate authorization and verification.
 
-The identity engine is installed from the published `laravel-id ^1.27.3` release. Only the Signals client still uses a reviewed development branch and compatibility alias. The image copies that client context at the path resolved by Composer. Its public release and production activation require their own authorization and verification.
-
-
-### Reproducible integration CI
-
-`build/dependencies/signals-packages.json` records the exact unpublished MIT source
-commit and SHA-256 archive for the Signals client.
-`php bin/unpack-signals-packages.php ../../laravel-signals-client` prepares its new Composer destination in a clean CI job;
-existing destinations are refused. Image jobs unpack the same archives to named
-BuildKit contexts. No sibling checkout, developer environment or credential enters CI.
-The clean-checkout exporter remains available when reviewing a new source snapshot.
+The following verification counts describe the earlier Signals integration baseline,
+not the final permissions-overhaul acceptance:
 
 Host validation: 5,936 PHP tests / 61,129 assertions with one existing skip; 200
 frontend tests, TypeScript and Vite production build. Wayfinder 0.1.23 preserves

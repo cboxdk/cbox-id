@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\Locale\ConsoleScopeCopy;
+
 /**
  * The catalog of permissions ("scopes") an app can request — the plain-language
  * answer to "what should the scopes be?". Two families:
@@ -116,6 +118,12 @@ final class ScopeCatalog
         $grouped = [];
 
         foreach ($this->all() as $scope) {
+            $scope['label'] = ConsoleScopeCopy::label($scope['key']);
+            $scope['description'] = ConsoleScopeCopy::description($scope['key']) ?? $scope['description'];
+            if (isset($scope['consent'])) {
+                $scope['consent'] = ConsoleScopeCopy::consent($scope['key']) ?? $scope['consent'];
+            }
+            $scope['category'] = $scope['category'] === self::SIGN_IN ? __('console.sign_in_5bbbe531') : __('console.platform_api_d6bf1399');
             $grouped[$scope['category']][] = $scope;
         }
 

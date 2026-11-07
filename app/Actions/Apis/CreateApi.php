@@ -7,10 +7,12 @@ namespace App\Actions\Apis;
 use App\Http\Resources\Environment\ApiResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Apis\ApiAdministration;
@@ -62,11 +64,11 @@ final readonly class CreateApi implements Action
         $identifier = $context->string('identifier');
 
         if ($organizationId !== null && Organization::query()->whereKey($organizationId)->doesntExist()) {
-            throw ActionRefused::because('organization_not_found', 'No organization with that organization_id exists in this environment.', 'organization_id');
+            throw ActionRefused::because('organization_not_found', new ActionMessage('console.no_organization_with_that_organization_id_exists_in_thi_5c5c6245'), 'organization_id');
         }
 
         if ($this->apis->identifiedBy($identifier) !== null) {
-            throw ActionRefused::because('invalid_api', 'An API with this identifier is already registered in this environment.', 'identifier');
+            throw ActionRefused::because('invalid_api', new ActionMessage('console.an_api_with_this_identifier_is_already_registered_in_th_36b95cbd'), 'identifier');
         }
 
         $refusal = ApiLinks::refusal($clientId, $organizationId);
@@ -84,7 +86,7 @@ final readonly class CreateApi implements Action
                 scopes: ApiScopeFields::definitions($context->array('scopes')),
             ), $context->actor());
         } catch (InvalidApiDefinition $refused) {
-            throw ActionRefused::because('invalid_api', $refused->getMessage(), 'identifier');
+            throw ActionRefused::because('invalid_api', FrameworkMessage::from($refused), 'identifier');
         }
 
         return ActionResult::item($api, ApiResource::from($api));

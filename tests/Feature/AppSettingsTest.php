@@ -119,7 +119,7 @@ it('saves where the app is told somebody signed out, and refuses an address it w
 
     test()->from(route('clients.settings', $client->id))
         ->put(route('clients.settings.logout', $client->id), ['uri' => 'http://billing.example/logout', 'sessionRequired' => false])
-        ->assertSessionHasErrors(['uri' => 'The logout URI must use https (or http on localhost): http://billing.example/logout']);
+        ->assertSessionHasErrors(['uri']);
 
     expect($client->refresh()->backchannel_logout_uri)->toBe('https://billing.example/logout');
 

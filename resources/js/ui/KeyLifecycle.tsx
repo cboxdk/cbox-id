@@ -1,4 +1,5 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useFormatTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { absoluteTime, relativeTime } from '@/lib/time';
 import { CopyButton } from './CopyButton';
@@ -42,8 +43,8 @@ export function KeyStatusPill({ lifecycle }: { lifecycle: KeyLifecycle }) {
  * unreachable by touch and gone the moment the pointer moves.
  */
 export function KeyTimeline({ lifecycle, prefix }: { lifecycle: KeyLifecycle; prefix?: string }) {
-    const { t: tc } = useUiTranslator();
-
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <dl
             className="flex flex-wrap gap-x-4 gap-y-1 text-xs"
@@ -51,38 +52,32 @@ export function KeyTimeline({ lifecycle, prefix }: { lifecycle: KeyLifecycle; pr
         >
             {prefix !== undefined && (
                 <div className="flex gap-1">
-                    <dt className="sr-only">{tc('console.prefix_74feac5e', 'Prefix')}</dt>
+                    <dt className="sr-only">{consoleT('console.prefix_74feac5e')}</dt>
                     <dd className="mono">{prefix}…</dd>
                 </div>
             )}
             {lifecycle.createdAt !== null && (
-                <Moment
-                    label={tc('console.created_d70b9e24', 'Created')}
-                    at={lifecycle.createdAt}
-                />
+                <Moment label={consoleT('console.created_d70b9e24')} at={lifecycle.createdAt} />
             )}
             {lifecycle.lastUsedAt === null ? (
                 <div className="flex gap-1">
-                    <dt className="sr-only">{tc('console.last_used_830ec7f8', 'Last used')}</dt>
-                    <dd>{tc('console.never_used_24d3236c', 'Never used')}</dd>
+                    <dt className="sr-only">{consoleT('console.last_used_830ec7f8')}</dt>
+                    <dd>{consoleT('console.never_used_24d3236c')}</dd>
                 </div>
             ) : (
-                <Moment
-                    label={tc('console.last_used_830ec7f8', 'Last used')}
-                    at={lifecycle.lastUsedAt}
-                />
+                <Moment label={consoleT('console.last_used_830ec7f8')} at={lifecycle.lastUsedAt} />
             )}
             {lifecycle.expiresAt === null ? (
                 <div className="flex gap-1">
-                    <dt className="sr-only">{tc('console.expires_f6725f3a', 'Expires')}</dt>
-                    <dd>{tc('console.no_expiry_fe06351d', 'No expiry')}</dd>
+                    <dt className="sr-only">{consoleT('console.expires_f6725f3a')}</dt>
+                    <dd>{consoleT('console.no_expiry_fe06351d')}</dd>
                 </div>
             ) : (
                 <Moment
                     label={
                         lifecycle.status === 'expired'
-                            ? tc('console.expired_424a2551', 'Expired')
-                            : tc('console.expires_f6725f3a', 'Expires')
+                            ? consoleText('console.expired_424a2551')
+                            : consoleText('console.expires_f6725f3a')
                     }
                     at={lifecycle.expiresAt}
                 />
@@ -92,15 +87,16 @@ export function KeyTimeline({ lifecycle, prefix }: { lifecycle: KeyLifecycle; pr
 }
 
 function Moment({ label, at }: { label: string; at: string }) {
-    const { locale } = useUiTranslator();
-
+    const { locale: consoleLocale } = useFormatTranslator();
     return (
         <div className="flex gap-1">
             <dt>{label}</dt>
             <dd>
                 <time dateTime={at}>
-                    {relativeTime(at, locale)}{' '}
-                    <span style={{ color: 'var(--faint)' }}>· {absoluteTime(at, locale)}</span>
+                    {relativeTime(at, consoleLocale)}{' '}
+                    <span style={{ color: 'var(--faint)' }}>
+                        · {absoluteTime(at, consoleLocale)}
+                    </span>
                 </time>
             </dd>
         </div>
@@ -145,11 +141,10 @@ export function ExpiryField({
     lifetimeError?: string;
     dateError?: string;
 }) {
-    const { t: tc } = useUiTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <div className="grid gap-3 sm:grid-cols-2 items-start">
-            <Field label={tc('console.expires_f6725f3a', 'Expires')} error={lifetimeError}>
+            <Field label={consoleT('console.expires_f6725f3a')} error={lifetimeError}>
                 <Select
                     value={lifetime}
                     onValueChange={onLifetimeChange}
@@ -162,11 +157,10 @@ export function ExpiryField({
 
             {lifetime === 'custom' && (
                 <Field
-                    label={tc('console.expiry_date_70a46a7e', 'Expiry date')}
+                    label={consoleT('console.expiry_date_70a46a7e')}
                     error={dateError}
-                    hint={tc(
-                        'console.the_key_stops_working_at_the_end_of_this_day_98c61674',
-                        'The key stops working at the end of this day (UTC).',
+                    hint={consoleT(
+                        'console.the_key_stops_working_at_the_end_of_this_day_utc_98c61674',
                     )}
                 >
                     <Input
@@ -202,14 +196,11 @@ export function RevealedKey({
     title?: string;
     children?: ReactNode;
 }) {
-    const { t: tc } = useUiTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
     const title =
         suppliedTitle ??
-        tc(
-            'console.copy_your_key_now_you_won_t_be_able_to_see_i_36d9f33f',
-            "Copy your key now \u2014 you won't be able to see it again.",
-        );
-
+        consoleFinalText('console.copy_your_key_now_you_won_t_be_able_to_see_it_again_36d9f33f');
+    const { t: consoleT } = useConsoleTranslator();
     const card = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -231,9 +222,8 @@ export function RevealedKey({
                 {title}
             </p>
             <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                {tc(
-                    'console.only_a_hash_is_stored_if_it_is_lost_revoke_i_6e39a401',
-                    'Only a hash is stored. If it is lost, revoke it and create another.',
+                {consoleT(
+                    'console.only_a_hash_is_stored_if_it_is_lost_revoke_it_and_creat_6e39a401',
                 )}
             </p>
 
@@ -242,7 +232,7 @@ export function RevealedKey({
                 <CopyButton
                     value={value}
                     variant="primary"
-                    label={tc('console.copy_key_e47c8bae', 'Copy key')}
+                    label={consoleT('console.copy_key_e47c8bae')}
                 />
             </div>
 

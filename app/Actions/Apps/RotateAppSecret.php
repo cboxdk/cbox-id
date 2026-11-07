@@ -13,6 +13,7 @@ use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Enums\SecretGrace;
@@ -65,7 +66,7 @@ final readonly class RotateAppSecret implements Action
         try {
             $rotated = $this->clients->rotateSecret($client, (int) $context->string('grace_seconds'), $context->actor());
         } catch (ClientSecretRefused $refused) {
-            throw ActionRefused::because($refused->reason->value, $refused->getMessage(), 'grace_seconds');
+            throw ActionRefused::because($refused->reason->value, FrameworkMessage::from($refused), 'grace_seconds');
         }
 
         return ActionResult::item($rotated, [

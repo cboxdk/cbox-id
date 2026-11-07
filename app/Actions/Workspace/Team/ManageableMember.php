@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Workspace\Team;
 
 use App\Actions\Workspace\InWorkspace;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Principal\Principal;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -24,11 +25,11 @@ final class ManageableMember
         $target = InWorkspace::member($workspaceId, $memberId);
 
         if ($target->role === MembershipRole::Owner) {
-            throw ActionRefused::because('not_manageable', 'The owner\'s membership changes only by transferring ownership.');
+            throw ActionRefused::because('not_manageable', new ActionMessage('console.the_owner_s_membership_changes_only_by_transferring_own_878454e4'));
         }
 
         if ($target->user_id === InWorkspace::personId($principal)) {
-            throw ActionRefused::because('not_manageable', 'You cannot change your own membership.');
+            throw ActionRefused::because('not_manageable', new ActionMessage('console.you_cannot_change_your_own_membership_236431e4'));
         }
 
         return $target;

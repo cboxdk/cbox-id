@@ -6,6 +6,7 @@ namespace App\Actions\Roles;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -65,7 +66,7 @@ final readonly class CreateRole implements Action
         $clientId = $context->nullableString('client_id');
 
         if ($clientId !== null && ! array_key_exists($clientId, $authority->usableApps($organizationId))) {
-            throw ActionRefused::because('app_not_usable', 'That app is not one this role\'s organization can use.', 'client_id');
+            throw ActionRefused::because('app_not_usable', new ActionMessage('console.that_app_is_not_one_this_role_s_organization_can_use_e20f5f60'), 'client_id');
         }
 
         $ids = array_values(array_unique(array_filter($context->array('permissions'), 'is_string')));
@@ -76,7 +77,7 @@ final readonly class CreateRole implements Action
             ->all();
 
         if (count($permissions) !== count($ids)) {
-            throw ActionRefused::because('permission_not_assignable', 'One or more of those permissions does not exist, or cannot be put on this role.', 'permissions');
+            throw ActionRefused::because('permission_not_assignable', new ActionMessage('console.one_or_more_of_those_permissions_does_not_exist_or_cann_90b8864e'), 'permissions');
         }
 
         $role = $this->roles->define($organizationId, trim($context->string('name')), $this->description($context), $clientId);

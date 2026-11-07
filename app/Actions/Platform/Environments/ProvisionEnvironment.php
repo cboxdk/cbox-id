@@ -8,12 +8,14 @@ use App\Actions\Platform\AsOperator;
 use App\Actions\Platform\PlatformOrganizationFields;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use Cbox\Id\Identity\Contracts\PasswordPolicyGuard;
@@ -79,13 +81,13 @@ final readonly class ProvisionEnvironment implements Action
 
         $problem = $this->context->runAs($target, static function () use ($email, $password): ?ActionRefused {
             if (app(Subjects::class)->findByEmail($email) !== null) {
-                return ActionRefused::because('email_taken', 'A user with that email already exists in this environment.', 'admin_email');
+                return ActionRefused::because('email_taken', new ActionMessage('console.a_user_with_that_email_already_exists_in_this_environme_1351bc58'), 'admin_email');
             }
 
             try {
                 app(PasswordPolicyGuard::class)->assertAcceptableForNewSubject($password);
             } catch (PolicyViolation $violation) {
-                return ActionRefused::because('weak_password', $violation->getMessage(), 'admin_password');
+                return ActionRefused::because('weak_password', FrameworkMessage::from($violation), 'admin_password');
             }
 
             return null;

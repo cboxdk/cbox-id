@@ -6,6 +6,7 @@ namespace App\Actions\Organizations;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -59,7 +60,7 @@ final readonly class AddOrganizationDomain implements Action
         try {
             $claimed = $this->domains->add($organization->id, $domain);
         } catch (DomainAlreadyClaimed) {
-            throw new ActionRefused('domain_taken', 'That domain is already claimed.', 409, 'domain');
+            throw new ActionRefused('domain_taken', new ActionMessage('console.that_domain_is_already_claimed_daf7c016'), 409, 'domain');
         }
 
         return ActionResult::item($claimed, DomainFields::present($claimed));

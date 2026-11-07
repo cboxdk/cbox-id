@@ -6,6 +6,7 @@ namespace App\Actions\Users;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -60,7 +61,7 @@ final readonly class UpdateUser implements Action
         $changed = $email !== null && mb_strtolower($email) !== mb_strtolower($user->email);
 
         if ($changed && User::query()->where('email', $email)->whereKeyNot($user->id)->exists()) {
-            throw ActionRefused::because('email_taken', 'Another user already uses that email in this environment.', 'email');
+            throw ActionRefused::because('email_taken', new ActionMessage('console.another_user_already_uses_that_email_in_this_environmen_a77eb37d'), 'email');
         }
 
         $this->subjects->update(

@@ -41,6 +41,17 @@ enum SecretGrace: int
         };
     }
 
+    /** A standalone duration, suitable for a localized duration label. */
+    public function duration(): string
+    {
+        return match ($this) {
+            self::Immediately => __('console.immediately_0fe556b2'),
+            self::OneHour => trans_choice('console.duration_hour', 1),
+            self::OneDay => trans_choice('console.duration_day', 1),
+            self::SevenDays => trans_choice('console.duration_day', 7),
+        };
+    }
+
     /** How long the replaced secret goes on working, as the end of a sentence. */
     public function overlap(): string
     {

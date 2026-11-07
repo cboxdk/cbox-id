@@ -48,7 +48,7 @@ beforeEach(function (): void {
 
     // The root's own host is the test host, as in RootDelegatedAccessTest.
     multiTenantDeployment((string) parse_url((string) config('app.url'), PHP_URL_HOST));
-    config(['cbox-id.oauth.dynamic_registration.mode' => 'mcp', 'api.mcp.root_oauth' => true]);
+    config(['cbox-id.issuer' => rtrim((string) config('app.url'), '/'), 'cbox-id.oauth.dynamic_registration.mode' => 'mcp', 'api.mcp.root_oauth' => true]);
 
     $this->account = provisionAccount('owner@acme.example');
 });

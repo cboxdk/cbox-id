@@ -2,41 +2,41 @@
 
 declare(strict_types=1);
 
-// Translation provenance and review scope: docs/guides/languages.md.
 return [
+    'locale_conflict' => 'Asetuksesi tai kirjautumistilisi on muuttunut. Lataa sivu uudelleen ja valitse kieli uudestaan.',
     'layout' => [
         'default_title' => 'Virhe',
         'default_heading' => 'Jokin meni pieleen',
         'default_message' => 'Tapahtui odottamaton virhe. Yritä uudelleen.',
-        'home' => 'Takaisin kojelautaan',
+        'home' => 'Takaisin yleiskatsaukseen',
         'reload' => 'Lataa uudelleen',
-        'share_trace' => 'Jaa tämä tueksi, jotta voimme seurata tapahtunutta.',
-        'copy_trace' => 'Kopioi jäljitystunnus',
-        'trace_id' => 'Trace ID',
+        'share_trace' => 'Lähetä tämä tunnus tukeen, jotta voimme selvittää, mitä tapahtui.',
+        'copy_trace' => 'Kopioi seurantatunnus',
+        'trace_id' => 'Seurantatunnus',
         'copied' => 'Kopioitu',
     ],
-    '403' => [
+    403 => [
         'title' => 'Pääsy estetty',
-        'message' => 'Sinulla ei ole lupaa katsoa tätä sivua. Jos olet sitä mieltä, että tämä on virhe, ota yhteyttä ylläpitäjääsi.',
+        'message' => 'Sinulla ei ole oikeutta nähdä tätä sivua. Jos kyseessä on mielestäsi virhe, ota yhteyttä ylläpitäjään.',
     ],
-    '404' => [
+    404 => [
         'title' => 'Sivua ei löytynyt',
-        'message' => 'Emme löytäneet etsimääsi sivua. Se on saattanut liikkua tai olla enää olemassa.',
+        'message' => 'Etsimääsi sivua ei löytynyt. Se on saatettu siirtää tai poistaa.',
     ],
-    '419' => [
-        'title' => 'Istuntosi päättyi',
-        'message' => 'Turvallisuutesi vuoksi sinut kirjattiin ulos, kun olet ollut toimeton. Lataa sivu uudelleen, jotta voit jatkaa.',
+    419 => [
+        'title' => 'Istuntosi on päättynyt',
+        'message' => 'Sinut kirjattiin turvallisuussyistä ulos, koska et ollut hetkeen aktiivinen. Jatka lataamalla sivu uudelleen.',
     ],
-    '429' => [
-        'title' => 'Liikaa pyyntöjä',
-        'message' => 'Olet tehnyt paljon pyyntöjä lyhyessä ajassa. Odota hetki, yritä sitten uudelleen.',
+    429 => [
+        'title' => 'Liian monta pyyntöä',
+        'message' => 'Lähetit monta pyyntöä lyhyessä ajassa. Odota hetki ja yritä sitten uudelleen.',
     ],
-    '500' => [
+    500 => [
         'title' => 'Jokin meni pieleen',
-        'message' => 'Meidän puolellamme tapahtui odottamaton virhe. Tiimille on ilmoitettu – uudelleenlataus auttaa yleensä.',
+        'message' => 'Palvelussamme tapahtui odottamaton virhe. Tiimille on ilmoitettu asiasta. Sivun lataaminen uudelleen yleensä auttaa.',
     ],
-    '503' => [
-        'title' => 'Alas huoltoon',
-        'message' => ':brand ei ole käytettävissä, kun hoidamme huollon. Yritä uudelleen hetken kuluttua.',
+    503 => [
+        'title' => 'Huoltotyöt käynnissä',
+        'message' => ':brand on tilapäisesti poissa käytöstä huollon vuoksi. Yritä hetken kuluttua uudelleen.',
     ],
 ];

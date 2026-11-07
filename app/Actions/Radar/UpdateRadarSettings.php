@@ -11,6 +11,7 @@ use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Radar\Enums\RadarBuiltin;
@@ -56,7 +57,7 @@ final readonly class UpdateRadarSettings implements Action
         try {
             $changes = $this->policy->updateBuiltins($context->array('builtin_rules'));
         } catch (RadarRuleInvalid $invalid) {
-            throw ActionRefused::because('invalid_setting', $invalid->getMessage(), 'builtin_rules');
+            throw ActionRefused::because('invalid_setting', FrameworkMessage::from($invalid), 'builtin_rules');
         }
 
         if ($changes !== []) {

@@ -6,6 +6,7 @@ namespace App\Actions\Sso;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -57,7 +58,7 @@ final readonly class ActivateSsoConnection implements Action
         // everybody at its domains to a sign-in that cannot work.
         if (in_array($connection->type, [ConnectionType::Saml, ConnectionType::Oidc], true)
             && ! SsoFields::isComplete($connection->type, SsoFields::config($connection))) {
-            throw ActionRefused::because('incomplete_connection', 'This connection is missing its identity provider\'s details. Complete it before activating.');
+            throw ActionRefused::because('incomplete_connection', new ActionMessage('console.this_connection_is_missing_its_identity_provider_s_deta_b5943e9d'));
         }
 
         $this->connections->activate($connection->organization_id, $connection->id);

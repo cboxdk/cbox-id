@@ -1,5 +1,4 @@
-import { useConsoleCount } from '@/i18n/count';
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -68,9 +67,27 @@ export default function Customers({
     environmentLimits,
     help,
 }: Props) {
-    const { t: tc } = useTranslator();
-    const plural = useConsoleCount();
+    const { choice: consoleChoice } = useConsoleTranslator();
+    function plural(
+        count: number,
+        noun: 'member' | 'project' | 'environment' | 'workspace' | 'organization',
+    ): string {
+        const keys = {
+            member: 'console.count_members',
+            project: 'console.count_projects',
+            environment: 'console.count_environments',
+            workspace: 'console.count_workspaces',
+            organization: 'console.count_organizations',
+        } as const;
+        return consoleChoice(keys[noun], count);
+    }
 
+    const { t: consoleFinalText } = useConsoleTranslator();
+
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [term, setTerm] = useState(search);
     const [creating, setCreating] = useState(false);
     const [confirming, setConfirming] = useState<CustomerRow | null>(null);
@@ -95,15 +112,18 @@ export default function Customers({
         <>
             <PageHeader
                 help={help}
-                description={tc('console.every_workspace_on_this_install_open_one_to__4abbea51')}
+                description={consoleT(
+                    'console.every_workspace_on_this_install_open_one_to_walk_its_pr_4abbea51',
+                )}
                 actions={
                     <Button
                         variant="primary"
                         aria-expanded={creating}
                         onClick={() => setCreating((open) => !open)}
                     >
-                        <Icon name="plus" className="w-4 h-4" />
-                        {tc('console.new_workspace_df0caf1b')}
+                        {consoleRich('console._part1_new_workspace_b18271fa', {
+                            part1: <Icon name="plus" className="w-4 h-4" />,
+                        })}
                     </Button>
                 }
             />
@@ -130,14 +150,15 @@ export default function Customers({
                 <Input
                     type="search"
                     style={{ maxWidth: '24rem' }}
-                    placeholder={tc('console.search_by_name_or_slug_bfd8464a')}
-                    aria-label={tc('console.search_workspaces_c0cd6bdf')}
+                    placeholder={consoleUiText('console.search_by_name_or_slug_bfd8464a')}
+                    aria-label={consoleT('console.search_workspaces_c0cd6bdf')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
                 <output className="sr-only">
-                    {plural(pagination.count, 'workspace')}
-                    {tc('console.on_this_page_d8ae7c64')}
+                    {consoleRich('console._part1_on_this_page_adc43d3b', {
+                        part1: plural(pagination.count, 'workspace'),
+                    })}
                 </output>
             </div>
 
@@ -151,24 +172,25 @@ export default function Customers({
                     {search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={tc('console.no_workspaces_match_value0_be4602eb', {
-                                value0: search,
+                            title={consoleFinalText('console.no_workspaces_match_part1_013d5449', {
+                                part1: search,
                             })}
-                            description={tc(
-                                'console.try_part_of_the_organization_name_or_its_slu_51fd9569',
+                            description={consoleT(
+                                'console.try_part_of_the_organization_name_or_its_slug_51fd9569',
                             )}
                         />
                     ) : (
                         <EmptyState
                             icon="settings"
-                            title={tc('console.no_workspaces_yet_97d0b117')}
-                            description={tc(
-                                'console.a_workspace_appears_here_the_moment_somebody_ce907423',
+                            title={consoleT('console.no_workspaces_yet_97d0b117')}
+                            description={consoleT(
+                                'console.a_workspace_appears_here_the_moment_somebody_signs_up_o_ce907423',
                             )}
                             actions={
                                 <Button variant="primary" onClick={() => setCreating(true)}>
-                                    <Icon name="plus" className="w-4 h-4" />
-                                    {tc('console.new_workspace_df0caf1b')}
+                                    {consoleRich('console._part1_new_workspace_b18271fa', {
+                                        part1: <Icon name="plus" className="w-4 h-4" />,
+                                    })}
                                 </Button>
                             }
                         />
@@ -185,26 +207,26 @@ export default function Customers({
                     <div className="cbx-panel overflow-hidden mt-8">
                         <div className="overflow-x-auto">
                             <Table
-                                caption={tc(
-                                    'console.workspaces_on_this_install_with_the_size_of__23b98cfe',
+                                caption={consoleUiText(
+                                    'console.workspaces_on_this_install_with_the_size_of_each_estate_23b98cfe',
                                 )}
                             >
                                 <thead>
                                     <tr>
-                                        <Th>{tc('console.workspace_87bb59ba')}</Th>
+                                        <Th>{consoleT('console.workspace_87bb59ba')}</Th>
                                         <Th className="text-right">
-                                            {tc('console.members_1044a4c0')}
+                                            {consoleT('console.members_1044a4c0')}
                                         </Th>
                                         <Th className="text-right">
-                                            {tc('console.projects_04e2a972')}
+                                            {consoleT('console.projects_04e2a972')}
                                         </Th>
                                         <Th className="text-right">
-                                            {tc('console.environments_07437cd6')}
+                                            {consoleT('console.environments_07437cd6')}
                                         </Th>
-                                        <Th>{tc('console.created_d70b9e24')}</Th>
+                                        <Th>{consoleT('console.created_d70b9e24')}</Th>
                                         <Th>
                                             <span className="sr-only">
-                                                {tc('console.actions_ff8059dc')}
+                                                {consoleT('console.actions_ff8059dc')}
                                             </span>
                                         </Th>
                                     </tr>
@@ -225,7 +247,7 @@ export default function Customers({
                                                             tone="destructive"
                                                             className="align-middle ml-1"
                                                         >
-                                                            {tc('console.suspended_e392a389')}
+                                                            {consoleT('console.suspended_e392a389')}
                                                         </Pill>
                                                     )}
                                                 </p>
@@ -248,29 +270,38 @@ export default function Customers({
                                             <CountCell
                                                 href={customer.href}
                                                 count={customer.members}
-                                                label={tc('console.value0_on_value1_37b189db', {
-                                                    value0: plural(customer.members, 'member'),
-                                                    value1: customer.name,
-                                                })}
+                                                label={consoleFinalText(
+                                                    'console._part1_on_part2_3c852fb3',
+                                                    {
+                                                        part1: plural(customer.members, 'member'),
+                                                        part2: customer.name,
+                                                    },
+                                                )}
                                             />
                                             <CountCell
                                                 href={customer.href}
                                                 count={customer.projects}
-                                                label={tc('console.value0_on_value1_37b189db', {
-                                                    value0: plural(customer.projects, 'project'),
-                                                    value1: customer.name,
-                                                })}
+                                                label={consoleFinalText(
+                                                    'console._part1_on_part2_3c852fb3',
+                                                    {
+                                                        part1: plural(customer.projects, 'project'),
+                                                        part2: customer.name,
+                                                    },
+                                                )}
                                             />
                                             <CountCell
                                                 href={customer.href}
                                                 count={customer.environments}
-                                                label={tc('console.value0_on_value1_37b189db', {
-                                                    value0: plural(
-                                                        customer.environments,
-                                                        'environment',
-                                                    ),
-                                                    value1: customer.name,
-                                                })}
+                                                label={consoleFinalText(
+                                                    'console._part1_on_part2_3c852fb3',
+                                                    {
+                                                        part1: plural(
+                                                            customer.environments,
+                                                            'environment',
+                                                        ),
+                                                        part2: customer.name,
+                                                    },
+                                                )}
                                             />
 
                                             <Td
@@ -284,12 +315,12 @@ export default function Customers({
                                                 <Button asChild size="sm">
                                                     <Link
                                                         href={customer.href}
-                                                        aria-label={tc(
-                                                            'console.open_value0_f5734efb',
-                                                            { value0: customer.name },
+                                                        aria-label={consoleFinalText(
+                                                            'console.open_part1_10c0f8b9',
+                                                            { part1: customer.name },
                                                         )}
                                                     >
-                                                        {tc('console.open_ed077f3d')}
+                                                        {consoleT('console.open_ed077f3d')}
                                                     </Link>
                                                 </Button>
                                                 <Button
@@ -298,12 +329,14 @@ export default function Customers({
                                                     variant={customer.active ? 'danger' : 'primary'}
                                                     // Named for the row: see the same
                                                     // control on the Organizations list.
-                                                    aria-label={`${customer.active ? 'Suspend' : 'Reactivate'} ${customer.name}`}
+                                                    aria-label={`${customer.active ? consoleText('console.suspend_4948e134') : consoleText('console.reactivate_2dc7478f')} ${customer.name}`}
                                                     onClick={() => setConfirming(customer)}
                                                 >
                                                     {customer.active
-                                                        ? tc('console.suspend_4948e134')
-                                                        : tc('console.reactivate_2dc7478f')}
+                                                        ? consoleText('console.suspend_4948e134')
+                                                        : consoleText(
+                                                              'console.reactivate_2dc7478f',
+                                                          )}
                                                 </Button>
                                             </Td>
                                         </tr>
@@ -316,8 +349,6 @@ export default function Customers({
                     <div className="mt-4">
                         <SimplePagination
                             pagination={pagination}
-                            noun={tc('console.workspace_21a3230e')}
-                            pluralNoun={tc('console.workspaces_6e8d7998')}
                             href={(page) => listHref(search, page)}
                         />
                     </div>
@@ -325,11 +356,17 @@ export default function Customers({
             )}
 
             <p className="mt-6 text-xs" style={{ color: 'var(--faint)' }}>
-                {tc('console.suspension_is_the_only_lever_here_and_it_is__2acf8690')}{' '}
-                <Link href={environmentsHref} className="underline">
-                    {tc('console.environments_07437cd6')}
-                </Link>
-                .
+                {consoleRich(
+                    'console.suspension_is_the_only_lever_here_and_it_is_reversible_84455a59',
+                    {
+                        part1: ' ',
+                        part2: (
+                            <Link href={environmentsHref} className="underline">
+                                {consoleT('console.environments_07437cd6')}
+                            </Link>
+                        ),
+                    },
+                )}
             </p>
 
             {/*
@@ -343,21 +380,24 @@ export default function Customers({
                 title={
                     confirming === null
                         ? ''
-                        : `${confirming.active ? 'Suspend' : 'Reactivate'} ${confirming.name}?`
+                        : `${confirming.active ? consoleText('console.suspend_4948e134') : consoleText('console.reactivate_2dc7478f')} ${confirming.name}?`
                 }
                 description={
                     confirming === null
                         ? ''
                         : confirming.active
-                          ? tc('console.its_members_are_signed_out_and_all_value0_it_9e9957fc', {
-                                value0: plural(confirming.environments, 'environment'),
-                            })
-                          : tc('console.its_members_can_sign_in_again_and_its_enviro_d369bd33')
+                          ? consoleFinalText(
+                                'console.its_members_are_signed_out_and_all_part1_it_owns_stop_s_80b419eb',
+                                { part1: plural(confirming.environments, 'environment') },
+                            )
+                          : consoleText(
+                                'console.its_members_can_sign_in_again_and_its_environments_resu_d369bd33',
+                            )
                 }
                 footer={
                     <>
                         <Button onClick={() => setConfirming(null)}>
-                            {tc('console.cancel_19766ed6')}
+                            {consoleT('console.cancel_19766ed6')}
                         </Button>
                         <Button
                             variant={confirming?.active === true ? 'danger' : 'primary'}
@@ -371,8 +411,8 @@ export default function Customers({
                             }}
                         >
                             {confirming?.active === true
-                                ? tc('console.suspend_4948e134')
-                                : tc('console.reactivate_2dc7478f')}
+                                ? consoleText('console.suspend_4948e134')
+                                : consoleText('console.reactivate_2dc7478f')}
                         </Button>
                     </>
                 }
@@ -400,8 +440,7 @@ function CreateCustomer({
     limits: number[];
     onDone: () => void;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({
         name: '',
         ownerName: '',
@@ -416,7 +455,7 @@ function CreateCustomer({
     }, []);
 
     return (
-        <Panel title={tc('console.new_workspace_df0caf1b')} className="mt-6">
+        <Panel title={consoleT('console.new_workspace_df0caf1b')} className="mt-6">
             <form
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -424,13 +463,15 @@ function CreateCustomer({
                 }}
             >
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    {tc('console.creates_the_organization_its_owner_its_first_79cca112')}
+                    {consoleT(
+                        'console.creates_the_organization_its_owner_its_first_product_an_79cca112',
+                    )}
                 </p>
 
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                     <div className="sm:col-span-2">
                         <Field
-                            label={tc('console.workspace_name_9619649d')}
+                            label={consoleT('console.workspace_name_9619649d')}
                             error={form.errors.name}
                         >
                             <Input
@@ -443,7 +484,10 @@ function CreateCustomer({
                         </Field>
                     </div>
 
-                    <Field label={tc('console.owner_name_0c19629c')} error={form.errors.ownerName}>
+                    <Field
+                        label={consoleT('console.owner_name_0c19629c')}
+                        error={form.errors.ownerName}
+                    >
                         <Input
                             name="ownerName"
                             autoComplete="name"
@@ -453,8 +497,10 @@ function CreateCustomer({
                     </Field>
 
                     <Field
-                        label={tc('console.owner_email_cbc7ec6d')}
-                        hint={tc('console.if_this_address_already_holds_a_cbox_id_it_i_88a57e1d')}
+                        label={consoleT('console.owner_email_cbc7ec6d')}
+                        hint={consoleT(
+                            'console.if_this_address_already_holds_a_cbox_id_it_is_reused_th_88a57e1d',
+                        )}
                         error={form.errors.ownerEmail}
                     >
                         <Input
@@ -467,8 +513,10 @@ function CreateCustomer({
                     </Field>
 
                     <Field
-                        label={tc('console.environment_allowance_f277ec0f')}
-                        hint={tc('console.the_plan_allowance_on_their_first_product_bi_982af408')}
+                        label={consoleT('console.environment_allowance_f277ec0f')}
+                        hint={consoleT(
+                            'console.the_plan_allowance_on_their_first_product_billing_hangs_982af408',
+                        )}
                         error={form.errors.environmentLimit}
                     >
                         <Select
@@ -486,10 +534,10 @@ function CreateCustomer({
 
                 <div className="mt-6 flex items-center gap-3">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        {tc('console.create_workspace_4b892277')}
+                        {consoleT('console.create_workspace_4b892277')}
                     </Button>
                     <Button type="button" onClick={onDone}>
-                        {tc('console.cancel_19766ed6')}
+                        {consoleT('console.cancel_19766ed6')}
                     </Button>
                 </div>
             </form>

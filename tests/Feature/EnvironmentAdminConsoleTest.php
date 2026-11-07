@@ -313,6 +313,7 @@ it('admits owner, admin, and developer to the env-admin session', function (): v
     $admit = ['owner' => $owner];
     foreach ([MembershipRole::Admin, MembershipRole::Developer] as $role) {
         [$m, $mSubjectId] = addMember($account->id, $role, $role->value.'-ok@acme.example');
+        grantNativeProductRoles($m, [$role->value]);
         $admit[$role->value] = $m;
     }
 
@@ -344,6 +345,7 @@ it('refuses to mint a handoff for a reachable-but-unprivileged member (fail befo
     // A developer is handed to the environment host to redeem — a self-submitting form
     // carrying the token, not a 403.
     [$dev, $devSubjectId] = addMember($account->id, MembershipRole::Developer, 'dev-mint@acme.example');
+    grantNativeProductRoles($dev, ['developer']);
     signInAsMember($devSubjectId);
     $this->get($open)->assertOk()->assertSee('/admin/handoff', false);
 });

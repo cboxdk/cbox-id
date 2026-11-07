@@ -5,7 +5,7 @@
     "scripts": {
         "build": "vite build",
         "dev": "vite",
-        "typecheck": "node bin/generate-ui-routes.mjs --with-form && tsc --noEmit",
+        "typecheck": "node bin/generate-ui-routes.mjs --with-form --skip-actions && tsc --noEmit",
         "lint": "oxlint",
         "lint:fix": "oxlint --fix",
         "format": "prettier --write resources/js resources/css",

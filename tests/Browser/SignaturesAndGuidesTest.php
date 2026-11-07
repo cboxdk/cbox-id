@@ -82,6 +82,7 @@ it('registers a Standard Webhooks endpoint and moves it back to Cbox behind a ty
 
 it('guides an IT administrator through AD FS with AD FS\'s own labels', function (): void {
     $org = app(Organizations::class)->create(new NewOrganization('Acme Guides', 'acme-guides-browser'))->id;
+    grantFeature($org, 'cbox-id-sso');
     $token = app(AdminPortal::class)->generate($org, PortalScope::only(PortalIntent::Sso), 'sub_minter');
 
     $page = visit('/setup/'.$token);

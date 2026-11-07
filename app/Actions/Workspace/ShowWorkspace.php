@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\Workspace;
 
-use App\Http\Resources\Workspace\ProjectResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
 use App\Platform\Actions\ActionPlane;
@@ -16,7 +15,6 @@ use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\InputSchema;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\PlatformRoot;
 
 /**
@@ -32,7 +30,7 @@ use Cbox\Id\Platform\PlatformRoot;
  */
 #[AsAction(
     name: 'workspace.get',
-    summary: 'Get the workspace: its name and status, and each project\'s plan for a role that may read billing.',
+    summary: 'Get the current workspace identity: its id, name and status. No operational or financial records.',
     scope: 'workspace:read',
     danger: Danger::Read,
     plane: ActionPlane::Workspace,
@@ -45,7 +43,6 @@ final readonly class ShowWorkspace implements Action
 {
     public function __construct(
         private Organizations $organizations,
-        private OrganizationProjects $projects,
         private PlatformRoot $platformRoot,
     ) {}
 
@@ -69,13 +66,6 @@ final readonly class ShowWorkspace implements Action
             'name' => $organization->name,
             'status' => $organization->status->value,
         ];
-
-        if (InWorkspace::capabilities($context->principal)?->canReadBilling() === true) {
-            $payload['projects'] = $this->projects->forOrganization($organization->id)
-                ->map(ProjectResource::from(...))
-                ->values()
-                ->all();
-        }
 
         return ActionResult::item($organization, $payload);
     }

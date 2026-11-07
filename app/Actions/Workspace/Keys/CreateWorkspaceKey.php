@@ -8,6 +8,7 @@ use App\Actions\Workspace\InWorkspace;
 use App\Http\Resources\Workspace\KeyResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
@@ -112,7 +113,7 @@ final readonly class CreateWorkspaceKey implements Action
     private function bounded(OrganizationApiKey $parent, MembershipRole $role, ?array $scopes, ?CarbonImmutable $expiresAt): array
     {
         if ($role->outranks($parent->role)) {
-            throw ActionRefused::because('role_exceeds_parent', "A key can only mint keys at or below its own role ({$parent->role->value}).", 'role');
+            throw ActionRefused::because('role_exceeds_parent', new ActionMessage('console.a_key_can_only_mint_keys_at_or_below_its_own_role_part1_18720100', ['part1' => (string) ($parent->role->value)]), 'role');
         }
 
         if ($parent->scopes !== null) {
@@ -120,7 +121,7 @@ final readonly class CreateWorkspaceKey implements Action
             $wider = array_values(array_diff($scopes, $parent->scopes));
 
             if ($wider !== []) {
-                throw ActionRefused::because('scope_exceeds_parent', 'A key can only mint keys within its own scopes. Not held by this key: '.implode(', ', $wider).'.', 'scopes');
+                throw ActionRefused::because('scope_exceeds_parent', new ActionMessage('console.a_key_can_only_mint_keys_within_its_own_scopes_not_held_e7bd86d4', ['part1' => (string) (implode(', ', $wider))]), 'scopes');
             }
         }
 
@@ -130,7 +131,7 @@ final readonly class CreateWorkspaceKey implements Action
             if ($expiresAt === null) {
                 $expiresAt = $ceiling;
             } elseif ($expiresAt->greaterThan($ceiling)) {
-                throw ActionRefused::because('expiry_exceeds_parent', 'A key-minted key must expire by '.$ceiling->toIso8601String().', when the key minting it does.', 'expires_at');
+                throw ActionRefused::because('expiry_exceeds_parent', new ActionMessage('console.a_key_minted_key_must_expire_by_part1_when_the_key_mint_1daea10d', ['part1' => (string) ($ceiling->toIso8601String())]), 'expires_at');
             }
         }
 

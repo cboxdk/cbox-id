@@ -6,7 +6,7 @@ namespace App\Http\Props\Shell;
 
 use App\Http\Props\Prop;
 use App\Platform\Console\ConsoleSynonyms;
-use App\Platform\Locale\ConsoleStrings;
+use App\Platform\Locale\ConsoleLabels;
 
 /**
  * One entry in the console's second tier.
@@ -46,7 +46,7 @@ final readonly class NavPageProps implements Prop
         return [
             'route' => $this->route,
             'href' => $this->href,
-            'label' => ConsoleStrings::text($this->label),
+            'label' => ConsoleLabels::navigation($this->label),
             'active' => $this->active,
             'badge' => $this->badge,
             'count' => $this->count,

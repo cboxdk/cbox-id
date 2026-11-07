@@ -116,6 +116,12 @@ final class ConsoleCrawl
 
         $seeder = new DemoEnvironmentSeeder;
         $seeder->run();
+        // The demo seeder installs its own root; publish the catalog before exercising
+        // native pages, and explicitly grant this positive navigation fixture its features.
+        \syncNativeProductCatalog();
+        foreach (['cbox-id-sso', 'cbox-id-scim', 'cbox-id-audit-logs'] as $feature) {
+            \grantFeature($seeder->workspace->id, $feature);
+        }
 
         return $seeder;
     }

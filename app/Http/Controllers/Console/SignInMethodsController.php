@@ -9,7 +9,7 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentEnvironment;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
+use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Radar\Enums\RadarMode;
 use App\Platform\Radar\RadarPolicy;
 use App\Platform\SelfServiceSignup;
@@ -22,6 +22,7 @@ use Cbox\Id\Identity\Contracts\SignInMethods;
 use Cbox\Id\Identity\Contracts\SmsFactorPolicies;
 use Cbox\Id\Identity\Enums\MfaRequirement;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
+use Illuminate\Support\Facades\Lang;
 use Inertia\Response;
 
 /**
@@ -74,7 +75,7 @@ final readonly class SignInMethodsController extends ConsoleController
         }
 
         $organizationId = $onEnvironment ? null : $this->scope->requireOrganizationId();
-        $organizationName = $onEnvironment ? null : ($this->scope->organizationName() ?? ConsoleStrings::message('console.this_organization_cab32fc4'));
+        $organizationName = $onEnvironment ? null : ($this->scope->organizationName() ?? Lang::string('console.this_organization_cab32fc4'));
 
         $policy = $policies->resolve($organizationId);
         $smsPolicy = $sms->forEnvironment();
@@ -82,7 +83,7 @@ final readonly class SignInMethodsController extends ConsoleController
         // Require SSO refuses every other way in — so the rows below it must say so rather
         // than reading "on" for a door that is shut.
         $ssoOnly = $policy->sso === SsoEnforcement::Required;
-        $shut = ConsoleStrings::message('console.refused_while_enterprise_sso_is_required_d6be9547');
+        $shut = __('console.refused_while_enterprise_sso_is_required_d6be9547');
 
         // Links only to pages THIS console has; an environment-only page is no link at all
         // on an organization console.
@@ -92,14 +93,14 @@ final readonly class SignInMethodsController extends ConsoleController
         // environment's. On anybody else's they are rows without a link.
         $managesEnvironment = $this->scope->administersEnvironment();
         $methodsHref = $managesEnvironment ? $policyHref.'#sign-in-methods' : null;
-        $methodsLabel = $managesEnvironment ? ConsoleStrings::message('console.sign_in_methods_477be867') : null;
+        $methodsLabel = $managesEnvironment ? Lang::string('console.sign_in_methods_477be867') : null;
 
         $selfService = SelfServiceSignup::enabledFor($environment->get());
         $signupHere = $signup->decidedByEnvironment();
 
-        return $this->page('console/sign-in-methods', ConsoleStrings::text(Vocabulary::SIGN_IN_METHODS), [
+        return $this->page('console/sign-in-methods', Lang::string('console.sign_in_methods_477be867'), [
             'help' => HelpProps::for(HelpTopic::SignInMethods),
-            'environmentName' => $environment->name() ?? ConsoleStrings::message('console.this_environment_42756031'),
+            'environmentName' => $environment->name() ?? __('console.this_environment_42756031'),
             'organizationName' => $organizationName,
             'ssoOnly' => $ssoOnly,
             // Where "relaxed on Authentication policy" happens — the callout names the page,
@@ -107,26 +108,26 @@ final readonly class SignInMethodsController extends ConsoleController
             'policyHref' => $policyHref,
             'sections' => [
                 [
-                    'title' => ConsoleStrings::message('console.ways_in_274cf288'),
-                    'description' => ConsoleStrings::message('console.what_a_person_can_use_to_prove_who_they_are__796b0ff4'),
+                    'title' => __('console.ways_in_274cf288'),
+                    'description' => __('console.what_a_person_can_use_to_prove_who_they_are_on_your_sig_796b0ff4'),
                     'rows' => [
-                        self::row('password', 'Password', $ssoOnly ? 'off' : 'on',
-                            $ssoOnly ? $shut : ConsoleStrings::message('console.at_least_6ac7341f').$policy->minLength.ConsoleStrings::message('console.characters_359563da')
-                                .($policy->requireBreachCheck ? ConsoleStrings::message('console.breached_passwords_refused_3815f63a') : '')
-                                .($policy->lockoutThreshold !== null ? ConsoleStrings::message('console.locked_after_9ddaaf88').$policy->lockoutThreshold.ConsoleStrings::message('console.failed_attempts_6b2be7ea') : '').'.',
-                            $onEnvironment ? 'environment' : 'organization', $policyHref, ConsoleStrings::message('console.password_rules_1960dce0')),
-                        self::method('passkeys', 'Passkeys', $ssoOnly, $shut,
+                        self::row('password', __('console.password_e7cf3ef4'), $ssoOnly ? 'off' : 'on',
+                            $ssoOnly ? $shut : __('console.password_policy_minimum', ['count' => $policy->minLength])
+                                .($policy->requireBreachCheck ? ' '.__('console.breached_passwords_refused') : '')
+                                .($policy->lockoutThreshold !== null ? ' '.__('console.password_policy_lockout', ['count' => $policy->lockoutThreshold]) : ''),
+                            $onEnvironment ? 'environment' : 'organization', $policyHref, __('console.password_rules_1960dce0')),
+                        self::method('passkeys', __('console.passkeys_c87ccdb4'), $ssoOnly, $shut,
                             enabled: $methods->passkeysEnabled(),
                             deploymentAllows: $methods->deploymentAllowsPasskeys(),
-                            on: ConsoleStrings::message('console.offered_a_person_adds_one_from_their_own_acc_8d7b4dc0'),
-                            off: ConsoleStrings::message('console.off_for_this_environment_passkeys_people_alr_035a80ca'),
+                            on: __('console.offered_a_person_adds_one_from_their_own_account_face_i_8d7b4dc0'),
+                            off: __('console.off_for_this_environment_passkeys_people_already_added_035a80ca'),
                             variable: 'CBOX_ID_PASSKEYS_ENABLED',
                             href: $methodsHref, hrefLabel: $methodsLabel),
-                        self::method('magic-link', ConsoleStrings::message('console.magic_link_a8a8b124'), $ssoOnly, $shut,
+                        self::method('magic-link', __('console.magic_link_a8a8b124'), $ssoOnly, $shut,
                             enabled: $methods->magicLinkEnabled(),
                             deploymentAllows: $methods->deploymentAllowsMagicLink(),
-                            on: ConsoleStrings::message('console.offered_a_one_time_sign_in_link_by_email_d671529d'),
-                            off: ConsoleStrings::message('console.off_for_this_environment_links_already_sent__dacbfa2d'),
+                            on: __('console.offered_a_one_time_sign_in_link_by_email_d671529d'),
+                            off: __('console.off_for_this_environment_links_already_sent_no_longer_w_dacbfa2d'),
                             variable: 'CBOX_ID_MAGIC_LINK_ENABLED',
                             href: $methodsHref, hrefLabel: $methodsLabel),
                         $this->socialRow($providers, $organizationId, $organizationName, $ssoOnly, $shut),
@@ -134,52 +135,52 @@ final readonly class SignInMethodsController extends ConsoleController
                     ],
                 ],
                 [
-                    'title' => ConsoleStrings::message('console.second_factor_e3e01045'),
-                    'description' => ConsoleStrings::message('console.what_is_asked_for_after_the_first_step_and_f_31533be6'),
+                    'title' => __('console.second_factor_e3e01045'),
+                    'description' => __('console.what_is_asked_for_after_the_first_step_and_from_whom_31533be6'),
                     'rows' => [
-                        self::row('mfa', ConsoleStrings::message('console.two_factor_authentication_b6824cc8'), match ($policy->mfa) {
+                        self::row('mfa', __('console.two_factor_authentication_b6824cc8'), match ($policy->mfa) {
                             MfaRequirement::Off => 'off',
                             MfaRequirement::Optional => 'optional',
                             MfaRequirement::Required => 'on',
                         }, match ($policy->mfa) {
-                            MfaRequirement::Off => ConsoleStrings::message('console.not_offered_67336c47'),
-                            MfaRequirement::Optional => ConsoleStrings::message('console.optional_people_may_enrol_an_authenticator_a_f89148a0'),
-                            MfaRequirement::Required => ConsoleStrings::message('console.required_everyone_enrols_before_they_can_sig_d9c901be'),
-                        }, $onEnvironment ? 'environment' : 'organization', $policyHref, ConsoleStrings::message('console.two_factor_rule_9dfa468a')),
-                        self::row('sms', ConsoleStrings::message('console.text_message_codes_9f1561f0'), $smsPolicy->enabled ? 'on' : 'off',
+                            MfaRequirement::Off => __('console.not_offered_67336c47'),
+                            MfaRequirement::Optional => __('console.optional_people_may_enrol_an_authenticator_app_or_a_pas_f89148a0'),
+                            MfaRequirement::Required => __('console.required_everyone_enrols_before_they_can_sign_in_d9c901be'),
+                        }, $onEnvironment ? 'environment' : 'organization', $policyHref, __('console.two_factor_rule_9dfa468a')),
+                        self::row('sms', __('console.text_message_codes_9f1561f0'), $smsPolicy->enabled ? 'on' : 'off',
                             $smsPolicy->enabled
-                                ? ConsoleStrings::message('console.accepted_as_a_second_factor_in_e4533020').count($smsPolicy->allowedCountries).' '.(count($smsPolicy->allowedCountries) === 1 ? ConsoleStrings::message('console.country_aff64e4f') : ConsoleStrings::message('console.countries_e45d4cba')).'.'
-                                : ConsoleStrings::message('console.off_the_weakest_second_factor_turn_it_on_onl_3c27fef3'),
-                            'environment', $managesEnvironment ? $policyHref.'#sms' : null, $managesEnvironment ? ConsoleStrings::message('console.sms_settings_e3d8a098') : null),
+                                ? trans_choice('console.sms_allowed_country_count', count($smsPolicy->allowedCountries))
+                                : __('console.off_the_weakest_second_factor_turn_it_on_only_for_peopl_3c27fef3'),
+                            'environment', $managesEnvironment ? $policyHref.'#sms' : null, $managesEnvironment ? Lang::string('console.sms_settings_e3d8a098') : null),
                     ],
                 ],
                 [
-                    'title' => ConsoleStrings::message('console.who_may_get_in_2c4588de'),
-                    'description' => ConsoleStrings::message('console.who_can_create_an_account_and_what_is_stoppe_7b1beba9'),
+                    'title' => __('console.who_may_get_in_2c4588de'),
+                    'description' => __('console.who_can_create_an_account_and_what_is_stopped_at_the_do_7b1beba9'),
                     'rows' => [
-                        self::row('sign-up', ConsoleStrings::message('console.self_service_sign_up_613527ff'), ($signupHere ? $selfService : $signup->isOpen()) ? 'on' : 'off',
+                        self::row('sign-up', __('console.self_service_sign_up_613527ff'), ($signupHere ? $selfService : $signup->isOpen()) ? 'on' : 'off',
                             ($signupHere ? $selfService : $signup->isOpen())
-                                ? ConsoleStrings::message('console.anyone_can_create_an_account_and_their_own_o_51d3b48d')
-                                : ConsoleStrings::message('console.invitation_only_b58c63d9'),
+                                ? __('console.anyone_can_create_an_account_and_their_own_organization_51d3b48d')
+                                : __('console.invitation_only_b58c63d9'),
                             $signupHere ? 'environment' : 'deployment',
                             $signupHere && $managesEnvironment ? $policyHref.'#sign-up' : null,
-                            $signupHere && $managesEnvironment ? 'Sign-up' : null,
+                            $signupHere && $managesEnvironment ? Lang::string('console.sign_up_3cc08ebe') : null,
                             $signupHere ? null : 'CBOX_ID_SIGNUP_MODE'),
                         self::row('radar', Vocabulary::RADAR, $radar->mode() === RadarMode::Enforce ? 'on' : 'optional',
                             $radar->mode() === RadarMode::Enforce
-                                ? ConsoleStrings::message('console.enforcing_risky_sign_ins_and_sign_ups_are_ch_e40c9e5a')
-                                : ConsoleStrings::message('console.monitoring_every_attempt_is_judged_and_recor_64218596'),
-                            'environment', $onEnvironment ? route('environment.radar') : null, $onEnvironment ? 'Radar' : null),
+                                ? __('console.enforcing_risky_sign_ins_and_sign_ups_are_challenged_or_e40c9e5a')
+                                : __('console.monitoring_every_attempt_is_judged_and_recorded_none_is_64218596'),
+                            'environment', $onEnvironment ? route('environment.radar') : null, $onEnvironment ? Lang::string('console.radar_524f8327') : null),
                         $this->botChallengeRow($turnstile, $methodsHref, $methodsLabel),
                     ],
                 ],
                 [
-                    'title' => ConsoleStrings::message('console.sessions_6fa3cbf4'),
-                    'description' => ConsoleStrings::message('console.how_long_a_sign_in_lasts_96629eff'),
+                    'title' => __('console.sessions_6fa3cbf4'),
+                    'description' => __('console.how_long_a_sign_in_lasts_96629eff'),
                     'rows' => [
                         $this->sessionRow($methods, $policies->forEnvironment()->sessionIdleMinutes, $policies->forEnvironment()->sessionAbsoluteMinutes, $methodsHref, $methodsLabel),
-                        self::row('tokens', ConsoleStrings::message('console.access_token_lifetime_f859ecdd'), 'on',
-                            ConsoleStrings::message('console.set_per_app_under_its_settings_tab_c8067284'),
+                        self::row('tokens', __('console.access_token_lifetime_f859ecdd'), 'on',
+                            __('console.set_per_app_under_its_settings_tab_c8067284'),
                             'environment', $this->url('clients'), Vocabulary::APPLICATIONS),
                     ],
                 ],
@@ -206,23 +207,23 @@ final readonly class SignInMethodsController extends ConsoleController
 
             return self::row('social', Vocabulary::SOCIAL_LOGIN, $offered === [] || $ssoOnly ? 'off' : 'on',
                 match (true) {
-                    $offered === [] => ConsoleStrings::message('console.none_on_cdbb1887').$organizationName.ConsoleStrings::message('console.s_sign_in_page_41d7ac63'),
+                    $offered === [] => __('console.organization_no_social_provider', ['organization' => $organizationName]),
                     $ssoOnly => $shut,
-                    default => implode(', ', $names).' — '.($own === 0 ? ConsoleStrings::message('console.all_from_the_environment_a74572a7') : $own.ConsoleStrings::message('console.of_them_b53f8b4c').$organizationName.ConsoleStrings::message('console.s_own_the_rest_from_the_environment_6359c557')),
+                    default => $own === 0 ? __('console.social_providers_inherited', ['providers' => implode(', ', $names)]) : __('console.social_providers_owned', ['providers' => implode(', ', $names), 'count' => $own, 'organization' => $organizationName]),
                 },
-                'environment', $href, $offered === [] ? 'Add a provider' : 'Manage',
-                ceiling: ConsoleStrings::message('console.every_organization_inherits_the_environment__82f49a7b'));
+                'environment', $href, $offered === [] ? __('console.add_a_provider_f03153fc') : __('console.manage_5a234448'),
+                ceiling: __('console.every_organization_inherits_the_environment_s_providers_82f49a7b'));
         }
 
         $byOrganization = Connection::query()->whereNotNull('organization_id')->whereNotNull('provider')->distinct()->count('organization_id');
 
         return self::row('social', Vocabulary::SOCIAL_LOGIN, $offered === [] || $ssoOnly ? 'off' : 'on',
             match (true) {
-                $offered === [] => ConsoleStrings::message('console.none_for_the_environment_yet_add_google_gith_25c55363'),
+                $offered === [] => __('console.none_for_the_environment_yet_add_google_github_microsof_25c55363'),
                 $ssoOnly => $shut,
-                default => implode(', ', $names).ConsoleStrings::message('console.offered_on_every_sign_in_page_in_this_enviro_11b6740b'),
-            }.($byOrganization > 0 ? ' '.$byOrganization.' '.($byOrganization === 1 ? ConsoleStrings::message('console.organization_has_9c400478') : ConsoleStrings::message('console.organizations_have_257bde99')).ConsoleStrings::message('console.providers_of_their_own_ec202413') : ''),
-            'environment', $href, $offered === [] ? 'Add a provider' : 'Manage');
+                default => __('console.social_providers_everywhere', ['providers' => implode(', ', $names)]),
+            }.($byOrganization > 0 ? ' '.trans_choice('console.organizations_with_own_providers', $byOrganization) : ''),
+            'environment', $href, $offered === [] ? __('console.add_a_provider_f03153fc') : __('console.manage_5a234448'));
     }
 
     /**
@@ -238,14 +239,14 @@ final readonly class SignInMethodsController extends ConsoleController
 
         return self::row('enterprise-sso', Vocabulary::ENTERPRISE_SSO, $active > 0 ? 'on' : 'off',
             ($enterprise->isEmpty()
-                ? ($organizationId === null ? ConsoleStrings::message('console.no_connections_yet_saml_or_openid_connect_on_8c62e451') : ConsoleStrings::message('console.no_connection_yet_saml_or_openid_connect_192a390f'))
-                : $active.' of '.$enterprise->count().' '.($enterprise->count() === 1 ? 'connection' : 'connections').' active.')
+                ? ($organizationId === null ? __('console.no_connections_yet_saml_or_openid_connect_one_per_organ_8c62e451') : __('console.no_connection_yet_saml_or_openid_connect_192a390f'))
+                : __('console.active_sso_connections', ['active' => $active, 'total' => $enterprise->count()]))
             .' '.match ($sso) {
-                SsoEnforcement::Off => ConsoleStrings::message('console.passwords_and_sso_both_work_34373f1f'),
-                SsoEnforcement::Preferred => ConsoleStrings::message('console.sso_is_preferred_passwords_still_work_ea923a87'),
-                SsoEnforcement::Required => ConsoleStrings::message('console.sso_is_required_every_other_way_in_is_refuse_06430265'),
+                SsoEnforcement::Off => __('console.passwords_and_sso_both_work_34373f1f'),
+                SsoEnforcement::Preferred => __('console.sso_is_preferred_passwords_still_work_ea923a87'),
+                SsoEnforcement::Required => __('console.sso_is_required_every_other_way_in_is_refused_06430265'),
             },
-            'organization', $this->url('connections'), $enterprise->isEmpty() ? 'Add a connection' : 'Manage');
+            'organization', $this->url('connections'), $enterprise->isEmpty() ? __('console.add_a_connection_e50842ff') : __('console.manage_5a234448'));
     }
 
     /**
@@ -254,15 +255,15 @@ final readonly class SignInMethodsController extends ConsoleController
     private function botChallengeRow(Turnstile $turnstile, ?string $href, ?string $hrefLabel): array
     {
         if (! $turnstile->configured()) {
-            return self::row('bot-challenge', ConsoleStrings::message('console.bot_challenge_ed4b037c'), 'off',
-                ConsoleStrings::message('console.not_configured_radar_can_still_block_but_can_0a163809'),
+            return self::row('bot-challenge', __('console.bot_challenge_ed4b037c'), 'off',
+                __('console.not_configured_radar_can_still_block_but_cannot_ask_a_p_0a163809'),
                 'deployment', null, null, 'CBOX_ID_TURNSTILE_SITE_KEY');
         }
 
-        return self::row('bot-challenge', ConsoleStrings::message('console.bot_challenge_ed4b037c'), $turnstile->enabled() ? 'on' : 'off',
+        return self::row('bot-challenge', __('console.bot_challenge_ed4b037c'), $turnstile->enabled() ? 'on' : 'off',
             $turnstile->enabled()
-                ? ConsoleStrings::message('console.a_turnstile_challenge_is_shown_when_radar_fl_b521aa3c')
-                : ConsoleStrings::message('console.off_for_this_environment_a_sign_up_radar_fla_32622012'),
+                ? __('console.a_turnstile_challenge_is_shown_when_radar_flags_a_sign_b521aa3c')
+                : __('console.off_for_this_environment_a_sign_up_radar_flags_confirms_32622012'),
             'environment', $href, $hrefLabel);
     }
 
@@ -274,14 +275,11 @@ final readonly class SignInMethodsController extends ConsoleController
         $idle = $methods->sessionIdleMinutes();
         $absolute = $methods->sessionAbsoluteMinutes();
 
-        return self::row('session', ConsoleStrings::message('console.session_lifetime_da126ac3'), 'on',
-            ($idle > 0 ? ConsoleStrings::message('console.a_sign_in_ends_after_a5e4004a').self::minutes($idle).ConsoleStrings::message('console.without_activity_and_7ff3334c') : ConsoleStrings::message('console.a_sign_in_ends_03eae74f'))
-                .ConsoleStrings::message('console.after_8e3b3eda').self::minutes($absolute).ConsoleStrings::message('console.at_most_45e2c4fc')
-                .($idleChosen === null && $absoluteChosen === null ? ConsoleStrings::message('console.these_are_the_deployment_s_defaults_6cd543cc') : ''),
+        return self::row('session', __('console.session_lifetime_da126ac3'), 'on',
+            ($idle > 0 ? __('console.session_with_idle', ['idle' => self::minutes($idle), 'absolute' => self::minutes($absolute)]) : __('console.session_without_idle', ['absolute' => self::minutes($absolute)]))
+                .($idleChosen === null && $absoluteChosen === null ? ' '.__('console.deployment_defaults') : ''),
             'environment', $href, $hrefLabel,
-            ceiling: ConsoleStrings::message('console.the_deployment_allows_at_most_36376a1d')
-                .($methods->deploymentSessionIdleMinutes() > 0 ? self::minutes($methods->deploymentSessionIdleMinutes()).ConsoleStrings::message('console.idle_and_7997091d') : '')
-                .self::minutes($methods->deploymentSessionAbsoluteMinutes()).ConsoleStrings::message('console.in_all_cbox_id_session_idle_minutes_cbox_id__e9d0a174'));
+            ceiling: $methods->deploymentSessionIdleMinutes() > 0 ? __('console.session_ceiling_with_idle', ['idle' => self::minutes($methods->deploymentSessionIdleMinutes()), 'absolute' => self::minutes($methods->deploymentSessionAbsoluteMinutes())]) : __('console.session_ceiling_without_idle', ['absolute' => self::minutes($methods->deploymentSessionAbsoluteMinutes())]));
     }
 
     /**
@@ -306,9 +304,9 @@ final readonly class SignInMethodsController extends ConsoleController
     ): array {
         if (! $deploymentAllows) {
             return self::row($key, $label, 'off',
-                ConsoleStrings::message('console.off_for_the_whole_deployment_1386a4da'),
+                __('console.off_for_the_whole_deployment_1386a4da'),
                 'deployment', null, null, $variable,
-                ceiling: ConsoleStrings::message('console.the_deployment_turned_this_off_and_that_wins_a83ea837'));
+                ceiling: __('console.the_deployment_turned_this_off_and_that_wins_over_any_e_a83ea837'));
         }
 
         return self::row($key, $label, $enabled && ! $ssoOnly ? 'on' : 'off',
@@ -340,12 +338,12 @@ final readonly class SignInMethodsController extends ConsoleController
     ): array {
         return [
             'key' => $key,
-            'label' => ConsoleStrings::text($label),
+            'label' => ConsoleLabels::navigation($label),
             'state' => $state,
             'summary' => $summary,
             'decidedBy' => $decidedBy,
             'href' => $href,
-            'hrefLabel' => $hrefLabel === null ? null : ConsoleStrings::text($hrefLabel),
+            'hrefLabel' => $hrefLabel === null ? null : ConsoleLabels::navigation($hrefLabel),
             'variable' => $variable,
             'ceiling' => $ceiling,
         ];
@@ -356,15 +354,15 @@ final readonly class SignInMethodsController extends ConsoleController
         if ($minutes % 1440 === 0) {
             $days = intdiv($minutes, 1440);
 
-            return $days.' '.($days === 1 ? ConsoleStrings::message('console.day_944c27e5') : ConsoleStrings::message('console.days_ab51004e'));
+            return trans_choice('console.duration_day', $days);
         }
 
         if ($minutes % 60 === 0) {
             $hours = intdiv($minutes, 60);
 
-            return $hours.' '.($hours === 1 ? ConsoleStrings::message('console.hour_9ac0add4') : ConsoleStrings::message('console.hours_404314b1'));
+            return trans_choice('console.duration_hour', $hours);
         }
 
-        return $minutes.ConsoleStrings::message('console.minutes_336e6529');
+        return trans_choice('console.duration_minute', $minutes);
     }
 }

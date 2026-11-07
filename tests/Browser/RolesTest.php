@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\AccessControl\Contracts\AppManifests;
 use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Manifest\ManifestParser;
 use Cbox\Id\AccessControl\Models\Permission;
+use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -116,4 +119,32 @@ it('draws "All apps" as the chosen default on the new-role form, not the picker\
         ->assertScript('Array.from(document.querySelectorAll(".cbx-select")).map((b) => b.textContent.trim()).includes("All apps")', true)
         ->assertScript('Array.from(document.querySelectorAll(".cbx-select")).some((b) => b.textContent.includes("Select…"))', false)
         ->assertNoJavaScriptErrors();
+});
+
+it('activates only the app role definition the administrator actually reviewed', function (): void {
+    crudSetup();
+    $manifests = app(AppManifests::class);
+    $parser = app(ManifestParser::class);
+    $publish = function (array $permissions) use ($manifests, $parser): void {
+        $manifests->sync('browser-sites', $parser->parse([
+            'version' => 'test',
+            'permissions' => [['key' => 'sites:read'], ['key' => 'sites:publish'], ['key' => 'sites:delete']],
+            'roles' => [['key' => 'editor', 'name' => 'Site editor', 'permissions' => $permissions]],
+        ]));
+    };
+    $publish(['sites:read']);
+    $publish(['sites:read', 'sites:publish']);
+    $role = Role::query()->where('client_id', 'browser-sites')->where('key', 'editor')->sole();
+    $page = visit(route('environment.roles.show', $role->id));
+    $page->assertSee('sites:publish')->click('button:has-text("Activate reviewed definition")')
+        ->fill('.cbx-dialog input.input', 'Site editor');
+    $publish(['sites:read', 'sites:publish', 'sites:delete']);
+    $page->click('.cbx-dialog button:has-text("Activate definition")')
+        ->assertSee('The pending role definition has changed or is no longer available. Review it again before activating.')
+        ->assertNoJavaScriptErrors();
+    expect($role->refresh()->pending_definition_version)->not->toBeNull();
+    $page->assertSee('sites:delete')->click('button:has-text("Activate reviewed definition")')
+        ->fill('.cbx-dialog input.input', 'Site editor')->click('.cbx-dialog button:has-text("Activate definition")')
+        ->assertDontSee('Activate reviewed definition')->assertNoJavaScriptErrors();
+    expect($role->refresh()->pending_definition_version)->toBeNull();
 });

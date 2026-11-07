@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          php bin/unpack-signals-packages.php ../../laravel-signals-client
+          php bin/verify-signals-sdk.php
           sh bin/install-ci-dependencies.sh --no-interaction --no-progress
       - name: composer audit
         run: composer audit --no-dev

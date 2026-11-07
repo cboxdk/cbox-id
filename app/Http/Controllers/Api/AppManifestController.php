@@ -44,6 +44,9 @@ final class AppManifestController
         $result = $manifests->sync($token->clientId, $manifest);
 
         return new JsonResponse([
+            'client_id' => $token->clientId,
+            'version' => $manifest->version,
+            'checksum' => $manifest->checksum(),
             'unchanged' => $result->unchanged,
             'roles_declared' => $result->rolesDeclared,
             'permissions_declared' => $result->permissionsDeclared,

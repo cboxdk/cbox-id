@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm, usePage, usePoll } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -77,8 +77,13 @@ export default function GetStarted({
     signedIn,
     urls,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleAttributeText } = useConsoleTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const flash = usePage().flash;
     const form = useForm({ framework: framework ?? frameworks[0]?.value ?? 'nextjs', name: '' });
     const chosen = frameworks.find((option) => option.value === form.data.framework);
@@ -120,15 +125,17 @@ export default function GetStarted({
         <>
             <PageHeader
                 help={help}
-                description={tc('console.from_nothing_to_somebody_signed_in_pick_a_fr_93a5a3cb')}
+                description={consoleT(
+                    'console.from_nothing_to_somebody_signed_in_pick_a_framework_pas_93a5a3cb',
+                )}
                 actions={
                     dismissed ? (
                         <Button size="sm" onClick={() => router.delete(urls.restore)}>
-                            {tc('console.show_on_overview_again_7dc29bf7')}
+                            {consoleT('console.show_on_overview_again_7dc29bf7')}
                         </Button>
                     ) : (
                         <Button size="sm" onClick={() => router.post(urls.dismiss)}>
-                            {tc('console.hide_from_overview_d715de16')}
+                            {consoleT('console.hide_from_overview_d715de16')}
                         </Button>
                     )
                 }
@@ -136,9 +143,9 @@ export default function GetStarted({
 
             <div className="mt-6 space-y-4">
                 <Panel
-                    title={tc('console.1_what_are_you_building_61edf71c')}
-                    description={tc(
-                        'console.it_decides_the_kind_of_app_and_its_localhost_0f18e4ab',
+                    title={consoleT('console.1_what_are_you_building_61edf71c')}
+                    description={consoleT(
+                        'console.it_decides_the_kind_of_app_and_its_localhost_redirect_t_0f18e4ab',
                     )}
                 >
                     <form
@@ -149,7 +156,7 @@ export default function GetStarted({
                         }}
                     >
                         <RadioGroup
-                            label={tc('console.framework_192eb452')}
+                            label={consoleT('console.framework_192eb452')}
                             name="framework"
                             value={form.data.framework}
                             onValueChange={(value) => form.setData('framework', value)}
@@ -167,16 +174,17 @@ export default function GetStarted({
                         )}
 
                         <Field
-                            label={tc('console.app_name_e6ad3996')}
-                            hint={tc('console.optional_signs_people_back_in_at_value0_1a281c15', {
-                                value0: chosen?.redirectUri ?? 'localhost',
-                            })}
+                            label={consoleT('console.app_name_e6ad3996')}
+                            hint={consoleFinalText(
+                                'console.optional_signs_people_back_in_at_part1_e50a1e5c',
+                                { part1: chosen?.redirectUri ?? 'localhost' },
+                            )}
                             error={form.errors.name}
                         >
                             <Input
                                 name="name"
-                                placeholder={tc('console.my_value0_app_5be6f7c5', {
-                                    value0: chosen?.label ?? '',
+                                placeholder={consoleFinalText('console.my_part1_app_40bca4ad', {
+                                    part1: chosen?.label ?? '',
                                 })}
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}
@@ -186,8 +194,8 @@ export default function GetStarted({
                         <div className="flex flex-wrap items-start gap-2">
                             <Button type="submit" variant="primary" loading={form.processing}>
                                 {app === null
-                                    ? tc('console.create_the_app_169cba28')
-                                    : tc('console.create_another_app_c82e820b')}
+                                    ? consoleText('console.create_the_app_169cba28')
+                                    : consoleText('console.create_another_app_c82e820b')}
                             </Button>
                             <ApiEquivalent
                                 action="apps.create"
@@ -203,17 +211,17 @@ export default function GetStarted({
 
                 {app !== null && quickstart !== null && (
                     <Panel
-                        title={tc('console.2_wire_it_up_015fee56')}
-                        description={tc('console.value0_client_id_value1_8df38a62', {
-                            value0: app.name,
-                            value1: app.clientId,
+                        title={consoleT('console.2_wire_it_up_015fee56')}
+                        description={consoleFinalText('console._part1_client_id_part2_b124ff5f', {
+                            part1: app.name,
+                            part2: app.clientId,
                         })}
                     >
                         <div className="space-y-4">
                             <QuickstartBlocks
-                                title={tc('console.install_569ca49f')}
+                                title={consoleT('console.install_569ca49f')}
                                 blocks={quickstart.install}
-                                copyLabel={tc('console.copy_install_command_d8222d32')}
+                                copyLabel={consoleUiText('console.copy_install_command_d8222d32')}
                             />
 
                             <div>
@@ -223,29 +231,40 @@ export default function GetStarted({
                                 <div className="mt-2">
                                     <CodeBlock
                                         code={env}
-                                        copyLabel={tc('console.copy_environment_7cf9c703')}
+                                        copyLabel={consoleUiText(
+                                            'console.copy_environment_7cf9c703',
+                                        )}
                                         caption={
                                             !holdsSecret ? (
-                                                tc(
-                                                    'console.a_browser_app_holds_no_secret_pkce_proves_th_d7de5db8',
+                                                consoleAttributeText(
+                                                    'console.a_browser_app_holds_no_secret_pkce_proves_the_callback_d7de5db8',
                                                 )
                                             ) : secret !== undefined ? (
-                                                tc(
-                                                    'console.the_client_secret_is_in_this_block_once_copy_b4bc2f5a',
+                                                consoleAttributeText(
+                                                    'console.the_client_secret_is_in_this_block_once_copy_it_now_lea_b4bc2f5a',
                                                 )
                                             ) : (
                                                 <>
-                                                    {tc(
-                                                        'console.the_secret_was_shown_once_when_the_app_was_c_8ad44d40',
-                                                    )}{' '}
-                                                    <Link
-                                                        href={`${app.href}/secrets`}
-                                                        className="underline"
-                                                        style={{ color: 'var(--accent-strong)' }}
-                                                    >
-                                                        {tc('console.rotate_it_0186f051')}
-                                                    </Link>{' '}
-                                                    {tc('console.for_a_new_one_83725c4b')}
+                                                    {consoleRich(
+                                                        'console.the_secret_was_shown_once_when_the_app_was_created_part_7a1fcce3',
+                                                        {
+                                                            part1: ' ',
+                                                            part2: (
+                                                                <Link
+                                                                    href={`${app.href}/secrets`}
+                                                                    className="underline"
+                                                                    style={{
+                                                                        color: 'var(--accent-strong)',
+                                                                    }}
+                                                                >
+                                                                    {consoleT(
+                                                                        'console.rotate_it_0186f051',
+                                                                    )}
+                                                                </Link>
+                                                            ),
+                                                            part3: ' ',
+                                                        },
+                                                    )}
                                                 </>
                                             )
                                         }
@@ -254,32 +273,38 @@ export default function GetStarted({
                             </div>
 
                             <QuickstartBlocks
-                                title={tc('console.code_340f4630')}
+                                title={consoleT('console.code_340f4630')}
                                 blocks={quickstart.code}
-                                copyLabel={tc('console.copy_code_49a0053f')}
+                                copyLabel={consoleUiText('console.copy_code_49a0053f')}
                             />
 
                             <QuickstartBlocks
-                                title={tc('console.run_it_then_sign_in_7fe05c2d')}
+                                title={consoleT('console.run_it_then_sign_in_7fe05c2d')}
                                 blocks={quickstart.run}
-                                copyLabel={tc('console.copy_run_command_2b33dad0')}
+                                copyLabel={consoleUiText('console.copy_run_command_2b33dad0')}
                             />
 
                             {quickstartGuide !== null && (
                                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                                    {tc(
-                                        'console.the_same_code_step_by_step_with_sign_out_9ff1e4ca',
-                                    )}{' '}
-                                    <a
-                                        href={quickstartGuide}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="underline"
-                                        style={{ color: 'var(--accent-strong)' }}
-                                    >
-                                        {tc('console.the_full_quickstart_dd59dd4d')}
-                                    </a>
-                                    .
+                                    {consoleRich(
+                                        'console.the_same_code_step_by_step_with_sign_out_part1_part2_4d2f071e',
+                                        {
+                                            part1: ' ',
+                                            part2: (
+                                                <a
+                                                    href={quickstartGuide}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="underline"
+                                                    style={{ color: 'var(--accent-strong)' }}
+                                                >
+                                                    {consoleT(
+                                                        'console.the_full_quickstart_dd59dd4d',
+                                                    )}
+                                                </a>
+                                            ),
+                                        },
+                                    )}
                                 </p>
                             )}
                         </div>
@@ -287,7 +312,7 @@ export default function GetStarted({
                 )}
 
                 {app !== null && (
-                    <Panel title={tc('console.3_sign_in_f3e9ef96')}>
+                    <Panel title={consoleT('console.3_sign_in_f3e9ef96')}>
                         {/* Announced: the wait ends on its own, with no focus change. */}
                         <output aria-live="polite" className="flex items-center gap-3">
                             {signedIn ? (
@@ -305,15 +330,21 @@ export default function GetStarted({
                                         <Icon name="check" className="w-4 h-4" />
                                     </span>
                                     <p className="text-sm">
-                                        {tc('console.somebody_signed_in_to_b6ff4be1')}{' '}
-                                        <Link
-                                            href={app.href}
-                                            className="underline"
-                                            style={{ color: 'var(--accent-strong)' }}
-                                        >
-                                            {app.name}
-                                        </Link>
-                                        {tc('console.it_works_42621b4c')}
+                                        {consoleRich(
+                                            'console.somebody_signed_in_to_part1_part2_it_works_dbe6bf44',
+                                            {
+                                                part1: ' ',
+                                                part2: (
+                                                    <Link
+                                                        href={app.href}
+                                                        className="underline"
+                                                        style={{ color: 'var(--accent-strong)' }}
+                                                    >
+                                                        {app.name}
+                                                    </Link>
+                                                ),
+                                            },
+                                        )}
                                     </p>
                                 </>
                             ) : (
@@ -323,7 +354,9 @@ export default function GetStarted({
                                         className="text-sm"
                                         style={{ color: 'var(--muted-foreground)' }}
                                     >
-                                        {tc('console.waiting_for_your_first_sign_in_f35b71a6')}
+                                        {consoleT(
+                                            'console.waiting_for_your_first_sign_in_f35b71a6',
+                                        )}
                                     </p>
                                 </>
                             )}

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Appearance;
 
+use App\Platform\Actions\ActionMessage;
 use RuntimeException;
 
 /**
@@ -13,8 +14,8 @@ use RuntimeException;
  */
 final class InvalidBrandImage extends RuntimeException
 {
-    public function __construct(public readonly BrandImage $kind, string $message)
+    public function __construct(public readonly BrandImage $kind, public readonly string|ActionMessage $sourceMessage)
     {
-        parent::__construct($message);
+        parent::__construct($sourceMessage instanceof ActionMessage ? $sourceMessage->render('en') : $sourceMessage);
     }
 }

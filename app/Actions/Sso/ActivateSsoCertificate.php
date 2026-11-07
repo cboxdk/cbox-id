@@ -6,6 +6,7 @@ namespace App\Actions\Sso;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -66,7 +67,7 @@ final readonly class ActivateSsoCertificate implements Action
         }
 
         if (! $this->certificates->promote($connection, $fingerprint)) {
-            throw ActionRefused::because('certificate_not_staged', 'No staged certificate on this connection has that fingerprint. Stage it first.', 'fingerprint_sha256');
+            throw ActionRefused::because('certificate_not_staged', new ActionMessage('console.no_staged_certificate_on_this_connection_has_that_finge_11b4e70d'), 'fingerprint_sha256');
         }
 
         $connection->refresh();

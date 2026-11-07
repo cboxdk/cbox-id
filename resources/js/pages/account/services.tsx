@@ -403,7 +403,9 @@ function ServiceCard({
                                             value: option,
                                             label: option,
                                         }))}
-                                        onValueChange={(value) => setAnswer(value ?? '')}
+                                        onValueChange={(selectedValue) =>
+                                            setAnswer(selectedValue ?? '')
+                                        }
                                         disabled={!canJoin}
                                     />
                                 ) : question.type === 'string' ? (

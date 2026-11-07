@@ -17,7 +17,7 @@ use App\Platform\Locale\HostedTranslations;
  *
  * PLACEHOLDERS MUST MATCH, because a translation that drops `:email` renders a sentence
  * that no longer says which address the link went to — and one that invents `:mail`
- * renders the literal text ":mail". Plural lines must keep their `one|other` shape.
+ * renders the literal text ":mail". Plural lines must carry the forms required by their language.
  *
  * Read with `require`, not through the translator: the translator merges the framework's
  * own English `auth.php` over ours and falls back to English for a missing line, which is
@@ -25,7 +25,7 @@ use App\Platform\Locale\HostedTranslations;
  */
 const LANG_ROOT = __DIR__.'/../../lang';
 
-const PARITY_NAMESPACES = ['hosted', 'auth', 'oauth', 'portal', 'mail', 'errors', 'console', 'billing', 'service_access', 'registration'];
+const PARITY_NAMESPACES = ['hosted', 'auth', 'oauth', 'portal', 'mail', 'errors', 'service_access', 'registration', 'console', 'billing'];
 
 /** @return array<string, string> */
 function catalogue(string $locale, string $namespace): array
@@ -44,7 +44,7 @@ function catalogue(string $locale, string $namespace): array
 /** @return list<string> */
 function placeholdersIn(string $line): array
 {
-    preg_match_all('/(?:(?<![\p{L}\p{N}_]):|:(?=value[0-9]))([a-z][A-Za-z0-9_]*)/u', $line, $matches);
+    preg_match_all('/(?:(?<![\pL\pN_]):|:(?=(?:value|part)\d+\b))([a-z][A-Za-z0-9_]*)/u', $line, $matches);
 
     $names = array_values(array_unique($matches[1]));
     sort($names);
@@ -77,9 +77,30 @@ it('keeps every placeholder and plural form', function (string $locale, string $
             continue; // reported by the key-parity test, once
         }
 
+        expect($theirs)->not->toMatch('/__X\d+__|<end_of_turn>|<start_of_turn>/', "{$locale}: {$key} contains a translation marker");
+
+        $alphabet = match ($locale) {
+            'el' => '/[\p{Latin}\p{Greek}]/u',
+            'bg', 'uk' => '/[\p{Latin}\p{Cyrillic}]/u',
+            default => '/\p{Latin}/u',
+        };
+        preg_match_all('/\p{L}/u', $theirs, $letters);
+        $unexpected = [];
+        foreach (array_unique($letters[0]) as $letter) {
+            if ($letter !== 'ʼ' && ! str_contains($line, $letter) && ! preg_match($alphabet, $letter)) {
+                $unexpected[] = $letter;
+            }
+        }
+        expect($unexpected)->toBe([], "{$locale}: {$key} contains an unexpected alphabet");
+
         expect(trim($theirs))->not->toBe('', "{$locale}: {$key} is empty")
             ->and(placeholdersIn($theirs))->toBe(placeholdersIn($line), "{$locale}: {$key} changes its placeholders")
-            ->and(substr_count($theirs, '|'))->toBe(substr_count($line, '|'), "{$locale}: {$key} changes its plural forms");
+            ->and(substr_count($theirs, '|'))->toBe(
+                str_contains($line, '|') && in_array($locale, ['pl', 'ro', 'cs', 'hr', 'sk', 'uk'], true)
+                    ? 2
+                    : substr_count($line, '|'),
+                "{$locale}: {$key} has the wrong number of plural forms",
+            );
     }
 })->with(otherLocales())->with(PARITY_NAMESPACES);
 
@@ -89,6 +110,45 @@ it('ships no catalogue English does not have', function (string $locale): void {
     // validation.php is the framework's catalogue translated, not one of ours — the
     // framework ships the English and the next test holds it to that.
     expect(array_values(array_diff($files, [...PARITY_NAMESPACES, 'validation'])))->toBe([]);
+})->with(otherLocales());
+
+it('preserves usable protocol values and example URLs in setup instructions', function (string $locale): void {
+    $english = catalogue('en', 'portal');
+    $translated = catalogue($locale, 'portal');
+
+    foreach ($english as $key => $line) {
+        // Include angle-bracket host placeholders: they are part of these examples,
+        // not HTML. Sentence punctuation is not part of a URL.
+        preg_match_all('~https://[^\s)]+~u', $line, $matches);
+        foreach ($matches[0] as $match) {
+            $url = rtrim($match, '.,;');
+            if ($url !== 'https://') {
+                expect(str_contains($translated[$key], $url))->toBeTrue("{$locale}: {$key} changes an example URL");
+            }
+        }
+
+        foreach (['X.509', 'SHA-256', 'roles/storage.objectCreator'] as $literal) {
+            if (str_contains($line, $literal)) {
+                expect(str_contains($translated[$key], $literal))->toBeTrue("{$locale}: {$key} changes a protocol value");
+            }
+        }
+    }
+
+    // These values are entered into the provider's configuration. Translating
+    // `profile`, `user.email` or `nameIDFormatPrecedence` breaks the integration.
+    $configurationValues = [
+        'guides.sso.oidc.2' => ['openid', 'email', 'profile'],
+        'guides.sso.okta.3' => ['user.email', 'user.firstName', 'user.lastName'],
+        'guides.sso.shibboleth.0' => ['metadataURL', 'backingFile', 'FileBackedHTTPMetadataProvider'],
+        'guides.sso.shibboleth.3' => ['RelyingPartyByName', 'nameIDFormatPrecedence', 'emailAddress'],
+        'guides.sso.pingfederate.3' => ['SAML_SUBJECT', 'POST'],
+    ];
+
+    foreach ($configurationValues as $key => $literals) {
+        foreach ($literals as $literal) {
+            expect(str_contains($translated['portal.'.$key], $literal))->toBeTrue("{$locale}: {$key} changes a configuration value");
+        }
+    }
 })->with(otherLocales());
 
 /*
@@ -129,8 +189,19 @@ it('preserves executable commands and permission examples in every language', fu
         ->and($messages['console.an_accountant_may_invoices_write_5f99429d'])->toContain('invoices:write')
         ->and($messages[ConsoleStrings::key('X-Cbox-Signature')])->toBe('X-Cbox-Signature')
         ->and($messages[ConsoleStrings::key('type, type:id or type:id#relation')])->toContain('type:id#relation')
-        ->and($messages[ConsoleStrings::key('The scheduled export records a run here every five minutes once schedule:run is running and a sink is configured.')])->toContain('schedule:run')
-        ->and($messages['console.sub_the_person_s_id_org_the_organization_the_6eaa9420'])->toBe(catalogue('en', 'console')['console.sub_the_person_s_id_org_the_organization_the_6eaa9420']);
+        ->and($messages[ConsoleStrings::key('The scheduled export records a run here every five minutes once schedule:run is running and a sink is configured.')])->toContain('schedule:run');
+
+    // Claim names and permission values are protocol data; the example descriptions are prose.
+    $example = json_decode(str_replace(
+        ':value1',
+        '"invoices:write"',
+        $messages['console.sub_the_person_s_id_org_the_organization_the_6eaa9420'],
+    ), true, flags: JSON_THROW_ON_ERROR);
+    expect(array_keys($example))->toBe(['sub', 'org', 'roles', 'permissions'])
+        ->and($example['sub'])->toBeString()->not->toBeEmpty()
+        ->and($example['org'])->toBeString()->not->toBeEmpty()
+        ->and($example['roles'])->toBe([':value0'])
+        ->and($example['permissions'])->toBe(['invoices:write']);
 })->with(otherLocales());
 
 it('names passkeys distinctly from passwords in the additional languages', function (string $locale, string $term): void {

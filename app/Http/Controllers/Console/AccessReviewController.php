@@ -169,8 +169,7 @@ final readonly class AccessReviewController extends ConsoleController
         $campaign = $result->value;
 
         return to_route($this->scope->routeName('governance.show'), $campaign->id)
-            ->with('status', __('console.access_review_d5d63066').$campaign->name.__('console.opened_with_4744e396')
-                .$reviews->countItemsFor($campaign->id).' item(s).');
+            ->with('status', __('console.access_review_part1_opened_with_part2_item_s_63269394', ['part1' => $campaign->name, 'part2' => $reviews->countItemsFor($campaign->id)]));
     }
 
     public function show(string $campaign, AccessReviews $reviews, Subjects $subjects): Response
@@ -211,8 +210,8 @@ final readonly class AccessReviewController extends ConsoleController
                 'subject' => $people[$item->subject_id] ?? null,
                 'subjectId' => $item->subject_id,
                 'kind' => match ($item->access_type) {
-                    AccessKind::Role => 'Role',
-                    AccessKind::Membership => 'Membership',
+                    AccessKind::Role => __('console.role_14736a2e'),
+                    AccessKind::Membership => __('console.membership_9feceb93'),
                     AccessKind::EnvironmentRole => __('console.admin_support_role_cd7f9f2d'),
                 },
                 'access' => $roles[$item->access_ref] ?? $item->access_ref,
@@ -286,7 +285,7 @@ final readonly class AccessReviewController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', __('console.access_review_closed_revoked_access_was_appl_e90697a3'));
+        return back()->with('status', __('console.access_review_closed_revoked_access_was_applied_e90697a3'));
     }
 
     /**

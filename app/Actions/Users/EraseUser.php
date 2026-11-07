@@ -6,6 +6,7 @@ namespace App\Actions\Users;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -74,8 +75,7 @@ final readonly class EraseUser implements Action
         } catch (ErasureRefused $refused) {
             throw new ActionRefused(
                 'last_owner',
-                'This person is the only owner of '.count($refused->organizationIds()).' organization(s): '
-                    .implode(', ', $refused->organizationIds()).'. Transfer ownership before erasing them.',
+                new ActionMessage('console.this_person_is_the_only_owner_of_part1_organization_s_p_662dfa99', ['part1' => (string) (count($refused->organizationIds())), 'part2' => (string) (implode(', ', $refused->organizationIds()))]),
                 409,
             );
         }

@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -16,26 +16,40 @@ type Props = PageProps<{
  * are the layout's (`../frame.tsx`).
  */
 export default function OrganizationApiKeys({ apiKeys, appsHref }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <Panel
-            title={tc('console.member_api_keys_66d7cf0e')}
-            description={tc('console.keys_this_organization_s_people_have_created_9d7e0611')}
+            title={consoleT('console.member_api_keys_66d7cf0e')}
+            description={consoleT(
+                'console.keys_this_organization_s_people_have_created_for_its_ap_9d7e0611',
+            )}
             flush={apiKeys.length > 0}
         >
             <AppApiKeyList
                 keys={apiKeys}
                 empty={{
-                    title: tc('console.no_api_keys_860f0852'),
+                    title: consoleText('console.no_api_keys_860f0852'),
                     description: (
                         <>
-                            {tc('console.nobody_in_this_organization_has_created_a_ke_327ef1b5')}
-                            <Link href={appsHref}>{tc('console.see_your_apps_83cc472a')}</Link>.
+                            {consoleRich(
+                                'console.nobody_in_this_organization_has_created_a_key_for_one_o_462fe672',
+                                {
+                                    part1: (
+                                        <Link href={appsHref}>
+                                            {consoleT('console.see_your_apps_83cc472a')}
+                                        </Link>
+                                    ),
+                                },
+                            )}
                         </>
                     ),
                 }}
-                consequence={tc('console.whatever_the_holder_has_wired_this_key_into__789a1199')}
+                consequence={consoleUiText(
+                    'console.whatever_the_holder_has_wired_this_key_into_stops_worki_789a1199',
+                )}
             />
         </Panel>
     );

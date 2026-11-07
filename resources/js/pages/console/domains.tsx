@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import { type DomainClaim, DomainClaims, EmptyState, PageHeader } from '@/ui';
@@ -18,13 +18,14 @@ type Props = PageProps<{
  * page's own writes, gated on the same plan feature.
  */
 export default function Domains({ help, entitled, domains, addDomainHref }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <div className="space-y-6">
             <PageHeader
                 help={help}
-                description={tc('console.prove_which_email_domains_your_organization__a1717fad')}
+                description={consoleT(
+                    'console.prove_which_email_domains_your_organization_owns_a_veri_a1717fad',
+                )}
             />
 
             {entitled ? (
@@ -33,10 +34,10 @@ export default function Domains({ help, entitled, domains, addDomainHref }: Prop
                 <div className="card">
                     <EmptyState
                         icon="shield"
-                        title={tc('console.domains_come_with_enterprise_sso_be43d549')}
+                        title={consoleT('console.domains_come_with_enterprise_sso_be43d549')}
                         help={help}
-                        description={tc(
-                            'console.verified_domains_route_people_to_your_own_id_127a9e78',
+                        description={consoleT(
+                            'console.verified_domains_route_people_to_your_own_identity_prov_127a9e78',
                         )}
                     />
                 </div>

@@ -157,7 +157,9 @@ it('labels a directory row with its organization without loading every organizat
     // not appear is a read of the table with neither: that grows with the tenant count and
     // is re-run on every Livewire action.
     foreach ($orgReads as $statement) {
-        expect(str_contains($statement, '"id" in') || str_contains($statement, '"id" = ?'))
+        $exactMembershipJoin = str_contains($statement, '"organizations"."id" = "memberships"."organization_id"')
+            && str_contains($statement, '"memberships"."organization_id" = ?');
+        expect(str_contains($statement, '"id" in') || str_contains($statement, '"id" = ?') || $exactMembershipJoin)
             ->toBeTrue('an unbounded organizations read: '.$statement);
     }
 });

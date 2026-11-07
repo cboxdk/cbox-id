@@ -6,6 +6,7 @@ namespace App\Actions\SignIn;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -69,7 +70,7 @@ final readonly class UpdateSmsFactorPolicy implements Action
         if ($policy->enabled && $policy->allowedCountries === []) {
             throw ActionRefused::because(
                 'countries_required',
-                'Choose at least one country before turning text-message codes on.',
+                new ActionMessage('console.choose_at_least_one_country_before_turning_text_message_e4ed3a2b'),
                 'allowed_countries',
             );
         }

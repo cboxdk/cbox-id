@@ -261,7 +261,7 @@ class ConnectorCatalog
         $options = [];
 
         foreach (Destination::cases() as $destination) {
-            $options[$destination->value] = LogStreamController::DESTINATIONS[$destination->value];
+            $options[$destination->value] = LogStreamController::destinations()[$destination->value];
         }
 
         return $options;

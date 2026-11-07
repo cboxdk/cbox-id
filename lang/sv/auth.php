@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-// Swedish: the sign-in group (see lang/en/auth.php).
 return [
     'common' => [
         'email' => 'E-post',
@@ -19,13 +18,11 @@ return [
         'could_not_process' => 'Vi kunde inte behandla begäran. Försök igen senare.',
         'code_incorrect' => 'Koden är felaktig eller har gått ut.',
     ],
-
     'password_field' => [
         'show' => 'Visa lösenord',
         'hide' => 'Dölj lösenord',
         'policy' => 'Minst :count tecken',
     ],
-
     'login' => [
         'title' => 'Logga in',
         'purpose' => [
@@ -60,8 +57,6 @@ return [
         'forgot_password' => 'Glömt lösenordet?',
         'or' => 'ELLER',
         'continue_with' => 'Fortsätt med :provider',
-        // The badge on the sign-in method this device used last, and what it means said in full
-        // for a screen reader.
         'last_used' => 'Senast använd',
         'last_used_hint' => 'Så loggade du in senast på den här enheten.',
         'magic_link' => 'Skicka en inloggningslänk till mig',
@@ -69,7 +64,7 @@ return [
         'passkey_failed' => 'Inloggningen med lösennyckel misslyckades.',
         'new_organization' => 'Ny organisation?',
         'create_one' => 'Skapa en',
-        'invalid_credentials' => 'Inloggningsuppgifterna stämmer inte med våra register.',
+        'invalid_credentials' => 'E-postadressen eller lösenordet är felaktigt.',
         'passkey_errors' => [
             'challenge_expired' => 'Inloggningsförfrågan har gått ut. Försök igen.',
             'not_registered' => 'Lösennyckeln är inte registrerad.',
@@ -77,13 +72,11 @@ return [
             'unverified' => 'Lösennyckeln kunde inte verifieras.',
             'failed' => 'Något gick fel vid inloggningen.',
         ],
-        // Answered by a passkey or magic-link door the environment has switched off.
         'method_off' => [
             'passkeys' => 'Lösennycklar är avstängda här. Logga in på ett annat sätt.',
             'magic_link' => 'Inloggningslänkar via e-post är avstängda här. Logga in på ett annat sätt.',
         ],
     ],
-
     'signup' => [
         'title' => 'Kom igång',
         'heading' => [
@@ -121,7 +114,6 @@ return [
             'closed' => 'Registreringen är stängd för tillfället.',
         ],
     ],
-
     'forgot_password' => [
         'title' => 'Återställ lösenord',
         'heading' => 'Återställ ditt lösenord',
@@ -131,7 +123,6 @@ return [
         'remembered' => 'Kom du ihåg det?',
         'throttled' => 'För många försök. Vänta några minuter och försök igen.',
     ],
-
     'reset_password' => [
         'title' => 'Välj ett nytt lösenord',
         'lead' => 'Välj ett starkt lösenord på minst :count tecken.',
@@ -140,14 +131,12 @@ return [
         'invalid_link' => 'Återställningslänken är ogiltig eller har gått ut. Begär en ny.',
         'done' => 'Ditt lösenord har återställts — logga in med ditt nya lösenord.',
     ],
-
     'change_password' => [
         'title' => 'Välj ett nytt lösenord',
         'lead' => 'Lösenordet du loggade in med har tilldelats av en administratör. Välj ett som bara du känner till innan du fortsätter.',
         'submit' => 'Uppdatera lösenord',
         'mismatch' => 'Lösenorden matchar inte.',
     ],
-
     'mfa' => [
         'title' => 'Tvåfaktorsverifiering',
         'code' => [
@@ -176,7 +165,6 @@ return [
             'unavailable' => 'Sms-koder är inte tillgängliga för det här kontot.',
         ],
     ],
-
     'otp_step_up' => [
         'title' => 'Ytterligare verifiering',
         'lead' => 'Den här inloggningen såg ovanlig ut, så vi har skickat en engångskod till :email. Ange den för att fortsätta.',
@@ -187,20 +175,17 @@ return [
         'resent' => 'Vi har skickat en ny kod till :email.',
         'too_many_codes' => 'För många koder har begärts. Vänta en stund och försök igen.',
     ],
-
     'accounts' => [
         'title' => 'Byt användare',
         'lead' => 'Alla som är inloggade på den här enheten. Välj en, eller logga in som någon annan.',
         'active' => 'Aktiv',
         'add' => 'Logga in som någon annan',
     ],
-
     'signed_out' => [
         'title' => 'Utloggad',
         'heading' => 'Du är utloggad',
         'lead' => 'Du har loggats ut på den här enheten, även från alla konsoler du öppnade från den här inloggningen. Logga in igen för att fortsätta.',
     ],
-
     'accept_invite' => [
         'title' => 'Acceptera inbjudan',
         'heading' => 'Acceptera din inbjudan',
@@ -214,9 +199,8 @@ return [
         'invalid' => 'Inbjudan är ogiltig eller har gått ut.',
         'not_completed' => 'Inbjudan kunde inte slutföras.',
     ],
-
     'confirm_email' => [
-        'title' => 'Bekräfta din e-post',
+        'title' => 'Bekräfta din e-postadress',
         'heading' => 'Bekräfta din e-postadress',
         'lead' => 'Du har öppnat bekräftelselänken som vi skickade. Bekräfta för att slutföra verifieringen av den här adressen.',
         'action' => 'Bekräfta e-postadress',
@@ -224,7 +208,6 @@ return [
         'verified_sign_in' => 'E-postadressen är verifierad — logga in för att öppna din miljö.',
         'verified' => 'Din e-postadress är verifierad — du kan logga in.',
     ],
-
     'confirm_sign_in' => [
         'title' => 'Logga in',
         'heading' => 'Slutför inloggningen',
@@ -233,10 +216,9 @@ return [
         'note' => 'Länken fungerar en gång. Om du inte har bett om att logga in kan du stänga den här sidan — ingenting händer förrän du trycker på knappen.',
         'invalid' => 'Inloggningslänken är ogiltig eller har gått ut.',
     ],
-
     'first_run' => [
         'title' => 'Konfigurera Cbox ID',
-        'lead' => 'Den här installationen är tom. Ta den i anspråk en gång, från maskinen som kör den.',
+        'lead' => 'Den här installationen är ännu inte konfigurerad. Gör den första konfigurationen från datorn där den körs.',
         'unmigrated' => [
             'title' => 'Databasen för den här installationen har inget schema ännu.',
             'body' => 'Kör :migrate på servern (eller :install, som migrerar och installerar i ett steg) och ladda sedan om den här sidan.',
@@ -264,7 +246,6 @@ return [
         'submit' => 'Installera',
         'token_mismatch' => 'Installationstoken matchar inte den här installationens, eller så har den gått ut. Skriv ut en ny med php artisan cbox-id:setup-token.',
     ],
-
     'join_organization' => [
         'title' => 'Gå med i :organization',
         'heading' => 'Gå med i :organization?',
@@ -283,7 +264,6 @@ return [
         ],
         'invalid' => 'Inbjudan är ogiltig eller har gått ut.',
     ],
-
     'federation' => [
         'this_provider' => 'identitetsleverantören',
         'expired' => 'Inloggningen tog för lång tid eller har redan använts. Logga in igen.',
@@ -292,7 +272,7 @@ return [
         'cancelled' => 'Inloggningen med :provider avbröts eller slutfördes inte. Försök igen.',
         'unavailable' => ':provider går inte att nå just nu. Försök igen om en stund eller logga in på ett annat sätt.',
         'incomplete' => 'Svaret från :provider var ofullständigt. Börja om hos din identitetsleverantör.',
-        'unverified' => ':provider har inte bekräftat att :email är din, så vi kan inte koppla den till kontot som använder den adressen. Logga in på ett annat sätt och anslut sedan :provider under My account › Sign-in methods.',
+        'unverified' => ':provider har inte bekräftat att :email tillhör dig, så vi kan inte koppla det till kontot som använder adressen. Logga in på ett annat sätt och anslut sedan :provider under Mitt konto › Inloggningsmetoder.',
         'already_linked' => 'Det :provider-kontot är redan kopplat till ett annat konto här.',
         'account_disabled' => 'Det här kontot har inaktiverats. Kontakta din administratör.',
         'link_expired' => 'Begäran om att koppla :provider har gått ut eller redan använts. Logga in med :provider igen för att börja om.',
@@ -300,7 +280,6 @@ return [
         'refused' => 'Vi kunde inte behandla den här inloggningen. Försök igen senare.',
         'connect_session_changed' => 'Du loggades ut eller loggades in som någon annan medan du anslöt :provider, så inget kopplades. Logga in och försök igen.',
     ],
-
     'link_account' => [
         'title' => 'Koppla ditt :provider-konto',
         'heading' => 'Koppla ditt :provider-konto till :email?',
@@ -328,7 +307,6 @@ return [
         'linked' => ':provider är nu kopplat till ditt konto. Du kan logga in med det från och med nu.',
         'cancelled' => 'Inget kopplades. Ditt konto är precis som förut.',
     ],
-
     'open_portal_setup' => [
         'title' => 'Administratörskonfiguration',
         'heading' => 'Konfigurera inloggning för din organisation',
@@ -336,7 +314,6 @@ return [
         'action' => 'Öppna konfigurationen',
         'note' => 'Länken fungerar en gång, och konfigurationssessionen som den öppnar har en tidsgräns. Öppna den när du är redo att slutföra.',
     ],
-
     'connected_services' => [
         'title' => 'Anslutna tjänster',
         'heading' => 'Anslutna tjänster',
@@ -360,7 +337,6 @@ return [
         'failed' => ':provider kunde inte anslutas. Försök igen.',
         'disconnected' => ':provider är bortkopplat.',
     ],
-
     'connect_service' => [
         'title' => 'Anslut :provider',
         'heading' => 'Anslut ditt :provider-konto',

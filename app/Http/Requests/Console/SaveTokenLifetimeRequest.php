@@ -47,8 +47,8 @@ final class SaveTokenLifetimeRequest extends FormRequest
         $ceiling = self::ceilingMinutes();
 
         return [
-            'minutes.integer' => __('console.enter_a_whole_number_of_minutes_or_leave_it__070ec091'),
-            'minutes.min' => __('console.an_access_token_has_to_live_at_least_a_minut_1738ccde'),
+            'minutes.integer' => __('console.enter_a_whole_number_of_minutes_or_leave_it_empty_for_t_070ec091'),
+            'minutes.min' => __('console.an_access_token_has_to_live_at_least_a_minute_1738ccde'),
             'minutes.max' => "This install lets an app's access tokens live at most {$ceiling} minutes.",
         ];
     }

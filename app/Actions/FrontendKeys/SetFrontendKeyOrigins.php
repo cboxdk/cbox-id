@@ -6,10 +6,12 @@ namespace App\Actions\FrontendKeys;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use Cbox\Id\FrontendApi\Contracts\PublishableKeys;
@@ -55,13 +57,13 @@ final readonly class SetFrontendKeyOrigins implements Action
         }
 
         if (! $key->isActive()) {
-            throw ActionRefused::because('key_revoked', 'This key is revoked; its origins decide nothing. Create a new key instead.', 'origins');
+            throw ActionRefused::because('key_revoked', new ActionMessage('console.this_key_is_revoked_its_origins_decide_nothing_create_a_4dfde6ee'), 'origins');
         }
 
         try {
             $this->keys->setOrigins($key->id, CreateFrontendKey::strings($context->array('origins')));
         } catch (UnusableOrigin $e) {
-            throw ActionRefused::because('unusable_origin', $e->getMessage(), 'origins');
+            throw ActionRefused::because('unusable_origin', FrameworkMessage::from($e), 'origins');
         }
 
         $fresh = $key->fresh(['origins']) ?? $key;

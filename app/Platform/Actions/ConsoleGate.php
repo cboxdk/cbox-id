@@ -33,13 +33,16 @@ enum ConsoleGate
     /** Create and administer projects, environments and their keys. */
     case ManageEnvironments;
 
+    /** Read operational project and environment records. */
+    case ReadEnvironments;
+
     /** Read the team roster, which is PII. */
     case ReadMembers;
 
     /** Invite, re-role and remove members; mint workspace keys; change workspace settings. */
     case ManageMembers;
 
-    /** Invoice details and stored payment methods. */
+    /** Change the central financial account; grants no identity operations. */
     case ManageBilling;
 
     /**
@@ -72,6 +75,7 @@ enum ConsoleGate
             self::EnvironmentAdmin, self::Administer, self::Operator, self::Person => false,
             self::WorkspaceMember => null,
             self::ManageEnvironments => 'manage-environments',
+            self::ReadEnvironments => 'read-environments',
             self::ReadMembers => 'read-members',
             self::ManageMembers => 'manage-members',
             self::ManageBilling => 'manage-billing',

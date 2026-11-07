@@ -1,0 +1,74 @@
+SIKKERHEDSRETTELSER — CBOX ID OG LARAVEL-ID
+2026-11-04
+
+Status: Alle tre fund er rettet i de lokale kildekodetræer. Ikke udgivet eller
+udrullet. REPORT.txt er den historiske audit før disse rettelser.
+
+1. Magic link kræver nu den aktiverede anden faktor. Den svage session tilbagekaldes
+   før udfordringen. TOTP, SMS og recovery bevarer den faktiske primære metode;
+   magic link får ikke et opdigtet password-bevis i amr.
+2. En indskrevet passkey tæller ikke som gennemført MFA ved password-login.
+   Required MFA med kun passkey giver passkey_required i frontend-API'et og henviser
+   til passkey-login på den hostede formular, uden session eller login-ticket.
+   Gamle svage sessioner kontrolleres også før konto-/faktorændringer, OAuth og
+   miljøadministration. MFA-indskrivning og MFA-verifikation er separate kontroller.
+3. laravel-id kontrollerer aktiv bruger ved code exchange, refresh og direkte
+   tokenudstedelse. Deaktivering forbruger ventende koder og tilbagekalder grants i
+   en transaktion. Standardresolveren låser bruger-rækken; bruger før grant er den
+   fælles låserækkefølge. Genaktivering genopliver ikke forbrugte login-koder.
+
+Efter bekræftelse af en ny TOTP-/SMS-faktor roteres sessionen, og den gennemførte
+faktor registreres. Sudo skal bekræftes igen efter sessionens udskiftning.
+
+REGRESSIONER
+- Cbox ID: tests/Feature/SignInAssuranceRegressionTest.php — 7 bestået, 51 assertions.
+- laravel-id: tests/Feature/Api/InactiveSubjectGrantTest.php og
+  tests/Feature/Identity/MfaVerificationTest.php — 10 bestået, 39 assertions.
+- Tre angrebsregressioner blev kørt med de oprindelige app- og motor-klasser fra
+  git HEAD via separat Composer-classmap/bootstrap, uden at bytte kildekodetræet.
+  Alle tre fejlede på den forventede sikkerhedsadfærd: magic link gik til dashboard,
+  password gik til dashboard trods passkey-krav, og deaktiveret brugers code gav 200
+  med tokens. De samme tests består med rettelserne.
+- Passkeyens kryptografi er ikke erstattet i produktion. Regressionen bruger en
+  database-fixture til indskrivningsbetingelsen og den eksisterende passkey-fake til
+  det positive login; den tester policy og flow, ikke WebAuthn-kryptografi.
+
+BREDERE VALIDERING
+- laravel-id fuld suite: første kørsel 2.996 bestået, 2 skipped, 185 fejl, fordi gamle
+  token-tests anvendte bruger-id'er uden bruger-rækker. Fixtures er ændret til aktive
+  brugere; sikkerhedskontrollen er ikke svækket for at få tests til at bestå.
+- Genkørsel af AccessControl, Api, OAuthServer, ExternalActions og MfaVerification:
+  1.337 bestået og 3 resterende fixturefejl. De sidste fixtures blev rettet og de to
+  berørte testfiler genkørt: 25 bestået. Ingen af disse fund står åbne.
+- Cbox ID udvidet auth-suite: 408 bestået, 3 lokale root-MCP URL-konfigurationsfejl
+  (localhost versus cbox-id.test). RootMcpOAuthTest genkørt med APP_URL=http://localhost:
+  alle 20 bestået. Der er ikke ændret produktkode for at tilpasse disse URL-tests.
+- MFA-indskrivning, recovery, SMS og sudo: 35 bestået, 258 assertions.
+- PHPStan: ingen fejl i begge projekter. Pint og git diff --check gennemført.
+- Databasetests brugte SQLite. Der er ikke kørt samtidighedstest mod PostgreSQL/MySQL,
+  browser-suite eller tests mod produktion. En bestået regression beviser den
+  undersøgte adfærd; den er ikke en garanti for, at hele systemet er fejlfrit.
+
+AFHÆNGIGHED OG UDRULNING
+Appens composer.lock er fortsat på den tidligere udgivne laravel-id-version.
+Til lokal integrationstest er disse rettede kildefiler lagt oven på appens vendor:
+  Identity/Contracts/MfaVerification.php
+  Identity/DatabaseMfaMandate.php
+  Identity/IdentityServiceProvider.php
+  Identity/DatabaseSubjects.php
+  OAuthServer/AuthorizationCodeService.php
+  OAuthServer/RefreshTokenService.php
+  OAuthServer/RefreshTokenGrantRevoker.php
+  OAuthServer/JwtTokenIssuer.php
+  Api/Http/Controllers/TokenController.php
+Originalerne er bevaret i /tmp/cbox-id-security-vendor-original. Vendor er ikke en
+leverancemekanisme: composer install kan overskrive disse lokale filer.
+
+Før deploy skal den rettede laravel-id udgives og Cbox IDs composer.lock opdateres til
+den faktiske release. Deploy begge ændringer sammen. Se laravel-id/UPGRADING.md.
+Ingen release, commit eller produktionsændring er udført i denne opgave.
+Allerede udstedte offline-JWT'er følger fortsat SaaS-produktets expiry/revocation-
+politik; disse rettelser ændrer ikke en allerede signeret JWT hos en ekstern klient.
+
+Tidligere lokale ændringer, herunder resource-server-introspection-arbejdet i
+laravel-id og tilhørende app-konfiguration, er bevaret.

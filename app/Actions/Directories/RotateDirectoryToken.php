@@ -6,6 +6,7 @@ namespace App\Actions\Directories;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -55,7 +56,7 @@ final readonly class RotateDirectoryToken implements Action
         $directory = DirectoryFields::changeable($context);
 
         if ($directory->provider->isPull()) {
-            throw ActionRefused::because('not_scim', 'A pull directory authenticates to the provider and has no inbound token to rotate.');
+            throw ActionRefused::because('not_scim', new ActionMessage('console.a_pull_directory_authenticates_to_the_provider_and_has_7816b2af'));
         }
 
         $token = 'scim_'.bin2hex(random_bytes(32));

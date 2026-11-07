@@ -178,6 +178,7 @@ it('says on the overview whether the organization is set up, from what is config
 
 it('mints an Admin Portal link from the header, on the flash channel, as the administrator', function (): void {
     $orgId = anEnvironmentAdminWithOrganizations();
+    grantFeature($orgId, 'cbox-id-sso');
     $actor = app(ConsoleScope::class)->actorId();
 
     $this->get(route('environment.organizations.show', $orgId))
@@ -353,6 +354,8 @@ it('carries no acting organization in the console chrome any more', function ():
 it('mints a link from the organization hub with intents, lifetime and the IT contact\'s address', function (): void {
     Mail::fake();
     $orgId = anEnvironmentAdminWithOrganizations();
+    grantFeature($orgId, 'cbox-id-sso');
+    grantFeature($orgId, 'cbox-id-scim');
 
     $this->get(route('environment.organizations.show', $orgId))
         ->assertOk()
@@ -388,6 +391,7 @@ it('mints a link from the organization hub with intents, lifetime and the IT con
 
 it('lists the outstanding Admin Portal links on the overview, and revokes one as the administrator', function (): void {
     $orgId = anEnvironmentAdminWithOrganizations();
+    grantFeature($orgId, 'cbox-id-sso');
     $actor = app(ConsoleScope::class)->actorId();
 
     $this->post(route('environment.organizations.portal-links.store', $orgId), ['intents' => ['sso'], 'email' => 'it@tenant.example'])
@@ -435,6 +439,7 @@ it('lists the outstanding Admin Portal links on the overview, and revokes one as
 
 it('answers 404 for revoking another organization\'s Admin Portal link from this one\'s page', function (): void {
     $orgId = anEnvironmentAdminWithOrganizations();
+    grantFeature($orgId, 'cbox-id-sso');
     $other = app(Organizations::class)->create(new NewOrganization('Other Co', 'other-portal-co'))->id;
 
     $this->post(route('environment.organizations.portal-links.store', $other), ['intents' => ['sso']])->assertSessionHasNoErrors();

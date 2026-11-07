@@ -52,7 +52,7 @@ it('frames every page at the console one width and padding', function (): void {
 
     expect($container)->not->toBeEmpty('could not find the content container in the console shell');
 
-    expect($container[1])->toContain('p-6 lg:p-8')
+    expect($container[1])->toContain('p-6', 'lg:p-8')
         ->and($container[1])->toContain('72rem');
 })->group('ux');
 

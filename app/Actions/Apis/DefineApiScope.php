@@ -7,10 +7,12 @@ namespace App\Actions\Apis;
 use App\Http\Resources\Environment\ApiResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Apis\ApiAdministration;
@@ -62,13 +64,13 @@ final readonly class DefineApiScope implements Action
         $key = trim($context->string('key'));
 
         if (ProtocolScope::isProtocol($key)) {
-            throw ActionRefused::because('invalid_api', "\"{$key}\" is a sign-in scope Cbox ID defines itself, so no API can own it.", 'key');
+            throw ActionRefused::because('invalid_api', new ActionMessage('console._part1_is_a_sign_in_scope_cbox_id_defines_itself_so_no_25cd6511', ['part1' => (string) ($key)]), 'key');
         }
 
         $owner = ApiScope::query()->where('key', $key)->first();
 
         if ($owner !== null && $owner->api_id !== $api->id) {
-            throw ActionRefused::because('invalid_api', "\"{$key}\" already belongs to another API in this environment. A token request names a scope by its key alone, so each key can belong to one API.", 'key');
+            throw ActionRefused::because('invalid_api', new ActionMessage('console._part1_already_belongs_to_another_api_in_this_environme_bab95da8', ['part1' => (string) ($key)]), 'key');
         }
 
         try {
@@ -78,7 +80,7 @@ final readonly class DefineApiScope implements Action
                 $api->organization_id !== null || $context->boolean('tenant_requestable', true),
             ), $context->actor());
         } catch (InvalidApiDefinition $refused) {
-            throw ActionRefused::because('invalid_api', $refused->getMessage(), 'key');
+            throw ActionRefused::because('invalid_api', FrameworkMessage::from($refused), 'key');
         }
 
         $fresh = $this->apis->find($api->id) ?? $api;

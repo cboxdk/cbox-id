@@ -3,14 +3,35 @@ import type { SharedProps } from '@/types';
 
 /** Tests consume the real PHP catalogue, not a second copy of English labels. */
 export function consoleI18n(
-    locale: 'en' | 'da' | 'de' | 'sv' | 'nb' | 'fr' | 'fi' | 'es' | 'it' | 'nl' = 'en',
+    locale:
+        | 'en'
+        | 'da'
+        | 'de'
+        | 'sv'
+        | 'nb'
+        | 'fr'
+        | 'fi'
+        | 'es'
+        | 'it'
+        | 'nl'
+        | 'pt'
+        | 'pl'
+        | 'ro'
+        | 'cs'
+        | 'hu'
+        | 'el'
+        | 'bg'
+        | 'hr'
+        | 'sk'
+        | 'tr'
+        | 'uk' = 'en',
 ): NonNullable<SharedProps['i18n']> {
     const messages = JSON.parse(
         execFileSync(
             'php',
             [
                 '-r',
-                `$messages = []; foreach (require 'lang/${locale}/console.php' as $key => $text) { $messages['console.'.$key] = $text; } echo json_encode($messages, JSON_THROW_ON_ERROR);`,
+                `$messages = []; $flatten = function ($values, $prefix) use (&$flatten, &$messages) { foreach ($values as $key => $text) { is_array($text) ? $flatten($text, $prefix.$key.'.') : $messages[$prefix.$key] = $text; } }; foreach (['console', 'hosted'] as $group) { $flatten(require 'lang/${locale}/'.$group.'.php', $group.'.'); } echo json_encode($messages, JSON_THROW_ON_ERROR);`,
             ],
             { encoding: 'utf8' },
         ),
@@ -18,6 +39,7 @@ export function consoleI18n(
 
     return {
         locale,
+        preference: null,
         locales: [
             { code: 'en', name: 'English' },
             { code: 'da', name: 'Dansk' },

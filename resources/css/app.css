@@ -1044,6 +1044,14 @@
             0 0 0 3px var(--accent-soft),
             0 0 0 1px var(--ring);
     }
+    /* Long translated sign-in actions can wrap on narrow phones. */
+    .auth-shell .btn-lg {
+        height: auto;
+        min-height: 42px;
+        padding-block: 10px;
+        line-height: 1.4;
+        white-space: normal;
+    }
     /* The primary CTA on the auth surface sits a touch more lifted. */
     .auth-shell .btn-primary {
         box-shadow:

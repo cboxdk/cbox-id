@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useFormatTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import { EmptyState, PageHeader, Panel, Table, Td, TdMono, Th } from '@/ui';
@@ -26,30 +27,33 @@ export default function Usage({
     window: period,
     help,
 }: Props) {
-    const { locale } = useTranslator();
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
-    const { t: tc } = useTranslator();
-
-    const scope = environmentWide
-        ? tc('console.this_environment_42756031')
-        : (organization ?? tc('console.your_organization_bb0bdf0a'));
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
 
     return (
         <>
             <PageHeader
                 help={help}
-                description={tc('console.activity_across_value0_last_30_days_this_is__8ff061d6', {
-                    value0: scope,
-                })}
+                description={consoleFinalText(
+                    environmentWide
+                        ? 'console.usage_activity_environment'
+                        : organization === null
+                          ? 'console.usage_activity_current_organization'
+                          : 'console.usage_activity_organization',
+                    { organization: organization ?? '' },
+                )}
             />
 
             {metrics.length === 0 ? (
                 <div className="mt-6">
                     <EmptyState
                         icon="audit"
-                        title={tc('console.no_activity_recorded_yet_2d3a6f4f')}
-                        description={tc(
-                            'console.usage_counters_fill_as_your_team_signs_in_in_a589d0b9',
+                        title={consoleT('console.no_activity_recorded_yet_2d3a6f4f')}
+                        description={consoleT(
+                            'console.usage_counters_fill_as_your_team_signs_in_invites_membe_a589d0b9',
                         )}
                     />
                 </div>
@@ -65,7 +69,7 @@ export default function Usage({
                                     {metric.label}
                                 </div>
                                 <p className="mt-2 text-3xl font-semibold tracking-tight mono">
-                                    {metric.total.toLocaleString(locale)}
+                                    {metric.total.toLocaleString(consoleLocale)}
                                 </p>
                             </div>
                         ))}
@@ -73,7 +77,7 @@ export default function Usage({
 
                     <div className="mt-4">
                         <Panel
-                            title={tc('console.sign_ins_over_time_7418e68f')}
+                            title={consoleT('console.sign_ins_over_time_7418e68f')}
                             action={
                                 <span className="text-xs mono" style={{ color: 'var(--faint)' }}>
                                     {period.from} – {period.to}
@@ -85,18 +89,18 @@ export default function Usage({
                     </div>
 
                     <div className="mt-4">
-                        <Panel title={tc('console.all_metrics_ba2b7011')}>
+                        <Panel title={consoleT('console.all_metrics_ba2b7011')}>
                             <Table
-                                caption={tc(
-                                    'console.every_usage_counter_for_this_window_and_the__22633817',
+                                caption={consoleUiText(
+                                    'console.every_usage_counter_for_this_window_and_the_raw_metric_22633817',
                                 )}
                             >
                                 <thead>
                                     <tr>
-                                        <Th>{tc('console.metric_2d275a74')}</Th>
-                                        <Th>{tc('console.key_99a52df3')}</Th>
+                                        <Th>{consoleT('console.metric_2d275a74')}</Th>
+                                        <Th>{consoleT('console.key_99a52df3')}</Th>
                                         <Th className="text-right">
-                                            {tc('console.total_c9b3c382')}
+                                            {consoleT('console.total_c9b3c382')}
                                         </Th>
                                     </tr>
                                 </thead>
@@ -111,7 +115,7 @@ export default function Usage({
                                             */}
                                             <TdMono>{metric.key}</TdMono>
                                             <Td className="text-right mono font-medium">
-                                                {metric.total.toLocaleString(locale)}
+                                                {metric.total.toLocaleString(consoleLocale)}
                                             </Td>
                                         </tr>
                                     ))}
@@ -134,10 +138,8 @@ export default function Usage({
  * read one day; the shape is what the eye is here for.
  */
 function SignInBars({ series }: { series: Props['series'] }) {
-    const { locale } = useTranslator();
-
-    const { t: tc } = useTranslator();
-
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
     const max = series.reduce((highest, point) => Math.max(highest, point.value), 0);
     const total = series.reduce((sum, point) => sum + point.value, 0);
 
@@ -150,13 +152,14 @@ function SignInBars({ series }: { series: Props['series'] }) {
                 and it is available to anybody who wants the summary without counting bars.
             */}
             <figcaption className="sr-only">
-                {tc('console.daily_sign_ins_over_the_last_9efbf559')}
-                {series.length}
-                {tc('console.days_7541abbc')}
-                {total.toLocaleString(locale)}
-                {tc('console.in_total_peaking_at_883c8b50')}
-                {max.toLocaleString(locale)}
-                {tc('console.in_a_day_5b32e772')}
+                {consoleRich(
+                    'console.daily_sign_ins_over_the_last_part1_days_part2_in_total_1db6c9a0',
+                    {
+                        part1: series.length,
+                        part2: total.toLocaleString(consoleLocale),
+                        part3: max.toLocaleString(consoleLocale),
+                    },
+                )}
             </figcaption>
 
             <div
@@ -168,7 +171,7 @@ function SignInBars({ series }: { series: Props['series'] }) {
                     <div
                         key={point.day}
                         className="flex-1 rounded-t"
-                        title={`${point.label}: ${point.value.toLocaleString(locale)}`}
+                        title={`${point.label}: ${point.value.toLocaleString(consoleLocale)}`}
                         style={{
                             // A floor of 2%, so a day with no sign-ins is still a visible
                             // baseline rather than a gap the eye reads as missing data.

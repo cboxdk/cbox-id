@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -19,22 +19,23 @@ type Props = PageProps<{
 }>;
 
 export default function Approvals({ requests, help }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <div style={{ maxWidth: '32rem' }}>
             <PageHeader
                 help={help}
-                description={tc('console.when_an_app_or_agent_needs_your_go_ahead_to__3a85a2a9')}
+                description={consoleT(
+                    'console.when_an_app_or_agent_needs_your_go_ahead_to_act_as_you_3a85a2a9',
+                )}
             />
 
             {requests.length === 0 ? (
                 <div className="mt-6">
                     <EmptyState
                         icon="shield"
-                        title={tc('console.nothing_waiting_for_you_0c440483')}
-                        description={tc(
-                            'console.requests_appear_here_on_their_own_when_an_ap_2ee57630',
+                        title={consoleT('console.nothing_waiting_for_you_0c440483')}
+                        description={consoleT(
+                            'console.requests_appear_here_on_their_own_when_an_app_or_agent_2ee57630',
                         )}
                     />
                 </div>
@@ -50,8 +51,8 @@ export default function Approvals({ requests, help }: Props) {
 }
 
 function RequestCard({ request }: { request: Request }) {
-    const { t: tc } = useTranslator();
-
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     // A busy state on BOTH buttons at once: the two are opposite answers to one question,
     // and a second click landing on the other one while the first is in flight is the worst
     // possible race for a control that grants access.
@@ -86,11 +87,12 @@ function RequestCard({ request }: { request: Request }) {
                 </span>
                 <div className="min-w-0">
                     <p className="font-medium truncate">
-                        {request.app}
-                        {tc('console.is_requesting_access_5416657d')}
+                        {consoleRich('console._part1_is_requesting_access_c4d87651', {
+                            part1: request.app,
+                        })}
                     </p>
                     <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                        {tc('console.wants_to_act_on_your_behalf_d5514ffc')}
+                        {consoleT('console.wants_to_act_on_your_behalf_d5514ffc')}
                     </p>
                 </div>
             </div>
@@ -101,7 +103,7 @@ function RequestCard({ request }: { request: Request }) {
                     style={{ background: 'var(--accent-soft)' }}
                 >
                     <p className="cbx-page-eyebrow">
-                        {tc('console.confirm_this_matches_your_device_ceb0f1cb')}
+                        {consoleT('console.confirm_this_matches_your_device_ceb0f1cb')}
                     </p>
                     <p className="mt-1 font-medium">{request.bindingMessage}</p>
                 </div>
@@ -110,9 +112,9 @@ function RequestCard({ request }: { request: Request }) {
             {request.scopes.length > 0 && (
                 <>
                     <p className="cbx-page-eyebrow mt-6">
-                        {tc('console.this_will_allow_80def0a5')}
-                        {request.app}
-                        {tc('console.to_84d0f765')}
+                        {consoleRich('console.this_will_allow_part1_to_6ac64554', {
+                            part1: request.app,
+                        })}
                     </p>
                     <ul className="mt-2.5 space-y-2">
                         {request.scopes.map((scope) => (
@@ -137,7 +139,7 @@ function RequestCard({ request }: { request: Request }) {
                     disabled={answering}
                     onClick={() => answer(request.urls.deny)}
                 >
-                    {tc('console.deny_05a2d733')}
+                    {consoleT('console.deny_05a2d733')}
                 </Button>
                 <Button
                     size="lg"
@@ -146,7 +148,7 @@ function RequestCard({ request }: { request: Request }) {
                     loading={answering}
                     onClick={() => answer(request.urls.approve)}
                 >
-                    {tc('console.approve_6007acbe')}
+                    {consoleT('console.approve_6007acbe')}
                 </Button>
             </div>
         </div>

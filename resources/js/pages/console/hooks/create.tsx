@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
@@ -37,8 +37,7 @@ export default function CreateHook({
     indexHref,
     storeHref,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({
         point: points[0]?.value ?? '',
         url: '',
@@ -48,12 +47,12 @@ export default function CreateHook({
 
     return (
         <>
-            <Breadcrumb href={indexHref} label={tc('console.hooks_d412a062')} />
+            <Breadcrumb href={indexHref} label={consoleT('console.hooks_d412a062')} />
 
             <div className="mt-2">
                 <PageHeader
-                    description={tc(
-                        'console.the_signing_secret_is_shown_once_right_after_35bf6d24',
+                    description={consoleT(
+                        'console.the_signing_secret_is_shown_once_right_after_you_regist_35bf6d24',
                     )}
                 />
             </div>
@@ -67,9 +66,9 @@ export default function CreateHook({
                 }}
             >
                 <Panel
-                    title={tc('console.hook_point_57b75ff5')}
-                    description={tc(
-                        'console.the_moment_your_endpoint_is_called_and_what__209c828e',
+                    title={consoleT('console.hook_point_57b75ff5')}
+                    description={consoleT(
+                        'console.the_moment_your_endpoint_is_called_and_what_its_answer_209c828e',
                     )}
                 >
                     {/*
@@ -79,7 +78,7 @@ export default function CreateHook({
                         of the six behind a click and has nowhere to put the sentence.
                     */}
                     <RadioGroup
-                        label={tc('console.hook_point_57b75ff5')}
+                        label={consoleT('console.hook_point_57b75ff5')}
                         value={form.data.point}
                         onValueChange={(point) => form.setData('point', point)}
                         options={points.map((point) => ({
@@ -95,12 +94,12 @@ export default function CreateHook({
                     )}
                 </Panel>
 
-                <Panel title={tc('console.endpoint_3df9726c')}>
+                <Panel title={consoleT('console.endpoint_3df9726c')}>
                     <div className="space-y-4">
                         <Field
-                            label={tc('console.endpoint_url_2578179d')}
-                            hint={tc(
-                                'console.called_synchronously_while_somebody_waits_at_cf697019',
+                            label={consoleT('console.endpoint_url_2578179d')}
+                            hint={consoleT(
+                                'console.called_synchronously_while_somebody_waits_at_the_sign_i_cf697019',
                             )}
                             error={form.errors.url}
                         >
@@ -120,9 +119,9 @@ export default function CreateHook({
                                 onCheckedChange={(checked) =>
                                     form.setData('environmentWide', checked)
                                 }
-                                label={tc('console.environment_wide_cd1204b6')}
-                                hint={tc(
-                                    'console.call_this_endpoint_for_every_organization_in_da115b63',
+                                label={consoleT('console.environment_wide_cd1204b6')}
+                                hint={consoleT(
+                                    'console.call_this_endpoint_for_every_organization_in_this_envir_da115b63',
                                 )}
                             />
                         )}
@@ -132,8 +131,8 @@ export default function CreateHook({
                                 picker={organization}
                                 error={form.errors.organization}
                                 onChange={(id) => form.setData('organization', id)}
-                                hint={tc(
-                                    'console.whose_sign_ins_it_is_called_for_or_tick_envi_38b9a155',
+                                hint={consoleT(
+                                    'console.whose_sign_ins_it_is_called_for_or_tick_environment_wid_38b9a155',
                                 )}
                             />
                         )}
@@ -142,10 +141,10 @@ export default function CreateHook({
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        {tc('console.register_endpoint_1e7b84db')}
+                        {consoleT('console.register_endpoint_1e7b84db')}
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
+                        <Link href={indexHref}>{consoleT('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
             </form>

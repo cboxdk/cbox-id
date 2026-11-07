@@ -37,7 +37,7 @@ return [
     'optional' => '(valgfritt)',
     'choose_country' => 'Velg et land',
     'choose' => 'Velg et alternativ',
-    'waitlist_note' => 'Påmelding til ventelisten starter ikke et abonnement. Vi sender deg e-post når tilgang er tilgjengelig.',
+    'waitlist_note' => 'Påmelding til ventelisten starter ikke et abonnement. Vi sender deg en e-post når du kan få tilgang.',
     'create_account' => 'Opprett en konto',
     'continue' => 'Fortsett',
     'choose_team' => 'Velg teamet som skal bruke tjenesten, eller opprett et nytt.',

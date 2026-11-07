@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, useForm, usePage } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
@@ -54,8 +54,11 @@ export default function ApiKeys({
     lifetimes,
     storeHref,
 }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
     // On the flash channel: a credential in a history entry is readable by pressing Back,
     // long after the page that showed it has gone.
     const freshKey = usePage().flash.freshKey;
@@ -72,26 +75,33 @@ export default function ApiKeys({
                     className="inline-flex items-center gap-2 text-sm font-medium"
                     style={{ color: 'var(--accent-strong)' }}
                 >
-                    <Icon
-                        name="chevron"
-                        className="w-4 h-4"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    {tc('console.back_to_1b52b139')}
-                    {returnTo.appName}
+                    {consoleRich('console._part1_back_to_part2_3f3a5976', {
+                        part1: (
+                            <Icon
+                                name="chevron"
+                                className="w-4 h-4"
+                                style={{ transform: 'rotate(90deg)' }}
+                            />
+                        ),
+                        part2: returnTo.appName,
+                    })}
                 </a>
             )}
 
             <PageHeader
                 help={help}
-                description={tc('console.keys_your_own_scripts_and_integrations_use_t_db6b0585')}
+                description={consoleUiText(
+                    'console.keys_your_own_scripts_and_integrations_use_to_call_an_a_db6b0585',
+                )}
             />
 
             {organizations.length > 1 && organizationId !== null && (
                 <div className="max-w-sm">
                     <Field
-                        label={tc('console.organization_d764d425')}
-                        hint={tc('console.a_key_acts_in_one_organization_switch_to_see_85f14ccb')}
+                        label={consoleUiText('console.organization_d764d425')}
+                        hint={consoleUiText(
+                            'console.a_key_acts_in_one_organization_switch_to_see_and_create_85f14ccb',
+                        )}
                     >
                         <Select
                             value={organizationId}
@@ -120,15 +130,16 @@ export default function ApiKeys({
                         color: 'var(--warning-strong)',
                     }}
                 >
-                    {tc('console.the_app_that_sent_you_here_does_not_offer_ap_ffa3d94b')}
-                    {organizationName !== null
-                        ? tc('console.in_value0_09a02660', { value0: organizationName })
-                        : ''}
-                    .
-                    {organizations.length > 1
-                        ? tc('console.try_another_organization_or_ask_cf2cbb78')
-                        : tc('console.ask_4e90bdc3')}
-                    {tc('console.the_app_s_support_team_f0dda4a2')}
+                    {consoleText(
+                        organizationName !== null
+                            ? organizations.length > 1
+                                ? 'console.app_keys_unavailable_organization_switch'
+                                : 'console.app_keys_unavailable_organization'
+                            : organizations.length > 1
+                              ? 'console.app_keys_unavailable_switch'
+                              : 'console.app_keys_unavailable',
+                        { organization: organizationName ?? '' },
+                    )}
                 </p>
             )}
 
@@ -138,19 +149,21 @@ export default function ApiKeys({
                 <Panel>
                     <EmptyState
                         icon="key"
-                        title={tc('console.you_are_not_in_an_organization_yet_e107e606')}
-                        description={tc(
-                            'console.a_key_acts_inside_an_organization_once_you_j_3006f74d',
+                        title={consoleUiText('console.you_are_not_in_an_organization_yet_e107e606')}
+                        description={consoleUiText(
+                            'console.a_key_acts_inside_an_organization_once_you_join_one_you_3006f74d',
                         )}
                     />
                 </Panel>
             ) : (
                 <>
                     <Panel
-                        title={tc('console.your_keys_debd32b8')}
+                        title={consoleUiText('console.your_keys_debd32b8')}
                         description={
                             organizationName !== null
-                                ? tc('console.in_value0_75208618', { value0: organizationName })
+                                ? consoleFinalText('console.in_part1_1c341440', {
+                                      part1: organizationName,
+                                  })
                                 : undefined
                         }
                         flush={keys.length > 0}
@@ -158,29 +171,31 @@ export default function ApiKeys({
                         <AppApiKeyList
                             keys={keys}
                             empty={{
-                                title: tc('console.no_keys_yet_3e5039d1'),
-                                description: tc(
-                                    'console.keys_you_create_appear_here_with_when_each_w_8c3ff766',
+                                title: consoleText('console.no_keys_yet_3e5039d1'),
+                                description: consoleText(
+                                    'console.keys_you_create_appear_here_with_when_each_was_last_use_8c3ff766',
                                 ),
                             }}
-                            consequence={tc(
-                                'console.anything_still_using_this_key_stops_working__dbb577cb',
+                            consequence={consoleUiText(
+                                'console.anything_still_using_this_key_stops_working_immediately_dbb577cb',
                             )}
                         />
                     </Panel>
 
                     <Panel
-                        title={tc('console.new_key_eda5496b')}
-                        description={tc(
-                            'console.pick_the_app_and_tick_only_what_the_key_need_69b0060d',
+                        title={consoleUiText('console.new_key_eda5496b')}
+                        description={consoleUiText(
+                            'console.pick_the_app_and_tick_only_what_the_key_needs_you_can_c_69b0060d',
                         )}
                     >
                         {apps.length === 0 ? (
                             <EmptyState
                                 icon="key"
-                                title={tc('console.no_app_here_offers_api_keys_163cd484')}
-                                description={tc(
-                                    'console.an_app_appears_here_once_it_lets_its_users_c_577b44c0',
+                                title={consoleUiText(
+                                    'console.no_app_here_offers_api_keys_163cd484',
+                                )}
+                                description={consoleUiText(
+                                    'console.an_app_appears_here_once_it_lets_its_users_create_keys_577b44c0',
                                 )}
                             />
                         ) : (
@@ -201,8 +216,8 @@ export default function ApiKeys({
 }
 
 function FreshKey({ value, returnTo }: { value: string; returnTo: Props['returnTo'] }) {
-    const { t: tc } = useTranslator();
-
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
     return (
         <div
             className="rounded-xl border p-4"
@@ -212,7 +227,9 @@ function FreshKey({ value, returnTo }: { value: string; returnTo: Props['returnT
             }}
         >
             <p className="text-sm font-medium" style={{ color: 'var(--success-strong)' }}>
-                {tc('console.copy_your_key_now_you_won_t_be_able_to_see_i_36d9f33f')}
+                {consoleUiText(
+                    'console.copy_your_key_now_you_won_t_be_able_to_see_it_again_36d9f33f',
+                )}
             </p>
             <div className="mt-3 flex items-center gap-2">
                 <code
@@ -228,15 +245,20 @@ function FreshKey({ value, returnTo }: { value: string; returnTo: Props['returnT
             </div>
             {returnTo !== null && (
                 <p className="mt-3 text-sm">
-                    {tc('console.copied_it_b4914b22')}{' '}
-                    <a
-                        href={returnTo.url}
-                        className="font-medium"
-                        style={{ color: 'var(--accent-strong)' }}
-                    >
-                        {tc('console.back_to_1b52b139')}
-                        {returnTo.appName}
-                    </a>
+                    {consoleRich('console.copied_it_part1_part2_54e2ca9c', {
+                        part1: ' ',
+                        part2: (
+                            <a
+                                href={returnTo.url}
+                                className="font-medium"
+                                style={{ color: 'var(--accent-strong)' }}
+                            >
+                                {consoleRich('console.back_to_part1_dc732693', {
+                                    part1: returnTo.appName,
+                                })}
+                            </a>
+                        ),
+                    })}
                 </p>
             )}
         </div>
@@ -256,8 +278,8 @@ function NewKeyForm({
     lifetimes: KeyLifetimeOption[];
     storeHref: string;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
     const form = useForm<{
         client_id: string;
         organization_id: string;
@@ -297,12 +319,12 @@ function NewKeyForm({
         >
             <div className="grid gap-3 sm:grid-cols-2 items-start">
                 <Field
-                    label={tc('console.app_0d04bfeb')}
+                    label={consoleUiText('console.app_0d04bfeb')}
                     error={form.errors.client_id ?? form.errors.organization_id}
                 >
                     <Select
                         value={form.data.client_id === '' ? undefined : form.data.client_id}
-                        placeholder={tc('console.choose_an_app_26c3b615')}
+                        placeholder={consoleUiText('console.choose_an_app_26c3b615')}
                         onValueChange={(clientId) => {
                             // A permission ticked for one app means nothing in another.
                             form.setData((data) => ({
@@ -319,13 +341,15 @@ function NewKeyForm({
                 </Field>
 
                 <Field
-                    label={tc('console.name_dcd1d522')}
+                    label={consoleUiText('console.name_dcd1d522')}
                     error={form.errors.name}
-                    hint={tc('console.what_will_use_it_you_will_see_this_name_in_t_e342fdef')}
+                    hint={consoleUiText(
+                        'console.what_will_use_it_you_will_see_this_name_in_the_list_e342fdef',
+                    )}
                 >
                     <Input
                         name="name"
-                        placeholder={tc('console.nightly_export_3d59e1bf')}
+                        placeholder={consoleUiText('console.nightly_export_3d59e1bf')}
                         value={form.data.name}
                         onChange={(event) => form.setData('name', event.target.value)}
                     />
@@ -335,19 +359,21 @@ function NewKeyForm({
             {app !== undefined && (
                 <fieldset className="space-y-2">
                     <legend className="text-sm font-medium">
-                        {tc('console.permissions_abccc78c')}
+                        {consoleUiText('console.permissions_abccc78c')}
                     </legend>
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                        {tc('console.only_what_you_can_do_in_b15893ae')}
-                        {app.name}
-                        {tc('console.yourself_is_offered_if_you_lose_a_permission_502e6987')}
+                        {consoleRich(
+                            'console.only_what_you_can_do_in_part1_yourself_is_offered_if_yo_54637548',
+                            { part1: app.name },
+                        )}
                     </p>
 
                     {app.permissions.length === 0 ? (
                         <p className="text-sm">
-                            {tc('console.you_hold_no_permissions_in_be94ed13')}
-                            {app.name}
-                            {tc('console.so_a_key_would_identify_you_to_it_and_do_not_455f0364')}
+                            {consoleRich(
+                                'console.you_hold_no_permissions_in_part1_so_a_key_would_identif_2c680207',
+                                { part1: app.name },
+                            )}
                         </p>
                     ) : (
                         <div className="grid gap-2 sm:grid-cols-2">
@@ -389,7 +415,7 @@ function NewKeyForm({
                 loading={form.processing}
                 disabled={form.data.client_id === ''}
             >
-                {tc('console.create_key_b6cde903')}
+                {consoleUiText('console.create_key_b6cde903')}
             </Button>
         </form>
     );

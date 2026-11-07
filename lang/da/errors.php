@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 // Danish: the error pages (see lang/en/errors.php). `:brand` is the configured product name.
 return [
+    'locale_conflict' => 'Dine indstillinger eller den konto, du er logget ind på, er ændret. Genindlæs siden, og vælg sprog igen.',
     'layout' => [
         'default_title' => 'Fejl',
         'default_heading' => 'Noget gik galt',

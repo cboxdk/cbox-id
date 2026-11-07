@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Actions\Idempotency;
 
 use App\Platform\Actions\ActionDefinition;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\Principal\Principal;
@@ -53,7 +54,7 @@ final class IdempotencyGuard
         $lock = Cache::lock('action-idempotency:'.hash('sha256', $owner.'|'.$key), self::LOCK_SECONDS);
 
         if (! $lock->get()) {
-            throw new ActionRefused('idempotency_in_progress', 'A request with this Idempotency-Key is still being processed. Retry shortly.', 409);
+            throw new ActionRefused('idempotency_in_progress', new ActionMessage('console.a_request_with_this_idempotency_key_is_still_being_proc_30636fef'), 409);
         }
 
         try {
@@ -67,7 +68,7 @@ final class IdempotencyGuard
                 if ($stored->action !== $action->name || ! hash_equals($stored->request_hash, $hash)) {
                     throw ActionRefused::because(
                         'idempotency_key_reused',
-                        'This Idempotency-Key was already used for a different request. Use a new key for a new request.',
+                        new ActionMessage('console.this_idempotency_key_was_already_used_for_a_different_r_0c304fb5'),
                     );
                 }
 
@@ -90,7 +91,7 @@ final class IdempotencyGuard
 
             return $result;
         } catch (LockTimeoutException) {
-            throw new ActionRefused('idempotency_in_progress', 'A request with this Idempotency-Key is still being processed. Retry shortly.', 409);
+            throw new ActionRefused('idempotency_in_progress', new ActionMessage('console.a_request_with_this_idempotency_key_is_still_being_proc_30636fef'), 409);
         } finally {
             $lock->release();
         }

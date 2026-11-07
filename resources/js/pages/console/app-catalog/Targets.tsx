@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { useEffect, useState } from 'react';
 import { Checkbox, Input } from '@/ui';
 export interface Option {
@@ -11,12 +12,23 @@ export function Targets({
     initial,
     onChange,
 }: {
-    kind: string;
+    kind: 'organizations' | 'users' | 'clients';
     href: string;
     selected: string[];
     initial: Option[];
     onChange: (ids: string[]) => void;
 }) {
+    const { t } = useTranslator();
+    const selectedLabels = {
+        organizations: t('console.catalog_selected_organizations'),
+        users: t('console.catalog_selected_users'),
+        clients: t('console.catalog_selected_clients'),
+    };
+    const searchLabels = {
+        organizations: t('console.search_organizations_c1b2693a'),
+        users: t('console.search_users_e4bb77af'),
+        clients: t('console.catalog_search_clients'),
+    };
     const [query, setQuery] = useState('');
     const [results, setResults] = useState<Option[]>([]);
     const [known, setKnown] = useState<Option[]>(initial);
@@ -24,7 +36,7 @@ export function Targets({
     useEffect(() => {
         const controller = new AbortController();
         const timer = window.setTimeout(async () => {
-            setStatus('Searching…');
+            setStatus(t('console.searching_c31723ab'));
             try {
                 const url = new URL(href, window.location.origin);
                 url.searchParams.set('kind', kind);
@@ -43,20 +55,20 @@ export function Targets({
                 ]);
                 setStatus(
                     data.results.length === 20
-                        ? 'First 20 matches. Type to narrow the search.'
+                        ? t('console.catalog_search_limit')
                         : data.results.length === 0
-                          ? 'No matches.'
+                          ? t('console.catalog_search_empty')
                           : '',
                 );
             } catch {
-                if (!controller.signal.aborted) setStatus('Search could not load. Try again.');
+                if (!controller.signal.aborted) setStatus(t('console.catalog_search_failed'));
             }
         }, 250);
         return () => {
             window.clearTimeout(timer);
             controller.abort();
         };
-    }, [href, kind, query]);
+    }, [href, kind, query, t]);
     const options = [
         ...new Map(
             [
@@ -69,10 +81,10 @@ export function Targets({
     ];
     return (
         <fieldset className="space-y-3">
-            <legend className="label">Selected {kind}</legend>
+            <legend className="label">{selectedLabels[kind]}</legend>
             <Input
-                aria-label={`Search ${kind}`}
-                placeholder={`Search ${kind}…`}
+                aria-label={searchLabels[kind]}
+                placeholder={searchLabels[kind]}
                 value={query}
                 maxLength={120}
                 onChange={(event) => setQuery(event.target.value)}

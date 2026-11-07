@@ -53,10 +53,10 @@ final readonly class AgentRowProps implements Prop
         $named = count($policy->actions);
 
         if ($level === null) {
-            return __('console.approval_for_6edbf3ac').$named.' named '.($named === 1 ? 'action' : 'actions');
+            return __('console.agent_named_approval_count', ['count' => $named]);
         }
 
-        return $named === 0 ? $level : $level.' + '.$named.' named';
+        return $named === 0 ? $level : __('console.agent_level_and_named_approval_count', ['level' => $level, 'count' => $named]);
     }
 
     /**

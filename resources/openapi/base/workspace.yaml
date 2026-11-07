@@ -8,8 +8,7 @@ info:
     environments, its team, and its keys with a workspace key.
 
     **Scopes.** A workspace key carries a ROLE and, optionally, SCOPES. The role bounds
-    everything the key may do — the same capabilities a person holding that role has in
-    the console — and scopes narrow it further: `workspace:read`, `projects:write`,
+    everything the machine key may do, and scopes narrow it further: `workspace:read`, `projects:write`,
     `environments:write`, `team:read`, `team:write`, `keys:write`, `settings:write`, `billing:write`. A key
     minted with no scopes is bounded by its role alone. Each operation names the scope and
     the capability it needs; a key missing either gets `403`.
@@ -17,11 +16,14 @@ info:
     **As a member of the team.** Beside a key, the plane takes an access token the platform
     root issued one of the workspace's people (`WorkspaceAccessToken` — `cbox login` at the
     root, or an agent signed in there). It is bounded the same two ways: the person's
-    membership role must hold the capability, and the token must carry the scope. What it
+    current Cbox ID app permissions must hold the capability, and the token must carry the scope.
+    A shared organization Admin role grants no app permissions; current ownership grants full authority.
+    Name the workspace with `Cbox-Organization` when an unbound token can access multiple workspaces.
+    This header cannot override a workspace already bound to the token or key. What it
     does is recorded as the member, and every critical operation waits for the person's
     approval on their device. With the same token, each environment of the workspace is
     reached from the root's host through the environment API, naming it in
-    `Cbox-Environment`.
+    `Cbox-Environment`. Selected-environment access is checked against current membership on every request.
 
     **Bootstrapping an environment.** `POST /workspace/environments` with `initial_key`
     creates the environment and mints its first management key (`cbid_env_…`) in one call.
@@ -72,7 +74,7 @@ paths:
       summary: Get the workspace
       operationId: workspace_get
       x-action: workspace.get
-      description: Requires scope `workspace:read` (any role). Returns the workspace's identity. The `projects` block (each project's plan/allowance) is included only for keys whose role can read billing (owner/admin/viewer — not developer).
+      description: Requires scope `workspace:read` and current workspace access. Returns only the workspace identity and status, including for members with only the Billing app role.
       responses:
         "200":
           description: OK
@@ -92,7 +94,7 @@ paths:
       summary: List projects
       operationId: projects_list
       x-action: projects.list
-      description: Requires scope `workspace:read` (any role). The workspace's projects (IdP products). Each carries its own plan and environment allowance.
+      description: Requires scope `workspace:read` and permission to read environments. Human callers see only projects containing environments they may access; environment counts include only those environments. Billing-only members cannot list projects.
       responses:
         "200":
           description: OK
@@ -109,7 +111,7 @@ paths:
     post:
       tags: [Projects]
       summary: Create a project
-      description: Stand up another independently-billed IdP product. Environment allowance is assigned by the server, never by request input. Requires scope `projects:write` and the `manage-environments` capability (owner/admin/developer).
+      description: Stand up another independently-billed IdP product. Requires scope `projects:write` and the `manage-environments` capability (`id:write` for human members, or current ownership).
       operationId: projects_create
       x-action: projects.create
       parameters:
@@ -123,6 +125,7 @@ paths:
               required: [name]
               properties:
                 name: { type: string, maxLength: 120 }
+                environment_limit: { type: integer, minimum: 1, maximum: 100, description: "Optional lower per-project environment allowance. Defaults to the account's current Billing entitlement and cannot exceed it." }
       responses:
         "201":
           description: Created
@@ -142,7 +145,7 @@ paths:
     get:
       tags: [Environments]
       summary: List environments
-      description: Requires scope `workspace:read` (any role).
+      description: Requires scope `workspace:read` and permission to read environments. Returns only currently permitted environments; Billing-only members cannot list them.
       operationId: environments_list
       x-action: environments.list
       parameters:
@@ -167,7 +170,7 @@ paths:
       summary: Create an environment
       description: |
         Requires scope `environments:write` and the `manage-environments` capability
-        (owner/admin/developer). Danger: critical — with `initial_key` it mints a credential.
+        (`id:write` for human members, or current ownership). Danger: critical — with `initial_key` it mints a credential.
 
         With `initial_key`, the environment's first management key is minted in the same
         call and returned once as `initial_key.token` — enough for an agent holding one
@@ -232,7 +235,7 @@ paths:
       summary: List members
       operationId: team_list
       x-action: team.list
-      description: Requires scope `team:read` and the `read-members` capability (owner/admin/viewer). The roster is PII — a developer key is refused.
+      description: Requires scope `team:read` and the `read-members` capability (`members:read` for human members, or current ownership). The roster contains personal information; a machine key also needs an explicit role allowing member reads.
       parameters:
         - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 100, default: 50 } }
         - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
@@ -254,11 +257,10 @@ paths:
       tags: [Team]
       summary: Invite a member
       description: |
-        Requires scope `team:write` and the `manage-members` capability (owner/admin). Invites the address onto the
-        workspace's team — the same invitation the console's Team page sends: a mail naming
-        this key as the inviter and the role, with a signed link on which the invitee sets a
-        password and is signed in. Owner is never invited; ownership is transferred. An
-        earlier pending invitation for the same address is superseded. List, re-send and
+        Requires scope `team:write` and the `manage-members` capability (`members:manage` for human members, or current ownership). Invites the address onto the
+        ID product team with the selected app roles. Existing shared membership and other
+        apps are preserved. Owner is never invited; ownership is transferred separately. An
+        earlier pending invitation for the same address and this app is superseded. List, re-send and
         withdraw it under `/workspace/invitations`.
       operationId: team_invite
       x-action: team.invite
@@ -270,11 +272,11 @@ paths:
           application/json:
             schema:
               type: object
-              required: [email, role]
+              required: [email, roles]
               properties:
                 email: { type: string, format: email }
                 name: { type: ["string", "null"] }
-                role: { type: string, enum: [admin, developer, member, viewer] }
+                roles: { type: array, minItems: 1, uniqueItems: true, items: { type: string, enum: [admin, developer, billing, viewer] } }
       responses:
         "201":
           description: Invited
@@ -283,7 +285,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  data: { $ref: "#/components/schemas/Member" }
+                  data: { $ref: "#/components/schemas/TeamInvitationReceipt" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -335,7 +337,7 @@ paths:
               schema:
                 type: object
                 properties:
-                  data: { $ref: "#/components/schemas/Member" }
+                  data: { $ref: "#/components/schemas/TeamInvitationReceipt" }
         "401": { $ref: "#/components/responses/Unauthorized" }
         "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -386,91 +388,6 @@ paths:
         "401": { $ref: "#/components/responses/Unauthorized" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
-  /workspace/billing/details:
-    put:
-      tags: [Billing]
-      summary: Update invoice details for this workspace
-      operationId: billing_details_update
-      x-action: billing.details.update
-      parameters:
-        - { $ref: '#/components/parameters/IdempotencyKey' }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [invoice_name, billing_email, address_line_1, postal_code, city, country]
-              properties:
-                invoice_name: { type: string, maxLength: 255 }
-                billing_email: { type: string, format: email, maxLength: 254 }
-                address_line_1: { type: string, maxLength: 255 }
-                address_line_2: { type: [string, 'null'], maxLength: 255 }
-                postal_code: { type: string, maxLength: 32 }
-                city: { type: string, maxLength: 128 }
-                country: { type: string, pattern: '^[A-Z]{2}$', description: ISO 3166-1 country code }
-                subdivision: { type: [string, 'null'], maxLength: 64, description: Required for US and CA }
-                tax_id: { type: [string, 'null'], maxLength: 64 }
-      responses:
-        '200':
-          description: Saved invoice profile
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [data]
-                properties:
-                  data: { type: object, additionalProperties: true }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/UnprocessableEntity' }
-        '429': { $ref: '#/components/responses/TooManyRequests' }
-        '503':
-          description: Billing is unavailable; retry later
-          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
-  /workspace/billing/payment-methods:
-    post:
-      tags: [Billing]
-      summary: Set a default card or remove a non-default card
-      operationId: billing_payment_methods_update
-      x-action: billing.payment_methods.update
-      parameters:
-        - { $ref: '#/components/parameters/IdempotencyKey' }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [operation, card]
-              properties:
-                operation: { type: string, enum: [default, remove] }
-                card: { type: string, maxLength: 128, description: Card belonging to this workspace }
-      responses:
-        '200':
-          description: Card updated
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [data]
-                properties:
-                  data:
-                    type: object
-                    required: [ok]
-                    properties:
-                      ok: { type: boolean }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '422': { $ref: '#/components/responses/UnprocessableEntity' }
-        '429': { $ref: '#/components/responses/TooManyRequests' }
-        '503':
-          description: Billing is unavailable; retry later
-          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
 components:
   securitySchemes:
     WorkspaceAccessToken:
@@ -530,7 +447,7 @@ components:
       description: Missing or invalid workspace key (or its workspace is suspended)
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     Forbidden:
-      description: The key's role lacks the required capability, or the key lacks the required scope
+      description: The current app permissions or machine key role lack the required capability, or the credential lacks the required scope
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     MailFailed:
       description: The mail server refused the invitation (`mail_failed`). A new invitation is withdrawn, so trying again works; a re-sent one is kept.
@@ -571,10 +488,6 @@ components:
         id: { type: string }
         name: { type: string }
         status: { type: string, enum: [active, suspended] }
-        projects:
-          type: array
-          description: The workspace's projects with each one's plan/allowance. Present only for billing-readers (plans are per project).
-          items: { $ref: "#/components/schemas/Project" }
     Project:
       type: object
       properties:
@@ -582,8 +495,8 @@ components:
         name: { type: string }
         slug: { type: string }
         status: { type: string, enum: [active, suspended] }
-        environment_limit: { type: integer, description: This project's plan environment allowance. }
-        environments_used: { type: integer }
+        environment_limit: { type: integer, description: Local per-project ceiling; creating environments also requires sufficient current Billing entitlement. }
+        environments_used: { type: integer, description: Number of environments visible to the caller. }
     Environment:
       type: object
       properties:
@@ -605,11 +518,15 @@ components:
       type: object
       properties:
         id: { type: string }
-        email: { type: string, format: email }
+        email: { type: ["string", "null"], format: email }
         name: { type: ["string", "null"] }
-        role: { type: string, enum: [owner, admin, developer, member, viewer] }
-        status: { type: string, enum: [active, invited] }
+        role: { type: string, enum: [owner, admin, developer, member, viewer], description: Shared membership tier; only current owner implies app authority. }
+        roles: { type: array, items: { type: string, enum: [admin, developer, billing, viewer] } }
+        roles_version: { type: string }
+        status: { type: string, enum: [active, invited, suspended] }
         all_environments: { type: boolean }
+        environment_ids: { type: array, items: { type: string } }
+        environment_access_version: { type: string }
     CreatedEnvironment:
       description: An environment, and — when the request asked for one — its first management key.
       allOf:
@@ -650,14 +567,24 @@ components:
         token: { type: ["string", "null"], description: "The key's value. Shown once." }
     TeamInvitation:
       type: object
-      required: [id, email, role, expires_at]
+      required: [id, email, roles, expires_at]
       properties:
         id: { type: string }
         email: { type: string, format: email }
         role: { type: string, enum: [admin, developer, member, viewer] }
+        roles: { type: array, items: { type: string, enum: [admin, developer, billing, viewer] } }
+        app_role_label: { type: ["string", "null"] }
         invited_by: { type: ["string", "null"], description: "The person, or the API key, that sent it — by name." }
         invited_at: { type: ["string", "null"], format: date-time }
         expires_at: { type: string, format: date-time }
+    TeamInvitationReceipt:
+      type: object
+      required: [id, email, roles, status]
+      properties:
+        id: { type: string }
+        email: { type: string, format: email }
+        roles: { type: array, items: { type: string, enum: [admin, developer, billing, viewer] } }
+        status: { type: string, enum: [invited] }
     CustomDomain:
       type: object
       required: [domain, verified_at, pending]

@@ -15,6 +15,10 @@ use App\Platform\Radar\RadarFacts;
 use App\Platform\Radar\RadarPolicy;
 use App\Platform\Radar\RadarPolicySnapshot;
 use Cbox\Risk\Enums\Outcome;
+use Tests\TestCase;
+
+// Built-in verdicts include translated rule labels from the application catalogue.
+uses(TestCase::class);
 
 /*
 |--------------------------------------------------------------------------

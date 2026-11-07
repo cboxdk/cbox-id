@@ -11,6 +11,7 @@ use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Radar\Enums\RadarAction;
 use App\Platform\Radar\Enums\RadarRuleScope;
@@ -63,7 +64,7 @@ final readonly class CreateRadarRule implements Action
                 is_numeric($position) ? (int) $position : null,
             );
         } catch (RadarRuleInvalid $invalid) {
-            throw ActionRefused::because('invalid_rule', $invalid->getMessage(), 'conditions');
+            throw ActionRefused::because('invalid_rule', FrameworkMessage::from($invalid), 'conditions');
         }
 
         $this->trail->record(RadarTrail::RULE_CREATED, 'radar_rule', $rule->id, $context->actor(), [

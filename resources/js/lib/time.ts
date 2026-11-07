@@ -8,7 +8,7 @@
  * `Intl.RelativeTimeFormat` rather than a formatting library: it is in every browser this
  * app supports, it speaks the reader's own locale, and it is already loaded.
  */
-export function relativeTime(iso: string, locale = 'en'): string {
+export function relativeTime(iso: string, locale: string = 'en'): string {
     const seconds = Math.round((Date.parse(iso) - Date.now()) / 1000);
     const format = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
 
@@ -33,7 +33,7 @@ export function relativeTime(iso: string, locale = 'en'): string {
 }
 
 /** An absolute timestamp, in the reader's own locale and time zone. */
-export function absoluteTime(iso: string, locale = 'en'): string {
+export function absoluteTime(iso: string, locale: string = 'en'): string {
     return new Intl.DateTimeFormat(locale, {
         dateStyle: 'medium',
         timeStyle: 'short',

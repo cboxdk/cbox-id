@@ -12,10 +12,8 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\AttributeMappings;
 use App\Http\Requests\Console\SaveServiceProviderRequest;
-use App\Platform\Console\Vocabulary;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
@@ -67,7 +65,7 @@ final readonly class ServiceProviderController extends ConsoleController
 
     public function index(Request $request): Response
     {
-        $this->assertEnvironmentAdmin();
+        abort_unless(app(EnvironmentAdminAuth::class)->canRead(), 403);
 
         $query = ServiceProvider::query()->orderBy('entity_id');
 
@@ -85,7 +83,7 @@ final readonly class ServiceProviderController extends ConsoleController
             static fn (?string $id): bool => $id !== null && $id !== '',
         )));
 
-        return $this->page('environment/sso-providers/index', ConsoleStrings::text(Vocabulary::SAML_APPS), [
+        return $this->page('environment/sso-providers/index', __('console.saml_apps_072d5a25'), [
             'help' => HelpProps::for(HelpTopic::SamlApplications),
             // The other direction, which the description sends people to — as a link.
             'connectionsHref' => route('environment.connections'),
@@ -166,7 +164,7 @@ final readonly class ServiceProviderController extends ConsoleController
 
     public function show(string $provider): Response
     {
-        $this->assertEnvironmentAdmin();
+        abort_unless(app(EnvironmentAdminAuth::class)->canRead(), 403);
 
         $model = $this->resolve($provider);
 

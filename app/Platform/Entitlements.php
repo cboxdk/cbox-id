@@ -4,22 +4,13 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
-use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
+use App\Platform\Billing\ProductBilling;
 
-/**
- * The app-layer gate for the enterprise self-serve surfaces. It maps a feature
- * name ('sso' | 'scim') to the configured, namespaced entitlement key and reads
- * the org's live, billing-fed value.
- *
- * Deny-by-default: an unknown feature, an org with no id, or an unset/expired
- * entitlement all resolve to `false`. The entitlement projection itself lives in
- * the `cboxdk/laravel-id` package (billing feeds it); this class only decides
- * which app screens it unlocks.
- */
+/** Customer product features are assigned centrally; identity infrastructure has its own reader. */
 final class Entitlements
 {
     public function __construct(
-        private readonly EntitlementReader $reader,
+        private readonly ProductBilling $billing,
         private readonly CurrentUser $current,
     ) {}
 
@@ -32,13 +23,7 @@ final class Entitlements
             return false;
         }
 
-        $key = $this->keyFor($feature);
-
-        if ($key === null) {
-            return false;
-        }
-
-        return $this->reader->get($organizationId, $key)?->bool() ?? false;
+        return $this->billing->enabled($organizationId, $feature);
     }
 
     /**
@@ -50,16 +35,5 @@ final class Entitlements
         $organizationId = $this->current->organizationId();
 
         return $organizationId !== null && $this->entitled($organizationId, $feature);
-    }
-
-    /**
-     * Resolve a feature name to its configured entitlement key, or null when the
-     * feature is not one this app gates.
-     */
-    private function keyFor(string $feature): ?string
-    {
-        $key = config("cbox-id.entitlements.{$feature}");
-
-        return is_string($key) && $key !== '' ? $key : null;
     }
 }

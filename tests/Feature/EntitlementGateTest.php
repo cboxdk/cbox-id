@@ -8,14 +8,8 @@ use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Models\Connection;
 use Inertia\Testing\AssertableInertia;
 
-// This file is ABOUT the entitlement gate, so it declares the mode it exercises.
-// The default is now `open` — an unset entitlement means granted, which is what a
-// self-hosted deployment runs and what most of the suite therefore sees. Gating
-// only means anything under `metered`, where the billing projection is the sole
-// source of a grant.
-beforeEach(function (): void {
-    config(['cbox-id.entitlements.mode' => 'metered']);
-});
+// Native product gates require explicit central Billing grants independently of
+// the shared identity entitlement projection mode.
 
 it('shows the SSO upsell and refuses every SSO action for a non-entitled org', function () {
     $orgId = gateAdmin('gate-sso-deny');

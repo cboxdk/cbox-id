@@ -6,11 +6,13 @@ namespace App\Actions\Sso;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Enterprise\EnterpriseAudit;
@@ -78,7 +80,7 @@ final readonly class StageSsoCertificate implements Action
         $metadata = $context->nullableString('metadata');
 
         if (($pem === null) === ($metadata === null)) {
-            throw ActionRefused::because('certificate_required', 'Send the new certificate (PEM) or the identity provider\'s metadata — one of them.', 'certificate');
+            throw ActionRefused::because('certificate_required', new ActionMessage('console.send_the_new_certificate_pem_or_the_identity_provider_s_0e07e791'), 'certificate');
         }
 
         $candidates = $pem !== null ? [$pem] : $this->fromMetadata($metadata ?? '', SsoFields::config($connection));
@@ -95,7 +97,7 @@ final readonly class StageSsoCertificate implements Action
             $certificate = SamlCertificate::parse($candidate);
 
             if ($certificate === null) {
-                throw ActionRefused::because('invalid_certificate', 'That is not an X.509 certificate. Paste the PEM block, -----BEGIN CERTIFICATE----- included.', 'certificate');
+                throw ActionRefused::because('invalid_certificate', new ActionMessage('console.that_is_not_an_x_509_certificate_paste_the_pem_block_be_00de892f'), 'certificate');
             }
 
             if (in_array($certificate->fingerprint, $onFile, true)) {
@@ -105,7 +107,7 @@ final readonly class StageSsoCertificate implements Action
             $checks = $this->test($certificate);
 
             if (! $this->certificates->stage($connection, $certificate)) {
-                throw ActionRefused::because('unreadable_config', 'This connection\'s settings could not be read, so nothing was changed. Re-enter its identity provider settings first.');
+                throw ActionRefused::because('unreadable_config', new ActionMessage('console.this_connection_s_settings_could_not_be_read_so_nothing_0ab248ca'));
             }
 
             $connection->refresh();
@@ -114,7 +116,7 @@ final readonly class StageSsoCertificate implements Action
         }
 
         if ($staged === []) {
-            throw ActionRefused::because('certificate_already_present', 'That certificate is already on file for this connection.', 'certificate');
+            throw ActionRefused::because('certificate_already_present', new ActionMessage('console.that_certificate_is_already_on_file_for_this_connection_c93a9731'), 'certificate');
         }
 
         $this->audit->record(EnterpriseAudit::SSO_CERTIFICATE_STAGED, $context->actor(), $connection->organization_id, 'connection', $connection->id, [
@@ -143,13 +145,13 @@ final readonly class StageSsoCertificate implements Action
                 ? $this->importer->fromUrl($metadata)
                 : $this->importer->fromXml($metadata);
         } catch (SamlMetadataImportFailed|UnsafeFederationUrl $e) {
-            throw ActionRefused::because('invalid_metadata', $e->getMessage(), 'metadata');
+            throw ActionRefused::because('invalid_metadata', FrameworkMessage::from($e), 'metadata');
         }
 
         $entityId = $config['idp_entity_id'] ?? null;
 
         if (is_string($entityId) && $entityId !== '' && $imported->entityId !== $entityId) {
-            throw ActionRefused::because('entity_mismatch', "That metadata is for {$imported->entityId}, not this connection's identity provider ({$entityId}).", 'metadata');
+            throw ActionRefused::because('entity_mismatch', new ActionMessage('console.that_metadata_is_for_part1_not_this_connection_s_identi_be23f5a3', ['part1' => (string) ($imported->entityId), 'part2' => (string) ($entityId)]), 'metadata');
         }
 
         return self::listed($imported);
@@ -174,11 +176,11 @@ final readonly class StageSsoCertificate implements Action
     private function test(SamlCertificate $certificate): array
     {
         if ($certificate->isExpired()) {
-            throw ActionRefused::because('certificate_expired', 'That certificate has already expired ('.$certificate->notAfter->toDateString().'). Download the current one from your identity provider.', 'certificate');
+            throw ActionRefused::because('certificate_expired', new ActionMessage('console.that_certificate_has_already_expired_part1_download_the_9adb4bed', ['part1' => (string) ($certificate->notAfter->toDateString())]), 'certificate');
         }
 
         if ($certificate->keyType === 'RSA' && $certificate->keyBits !== null && $certificate->keyBits < self::MIN_RSA_BITS) {
-            throw ActionRefused::because('weak_key', "That certificate's key is {$certificate->keyBits}-bit RSA. Use a key of at least ".self::MIN_RSA_BITS.' bits.', 'certificate');
+            throw ActionRefused::because('weak_key', new ActionMessage('console.that_certificate_s_key_is_part1_bit_rsa_use_a_key_of_at_897f80d2', ['part1' => (string) ($certificate->keyBits), 'part2' => (string) (self::MIN_RSA_BITS)]), 'certificate');
         }
 
         return [

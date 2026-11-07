@@ -1,4 +1,4 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { OrganizationPicker, PageProps } from '@/types';
@@ -36,8 +36,9 @@ export default function CreateAccessReview({
     indexHref,
     storeHref,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm<{ name: string; covers: Covers; organization: string }>({
         name: '',
         covers,
@@ -48,14 +49,18 @@ export default function CreateAccessReview({
 
     return (
         <>
-            <Breadcrumb href={indexHref} label={tc('console.access_reviews_f0cc91be')} />
+            <Breadcrumb href={indexHref} label={consoleT('console.access_reviews_f0cc91be')} />
 
             <div className="mt-2">
                 <PageHeader
                     description={
                         reviewingStaff
-                            ? tc('console.snapshots_every_admin_support_role_each_role_351f6f6d')
-                            : tc('console.snapshots_every_current_role_assignment_and__f56eb372')
+                            ? consoleText(
+                                  'console.snapshots_every_admin_support_role_each_role_held_acros_351f6f6d',
+                              )
+                            : consoleText(
+                                  'console.snapshots_every_current_role_assignment_and_membership_f56eb372',
+                              )
                     }
                 />
             </div>
@@ -71,21 +76,23 @@ export default function CreateAccessReview({
                 {canReviewStaff && (
                     <Panel>
                         <RadioGroup
-                            label={tc('console.what_to_review_b92221f0')}
+                            label={consoleT('console.what_to_review_b92221f0')}
                             name="covers"
                             value={form.data.covers}
                             onValueChange={(value) => form.setData('covers', value)}
                             options={[
                                 {
                                     value: 'organization',
-                                    label: tc('console.one_organization_d222d0f3'),
-                                    hint: tc('console.its_members_roles_and_memberships_19c68097'),
+                                    label: consoleText('console.one_organization_d222d0f3'),
+                                    hint: consoleText(
+                                        'console.its_members_roles_and_memberships_19c68097',
+                                    ),
                                 },
                                 {
                                     value: 'staff',
-                                    label: tc('console.admin_support_roles_19f22d25'),
-                                    hint: tc(
-                                        'console.everyone_holding_a_role_across_the_whole_env_eb61bd2a',
+                                    label: consoleText('console.admin_support_roles_19f22d25'),
+                                    hint: consoleText(
+                                        'console.everyone_holding_a_role_across_the_whole_environment_or_eb61bd2a',
                                     ),
                                 },
                             ]}
@@ -105,16 +112,16 @@ export default function CreateAccessReview({
                                 picker={organization}
                                 error={form.errors.organization}
                                 onChange={(id) => form.setData('organization', id)}
-                                hint={tc(
-                                    'console.whose_roles_and_memberships_the_review_snaps_e7576353',
+                                hint={consoleT(
+                                    'console.whose_roles_and_memberships_the_review_snapshots_e7576353',
                                 )}
                             />
                         )}
 
                         <Field
-                            label={tc('console.review_name_f0e5d03b')}
-                            hint={tc(
-                                'console.what_this_round_is_called_when_somebody_asks_6e0713c0',
+                            label={consoleT('console.review_name_f0e5d03b')}
+                            hint={consoleT(
+                                'console.what_this_round_is_called_when_somebody_asks_which_revi_6e0713c0',
                             )}
                             error={form.errors.name}
                         >
@@ -122,8 +129,10 @@ export default function CreateAccessReview({
                                 name="name"
                                 placeholder={
                                     reviewingStaff
-                                        ? tc('console.q3_admin_support_access_59fc1624')
-                                        : tc('console.q3_access_review_df7a905b')
+                                        ? consoleRuntimeText(
+                                              'console.q3_admin_support_access_59fc1624',
+                                          )
+                                        : consoleRuntimeText('console.q3_access_review_df7a905b')
                                 }
                                 value={form.data.name}
                                 onChange={(event) => form.setData('name', event.target.value)}
@@ -134,10 +143,10 @@ export default function CreateAccessReview({
 
                 <div className="flex items-center gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        {tc('console.open_review_8a6e0b28')}
+                        {consoleT('console.open_review_8a6e0b28')}
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>{tc('console.cancel_19766ed6')}</Link>
+                        <Link href={indexHref}>{consoleT('console.cancel_19766ed6')}</Link>
                     </Button>
                 </div>
             </form>

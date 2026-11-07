@@ -40,6 +40,7 @@ export default defineConfig({
         // 404 somebody finds in production: nothing in resources/js spells a URL.
         wayfinder({
             command: 'node bin/generate-ui-routes.mjs',
+            actions: false,
             formVariants: true,
         }),
     ],

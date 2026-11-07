@@ -2,11 +2,9 @@
 
 declare(strict_types=1);
 
-// Swedish: the OAuth authorization pages (see lang/en/oauth.php).
 return [
     'signed_in_as' => 'Inloggad som :account',
     'cancel_and_return' => 'Avbryt och gå tillbaka till :client',
-
     'consent' => [
         'title' => 'Ge åtkomst',
         'heading' => 'Ge :client åtkomst',
@@ -18,16 +16,13 @@ return [
         'cancel' => 'Avbryt',
         'authorize' => 'Godkänn',
         'redirect_notice' => 'Du omdirigeras till :host när du har godkänt.',
-        // A client that registered itself (RFC 7591, or a client ID metadata document).
         'self_registered_owner' => 'appen själv',
         'self_registered' => 'Den här appen har registrerat sig själv. Ingen på :account har granskat den — fortsätt bara om du själv startade den här inloggningen.',
         'published_by' => 'Beskriven av :host — det enda med den här appen som har kontrollerats.',
         'about_app' => 'Om den här appen',
-        // Management-plane scopes an agent acts with as the person.
         'critical' => 'Kritisk',
         'acts_as_you' => 'Allt den gör som du begränsas till det du själv får göra, och registreras i granskningsloggen.',
         'critical_notice' => 'Kritiska åtgärder väntar fortfarande på ditt godkännande på din enhet, varje gång.',
-
         'scopes' => [
             'openid' => 'Verifiera din identitet',
             'profile' => 'Ditt namn',
@@ -38,7 +33,6 @@ return [
             'feature_flags' => 'Vilka funktioner som är aktiverade för dig',
         ],
     ],
-
     'failure' => [
         'title' => 'Auktoriseringen misslyckades',
         'heading' => 'Auktoriseringen misslyckades',
@@ -54,7 +48,6 @@ return [
         'step_up' => 'Den här applikationen kräver en nyare eller starkare inloggning. Börja om.',
         'no_workspace' => 'Den här inloggningen ansluter en agent till en arbetsyta på Cbox ID, och ditt konto ingår inte i någon arbetsytas team. Be en ägare av arbetsytan att bjuda in dig, eller anslut agenten på din miljös egen adress i stället.',
     ],
-
     'organization' => [
         'title' => 'Välj en organisation',
         'heading' => 'Välj en organisation',
@@ -75,7 +68,6 @@ return [
             'viewer' => 'Läsare',
         ],
     ],
-
     'create_organization' => [
         'title' => 'Skapa en organisation',
         'heading' => 'Skapa en organisation',
@@ -97,7 +89,7 @@ return [
         'next_note' => 'Du ser vilken app som frågar innan något ansluts.',
         'code_required' => 'Ange koden som visas på din enhet.',
         'invalid' => 'Koden är ogiltig eller har gått ut. Kontrollera koden på din enhet och försök igen.',
-        'too_many' => 'För många försök. Försök igen om :seconds sekunder.',
+        'too_many' => 'För många försök. Väntetid före nästa försök i sekunder: :seconds.',
         'link_expired' => 'Inloggningsbegäran har gått ut eller redan slutförts. Ange koden som visas på din enhet.',
         'consent_heading' => 'Logga in på :client?',
         'consent_lead' => ':client på en annan enhet vill logga in på ditt konto.',

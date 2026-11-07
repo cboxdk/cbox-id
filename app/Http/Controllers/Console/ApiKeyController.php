@@ -11,10 +11,10 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\IssueApiKeyRequest;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Console\KeyTabs;
-use App\Platform\Console\Vocabulary;
+use App\Platform\Console\WorkspaceLanding;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
+use App\Platform\Locale\ConsoleLabels;
 use App\Platform\StepUpPlane;
 use App\Platform\StepUpPrompt;
 use App\Platform\Sudo;
@@ -53,13 +53,13 @@ final readonly class ApiKeyController extends ConsoleController
         if ($this->scope->capabilities()?->canManageMembers() !== true) {
             // Somebody arriving where they may not go is sent somewhere they can be, which
             // is the console's own answer and the one the navigation-honesty test holds.
-            return to_route('projects');
+            return redirect()->to(app(WorkspaceLanding::class)->url());
         }
 
         $organizationId = $this->scope->organizationId();
         $now = CarbonImmutable::now();
 
-        return $this->page('console/keys/workspace', ConsoleStrings::text(Vocabulary::API_KEYS), [
+        return $this->page('console/keys/workspace', __('console.api_keys_98aae897'), [
             'help' => HelpProps::for(HelpTopic::Keys),
             'tabs' => $tabs->for(KeyTabs::WORKSPACE),
             'keys' => $organizationId === null ? [] : $keys->forOrganization($organizationId)
@@ -71,7 +71,7 @@ final readonly class ApiKeyController extends ConsoleController
                 ->values()
                 ->all(),
             'roles' => array_map(
-                fn (MembershipRole $role): array => ['value' => $role->value, 'label' => $role->label()],
+                fn (MembershipRole $role): array => ['value' => $role->value, 'label' => ConsoleLabels::navigation($role->label())],
                 MembershipRole::assignable(),
             ),
             'lifetimes' => array_map(
@@ -126,7 +126,7 @@ final readonly class ApiKeyController extends ConsoleController
          */
         $this->inertia->flash('freshKey', $issued->plaintext);
 
-        return back()->with('status', __('console.workspace_key_created_copy_it_now_it_will_no_146ccee1'));
+        return back()->with('status', __('console.workspace_key_created_copy_it_now_it_will_not_be_shown_146ccee1'));
     }
 
     public function destroy(string $key): RedirectResponse

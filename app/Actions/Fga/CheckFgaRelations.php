@@ -16,6 +16,7 @@ use Cbox\Id\Kernel\Authorization\Contracts\FineGrainedAuthorization;
 use Cbox\Id\Kernel\Authorization\Exceptions\InvalidTuple;
 use Cbox\Id\Kernel\Authorization\ValueObjects\Check;
 use Cbox\Id\Kernel\Authorization\ValueObjects\Tuple;
+use Cbox\Id\Kernel\Presentation\ValueObjects\SourceMessage;
 
 /**
  * Up to 100 checks in one round trip, at one revision, answered in the order asked — what
@@ -58,7 +59,11 @@ final readonly class CheckFgaRelations implements Action
                 try {
                     $tuple = Tuple::parse($text);
                 } catch (InvalidTuple $invalid) {
-                    throw new InvalidTuple($invalid->getMessage(), $index, 'checks');
+                    $refused = new InvalidTuple($invalid->getMessage(), $index, 'checks');
+                    if ($invalid->sourceMessage() !== null) {
+                        $refused->withSourceMessage(new SourceMessage('Tuple :index: :message', ['index' => $index, 'message' => $invalid->sourceMessage()]));
+                    }
+                    throw $refused;
                 }
 
                 $checks[] = new Check($tuple->resource, $tuple->relation, $tuple->subject);

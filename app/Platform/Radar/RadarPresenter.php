@@ -7,6 +7,7 @@ namespace App\Platform\Radar;
 use App\Models\Radar\RadarListEntry;
 use App\Models\Radar\RadarRule;
 use App\Models\RiskDecision;
+use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Radar\Enums\RadarBuiltin;
 use App\Platform\Radar\Enums\RadarFlow;
 
@@ -102,7 +103,7 @@ final class RadarPresenter
                 'enabled' => $setting['enabled'],
                 'action' => $setting['action']->value,
                 'threshold' => $setting['threshold'],
-                'threshold_unit' => $rule->thresholdUnit(),
+                'threshold_unit' => $rule->thresholdUnit() === null ? null : ConsoleLabels::navigation($rule->thresholdUnit()),
                 'threshold_min' => $bounds[0] ?? null,
                 'threshold_max' => $bounds[1] ?? null,
             ];

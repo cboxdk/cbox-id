@@ -8,6 +8,7 @@ use App\Actions\Platform\AsOperator;
 use App\Actions\Platform\PlatformOrganizationFields;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
@@ -77,7 +78,7 @@ final readonly class MoveTenantOrganization implements Action
             try {
                 app(OrganizationHierarchy::class)->move($id, $parentId);
             } catch (CannotReparent) {
-                throw ActionRefused::because('cycle', 'That would create a cycle in the hierarchy — nothing was moved.', 'parent_id');
+                throw ActionRefused::because('cycle', new ActionMessage('console.that_would_create_a_cycle_in_the_hierarchy_nothing_was_da9b6c14'), 'parent_id');
             }
 
             // Re-read: the move rewrote its parent.

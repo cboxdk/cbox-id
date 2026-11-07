@@ -9,6 +9,8 @@ use App\Mcp\McpProtectedResources;
 use App\Platform\Actions\Principal\RootOperatorPrincipal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\NativeProduct\NativeEnvironmentAccess;
+use App\Platform\NativeProduct\NativeProductAccess;
 use App\Platform\OAuth\ValueObjects\RootSignIn;
 use App\Platform\OAuth\ValueObjects\RootWorkspace;
 use App\Platform\PlaneResolver;
@@ -25,9 +27,9 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Organization\Models\Membership;
-use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\PlatformRoot;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 
 /**
@@ -58,7 +60,8 @@ use Illuminate\Http\Request;
  *
  * WHAT THE PERSON HOLDS is read NOW, never from the token ({@see RootWorkspace}): the
  * workspace from an active membership of a live organization that owns products — the one
- * the token was bound to (`org`) when that still holds, else the person's first — and the
+ * the token was bound to (`org`), refusing when that membership no longer holds; an
+ * unbound token resolves the person's first active workspace — and the
  * operator record behind the subject, which the framework lookup refuses once suspended.
  * A token whose person holds nothing is still a valid credential: its answer is an empty
  * tool list and a `whoami` that says why, exactly as {@see DelegatedAccess} has it.
@@ -76,7 +79,6 @@ final readonly class RootDelegatedAccess
         private Subjects $subjects,
         private Memberships $memberships,
         private Organizations $organizations,
-        private OrganizationProjects $projects,
         private PlatformOperators $operators,
         private DelegatedAccess $delegated,
     ) {}
@@ -121,7 +123,12 @@ final readonly class RootDelegatedAccess
             return null;
         }
 
-        $workspace = $this->workspaceOf($signIn->subjectId, $signIn->organizationId);
+        $selected = $request->header('Cbox-Organization');
+        if ($selected !== null && (trim($selected) === ''
+            || ($signIn->organizationId !== null && $selected !== $signIn->organizationId))) {
+            throw new AuthorizationException('The selected organization does not match this sign-in.');
+        }
+        $workspace = $this->workspaceOf($signIn->subjectId, $selected ?? $signIn->organizationId);
         $operatorId = $this->operatorIdOf($signIn->subjectId);
 
         // Existing password-only tokens must not acquire platform authority, including
@@ -201,7 +208,19 @@ final readonly class RootDelegatedAccess
      */
     public function holdsStanding(string $subjectId): bool
     {
-        return $this->workspaceOf($subjectId) !== null || $this->operatorIdOf($subjectId) !== null;
+        if ($this->operatorIdOf($subjectId) !== null) {
+            return true;
+        }
+
+        return $this->root->run(function () use ($subjectId): bool {
+            foreach ($this->memberships->forUser($subjectId) as $membership) {
+                if ($this->workspaceOf($subjectId, $membership->organization_id) !== null) {
+                    return true;
+                }
+            }
+
+            return false;
+        }) === true;
     }
 
     /** The operator record behind a root subject — refused by the lookup once suspended. */
@@ -214,7 +233,9 @@ final readonly class RootDelegatedAccess
 
     /**
      * The workspace the person is on the team of, asked now: the one the token was bound
-     * to when that membership still stands, else their first — always an ACTIVE membership
+     * to, without falling back when that membership is gone. An unbound token uses their
+     * only authorized membership; multiple workspaces require an explicit selector.
+     * Always an ACTIVE membership
      * of a LIVE organization that owns products, which is what makes an organization a
      * workspace rather than somebody's tenant ({@see ConsoleScope::membershipRole()}).
      */
@@ -223,27 +244,38 @@ final readonly class RootDelegatedAccess
         return $this->root->run(function () use ($subjectId, $preferred): ?RootWorkspace {
             $memberships = $this->memberships->forUser($subjectId)
                 ->filter(static fn (Membership $membership): bool => $membership->status === MembershipStatus::Active)
-                ->sortBy(static fn (Membership $membership): int => $membership->organization_id === $preferred ? 0 : 1)
+                ->filter(static fn (Membership $membership): bool => $preferred === null || $membership->organization_id === $preferred)
                 ->values();
 
+            $resolved = null;
             foreach ($memberships as $membership) {
                 $organization = $this->organizations->find($membership->organization_id);
 
-                if ($organization === null || $organization->status->revokesAccess()
-                    || $this->projects->forOrganization($organization->id)->isEmpty()) {
+                if ($organization === null || $organization->status->revokesAccess()) {
                     continue;
                 }
 
-                return new RootWorkspace(
+                $capabilities = app(NativeProductAccess::class)->forSubject($subjectId, $organization->id);
+
+                if (! $capabilities->any()) {
+                    continue;
+                }
+
+                if ($resolved !== null) {
+                    return null;
+                }
+
+                $resolved = new RootWorkspace(
                     id: $organization->id,
                     name: $organization->name,
                     role: $membership->role,
-                    allEnvironments: $membership->all_environments,
-                    environmentIds: $this->memberships->accessibleEnvironmentIds($organization->id, $subjectId),
+                    allEnvironments: $capabilities->isOwner() || $membership->all_environments,
+                    environmentIds: app(NativeEnvironmentAccess::class)->ids($organization->id, $subjectId),
+                    resolvedCapabilities: $capabilities,
                 );
             }
 
-            return null;
+            return $resolved;
         });
     }
 }

@@ -7,6 +7,7 @@ namespace App\Actions\AuditLogs;
 use App\Models\AuditLogs\AuditLogSchema;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -54,7 +55,7 @@ final readonly class CreateAuditLogSchema implements Action
         $action = AuditLogSchemaFields::action($context->string('action'));
 
         if (AuditLogSchema::query()->where('action', $action)->exists()) {
-            throw new ActionRefused('schema_exists', "`{$action}` already has a schema. Replace it with audit_logs.schemas.update.", 409, 'action');
+            throw new ActionRefused('schema_exists', new ActionMessage('console._part1_already_has_a_schema_replace_it_with_audit_logs_8ad23295', ['part1' => (string) ($action)]), 409, 'action');
         }
 
         $body = AuditLogSchemaFields::checked($context);

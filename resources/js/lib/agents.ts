@@ -34,12 +34,12 @@ export interface AgentScope {
 
 export const RISK_RANK: Record<Risk, number> = { read: 0, write: 1, destructive: 2, critical: 3 };
 
-export const RISK_LABEL: Record<Risk, string> = {
-    read: 'Read',
-    write: 'Write',
-    destructive: 'Destructive',
-    critical: 'Critical',
-};
+export const RISK_LABEL = (t: Translator['t']): Record<Risk, string> => ({
+    read: t('console.agent_risk_read'),
+    write: t('console.agent_risk_write'),
+    destructive: t('console.agent_risk_destructive'),
+    critical: t('console.agent_risk_critical'),
+});
 
 /** The badge tone for a risk: the word is always there, the colour only underlines it. */
 export const RISK_TONE: Record<Risk, 'neutral' | 'info' | 'warn' | 'danger'> = {
@@ -181,33 +181,22 @@ export function unheldScopes(selected: string[], scopes: AgentScope[]): AgentSco
     );
 }
 
-/** Presentation only; preset IDs, approval levels and scope selection stay unchanged. */
-export function presetPresentation(
-    id: PresetId,
-    t: Translator['t'],
-): { label: string; description: string } {
-    const copy = {
-        'read-only': {
-            label: t('console.read_only_72bb9089'),
-            description: t('console.reads_everything_it_is_offered_and_changes_n_d3c6cccb'),
-        },
-        support: {
-            label: t('console.support_agent_901d4eb2'),
-            description: t('console.reads_everything_and_helps_people_users_memb_4a7c0b0d'),
-        },
-        'full-admin': {
-            label: t('console.full_admin_53de3944'),
-            description: t('console.every_scope_critical_actions_keys_secrets_si_c77ffe54'),
-        },
-    };
-    return copy[id];
-}
-
-export function riskLabel(risk: Risk, t: Translator['t']): string {
-    return {
-        read: t('console.read_9b9a8d05'),
-        write: t('console.write_3f00927a'),
-        destructive: t('console.destructive_c3e58a73'),
-        critical: t('console.critical_427dd296'),
-    }[risk];
+/** Translate only the fixed preset copy, never scope metadata supplied by an app. */
+export function localizedPresets(t: Translator['t']): Preset[] {
+    const keys = {
+        'read-only': [
+            'console.agent_preset_read_only',
+            'console.agent_preset_read_only_description',
+        ],
+        support: ['console.agent_preset_support', 'console.agent_preset_support_description'],
+        'full-admin': [
+            'console.agent_preset_full_admin',
+            'console.agent_preset_full_admin_description',
+        ],
+    } as const;
+    return PRESETS.map((preset) => ({
+        ...preset,
+        label: t(keys[preset.id][0]),
+        description: t(keys[preset.id][1]),
+    }));
 }

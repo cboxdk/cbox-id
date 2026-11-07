@@ -82,9 +82,8 @@ it('never hands somebody who may not administer environments to the handoff', fu
 
     signInAsMember($viewerId);
 
-    // A Viewer reaches the one environment but may not administer it, and the handoff
-    // would refuse them — so the landing must not send them there to be refused.
-    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('projects'));
+    // Shared Viewer grants no native app access; their own account remains available.
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('account'));
 });
 
 it('shrinks a workspace console to the workspace, its team\'s sign-in, its log and the person', function (): void {

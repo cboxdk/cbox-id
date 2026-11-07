@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-// French: the sign-in group (pages/auth/*) and the PHP that speaks on them.
 return [
     'common' => [
         'email' => 'Adresse e-mail',
@@ -19,13 +18,11 @@ return [
         'could_not_process' => 'Nous n’avons pas pu traiter cette demande. Veuillez réessayer plus tard.',
         'code_incorrect' => 'Ce code est incorrect ou a expiré.',
     ],
-
     'password_field' => [
         'show' => 'Afficher le mot de passe',
         'hide' => 'Masquer le mot de passe',
         'policy' => 'Au moins :count caractères',
     ],
-
     'login' => [
         'title' => 'Connexion',
         'purpose' => [
@@ -39,7 +36,7 @@ return [
         'mandate' => [
             'heading' => ':organization exige une connexion via SSO',
             'continue' => 'Continuer vers :organization',
-            'no_provider' => 'Aucun fournisseur d’identité n’est encore connecté pour :organization : il n’y a donc nulle part où vous rediriger. Demandez à un administrateur de terminer la configuration du single sign-on (SSO).',
+            'no_provider' => 'Aucun fournisseur d’identité n’est encore connecté pour :organization. Nous ne pouvons donc pas vous rediriger. Demandez à un administrateur de terminer la configuration de l’authentification unique (SSO).',
             'your_organization' => 'Votre organisation',
             'reasons' => [
                 'password' => 'Votre mot de passe est correct, mais il ne permet plus de se connecter ici. Connectez-vous plutôt via le fournisseur d’identité de votre organisation.',
@@ -60,8 +57,6 @@ return [
         'forgot_password' => 'Mot de passe oublié ?',
         'or' => 'OU',
         'continue_with' => 'Continuer avec :provider',
-        // The badge on the sign-in method this device used last, and what it means said in full
-        // for a screen reader.
         'last_used' => 'Dernière utilisation',
         'last_used_hint' => 'La méthode utilisée lors de votre dernière connexion sur cet appareil.',
         'magic_link' => 'M’envoyer un lien de connexion',
@@ -69,7 +64,7 @@ return [
         'passkey_failed' => 'Échec de la connexion avec la clé d’accès.',
         'new_organization' => 'Nouvelle organisation ?',
         'create_one' => 'Créez-en une',
-        'invalid_credentials' => 'Ces identifiants ne correspondent pas à nos enregistrements.',
+        'invalid_credentials' => 'L’adresse e-mail ou le mot de passe est incorrect.',
         'passkey_errors' => [
             'challenge_expired' => 'Le défi de connexion a expiré. Réessayez.',
             'not_registered' => 'Cette clé d’accès n’est pas enregistrée.',
@@ -77,13 +72,11 @@ return [
             'unverified' => 'Cette clé d’accès n’a pas pu être vérifiée.',
             'failed' => 'Une erreur s’est produite lors de la connexion.',
         ],
-        // Answered by a passkey or magic-link door the environment has switched off.
         'method_off' => [
             'passkeys' => 'Les clés d’accès sont désactivées ici. Connectez-vous autrement.',
             'magic_link' => 'Les liens de connexion par e-mail sont désactivés ici. Connectez-vous autrement.',
         ],
     ],
-
     'signup' => [
         'title' => 'Commencer',
         'heading' => [
@@ -121,7 +114,6 @@ return [
             'closed' => 'Les inscriptions sont actuellement fermées.',
         ],
     ],
-
     'forgot_password' => [
         'title' => 'Réinitialiser le mot de passe',
         'heading' => 'Réinitialisez votre mot de passe',
@@ -131,7 +123,6 @@ return [
         'remembered' => 'Vous vous en souvenez ?',
         'throttled' => 'Trop de tentatives. Veuillez patienter quelques minutes, puis réessayer.',
     ],
-
     'reset_password' => [
         'title' => 'Choisissez un nouveau mot de passe',
         'lead' => 'Choisissez un mot de passe robuste d’au moins :count caractères.',
@@ -140,14 +131,12 @@ return [
         'invalid_link' => 'Ce lien de réinitialisation est invalide ou a expiré. Demandez-en un nouveau.',
         'done' => 'Votre mot de passe a été réinitialisé — connectez-vous avec votre nouveau mot de passe.',
     ],
-
     'change_password' => [
         'title' => 'Choisissez un nouveau mot de passe',
         'lead' => 'Le mot de passe que vous avez utilisé pour vous connecter a été attribué par un administrateur. Avant de continuer, choisissez-en un que personne d’autre ne connaît.',
         'submit' => 'Mettre à jour le mot de passe',
         'mismatch' => 'Les mots de passe ne correspondent pas.',
     ],
-
     'mfa' => [
         'title' => 'Vérification à deux facteurs',
         'code' => [
@@ -176,7 +165,6 @@ return [
             'unavailable' => 'Les codes par SMS ne sont pas disponibles pour ce compte.',
         ],
     ],
-
     'otp_step_up' => [
         'title' => 'Vérification supplémentaire',
         'lead' => 'Cette connexion semblait inhabituelle, nous avons donc envoyé un code à usage unique à :email. Saisissez-le pour continuer.',
@@ -187,20 +175,17 @@ return [
         'resent' => 'Nous avons envoyé un nouveau code à :email.',
         'too_many_codes' => 'Trop de codes demandés. Veuillez patienter un instant, puis réessayer.',
     ],
-
     'accounts' => [
         'title' => 'Changer d’utilisateur',
         'lead' => 'Toutes les personnes connectées sur cet appareil. Choisissez-en une, ou connectez-vous avec un autre compte.',
         'active' => 'Actif',
         'add' => 'Se connecter avec un autre compte',
     ],
-
     'signed_out' => [
         'title' => 'Déconnecté',
         'heading' => 'Vous êtes déconnecté',
         'lead' => 'Vous avez été déconnecté sur cet appareil, y compris de chaque console ouverte depuis cette connexion. Reconnectez-vous pour continuer.',
     ],
-
     'accept_invite' => [
         'title' => 'Accepter l’invitation',
         'heading' => 'Acceptez votre invitation',
@@ -214,9 +199,8 @@ return [
         'invalid' => 'Cette invitation est invalide ou a expiré.',
         'not_completed' => 'Cette invitation n’a pas pu être finalisée.',
     ],
-
     'confirm_email' => [
-        'title' => 'Confirmez votre e-mail',
+        'title' => 'Confirmez votre adresse e-mail',
         'heading' => 'Confirmez votre adresse e-mail',
         'lead' => 'Vous avez ouvert le lien de confirmation que nous vous avons envoyé. Confirmez pour terminer la vérification de cette adresse.',
         'action' => 'Confirmer l’adresse e-mail',
@@ -224,7 +208,6 @@ return [
         'verified_sign_in' => 'Adresse e-mail vérifiée — connectez-vous pour ouvrir votre environnement.',
         'verified' => 'Votre adresse e-mail est vérifiée — vous pouvez vous connecter.',
     ],
-
     'confirm_sign_in' => [
         'title' => 'Connexion',
         'heading' => 'Finalisez votre connexion',
@@ -233,10 +216,9 @@ return [
         'note' => 'Le lien ne fonctionne qu’une seule fois. Si vous n’avez pas demandé à vous connecter, fermez cette page — rien ne se passe tant que vous n’appuyez pas sur le bouton.',
         'invalid' => 'Ce lien de connexion est invalide ou a expiré.',
     ],
-
     'first_run' => [
         'title' => 'Configurer Cbox ID',
-        'lead' => 'Ce déploiement est vide. Revendiquez-le une seule fois, depuis la machine qui l’exécute.',
+        'lead' => 'Ce déploiement n’est pas encore configuré. Effectuez sa configuration initiale depuis la machine qui l’exécute.',
         'unmigrated' => [
             'title' => 'La base de données de ce déploiement n’a pas encore de schéma.',
             'body' => 'Exécutez :migrate sur le serveur (ou :install, qui effectue la migration et l’installation en une seule étape), puis rechargez cette page.',
@@ -264,7 +246,6 @@ return [
         'submit' => 'Installer ce déploiement',
         'token_mismatch' => 'Ce jeton de configuration ne correspond pas à celui de ce déploiement, ou il a expiré. Affichez-en un nouveau avec php artisan cbox-id:setup-token.',
     ],
-
     'join_organization' => [
         'title' => 'Rejoindre :organization',
         'heading' => 'Rejoindre :organization ?',
@@ -283,7 +264,6 @@ return [
         ],
         'invalid' => 'Cette invitation est invalide ou a expiré.',
     ],
-
     'federation' => [
         'this_provider' => 'le fournisseur d’identité',
         'expired' => 'La connexion a pris trop de temps ou a déjà été utilisée. Veuillez vous reconnecter.',
@@ -292,7 +272,7 @@ return [
         'cancelled' => 'La connexion avec :provider a été annulée ou n’a pas abouti. Veuillez réessayer.',
         'unavailable' => ':provider est injoignable pour le moment. Réessayez dans un instant ou connectez-vous autrement.',
         'incomplete' => 'La réponse de :provider était incomplète. Recommencez depuis votre fournisseur d’identité.',
-        'unverified' => ':provider n’a pas confirmé que :email vous appartient : nous ne pouvons donc pas le lier au compte qui utilise cette adresse. Connectez-vous autrement, puis connectez :provider dans My account › Sign-in methods.',
+        'unverified' => ':provider n’a pas confirmé que :email vous appartient ; nous ne pouvons donc pas le lier au compte qui utilise cette adresse. Connectez-vous autrement, puis connectez :provider dans Mon compte › Méthodes de connexion.',
         'already_linked' => 'Ce compte :provider est déjà lié à un autre compte ici.',
         'account_disabled' => 'Ce compte a été désactivé. Contactez votre administrateur.',
         'link_expired' => 'La demande de liaison de :provider a expiré ou a déjà été utilisée. Reconnectez-vous avec :provider pour recommencer.',
@@ -300,7 +280,6 @@ return [
         'refused' => 'Nous n’avons pas pu traiter cette connexion. Veuillez réessayer plus tard.',
         'connect_session_changed' => 'Vous avez été déconnecté, ou connecté sous un autre compte, pendant la connexion de :provider : rien n’a été lié. Connectez-vous et réessayez.',
     ],
-
     'link_account' => [
         'title' => 'Lier votre compte :provider',
         'heading' => 'Lier votre compte :provider à :email ?',
@@ -328,7 +307,6 @@ return [
         'linked' => ':provider est maintenant lié à votre compte. Vous pouvez désormais vous connecter avec.',
         'cancelled' => 'Rien n’a été lié. Votre compte est exactement comme avant.',
     ],
-
     'open_portal_setup' => [
         'title' => 'Configuration administrateur',
         'heading' => 'Configurez la connexion pour votre organisation',
@@ -336,7 +314,6 @@ return [
         'action' => 'Ouvrir la configuration',
         'note' => 'Le lien ne fonctionne qu’une seule fois, et la session de configuration qu’il ouvre expire. Ouvrez-le au moment où vous pourrez terminer.',
     ],
-
     'connected_services' => [
         'title' => 'Services connectés',
         'heading' => 'Services connectés',
@@ -360,7 +337,6 @@ return [
         'failed' => 'Impossible de connecter :provider. Veuillez réessayer.',
         'disconnected' => ':provider est déconnecté.',
     ],
-
     'connect_service' => [
         'title' => 'Connecter :provider',
         'heading' => 'Connecter votre compte :provider',
@@ -370,6 +346,6 @@ return [
         'no_scopes' => ':provider vous montrera précisément ce qui est partagé avant que vous n’autorisiez l’accès.',
         'continue' => 'Continuer vers :provider',
         'cancel' => 'Annuler',
-        'later' => 'Vous pouvez vous déconnecter à tout moment depuis Services connectés dans votre compte.',
+        'later' => 'Vous pouvez déconnecter ce service à tout moment depuis Services connectés dans votre compte.',
     ],
 ];

@@ -2,41 +2,41 @@
 
 declare(strict_types=1);
 
-// Translation provenance and review scope: docs/guides/languages.md.
 return [
+    'locale_conflict' => 'Le impostazioni o l’account con cui hai effettuato l’accesso sono cambiati. Ricarica la pagina e seleziona di nuovo la lingua.',
     'layout' => [
         'default_title' => 'Errore',
-        'default_heading' => 'Qualcosa è andato storto',
-        'default_message' => 'Si è verificato un errore inatteso. Riprovare.',
-        'home' => 'Torna al cruscotto',
-        'reload' => 'Ricarica',
-        'share_trace' => 'Condividi questo con il supporto per aiutarci a rintracciare ciò che è successo.',
-        'copy_trace' => 'Copia l\'ID traccia',
-        'trace_id' => 'Trace ID',
+        'default_heading' => 'Si è verificato un errore',
+        'default_message' => 'Si è verificato un errore imprevisto. Riprova.',
+        'home' => 'Torna alla dashboard',
+        'reload' => 'Aggiorna',
+        'share_trace' => 'Comunica questo identificativo all’assistenza per aiutarci a capire cosa è successo.',
+        'copy_trace' => 'Copia ID di tracciamento',
+        'trace_id' => 'ID di tracciamento',
         'copied' => 'Copiato',
     ],
-    '403' => [
+    403 => [
         'title' => 'Accesso negato',
-        'message' => 'Se pensi che questo sia un errore, contatta il tuo amministratore.',
+        'message' => 'Non hai il permesso di visualizzare questa pagina. Se pensi che sia un errore, contatta il tuo amministratore.',
     ],
-    '404' => [
+    404 => [
         'title' => 'Pagina non trovata',
-        'message' => 'Non siamo riusciti a trovare la pagina che stavate cercando. Potrebbe essersi spostata o non esiste più.',
+        'message' => 'Non troviamo la pagina che cerchi. Potrebbe essere stata spostata o non esistere più.',
     ],
-    '419' => [
+    419 => [
         'title' => 'La tua sessione è scaduta',
-        'message' => 'Per la tua sicurezza sei stato espulso dopo un periodo di inattività. Ricarica la pagina per continuare.',
+        'message' => 'Per la tua sicurezza, la sessione è stata chiusa dopo un periodo di inattività. Ricarica la pagina per continuare.',
     ],
-    '429' => [
+    429 => [
         'title' => 'Troppe richieste',
-        'message' => 'Hai fatto un sacco di richieste in breve tempo. Aspetta un attimo, poi riprova.',
+        'message' => 'Hai inviato molte richieste in poco tempo. Attendi un momento e riprova.',
     ],
-    '500' => [
-        'title' => 'Qualcosa è andato storto',
-        'message' => 'Un errore inatteso si è verificato dalla nostra parte. Il team è stato avvisato che il ricarico di solito aiuta.',
+    500 => [
+        'title' => 'Si è verificato un errore',
+        'message' => 'Si è verificato un errore imprevisto nel nostro sistema. Il team è stato avvisato. Di solito basta ricaricare la pagina.',
     ],
-    '503' => [
-        'title' => 'Giù per la manutenzione',
-        'message' => ':brand non è disponibile durante la manutenzione. Riprovare tra un attimo.',
+    503 => [
+        'title' => 'In manutenzione',
+        'message' => ':brand è temporaneamente non disponibile per manutenzione. Riprova tra poco.',
     ],
 ];

@@ -1,0 +1,503 @@
+openapi: 3.1.0
+info:
+  title: Cbox ID — App authorization and service APIs
+  version: 1.0.0
+  description: OAuth-protected application integration APIs. Environment management
+    API keys are not accepted. Definitions synchronize automatically; assignment,
+    organization approval and role activation remain explicit.
+servers:
+- url: https://{host}/api/v1
+  variables:
+    host:
+      default: environment.cboxid.com
+paths:
+  /apps/manifest:
+    post:
+      operationId: publishAppManifest
+      summary: Synchronize the authenticated app’s authorization definitions
+      description: Requires a client-credentials token. The token client owns this
+        catalog. Publication does not assign roles; existing role definition changes
+        are staged for explicit activation. Removed keys remain available for assignment
+        review. The receipt binds the client and canonical manifest checksum, including
+        unchanged and empty publications.
+      security:
+      - AppAccessToken: []
+      x-required-scope: apps.manifest
+      responses:
+        '200':
+          description: Success. Responses must not be cached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManifestReceipt'
+        '401':
+          description: Missing or invalid token, audience or proof.
+        '403':
+          description: Missing scope or insufficient current authority.
+        '404':
+          description: The requested resource is unavailable in this scope.
+        '422':
+          description: The request is invalid.
+        '429':
+          description: Rate limit exceeded.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Manifest'
+  /service-connections:
+    get:
+      operationId: listServiceConnections
+      summary: List approved organization service connections
+      description: Requires a non-delegated person token and current owner/admin membership
+        in the active organization.
+      security:
+      - AppAccessToken: []
+      x-required-scope: service_connections.manage
+      responses:
+        '200':
+          description: Success. Responses must not be cached.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ServiceConnection'
+        '401':
+          description: Missing or invalid token, audience or proof.
+        '403':
+          description: Missing scope or insufficient current authority.
+        '404':
+          description: The requested resource is unavailable in this scope.
+        '422':
+          description: The request is invalid.
+        '429':
+          description: Rate limit exceeded.
+  /service-connections/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Service catalog key when creating; connection identifier when revoking.
+      schema: &id001
+        type: string
+    post:
+      operationId: connectService
+      summary: Approve an organization service connection
+      description: The service audience and scopes come only from the server catalog.
+        Requires a registered consumer and a non-delegated person token with current
+        organization owner/admin membership.
+      security:
+      - AppAccessToken: []
+      x-required-scope: service_connections.manage
+      responses:
+        '200':
+          description: Success. Responses must not be cached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceConnection'
+        '401':
+          description: Missing or invalid token, audience or proof.
+        '403':
+          description: Missing scope or insufficient current authority.
+        '404':
+          description: The requested resource is unavailable in this scope.
+        '422':
+          description: The request is invalid.
+        '429':
+          description: Rate limit exceeded.
+    delete:
+      operationId: revokeServiceConnection
+      summary: Revoke an organization service connection
+      description: Requires current organization owner/admin membership. Revocation
+        stops future leases and inspections.
+      security:
+      - AppAccessToken: []
+      x-required-scope: service_connections.manage
+      responses:
+        '200':
+          description: Success. Responses must not be cached.
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - revoked
+                properties:
+                  revoked: &id002
+                    type: boolean
+        '401':
+          description: Missing or invalid token, audience or proof.
+        '403':
+          description: Missing scope or insufficient current authority.
+        '404':
+          description: The requested resource is unavailable in this scope.
+        '422':
+          description: The request is invalid.
+        '429':
+          description: Rate limit exceeded.
+  /service-connections/{id}/token:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Connection identifier.
+      schema: *id001
+    post:
+      operationId: leaseServiceToken
+      summary: Lease a service access token
+      description: Only the registered consumer’s non-delegated machine token can
+        lease its active connection. The organization and current catalog audience/scopes
+        must still match.
+      security:
+      - AppAccessToken: []
+      x-required-scope: service_connections.lease
+      responses:
+        '200':
+          description: Success. Responses must not be cached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceToken'
+        '401':
+          description: Missing or invalid token, audience or proof.
+        '403':
+          description: Missing scope or insufficient current authority.
+        '404':
+          description: The requested resource is unavailable in this scope.
+        '422':
+          description: The request is invalid.
+        '429':
+          description: Rate limit exceeded.
+        '503':
+          description: The issuer could not issue the exact approved audience and
+            scopes.
+  /oauth/users/{user}/properties/{namespace}:
+    servers:
+    - url: https://{host}
+      variables:
+        host:
+          default: environment.cboxid.com
+    parameters:
+    - name: user
+      in: path
+      required: true
+      description: Subject identifier.
+      schema: *id001
+    - name: namespace
+      in: path
+      required: true
+      description: Registered property namespace.
+      schema: *id001
+    get:
+      operationId: readUserProperties
+      summary: Read a versioned property namespace
+      description: Issuer-audienced access token. A person token can address only
+        its own subject; machine access requires namespace registration. DPoP is enforced
+        for bound tokens.
+      security:
+      - AppAccessToken: []
+      x-required-scope: user_properties:read
+      responses:
+        '200':
+          description: Success. Responses must not be cached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPropertySnapshot'
+        '401':
+          description: Missing or invalid token, audience or proof.
+        '403':
+          description: Missing scope or insufficient current authority.
+        '404':
+          description: The requested resource is unavailable in this scope.
+        '422':
+          description: The request is invalid.
+        '429':
+          description: Rate limit exceeded.
+    patch:
+      operationId: patchUserProperties
+      summary: Update a versioned property namespace
+      description: At most 32 KiB. Namespace policy controls writable fields. The
+        reviewed version must match; a stale write returns 409 without applying the
+        patch.
+      security:
+      - AppAccessToken: []
+      x-required-scope: user_properties:write
+      responses:
+        '200':
+          description: Success. Responses must not be cached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPropertySnapshot'
+        '401':
+          description: Missing or invalid token, audience or proof.
+        '403':
+          description: Missing scope or insufficient current authority.
+        '404':
+          description: The requested resource is unavailable in this scope.
+        '422':
+          description: The request is invalid.
+        '429':
+          description: Rate limit exceeded.
+        '409':
+          description: The property version changed; read again before applying a
+            new patch.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropertyPatch'
+  /service-connections/{id}/status:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Connection identifier.
+      schema: *id001
+    post:
+      operationId: serviceConnectionStatus
+      summary: Check current service connection authority
+      description: A non-delegated machine token from the registered consumer or target
+        service checks current catalog, revocation and organization state. An inactive
+        or absent connection returns active=false.
+      security:
+      - AppAccessToken: []
+      x-required-scope: service_connections.lease
+      responses:
+        '200':
+          description: Success. Responses must not be cached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceInspection'
+        '401':
+          description: Missing or invalid token, audience or proof.
+        '403':
+          description: Missing scope or insufficient current authority.
+        '404':
+          description: The requested resource is unavailable in this scope.
+        '422':
+          description: The request is invalid.
+        '429':
+          description: Rate limit exceeded.
+  /service-connections/{id}/inspect:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Connection identifier.
+      schema: *id001
+    post:
+      operationId: inspectServiceConnection
+      summary: Check current service connection authority
+      description: A non-delegated machine token from the registered consumer or target
+        service checks current catalog, revocation and organization state. An inactive
+        or absent connection returns active=false.
+      security:
+      - AppAccessToken: []
+      x-required-scope: service_connections.inspect
+      responses:
+        '200':
+          description: Success. Responses must not be cached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceInspection'
+        '401':
+          description: Missing or invalid token, audience or proof.
+        '403':
+          description: Missing scope or insufficient current authority.
+        '404':
+          description: The requested resource is unavailable in this scope.
+        '422':
+          description: The request is invalid.
+        '429':
+          description: Rate limit exceeded.
+components:
+  securitySchemes:
+    AppAccessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: OAuth access token
+      description: An access token issued by the current environment with the operation’s
+        required scope and caller type. DPoP-bound tokens require their proof.
+  schemas:
+    ServiceConnection:
+      type: object
+      required:
+      - id
+      - organization_id
+      - service
+      - consumer_client_id
+      - audience
+      - scopes
+      - revoked_at
+      properties:
+        id: *id001
+        organization_id: *id001
+        service: *id001
+        consumer_client_id: *id001
+        audience: *id001
+        scopes: &id004
+          type: array
+          items: *id001
+        revoked_at: &id005
+          type:
+          - string
+          - 'null'
+          format: date-time
+    UserPropertySnapshot:
+      type: object
+      required:
+      - user_id
+      - namespace
+      - data
+      - version
+      properties:
+        user_id: *id001
+        namespace: *id001
+        data:
+          type: object
+          additionalProperties: true
+        version: &id003
+          type: integer
+          minimum: 0
+    Manifest:
+      type: object
+      required:
+      - version
+      - permissions
+      - roles
+      properties:
+        version: *id001
+        permissions:
+          type: array
+          items:
+            type: object
+            required:
+            - key
+            properties:
+              key: *id001
+              description:
+                type:
+                - string
+                - 'null'
+              tenant_assignable: *id002
+        roles:
+          type: array
+          items:
+            type: object
+            required:
+            - key
+            - name
+            - permissions
+            properties:
+              key: *id001
+              name: *id001
+              description:
+                type:
+                - string
+                - 'null'
+              permissions:
+                type: array
+                items: *id001
+              tenant_assignable: *id002
+    ManifestReceipt:
+      type: object
+      required:
+      - client_id
+      - version
+      - checksum
+      - unchanged
+      - roles_declared
+      - permissions_declared
+      - orphaned_roles
+      - orphaned_permissions
+      properties:
+        client_id: *id001
+        version: *id001
+        checksum:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+        unchanged: *id002
+        roles_declared: *id003
+        permissions_declared: *id003
+        orphaned_roles:
+          type: array
+          items: *id001
+        orphaned_permissions:
+          type: array
+          items: *id001
+    PropertyPatch:
+      type: object
+      required:
+      - version
+      properties:
+        version: *id003
+        set:
+          type: object
+          additionalProperties: true
+        remove:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            type: string
+            maxLength: 128
+      additionalProperties: false
+    ServiceToken:
+      type: object
+      required:
+      - access_token
+      - token_type
+      - expires_in
+      - scope
+      - audience
+      properties:
+        access_token: *id001
+        token_type: *id001
+        expires_in: *id003
+        scope: *id001
+        audience: *id001
+    ServiceInspection:
+      oneOf:
+      - type: object
+        required:
+        - active
+        properties:
+          active:
+            const: false
+            type: boolean
+      - type: object
+        required:
+        - active
+        - id
+        - organization_id
+        - service
+        - consumer_client_id
+        - audience
+        - scopes
+        - revoked_at
+        - service_client_id
+        properties:
+          active:
+            const: true
+            type: boolean
+          id: *id001
+          organization_id: *id001
+          service: *id001
+          consumer_client_id: *id001
+          audience: *id001
+          scopes: *id004
+          revoked_at: *id005
+          service_client_id: *id001

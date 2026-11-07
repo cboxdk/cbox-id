@@ -14,6 +14,7 @@ use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\InputSchema;
+use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
 
 /**
@@ -27,7 +28,7 @@ use Cbox\Id\Platform\Contracts\OrganizationProjects;
     danger: Danger::Read,
     plane: ActionPlane::Workspace,
     rest: ['GET', '/projects'],
-    consoleGate: ConsoleGate::WorkspaceMember,
+    consoleGate: ConsoleGate::ReadEnvironments,
     schema: 'Project',
     tag: 'Projects',
 )]
@@ -42,8 +43,22 @@ final readonly class ListProjects implements Action
 
     public function handle(ActionContext $context): ActionResult
     {
-        $projects = $this->projects->forOrganization(InWorkspace::id($context->principal));
+        $workspace = InWorkspace::id($context->principal);
+        $projects = $this->projects->forOrganization($workspace);
+        if (! InWorkspace::unscoped($context->principal, $workspace)) {
+            $ids = Environment::query()->whereIn('id', InWorkspace::environmentIds($context->principal, $workspace) ?? [])->pluck('project_id')->all();
+            $projects = $projects->filter(static fn ($project): bool => in_array($project->id, $ids, true))->values();
+        }
 
-        return ActionResult::items($projects, array_values($projects->map(ProjectResource::from(...))->all()));
+        $visible = InWorkspace::environmentIds($context->principal, $workspace);
+
+        return ActionResult::items($projects, array_values($projects->map(static function ($project) use ($visible): array {
+            $payload = ProjectResource::from($project);
+            if ($visible !== null) {
+                $payload['environments_used'] = Environment::query()->where('project_id', $project->id)->whereIn('id', $visible)->count();
+            }
+
+            return $payload;
+        })->all()));
     }
 }

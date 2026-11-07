@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Actions\Approvals;
 
 use App\Platform\Actions\ActionDefinition;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
@@ -77,7 +78,7 @@ final readonly class ActionApprovalGate
         $approver = $principal->approverSubjectId();
 
         if ($approver === null) {
-            throw new ActionRefused('approval_unavailable', 'This credential needs a person\'s approval for this action, and no person is on record to give it. Run it from the console, or mint a key from the console so its owner can approve.', 403);
+            throw new ActionRefused('approval_unavailable', new ActionMessage('console.this_credential_needs_a_person_s_approval_for_this_acti_6e7eed81'), 403);
         }
 
         // A short code the person sees beside Approve and the caller shows its user, so the
@@ -99,7 +100,7 @@ final readonly class ActionApprovalGate
         // The root is where the approving person lives; a deployment without one has
         // nobody to ask, which is a refusal rather than a pass.
         if ($request === null) {
-            throw new ActionRefused('approval_unavailable', 'This deployment has no platform root to file the approval in.', 403);
+            throw new ActionRefused('approval_unavailable', new ActionMessage('console.this_deployment_has_no_platform_root_to_file_the_approv_1fcb515e'), 403);
         }
 
         // What it is for, so the approver can read it in the console as well as on their
@@ -168,7 +169,7 @@ final readonly class ActionApprovalGate
     private function spend(Principal $principal, string $approvalId, string $digest): void
     {
         if (! $this->owns($principal, $approvalId)) {
-            throw new ActionRefused('approval_invalid', 'No approval with that id belongs to this credential.', 403);
+            throw new ActionRefused('approval_invalid', new ActionMessage('console.no_approval_with_that_id_belongs_to_this_credential_5e7c701c'), 403);
         }
 
         if ($this->inApproverRealm($principal, fn (): bool => $this->approvals->consume($approvalId, $digest)) === true) {
@@ -176,10 +177,10 @@ final readonly class ActionApprovalGate
         }
 
         throw match ($this->inApproverRealm($principal, fn (): ?ActionApprovalStatus => $this->approvals->status($approvalId))) {
-            ActionApprovalStatus::Pending => new ActionRefused('approval_pending', 'The approval has not been given yet. Poll it, then repeat the request.', 409),
-            ActionApprovalStatus::Denied => new ActionRefused('approval_denied', 'The person denied this action.', 403),
-            ActionApprovalStatus::Expired => new ActionRefused('approval_expired', 'The approval lapsed before it was used. Repeat the request without it to ask again.', 403),
-            default => new ActionRefused('approval_mismatch', 'That approval was already used, or was given for a different request. Repeat the request without it to ask again.', 409),
+            ActionApprovalStatus::Pending => new ActionRefused('approval_pending', new ActionMessage('console.the_approval_has_not_been_given_yet_poll_it_then_repeat_eb93af18'), 409),
+            ActionApprovalStatus::Denied => new ActionRefused('approval_denied', new ActionMessage('console.the_person_denied_this_action_4670428a'), 403),
+            ActionApprovalStatus::Expired => new ActionRefused('approval_expired', new ActionMessage('console.the_approval_lapsed_before_it_was_used_repeat_the_reque_209719bd'), 403),
+            default => new ActionRefused('approval_mismatch', new ActionMessage('console.that_approval_was_already_used_or_was_given_for_a_diffe_86a561c7'), 409),
         };
     }
 

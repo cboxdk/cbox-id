@@ -58,7 +58,7 @@ jobs:
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - run: |
-          php bin/unpack-signals-packages.php ../../laravel-signals-client
+          php bin/verify-signals-sdk.php
           composer install --no-interaction --prefer-dist --no-progress
       - run: npm ci
       - name: Install the locked Chromium browser

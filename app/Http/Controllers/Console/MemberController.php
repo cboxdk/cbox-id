@@ -15,14 +15,16 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Props\Shared\PendingInvitationProps;
 use App\Http\Props\Shared\RoleOptionProps;
-use App\Http\Requests\Console\InviteMemberRequest;
 use App\Http\Requests\Console\SetEnvironmentAccessRequest;
 use App\Platform\Actions\ActionRefused;
-use App\Platform\Console\Vocabulary;
+use App\Platform\Console\WorkspaceLanding;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Invitations\Contracts\TeamInvitations;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
-use App\Platform\Locale\ConsoleStrings;
+use App\Platform\Locale\ConsoleLabels;
+use App\Platform\NativeProduct\NativeEnvironmentAccess;
+use App\Platform\NativeProduct\NativeProductManifest;
+use App\Platform\NativeProduct\NativeProductMembers;
+use App\Platform\NativeProduct\NativeTeamInvitations as TeamInvitations;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\TenantContext;
 use Cbox\Id\Kernel\Tenancy\GenericTenant;
@@ -38,6 +40,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator as Paginator;
+use Illuminate\Validation\Rule;
 use Inertia\Response;
 
 /**
@@ -84,11 +87,15 @@ final readonly class MemberController extends ConsoleController
         Subjects $subjects,
         TeamInvitations $team,
     ): Response|RedirectResponse {
+        if ($request->has('organization')) {
+            $this->assertOrganization();
+        }
+
         // The roster is PII — a Developer or billing-only role may not read it. Sent
         // somewhere they can be rather than refused: that is the console's own answer,
         // and the one the navigation-honesty test holds.
         if ($this->scope->capabilities()?->canReadMembers() !== true) {
-            return to_route('projects');
+            return redirect()->to(app(WorkspaceLanding::class)->url());
         }
 
         $organizationId = $this->scope->organizationId();
@@ -130,19 +137,22 @@ final readonly class MemberController extends ConsoleController
         $canManage = $this->scope->capabilities()->canManageMembers();
         $actorId = $this->scope->actorId();
         $environmentCount = $organizationId === null ? 0 : $this->environmentQuery($organizationId)->count();
+        $appAccessByUser = $organizationId === null ? [] : app(NativeProductMembers::class)->accessFor($organizationId, $userIds);
 
-        return $this->page('console/members', ConsoleStrings::text(Vocabulary::TEAM), [
+        return $this->page('console/members', __('console.team_5985039f'), [
             'help' => HelpProps::for(HelpTopic::Team),
-            'members' => collect($roster->items())->map(function (Membership $membership) use ($people, $accessByUser, $actorId, $canManage): array {
+            'organization' => $organizationId,
+            'members' => collect($roster->items())->map(function (Membership $membership) use ($people, $accessByUser, $appAccessByUser, $actorId, $canManage, $environmentCount): array {
                 $person = $people[$membership->user_id] ?? null;
                 $isSelf = $membership->user_id === $actorId;
 
                 return [
+                    ...$appAccessByUser[$membership->user_id],
                     'id' => $membership->id,
                     'name' => $person === null ? '—' : ($person->name ?? $person->email ?? '—'),
                     'email' => $person === null ? '—' : ($person->email ?? '—'),
                     'role' => $membership->role->value,
-                    'roleLabel' => ConsoleStrings::text($membership->role->label()),
+                    'roleLabel' => ConsoleLabels::navigation($membership->role->label()),
                     'isSelf' => $isSelf,
                     'pending' => $membership->status !== MembershipStatus::Active,
                     'status' => $membership->status->value,
@@ -150,9 +160,9 @@ final readonly class MemberController extends ConsoleController
                     // the browser: the buttons a page draws and the writes the server
                     // accepts must come from one rule.
                     'manageable' => $canManage && ! $isSelf && $membership->role !== MembershipRole::Owner,
-                    'scoped' => $membership->role->supportsEnvironmentScoping(),
-                    'allEnvironments' => $membership->all_environments === true,
-                    'accessCount' => count($accessByUser[$membership->user_id] ?? []),
+                    'scoped' => $membership->role !== MembershipRole::Owner,
+                    'allEnvironments' => $membership->role === MembershipRole::Owner || $membership->all_environments === true,
+                    'accessCount' => $membership->role === MembershipRole::Owner ? $environmentCount : count($accessByUser[$membership->user_id] ?? []),
                 ];
             })->values()->all(),
             'pagination' => PaginationProps::from($roster),
@@ -178,22 +188,32 @@ final readonly class MemberController extends ConsoleController
         ]);
     }
 
-    public function invite(InviteMemberRequest $request): RedirectResponse
+    public function invite(Request $request): RedirectResponse
     {
+        $this->assertOrganization();
         abort_if($this->scope->organizationId() === null, 403);
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
+
+        $roleMessage = __('console.choose_one_of_roles_ownership_is_handed_over_with_trans_90a222bb', [
+            'roles' => implode(', ', array_column(NativeProductManifest::ROLES, 'name')),
+        ]);
+        $request->validate([
+            'email' => ['required', 'email', 'max:190'],
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['required', 'string', Rule::in(array_keys(NativeProductManifest::ROLES))],
+        ], ['roles.*.required' => $roleMessage, 'roles.*.string' => $roleMessage, 'roles.*.in' => $roleMessage]);
 
         // The same action the workspace API's `POST /v1/workspace/members` runs, so the two
         // doors refuse, mail and record exactly alike ({@see InviteMember}).
         $result = $this->act(InviteMember::class, [
-            'email' => $request->email(),
+            'email' => $request->string('email')->toString(),
             'name' => $request->input('name'),
-            'role' => $request->role()->value,
-        ], ['email' => 'email', 'role' => 'role', 'name' => 'name'], 'email');
+            'roles' => $request->input('roles'),
+        ], ['email' => 'email', 'roles' => 'roles', 'name' => 'name'], 'email');
 
         return $result instanceof RedirectResponse
             ? $result
-            : back()->with('status', __('console.invitation_sent_to_1294f712').$request->email().'.');
+            : back()->with('status', __('console.invitation_sent_to_part1_5b76ee7f', ['part1' => $request->string('email')->toString()]));
     }
 
     /**
@@ -202,6 +222,7 @@ final readonly class MemberController extends ConsoleController
      */
     public function resendInvite(string $invitation): RedirectResponse
     {
+        $this->assertOrganization();
         $this->scope->assertMayAdminister();
         $this->scope->requireOrganizationId();
 
@@ -217,7 +238,7 @@ final readonly class MemberController extends ConsoleController
 
         $email = $result->payload['email'] ?? null;
 
-        return back()->with('status', __('console.invitation_sent_again_to_67587f5e').(is_string($email) ? $email : 'them').'.');
+        return back()->with('status', __('console.invitation_sent_again_to_part1_eefdfbca', ['part1' => is_string($email) ? $email : 'them']));
     }
 
     /**
@@ -229,6 +250,7 @@ final readonly class MemberController extends ConsoleController
      */
     public function revokeInvite(string $invitation): RedirectResponse
     {
+        $this->assertOrganization();
         $this->scope->assertMayAdminister();
         $this->scope->requireOrganizationId();
 
@@ -241,35 +263,37 @@ final readonly class MemberController extends ConsoleController
         // Back to page one: withdrawing the last row on a later page leaves the paginator
         // asking for a page that no longer exists, and the empty state then claims there
         // is nothing outstanding.
-        return to_route('members')->with('status', __('console.invitation_withdrawn_that_link_no_longer_wor_a991b23a'));
+        return to_route('members', ['organization' => $this->scope->organizationId()])->with('status', __('console.invitation_withdrawn_that_link_no_longer_works_a991b23a'));
     }
 
     public function changeRole(Request $request, string $member): RedirectResponse
     {
+        $this->assertOrganization();
         $target = $this->manageableTarget($member);
-        $next = MembershipRole::tryFrom((string) $request->string('role'));
-
-        if ($this->scope->organizationId() === null || $target === null || $next === null
-            || ! in_array($next, MembershipRole::assignable(), true)) {
+        if ($this->scope->organizationId() === null || $target === null) {
             return back();
         }
-
-        // The organization id comes from the SCOPE and the subject id from the fenced
-        // lookup, inside the action as here — neither is the string off the wire.
-        $result = $this->act(ChangeMemberRole::class, ['id' => $target->id, 'role' => $next->value], ['role' => 'role'], 'role');
+        $request->validate([
+            'roles' => ['required', 'array', 'min:1'],
+            'roles.*' => ['required', 'string', Rule::in(array_keys(NativeProductManifest::ROLES))],
+            'roles_version' => ['required', 'string', 'size:64'],
+        ]);
+        $result = $this->act(ChangeMemberRole::class, ['id' => $target->id, 'roles' => $request->input('roles'), 'roles_version' => $request->string('roles_version')->toString()], ['roles' => 'roles', 'roles_version' => 'roles_version'], 'roles');
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.role_updated_0c33aa24'));
     }
 
-    public function removeMember(string $member): RedirectResponse
+    public function removeMember(Request $request, string $member): RedirectResponse
     {
+        $this->assertOrganization();
         $target = $this->manageableTarget($member);
 
         if ($this->scope->organizationId() === null || $target === null) {
             return back();
         }
 
-        $result = $this->act(RemoveMember::class, ['id' => $target->id]);
+        $request->validate(['roles_version' => ['required', 'string', 'size:64']]);
+        $result = $this->act(RemoveMember::class, ['id' => $target->id, 'roles_version' => $request->string('roles_version')->toString()]);
 
         if ($result instanceof RedirectResponse) {
             return $result;
@@ -277,7 +301,7 @@ final readonly class MemberController extends ConsoleController
 
         // Same reason as withdrawing an invitation: removing the last row on a later page
         // leaves the paginator pointed at a page that no longer exists.
-        return to_route('members')->with('status', __('console.member_removed_d6fe67b5'));
+        return to_route('members', ['organization' => $this->scope->organizationId()])->with('status', __('console.member_removed_d6fe67b5'));
     }
 
     /**
@@ -290,6 +314,7 @@ final readonly class MemberController extends ConsoleController
      */
     public function makeOwner(string $member, Subjects $subjects): RedirectResponse
     {
+        $this->assertOrganization();
         $organizationId = $this->scope->organizationId();
 
         if ($organizationId === null || $this->scope->membershipRole() !== MembershipRole::Owner) {
@@ -311,11 +336,12 @@ final readonly class MemberController extends ConsoleController
         $subject = app(PlatformRoot::class)->run(fn () => $subjects->find($target->user_id));
         $who = $subject === null ? __('console.that_member_4103a653') : ($subject->name ?? $subject->email ?? __('console.that_member_4103a653'));
 
-        return back()->with('status', __('console.ownership_transferred_to_d375650c').$who.'.');
+        return back()->with('status', __('console.ownership_transferred_to_part1_38648398', ['part1' => $who]));
     }
 
     public function saveAccess(SetEnvironmentAccessRequest $request, string $member): RedirectResponse
     {
+        $this->assertOrganization();
         $target = $this->manageableTarget($member);
 
         if ($this->scope->organizationId() === null || $target === null) {
@@ -326,6 +352,7 @@ final readonly class MemberController extends ConsoleController
             'id' => $target->id,
             'all_environments' => $request->allEnvironments(),
             'environment_ids' => $request->environmentIds(),
+            'environment_access_version' => $request->string('environment_access_version')->toString(),
         ], ['all_environments' => 'all', 'environment_ids' => 'environmentIds'], 'environmentIds');
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.environment_access_updated_1294bb95'));
@@ -358,7 +385,7 @@ final readonly class MemberController extends ConsoleController
 
         // Not manageable, or not a role that CAN be scoped: the editor is not offered
         // rather than offered and then refused on save.
-        if ($target === null || ! $target->role->supportsEnvironmentScoping()) {
+        if ($target === null || $target->role === MembershipRole::Owner) {
             return null;
         }
 
@@ -376,6 +403,7 @@ final readonly class MemberController extends ConsoleController
 
         return [
             'memberId' => $target->id,
+            'version' => app(NativeEnvironmentAccess::class)->version($target),
             'all' => $target->all_environments === true,
             'selected' => app(PlatformRoot::class)->run(
                 fn (): array => $members->accessibleEnvironmentIds($organizationId, $target->user_id),
@@ -457,6 +485,13 @@ final readonly class MemberController extends ConsoleController
         return $target;
     }
 
+    /** A form stays bound to the workspace displayed when it was opened. */
+    private function assertOrganization(): void
+    {
+        $organization = $this->scope->organizationId();
+        abort_unless(is_string($organization) && request()->input('organization') === $organization, 403);
+    }
+
     /**
      * The team's pending invitations, in the shape every invite surface lists.
      *
@@ -467,8 +502,8 @@ final readonly class MemberController extends ConsoleController
         return array_map(
             static fn (PendingInvitationSummary $invitation): PendingInvitationProps => PendingInvitationProps::from(
                 $invitation,
-                $canManage ? route('members.invitations.resend', $invitation->id) : null,
-                $canManage ? route('members.invitations.revoke', $invitation->id) : null,
+                $canManage ? route('members.invitations.resend', ['invitation' => $invitation->id, 'organization' => $organizationId]) : null,
+                $canManage ? route('members.invitations.revoke', ['invitation' => $invitation->id, 'organization' => $organizationId]) : null,
             ),
             $team->pending($organizationId, self::INVITATIONS_SHOWN),
         );

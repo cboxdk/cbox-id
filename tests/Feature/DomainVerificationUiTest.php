@@ -9,9 +9,6 @@ use Cbox\Id\Federation\Models\VerifiedDomain;
 use Cbox\Id\Federation\Testing\InteractsWithFederation;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
-use Cbox\Id\Kernel\Authorization\Contracts\EntitlementWriter;
-use Cbox\Id\Kernel\Authorization\Enums\EntitlementSource;
-use Cbox\Id\Kernel\Authorization\ValueObjects\EntitlementInput;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -21,14 +18,7 @@ use Inertia\Support\SessionKey;
 
 uses(InteractsWithFederation::class);
 
-// This file is ABOUT the entitlement gate, so it declares the mode it exercises.
-// The default is now `open` — an unset entitlement means granted, which is what a
-// self-hosted deployment runs and what most of the suite therefore sees. Gating
-// only means anything under `metered`, where the billing projection is the sole
-// source of a grant.
-beforeEach(function (): void {
-    config(['cbox-id.entitlements.mode' => 'metered']);
-});
+// Every positive SSO fixture receives an explicit central grant; absence denies access.
 
 /**
  * Sign an admin (owner) into a fresh org, optionally entitled to SSO. Self-contained
@@ -48,11 +38,7 @@ function ssoAdmin(string $slug, bool $entitled = true): string
     session([PlatformAuth::SESSION_KEY => $session->id]);
 
     if ($entitled) {
-        app(EntitlementWriter::class)->set(
-            $org->id,
-            new EntitlementInput('cbox-id-sso', ['enabled' => true]),
-            EntitlementSource::Manual,
-        );
+        grantFeature($org->id, 'cbox-id-sso');
     }
 
     return $org->id;

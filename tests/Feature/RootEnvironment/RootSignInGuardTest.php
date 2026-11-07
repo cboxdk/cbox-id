@@ -106,6 +106,7 @@ it('allows it once every operator has an active connection to sign in with', fun
 
 it('refuses to require SSO for the operators\' organization on a connection that does not work yet', function (): void {
     $draft = guardSsoConnection($this->staff->id, active: false);
+    grantFeature($this->staff->id, 'cbox-id-sso');
 
     $this->post('https://'.GUARD_ROOT.'/admin/single-sign-on/'.$draft->id.'/require-sso')
         ->assertSessionHasErrors();

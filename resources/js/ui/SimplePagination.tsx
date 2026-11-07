@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import type { SimplePagination as SimplePaginationState } from '@/types';
 import { Icon } from './Icon';
@@ -7,9 +7,6 @@ export interface SimplePaginationProps {
     pagination: SimplePaginationState;
     /** Builds the href for a page. The caller owns the query string this page lives in. */
     href: (page: number) => string;
-    /** What is being counted — "entry", "delivery". Pluralised by the caller's own word. */
-    noun?: string;
-    pluralNoun?: string;
 }
 
 /**
@@ -24,26 +21,18 @@ export interface SimplePaginationProps {
  * debounced keystroke with no focus change, so this line is the only thing that can report
  * that a filter narrowed to nothing (WCAG 2.1 SC 4.1.3).
  */
-export function SimplePagination({
-    pagination,
-    href,
-    noun = 'result',
-    pluralNoun,
-}: SimplePaginationProps) {
-    const { t: tc } = useUiTranslator();
-
+export function SimplePagination({ pagination, href }: SimplePaginationProps) {
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT, choice } = useConsoleTranslator();
     const { currentPage, count, hasMore } = pagination;
-    const plural = pluralNoun ?? `${noun}s`;
 
     return (
         <nav
             className="flex items-center justify-between gap-3 flex-wrap"
-            aria-label={tc('console.pagination_7b3f674b', 'Pagination')}
+            aria-label={consoleT('console.pagination_7b3f674b')}
         >
             <p style={{ fontSize: '13px', color: 'var(--muted-foreground)' }} aria-live="polite">
-                {tc('console.page_6076934f', 'Page ')}
-                {currentPage} · {count} {count === 1 ? noun : plural}
-                {tc('console.on_this_page_c990cc6a', ' on this page')}
+                {choice('console.pagination_page_count', count, { page: currentPage })}
             </p>
 
             {(currentPage > 1 || hasMore) && (
@@ -54,12 +43,15 @@ export function SimplePagination({
                             className="btn btn-ghost btn-sm"
                             rel="prev"
                         >
-                            <Icon
-                                name="chevron"
-                                className="w-4 h-4"
-                                style={{ transform: 'rotate(90deg)' }}
-                            />
-                            {tc('console.previous_a57b08a4', 'Previous')}
+                            {consoleRich('console._part1_previous_be47f3cf', {
+                                part1: (
+                                    <Icon
+                                        name="chevron"
+                                        className="w-4 h-4"
+                                        style={{ transform: 'rotate(90deg)' }}
+                                    />
+                                ),
+                            })}
                         </Link>
                     ) : (
                         <span
@@ -67,12 +59,15 @@ export function SimplePagination({
                             aria-disabled="true"
                             style={{ opacity: 0.5 }}
                         >
-                            <Icon
-                                name="chevron"
-                                className="w-4 h-4"
-                                style={{ transform: 'rotate(90deg)' }}
-                            />
-                            {tc('console.previous_a57b08a4', 'Previous')}
+                            {consoleRich('console._part1_previous_be47f3cf', {
+                                part1: (
+                                    <Icon
+                                        name="chevron"
+                                        className="w-4 h-4"
+                                        style={{ transform: 'rotate(90deg)' }}
+                                    />
+                                ),
+                            })}
                         </span>
                     )}
 
@@ -82,12 +77,15 @@ export function SimplePagination({
                             className="btn btn-ghost btn-sm"
                             rel="next"
                         >
-                            {tc('console.next_1ff57a29', 'Next')}
-                            <Icon
-                                name="chevron"
-                                className="w-4 h-4"
-                                style={{ transform: 'rotate(-90deg)' }}
-                            />
+                            {consoleRich('console.next_part1_c0df1ece', {
+                                part1: (
+                                    <Icon
+                                        name="chevron"
+                                        className="w-4 h-4"
+                                        style={{ transform: 'rotate(-90deg)' }}
+                                    />
+                                ),
+                            })}
                         </Link>
                     ) : (
                         <span
@@ -95,12 +93,15 @@ export function SimplePagination({
                             aria-disabled="true"
                             style={{ opacity: 0.5 }}
                         >
-                            {tc('console.next_1ff57a29', 'Next')}
-                            <Icon
-                                name="chevron"
-                                className="w-4 h-4"
-                                style={{ transform: 'rotate(-90deg)' }}
-                            />
+                            {consoleRich('console.next_part1_c0df1ece', {
+                                part1: (
+                                    <Icon
+                                        name="chevron"
+                                        className="w-4 h-4"
+                                        style={{ transform: 'rotate(-90deg)' }}
+                                    />
+                                ),
+                            })}
                         </span>
                     )}
                 </div>

@@ -87,6 +87,7 @@ it('keeps the outbound SAML page off the word "SAML", which nine readers in ten 
 it('hands every page its words in the shell, on the environment console', function (): void {
     $world = (new DemoEnvironmentSeeder);
     $world->run();
+    syncNativeProductCatalog();
     $environment = $world->environment;
     expect($environment)->not->toBeNull();
 

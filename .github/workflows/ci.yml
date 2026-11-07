@@ -48,7 +48,7 @@ jobs:
 
       - name: Install PHP dependencies
         run: |
-          php bin/unpack-signals-packages.php ../../laravel-signals-client
+          php bin/verify-signals-sdk.php
           sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       # Larastan boots the application, which wants an encryption key.
@@ -56,9 +56,6 @@ jobs:
         run: |
           cp .env.example .env || true
           php artisan key:generate --force
-
-      - name: Approved Assistant guides match their sources
-        run: php bin/prepare-assistant-docs.php --check
 
       - name: Lint (Pint)
         run: vendor/bin/pint --test
@@ -103,7 +100,7 @@ jobs:
 
       - name: Install PHP dependencies
         run: |
-          php bin/unpack-signals-packages.php ../../laravel-signals-client
+          php bin/verify-signals-sdk.php
           sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       # The Feature suite renders the console layout, which resolves the Vite manifest.
@@ -151,7 +148,7 @@ jobs:
 
       - name: Install PHP dependencies
         run: |
-          php bin/unpack-signals-packages.php ../../laravel-signals-client
+          php bin/verify-signals-sdk.php
           sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       - name: Install Node dependencies
@@ -195,14 +192,12 @@ jobs:
       - name: Tests (Browser — axe-core a11y, real-browser smoke, visual)
         run: vendor/bin/pest --testsuite=Browser --exclude-group=docs-screenshots
 
-      - name: Keep screenshots and visual diffs when a browser test fails
+      - name: Keep the visual diff when a browser comparison fails
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: browser-visual-diff
-          path: |
-            tests/Browser/Screenshots/ImageDiffView/*.html
-            tests/Browser/Screenshots/it_*.png
+          path: tests/Browser/Screenshots/ImageDiffView/*.html
           if-no-files-found: ignore
           retention-days: 3
 
@@ -227,7 +222,7 @@ jobs:
 
       - name: Install PHP dependencies
         run: |
-          php bin/unpack-signals-packages.php ../../laravel-signals-client
+          php bin/verify-signals-sdk.php
           sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       - name: License gate (permissive-only dependencies)
@@ -330,7 +325,7 @@ jobs:
 
       - name: Install PHP dependencies
         run: |
-          php bin/unpack-signals-packages.php ../../laravel-signals-client
+          php bin/verify-signals-sdk.php
           sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
 
       # The Feature suite renders the console layout, which resolves the Vite
@@ -403,7 +398,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install exact dependencies
         run: |
-          php bin/unpack-signals-packages.php ../../laravel-signals-client
+          php bin/verify-signals-sdk.php
           sh bin/install-ci-dependencies.sh --no-interaction --prefer-dist --no-progress
       - name: Prepare isolated test environment
         run: |

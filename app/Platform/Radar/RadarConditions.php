@@ -7,6 +7,7 @@ namespace App\Platform\Radar;
 use App\Platform\Radar\Enums\RadarField;
 use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\Radar\Enums\RadarOperator;
+use Cbox\Id\Kernel\Presentation\ValueObjects\SourceMessage;
 use Symfony\Component\HttpFoundation\IpUtils;
 
 /**
@@ -40,47 +41,28 @@ final class RadarConditions
     public static function normalize(array $conditions): array
     {
         if ($conditions === []) {
-            throw new RadarRuleInvalid('A rule needs at least one condition.');
+            throw (new RadarRuleInvalid('A rule needs at least one condition.'))->withSourceMessage(new SourceMessage('A rule needs at least one condition.', []));
         }
-
         if (count($conditions) > self::MAX_CONDITIONS) {
-            throw new RadarRuleInvalid('A rule may have at most '.self::MAX_CONDITIONS.' conditions.');
+            throw (new RadarRuleInvalid('A rule may have at most '.self::MAX_CONDITIONS.' conditions.'))->withSourceMessage(new SourceMessage('A rule may have at most :value1 conditions.', ['value1' => self::MAX_CONDITIONS]));
         }
-
         $normalized = [];
-
         foreach (array_values($conditions) as $index => $condition) {
-            $position = 'Condition '.($index + 1);
-
+            $position = $index + 1;
             if (! is_array($condition)) {
-                throw new RadarRuleInvalid("{$position} must be an object with a field, an operator and a value.");
+                throw (new RadarRuleInvalid("Condition {$position} must be an object with a field, an operator and a value."))->withSourceMessage(new SourceMessage('Condition :position must be an object with a field, an operator and a value.', ['position' => $position]));
             }
-
             $field = is_string($condition['field'] ?? null) ? RadarField::tryFrom($condition['field']) : null;
-
             if ($field === null) {
-                throw new RadarRuleInvalid("{$position}: the field must be one of ".implode(', ', RadarField::values()).'.');
+                throw (new RadarRuleInvalid("Condition {$position}: the field must be one of ".implode(', ', RadarField::values()).'.'))->withSourceMessage(new SourceMessage('Condition :position: the field must be one of :value2.', ['position' => $position, 'value2' => implode(', ', RadarField::values())]));
             }
-
             $operator = is_string($condition['operator'] ?? null) ? RadarOperator::tryFrom($condition['operator']) : null;
-
             if ($operator === null || ! in_array($operator, $field->operators(), true)) {
                 $allowed = implode(', ', array_map(static fn (RadarOperator $o): string => $o->value, $field->operators()));
-
-                throw new RadarRuleInvalid("{$position}: `{$field->value}` takes the operators {$allowed}.");
+                throw (new RadarRuleInvalid("Condition {$position}: `{$field->value}` takes the operators {$allowed}."))->withSourceMessage(new SourceMessage('Condition :position: `:value2` takes the operators :allowed.', ['position' => $position, 'value2' => $field->value, 'allowed' => $allowed]));
             }
-
-            $raw = $operator->takesList()
-                ? ($condition['values'] ?? $condition['value'] ?? null)
-                : ($condition['value'] ?? null);
-
-            $normalized[] = [
-                'field' => $field->value,
-                'operator' => $operator->value,
-                'value' => $operator->takesList()
-                    ? self::normalizeList($field, $operator, $raw, $position)
-                    : self::normalizeOne($field, $operator, $raw, $position),
-            ];
+            $raw = $operator->takesList() ? $condition['values'] ?? $condition['value'] ?? null : $condition['value'] ?? null;
+            $normalized[] = ['field' => $field->value, 'operator' => $operator->value, 'value' => $operator->takesList() ? self::normalizeList($field, $operator, $raw, $position) : self::normalizeOne($field, $operator, $raw, $position)];
         }
 
         return $normalized;
@@ -96,17 +78,13 @@ final class RadarConditions
     {
         $field = is_string($condition['field'] ?? null) ? RadarField::tryFrom($condition['field']) : null;
         $operator = is_string($condition['operator'] ?? null) ? RadarOperator::tryFrom($condition['operator']) : null;
-
         if ($field === null || $operator === null) {
             return false;
         }
-
         $fact = $facts->get($field);
-
         if ($fact === null) {
             return false;
         }
-
         $expected = $condition['value'] ?? null;
         $list = is_array($expected) ? array_values($expected) : [$expected];
 
@@ -128,15 +106,11 @@ final class RadarConditions
     {
         $field = is_string($condition['field'] ?? null) ? RadarField::tryFrom($condition['field']) : null;
         $operator = is_string($condition['operator'] ?? null) ? RadarOperator::tryFrom($condition['operator']) : null;
-
         if ($field === null || $operator === null) {
             return '';
         }
-
         $value = $condition['value'] ?? null;
-        $text = is_array($value)
-            ? implode(', ', array_map(self::scalarText(...), $value))
-            : self::scalarText($value);
+        $text = is_array($value) ? implode(', ', array_map(self::scalarText(...), $value)) : self::scalarText($value);
 
         return $field->label().' '.$operator->phrase().' '.$text;
     }
@@ -154,93 +128,75 @@ final class RadarConditions
     /**
      * @return list<string|int|float>
      */
-    private static function normalizeList(RadarField $field, RadarOperator $operator, mixed $raw, string $position): array
+    private static function normalizeList(RadarField $field, RadarOperator $operator, mixed $raw, int $position): array
     {
         if (is_string($raw)) {
             // A comma-separated list, as a person types it in a form.
             $raw = array_map('trim', explode(',', $raw));
         }
-
         if (! is_array($raw)) {
-            throw new RadarRuleInvalid("{$position}: `{$operator->value}` takes a list of values.");
+            throw (new RadarRuleInvalid("Condition {$position}: `{$operator->value}` takes a list of values."))->withSourceMessage(new SourceMessage('Condition :position: `:value2` takes a list of values.', ['position' => $position, 'value2' => $operator->value]));
         }
-
         $raw = array_values(array_filter($raw, static fn (mixed $value): bool => ! (is_string($value) && trim($value) === '')));
-
         if ($raw === []) {
-            throw new RadarRuleInvalid("{$position}: name at least one value.");
+            throw (new RadarRuleInvalid("Condition {$position}: name at least one value."))->withSourceMessage(new SourceMessage('Condition :position: name at least one value.', ['position' => $position]));
         }
-
         if (count($raw) > self::MAX_VALUES) {
-            throw new RadarRuleInvalid("{$position}: at most ".self::MAX_VALUES.' values.');
+            throw (new RadarRuleInvalid("Condition {$position}: at most ".self::MAX_VALUES.' values.'))->withSourceMessage(new SourceMessage('Condition :position: at most :value2 values.', ['position' => $position, 'value2' => self::MAX_VALUES]));
         }
-
         $values = [];
-
         foreach ($raw as $value) {
             $one = self::normalizeOne($field, $operator, $value, $position);
-
             if (is_bool($one)) {
-                throw new RadarRuleInvalid("{$position}: `{$operator->value}` does not apply to a yes/no field.");
+                throw (new RadarRuleInvalid("Condition {$position}: `{$operator->value}` does not apply to a yes/no field."))->withSourceMessage(new SourceMessage('Condition :position: `:value2` does not apply to a yes/no field.', ['position' => $position, 'value2' => $operator->value]));
             }
-
             $values[] = $one;
         }
 
         return array_values(array_unique($values, SORT_REGULAR));
     }
 
-    private static function normalizeOne(RadarField $field, RadarOperator $operator, mixed $raw, string $position): string|int|float|bool
+    private static function normalizeOne(RadarField $field, RadarOperator $operator, mixed $raw, int $position): string|int|float|bool
     {
-        if (is_array($raw) || $raw === null || (is_string($raw) && trim($raw) === '')) {
-            throw new RadarRuleInvalid("{$position}: name a value.");
+        if (is_array($raw) || $raw === null || is_string($raw) && trim($raw) === '') {
+            throw (new RadarRuleInvalid("Condition {$position}: name a value."))->withSourceMessage(new SourceMessage('Condition :position: name a value.', ['position' => $position]));
         }
-
         if (! is_scalar($raw)) {
-            throw new RadarRuleInvalid("{$position}: the value must be text, a number or true/false.");
+            throw (new RadarRuleInvalid("Condition {$position}: the value must be text, a number or true/false."))->withSourceMessage(new SourceMessage('Condition :position: the value must be text, a number or true/false.', ['position' => $position]));
         }
-
-        $text = is_bool($raw) ? ($raw ? 'true' : 'false') : trim((string) $raw);
-
+        $text = is_bool($raw) ? $raw ? 'true' : 'false' : trim((string) $raw);
         if (mb_strlen($text) > 255) {
-            throw new RadarRuleInvalid("{$position}: a value may be at most 255 characters.");
+            throw (new RadarRuleInvalid("Condition {$position}: a value may be at most 255 characters."))->withSourceMessage(new SourceMessage('Condition :position: a value may be at most 255 characters.', ['position' => $position]));
         }
 
         return match ($field->type()) {
-            'number' => is_numeric($text)
-                ? (str_contains($text, '.') ? (float) $text : (int) $text)
-                : throw new RadarRuleInvalid("{$position}: `{$field->value}` is a number."),
+            'number' => is_numeric($text) ? str_contains($text, '.') ? (float) $text : (int) $text : throw (new RadarRuleInvalid("Condition {$position}: `{$field->value}` is a number."))->withSourceMessage(new SourceMessage('Condition :position: `:value2` is a number.', ['position' => $position, 'value2' => $field->value])),
             'boolean' => match (strtolower($text)) {
                 'true', '1', 'yes' => true,
                 'false', '0', 'no' => false,
-                default => throw new RadarRuleInvalid("{$position}: `{$field->value}` is true or false."),
+                default => throw (new RadarRuleInvalid("Condition {$position}: `{$field->value}` is true or false."))->withSourceMessage(new SourceMessage('Condition :position: `:value2` is true or false.', ['position' => $position, 'value2' => $field->value])),
             },
-            'country' => preg_match('/^[A-Za-z]{2}$/', $text) === 1
-                ? strtoupper($text)
-                : throw new RadarRuleInvalid("{$position}: a country is a two-letter ISO code, such as DK."),
+            'country' => preg_match('/^[A-Za-z]{2}$/', $text) === 1 ? strtoupper($text) : throw (new RadarRuleInvalid("Condition {$position}: a country is a two-letter ISO code, such as DK."))->withSourceMessage(new SourceMessage('Condition :position: a country is a two-letter ISO code, such as DK.', ['position' => $position])),
             'ip' => self::normalizeIp($operator, $text, $position),
             default => self::normalizeString($field, $text, $position),
         };
     }
 
-    private static function normalizeString(RadarField $field, string $text, string $position): string
+    private static function normalizeString(RadarField $field, string $text, int $position): string
     {
         if ($field === RadarField::Method && RadarMethod::tryFrom(strtolower($text)) === null) {
-            throw new RadarRuleInvalid("{$position}: a method is one of ".implode(', ', RadarMethod::values()).'.');
+            throw (new RadarRuleInvalid("Condition {$position}: a method is one of ".implode(', ', RadarMethod::values()).'.'))->withSourceMessage(new SourceMessage('Condition :position: a method is one of :value2.', ['position' => $position, 'value2' => implode(', ', RadarMethod::values())]));
         }
 
         return strtolower($text);
     }
 
-    private static function normalizeIp(RadarOperator $operator, string $text, string $position): string
+    private static function normalizeIp(RadarOperator $operator, string $text, int $position): string
     {
         $isRange = $operator === RadarOperator::InCidr || $operator === RadarOperator::NotInCidr;
         $canonical = $isRange ? RadarAddresses::canonicalCidr($text) : RadarAddresses::canonicalIp($text);
-
         if ($canonical === null) {
-            throw new RadarRuleInvalid($isRange
-                ? "{$position}: `{$text}` is not an IP range — write it as CIDR, such as 203.0.113.0/24."
-                : "{$position}: `{$text}` is not an IP address.");
+            throw (new RadarRuleInvalid($isRange ? "Condition {$position}: `{$text}` is not an IP range — write it as CIDR, such as 203.0.113.0/24." : "Condition {$position}: `{$text}` is not an IP address."))->withSourceMessage($isRange ? new SourceMessage('Condition :position: `:text` is not an IP range — write it as CIDR, such as 203.0.113.0/24.', ['position' => $position, 'text' => $text]) : new SourceMessage('Condition :position: `:text` is not an IP address.', ['position' => $position, 'text' => $text]));
         }
 
         return $canonical;
@@ -254,7 +210,6 @@ final class RadarConditions
         if ($fact === null) {
             return false;
         }
-
         $numbers = array_map(static fn (mixed $value): float => is_numeric($value) ? (float) $value : NAN, $expected);
         $first = $numbers[0] ?? NAN;
 
@@ -290,11 +245,9 @@ final class RadarConditions
     private static function compareIp(RadarOperator $operator, string $fact, array $expected): bool
     {
         $ip = RadarAddresses::canonicalIp($fact);
-
         if ($ip === null) {
             return false;
         }
-
         $values = array_values(array_filter($expected, 'is_string'));
 
         return match ($operator) {

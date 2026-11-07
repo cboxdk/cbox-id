@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { Badge } from './Badge';
@@ -35,17 +35,19 @@ export interface DomainClaim {
  * otherwise an organization could claim addresses it does not own.
  */
 export function DomainClaims({ domains, addHref }: { domains: DomainClaim[]; addHref: string }) {
-    const { t: tc } = useUiTranslator();
-
+    const { t: consoleShortText } = useConsoleTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const form = useForm({ domain: '' });
     const [removing, setRemoving] = useState<DomainClaim | null>(null);
 
     return (
         <Panel
-            title={tc('console.email_domains_f8b00920', 'Email domains')}
-            description={tc(
-                'console.prove_the_organization_owns_a_domain_then_ro_3c9f7db4',
-                'Prove the organization owns a domain, then route everyone on it to their own sign-in.',
+            title={consoleT('console.email_domains_f8b00920')}
+            description={consoleT(
+                'console.prove_the_organization_owns_a_domain_then_route_everyon_3c9f7db4',
             )}
         >
             <div className="space-y-4">
@@ -60,7 +62,7 @@ export function DomainClaims({ domains, addHref }: { domains: DomainClaim[]; add
                     }}
                 >
                     <Field
-                        label={tc('console.domain_79fa3361', 'Domain')}
+                        label={consoleT('console.domain_79fa3361')}
                         className="flex-1"
                         error={form.errors.domain}
                     >
@@ -73,17 +75,16 @@ export function DomainClaims({ domains, addHref }: { domains: DomainClaim[]; add
                         />
                     </Field>
                     <Button type="submit" className="shrink-0" loading={form.processing}>
-                        {tc('console.add_domain_d86476ae', 'Add domain')}
+                        {consoleT('console.add_domain_d86476ae')}
                     </Button>
                 </form>
 
                 {domains.length === 0 && (
                     <EmptyState
                         icon="shield"
-                        title={tc('console.no_domains_yet_96cd1f06', 'No domains yet')}
-                        description={tc(
-                            'console.add_the_domain_this_organization_s_people_ha_e68cad70',
-                            "Add the domain this organization's people have email addresses on, publish the TXT record, and verify it.",
+                        title={consoleT('console.no_domains_yet_96cd1f06')}
+                        description={consoleT(
+                            'console.add_the_domain_this_organization_s_people_have_email_ad_e68cad70',
                         )}
                     />
                 )}
@@ -98,16 +99,11 @@ export function DomainClaims({ domains, addHref }: { domains: DomainClaim[]; add
                             <span className="font-medium mono">{domain.domain}</span>
                             <Pill tone={domain.verified ? 'success' : 'warning'}>
                                 {domain.verified
-                                    ? tc('console.verified_4f783840', 'Verified')
-                                    : tc('console.unverified_33c8e8de', 'Unverified')}
+                                    ? consoleText('console.verified_4f783840')
+                                    : consoleText('console.unverified_33c8e8de')}
                             </Pill>
                             {domain.capture && (
-                                <Badge>
-                                    {tc(
-                                        'console.capturing_sign_ins_21c382a5',
-                                        'Capturing sign-ins',
-                                    )}
-                                </Badge>
+                                <Badge>{consoleT('console.capturing_sign_ins_21c382a5')}</Badge>
                             )}
                         </div>
 
@@ -120,11 +116,9 @@ export function DomainClaims({ domains, addHref }: { domains: DomainClaim[]; add
                                 }}
                             >
                                 <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                                    {tc('console.add_this_dns_41ae6113', 'Add this DNS ')}
-                                    <b>TXT</b>
-                                    {tc(
-                                        'console.record_then_verify_ce55fca2',
-                                        ' record, then verify.',
+                                    {consoleRich(
+                                        'console.add_this_dns_part1_record_then_verify_82b548bb',
+                                        { part1: <b>{consoleT('console.txt_d3dc6ac9')}</b> },
                                     )}
                                 </p>
                                 {/*
@@ -134,11 +128,11 @@ export function DomainClaims({ domains, addHref }: { domains: DomainClaim[]; add
                                     a truncated record comes from.
                                 */}
                                 <RecordRow
-                                    label={tc('console.name_dcd1d522', 'Name')}
+                                    label={consoleT('console.name_dcd1d522')}
                                     value={domain.recordName}
                                 />
                                 <RecordRow
-                                    label={tc('console.value_8e37953d', 'Value')}
+                                    label={consoleT('console.value_8e37953d')}
                                     value={domain.token}
                                 />
                             </div>
@@ -156,7 +150,7 @@ export function DomainClaims({ domains, addHref }: { domains: DomainClaim[]; add
                                         )
                                     }
                                 >
-                                    {tc('console.verify_eea2745e', 'Verify')}
+                                    {consoleT('console.verify_eea2745e')}
                                 </Button>
                             )}
 
@@ -168,20 +162,19 @@ export function DomainClaims({ domains, addHref }: { domains: DomainClaim[]; add
                                 }
                             >
                                 {domain.capture
-                                    ? tc('console.stop_capturing_86f919c9', 'Stop capturing')
-                                    : tc('console.capture_sign_ins_01f6f9e1', 'Capture sign-ins')}
+                                    ? consoleText('console.stop_capturing_86f919c9')
+                                    : consoleText('console.capture_sign_ins_01f6f9e1')}
                             </Button>
 
                             <Button size="sm" variant="danger" onClick={() => setRemoving(domain)}>
-                                {tc('console.remove_c3812fc4', 'Remove')}
+                                {consoleT('console.remove_c3812fc4')}
                             </Button>
                         </div>
 
                         {!domain.verified && !domain.capture && (
                             <p className="text-xs" style={{ color: 'var(--faint)' }}>
-                                {tc(
-                                    'console.verify_the_domain_before_turning_capture_on__4ff9f310',
-                                    'Verify the domain before turning capture on — until then, this organization has not proved it owns those addresses.',
+                                {consoleT(
+                                    'console.verify_the_domain_before_turning_capture_on_until_then_4ff9f310',
                                 )}
                             </p>
                         )}
@@ -193,10 +186,9 @@ export function DomainClaims({ domains, addHref }: { domains: DomainClaim[]; add
                 open={removing !== null}
                 onOpenChange={(open) => !open && setRemoving(null)}
                 name={removing?.domain ?? ''}
-                verb="Remove"
-                consequence={tc(
-                    'console.the_claim_is_dropped_if_capture_was_on_peopl_17d5c40e',
-                    'The claim is dropped. If capture was on, people on this domain go back to the ordinary sign-in.',
+                verb={consoleShortText('console.remove_c3812fc4')}
+                consequence={consoleUiText(
+                    'console.the_claim_is_dropped_if_capture_was_on_people_on_this_d_17d5c40e',
                 )}
                 onConfirm={() => {
                     const domain = removing;

@@ -11,10 +11,8 @@ use App\Actions\LogStreams\UpdateLogStream;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\LogStreamRequest;
 use App\Platform\Console\ConsolePlane;
-use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Integrations\LogStreamDestinations;
-use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\AuditStreaming\Models\AuditStream;
 use Cbox\LaravelSiem\Enums\AuthScheme;
 use Cbox\LaravelSiem\Enums\DatadogSite;
@@ -66,43 +64,55 @@ final readonly class LogStreamController extends ConsoleController
      * Public because the Connectors catalog names the same destinations as its setup
      * shortcuts, and two lists of vendor names would drift.
      */
-    public const array DESTINATIONS = [
-        'splunk_hec' => 'Splunk HEC',
-        'elastic_ecs' => 'Elastic (ECS)',
-        'graylog_gelf' => 'Graylog (GELF)',
-        'cef_http' => 'CEF over HTTP',
-        'generic_json' => 'Generic JSON',
-        'datadog' => 'Datadog',
-        's3' => 'Amazon S3',
-        'gcs' => 'Google Cloud Storage',
-    ];
+    /** @return array<string, string> */
+    public static function destinations(): array
+    {
+        return [
+            'splunk_hec' => __('console.splunk_hec_d31533a6'),
+            'elastic_ecs' => __('console.elastic_ecs_9d24f3ef'),
+            'graylog_gelf' => __('console.graylog_gelf_bb3c515d'),
+            'cef_http' => __('console.cef_over_http_4e2adc60'),
+            'generic_json' => __('console.generic_json_7e85e625'),
+            'datadog' => __('console.datadog_8bd7b9fd'),
+            's3' => __('console.amazon_s3_a4f63529'),
+            'gcs' => __('console.google_cloud_storage_53fa0ba1'),
+        ];
+    }
 
     /** Auth scheme value => what the endpoint is presented with. */
-    private const SCHEMES = [
-        'none' => 'None',
-        'bearer' => 'Bearer token',
-        'splunk' => 'Splunk',
-        'hmac' => 'HMAC (generated key)',
-    ];
+    /** @return array<string, string> */
+    private static function schemes(): array
+    {
+        return [
+            'none' => __('console.none_dc937b59'),
+            'bearer' => __('console.bearer_token_b22ac30e'),
+            'splunk' => __('console.splunk_f3f5d1d9'),
+            'hmac' => __('console.hmac_generated_key_0070182c'),
+        ];
+    }
 
     /** Option key => its label on the stream's page, in its vendor's words. */
-    private const OPTION_LABELS = [
-        'site' => 'Datadog site',
-        'service' => 'Service',
-        'source' => 'Source (ddsource)',
-        'tags' => 'Tags',
-        'hostname' => 'Hostname',
-        'bucket' => 'Bucket',
-        'region' => 'AWS Region',
-        'prefix' => 'Prefix',
-        'access_key_id' => 'Access key ID',
-        'role_arn' => 'IAM role ARN',
-        'external_id' => 'External ID',
-        'sse' => 'Server-side encryption',
-        'kms_key_id' => 'AWS KMS key',
-        'path_style' => 'Path-style addressing',
-        'gzip' => 'Compression',
-    ];
+    /** @return array<string, string> */
+    private static function optionLabels(): array
+    {
+        return [
+            'site' => __('console.datadog_site_e01eb56a'),
+            'service' => __('console.service_d677190e'),
+            'source' => __('console.source_ddsource_c57b084a'),
+            'tags' => __('console.tags_1331275b'),
+            'hostname' => __('console.hostname_2db53355'),
+            'bucket' => __('console.bucket_c83b6579'),
+            'region' => __('console.aws_region_7e489ee6'),
+            'prefix' => __('console.prefix_74feac5e'),
+            'access_key_id' => __('console.access_key_id_14eb0f96'),
+            'role_arn' => __('console.iam_role_arn_acaac048'),
+            'external_id' => __('console.external_id_69da56ba'),
+            'sse' => __('console.server_side_encryption_88986133'),
+            'kms_key_id' => __('console.aws_kms_key_94d3792b'),
+            'path_style' => __('console.path_style_addressing_76de6fb5'),
+            'gzip' => __('console.compression_278b1b2a'),
+        ];
+    }
 
     public function index(Request $request): Response
     {
@@ -118,12 +128,12 @@ final readonly class LogStreamController extends ConsoleController
 
         $streams = $query->get();
 
-        return $this->page('console/log-streams/index', ConsoleStrings::text(Vocabulary::LOG_STREAMS), [
+        return $this->page('console/log-streams/index', __('console.log_streams_aff03056'), [
             'help' => HelpProps::for(HelpTopic::LogStreaming),
             'streams' => $streams->map(fn (AuditStream $stream): array => [
                 'id' => $stream->id,
                 'name' => $stream->name,
-                'destination' => ConsoleStrings::text(self::DESTINATIONS[$stream->destination->value]),
+                'destination' => self::destinations()[$stream->destination->value],
                 'endpointUrl' => $stream->endpoint_url,
                 'enabled' => $stream->enabled,
                 'health' => $stream->health()->value,
@@ -227,10 +237,10 @@ final readonly class LogStreamController extends ConsoleController
             'stream' => [
                 'id' => $model->id,
                 'name' => $model->name,
-                'destination' => ConsoleStrings::text(self::DESTINATIONS[$model->destination->value]),
+                'destination' => self::destinations()[$model->destination->value],
                 'destinationValue' => $model->destination->value,
                 'endpointUrl' => $model->endpoint_url,
-                'scheme' => $cloud ? null : ConsoleStrings::text(self::SCHEMES[$model->auth->value]),
+                'scheme' => $cloud ? null : self::schemes()[$model->auth->value],
                 'options' => $this->optionRows($model),
                 'enabled' => $model->enabled,
                 'health' => $model->health()->value,
@@ -322,7 +332,7 @@ final readonly class LogStreamController extends ConsoleController
         }
 
         return to_route($this->scope->routeName('audit-streams.show'), $model->id)
-            ->with('status', __('console.log_stream_saved_delivery_is_tried_again_on__fb2e3c84'));
+            ->with('status', __('console.log_stream_saved_delivery_is_tried_again_on_the_next_ru_fb2e3c84'));
     }
 
     /**
@@ -370,9 +380,7 @@ final readonly class LogStreamController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', $enable
-            ? __('console.stream_resumed_fceeb51a')
-            : __('console.stream_disabled_entries_stop_being_delivered_a58dd4dd'));
+        return back()->with('status', $enable ? __('console.stream_resumed_fceeb51a') : __('console.stream_disabled_entries_stop_being_delivered_and_are_ke_a58dd4dd'));
     }
 
     public function destroy(string $stream): RedirectResponse
@@ -399,7 +407,7 @@ final readonly class LogStreamController extends ConsoleController
             'destinations' => array_map(
                 static fn (Destination $destination): array => [
                     'value' => $destination->value,
-                    'label' => ConsoleStrings::text(self::DESTINATIONS[$destination->value]),
+                    'label' => self::destinations()[$destination->value],
                     'defaultAuth' => $destination->defaultAuth()->value,
                 ],
                 Destination::cases(),
@@ -407,7 +415,7 @@ final readonly class LogStreamController extends ConsoleController
             'schemes' => array_map(
                 static fn (AuthScheme $scheme): array => [
                     'value' => $scheme->value,
-                    'label' => ConsoleStrings::text(self::SCHEMES[$scheme->value]),
+                    'label' => self::schemes()[$scheme->value],
                 ],
                 AuthScheme::cases(),
             ),
@@ -448,12 +456,12 @@ final readonly class LogStreamController extends ConsoleController
         $rows = [];
 
         foreach ($stream->destinationOptions() as $key => $value) {
-            if (! isset(self::OPTION_LABELS[$key]) || $key === 'external_id') {
+            if (! isset(self::optionLabels()[$key]) || $key === 'external_id') {
                 continue;
             }
 
             $rows[] = [
-                'label' => ConsoleStrings::text(self::OPTION_LABELS[$key]),
+                'label' => self::optionLabels()[$key],
                 'value' => match (true) {
                     $key === 'gzip' => $value === true ? 'gzip' : 'None',
                     $key === 'site' && is_string($value) => LogStreamDestinations::SITE_LABELS[$value] ?? $value,

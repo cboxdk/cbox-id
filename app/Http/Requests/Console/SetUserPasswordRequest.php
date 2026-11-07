@@ -50,7 +50,7 @@ final class SetUserPasswordRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'reason.required' => __('console.say_why_it_is_recorded_on_the_audit_trail_al_ba3c3490'),
+            'reason.required' => __('console.say_why_it_is_recorded_on_the_audit_trail_alongside_you_ba3c3490'),
         ];
     }
 

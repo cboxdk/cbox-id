@@ -14,7 +14,7 @@ use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\InputSchema;
-use App\Platform\Invitations\Contracts\TeamInvitations;
+use App\Platform\NativeProduct\NativeTeamInvitations as TeamInvitations;
 
 /**
  * The team's invitations nobody has accepted yet, newest first — at most 100, which is

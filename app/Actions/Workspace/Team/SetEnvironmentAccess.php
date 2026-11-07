@@ -8,6 +8,7 @@ use App\Actions\Workspace\InWorkspace;
 use App\Http\Resources\Workspace\MemberResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
@@ -16,6 +17,7 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
@@ -54,6 +56,7 @@ final readonly class SetEnvironmentAccess implements Action
     {
         return InputSchema::of([
             Field::string('id')->inPath(),
+            Field::string('environment_access_version')->required(),
             Field::boolean('all_environments')->required()->describe('True: every environment, including ones created later.'),
             Field::list('environment_ids', Field::string('environment_id')->max(64))->describe('With `all_environments` false: the environments they reach.'),
         ]);
@@ -76,10 +79,10 @@ final readonly class SetEnvironmentAccess implements Action
         $foreign = array_values(array_diff($ids, $owned));
 
         if (! $all && $foreign !== []) {
-            throw ActionRefused::because('environment_not_found', 'Not an environment of this workspace: '.implode(', ', $foreign).'.', 'environment_ids');
+            throw ActionRefused::because('environment_not_found', new ActionMessage('console.not_an_environment_of_this_workspace_part1_b0a90405', ['part1' => (string) (implode(', ', $foreign))]), 'environment_ids');
         }
 
-        $this->platformRoot->run(fn () => $this->members->setEnvironmentAccess($workspaceId, $target->user_id, $all, $ids));
+        app(NativeEnvironmentAccess::class)->replace($target, $all, $ids, $context->string('environment_access_version'));
 
         $updated = $this->platformRoot->run(
             fn (): ?Membership => $this->members->forOrganization($workspaceId)->firstWhere('id', $target->id),

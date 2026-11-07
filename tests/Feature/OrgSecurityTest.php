@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -20,7 +21,7 @@ it('refuses to switch into an organization the user does not belong to', functio
         ->assertSessionHas(PlatformAuth::ORG_KEY, $orgA->id); // unchanged — B was rejected
 });
 
-it('ignores a tampered org id in the cookie and falls back to a real membership', function () {
+it('ignores a tampered org id without silently selecting another organization', function () {
     [$subject, $orgA] = accountWithOrg('v@acme.test');
     $orgB = app(Organizations::class)->create(new NewOrganization('Rival Corp', 'rival-'.uniqid()));
     $sessionId = app(SessionManager::class)->start($subject->id, $orgA->id, ['pwd'])->id;
@@ -29,9 +30,12 @@ it('ignores a tampered org id in the cookie and falls back to a real membership'
     $this->withSession([PlatformAuth::SESSION_KEY => $sessionId, PlatformAuth::ORG_KEY => $orgB->id])
         ->get('/dashboard')
         ->assertOk()
-        ->assertSessionHas(PlatformAuth::ORG_KEY, $orgA->id) // corrected back to a real membership
-        ->assertSee($orgA->name)
+        ->assertSessionHas(PlatformAuth::ORG_KEY, $orgB->id)
         ->assertDontSee('Rival Corp');
+
+    // Keep the invalid selection unbound: an in-flight write must never be
+    // silently redirected to another organization the subject happens to own.
+    expect(app(CurrentUser::class)->organizationId())->toBeNull();
 });
 
 it('denies console access to a member of a suspended organization', function () {

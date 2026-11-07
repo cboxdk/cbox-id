@@ -10,6 +10,7 @@ declare(strict_types=1);
  */
 return [
     'layout' => [
+        'hero_title' => 'One identity layer for every app you ship.',
         'secured_by' => 'Secured by :name',
         'theme' => 'Theme',
         'toggle_theme' => 'Toggle light or dark theme',

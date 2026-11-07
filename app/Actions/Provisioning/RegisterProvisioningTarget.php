@@ -6,6 +6,7 @@ namespace App\Actions\Provisioning;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -99,7 +100,7 @@ final readonly class RegisterProvisioningTarget implements Action, Preflight
                 authConfig: $authConfig,
             )->connection;
         } catch (UnsafeScimUrl $e) {
-            throw ActionRefused::because('unsafe_url', 'The SCIM base URL must be a public address. ('.$e->getMessage().')', 'base_url');
+            throw ActionRefused::because('unsafe_url', new ActionMessage('console.the_scim_base_url_must_be_a_public_address_part1_4cfd762c', ['part1' => (string) ($e->getMessage())]), 'base_url');
         }
 
         $this->audit->record(EnterpriseAudit::PROVISIONING_REGISTERED, $context->actor(), $organizationId, 'provisioning_connection', $connection->id, [

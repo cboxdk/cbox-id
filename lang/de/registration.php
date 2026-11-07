@@ -15,7 +15,7 @@ return [
     'open_eyebrow' => 'Loslegen',
     'open_title' => 'Mach es zu deinem',
     'open_description' => 'Erstelle dein Konto, um mit :service loszulegen.',
-    'waitlist_eyebrow' => 'Früher Zugang',
+    'waitlist_eyebrow' => 'Frühzeitiger Zugang',
     'waitlist_title' => 'Auf die Warteliste setzen',
     'waitlist_description' => 'Wir öffnen :service für weitere Teams. Erzähle uns kurz, was du brauchst.',
     'invite_only_eyebrow' => 'Mit Einladung',

@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -120,8 +121,8 @@ export default function BrandingPage({
     saveHref,
     profile,
 }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const { errors } = usePage().props;
 
     // The editor's draft, as it last reported it. A ref AND state: the ref is what Save
@@ -217,7 +218,9 @@ export default function BrandingPage({
                     editor is never seeded from one record and saved to another.
                 */
                 <p className="mb-4 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    {tc('console.the_environment_default_inherited_by_every_o_19ddab20')}
+                    {consoleT(
+                        'console.the_environment_default_inherited_by_every_organization_19ddab20',
+                    )}
                 </p>
             )}
 
@@ -244,13 +247,17 @@ export default function BrandingPage({
                     imagesAccepted={imagesAccepted}
                     imageErrors={{ logo: message('logo'), favicon: message('favicon') }}
                     help={help}
-                    title={tc('console.branding_d417aa16')}
+                    title={consoleT('console.branding_d417aa16')}
                     scope={environmentDefault ? 'environment' : 'organization'}
                     error={message('theme') ?? null}
                     description={
                         environmentDefault
-                            ? tc('console.your_environment_s_default_brand_the_hosted__aae9270b')
-                            : tc('console.this_organization_s_brand_it_overrides_the_e_ffdddbcc')
+                            ? consoleText(
+                                  'console.your_environment_s_default_brand_the_hosted_sign_in_s_l_aae9270b',
+                              )
+                            : consoleText(
+                                  'console.this_organization_s_brand_it_overrides_the_environment_ffdddbcc',
+                              )
                     }
                     onChange={onThemeChange}
                 />
@@ -258,15 +265,15 @@ export default function BrandingPage({
                 <>
                     <PageHeader
                         help={help}
-                        description={tc(
-                            'console.the_hosted_sign_in_s_look_logo_and_favicon_a_39304e21',
+                        description={consoleT(
+                            'console.the_hosted_sign_in_s_look_logo_and_favicon_and_the_name_39304e21',
                         )}
                     />
                     <EmptyState
                         icon="settings"
-                        title={tc('console.nothing_to_theme_yet_24b02640')}
-                        description={tc(
-                            'console.there_is_no_organization_or_environment_here_78caef51',
+                        title={consoleT('console.nothing_to_theme_yet_24b02640')}
+                        description={consoleT(
+                            'console.there_is_no_organization_or_environment_here_to_theme_78caef51',
                         )}
                     />
                 </>
@@ -299,13 +306,17 @@ export default function BrandingPage({
                     }
                 }}
                 size="sm"
-                title={tc('console.leave_without_saving_2190d03a')}
-                description={tc('console.your_branding_changes_have_not_been_saved_le_1a8dbb2f')}
+                title={consoleT('console.leave_without_saving_2190d03a')}
+                description={consoleT(
+                    'console.your_branding_changes_have_not_been_saved_leave_this_pa_1a8dbb2f',
+                )}
                 footer={
                     <>
-                        <Button onClick={guard.stay}>{tc('console.keep_editing_e76fd2ad')}</Button>
+                        <Button onClick={guard.stay}>
+                            {consoleT('console.keep_editing_e76fd2ad')}
+                        </Button>
                         <Button variant="danger" onClick={guard.leave}>
-                            {tc('console.discard_and_leave_07e5b915')}
+                            {consoleT('console.discard_and_leave_07e5b915')}
                         </Button>
                     </>
                 }
@@ -336,8 +347,8 @@ function SaveBar({
     onDiscard: () => void;
     onSave: () => void;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     if (!dirty && !saving) {
         return null;
     }
@@ -345,7 +356,7 @@ function SaveBar({
     return (
         <section
             className="cbx-savebar"
-            aria-label={tc('console.unsaved_changes_a710c2b9')}
+            aria-label={consoleT('console.unsaved_changes_a710c2b9')}
             data-testid="branding-save-bar"
         >
             <output className="cbx-savebar-status">
@@ -356,16 +367,16 @@ function SaveBar({
                 />
                 <span className="min-w-0">
                     {refused
-                        ? tc('console.not_saved_see_the_marked_fields_a29c28a1')
-                        : tc('console.unsaved_changes_a710c2b9')}
+                        ? consoleText('console.not_saved_see_the_marked_fields_a29c28a1')
+                        : consoleText('console.unsaved_changes_a710c2b9')}
                 </span>
             </output>
             <div className="cbx-savebar-actions">
                 <Button size="sm" onClick={onDiscard} disabled={saving}>
-                    {tc('console.discard_eb1a70e3')}
+                    {consoleT('console.discard_eb1a70e3')}
                 </Button>
                 <Button size="sm" variant="primary" icon="check" loading={saving} onClick={onSave}>
-                    {tc('console.save_changes_dd0ae7a5')}
+                    {consoleT('console.save_changes_dd0ae7a5')}
                 </Button>
             </div>
         </section>
@@ -389,8 +400,11 @@ function ProfilePanel({
     errors: Record<string, string>;
     onChange: (next: ProfileDraft) => void;
 }) {
-    const { t: tc } = useTranslator();
-
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleRuntimeText } = useConsoleTranslator();
+    const { t: consoleText } = useConsoleTranslator();
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     const [paletteOpen, setPaletteOpen] = useState(
         Object.values(value.palette).some((colour) => colour !== '') ||
             Object.keys(errors).some((key) => key.startsWith('profile.palette.')),
@@ -401,14 +415,16 @@ function ProfilePanel({
     return (
         <Panel
             className="mt-6"
-            title={tc('console.name_email_fe6014fd')}
-            description={tc('console.what_your_people_see_in_place_of_cbox_id_and_32cb946d')}
+            title={consoleT('console.name_email_fe6014fd')}
+            description={consoleT(
+                'console.what_your_people_see_in_place_of_cbox_id_and_who_your_m_32cb946d',
+            )}
         >
             <div className="space-y-4">
                 <div className="grid gap-3 sm:grid-cols-2">
                     <Field
                         id="brand-app-name"
-                        label={tc('console.product_name_bfa93eb4')}
+                        label={consoleT('console.product_name_bfa93eb4')}
                         error={errors['profile.appName']}
                     >
                         <Input
@@ -419,7 +435,7 @@ function ProfilePanel({
                     </Field>
                     <Field
                         id="brand-email-from"
-                        label={tc('console.email_sender_name_77092ffe')}
+                        label={consoleT('console.email_sender_name_77092ffe')}
                         error={errors['profile.emailFromName']}
                     >
                         <Input
@@ -432,13 +448,17 @@ function ProfilePanel({
 
                 <Field
                     id="brand-email-template"
-                    label={tc('console.welcome_email_339769e7')}
-                    hint={tc('console.sent_when_someone_s_account_is_created_leave_c7c58d7f')}
+                    label={consoleT('console.welcome_email_339769e7')}
+                    hint={consoleT(
+                        'console.sent_when_someone_s_account_is_created_leave_it_empty_f_c7c58d7f',
+                    )}
                     error={errors['profile.emailTemplate']}
                 >
                     <Textarea
                         rows={4}
-                        placeholder={tc('console.welcome_to_app_your_account_is_ready_33ef53b0')}
+                        placeholder={consoleRuntimeText(
+                            'console.welcome_to_app_your_account_is_ready_33ef53b0',
+                        )}
                         value={value.emailTemplate}
                         onChange={(event) => set('emailTemplate', event.target.value)}
                     />
@@ -453,8 +473,11 @@ function ProfilePanel({
                         aria-controls="brand-console-palette"
                         onClick={() => setPaletteOpen((open) => !open)}
                     >
-                        {paletteOpen ? tc('console.hide_ac20a57b') : tc('console.show_0df6f1ca')}
-                        {tc('console.console_colours_65a81ef6')}
+                        {consoleRich('console._part1_console_colours_50cf1681', {
+                            part1: paletteOpen
+                                ? consoleText('console.hide_ac20a57b')
+                                : consoleText('console.show_0df6f1ca'),
+                        })}
                     </button>
                     {paletteOpen && (
                         <div id="brand-console-palette" className="mt-3">
@@ -462,8 +485,8 @@ function ProfilePanel({
                                 className="text-[12px] mb-3"
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
-                                {tc(
-                                    'console.the_admin_console_s_own_palette_as_hex_0a254_71ec4917',
+                                {consoleT(
+                                    'console.the_admin_console_s_own_palette_as_hex_0a2540_or_oklch_71ec4917',
                                 )}
                             </p>
                             <div className="grid gap-3 sm:grid-cols-2">

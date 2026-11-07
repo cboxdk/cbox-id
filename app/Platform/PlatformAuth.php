@@ -26,6 +26,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Migration\LegacyMigration;
 use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Otp\Contracts\OtpService;
 use Cbox\Id\Otp\Exceptions\OtpRateLimitExceeded;
 use Cbox\Id\Otp\Sms\Exceptions\SmsDeliveryFailed;
@@ -126,7 +127,7 @@ final class PlatformAuth
     {
         try {
             $this->platformRoot->run(function () use ($subjectId): bool {
-                $membership = $this->memberships->forUser($subjectId)->first();
+                $membership = $this->memberships->forUser($subjectId)->firstWhere('status', MembershipStatus::Active);
 
                 if ($membership === null) {
                     return false;
@@ -662,7 +663,7 @@ final class PlatformAuth
         // Pin to the caller-supplied org when given (impersonation authorizes against
         // a SPECIFIC org — the session must land there, not in the subject's oldest
         // membership, or the role gate and the effective session would disagree).
-        $organizationId ??= $this->memberships->forUser($subjectId)->first()?->organization_id;
+        $organizationId ??= $this->memberships->forUser($subjectId)->firstWhere('status', MembershipStatus::Active)?->organization_id;
 
         // Record the request IP + user-agent on the session so adaptive-risk signals
         // (new device, geo-velocity) have a history to compare future logins against.
@@ -705,7 +706,7 @@ final class PlatformAuth
      */
     public function startDetached(Request $request, string $subjectId, array $amr): Session
     {
-        $organizationId = $this->memberships->forUser($subjectId)->first()?->organization_id;
+        $organizationId = $this->memberships->forUser($subjectId)->firstWhere('status', MembershipStatus::Active)?->organization_id;
 
         $session = $this->sessions->start($subjectId, $organizationId, $amr, $request->ip(), $request->userAgent());
         SessionMetadata::captureMissing($session, $request);
@@ -742,7 +743,7 @@ final class PlatformAuth
         session()->forget([self::MFA_PENDING_KEY, self::MFA_AMR_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
 
         $organizationId = $session->organization_id
-            ?? $this->memberships->forUser($session->user_id)->value('organization_id');
+            ?? $this->memberships->forUser($session->user_id)->firstWhere('status', MembershipStatus::Active)?->organization_id;
 
         $this->addAccount($session->user_id, $session->id, is_string($organizationId) ? $organizationId : null);
 

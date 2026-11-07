@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Platform\Audit;
 
 use App\Platform\EnvironmentKeyAuditLog;
-use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Illuminate\Database\Eloquent\Builder;
@@ -53,10 +52,10 @@ enum AuditActorKind: string
     public function label(): string
     {
         return match ($this) {
-            self::Human => ConsoleStrings::message('console.human_9ffa865f'),
-            self::Agent => ConsoleStrings::message('console.agent_11b39c93'),
-            self::ApiKey => ConsoleStrings::message('console.api_key_16f0ee47'),
-            self::System => ConsoleStrings::message('console.system_6725e7bb'),
+            self::Human => __('console.human_9ffa865f'),
+            self::Agent => __('console.agent_11b39c93'),
+            self::ApiKey => __('console.api_key_16f0ee47'),
+            self::System => __('console.system_6725e7bb'),
         };
     }
 

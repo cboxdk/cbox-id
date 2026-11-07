@@ -8,7 +8,8 @@ use App\Http\Controllers\Auth\SignedOutController;
 use App\Platform\Console\HandoffTarget;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\IntendedUrl;
-use App\Platform\OrganizationCapabilities;
+use App\Platform\NativeProduct\NativeEnvironmentAccess;
+use App\Platform\NativeProduct\NativeProductAccess;
 use App\Platform\SignInLineage;
 use App\Platform\SubjectCredentialGate;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -92,9 +93,9 @@ final class EnvironmentAdminController extends Controller
 
         if ($membership === null
             || ! $organizationActive
-            || ! OrganizationCapabilities::of($membership->role)->canManageEnvironments()
+            || ! app(NativeProductAccess::class)->forWebSubject($grant->subjectId, $membership->organization_id)->canReadEnvironments()
             || ! in_array($hostEnv, $platformRoot->run(
-                fn (): array => $members->accessibleEnvironmentIds($membership->organization_id, $grant->subjectId),
+                fn (): array => app(NativeEnvironmentAccess::class)->ids($membership->organization_id, $grant->subjectId),
             ) ?? [], true)) {
             return $this->sealed(redirect()->route('admin.login'));
         }

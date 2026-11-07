@@ -1,4 +1,5 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useFormatTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import type { CertificateWarning } from '@/types';
 import { Icon } from './Icon';
@@ -13,18 +14,18 @@ import { Icon } from './Icon';
  * certificate renewal, for the customer's IT administrator to upload the new one.
  */
 export function CertificateWarnings({ warnings }: { warnings: CertificateWarning[] }) {
-    const { t: tc } = useUiTranslator();
+    const { locale: consoleLocale } = useFormatTranslator();
+    const { t: consoleFinalText, choice: consoleChoice } = useConsoleTranslator();
 
+    const { t: consoleText } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     if (warnings.length === 0) {
         return null;
     }
 
     return (
         <section
-            aria-label={tc(
-                'console.expiring_saml_certificates_f8d6cdf6',
-                'Expiring SAML certificates',
-            )}
+            aria-label={consoleT('console.expiring_saml_certificates_f8d6cdf6')}
             className="rounded-xl border p-4"
             style={{
                 borderColor: 'color-mix(in oklch, var(--warning) 45%, transparent)',
@@ -33,12 +34,7 @@ export function CertificateWarnings({ warnings }: { warnings: CertificateWarning
         >
             <p className="flex items-center gap-2 text-sm font-semibold">
                 <Icon name="warning" className="w-4 h-4" style={{ color: 'var(--warning)' }} />
-                {warnings.length === 1
-                    ? tc(
-                          'console.a_saml_certificate_needs_renewing_a8bb7261',
-                          'A SAML certificate needs renewing',
-                      )
-                    : `${warnings.length} SAML certificates need renewing`}
+                {consoleChoice('console.certificates_need_renewing', warnings.length)}
             </p>
             <ul className="mt-2 space-y-1 text-sm">
                 {warnings.map((warning) => (
@@ -51,23 +47,28 @@ export function CertificateWarnings({ warnings }: { warnings: CertificateWarning
                             {warning.name}
                         </Link>{' '}
                         {warning.expired
-                            ? `stopped working on ${formatDate(warning.expires_at)}.`
+                            ? consoleFinalText('console.stopped_working_on_part1_0fe9d638', {
+                                  part1: formatDate(warning.expires_at, consoleLocale),
+                              })
                             : warning.days_remaining === 0
-                              ? tc('console.stops_working_today_3f4502eb', 'stops working today.')
-                              : `stops working in ${warning.days_remaining} ${warning.days_remaining === 1 ? 'day' : 'days'} (${formatDate(warning.expires_at)}).`}
+                              ? consoleText('console.stops_working_today_3f4502eb')
+                              : consoleChoice(
+                                    'console.certificate_expires_in_days',
+                                    warning.days_remaining,
+                                    { date: formatDate(warning.expires_at, consoleLocale) },
+                                )}
                     </li>
                 ))}
             </ul>
             <p className="mt-2 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                {tc(
-                    'console.send_their_it_administrator_an_admin_portal__59852a2e',
-                    'Send their IT administrator an Admin Portal link for SAML certificate renewal, or stage the new certificate yourself through the API.',
+                {consoleT(
+                    'console.send_their_it_administrator_an_admin_portal_link_for_sa_59852a2e',
                 )}
             </p>
         </section>
     );
 }
 
-function formatDate(iso: string): string {
-    return new Date(iso).toLocaleDateString(undefined, { dateStyle: 'medium' });
+function formatDate(iso: string, locale: string): string {
+    return new Date(iso).toLocaleDateString(locale, { dateStyle: 'medium' });
 }

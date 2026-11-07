@@ -9,9 +9,7 @@ use App\Http\Props\Shared\AppApiKeyRows;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\ApiKeys\MemberApiKeys;
-use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\Organization\Models\CustomerApiKey;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Response;
@@ -38,7 +36,7 @@ final readonly class MemberApiKeyController extends ConsoleController
 
         $organizationId = $this->scope->requireOrganizationId();
 
-        return $this->page('console/member-api-keys', ConsoleStrings::text(Vocabulary::MEMBER_API_KEYS), [
+        return $this->page('console/member-api-keys', __('console.member_api_keys_66d7cf0e'), [
             'help' => HelpProps::for(HelpTopic::MemberApiKeys),
             'keys' => $rows->for(
                 $keys->inOrganization($organizationId),
@@ -67,6 +65,6 @@ final readonly class MemberApiKeyController extends ConsoleController
             return back();
         }
 
-        return back()->with('status', __('console.api_key_revoked_whatever_was_using_it_stops__90e5a8a5'));
+        return back()->with('status', __('console.api_key_revoked_whatever_was_using_it_stops_working_now_90e5a8a5'));
     }
 }

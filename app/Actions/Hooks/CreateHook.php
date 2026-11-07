@@ -7,6 +7,7 @@ namespace App\Actions\Hooks;
 use App\Http\Resources\Environment\InlineHookResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -86,7 +87,7 @@ final readonly class CreateHook implements Action, Preflight
                 ? $this->hooks->registerForEnvironment($point, $url)
                 : $this->hooks->register($point, $url, $organizationId);
         } catch (UnsafeActionUrl) {
-            throw ActionRefused::because('unsafe_url', 'That URL is not allowed — it must be a public HTTPS endpoint.', 'url');
+            throw ActionRefused::because('unsafe_url', new ActionMessage('console.that_url_is_not_allowed_it_must_be_a_public_https_endpo_2ba3a3f0'), 'url');
         }
 
         $endpoint = $registered->endpoint;

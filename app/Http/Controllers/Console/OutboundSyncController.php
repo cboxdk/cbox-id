@@ -11,9 +11,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\RegisterOutboundSyncRequest;
 use App\Platform\Console\ConsolePlane;
-use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Provisioning\Enums\AuthScheme;
@@ -72,7 +70,7 @@ final readonly class OutboundSyncController extends ConsoleController
 
         $owners = $this->organizationNames($page->getCollection()->pluck('organization_id')->all());
 
-        return $this->page('console/outbound-sync/index', ConsoleStrings::text(Vocabulary::OUTBOUND_PROVISIONING), [
+        return $this->page('console/outbound-sync/index', __('console.outbound_provisioning_e49a114e'), [
             'help' => HelpProps::for(HelpTopic::SyncUsersOut),
             'connections' => array_map(fn (ProvisioningConnection $connection): array => [
                 'id' => $connection->id,
@@ -223,9 +221,7 @@ final readonly class OutboundSyncController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', $resume
-            ? __('console.connection_resumed_changes_are_pushed_again__f8371bd0')
-            : __('console.connection_paused_changes_stop_being_pushed__b5ecd4de'));
+        return back()->with('status', $resume ? __('console.connection_resumed_changes_are_pushed_again_from_now_on_f8371bd0') : __('console.connection_paused_changes_stop_being_pushed_downstream_b5ecd4de'));
     }
 
     public function destroy(string $sync): RedirectResponse

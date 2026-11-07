@@ -1,4 +1,5 @@
-import { useTranslator } from '@/i18n';
+import { useTranslator as usePublicTranslator } from '@/i18n';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -27,8 +28,8 @@ type Props = PageProps<{
  * to type through. Whatever raised the step-up says what is waiting on the other side.
  */
 export default function Sudo({ reason, plane }: Props) {
-    const { t: tc } = useTranslator();
-
+    const { t: tc } = usePublicTranslator();
+    const { t: consoleUiText } = useConsoleTranslator();
     const form = useForm({ password: '' });
 
     return (
@@ -47,7 +48,7 @@ export default function Sudo({ reason, plane }: Props) {
                 </span>
 
                 <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                    {tc('console.confirm_it_s_you_6176eec2')}
+                    {consoleUiText('console.confirm_it_s_you_6176eec2')}
                 </h1>
                 <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                     {reason ?? tc('console.this_is_a_protected_action_b796636f')}
@@ -66,7 +67,7 @@ export default function Sudo({ reason, plane }: Props) {
                     }}
                 >
                     <PasswordField
-                        label={tc('console.password_e7cf3ef4')}
+                        label={consoleUiText('console.password_e7cf3ef4')}
                         name="password"
                         autoComplete="current-password"
                         error={form.errors.password}
@@ -81,7 +82,7 @@ export default function Sudo({ reason, plane }: Props) {
                         className="w-full"
                         loading={form.processing}
                     >
-                        {tc('console.confirm_eebdd24a')}
+                        {consoleUiText('console.confirm_eebdd24a')}
                     </Button>
                 </form>
             </Panel>

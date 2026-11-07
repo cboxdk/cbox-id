@@ -79,7 +79,7 @@ final readonly class LeaveOrganization implements Action
                 throw ActionRefused::notFound('organization');
             }
 
-            throw new ActionRefused($refused->reason->value, $refused->getMessage(), 409, 'organization_id');
+            throw new ActionRefused($refused->reason->value, $refused->sourceMessage(), 409, 'organization_id');
         }
 
         return ActionResult::none($membership);

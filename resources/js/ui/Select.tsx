@@ -1,3 +1,4 @@
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Select as Primitive } from 'radix-ui';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/cn';
@@ -40,12 +41,14 @@ export function Select<T extends string>({
     value,
     onValueChange,
     options,
-    placeholder = 'Select…',
+    placeholder: suppliedPlaceholder,
     disabled,
     name,
     className,
     ...props
 }: SelectProps<T>) {
+    const { t: consoleFinalText } = useConsoleTranslator();
+    const placeholder = suppliedPlaceholder ?? consoleFinalText('console.select_731fe041');
     const field = useFieldControl();
 
     return (

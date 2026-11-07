@@ -9,6 +9,7 @@ use App\Http\Middleware\SecurityHeaders;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\HandoffTarget;
 use App\Platform\CspNonce;
+use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
 use App\Platform\SignInLineage;
@@ -90,8 +91,8 @@ final class EnvironmentHandoffController extends Controller
         // nothing there was shown an error page with no words on it. They are told whose
         // console it is, that their sign-in worked, and where they can go instead.
         if ($organizationId === null
-            || $scope->capabilities()?->canManageEnvironments() !== true
-            || ! in_array($environment, $members->accessibleEnvironmentIds($organizationId, $subjectId), true)) {
+            || $scope->capabilities()?->canReadEnvironments() !== true
+            || ! in_array($environment, app(NativeEnvironmentAccess::class)->ids($organizationId, $subjectId), true)) {
             return app(EnvironmentRefusedController::class)->show($request, $environment);
         }
 

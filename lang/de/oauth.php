@@ -2,33 +2,27 @@
 
 declare(strict_types=1);
 
-// German: the OAuth authorization pages (pages/oauth/*) and the authorize failure page.
 return [
     'signed_in_as' => 'Angemeldet als :account',
     'cancel_and_return' => 'Abbrechen und zu :client zurückkehren',
-
     'consent' => [
         'title' => 'Autorisieren',
         'heading' => ':client autorisieren',
         'wants_access' => ':client möchte auf Ihr Konto bei :account zugreifen.',
         'registered_by' => 'Registriert von :owner – den Namen einer App legt fest, wer sie registriert hat.',
-        // Follows "von", so it is in the dative.
         'unknown_owner' => 'einer Organisation, die nicht mehr existiert',
         'in_organization' => 'In :organization',
         'will_allow' => 'Damit erlauben Sie :client Folgendes:',
         'cancel' => 'Abbrechen',
         'authorize' => 'Autorisieren',
         'redirect_notice' => 'Nach der Autorisierung werden Sie zu :host weitergeleitet.',
-        // A client that registered itself (RFC 7591, or a client ID metadata document).
         'self_registered_owner' => 'die App selbst',
         'self_registered' => 'Diese App hat sich selbst registriert. Niemand bei :account hat sie geprüft — fahren Sie nur fort, wenn Sie diese Anmeldung selbst gestartet haben.',
         'published_by' => 'Beschrieben von :host — das Einzige an dieser App, das überprüft wurde.',
         'about_app' => 'Über diese App',
-        // Management-plane scopes an agent acts with as the person.
         'critical' => 'Kritisch',
         'acts_as_you' => 'Alles, was sie in Ihrem Namen tut, ist auf das beschränkt, was Sie selbst dürfen, und wird im Audit-Log festgehalten.',
         'critical_notice' => 'Kritische Aktionen warten weiterhin jedes Mal auf Ihre Freigabe auf Ihrem Gerät.',
-
         'scopes' => [
             'openid' => 'Ihre Identität bestätigen',
             'profile' => 'Ihr Name',
@@ -39,7 +33,6 @@ return [
             'feature_flags' => 'Für Sie aktivierte Funktionen',
         ],
     ],
-
     'failure' => [
         'title' => 'Autorisierung fehlgeschlagen',
         'heading' => 'Autorisierung fehlgeschlagen',
@@ -53,9 +46,8 @@ return [
         'stale' => 'Diese Autorisierungsanfrage kann nicht mehr abgeschlossen werden. Bitte beginnen Sie erneut.',
         'account_attention' => 'Ihr Konto erfordert Ihre Aufmerksamkeit, bevor Sie fortfahren können. Bitte melden Sie sich erneut an.',
         'step_up' => 'Diese Anwendung erfordert eine aktuellere oder stärkere Anmeldung. Bitte beginnen Sie erneut.',
-        'no_workspace' => 'Diese Anmeldung verbindet einen Agenten mit einem Workspace auf Cbox ID, und Ihr Konto gehört zu keinem Workspace-Team. Bitten Sie einen Workspace-Inhaber, Sie einzuladen, oder verbinden Sie den Agenten stattdessen über die eigene Adresse Ihrer Umgebung.',
+        'no_workspace' => 'Diese Anmeldung verbindet einen Agenten mit einem Arbeitsbereich auf Cbox ID. Ihr Konto gehört zum Team keines Arbeitsbereichs. Bitten Sie den Inhaber eines Arbeitsbereichs, Sie einzuladen, oder verbinden Sie den Agenten stattdessen über die eigene Adresse Ihrer Umgebung.',
     ],
-
     'organization' => [
         'title' => 'Organisation auswählen',
         'heading' => 'Organisation auswählen',
@@ -76,7 +68,6 @@ return [
             'viewer' => 'Betrachter',
         ],
     ],
-
     'create_organization' => [
         'title' => 'Organisation erstellen',
         'heading' => 'Organisation erstellen',
@@ -94,11 +85,11 @@ return [
         'lead' => 'Geben Sie den Code ein, der auf Ihrem Fernseher, Ihrer Konsole oder Ihrem Terminal angezeigt wird.',
         'code_label' => 'Code von Ihrem Gerät',
         'code_hint' => 'Acht Buchstaben, z. B. BCDF-GHJK. Großschreibung und Bindestrich sind optional.',
-        'continue' => 'Weiter',
+        'continue' => 'Fortsetzen',
         'next_note' => 'Sie sehen, welche App anfragt, bevor etwas verbunden wird.',
         'code_required' => 'Geben Sie den Code ein, der auf Ihrem Gerät angezeigt wird.',
         'invalid' => 'Dieser Code ist ungültig oder abgelaufen. Prüfen Sie den Code auf Ihrem Gerät und versuchen Sie es erneut.',
-        'too_many' => 'Zu viele Versuche. Versuchen Sie es in :seconds Sekunden erneut.',
+        'too_many' => 'Zu viele Versuche. Wartezeit bis zum nächsten Versuch (Sekunden): :seconds.',
         'link_expired' => 'Diese Anmeldeanfrage ist abgelaufen oder bereits abgeschlossen. Geben Sie den Code ein, der auf Ihrem Gerät angezeigt wird.',
         'consent_heading' => 'Bei :client anmelden?',
         'consent_lead' => ':client auf einem anderen Gerät möchte sich mit Ihrem Konto anmelden.',

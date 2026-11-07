@@ -1,4 +1,4 @@
-import { useUiTranslator } from '@/i18n/ui';
+import { useTranslator as useConsoleTranslator } from '@/i18n';
 import type { HelpContent } from '@/types';
 import { Icon } from './Icon';
 import { Popover, PopoverContent, PopoverTrigger } from './Popover';
@@ -34,8 +34,10 @@ export interface HelpProps {
  * one place and travels as text.
  */
 export function Help({ help, label }: HelpProps) {
-    const { t: tc } = useUiTranslator();
+    const { t: consoleFinalText } = useConsoleTranslator();
 
+    const { rich: consoleRich } = useConsoleTranslator();
+    const { t: consoleT } = useConsoleTranslator();
     return (
         <Popover>
             {label !== undefined ? (
@@ -43,8 +45,10 @@ export function Help({ help, label }: HelpProps) {
             ) : (
                 <PopoverTrigger
                     className="cbx-help-btn"
-                    aria-label={`What is ${help.title}?`}
-                    title={tc('console.what_is_this_0b12ba39', 'What is this?')}
+                    aria-label={consoleFinalText('console.what_is_part1_00d3f3e7', {
+                        part1: help.title,
+                    })}
+                    title={consoleT('console.what_is_this_0b12ba39')}
                 >
                     <Icon name="help" className="w-4 h-4" />
                 </PopoverTrigger>
@@ -56,10 +60,14 @@ export function Help({ help, label }: HelpProps) {
 
                 {help.href !== null && (
                     <a className="cbx-help-link" href={help.href} target="_blank" rel="noreferrer">
-                        {tc('console.read_the_guide_83b3b277', 'Read the guide')}
-                        <span className="sr-only">
-                            {tc('console.opens_in_a_new_tab_708573ec', ' (opens in a new tab)')}
-                        </span>
+                        {consoleRich('console.read_the_guide_part1_3ea3eb97', {
+                            part1: (
+                                <span className="sr-only">
+                                    {' '}
+                                    {consoleT('console._opens_in_a_new_tab_1d183356')}
+                                </span>
+                            ),
+                        })}
                     </a>
                 )}
             </PopoverContent>

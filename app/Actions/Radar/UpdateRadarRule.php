@@ -11,6 +11,7 @@ use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Radar\RadarPresenter;
@@ -73,7 +74,7 @@ final readonly class UpdateRadarRule implements Action
         try {
             $changed = $this->rules->update($rule, $changes);
         } catch (RadarRuleInvalid $invalid) {
-            throw ActionRefused::because('invalid_rule', $invalid->getMessage(), 'conditions');
+            throw ActionRefused::because('invalid_rule', FrameworkMessage::from($invalid), 'conditions');
         }
 
         if ($changed !== []) {

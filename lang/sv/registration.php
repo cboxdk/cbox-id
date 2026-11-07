@@ -37,7 +37,7 @@ return [
     'optional' => '(valfritt)',
     'choose_country' => 'Välj ett land',
     'choose' => 'Välj ett alternativ',
-    'waitlist_note' => 'Att gå med i väntelistan startar ingen prenumeration. Vi mejlar dig när tillgång finns.',
+    'waitlist_note' => 'Att gå med i väntelistan startar inget abonnemang. Vi mejlar dig när du kan få tillgång.',
     'create_account' => 'Skapa ett konto',
     'continue' => 'Fortsätt',
     'choose_team' => 'Välj det team som ska använda tjänsten eller skapa ett nytt.',

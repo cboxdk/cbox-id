@@ -7,10 +7,12 @@ namespace App\Actions\Apps;
 use App\Http\Resources\Environment\AppResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
@@ -83,7 +85,7 @@ final readonly class CopyApp implements Action
         if (! $context->principal instanceof ConsoleSessionPrincipal) {
             throw ActionRefused::because(
                 'environment_not_reachable',
-                'A management key acts in its own environment only. Export this app\'s blueprint (GET /apps/{id}/blueprint) and register it with the other environment\'s key (POST /apps with `blueprint`).',
+                new ActionMessage('console.a_management_key_acts_in_its_own_environment_only_expor_d9ba3890'),
                 'environment_id',
             );
         }
@@ -95,7 +97,7 @@ final readonly class CopyApp implements Action
         }
 
         $target = $this->targets->find($context->string('environment_id'))
-            ?? throw ActionRefused::because('environment_not_reachable', self::UNREACHABLE, 'environment_id');
+            ?? throw ActionRefused::because('environment_not_reachable', new ActionMessage('console.choose_one_of_the_environments_offered_it_has_to_be_in_d430c9e0'), 'environment_id');
 
         $blueprint = $this->clients->blueprint($client)
             ->withName(trim($context->string('name')))
@@ -111,7 +113,7 @@ final readonly class CopyApp implements Action
         } catch (InvalidClientMetadata $refused) {
             throw AppFields::invalid($refused);
         } catch (ScopeNotGrantable $refused) {
-            throw ActionRefused::because('scope_not_grantable', $refused->getMessage());
+            throw ActionRefused::because('scope_not_grantable', FrameworkMessage::from($refused));
         }
 
         return ActionResult::item($copied, [

@@ -10,6 +10,7 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 /** One invitation nobody has accepted yet, as every invite surface lists it. */
 final readonly class PendingInvitationSummary
 {
+    /** @param list<string> $appRoleKeys */
     public function __construct(
         public string $id,
         public string $email,
@@ -18,5 +19,7 @@ final readonly class PendingInvitationSummary
         public ?CarbonInterface $invitedAt = null,
         public ?string $inviterName = null,
         public ?string $appName = null,
+        public ?string $appRoleLabel = null,
+        public array $appRoleKeys = [],
     ) {}
 }

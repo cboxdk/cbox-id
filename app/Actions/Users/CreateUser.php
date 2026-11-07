@@ -7,11 +7,13 @@ namespace App\Actions\Users;
 use App\Mail\MagicLinkMail;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Locale\MailLocale;
@@ -74,23 +76,23 @@ final readonly class CreateUser implements Action
         // Asked before anything is created: a user made and then refused their link is a
         // half-done request the caller has to notice and undo.
         if ($context->boolean('send_sign_in_link') && ! app(SignInMethods::class)->magicLinkEnabled()) {
-            throw ActionRefused::because('magic_link_disabled', 'Magic links are turned off for this environment, so there is no sign-in link to send.', 'send_sign_in_link');
+            throw ActionRefused::because('magic_link_disabled', new ActionMessage('console.magic_links_are_turned_off_for_this_environment_so_ther_88deb5ca'), 'send_sign_in_link');
         }
 
         if ($this->subjects->findByEmail($email) !== null) {
-            throw ActionRefused::because('email_taken', 'A user with that email already exists in this environment.', 'email');
+            throw ActionRefused::because('email_taken', new ActionMessage('console.a_user_with_that_email_already_exists_in_this_environme_1351bc58'), 'email');
         }
 
         try {
             $subject = $this->subjects->create($email, $context->nullableString('name'), $context->nullableString('password'));
         } catch (PolicyViolation $violation) {
-            throw ActionRefused::because('password_policy', $violation->getMessage(), 'password');
+            throw ActionRefused::because('password_policy', FrameworkMessage::from($violation), 'password');
         }
 
         if ($context->boolean('send_sign_in_link')) {
             $token = app(MagicLink::class)->request($email);
 
-            Mail::to($email)->locale(app(MailLocale::class)->forRecipient())->send(new MagicLinkMail(
+            Mail::to($email)->locale(app(MailLocale::class)->forRecipient(false))->send(new MagicLinkMail(
                 app(MailLinks::class)->route('magic.redeem', $token),
             ));
         }

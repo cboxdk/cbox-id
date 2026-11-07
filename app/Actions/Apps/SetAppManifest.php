@@ -7,6 +7,7 @@ namespace App\Actions\Apps;
 use App\Http\Resources\Environment\AppResource;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -56,7 +57,7 @@ final readonly class SetAppManifest implements Action
         $url = $url === null ? null : (trim($url) ?: null);
 
         if ($url !== null && filter_var($url, FILTER_VALIDATE_URL) === false) {
-            throw ActionRefused::because('invalid_client_metadata', 'manifest_url must be an absolute URL or null.', 'manifest_url');
+            throw ActionRefused::because('invalid_client_metadata', new ActionMessage('console.manifest_url_must_be_an_absolute_url_or_null_71b5710c'), 'manifest_url');
         }
 
         try {

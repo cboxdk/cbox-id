@@ -6,6 +6,7 @@ namespace App\Actions\Branding;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\AsAction;
@@ -70,12 +71,12 @@ final readonly class SetAppearance implements Action
         $appearance = Appearance::fromArray($context->array('theme'));
 
         $failures = [
-            ...array_map(static fn (string $why): string => 'Light mode: '.$why, $appearance->light->contrastFailures()),
-            ...array_map(static fn (string $why): string => 'Dark mode: '.$why, $appearance->dark->contrastFailures()),
+            ...$appearance->light->contrastMessages(false),
+            ...$appearance->dark->contrastMessages(true),
         ];
 
         if ($failures !== []) {
-            throw ActionRefused::because('unreadable_palette', implode(' ', $failures), 'theme');
+            throw ActionRefused::because('unreadable_palette', new ActionMessage('console.appearance_contrast_failures', ['failures' => $failures], ' '), 'theme');
         }
 
         /*
@@ -98,12 +99,12 @@ final readonly class SetAppearance implements Action
             try {
                 $images[$kind->value] = $given === null ? null : BrandImageUpload::fromDataUri($kind, $given);
             } catch (InvalidBrandImage $refused) {
-                throw ActionRefused::because('invalid_'.$kind->value, $refused->getMessage(), $kind->value);
+                throw ActionRefused::because('invalid_'.$kind->value, $refused->sourceMessage, $kind->value);
             }
         }
 
         if ($images !== [] && ! $this->images->accepting() && array_filter($images) !== []) {
-            throw ActionRefused::because('uploads_unavailable', 'Image uploads are not available on this install: the white-label module that stores them is not enabled.', 'logo');
+            throw ActionRefused::because('uploads_unavailable', new ActionMessage('console.image_uploads_are_not_available_on_this_install_the_whi_e33690d3'), 'logo');
         }
 
         $payload = [

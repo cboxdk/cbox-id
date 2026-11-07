@@ -1,3 +1,4 @@
+import { useTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { CatalogAppIcon } from '@/chrome/AppSwitcher';
@@ -34,6 +35,7 @@ export default function EditApp({
     selectedOptions,
     features,
 }: Props) {
+    const { t } = useTranslator();
     const [removing, setRemoving] = useState(false);
     const [iconChanged, setIconChanged] = useState(false);
     const form = useForm({
@@ -55,10 +57,14 @@ export default function EditApp({
     const href = `${saveBaseHref}/${encodeURIComponent(form.data.key)}`;
     return (
         <>
-            <Breadcrumb href={indexHref} label="App catalog" />
+            <Breadcrumb href={indexHref} label={t('console.catalog_heading')} />
             <PageHeader
-                title={entry ? `Edit ${entry.name}` : 'Add app'}
-                description="Publish one app entry across your products. Visibility in the switcher does not grant access to the app."
+                title={
+                    entry
+                        ? t('console.catalog_edit_named', { name: entry.name })
+                        : t('console.catalog_add')
+                }
+                description={t('console.catalog_edit_description')}
             />
             <form
                 className="mt-6 max-w-2xl space-y-6"
@@ -75,10 +81,10 @@ export default function EditApp({
                 <Panel>
                     <div className="space-y-4">
                         <Field
-                            label="App key"
+                            label={t('console.catalog_key')}
                             required
                             error={form.errors.key}
-                            hint="Stable identifier shared by your apps. Lowercase letters, digits, hyphens and underscores; start with a letter."
+                            hint={t('console.catalog_key_hint')}
                         >
                             <Input
                                 value={form.data.key}
@@ -87,14 +93,18 @@ export default function EditApp({
                                 onChange={(event) => form.setData('key', event.target.value)}
                             />
                         </Field>
-                        <Field label="Name" required error={form.errors.name}>
+                        <Field label={t('console.name_dcd1d522')} required error={form.errors.name}>
                             <Input
                                 value={form.data.name}
                                 maxLength={120}
                                 onChange={(event) => form.setData('name', event.target.value)}
                             />
                         </Field>
-                        <Field label="Description" optional error={form.errors.description}>
+                        <Field
+                            label={t('console.description_526e0087')}
+                            optional
+                            error={form.errors.description}
+                        >
                             <Textarea
                                 value={form.data.description}
                                 maxLength={300}
@@ -104,10 +114,10 @@ export default function EditApp({
                             />
                         </Field>
                         <Field
-                            label="Launch URL"
+                            label={t('console.catalog_launch_url')}
                             required
                             error={form.errors.launch_url}
-                            hint="The HTTPS page people should land on when they open this app."
+                            hint={t('console.catalog_launch_hint')}
                         >
                             <Input
                                 type="url"
@@ -117,10 +127,10 @@ export default function EditApp({
                             />
                         </Field>
                         <Field
-                            label="Icon"
+                            label={t('console.catalog_icon')}
                             optional
                             error={form.errors.icon}
-                            hint="PNG, JPEG or WebP. Up to 128 KiB and 512 × 512 pixels. Icons are public brand assets."
+                            hint={t('console.catalog_icon_hint')}
                         >
                             <Input
                                 type="file"
@@ -129,7 +139,7 @@ export default function EditApp({
                                     const file = event.target.files?.[0];
                                     if (!file) return;
                                     if (file.size > 131072) {
-                                        form.setError('icon', 'Use an icon up to 128 KiB.');
+                                        form.setError('icon', t('console.catalog_icon_size'));
                                         return;
                                     }
                                     const reader = new FileReader();
@@ -141,10 +151,7 @@ export default function EditApp({
                                         }
                                     };
                                     reader.onerror = () =>
-                                        form.setError(
-                                            'icon',
-                                            'The icon could not be read. Try again.',
-                                        );
+                                        form.setError('icon', t('console.catalog_icon_read'));
                                     reader.readAsDataURL(file);
                                 }}
                             />
@@ -152,7 +159,7 @@ export default function EditApp({
                         <div className="flex items-center gap-3">
                             <CatalogAppIcon
                                 app={{
-                                    name: form.data.name || 'App',
+                                    name: form.data.name || t('console.app_0d04bfeb'),
                                     icon_url: iconChanged
                                         ? form.data.icon
                                         : (entry?.icon_url ?? null),
@@ -164,13 +171,13 @@ export default function EditApp({
                                     form.setData('icon', null);
                                 }}
                             >
-                                Remove icon
+                                {t('console.catalog_remove_icon')}
                             </Button>
                         </div>
                         <Field
-                            label="Position"
+                            label={t('console.catalog_position')}
                             error={form.errors.position}
-                            hint="Lower numbers appear first. Apps with the same position are ordered by key."
+                            hint={t('console.catalog_position_hint')}
                         >
                             <Input
                                 type="number"
@@ -187,19 +194,25 @@ export default function EditApp({
                 <Panel>
                     <div className="space-y-4">
                         <Checkbox
-                            label="Published"
-                            hint="Draft apps are hidden from everyone’s switcher."
+                            label={t('console.catalog_published')}
+                            hint={t('console.catalog_draft_hint')}
                             checked={form.data.enabled}
                             onCheckedChange={(checked) => form.setData('enabled', checked)}
                         />
-                        <Field label="Who can see this app?" error={form.errors.audience}>
+                        <Field label={t('console.catalog_audience')} error={form.errors.audience}>
                             <Select
                                 value={form.data.audience}
                                 onValueChange={(value) => form.setData('audience', value)}
                                 options={[
-                                    { value: 'everyone', label: 'Everyone in this environment' },
-                                    { value: 'organizations', label: 'Selected organizations' },
-                                    { value: 'users', label: 'Selected users' },
+                                    {
+                                        value: 'everyone',
+                                        label: t('console.catalog_everyone_environment'),
+                                    },
+                                    {
+                                        value: 'organizations',
+                                        label: t('console.catalog_selected_organizations'),
+                                    },
+                                    { value: 'users', label: t('console.catalog_selected_users') },
                                 ]}
                             />
                         </Field>
@@ -222,10 +235,10 @@ export default function EditApp({
                             />
                         )}
                         <Field
-                            label="Required feature flag"
+                            label={t('console.catalog_required_feature')}
                             optional
                             error={form.errors.required_feature}
-                            hint="The app is also hidden when this flag is off for the person and organization."
+                            hint={t('console.catalog_required_feature_hint')}
                         >
                             <Select
                                 value={form.data.required_feature || '__none'}
@@ -236,7 +249,7 @@ export default function EditApp({
                                     )
                                 }
                                 options={[
-                                    { value: '__none', label: 'No feature flag required' },
+                                    { value: '__none', label: t('console.catalog_no_feature') },
                                     ...features,
                                 ]}
                             />
@@ -252,8 +265,7 @@ export default function EditApp({
                         onChange={(ids) => form.setData('client_ids', ids)}
                     />
                     <p className="mt-3 text-sm text-[var(--muted-foreground)]">
-                        Associate environment-wide OAuth integrations with this app. This does not
-                        change sign-in permissions.
+                        {t('console.catalog_clients_hint')}
                     </p>
                 </Panel>
                 <p role="alert" className="field-error">
@@ -261,14 +273,14 @@ export default function EditApp({
                 </p>
                 <div className="flex flex-wrap gap-2">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        Save app
+                        {t('console.catalog_save')}
                     </Button>
                     <Button asChild>
-                        <Link href={indexHref}>Cancel</Link>
+                        <Link href={indexHref}>{t('console.cancel_19766ed6')}</Link>
                     </Button>
                     {entry && (
                         <Button variant="danger" onClick={() => setRemoving(true)}>
-                            Delete app
+                            {t('console.delete_app_70ddc821')}
                         </Button>
                     )}
                 </div>
@@ -278,7 +290,7 @@ export default function EditApp({
                     open={removing}
                     onOpenChange={setRemoving}
                     name={entry.name}
-                    consequence="The app disappears from the catalog. Its OAuth integrations and user access are unchanged."
+                    consequence={t('console.catalog_delete_consequence')}
                     confirming={form.processing}
                     onConfirm={() => {
                         form.transform(() => ({ version: entry.version }));

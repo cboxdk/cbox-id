@@ -133,7 +133,7 @@ it('refuses when a customer environment exists even with no operator at all', fu
 
 it('adopts a bare default environment rather than minting a second platform root', function (): void {
     // A migrated-but-unclaimed deployment: one is_default environment, nothing else.
-    $bare = platformRootEnvironment();
+    $bare = platformRootEnvironment(publishNativeCatalog: false);
 
     [$exit] = runInstall([
         '--email' => 'root@acme.example',

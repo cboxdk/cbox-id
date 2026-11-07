@@ -164,9 +164,7 @@ final readonly class PlatformEnvironmentController extends ConsoleController
         /** @var array{name: string} $environment */
         $environment = $result->payload;
 
-        return back()->with('status', $domain === null
-            ? 'Environment "'.$environment['name'].'" created.'
-            : 'Environment "'.$environment['name'].'" created. Add '.$domain.__('console.from_the_environment_s_domain_settings_to_ve_ffb7d1f5'));
+        return back()->with('status', $domain === null ? __('console.environment_part1_created_8fe0a31a', ['part1' => $environment['name']]) : __('console.environment_part1_created_add_part2_from_the_environmen_9b25a836', ['part1' => $environment['name'], 'part2' => $domain]));
     }
 
     /**
@@ -195,7 +193,7 @@ final readonly class PlatformEnvironmentController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', __('console.provisioned_an_organization_and_admin_in_39af149f').AsOperator::environment($environment)->name.'".');
+        return back()->with('status', __('console.provisioned_an_organization_and_admin_in_part1_325a996a', ['part1' => AsOperator::environment($environment)->name]));
     }
 
     /**

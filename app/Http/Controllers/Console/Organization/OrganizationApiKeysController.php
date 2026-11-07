@@ -23,7 +23,7 @@ final readonly class OrganizationApiKeysController extends OrganizationTabContro
     {
         $organization = $this->organization();
 
-        return $this->page('environment/organizations/tabs/api-keys', $organization->name.__('console.api_keys_e7f4d10d'), [
+        return $this->page('environment/organizations/tabs/api-keys', __('console.organization_api_keys_title', ['name' => $organization->name]), [
             'apiKeys' => $rows->for(
                 $keys->inOrganization($organization->id),
                 withHolder: true,

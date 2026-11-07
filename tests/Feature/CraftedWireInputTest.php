@@ -140,7 +140,7 @@ it('refuses a crafted hook point instead of throwing', function (): void {
  * probe to ask: the only refusal left is "already a member HERE", which is a fact the
  * roster on the same page already shows them.
  */
-it('refuses only an email that is already a member here, and discloses nothing else', function (): void {
+it('accepts an invitation to another workspace owner and protects this workspace owner', function (): void {
     platformRootEnvironment();
     $mine = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
@@ -163,13 +163,13 @@ it('refuses only an email that is already a member here, and discloses nothing e
     // Somebody else's owner: a legitimate invitation, accepted without comment. Refusing
     // it would BE the oracle — it would confirm that the address is known to the platform.
     test()->from(route('members'))
-        ->post(route('members.invite'), ['email' => 'owner@rival.example', 'role' => 'admin'])
+        ->post(route('members.invite', ['organization' => $mine->organization->id]), ['email' => 'owner@rival.example', 'roles' => ['admin']])
         ->assertSessionHasNoErrors();
 
-    // Somebody already on THIS roster: refused, and the refusal discloses nothing the page
-    // is not already showing.
+    // This workspace owner is protected; the refusal discloses nothing the roster does
+    // not already show. Other existing members may receive explicit app invitations.
     $probeOwn = test()->from(route('members'))
-        ->post(route('members.invite'), ['email' => 'owner@acme.example', 'role' => 'admin'])
+        ->post(route('members.invite', ['organization' => $mine->organization->id]), ['email' => 'owner@acme.example', 'roles' => ['admin']])
         ->assertSessionHasErrors('email');
 
     expect(session('errors')?->getBag('default')->first('email'))->not->toContain('account');
@@ -187,13 +187,12 @@ it('refuses only an email that is already a member here, and discloses nothing e
      */
     foreach (['archduke', 'owner', ''] as $crafted) {
         test()->from(route('members'))
-            ->post(route('members.invite'), ['email' => 'joiner@acme.example', 'role' => $crafted])
-            ->assertSessionHasErrors('role');
+            ->post(route('members.invite', ['organization' => $mine->organization->id]), ['email' => 'joiner@acme.example', 'roles' => [$crafted]])
+            ->assertSessionHasErrors('roles.0');
     }
 
-    expect(session('errors')?->getBag('default')->first('role'))
-        // The message names what IS accepted, rather than "the selected value is invalid".
-        ->toBe('Choose one of: Admin, Developer, Member, Viewer.');
+    expect(session('errors')?->getBag('default')->first('roles.0'))
+        ->toBe(__('console.choose_one_of_roles_ownership_is_handed_over_with_trans_90a222bb', ['roles' => 'Reader, Editor, Billing, Admin']));
 });
 
 /**

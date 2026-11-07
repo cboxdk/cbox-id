@@ -57,7 +57,7 @@ final readonly class CatalogEntryData
         $url = self::string($input, 'launch_url');
         $parts = parse_url($url);
         if (! is_array($parts) || isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment'])) {
-            throw ValidationException::withMessages(['launch_url' => 'Use an HTTPS launch URL without credentials or a fragment.']);
+            throw ValidationException::withMessages(['launch_url' => __('console.catalog_invalid_launch_url')]);
         }
         $icon = self::string($input, 'icon');
         if ($icon !== '') {
@@ -65,11 +65,11 @@ final readonly class CatalogEntryData
                 $image = BrandImageUpload::fromDataUri(BrandImage::Logo, $icon);
                 $size = getimagesizefromstring($image->bytes);
                 if (strlen($image->bytes) > 131072 || $size === false || max($size[0], $size[1]) > 512) {
-                    throw ValidationException::withMessages(['icon' => 'Use an icon up to 128 KiB and 512 × 512 pixels.']);
+                    throw ValidationException::withMessages(['icon' => __('console.catalog_invalid_icon')]);
                 }
                 $icon = $image->dataUri();
             } catch (InvalidBrandImage $e) {
-                throw ValidationException::withMessages(['icon' => $e->getMessage()]);
+                throw ValidationException::withMessages(['icon' => __('console.catalog_invalid_icon')]);
             }
         }
 

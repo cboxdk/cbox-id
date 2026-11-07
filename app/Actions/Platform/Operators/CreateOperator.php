@@ -7,6 +7,7 @@ namespace App\Actions\Platform\Operators;
 use App\Actions\Platform\AsOperator;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
@@ -68,7 +69,7 @@ final readonly class CreateOperator implements Action
         }
 
         if ($this->operators->findByEmail($email) !== null) {
-            throw ActionRefused::because('operator_exists', 'An operator with that email already exists.', 'email');
+            throw ActionRefused::because('operator_exists', new ActionMessage('console.an_operator_with_that_email_already_exists_f6bf175b'), 'email');
         }
 
         $operator = $this->operators->create($email, $password, trim($context->string('name')));

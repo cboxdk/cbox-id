@@ -136,7 +136,7 @@ enum ConsoleArea: string
             self::Authentication => 'Authentication',
             self::Governance => Vocabulary::AUTHORIZATION,
             self::Developers => 'Developers',
-            self::Connectors => 'Developers',
+            self::Connectors => 'Connectors',
             self::Logs => 'Monitoring',
             self::Settings => 'Authentication',
             self::Account => null,

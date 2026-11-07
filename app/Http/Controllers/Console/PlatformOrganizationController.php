@@ -11,9 +11,7 @@ use App\Http\Middleware\TargetEnvironment;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\CreateTenantOrganizationRequest;
 use App\Platform\Console\LikeTerm;
-use App\Platform\Console\Vocabulary;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Locale\ConsoleStrings;
 use Carbon\CarbonInterface;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
@@ -102,7 +100,7 @@ final readonly class PlatformOrganizationController extends ConsoleController
                 ->whereIn('organization_id', $listedIds)
                 ->groupBy('organization_id')->pluck('c', 'organization_id');
 
-        return $this->page('console/platform/organizations', ConsoleStrings::text(Vocabulary::ORGANIZATION_TREE), [
+        return $this->page('console/platform/organizations', __('console.organization_tree_f3271d53'), [
             'help' => HelpProps::for(HelpTopic::PlatformOrganizations),
             'organizations' => $this->tree($organizations, $memberCounts),
             'limitNotice' => $limited ? __('console.organization_results_limited') : null,

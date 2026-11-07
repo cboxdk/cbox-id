@@ -72,46 +72,45 @@ it('sends the same invitation from the console and from the workspace API', func
 
     signInAsMember($ownerId);
     test()->from(route('members'))
-        ->post(route('members.invite'), ['email' => 'console@acme.example', 'role' => 'developer'])
+        ->post(route('members.invite', ['organization' => $organization->id]), ['email' => 'console@acme.example', 'roles' => ['developer']])
         ->assertSessionHasNoErrors();
 
-    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'role' => 'developer'])
+    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'roles' => ['developer']])
         ->assertCreated()
         ->assertJsonPath('data.status', 'invited');
 
     // The same mail — the TEAM's, never an organization member's — with the role in it,
     // signed by whoever sent it, and the same signed accept link.
     $mails = [];
-    Mail::assertSent(OrganizationInviteMail::class, function (OrganizationInviteMail $mail) use (&$mails): bool {
+    Mail::assertSent(InvitationMail::class, function (InvitationMail $mail) use (&$mails): bool {
         $mails[$mail->to[0]['address']] = $mail;
 
         return true;
     });
-    Mail::assertNotSent(InvitationMail::class);
+    Mail::assertNotSent(OrganizationInviteMail::class);
 
     expect($mails)->toHaveKeys(['console@acme.example', 'api@acme.example'])
-        ->and($mails['console@acme.example']->role)->toBe('Developer')
-        ->and($mails['api@acme.example']->role)->toBe('Developer')
+        ->and($mails['console@acme.example']->role)->toBe('Editor')
+        ->and($mails['api@acme.example']->role)->toBe('Editor')
         ->and($mails['console@acme.example']->inviter)->toBe('Owner')
         ->and($mails['api@acme.example']->inviter)->toBe('Deploy bot')
-        ->and($mails['api@acme.example']->url)->toContain('/invite/')
-        ->and($mails['api@acme.example']->url)->toContain('signature=');
+        ->and($mails['api@acme.example']->url)->toContain('/invitations/')
+        ->and($mails['api@acme.example']->app)->toBe('Cbox ID');
 
     // The same rows, and the same line on the activity log — the actor is the difference.
     $rows = collect(teamPending($organization->id))->keyBy('email');
 
     expect($rows->keys()->sort()->values()->all())->toBe(['api@acme.example', 'console@acme.example'])
-        ->and($rows['api@acme.example']->role)->toBe(MembershipRole::Developer)
-        ->and($rows['console@acme.example']->role)->toBe(MembershipRole::Developer);
+        ->and($rows['api@acme.example']->role)->toBe(MembershipRole::Member)
+        ->and($rows['console@acme.example']->role)->toBe(MembershipRole::Member);
 
     $entries = app(PlatformRoot::class)->run(fn () => AuditEntry::query()
         ->where('scope', $organization->id)
-        ->where('action', 'organization.member_invited')
+        ->where('action', 'native.invitation_sent')
         ->orderBy('sequence')
         ->get());
 
     expect($entries)->toHaveCount(2)
-        ->and($entries->pluck('context.role')->all())->toBe(['developer', 'developer'])
         ->and($entries[0]->actor_type)->toBe(ActorType::OrganizationMember)
         ->and($entries[0]->actor_id)->toBe($ownerId)
         ->and($entries[1]->actor_type)->toBe(ActorType::Service)
@@ -121,30 +120,26 @@ it('sends the same invitation from the console and from the workspace API', func
 it('names the key that sent it on the page the invitee lands on', function (): void {
     ['organization' => $organization, 'key' => $key] = teamWorkspace();
 
-    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'role' => 'viewer'])
+    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'roles' => ['viewer']])
         ->assertCreated();
 
     $url = null;
-    Mail::assertSent(OrganizationInviteMail::class, function (OrganizationInviteMail $mail) use (&$url): bool {
+    Mail::assertSent(InvitationMail::class, function (InvitationMail $mail) use (&$url): bool {
         $url = $mail->url;
 
         return true;
     });
 
-    // The accept link is the team's: set a password, and you are signed in to the console.
-    test()->get((string) $url)
-        ->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page
-            ->component('auth/accept-invite')
-            ->where('inviterName', 'Deploy bot')
-            ->where('roleLabel', 'Viewer')
-            ->where('organizationName', $organization->name));
+    test()->get((string) $url)->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('auth/join-organization')
+        ->where('confirmation.facts.1.value', 'Deploy bot'));
+
 });
 
 it('lists, re-sends and withdraws a team invitation from the workspace API', function (): void {
     ['organization' => $organization, 'key' => $key, 'keyId' => $keyId] = teamWorkspace();
 
-    $id = test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'role' => 'member'])
+    $id = test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'roles' => ['viewer']])
         ->assertCreated()->json('data.id');
 
     test()->withToken($key)->getJson('/api/v1/workspace/invitations')
@@ -159,7 +154,7 @@ it('lists, re-sends and withdraws a team invitation from the workspace API', fun
 
     expect($fresh)->not->toBe($id)
         ->and(teamPending($organization->id))->toHaveCount(1)
-        ->and(teamActivity($organization->id, 'organization.member_invited')?->context['resent'] ?? null)->toBeTrue();
+        ->and(teamActivity($organization->id, 'native.invitation_resent')?->actor_id)->toBe($keyId);
 
     // Once a minute, as on the console.
     test()->withToken($key)->postJson("/api/v1/workspace/invitations/{$fresh}/resend")
@@ -201,31 +196,31 @@ it('answers a failed mail the same from both doors: nothing is left behind', fun
 
     Mail::shouldReceive('to')->andThrow(new RuntimeException('SMTP is down'));
 
-    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'role' => 'viewer'])
+    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'roles' => ['viewer']])
         ->assertStatus(503)
         ->assertJsonPath('error', 'mail_failed')
         ->assertJsonPath('message', InvitationRefused::mailFailed(invitationKept: false)->getMessage());
 
     signInAsMember($ownerId);
     test()->from(route('members'))
-        ->post(route('members.invite'), ['email' => 'console@acme.example', 'role' => 'viewer'])
+        ->post(route('members.invite', ['organization' => $organization->id]), ['email' => 'console@acme.example', 'roles' => ['viewer']])
         ->assertSessionHasErrors(['email' => InvitationRefused::mailFailed(invitationKept: false)->getMessage()]);
 
     expect(teamPending($organization->id))->toBe([]);
 });
 
 it('refuses somebody already on the team with the same sentence from both doors', function (): void {
-    ['ownerId' => $ownerId, 'key' => $key] = teamWorkspace();
+    ['organization' => $organization, 'ownerId' => $ownerId, 'key' => $key] = teamWorkspace();
 
-    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'owner@acme.example', 'role' => 'viewer'])
+    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'owner@acme.example', 'roles' => ['viewer']])
         ->assertStatus(422)
         ->assertJsonPath('error', 'email_taken')
-        ->assertJsonPath('message', 'That person is already on this list.');
+        ->assertJsonPath('message', InvitationRefused::alreadyMember()->getMessage());
 
     signInAsMember($ownerId);
     test()->from(route('members'))
-        ->post(route('members.invite'), ['email' => 'owner@acme.example', 'role' => 'viewer'])
-        ->assertSessionHasErrors(['email' => 'That person is already on this list.']);
+        ->post(route('members.invite', ['organization' => $organization->id]), ['email' => 'owner@acme.example', 'roles' => ['viewer']])
+        ->assertSessionHasErrors(['email' => InvitationRefused::alreadyMember()->getMessage()]);
 
     Mail::assertNothingSent();
 });
@@ -234,7 +229,7 @@ it('never invites an owner, whoever asks', function (): void {
     ['organization' => $organization, 'ownerId' => $ownerId, 'key' => $key] = teamWorkspace();
 
     // The doors validate the role first…
-    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'x@acme.example', 'role' => 'owner'])
+    test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'x@acme.example', 'roles' => ['owner']])
         ->assertStatus(422);
 
     // …and the service refuses it on its own, for any caller that skips them.
