@@ -79,17 +79,27 @@ Free / Start / Grow are approved at 0 / 99 / 349 DKK per project/month, net of V
 All include identity security and production plus test environments. ID is an entry
 point to other Cbox products; additional consumption, not SSO or SCIM, motivates an upgrade.
 The canonical `cbox-billing/catalogs/cbox-id.json` keeps these three plans inactive
-while consumption allowances are qualified. They are not yet sold or synchronized
-into production. Do not turn on subscription admission against an empty catalog.
+for invitation-based early access. Catalog publication is separate from enabling
+checkout or requiring subscriptions. Do not turn on subscription admission before
+approved customers have a usable plan and payment acceptance has passed.
 
-Signals must provide an included free baseline on every plan, with explicit paid
-capacity upgrades and spending limits. Baseline quantities, scoped provisioning and
-end-to-end bundle acceptance remain unfinished; the existing test quotas are not
-commercial allowances. See `cbox-billing/catalogs/cbox-id.md` for the activation work.
+Billing's inclusion operation selects one organization-wide Signals allowance from
+the highest serving ID tier: Free includes 10,000 events and 1,000 evaluations per
+month, Start 100,000 and 10,000, and Grow 1,000,000 and 100,000. These are bounded pilot
+allocations, not measured unit economics. Every included Signals plan has zero
+recurring price and blocks overage. Separate Signals subscriptions are preserved;
+ending ID falls back to the free baseline without creating a charge.
 
-A read-only production check confirmed that all twelve published service programs,
-including ID and Signals, are in waitlist mode and ID's product admission is enabled.
-This change does not publish prices, admit customers, issue invoices or enable Signals.
+Signals activation is explicit and retains its own waitlist and owner/admin checks.
+It neither connects identity events nor installs risk policies. The consumer defaults
+off until the Billing API, inactive catalogs and qualification are ready. Upgrade and
+downgrade retain usage; existing bounded engine leases can finish. Login and ordinary
+MFA policy remain independent of Signals quota exhaustion.
+
+See `cbox-billing/catalogs/cbox-id.md` for the authoritative contract and rollout order,
+and `cbox-signals/docs/id-included-signals.md` for the consumer configuration. Record
+actual activation in the infrastructure handoff; a catalog file or passing unit test
+alone does not prove a live payment flow. Preserve all service waitlists during rollout.
 
 ## `metered`
 
