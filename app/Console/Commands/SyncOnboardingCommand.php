@@ -59,6 +59,14 @@ final class SyncOnboardingCommand extends Command
                         $snapshot['workspace_id'],
                         $props,
                     ));
+                    if ($snapshot['goals']['first_sign_in'] ?? false) {
+                        $events->record(ProductEvent::byCompany(
+                            'onboarding.first_sign_in_observed',
+                            'cbox-id:first-sign-in:'.hash('sha256', $environment->id.'|'.$interval),
+                            $snapshot['workspace_id'],
+                            $props,
+                        ));
+                    }
                     $count++;
                 }
             });

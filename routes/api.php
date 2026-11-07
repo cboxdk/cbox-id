@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\AppManifestController;
 use App\Http\Controllers\Api\ConnectionEventsController;
 use App\Http\Controllers\Api\Environment\ActionApprovalController;
+use App\Http\Controllers\Api\OnboardingEligibilityController;
 use App\Http\Controllers\Api\PipeTokenController;
 use App\Http\Controllers\Api\ServiceConnectionController;
 use App\Http\Controllers\Api\SignalsSourceController;
@@ -190,3 +191,7 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-vault'])->prefix('v1
     Route::post('/{id}/token', [ServiceConnectionController::class, 'token'])->middleware('scope:service_connections.lease');
     Route::get('/{id}/events', ConnectionEventsController::class)->middleware('scope:signals:events:read');
 });
+
+// Dedicated read-only service credential; no cookies, CSRF or customer access token.
+Route::post('v1/onboarding/eligibility', OnboardingEligibilityController::class)
+    ->middleware('throttle:120,1');

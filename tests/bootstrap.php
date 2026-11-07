@@ -37,6 +37,7 @@ $suiteOwned = [
     // Framework infrastructure. The suite runs against nothing it did not start.
     'APP_ENV' => 'testing',
     'ENGAGE_INGEST_URL' => '',
+    'ID_ONBOARDING_ELIGIBILITY_KEY' => '',
     'ENGAGE_INGEST_KEY' => '',
     'ID_ONBOARDING_ENGAGE_ENABLED' => 'false',
     'APP_URL' => 'http://localhost',

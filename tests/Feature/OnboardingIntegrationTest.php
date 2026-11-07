@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\OnboardingDismissal;
 use App\Platform\Onboarding\IntegrationProgress;
 use Cbox\Engage\Contracts\ProductEvents;
 use Cbox\Engage\Events\ProductEvent;
@@ -10,6 +11,7 @@ use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
+use Cbox\Id\Platform\PlatformRoot;
 
 it('shares tenant scoped facts without calling a configured redirect production ready', function (): void {
     multiTenantDeployment();
@@ -50,7 +52,7 @@ it('publishes only workspace facts and deduplicates the same observation interva
         ->and($captured[0]->subjectExternalId)->toBe($tenant['organization']->id)
         ->and($captured[0]->props['environment_id'])->toBe($tenant['environment']->id)
         ->and($captured[0]->props['identity_namespace'])->toBe('cbox-id-platform-root')
-        ->and(array_keys($captured[0]->props))->not->toContain('email', 'name', 'password');
+        ->and(array_keys($captured[0]->props))->not->toContain('email')->not->toContain('name')->not->toContain('password');
     app(EnvironmentContext::class)->runAs($tenant['environment'], fn () => app(ClientRegistry::class)->register(new NewClient('Created during same minute')));
     $this->artisan('onboarding:sync')->assertSuccessful();
     expect($captured)->toHaveCount(3)
@@ -75,4 +77,23 @@ it('exposes current progress only through the environment key and required scope
         ->assertJsonPath('data.production_ready', null);
     $wrong = app(EnvironmentApiKeys::class)->issue($tenant['environment']->id, 'Wrong scope', ['users:read'])->plaintext;
     $this->withToken($wrong)->getJson('/api/v1/onboarding')->assertForbidden();
+});
+
+it('checks reminder eligibility against current access goal and dismissal without billing', function (): void {
+    multiTenantDeployment();
+    $tenant = provisionAccount();
+    $payload = ['workspace_id' => $tenant['organization']->id, 'subject_id' => $tenant['subjectId'],
+        'project_id' => $tenant['project']->id, 'environment_id' => $tenant['environment']->id, 'check' => 'cbox_id_first_sign_in_pending'];
+    $url = '/api/v1/onboarding/eligibility';
+    $this->postJson($url, $payload)->assertUnauthorized();
+    config(['onboarding.eligibility_key' => str_repeat('s', 48)]);
+    $this->withToken(str_repeat('s', 48))->postJson($url, $payload)->assertOk()->assertJsonPath('eligible', false);
+    app(EnvironmentContext::class)->runAs($tenant['environment'], fn () => app(ClientRegistry::class)->register(new NewClient('App')));
+    $this->postJson($url, $payload)->assertOk()->assertJsonPath('eligible', true);
+    $this->postJson($url, [...$payload, 'workspace_id' => 'foreign'])->assertOk()->assertJsonPath('eligible', false);
+    $this->postJson($url, [...$payload, 'project_id' => 'foreign'])->assertOk()->assertJsonPath('eligible', false);
+    app(EnvironmentContext::class)->runAs($tenant['environment'], fn () => OnboardingDismissal::query()->create(['subject_id' => $tenant['subjectId']]));
+    $this->postJson($url, $payload)->assertOk()->assertJsonPath('eligible', false);
+    app(PlatformRoot::class)->run(fn () => $tenant['member']->delete());
+    $this->postJson($url, $payload)->assertOk()->assertJsonPath('eligible', false);
 });

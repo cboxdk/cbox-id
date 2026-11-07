@@ -40,27 +40,35 @@ The API response must not be cached as the final send decision.
 
 ## Required Engage work before customer mail
 
-The inspected automation contract supports subject-level goal events and exits, but
-not project/environment correlation on those exits or a final service-state guard.
-An organization can have several projects: completing one must not stop the wrong
-journey, and opening another must not restart onboarding for every member.
+Engage now implements source/project/environment correlation for reentry, goals, exits
+and event waits. It checks persisted run state again at send time, including normally
+completed runs with queued messages, changed recipients and achieved goals. Its editor
+preserves correlation and eligibility settings.
 
-`resources/onboarding/engage-journeys.json` is an explicit **draft specification**, not
-an importable automation or a claim that those capabilities are installed. It includes
-a finite reminder sequence, once-only milestone message and relevant SSO discovery tip.
+For first-login reminders set `eligibility_check: cbox_id_first_sign_in_pending`,
+`correlation_keys: [project_id, environment_id]` and `reentry: never`. The completed-goal
+event is `onboarding.first_sign_in_observed`. ID emits it during reconciliation once a
+person sign-in is observed; it is evidence, not authorization for a congratulations mail.
 
-Implement/verify the following in Engage before publishing:
+The dedicated `POST /api/v1/onboarding/eligibility` requires a service bearer key of at
+least 32 characters (`ID_ONBOARDING_ELIGIBILITY_KEY`). It checks current membership and
+write access, product admission, ownership/status, dismissal and incomplete first login.
+It returns only eligibility and observation time, with `Cache-Control: no-store`.
+Engage must configure its workspace, event source, platform-root identity source, URL
+and matching key; see Engage's `docs/onboarding-eligibility.md`. A failed check refuses
+that message rather than sending or indefinitely retrying it.
 
-1. Correlation on workspace, project and environment for enrollment, goals and exits.
-2. Current-state check immediately before provider dispatch; defer if unavailable or
-   stale. Recheck goal, applicable resource, responsible member, consent/preferences,
-   support pause, caps and quiet hours. Deduplicate the actual send atomically.
-3. Completion by another member cancels shared-goal reminders; completion in another
-   project does not. Do not replay old milestones as new congratulations.
-4. Resolve the intended source, brand, templates, purpose and authorized recipients.
-   Do not route educational messages through transactional mail fallback.
-5. Test completion between enqueue and dispatch, access removal, opt-out, delayed/out-of-
-   order events and two-project isolation. Events alone cannot prove these stop rules.
+Remaining activation acceptance:
+
+1. Verify the platform-root source namespace and configure an events-only ingest key.
+2. Connect related Assistant support-case pause/snooze before publishing reminders;
+   the current eligibility check does not claim that capability.
+3. Configure brand/domain, consent, caps, quiet hours, templates and scoped next links.
+4. Run a controlled-recipient live test, including completion after enqueue and removed
+   access. The local tests cover these guards but do not prove production wiring.
+
+`resources/onboarding/engage-journeys.json` remains a draft specification, not an
+importable or published campaign. No unbounded enrollment from heartbeat events.
 
 No campaigns have been published and no outbound customer mail has been enabled by
 this change. No production credentials have been created or modified.

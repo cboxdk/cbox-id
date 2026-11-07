@@ -3,17 +3,20 @@
   "version": 1,
   "status": "draft_specification_not_importable",
   "identity_namespace": "cbox-id-platform-root",
-  "scope": ["workspace_id", "project_id", "environment_id"],
+  "scope": [
+    "workspace_id",
+    "project_id",
+    "environment_id"
+  ],
   "observation_event": "onboarding.progress_observed",
   "enroll_from_observation_heartbeats": false,
   "recipient": "one current authorized workspace member responsible for this environment; never tenant end users",
   "purpose": "product_updates",
   "requires_consent": true,
   "max_evidence_age_seconds": 120,
-  "dispatch_guard": "GET the environment's /api/v1/onboarding using a signin:read credential bound to that environment. Recheck membership and communication preferences through their authoritative sources; any unavailable check defers sending.",
+  "dispatch_guard": "POST /api/v1/onboarding/eligibility with the dedicated read-only service credential; Engage resolves platform-root identities from its configured external-ID source. Failed or unavailable checks refuse sending.",
   "blockers": [
-    "Engage run goals and exits must correlate project_id and environment_id, not only the company/contact",
-    "Engage must recheck current goal, recipient authorization, support pause and consent immediately before dispatch",
+    "Configure and verify the implemented Engage correlation and final-state check; related Assistant support pause/snooze remains unimplemented",
     "Resolve platform-root identities through a verified Engage source; never join a different issuer by email",
     "Configure brand, verified sending domain, preferences, finite frequency caps and scoped resume links",
     "Verify live Assistant knowledge sync, signed onboarding tool and human handoff on the candidate deployment"
@@ -23,7 +26,10 @@
       "key": "first-login-reminder",
       "goal": "first_sign_in",
       "prerequisite": "goal_create_app = true",
-      "timing": ["24 hours after app creation", "one final reminder after 4 days"],
+      "timing": [
+        "24 hours after app creation",
+        "one final reminder after 4 days"
+      ],
       "max_messages": 2,
       "stop": "goal_first_sign_in = true in the same scope, including completion by a teammate; or goal inapplicable, opt-out, removed access or deleted/suspended resource",
       "pause": "related support open, snooze, quiet hours or frequency cap",
@@ -34,7 +40,9 @@
     {
       "key": "first-login-success",
       "goal": "first_sign_in",
-      "timing": ["first observed incomplete-to-complete transition after enrollment"],
+      "timing": [
+        "first observed incomplete-to-complete transition after enrollment"
+      ],
       "max_messages": 1,
       "stop": "already sent for this goal version and scope, opt-out or removed access",
       "subject": "Your app issued its first sign-in token",
@@ -45,12 +53,23 @@
       "key": "customer-workplace-login-tip",
       "goal": "connect_sso",
       "prerequisite": "goal_first_sign_in = true and goal_create_organization = true and SSO relevant to selected use case",
-      "timing": ["after first value and outside the reminder sequence"],
+      "timing": [
+        "after first value and outside the reminder sequence"
+      ],
       "max_messages": 1,
       "stop": "goal_connect_sso = true, feature dismissed/not applicable, opt-out or removed access",
       "subject": "Let a customer use their workplace login",
       "body": "Your business customers can use Microsoft Entra, Okta or another workplace identity provider. This is SSO. Configure it for one customer organization while other customers keep their own login methods.",
       "cta": "Understand customer SSO"
     }
-  ]
+  ],
+  "implemented_engage_contract": {
+    "correlation_keys": [
+      "project_id",
+      "environment_id"
+    ],
+    "eligibility_check": "cbox_id_first_sign_in_pending",
+    "goal_event": "onboarding.first_sign_in_observed",
+    "reentry": "never"
+  }
 }
