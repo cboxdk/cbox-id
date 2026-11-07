@@ -2,6 +2,7 @@ import { ServiceMark, hasServiceMark } from './ServiceMark';
 import { useTranslator } from '@/i18n';
 import { router, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { flushSync, preconnect } from 'react-dom';
 import type { CatalogApp, SharedProps } from '@/types';
 import { Icon, Popover, PopoverContent, PopoverTrigger } from '@/ui';
 
@@ -35,6 +36,24 @@ export function AppSwitcher() {
     const { appCatalog = [] } = page.props;
     const fromBookmark = new URLSearchParams(page.url?.split('?')[1]).get('switch-app') === '1';
     const firstApp = useRef<HTMLAnchorElement>(null);
+    const [launching, setLaunching] = useState<string | null>(null);
+    // Warm only the selected destination's connection, never its authenticated URL.
+    const prepare = (url: string) => {
+        const destination = new URL(url, window.location.href);
+        if (destination.protocol === 'https:' && destination.origin !== window.location.origin)
+            preconnect(destination.origin);
+    };
+    useEffect(() => {
+        if (!launching) return;
+        const reset = () => setLaunching(null);
+        // Restore the picker after Back (including bfcache) or an aborted navigation.
+        window.addEventListener('pageshow', reset);
+        const timer = window.setTimeout(reset, 15000);
+        return () => {
+            window.removeEventListener('pageshow', reset);
+            window.clearTimeout(timer);
+        };
+    }, [launching]);
     const refresh = useCallback(() => {
         if (document.visibilityState !== 'visible' || Date.now() - lastCatalogRefresh < 60000)
             return;
@@ -92,6 +111,23 @@ export function AppSwitcher() {
                                 ref={index === 0 ? firstApp : undefined}
                                 href={app.launch_url}
                                 aria-current={app.key === 'id' ? 'true' : undefined}
+                                aria-busy={launching === app.key || undefined}
+                                onPointerEnter={() => prepare(app.launch_url)}
+                                onFocus={() => prepare(app.launch_url)}
+                                onClick={(event) => {
+                                    if (
+                                        event.defaultPrevented ||
+                                        event.button !== 0 ||
+                                        event.metaKey ||
+                                        event.ctrlKey ||
+                                        event.shiftKey ||
+                                        event.altKey
+                                    )
+                                        return;
+                                    prepare(app.launch_url);
+                                    // Paint feedback before the browser starts the cross-product SSO navigation.
+                                    flushSync(() => setLaunching(app.key));
+                                }}
                             >
                                 {hasServiceMark(app.key) ? (
                                     <ServiceMark service={app.key} />
@@ -99,8 +135,15 @@ export function AppSwitcher() {
                                     <CatalogAppIcon app={app} />
                                 )}
                                 <span>{app.name.replace(/^Cbox\s*·\s*/i, '')}</span>
-                                {app.key === 'id' && (
-                                    <Icon name="check" className="cbx-launch-check" />
+                                {launching === app.key ? (
+                                    <span
+                                        className="cbx-launch-check motion-safe:animate-spin rounded-full border-2 border-current border-t-transparent"
+                                        aria-hidden="true"
+                                    />
+                                ) : (
+                                    app.key === 'id' && (
+                                        <Icon name="check" className="cbx-launch-check" />
+                                    )
                                 )}
                             </a>
                         ))}
@@ -108,6 +151,13 @@ export function AppSwitcher() {
                 ) : (
                     <p>{t('console.catalog_empty')}</p>
                 )}
+                <output
+                    aria-live="polite"
+                    className="mt-2 block text-center text-sm text-[var(--muted-foreground)] empty:hidden"
+                >
+                    {launching &&
+                        `${t('console.loading_dc380888')} · ${appCatalog.find((app) => app.key === launching)?.name.replace(/^Cbox\s*·\s*/i, '') ?? ''}`}
+                </output>
             </PopoverContent>
         </Popover>
     );
