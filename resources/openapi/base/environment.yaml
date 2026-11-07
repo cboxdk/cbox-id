@@ -3424,6 +3424,22 @@ components:
                 description: "What was removed or rewritten there, by item."
                 additionalProperties: { type: integer }
               note: { type: ["string", "null"], description: "Why a step could not act, when it could not." }
+    OnboardingProgress:
+      type: object
+      required: [version, workspace_id, project_id, environment_id, environment_type, observed_at, goals, first_sign_in_evidence, production_ready, guide_url]
+      properties:
+        version: { type: integer, const: 1 }
+        workspace_id: { type: string }
+        project_id: { type: string }
+        environment_id: { type: string }
+        environment_type: { type: string }
+        observed_at: { type: string, format: date-time }
+        goals:
+          type: object
+          additionalProperties: { type: boolean }
+        first_sign_in_evidence: { type: string }
+        production_ready: { type: 'null' }
+        guide_url: { type: [string, 'null'] }
     LegacyLogin:
       type: object
       required: [declared, url, client_id, declared_by, approved, approved_at, approved_by]

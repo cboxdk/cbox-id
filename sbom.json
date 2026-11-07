@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:789a1b2c-00dd-474d-bbf3-3a8320bbe80d",
+    "serialNumber": "urn:uuid:8426ca81-05c4-4b54-a46f-dcd6a1466b51",
     "version": 1,
     "metadata": {
         "tools": [
@@ -187,6 +187,22 @@
             "version": "v1.0.0",
             "purl": "pkg:composer/cboxdk/laravel-dns@v1.0.0",
             "description": "Laravel integration for cboxdk/dns \u2014 authoritative DNS lookups, domain-ownership verification, DNSSEC validation, and intoDNS/MxToolbox-style diagnostics via a facade, Artisan commands, and validation rules.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/cboxdk/laravel-engage-client@v0.1.1",
+            "group": "cboxdk",
+            "name": "laravel-engage-client",
+            "version": "v0.1.1",
+            "purl": "pkg:composer/cboxdk/laravel-engage-client@v0.1.1",
+            "description": "Cbox Engage client for Laravel: product events in, transactional messages out, and an `engage` mail driver with a circuit breaker and a fallback mailer.",
             "licenses": [
                 {
                     "license": {

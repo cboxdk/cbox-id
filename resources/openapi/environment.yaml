@@ -130,6 +130,8 @@ tags:
   -
     name: 'Log streams'
   -
+    name: Onboarding
+  -
     name: 'Admin Portal'
   -
     name: Pipes
@@ -9332,6 +9334,52 @@ paths:
           description: 'Version conflict. Read the current document and reconcile the intended keys.'
         422:
           description: 'Invalid patch, preference value or document limit.'
+  /onboarding:
+    get:
+      tags:
+        - Onboarding
+      summary: 'Read current environment onboarding evidence. Does not certify application security or production readiness.'
+      description: 'Requires scope `signin:read`. Danger: read.'
+      operationId: onboarding_get
+      x-action: onboarding.get
+      x-scope: 'signin:read'
+      x-danger: read
+      parameters:
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/OnboardingProgress'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   /organizations:
     get:
       operationId: organizations_list
@@ -23180,6 +23228,46 @@ components:
                   - string
                   - 'null'
                 description: 'Why a step could not act, when it could not.'
+    OnboardingProgress:
+      type: object
+      required:
+        - version
+        - workspace_id
+        - project_id
+        - environment_id
+        - environment_type
+        - observed_at
+        - goals
+        - first_sign_in_evidence
+        - production_ready
+        - guide_url
+      properties:
+        version:
+          type: integer
+          const: 1
+        workspace_id:
+          type: string
+        project_id:
+          type: string
+        environment_id:
+          type: string
+        environment_type:
+          type: string
+        observed_at:
+          type: string
+          format: date-time
+        goals:
+          type: object
+          additionalProperties:
+            type: boolean
+        first_sign_in_evidence:
+          type: string
+        production_ready:
+          type: 'null'
+        guide_url:
+          type:
+            - string
+            - 'null'
     LegacyLogin:
       type: object
       required:

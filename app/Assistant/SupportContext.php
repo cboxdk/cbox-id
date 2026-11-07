@@ -9,6 +9,7 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\Onboarding\IntegrationProgress;
 use App\Platform\OrganizationAccess;
 use App\Platform\PlatformAuth;
 use App\Platform\ServiceAccess\ProductAdmission;
@@ -127,6 +128,31 @@ final readonly class SupportContext
                     'type' => $environment->type->value, 'status' => $environment->status->value,
                 ])->values()->all(),
             ])->values()->all()];
+        });
+        abort_unless(is_array($result), 403);
+
+        return $result;
+    }
+
+    /** @return array<string, mixed> */
+    public function onboarding(ToolContext $context): array
+    {
+        abort_unless($this->allowed($context, true), 403);
+
+        $result = $this->root->run(function () use ($context): array {
+            $account = $context->accountId();
+            $subject = $context->userId();
+            abort_unless($account !== null && $subject !== null, 403);
+            $allowed = $this->memberships->accessibleEnvironmentIds($account, $subject);
+            $projects = app(OrganizationProjects::class)->forOrganization($account)->pluck('id')->all();
+            $scope = $context->principal['context'] ?? [];
+            $active = is_array($scope) ? ($scope['environment'] ?? null) : null;
+            $environments = Environment::query()->whereIn('id', $allowed)->whereIn('project_id', $projects)
+                ->when($active !== $this->root->environment()?->environmentKey(), fn ($query) => $query->whereKey($active))
+                ->get()->filter(fn (Environment $environment): bool => $environment->status->canServe());
+
+            return ['environments' => $environments->map(fn (Environment $environment): array => app(EnvironmentContext::class)->runAs($environment, fn (): array => app(IntegrationProgress::class)->read())
+            )->values()->all()];
         });
         abort_unless(is_array($result), 403);
 

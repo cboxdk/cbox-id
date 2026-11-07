@@ -97,3 +97,6 @@ Schedule::command('signals:source-maintain')->everyMinute()->withoutOverlapping(
 // The Redis store is shared by replicas, so only one scheduler flushes it.
 Schedule::command('telemetry:flush')->everyMinute()->withoutOverlapping()->onOneServer()
     ->when(static fn (): bool => in_array('otlp', config()->array('telemetry.exporters'), true));
+
+Schedule::command('onboarding:sync')->everyMinute()->withoutOverlapping()->onOneServer()
+    ->when(static fn (): bool => config('onboarding.engage_enabled') === true);

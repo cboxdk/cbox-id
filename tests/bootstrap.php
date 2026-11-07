@@ -36,6 +36,9 @@ require __DIR__.'/../vendor/autoload.php';
 $suiteOwned = [
     // Framework infrastructure. The suite runs against nothing it did not start.
     'APP_ENV' => 'testing',
+    'ENGAGE_INGEST_URL' => '',
+    'ENGAGE_INGEST_KEY' => '',
+    'ID_ONBOARDING_ENGAGE_ENABLED' => 'false',
     'APP_URL' => 'http://localhost',
     // Billing tests explicitly inject test transports; never inherit a developer's account.
     'BILLING_CLIENT_BASE_URL' => '',

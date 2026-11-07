@@ -12,12 +12,14 @@
     ],
     "license": "Elastic-2.0",
     "require": {
+        "php": "^8.5",
         "bacon/bacon-qr-code": "^3.1",
         "cboxdk/dns": "^1.0",
         "cboxdk/laravel-assistant-client": "^0.1",
         "cboxdk/laravel-billing-client": "^0.4.13",
         "cboxdk/laravel-console-kit": "^0.2",
         "cboxdk/laravel-dns": "^1.0",
+        "cboxdk/laravel-engage-client": "^0.1.1",
         "cboxdk/laravel-health": "^2.0",
         "cboxdk/laravel-id": "^1.28.0",
         "cboxdk/laravel-postal": "^0.1.1",
@@ -36,7 +38,6 @@
         "laravel/wayfinder": "^0.1",
         "league/flysystem-aws-s3-v3": "^3.35",
         "maxmind-db/reader": "^1.12",
-        "php": "^8.5",
         "resend/resend-php": "^1.16",
         "symfony/intl": "^8.0"
     },

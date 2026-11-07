@@ -15,6 +15,12 @@ final class ServiceProvider extends Provider
         if (config('ai-assistant-connector.support.enabled') !== true) {
             return;
         }
+        AiAssistant::tool('id_onboarding_status')->readOnly()
+            ->description('Read current onboarding evidence for authorized ID environments, including a guide. Token issuance does not prove production readiness. No credentials or customer profiles.')
+            ->parameters([])
+            ->guard(fn (ToolContext $context): bool => app(SupportContext::class)->allowed($context, true))
+            ->handle(fn (array $arguments, ToolContext $context): array => app(SupportContext::class)->onboarding($context));
+
         foreach ([
             'id_workspace_status' => ['Read the current Cbox ID workspace and the caller’s membership role. No credentials or private profiles.', false],
             'id_environment_status' => ['Read this workspace’s project and environment setup. Includes only environments the current member can access.', true],

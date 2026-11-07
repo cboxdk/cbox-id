@@ -68,3 +68,17 @@ it('serves only the approved generated guides', function (): void {
     $this->get('/ai-assistant/guides/id-laravel')->assertOk()->assertSee('Create the app');
     $this->get('/ai-assistant/guides/private')->assertNotFound();
 });
+
+it('reads onboarding through the signed bridge without exposing other environments', function (): void {
+    $token = idSupportToken($this, $this->claims, 'id_onboarding_status');
+    $this->withToken($token)->postJson('/ai-assistant/hook')->assertOk()
+        ->assertJsonCount(1, 'result.environments')
+        ->assertJsonPath('result.environments.0.workspace_id', $this->workspace->organization->id)
+        ->assertJsonPath('result.environments.0.production_ready', null);
+    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->setEnvironmentAccess($this->workspace->organization->id, $this->workspace->owner->id, false, []));
+    $this->withToken(idSupportToken($this, $this->claims, 'id_onboarding_status'))
+        ->postJson('/ai-assistant/hook')->assertOk()->assertJsonCount(0, 'result.environments');
+    $foreign = [...$this->claims, 'account_id' => 'other'];
+    $this->withToken(idSupportToken($this, $foreign, 'id_onboarding_status'))
+        ->postJson('/ai-assistant/hook')->assertForbidden();
+});
