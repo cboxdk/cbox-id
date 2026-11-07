@@ -12,8 +12,9 @@ return new class extends Migration
     {
         Schema::create('service_connections', function (Blueprint $table): void {
             $table->string('id', 26)->primary();
-            $table->string('environment_id');
-            $table->string('organization_id');
+            // Tenant identifiers are ULIDs; keep the composite owner key within MySQL's byte limit.
+            $table->string('environment_id', 26);
+            $table->string('organization_id', 26);
             $table->string('consumer_client_id');
             $table->string('service');
             $table->string('service_client_id');

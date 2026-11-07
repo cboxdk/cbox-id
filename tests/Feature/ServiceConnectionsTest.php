@@ -15,6 +15,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Illuminate\Database\UniqueConstraintViolationException;
 
 beforeEach(function (): void {
     $this->organization = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-services'));
@@ -111,4 +112,15 @@ it('never returns a leased token with a different audience or scopes than the ap
     $issuer->shouldReceive('issueClientCredentials')->once()->andReturn(new IssuedToken('must-not-leak', 'bad-jti', 300, scopes: ['billing:engage:sync']));
     app()->instance(TokenIssuer::class, $issuer);
     $this->withToken('machine')->postJson('/api/v1/service-connections/'.$id.'/token')->assertStatus(503)->assertDontSee('must-not-leak');
+});
+
+it('preserves long client and service identifiers while enforcing the tenant owner key', function (): void {
+    $connection = $this->withToken('admin')->postJson('/api/v1/service-connections/cbox_billing')->assertOk()->json('id');
+    $row = ServiceConnection::query()->findOrFail($connection);
+    $row->update(['consumer_client_id' => str_repeat('c', 255), 'service' => str_repeat('s', 255)]);
+    expect($row->fresh()->consumer_client_id)->toHaveLength(255)
+        ->and($row->fresh()->service)->toHaveLength(255);
+
+    expect(fn () => $row->replicate()->save())
+        ->toThrow(UniqueConstraintViolationException::class);
 });
