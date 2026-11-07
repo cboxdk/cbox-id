@@ -207,3 +207,115 @@ explicit exception; it never supplies a fabricated ready state.
 Signal detail exposes the latest retained normalized activity for its subject as
 `$detail->recentObservations`. Each entry carries the source, event ID, type and
 event time. Use the signal's own evidence for its historical decision.
+
+### Closed count intervals and historical revisions
+
+`Cbox\Signals\Contracts\CountIntervals` sends and reads registered count series
+through the public API. It uses the existing `signals.url`, `signals.token` and
+timeout configuration. It is separate from `Signals`; existing consumers and
+test fakes keep their existing contract. The service control plane must first
+authorize the source, interval retention and immutable series definition. A
+public client cannot create that authorization.
+
+An interval contains a closed source observation, not a running total or a
+forecast. Persist the exact `CountInterval::toArray()` representation before the
+first send; retry that same revision after an uncertain response. All timestamps
+are explicit UTC strings, preserving source nanoseconds. Counts are decimal
+strings through `18446744073709551615`, never PHP floats or signed integers.
+Coverage is required: observed zero is `'0'`; unknown is `null` with an `unknown`
+coverage reason. A partial count retains `partial` coverage.
+
+```php
+use Cbox\Signals\Contracts\CountIntervals;
+use Cbox\Signals\Data\CountInterval;
+use Cbox\Signals\Data\IntervalHistoryQuery;
+use Cbox\Signals\Data\IntervalSeries;
+
+$intervals = app(CountIntervals::class);
+$series = new IntervalSeries('api', 'requests', 1);
+$record = CountInterval::fromArray($persistedSourceInterval);
+$receipt = $intervals->ingest($series, [$record]);
+
+$page = $intervals->history($series, new IntervalHistoryQuery($from, $through));
+if ($page->nextCursor !== null) {
+    $next = $intervals->history($series, new IntervalHistoryQuery(
+        $from, $through, $page->asOf, $page->nextCursor,
+    ));
+}
+```
+
+Each record carries explicit project/environment/tenant scope, an opaque entity,
+registered dimensions and privacy subjects. Include the owners whose erasure
+must remove an aggregate; dropping a former owner from a correction cannot
+revive erased history. IP, session and device identities are not interval keys.
+Use internal key identifiers, never bearer tokens or payment credentials.
+
+A correction uses the next revision and the prior acknowledgement's `hash` as
+`previous_hash`; it cannot overwrite its predecessor. `knownAt` is the server's
+actual observation time. Preserve a page's `asOf` while following its cursor or
+repeating a historical query, so later imports/corrections cannot leak into an
+earlier backtest. Current retention and privacy rules still apply to that query.
+Missing buckets remain absent; this client never fills them with zero.
+
+Ingest allows 1–1,000 records, 16 KiB each and one MiB per request. History pages
+contain at most 1,000 records and have a bounded streamed response. Pagination and
+retry are explicit. `SignalsFailure` preserves recognized error codes and HTTP
+status without leaking response details. In particular, HTTP 410 means retired
+history; it is not a successful duplicate and must not be retried as a new event.
+The client provides transport and typed history; it does not train a model,
+certify source coverage or perform a forecast.
+
+The real acceptance test runs this PHP client against the selected engine's
+actual HTTP handler and PostgreSQL store. Set `SIGNALS_TEST_DATABASE_URL` privately
+to a disposable loopback PostgreSQL instance, then run:
+
+```sh
+python3 bin/test-count-intervals.py \
+  --engine /absolute/path/to/signalsd \
+  --output /private/interval-acceptance.json
+```
+
+The runner creates and removes its own schema. It checks exact counts and source
+timestamps, duplicates, corrections, historical pagination, foreign credentials,
+unknown/partial coverage, entity erasure and preserved project usage totals.
+It uses synthetic data and isolated allowances; it is not production data or
+model-quality evidence. Existing receipts are never overwritten.
+
+## Bundled managed integration (first-party source apps)
+
+Cbox ID, Cbox Billing and Stache do not configure Signals by hand. Each
+application enrols its own environments in a *managed* integration: Signals
+finds or creates the organization's project, stores the read secret encrypted
+and registers the catalog's default shadow pipelines. Enrolment is idempotent,
+a new secret is a rotation, and revoking stops pulling within one worker
+interval. Customers upgrade to custom pipelines in Signals on top of the same
+sources; the bundled level is never enforcement.
+
+The application contributes one class and a credential:
+
+```php
+final class IdManagedSources implements \Cbox\Signals\Contracts\ManagedSources
+{
+    public function provider(): string { return 'cbox_id'; }
+    public function environments(): iterable { /* live environments → ManagedEnvironment */ }
+    public function retired(): iterable { /* owner ids of deleted environments */ }
+    public function issueSecret(ManagedEnvironment $environment): IssuedSecret { /* export-scoped read key */ }
+    public function retireSecrets(ManagedEnvironment $environment, string $keepReference): void { /* revoke the rest */ }
+    public function discardSecret(ManagedEnvironment $environment, string $reference): void { /* revoke one Signals never accepted */ }
+}
+
+$this->app->bind(ManagedSources::class, IdManagedSources::class);
+$this->app->bind(ManagedCredential::class, fn () => new MachineTokenCredential(...)); // Cbox ID client-credentials token
+```
+
+Then schedule `signals:managed-reconcile` (hourly is plenty) and call
+`ManagedEnroller::enroll()` / `revoke()` from environment lifecycle hooks when
+you want Signals to follow within seconds. The reconcile leaves matching
+enrolments untouched, so a run without changes makes no writes; pass
+`--rotate=<owner>` to replace a secret. Secrets are issued only when Signals is
+about to receive them, the previous ones are retired only after Signals
+accepted the replacement, and a secret Signals refused is discarded at once. `FakeManagedIntegration` carries the same rules for
+application tests.
+
+`SIGNALS_MANAGED_TOKEN` (falling back to `SIGNALS_TOKEN`) is only the default
+credential; bind your own `ManagedCredential` to use a Cbox ID machine token.

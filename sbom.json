@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:b1d0b6b8-3063-4c1d-b5cd-ef91c84c1230",
+    "serialNumber": "urn:uuid:00136da9-e6ce-46ce-99f0-7989576720f0",
     "version": 1,
     "metadata": {
         "tools": [
@@ -341,11 +341,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-signals-client@dev-sd/security-tenant-context",
+            "bom-ref": "pkg:composer/cboxdk/laravel-signals-client@dev-sd/signals-managed-integration",
             "group": "cboxdk",
             "name": "laravel-signals-client",
-            "version": "dev-sd/security-tenant-context",
-            "purl": "pkg:composer/cboxdk/laravel-signals-client@dev-sd/security-tenant-context",
+            "version": "dev-sd/signals-managed-integration",
+            "purl": "pkg:composer/cboxdk/laravel-signals-client@dev-sd/signals-managed-integration",
             "description": "Typed transport for Cbox Signals",
             "licenses": [
                 {

@@ -418,5 +418,122 @@
         "value": "abc"
       }
     }
+  },
+  {
+    "name": "managed-enrollment-request",
+    "schema": "ManagedEnrollmentRequest",
+    "valid": true,
+    "data": {
+      "organization": "01HZX0ORG000000000000000000",
+      "url": "https://cbox.cboxid.com/api/v1/signals/source",
+      "secret": "cbid_env_test_only_secret_0123456789",
+      "import_from": "2026-11-01T00:00:00Z"
+    }
+  },
+  {
+    "name": "managed-enrollment-request-plain-http",
+    "schema": "ManagedEnrollmentRequest",
+    "valid": false,
+    "data": {
+      "organization": "01HZX0ORG000000000000000000",
+      "url": "http://cbox.cboxid.com/api/v1/signals/source",
+      "secret": "cbid_env_test_only_secret_0123456789",
+      "import_from": "2026-11-01T00:00:00Z"
+    }
+  },
+  {
+    "name": "managed-enrollment-request-scope-selection",
+    "schema": "ManagedEnrollmentRequest",
+    "valid": false,
+    "data": {
+      "organization": "01HZX0ORG000000000000000000",
+      "url": "https://cbox.cboxid.com/api/v1/signals/source",
+      "secret": "cbid_env_test_only_secret_0123456789",
+      "import_from": "2026-11-01T00:00:00Z",
+      "project": "foreign"
+    }
+  },
+  {
+    "name": "managed-enrollment",
+    "schema": "ManagedEnrollment",
+    "valid": true,
+    "data": {
+      "provider": "cbox_id",
+      "owner_id": "01HZX0ENV000000000000000000",
+      "source": "managed-id-01HZX0ENV000000000000000000",
+      "url": "https://cbox.cboxid.com/api/v1/signals/source",
+      "catalog_version": 1,
+      "status": "enrolled",
+      "import_from": "2026-11-01T00:00:00Z",
+      "enrolled_at": "2026-11-07T12:00:00Z",
+      "updated_at": "2026-11-07T12:00:00Z",
+      "pipelines_generation": "",
+      "error_code": ""
+    }
+  },
+  {
+    "name": "managed-enrollment-revoked",
+    "schema": "ManagedEnrollment",
+    "valid": true,
+    "data": {
+      "provider": "cbox_id",
+      "owner_id": "01HZX0ENV000000000000000000",
+      "source": "managed-id-01HZX0ENV000000000000000000",
+      "url": "https://cbox.cboxid.com/api/v1/signals/source",
+      "catalog_version": 1,
+      "status": "revoked",
+      "import_from": "2026-11-01T00:00:00Z",
+      "enrolled_at": "2026-11-07T12:00:00Z",
+      "updated_at": "2026-11-07T12:00:00Z",
+      "pipelines_generation": "",
+      "error_code": "partition_pending",
+      "revoked_at": "2026-11-07T13:00:00Z"
+    }
+  },
+  {
+    "name": "managed-enrollment-unknown-status",
+    "schema": "ManagedEnrollment",
+    "valid": false,
+    "data": {
+      "provider": "cbox_id",
+      "owner_id": "01HZX0ENV000000000000000000",
+      "source": "managed-id-01HZX0ENV000000000000000000",
+      "url": "https://cbox.cboxid.com/api/v1/signals/source",
+      "catalog_version": 1,
+      "status": "paused",
+      "import_from": "2026-11-01T00:00:00Z",
+      "enrolled_at": "2026-11-07T12:00:00Z",
+      "updated_at": "2026-11-07T12:00:00Z",
+      "pipelines_generation": "",
+      "error_code": ""
+    }
+  },
+  {
+    "name": "managed-enrollment-path-owner",
+    "schema": "ManagedEnrollment",
+    "valid": false,
+    "data": {
+      "provider": "cbox_id",
+      "owner_id": "../other",
+      "source": "managed-id-01HZX0ENV000000000000000000",
+      "url": "https://cbox.cboxid.com/api/v1/signals/source",
+      "catalog_version": 1,
+      "status": "enrolled",
+      "import_from": "2026-11-01T00:00:00Z",
+      "enrolled_at": "2026-11-07T12:00:00Z",
+      "updated_at": "2026-11-07T12:00:00Z",
+      "pipelines_generation": "",
+      "error_code": ""
+    }
+  },
+  {
+    "name": "managed-revocation",
+    "schema": "ManagedRevocation",
+    "valid": true,
+    "data": {
+      "provider": "cbox_id",
+      "owner_id": "01HZX0ENV000000000000000000",
+      "status": "revoked"
+    }
   }
 ]

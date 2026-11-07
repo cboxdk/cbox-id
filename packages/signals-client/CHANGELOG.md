@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Add a separate typed count-interval client with exact uint64 strings, explicit coverage and privacy dependencies, immutable corrections and historical pagination. Public callers cannot grant themselves interval retention or register series.
+- Verify the interval client against the actual engine HTTP handler and isolated PostgreSQL, including correction availability, scoped access, erasure and usage accounting.
 - Preserve optional tenant identity in entity serialization and signal reads; legacy entity construction and wire shape remain valid.
 - Synchronize the additive security/risk schemas, including the bounded risk finding response. Security risk integration remains available through the documented HTTP boundary.
 - Typed events, metrics, evaluation, replay and read contracts for Cbox Signals.

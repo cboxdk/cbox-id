@@ -1,0 +1,153 @@
+// Copied temporarily below the selected engine checkout so its actual internal
+// HTTP handler and store are exercised. No production fixture or public listener.
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"time"
+
+	"github.com/cboxdk/signalsd/internal/canonical"
+	"github.com/cboxdk/signalsd/internal/domain"
+	"github.com/cboxdk/signalsd/internal/httpapi"
+	"github.com/cboxdk/signalsd/internal/interval"
+	"github.com/cboxdk/signalsd/internal/store"
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+func run() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	config, err := pgxpool.ParseConfig(os.Getenv("SIGNALS_TEST_DATABASE_URL"))
+	if err != nil {
+		return fmt.Errorf("invalid isolated database configuration")
+	}
+	if h := config.ConnConfig.Host; h != "127.0.0.1" && h != "::1" && h != "localhost" {
+		return fmt.Errorf("database must be loopback")
+	}
+	config.MaxConns = 1
+	admin, err := pgxpool.NewWithConfig(ctx, config)
+	if err != nil {
+		return fmt.Errorf("isolated database unavailable")
+	}
+	defer admin.Close()
+	schema := store.NewID("sdk_interval_")
+	if _, err = admin.Exec(ctx, "CREATE SCHEMA "+schema); err != nil {
+		return fmt.Errorf("isolated schema creation failed")
+	}
+	defer func() {
+		cleanup, done := context.WithTimeout(context.Background(), 10*time.Second)
+		defer done()
+		if _, err := admin.Exec(cleanup, "DROP SCHEMA "+schema+" CASCADE"); err != nil {
+			fmt.Fprintln(os.Stderr, "isolated schema cleanup failed")
+			os.Exit(1)
+		}
+	}()
+	isolated := config.Copy()
+	isolated.MaxConns = 2
+	isolated.ConnConfig.RuntimeParams["search_path"] = schema
+	pool, err := pgxpool.NewWithConfig(ctx, isolated)
+	if err != nil {
+		return fmt.Errorf("isolated pool creation failed")
+	}
+	defer pool.Close()
+	s := &store.Store{DB: pool}
+	if err = s.Migrate(ctx); err != nil {
+		return fmt.Errorf("engine migration: %w", err)
+	}
+	scope := canonical.Scope{ProjectID: "sdk-interval", EnvironmentID: "production", Audience: "tenant", TenantID: "customer"}
+	grant := store.CanonicalGrant{Scope: scope, SourceID: "api", Namespaces: []string{"api"}, Families: []string{"api.requests"}, ImportFrom: time.Now().UTC().Add(-30 * 24 * time.Hour), RetentionDays: 3, RawIPDays: 1, MaxRecords: 100, MaxIntervalBuckets: 100, IntervalHistory: []interval.RetentionPolicy{{Resolution: "hour", Days: 30}}}
+	if err = s.PutCanonicalGrant(ctx, grant); err != nil {
+		return fmt.Errorf("grant: %w", err)
+	}
+	series := interval.Series{Scope: scope, Source: "api", ID: "requests", Revision: 1, Namespace: "api", EntityType: "token", PrivacyNamespaces: []string{"api"}, Metric: "api.requests", Unit: "{requests}", Resolution: "hour", Timezone: "UTC", Dimensions: []string{}}
+	if err = s.PutIntervalSeries(ctx, series); err != nil {
+		return fmt.Errorf("series: %w", err)
+	}
+	own, foreign := store.NewID("key_"), store.NewID("key_")
+	for project, token := range map[string]string{"sdk-interval": own, "foreign": foreign} {
+		if _, err = pool.Exec(ctx, `INSERT INTO credentials(hash,project,environment,scopes,sources) VALUES($1,$2,'production',ARRAY['read','write'],ARRAY['api'])`, store.TokenHash(token), project); err != nil {
+			return fmt.Errorf("fixture credential creation failed")
+		}
+	}
+	if _, err = pool.Exec(ctx, `INSERT INTO allowances(project,environment,meter,lease_id,remaining,expires_at) VALUES('sdk-interval','production','signals.events','isolated-lease',100,now()+interval '1 hour')`); err != nil {
+		return fmt.Errorf("isolated allowance: %w", err)
+	}
+	server := httptest.NewServer((&httpapi.Server{Store: s, ControlToken: store.NewID("control_"), RequestBurst: 100}).Handler())
+	defer server.Close()
+	input := map[string]any{"url": server.URL, "token": own, "foreign_token": foreign, "end": time.Now().UTC().Truncate(time.Hour).Format(time.RFC3339), "phase": "records"}
+	call := func() (map[string]any, error) {
+		raw, _ := json.Marshal(input)
+		command := exec.CommandContext(ctx, "php", filepath.Join(os.Getenv("SIGNALS_TEST_SDK_ROOT"), "tests/Integration/count-interval.php"))
+		command.Stdin = bytes.NewReader(raw)
+		var stderr bytes.Buffer
+		command.Stderr = &stderr
+		result, err := command.Output()
+		if err != nil {
+			return nil, fmt.Errorf("PHP SDK acceptance: %s", stderr.String())
+		}
+		var decoded map[string]any
+		if err = json.Unmarshal(result, &decoded); err != nil || decoded["passed"] != true {
+			return nil, fmt.Errorf("invalid SDK acceptance receipt")
+		}
+		return decoded, nil
+	}
+	records, err := call()
+	if err != nil {
+		return err
+	}
+	counters := func(wantBuckets, wantVersions, wantUsage int) error {
+		var buckets, versions, used int
+		if err := pool.QueryRow(ctx, `SELECT coalesce((SELECT sum(buckets) FROM interval_storage),0),coalesce((SELECT sum(versions) FROM interval_storage),0),coalesce((SELECT sum(quantity) FROM usage_ledger),0)`).Scan(&buckets, &versions, &used); err != nil {
+			return err
+		}
+		if buckets != wantBuckets || versions != wantVersions || used != wantUsage {
+			return fmt.Errorf("unexpected counters: %d/%d/%d", buckets, versions, used)
+		}
+		return nil
+	}
+	if err = counters(3, 4, 3); err != nil {
+		return err
+	}
+	credential := store.Credential{Scope: domain.Scope{Project: "sdk-interval", Environment: "production"}, Scopes: []string{"manage"}}
+	if _, err = s.RequestErasure(ctx, credential, domain.Entity{TenantID: "customer", Namespace: "api", Type: "user", ID: "owner-17"}); err != nil {
+		return err
+	}
+	if err = s.ErasePending(ctx); err != nil {
+		return err
+	}
+	input["phase"] = "erased"
+	input["old_as_of"] = records["old_as_of"]
+	input["correction_hash"] = records["correction_hash"]
+	erased, err := call()
+	if err != nil {
+		return err
+	}
+	if err = counters(3, 0, 3); err != nil {
+		return err
+	}
+	if _, err = s.EraseProject(ctx, "sdk-interval"); err != nil {
+		return err
+	}
+	if err = counters(0, 0, 0); err != nil {
+		return err
+	}
+	var archived int
+	if err = pool.QueryRow(ctx, `SELECT sum(quantity) FROM usage_archives WHERE project='sdk-interval'`).Scan(&archived); err != nil || archived != 3 {
+		return fmt.Errorf("project erasure lost usage archive")
+	}
+	return json.NewEncoder(os.Stdout).Encode(map[string]any{"passed": true, "actual_php_http_postgres": true, "buckets": 3, "versions_before_erasure": 4, "charged_buckets": 3, "uint64_and_nanoseconds_preserved": true, "correction_did_not_rewrite_history": true, "foreign_read_and_write_refused": true, "unknown_and_partial_preserved": true, "pagination_verified": true, "entity_erasure": erased, "project_erasure_usage_archive": archived, "model_quality_qualified": false})
+}
+
+func main() {
+	if err := run(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
