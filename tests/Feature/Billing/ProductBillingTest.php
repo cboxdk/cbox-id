@@ -98,12 +98,12 @@ it('reports durable usage once to the exact project owner and keeps rejected eve
     $capture->handle(new EventDelivered($event));
     $capture->handle(new EventDelivered($event));
     expect(DB::table('product_billing_usage_outbox')->count())->toBe(1);
-    $transport = (new FakeManagementTransport)->withUsageEventMeter('cbox-id.auth.login', 'temporarily_refused');
+    $transport = (new FakeManagementTransport)->withUsageEventMeter('cbox-id.sso_sign_ins', 'temporarily_refused');
     app()->instance(ManagementTransport::class, $transport);
     app()->forgetInstance(BillingManagement::class);
     $this->artisan('billing:report-product-usage')->assertFailed();
     expect(DB::table('product_billing_usage_outbox')->value('reported_at'))->toBeNull();
-    $transport->withUsageEventMeter('cbox-id.auth.login');
+    $transport->withUsageEventMeter('cbox-id.sso_sign_ins');
     $this->artisan('billing:report-product-usage')->assertSuccessful();
     $this->artisan('billing:report-product-usage')->assertSuccessful();
     expect($transport->recordedUsageEvents($workspace->id))->toHaveCount(1)

@@ -8,6 +8,14 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Fixed
+
+- **Usage reaches Cbox Billing.** Every ID meter had been published without a source, so Billing created them totals-fed and refused each usage event (`meter_fed_by_totals`); no usage was ever recorded. The meters are replaced by event-fed keys (`cbox-id.sign_ins`, `cbox-id.sso_sign_ins`, …) and the old `cbox-id.auth.*` keys retire. Pending outbox rows move to the new keys (migration `2026_11_08_010000`, additive). The reporter sends one batch per workspace instead of one request per event and keeps Billing's rejection reason.
+
+### Added
+
+- **Measure everything, price nothing yet.** 31 meters, all event-fed: sign-ins by method (password, passkey, SSO, social, handoff…), SSO sign-ins, monthly active users (distinct people), tokens issued, one-time codes sent, MFA and passkey enrolments, invitations, members, CIBA approvals, directory provisioning, plus an hourly peak of users, organizations, memberships, environments, SSO and social connections, directories, verified domains, apps and active API keys per workspace. New hourly `billing:snapshot-product-usage`. See `docs/core-concepts/central-product-billing.md`.
+
 ### Configuration
 
 - Optional `CBOX_ID_INTROSPECTION_RESOURCE_SERVERS` JSON mapping for explicit resource-server grants in laravel-id 1.27. Default empty; existing own-client introspection is unchanged. No deployment grant is created by this configuration adapter.
