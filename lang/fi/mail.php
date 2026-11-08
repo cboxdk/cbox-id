@@ -117,4 +117,13 @@ return [
             'not_you' => 'Voit jättää tämän sähköpostin huomioimatta – mitään ei tapahdu ilman koodia.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Hyväksyntä tarvitaan: :app',
+        'heading' => ':app pyytää hyväksyntääsi',
+        'lead' => ':app on pyytänyt hyväksyntääsi palvelussa :brand. Avaa hyväksyntäsivusi nähdäksesi, mitä se haluaa tehdä, ja hyväksy tai hylkää pyyntö.',
+        'expires' => 'Pyyntö vanhenee klo :time.',
+        'button' => 'Tarkastele pyyntöä',
+        'not_you_title' => 'Etkö odottanut tätä?',
+        'not_you' => 'Hylkää se. Mitään ei tapahdu, ellet hyväksy sitä kirjautuneena.',
+    ],
 ];

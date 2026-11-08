@@ -117,4 +117,13 @@ return [
             'not_you' => 'Pode ignorar este e-mail – nada acontece sem o código.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Aprovação necessária: :app',
+        'heading' => ':app está a pedir a sua aprovação',
+        'lead' => ':app pediu a sua aprovação em :brand. Abra a sua página de aprovações para ver o que pretende fazer e aprove ou recuse o pedido.',
+        'expires' => 'O pedido expira às :time.',
+        'button' => 'Rever o pedido',
+        'not_you_title' => 'Não estava à espera disto?',
+        'not_you' => 'Recuse-o. Nada acontece a menos que o aprove com sessão iniciada.',
+    ],
 ];

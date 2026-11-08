@@ -117,4 +117,13 @@ return [
             'not_you' => 'Puoi ignorare questa email – non succede nulla senza il codice.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Approvazione richiesta: :app',
+        'heading' => ':app chiede la tua approvazione',
+        'lead' => ':app ha chiesto la tua approvazione su :brand. Apri la pagina delle approvazioni per vedere cosa vuole fare, poi approva o rifiuta la richiesta.',
+        'expires' => 'La richiesta scade alle :time.',
+        'button' => 'Esamina la richiesta',
+        'not_you_title' => 'Non te lo aspettavi?',
+        'not_you' => 'Rifiutala. Non succede nulla se non la approvi dopo aver effettuato l’accesso.',
+    ],
 ];

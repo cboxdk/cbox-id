@@ -117,4 +117,13 @@ return [
             'not_you' => 'Je kunt deze e-mail negeren. Er gebeurt niets zonder de code.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Goedkeuring nodig: :app',
+        'heading' => ':app vraagt om je goedkeuring',
+        'lead' => ':app heeft in :brand om je goedkeuring gevraagd. Open je pagina met goedkeuringen om te zien wat er gevraagd wordt en keur het verzoek goed of af.',
+        'expires' => 'Het verzoek verloopt om :time.',
+        'button' => 'Verzoek bekijken',
+        'not_you_title' => 'Had je dit niet verwacht?',
+        'not_you' => 'Wijs het af. Er gebeurt niets tenzij je het goedkeurt terwijl je bent ingelogd.',
+    ],
 ];

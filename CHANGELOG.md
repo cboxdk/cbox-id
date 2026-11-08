@@ -14,6 +14,7 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **Approvals reach people without the app by mail.** When a CIBA request or an action held by a key's approval policy waits for somebody no enrolled Cbox Authenticator can reach, Cbox ID mails them a link to their Approvals page: who is asking and when it expires, never the binding message. In all 21 languages, branded, at most 5 per person per 10 minutes, and failing open (a mail error never fails the request). `CBOX_ID_APPROVAL_EMAIL`: `fallback` (default), `always` or `off`.
 - **Docs: Approvals without the mobile app.** How a CIBA or held-action approval reaches a person with no trusted device (the Approvals page), and what the agent must tell them: where to go, the binding message, the deadline. Linked from Approvals, Trusted devices and the approvals concept.
 
 ### Fixed

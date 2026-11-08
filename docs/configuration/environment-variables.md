@@ -203,6 +203,7 @@ Laravel `SESSION_*` keys below).
 | `CBOX_ID_DECISIONS_MAX_BATCH` | Maximum number of decisions a single `POST /oauth/decisions` request may ask for. | `50` | Raise only if a resource server genuinely batches more; the endpoint is a hot path. |
 | `CBOX_ID_CIBA_TTL_SECONDS` | How long a CIBA (client-initiated backchannel) authentication request stays pending. | `300` | Match your out-of-band approval window. |
 | `CBOX_ID_CIBA_POLL_INTERVAL` | The `interval` handed back to a CIBA client, in seconds. | `5` | Raise to reduce polling load. |
+| `CBOX_ID_APPROVAL_EMAIL` | When to mail a person that a CIBA request or a held action is waiting for them: `fallback` when no enrolled device can take the push, `always`, or `off`. The mail links to their Approvals page and never contains the binding message. At most 5 per person per 10 minutes. | `fallback` | `always` while most people have no app; `off` if your agents tell people themselves. |
 | `CBOX_ID_AUTHORIZATION_ENDPOINT_PATH` | The **path** of the interactive authorization endpoint, joined to each environment's own issuer so every tenant advertises it on its own host. | `/oauth/authorize` | Never, in this app: it is set in `config/cbox-id.php` because it describes these routes. |
 | `CBOX_ID_AUTHORIZATION_ENDPOINT` | An **absolute** authorization-endpoint URL, used only when no path is configured. | *(none)* | Avoid. An absolute URL pins every environment to one host, which a client that checks RFC 9207 `iss` will reject. |
 

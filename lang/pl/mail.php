@@ -117,4 +117,13 @@ return [
             'not_you' => 'Możesz pominąć tę wiadomość – nic się nie stanie bez kodu.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Wymagana zgoda: :app',
+        'heading' => ':app prosi o Twoją zgodę',
+        'lead' => ':app poprosiła o Twoją zgodę w :brand. Otwórz stronę zatwierdzeń, aby zobaczyć, czego dotyczy prośba, a następnie ją zatwierdź lub odrzuć.',
+        'expires' => 'Prośba wygasa o :time.',
+        'button' => 'Sprawdź prośbę',
+        'not_you_title' => 'Nie spodziewałeś się tego?',
+        'not_you' => 'Odrzuć ją. Nic się nie stanie, dopóki jej nie zatwierdzisz po zalogowaniu.',
+    ],
 ];

@@ -132,4 +132,13 @@ return [
             'not_you' => 'Sie können diese E-Mail ignorieren – ohne den Code passiert nichts.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Freigabe erforderlich: :app',
+        'heading' => ':app bittet um deine Freigabe',
+        'lead' => ':app hat in :brand um deine Freigabe gebeten. Öffne deine Seite mit Freigaben, um zu sehen, was angefragt wird, und gib die Anfrage frei oder lehne sie ab.',
+        'expires' => 'Die Anfrage läuft um :time ab.',
+        'button' => 'Anfrage ansehen',
+        'not_you_title' => 'Hast du das nicht erwartet?',
+        'not_you' => 'Lehne sie ab. Es passiert nichts, solange du sie nicht angemeldet freigibst.',
+    ],
 ];

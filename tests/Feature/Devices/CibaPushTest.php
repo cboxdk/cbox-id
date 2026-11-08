@@ -17,8 +17,15 @@ uses(RefreshDatabase::class);
 it('decorates the CIBA contract so the prompt is pushed, not relayed', function (): void {
     // The whole design rests on this: the domain event goes to an outbox that is
     // relayed once a minute, against a 300-second CIBA TTL.
-    expect(app(BackchannelAuthentication::class))
-        ->toBeInstanceOf(PushNotifyingBackchannelAuthentication::class);
+    // The app's approval mail decorates it too; the push is somewhere in the chain.
+    $layers = [];
+
+    for ($service = app(BackchannelAuthentication::class); is_object($service);) {
+        $layers[] = $service::class;
+        $service = property_exists($service, 'inner') ? (new ReflectionProperty($service, 'inner'))->getValue($service) : null;
+    }
+
+    expect($layers)->toContain(PushNotifyingBackchannelAuthentication::class);
 });
 
 it('pushes an approval prompt synchronously when a CIBA request is raised', function (): void {

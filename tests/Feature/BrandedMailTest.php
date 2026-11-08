@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Mail\AdminAssignedPasswordMail;
+use App\Mail\ApprovalRequestMail;
 use App\Mail\BrandedMailable;
 use App\Mail\CertificateExpiringMail;
 use App\Mail\EmailVerificationMail;
@@ -94,6 +95,7 @@ function everyBrandedMail(): array
         'admin-assigned password' => fn (): BrandedMailable => new AdminAssignedPasswordMail('correct-horse', true, Carbon::parse('2026-10-08 15:00:00')),
         'invitation' => fn (): BrandedMailable => new InvitationMail('Acme', 'Ada Lovelace', 'https://id.example/i/abc', 'Member', 'Acme Dashboard'),
         'organization invite' => fn (): BrandedMailable => new OrganizationInviteMail('Acme', 'Ada Lovelace', 'https://id.example/o/abc', 'Admin'),
+        'approval request' => fn (): BrandedMailable => new ApprovalRequestMail('Release agent', 'https://id.example/approvals', Carbon::parse('2026-10-08 15:05:00')),
         'portal link' => fn (): BrandedMailable => new PortalLinkMail('Acme', 'https://id.example/portal/abc', ['sso', 'dsync'], Carbon::parse('2026-10-08 15:00:00')),
         'certificate expiring' => fn (): BrandedMailable => new CertificateExpiringMail('Acme', 'Acme Okta', Carbon::parse('2026-10-20'), 7),
         'certificate expired' => fn (): BrandedMailable => new CertificateExpiringMail('Acme', 'Acme Okta', Carbon::parse('2026-10-01'), -2),

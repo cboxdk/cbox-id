@@ -117,4 +117,13 @@ return [
             'not_you' => 'Možete zanemariti ovu poruku. Bez koda se ništa neće dogoditi.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Potrebno odobrenje: :app',
+        'heading' => ':app traži vaše odobrenje',
+        'lead' => ':app zatražila je vaše odobrenje u :brand. Otvorite stranicu s odobrenjima da vidite što želi učiniti te odobrite ili odbijte zahtjev.',
+        'expires' => 'Zahtjev istječe u :time.',
+        'button' => 'Pregledaj zahtjev',
+        'not_you_title' => 'Niste to očekivali?',
+        'not_you' => 'Odbijte ga. Ništa se ne događa dok ga ne odobrite prijavljeni.',
+    ],
 ];

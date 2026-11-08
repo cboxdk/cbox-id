@@ -147,4 +147,13 @@ return [
             'not_you' => 'You can ignore this email — nothing happens without the code.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Approval needed: :app',
+        'heading' => ':app is asking for your approval',
+        'lead' => ':app has asked for your approval in :brand. Open your Approvals page to see what it wants to do, then approve or deny it.',
+        'expires' => 'The request expires at :time.',
+        'button' => 'Review the request',
+        'not_you_title' => 'Not expecting this?',
+        'not_you' => 'Deny it. Nothing happens unless you approve it while signed in.',
+    ],
 ];

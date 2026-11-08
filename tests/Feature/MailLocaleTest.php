@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Mail\AdminAssignedPasswordMail;
+use App\Mail\ApprovalRequestMail;
 use App\Mail\EmailVerificationMail;
 use App\Mail\InvitationMail;
 use App\Mail\MagicLinkMail;
@@ -46,6 +47,7 @@ function everyMailable(): array
         'admin-assigned password' => fn (): Mailable => new AdminAssignedPasswordMail('correct-horse', true, Carbon::parse('2026-10-08 15:00:00')),
         'invitation' => fn (): Mailable => new InvitationMail('Acme', 'Ada Lovelace', 'https://id.example/i/abc', 'Member', 'Acme Dashboard'),
         'organization invite' => fn (): Mailable => new OrganizationInviteMail('Acme', 'Ada Lovelace', 'https://id.example/o/abc', 'Admin'),
+        'approval request' => fn (): Mailable => new ApprovalRequestMail('Release agent', 'https://id.example/approvals', Carbon::parse('2026-10-08 15:05:00')),
     ];
 }
 

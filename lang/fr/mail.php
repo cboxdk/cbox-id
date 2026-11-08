@@ -117,4 +117,13 @@ return [
             'not_you' => 'Vous pouvez ignorer cet e-mail — rien ne se passe sans le code.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Approbation requise : :app',
+        'heading' => ':app demande votre approbation',
+        'lead' => ':app a demandé votre approbation dans :brand. Ouvrez votre page d’approbations pour voir ce qui est demandé, puis approuvez ou refusez la demande.',
+        'expires' => 'La demande expire à :time.',
+        'button' => 'Examiner la demande',
+        'not_you_title' => 'Vous ne vous y attendiez pas ?',
+        'not_you' => 'Refusez-la. Rien ne se passe tant que vous ne l’approuvez pas en étant connecté.',
+    ],
 ];

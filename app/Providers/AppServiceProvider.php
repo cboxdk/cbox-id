@@ -15,6 +15,8 @@ use App\Platform\Actions\ActionTrail;
 use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\Principal\DelegatedTokens;
 use App\Platform\Actions\Principal\OAuthDelegatedTokens;
+use App\Platform\Agents\ApprovalMail;
+use App\Platform\Agents\MailingBackchannelAuthentication;
 use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Connect\ActionSnippets;
 use App\Platform\Console\ConsoleScope;
@@ -42,6 +44,7 @@ use Cbox\Id\Identity\Contracts\Passkeys;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
+use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Support\SelfRegisteredScopes;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
@@ -53,6 +56,7 @@ use Illuminate\Http\Client\Factory;
 use Illuminate\Mail\Events\MessageSending;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
+use Psr\Log\LoggerInterface;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -138,6 +142,13 @@ class AppServiceProvider extends ServiceProvider
         // …and what it does is recorded as ITS act: the framework services behind the
         // management API write their own audit entries, mostly with no actor at all.
         $this->app->extend(AuditLog::class, fn (AuditLog $inner): AuditLog => new EnvironmentKeyAuditLog($inner));
+
+        // A CIBA request mails the person when no phone will tell them — see ApprovalMail.
+        $this->app->extend(BackchannelAuthentication::class, fn (BackchannelAuthentication $inner, Application $app): BackchannelAuthentication => new MailingBackchannelAuthentication(
+            $inner,
+            $app->make(ApprovalMail::class),
+            $app->make(LoggerInterface::class),
+        ));
 
         // When each passkey last signed somebody in, for My account's list — stamped at
         // every door a passkey signs in at, because they all go through this contract.
