@@ -45,7 +45,7 @@ final readonly class IdManagedSources implements ManagedSources
             if ($owner === null) {
                 continue;
             }
-            yield new ManagedEnvironment($environment->id, $owner, rtrim($this->issuers->forEnvironment($environment->id), '/').'/api/v1/signals/source', DateTimeImmutable::createFromInterface($importFrom));
+            yield new ManagedEnvironment($environment->id, $owner, rtrim($this->issuers->forEnvironment($environment->id), '/'), DateTimeImmutable::createFromInterface($importFrom));
         }
     }
 

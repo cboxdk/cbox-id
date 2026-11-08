@@ -52,7 +52,7 @@ it('offers the captured environments owned through their project and skips unown
     expect($sources->provider())->toBe('cbox_id')->and($offered)->toHaveCount(1)
         ->and($offered[0]->ownerId)->toBe($environment->id)
         ->and($offered[0]->organization)->toBe(Project::query()->firstOrFail()->organization_id)
-        ->and($offered[0]->url)->toEndWith('/api/v1/signals/source')->and($offered[0]->url)->toStartWith('http');
+        ->and($offered[0]->url)->toStartWith('http')->and(parse_url($offered[0]->url, PHP_URL_PATH))->toBeNull();
 
     $environment->forceFill(['status' => EnvironmentStatus::Suspended])->save();
     SourceHead::query()->create(['environment_id' => $environment->id, 'generation' => 1, 'sequence' => 0, 'retained_after' => 0, 'record_count' => 0, 'started_at' => now()]);
