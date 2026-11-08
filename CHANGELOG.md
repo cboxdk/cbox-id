@@ -8,6 +8,14 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Changed
+
+- **The marketing site leads with agents.** cboxid.com now has an Agents section (delegated sign-in, approval before action, backchannel approval), a CIBA example, an agent approval in the hero preview, OpenID CIBA and MCP in the standards strip, and an FAQ answer on approving without the mobile app.
+
+### Added
+
+- **Docs: Approvals without the mobile app.** How a CIBA or held-action approval reaches a person with no trusted device (the Approvals page), and what the agent must tell them: where to go, the binding message, the deadline. Linked from Approvals, Trusted devices and the approvals concept.
+
 ### Fixed
 
 - **Hourly usage arrives inside Billing's grace window.** Row-based activity (tokens, one-time codes, MFA, passkeys) was dated at the start of the closed hour, 65 minutes old when sent, and Billing refused it as `too_old` (grace one hour). It is now dated at the hour's last second, and only the latest closed hour is counted by default. A `too_old` row is closed with its reason kept instead of failing the reporter every minute.

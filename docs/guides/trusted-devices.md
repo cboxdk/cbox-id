@@ -16,6 +16,9 @@ user in one environment. Once enrolled it does two things:
   arrive as a notification, so an unexpected one is noticed by the person it happened to
   rather than by whoever reads the audit log next quarter.
 
+People without the app can still approve, on the Approvals page in the console. See
+[Approvals without the mobile app](approvals-without-the-app.md).
+
 The module is **off by default**. A deployment with no mobile app has no devices to
 notify, and the push decorator should not sit in the sign-in path doing nothing.
 

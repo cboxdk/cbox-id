@@ -4,12 +4,12 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Cbox ID — Identity infrastructure for your applications</title>
-    <meta name="description" content="Sign-in, organizations, enterprise SSO and access control in one identity platform. Use Cbox ID hosted or run it on your own infrastructure.">
+    <meta name="description" content="Sign-in, organizations, enterprise SSO and access control for people and the AI agents acting for them, with human approval before agents act. Use Cbox ID hosted or run it on your own infrastructure.">
     <meta name="theme-color" content="#faf9f6">
     <link rel="canonical" href="https://{{ config('marketing.host') }}/">
     <meta property="og:type" content="website">
     <meta property="og:title" content="Cbox ID — Your users. Your rules.">
-    <meta property="og:description" content="One identity layer for sign-in, organizations and access. Hosted or on your infrastructure.">
+    <meta property="og:description" content="One identity layer for people and their agents: sign-in, organizations, access and approvals. Hosted or on your infrastructure.">
     <meta property="og:url" content="https://{{ config('marketing.host') }}/">
     <meta property="og:image" content="https://{{ config('marketing.host') }}/brand/cbox-icon-512.png">
     <link rel="icon" href="/brand/monograms/id.svg" type="image/svg+xml">
@@ -21,7 +21,7 @@
 <div class="site-shell">
     <header class="site-header">
         <a class="brand" href="/" aria-label="Cbox ID home"><img src="/brand/monograms/id.svg" width="34" height="34" alt=""><span>Cbox <span class="brand-dot">·</span> ID</span></a>
-        <nav aria-label="Main navigation"><a href="#platform">Platform</a><a href="#developers">Developers</a><a href="#deployment">Deployment</a><a href="https://cbox.dk/products/cbox-id/docs">Docs <span aria-hidden="true">↗</span></a></nav>
+        <nav aria-label="Main navigation"><a href="#agents">Agents</a><a href="#platform">Platform</a><a href="#developers">Developers</a><a href="#deployment">Deployment</a><a href="https://cbox.dk/products/cbox-id/docs">Docs <span aria-hidden="true">↗</span></a></nav>
         <div class="header-actions"><a class="header-login" href="{{ $appUrl }}/login">Sign in <span aria-hidden="true">↗</span></a><a class="button button-primary" href="{{ $appUrl }}/start">Join early access</a></div>
     </header>
     <main id="main">
@@ -29,7 +29,7 @@
             <div class="hero-copy">
                 <p class="eyebrow"><span class="eyebrow-line"></span> Early access</p>
                 <h1 id="hero-title">Your users.<br>Your rules.<br><span>One identity layer.</span></h1>
-                <p class="hero-description">Give people a way in. Keep control of what happens next. Sign-in, organizations and access, built into your applications.</p>
+                <p class="hero-description">Give people and the agents acting for them a way in. Keep control of what happens next. Sign-in, organizations, access and approvals, built into your applications.</p>
                 <div class="hero-actions"><a class="button button-primary" href="{{ $appUrl }}/start">Join early access <span aria-hidden="true">↗</span></a><a class="text-link" href="https://cbox.dk/products/cbox-id/docs">Read the docs <span aria-hidden="true">→</span></a></div>
                 <p class="hero-note">Join the waitlist for hosted early access. Already invited? Use your invitation on the signup page.</p>
             </div>
@@ -37,17 +37,40 @@
                 <div class="preview-top"><span class="preview-monogram">ID</span><span>Identity workspace</span><span class="example-label">Example</span></div>
                 <div class="preview-body">
                     <div class="preview-context"><span class="workspace-avatar">N</span><div><strong>Northstar</strong><span>Production environment</span></div><span class="context-dots" aria-hidden="true">···</span></div>
-                    <div class="preview-heading"><span>Access overview</span><span class="tag">Production</span></div>
-                    <div class="identity-person"><span class="person-avatar">AM</span><div><strong>Alex Morgan</strong><span>alex@example.com</span></div><span class="tag tag-blue">Member</span></div>
-                    <div class="access-step"><span class="step-icon" aria-hidden="true">01</span><div><strong>Authenticate</strong><span>Passkey · User verified</span></div><span class="step-check" aria-hidden="true">✓</span></div>
-                    <div class="access-step"><span class="step-icon" aria-hidden="true">02</span><div><strong>Resolve organization</strong><span>Northstar · Engineering</span></div><span class="step-check" aria-hidden="true">✓</span></div>
-                    <div class="access-step"><span class="step-icon" aria-hidden="true">03</span><div><strong>Apply access policy</strong><span>Role · Resource · Permission</span></div><span class="step-check" aria-hidden="true">✓</span></div>
-                    <div class="preview-result"><span class="result-dot" aria-hidden="true"></span><span>Identity verified. Access scoped.</span><code>session.created</code></div>
+                    <div class="preview-heading"><span>Approval request</span><span class="tag">Production</span></div>
+                    <div class="identity-person"><span class="person-avatar">RA</span><div><strong>Release agent</strong><span>Acting for alex@example.com</span></div><span class="tag tag-blue">Agent</span></div>
+                    <div class="access-step"><span class="step-icon" aria-hidden="true">01</span><div><strong>Delegated sign-in</strong><span>OAuth consent · Scoped token</span></div><span class="step-check" aria-hidden="true">✓</span></div>
+                    <div class="access-step"><span class="step-icon" aria-hidden="true">02</span><div><strong>Ask before acting</strong><span>Deploy release 4.2 · Code K7Q2</span></div><span class="step-check" aria-hidden="true">✓</span></div>
+                    <div class="access-step"><span class="step-icon" aria-hidden="true">03</span><div><strong>Approved by Alex</strong><span>Passkey · On their phone</span></div><span class="step-check" aria-hidden="true">✓</span></div>
+                    <div class="preview-result"><span class="result-dot" aria-hidden="true"></span><span>Approved once. Recorded in the audit log.</span><code>approved</code></div>
                 </div>
-                <div class="preview-bottom"><span>Every identity has a boundary.</span><span aria-hidden="true">↗</span></div>
+                <div class="preview-bottom"><span>Every agent has a boundary.</span><span aria-hidden="true">↗</span></div>
             </div>
         </section>
-        <div class="protocol-strip" aria-label="Supported integration standards"><span class="strip-label">Built on shared standards</span><span>OpenID Connect</span><span>OAuth 2.0</span><span>SAML 2.0</span><span>SCIM 2.0</span><span>WebAuthn</span></div>
+        <div class="protocol-strip" aria-label="Supported integration standards"><span class="strip-label">Built on shared standards</span><span>OpenID Connect</span><span>OAuth 2.0</span><span>SAML 2.0</span><span>SCIM 2.0</span><span>WebAuthn</span><span>OpenID CIBA</span><span>MCP</span></div>
+        <section id="agents" class="section" aria-labelledby="agents-title">
+            <div class="section-intro"><p class="eyebrow">Agents act. People decide.</p><h2 id="agents-title">An agent is a user<br>that needs a boundary.</h2><p>Agents now sign in, call your APIs and change things in production. Each one gets its own credential, the scopes its task needs and a person who answers for it. When an action matters, that person approves it first, from wherever they are.</p></div>
+            <div class="capabilities">
+                <article><span class="feature-number">01 / Delegated sign-in</span><h3>Agents sign in as the person they work for.</h3><p>Claude Code, Cursor and other MCP clients sign in with OAuth and a consent screen. They get a scoped token, not a password. Client metadata documents mean no client has to be registered first.</p><a class="text-link" href="https://cbox.dk/products/cbox-id/docs/guides/agents-and-mcp">Connect an agent <span aria-hidden="true">↗</span></a></article>
+                <article><span class="feature-number">02 / Approval before action</span><h3>Critical actions wait for a yes.</h3><p>Give a key an approval policy, and every critical, destructive or write action waits for its owner. The approval covers that one call with that input, shows a binding code and runs once.</p><a class="text-link" href="https://cbox.dk/products/cbox-id/docs/guides/step-up-approvals">Set an approval policy <span aria-hidden="true">↗</span></a></article>
+                <article><span class="feature-number">03 / Backchannel approval</span><h3>Ask from a server, a terminal or a chat.</h3><p>An agent with no screen asks through OpenID CIBA. The person approves on their phone with the Cbox Authenticator app or on their Approvals page. Administrators can deny anything that looks wrong, and every decision goes to the audit log.</p><a class="text-link" href="https://cbox.dk/products/cbox-id/docs/guides/approvals-without-the-app">Build an approval flow <span aria-hidden="true">↗</span></a></article>
+            </div>
+        </section>
+        <section class="developer-section section" aria-labelledby="ciba-title">
+            <div class="developer-copy"><p class="eyebrow">Human in the loop, by protocol</p><h2 id="ciba-title">One request.<br>One person. One answer.</h2><p>The agent names who it is asking and what for. The person sees exactly that sentence, then decides. Until they do, the agent keeps waiting. A no stops it, and an expired request means asking again.</p><a class="text-link" href="https://cbox.dk/products/cbox-id/docs/guides/agent-approvals">How approvals work <span aria-hidden="true">→</span></a></div>
+            <div class="code-panel"><div class="code-panel-header"><span class="code-filename">Ask a person before acting</span><span class="code-language">HTTP</span></div><pre><code><span class="code-comment"># The agent asks for approval</span>
+<span class="code-keyword">POST</span> /oauth/backchannel_authentication
+login_hint=<span class="code-value">alex@example.com</span>
+binding_message=<span class="code-value">"Deploy release 4.2 to production"</span>
+
+{ <span class="code-key">"auth_req_id"</span>: <span class="code-value">"…"</span>, <span class="code-key">"expires_in"</span>: <span class="code-value">300</span>, <span class="code-key">"interval"</span>: <span class="code-value">5</span> }
+
+<span class="code-comment"># …and polls until Alex answers</span>
+<span class="code-keyword">POST</span> /oauth/token
+grant_type=<span class="code-value">urn:openid:params:grant-type:ciba</span>
+
+{ <span class="code-key">"error"</span>: <span class="code-value">"authorization_pending"</span> }   <span class="code-comment"># then tokens, or access_denied</span></code></pre><div class="code-panel-footer">Illustrative request · Client authentication omitted.</div></div>
+        </section>
         <section id="platform" class="platform-section section" aria-labelledby="platform-title">
             <div class="section-intro"><p class="eyebrow">A foundation, not another silo</p><h2 id="platform-title">Identity is more than<br>a sign-in screen.</h2><p>The first login is only the beginning. Keep users, organizations and permissions connected as your product grows.</p></div>
             <div class="capabilities">
@@ -77,6 +100,7 @@
             <details><summary>Can I keep my own sign-in design?<span aria-hidden="true">+</span></summary><p>Yes. Use the Frontend API and client SDKs to build sign-in into your application, or use the hosted sign-in pages with your environment’s branding.</p></details>
             <details><summary>Does each customer get a separate environment?<span aria-hidden="true">+</span></summary><p>Environments separate identity configurations and issuers. Organizations group your customers’ teams within an environment. Choose the structure that fits your application.</p></details>
             <details><summary>Can I connect an enterprise identity provider?<span aria-hidden="true">+</span></summary><p>Yes. Cbox ID supports inbound SAML and OpenID Connect connections, alongside its own sign-in methods. Configure the connection in your environment.</p></details>
+            <details><summary>Do my users need the mobile app to approve an agent?<span aria-hidden="true">+</span></summary><p>No. The Cbox Authenticator app sends a push, but every request also waits on the person’s Approvals page in the console. Your agent tells them where to go and what they are approving.</p></details>
             <details><summary>Where do I manage an existing account?<span aria-hidden="true">+</span></summary><p>The application lives at <a href="{{ $appUrl }}/login">{{ parse_url($appUrl, PHP_URL_HOST) }}</a>. Your organization’s existing identity environment keeps its own login address.</p></details>
         </div></section>
         <section class="final-cta" aria-labelledby="cta-title"><div><p class="eyebrow">Start with a solid foundation</p><h2 id="cta-title">Make identity part<br>of your infrastructure.</h2></div><a class="button button-primary" href="{{ $appUrl }}/start">Join early access <span aria-hidden="true">↗</span></a></section>
