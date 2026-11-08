@@ -30,7 +30,7 @@ final readonly class SourceLedger
     {
         $environment = $this->environments()->current()?->environmentKey();
 
-        return $environment !== null && in_array($environment, config()->array('signals-data.environments'), true) ? $environment : null;
+        return $environment !== null && SourceEnvironments::includes($environment) ? $environment : null;
     }
 
     public function append(SourceFact $fact): void

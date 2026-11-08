@@ -18,7 +18,7 @@ final class MaintainSource extends Command
 
     public function handle(SourceLedger $ledger, EnvironmentContext $environments): int
     {
-        $known = [...config()->array('signals-data.environments'),
+        $known = [...SourceEnvironments::listed(),
             ...SourceHead::query()->pluck('environment_id')->all(),
             ...SourcePending::query()->distinct()->pluck('environment_id')->all()];
         foreach (array_unique(array_filter($known, is_string(...))) as $environment) {

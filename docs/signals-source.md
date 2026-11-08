@@ -1,7 +1,8 @@
 # Identity source for Signals
 
 This source is separate from authentication risk enforcement. `SIGNALS_DATA_ENVIRONMENTS`
-explicitly opts environments into capture; `SIGNALS_AUTH_ENABLED` retains its existing
+explicitly opts environments into capture: a comma-separated list of environment ids, or `*`
+for every active environment (new environments join without a configuration change); `SIGNALS_AUTH_ENABLED` retains its existing
 meaning and deadline. No remote request is made on the sign-in path by the source.
 
 `GET /api/v1/signals/source` requires an environment-owner key carrying
