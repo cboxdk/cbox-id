@@ -14,7 +14,16 @@ package's own breaking changes are in
 this file covers what an **operator of this deployment** has to do, and repeats the
 package changes that need action here rather than in a client.
 
-## Unreleased
+## 2.1.0
+
+**cboxid.com took 2.1.0 continuously**, as it did 2.0.0: each change reached production as
+it merged to `main`. The `v2.1.0` tag marks a commit on `main`, so nothing below is run again
+for cboxid.com. Another deployment crossing from 2.0.x reads the sections below; the
+migrations are additive and run with the release as usual.
+
+New and optional: `CBOX_ID_APPROVAL_EMAIL` (`fallback` by default) mails a person a link to
+their Approvals page when a CIBA request or a held action waits for them and no enrolled
+device can take the push. Set it to `off` to keep the previous behaviour.
 
 ### `connectors.webhook_event_types` is gone
 
