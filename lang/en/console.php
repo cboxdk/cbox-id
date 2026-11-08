@@ -757,6 +757,8 @@ return [
     'confirm_phone_number_3afac393' => 'Confirm phone number',
     'confirm_this_matches_the_device_36b8bd55' => 'Confirm this matches the device',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Confirm this matches your device',
+    'access_to_176da1cf' => 'Access to',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'This app registered itself, so anyone could have picked its name. Approve only if the message above matches what you just started.',
     'confirm_who_the_person_is_required_for_single_sign_on_7944c28a' => 'Confirm who the person is. Required for single sign-on.',
     'confirm_your_email_address_part1_to_make_changes_in_the_7b9d8809' => 'Confirm your email address :part1 to make changes in the console.',
     'confirm_your_email_to_finish_7ea7f091' => 'Confirm your email to finish',

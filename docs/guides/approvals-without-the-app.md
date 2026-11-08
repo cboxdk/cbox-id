@@ -20,7 +20,8 @@ it, your agent does.
 When your app calls `POST /oauth/backchannel_authentication`, or an agent's key holds an
 action for approval, Cbox ID:
 
-1. **Creates the request** for the person named by `login_hint` (or the key's owner), with
+1. **Creates the request** for the person named by `login_hint` (their user id or a
+   confirmed email address; otherwise `unknown_user_id`), or for the key's owner, with
    your `binding_message` and the scopes asked for. It lives for
    `CBOX_ID_CIBA_TTL_SECONDS`, 300 seconds by default.
 2. **Pushes it to their trusted devices**, if they have any.
@@ -139,4 +140,5 @@ see [Trusted devices](trusted-devices.md).
 - [Approvals (concept)](../core-concepts/approvals.md): held actions and requests to act as somebody.
 - [Step-up approvals](step-up-approvals.md): a key's approval policy, and handling `approval_required`.
 - [Agents and MCP](agents-and-mcp.md): connecting the agents that ask.
+- [Agents and CLIs without a browser](agents-and-clis-without-a-browser.md): CIBA for a client that registered itself.
 - [Trusted devices](trusted-devices.md): the app, enrolment and push delivery.

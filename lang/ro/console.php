@@ -1777,6 +1777,8 @@ return [
     'compression_278b1b2a' => 'Compresie',
     'confirm_this_matches_the_device_36b8bd55' => 'Confirmați că se potrivește cu dispozitivul',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Confirmați că se potrivește cu dispozitivul dvs.',
+    'access_to_176da1cf' => 'Acces la',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Această aplicație s-a înregistrat singură, așa că oricine i-ar fi putut alege numele. Aprobați doar dacă mesajul de mai sus se potrivește cu ce tocmai ați pornit.',
     'connect_a_directory_a1e72908' => 'Conectați un director',
     'connect_a_provider_a002b3f3' => 'Conectați un furnizor',
     'connect_an_ai_agent_d8f6c537' => 'Conectați un agent AI',

@@ -1779,6 +1779,8 @@ return [
     'compression_278b1b2a' => 'Komprese',
     'confirm_this_matches_the_device_36b8bd55' => 'Potvrďte shodu se zařízením',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Potvrďte shodu s vaším zařízením',
+    'access_to_176da1cf' => 'Přístup k',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Tato aplikace se zaregistrovala sama, takže její název mohl zvolit kdokoli. Schvalte jen tehdy, pokud zpráva výše odpovídá tomu, co jste právě spustili.',
     'connect_a_directory_a1e72908' => 'Připojit adresář',
     'connect_a_provider_a002b3f3' => 'Připojit poskytovatele',
     'connect_an_ai_agent_d8f6c537' => 'Připojit AI agenta',

@@ -659,6 +659,8 @@ return [
     'confirm_phone_number_3afac393' => 'Conferma numero di telefono',
     'confirm_this_matches_the_device_36b8bd55' => 'Conferma che corrisponda al dispositivo',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Conferma che corrisponda al tuo dispositivo',
+    'access_to_176da1cf' => 'Accesso a',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Questa app si è registrata da sola, quindi chiunque può averne scelto il nome. Approva solo se il messaggio qui sopra corrisponde a ciò che hai appena avviato.',
     'confirm_your_email_to_finish_7ea7f091' => 'Conferma la tua email per completare',
     'conflicting_roles_60210f0e' => 'Ruoli incompatibili',
     'connect_1a2303ed' => 'Collega',

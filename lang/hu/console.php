@@ -1778,6 +1778,8 @@ return [
     'compression_278b1b2a' => 'Tömörítés',
     'confirm_this_matches_the_device_36b8bd55' => 'Erősítse meg, hogy egyezik az eszközön láthatóval',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Erősítse meg, hogy egyezik a saját eszközén láthatóval',
+    'access_to_176da1cf' => 'Hozzáférés ehhez:',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Ez az alkalmazás saját magát regisztrálta, így a nevét bárki választhatta. Csak akkor hagyja jóvá, ha a fenti üzenet egyezik azzal, amit most indított.',
     'connect_a_directory_a1e72908' => 'Címtár csatlakoztatása',
     'connect_a_provider_a002b3f3' => 'Szolgáltató csatlakoztatása',
     'connect_an_ai_agent_d8f6c537' => 'MI-ügynök csatlakoztatása',

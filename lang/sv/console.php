@@ -659,6 +659,8 @@ return [
     'confirm_phone_number_3afac393' => 'Bekräfta telefonnummer',
     'confirm_this_matches_the_device_36b8bd55' => 'Bekräfta att detta stämmer med enheten',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Bekräfta att detta stämmer med din enhet',
+    'access_to_176da1cf' => 'Åtkomst till',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Den här appen registrerade sig själv, så vem som helst kan ha valt namnet. Godkänn bara om meddelandet ovan stämmer med det du just startade.',
     'confirm_your_email_to_finish_7ea7f091' => 'Bekräfta din e-postadress för att slutföra',
     'conflicting_roles_60210f0e' => 'Oförenliga roller',
     'connect_1a2303ed' => 'Anslut',

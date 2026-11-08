@@ -659,6 +659,8 @@ return [
     'confirm_phone_number_3afac393' => 'Vahvista puhelinnumero',
     'confirm_this_matches_the_device_36b8bd55' => 'Vahvista, että tämä vastaa laitetta',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Vahvista, että tämä vastaa laitettasi',
+    'access_to_176da1cf' => 'Pääsy kohteeseen',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Tämä sovellus rekisteröi itsensä, joten kuka tahansa on voinut valita sen nimen. Hyväksy vain, jos yllä oleva viesti vastaa sitä, minkä juuri aloitit.',
     'confirm_your_email_to_finish_7ea7f091' => 'Vahvista sähköpostiosoitteesi viimeistelläksesi',
     'conflicting_roles_60210f0e' => 'Ristiriitaiset roolit',
     'connect_1a2303ed' => 'Yhdistä',

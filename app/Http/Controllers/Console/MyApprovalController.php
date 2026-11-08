@@ -8,6 +8,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
+use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Http\RedirectResponse;
@@ -59,22 +60,38 @@ final readonly class MyApprovalController extends ConsoleController
         // inside the map, which is a query per request on a screen that exists to be
         // answered quickly.
         $names = [];
+        $selfRegistered = [];
 
         $clients = Client::query()
             ->whereIn('client_id', $requests->pluck('client_id')->unique()->all())
-            ->get(['client_id', 'name']);
+            ->get(['client_id', 'name', 'registration_access_token_hash']);
 
         foreach ($clients as $client) {
             $names[(string) $client->client_id] = (string) $client->name;
+            $selfRegistered[(string) $client->client_id] = $client->isDynamicallyRegistered();
         }
 
+        $resources = app(ProtectedResources::class);
+
         return $this->page('console/approvals', __('console.approvals_2bfc3471'), [
-            'requests' => $requests->map(function (BackchannelAuthRequest $request) use ($names): array {
+            'requests' => $requests->map(function (BackchannelAuthRequest $request) use ($names, $selfRegistered, $resources): array {
                 $clientId = (string) $request->client_id;
+                $resource = is_string($request->resource) && $request->resource !== '' ? $request->resource : null;
 
                 return [
                     'id' => $request->id,
                     'app' => $names[$clientId] ?? $clientId,
+                    // A self-registered client named ITSELF: anybody who reached the
+                    // registration endpoint could have picked that name. The card says so,
+                    // so the name is read as a claim and the binding message does the work.
+                    'selfRegistered' => $selfRegistered[$clientId] ?? false,
+                    // What the token will be for (RFC 8707). The operator's name for it when
+                    // there is one, and the identifier always, so a lookalike name cannot
+                    // hide a different service.
+                    'resource' => $resource === null ? null : [
+                        'identifier' => $resource,
+                        'name' => $resources->find($resource)?->name,
+                    ],
                     'bindingMessage' => $request->binding_message,
                     'scopes' => array_map(static fn (string $scope): array => [
                         'value' => $scope,

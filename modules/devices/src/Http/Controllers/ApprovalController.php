@@ -11,6 +11,7 @@ use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Enums\GrantPollStatus;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
@@ -42,6 +43,7 @@ final class ApprovalController
         private readonly BackchannelAuthentication $ciba,
         private readonly ClientRegistry $clients,
         private readonly AuditLog $audit,
+        private readonly ProtectedResources $resources,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -174,15 +176,35 @@ final class ApprovalController
             'purpose' => $approval->getAttribute('purpose') ?? 'authentication',
             'client_id' => $approval->client_id,
             'client_name' => $client->name ?? $approval->client_id,
+            // A self-registered client (RFC 7591) chose its own name. The app says so, so
+            // the name reads as a claim and the binding message carries the decision.
+            'client_self_registered' => $client?->isDynamicallyRegistered() ?? false,
             // The transaction description the user is meant to compare against what the
             // requesting app showed them. This is the one field that must never ride in
             // a push payload, and the reason this endpoint exists at all.
             'binding_message' => $approval->binding_message,
             'scopes' => $scopes,
+            // What the token will be for (RFC 8707), when the request named it: the
+            // operator's name for the resource and, always, its identifier.
+            'resource' => $this->resource($approval),
             'organization_id' => $approval->organization_id,
             'requested_at' => $this->iso($approval->getAttribute('created_at')),
             'expires_at' => $this->iso($approval->getAttribute('expires_at')),
         ];
+    }
+
+    /**
+     * @return array{identifier: string, name: string|null}|null
+     */
+    private function resource(BackchannelAuthRequest $approval): ?array
+    {
+        $identifier = $approval->resource;
+
+        if (! is_string($identifier) || $identifier === '') {
+            return null;
+        }
+
+        return ['identifier' => $identifier, 'name' => $this->resources->find($identifier)?->name];
     }
 
     /**

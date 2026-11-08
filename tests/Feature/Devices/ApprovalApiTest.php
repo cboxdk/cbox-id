@@ -208,3 +208,35 @@ it('paginates more than fifty pending requests without dropping or repeating the
         ->assertJsonCount(2, 'data')->assertJsonPath('meta.has_more', false);
     expect(array_intersect(array_column($first->json('data'), 'id'), array_column($next->json('data'), 'id')))->toBe([]);
 });
+
+it('tells the app when a client registered itself and what the token is for', function (): void {
+    config(['cbox-id.oauth.protected_resources' => [[
+        'identifier' => 'https://brain.example.test/mcp',
+        'name' => 'Brain',
+        'scopes' => ['mcp:read'],
+    ]]]);
+
+    $client = app(ClientRegistry::class)->register(
+        new NewClient('Brain CLI', ClientType::Confidential, scopes: ['openid'])
+    )->client;
+    $client->forceFill(['registration_access_token_hash' => hash('sha256', 'rat')])->save();
+
+    $id = app(BackchannelAuthentication::class)->request(
+        $client,
+        ['openid'],
+        $this->alice,
+        'BRAIN-4821',
+        resource: 'https://brain.example.test/mcp',
+    )->requestId;
+
+    $this->getJson("/api/v1/approvals/{$id}", approvalAuth('alice-tok'))
+        ->assertStatus(200)
+        ->assertJsonPath('data.client_self_registered', true)
+        ->assertJsonPath('data.resource', ['identifier' => 'https://brain.example.test/mcp', 'name' => 'Brain']);
+
+    $other = raiseApproval($this->alice);
+
+    $this->getJson("/api/v1/approvals/{$other}", approvalAuth('alice-tok'))
+        ->assertJsonPath('data.client_self_registered', false)
+        ->assertJsonPath('data.resource', null);
+})->group('security');

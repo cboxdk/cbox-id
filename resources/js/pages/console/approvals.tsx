@@ -9,6 +9,8 @@ interface Request {
     id: string;
     app: string;
     bindingMessage: string | null;
+    selfRegistered: boolean;
+    resource: { identifier: string; name: string | null } | null;
     scopes: { value: string; label: string }[];
     urls: { approve: string; deny: string };
 }
@@ -106,6 +108,37 @@ function RequestCard({ request }: { request: Request }) {
                         {consoleT('console.confirm_this_matches_your_device_ceb0f1cb')}
                     </p>
                     <p className="mt-1 font-medium">{request.bindingMessage}</p>
+                </div>
+            )}
+
+            {request.resource !== null && (
+                <div className="mt-5">
+                    <p className="cbx-page-eyebrow">{consoleT('console.access_to_176da1cf')}</p>
+                    {request.resource.name !== null && (
+                        <p className="mt-1 font-medium">{request.resource.name}</p>
+                    )}
+                    {/* The identifier always, so a familiar name cannot hide another service. */}
+                    <p
+                        className="mt-0.5 text-xs font-mono break-all"
+                        style={{ color: 'var(--faint)' }}
+                    >
+                        {request.resource.identifier}
+                    </p>
+                </div>
+            )}
+
+            {request.selfRegistered && (
+                <div
+                    className="mt-5 flex gap-2.5 rounded-lg px-3.5 py-3 text-sm"
+                    style={{ background: 'var(--warning-soft)', color: 'var(--warning-strong)' }}
+                    role="note"
+                >
+                    <Icon name="warning" className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                    <p>
+                        {consoleT(
+                            'console.this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2',
+                        )}
+                    </p>
                 </div>
             )}
 

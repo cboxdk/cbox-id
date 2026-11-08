@@ -8,6 +8,19 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Added
+
+- **Agents and CLIs can register themselves for CIBA and the device grant.** An operator opens a resource in `CBOX_ID_PROTECTED_RESOURCES` (`dynamic_client_grants`, and `dynamic_public_backchannel` for keyless CIBA). A self-registered client then registers with its own key (`private_key_jwt` with inline `jwks`), names the resource (RFC 8707) on every request, and gets a token whose `aud` is that resource. Docs: Agents and CLIs without a browser (laravel-id 2.1.0).
+- **The approval shows what it is for.** The Approvals page and the authenticator API show the resource a token will be for (name and identifier) and mark a client that registered itself, so its name reads as its own claim.
+
+### Changed
+
+- **CIBA `login_hint` accepts a user id or a confirmed email only.** An unconfirmed address now returns `unknown_user_id` with a plain `error_description`.
+
+### Security
+
+- **CIBA is rate limited per client and hint, and per person.** `CBOX_ID_CIBA_PER_CLIENT_HINT` (5 per minute) and `CBOX_ID_CIBA_PER_PERSON` (10 per 10 minutes); past either the client gets `429 slow_down` with `Retry-After`. Requests, approvals and denials are audited.
+
 ## [2.1.0] - 2026-11-08
 
 ### Changed

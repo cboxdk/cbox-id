@@ -40,8 +40,9 @@ final readonly class MailingBackchannelAuthentication implements BackchannelAuth
         ?string $bindingMessage = null,
         ?string $nonce = null,
         ?int $requestedExpiry = null,
+        ?string $resource = null,
     ): BackchannelAuthenticationResult {
-        $result = $this->inner->request($client, $scopes, $loginHint, $bindingMessage, $nonce, $requestedExpiry);
+        $result = $this->inner->request($client, $scopes, $loginHint, $bindingMessage, $nonce, $requestedExpiry, $resource);
 
         // Fails open, like the mail itself: the request was filed, and that is the answer.
         try {

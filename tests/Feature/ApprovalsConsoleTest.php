@@ -144,3 +144,60 @@ it('only shows the current user their own requests', function (): void {
     expect(BackchannelAuthRequest::query()->whereKey($theirs)->value('status'))
         ->toBe(GrantPollStatus::Pending);
 });
+
+/**
+ * A SELF-REGISTERED AGENT NAMED ITSELF, AND ITS TOKEN IS FOR ONE SERVICE.
+ *
+ * Anybody who reaches the registration endpoint can call their client "GitHub". So the card
+ * marks such a client, and shows what the token will be FOR: the operator's name for the
+ * resource and its identifier, always — a familiar name must not be able to hide a
+ * different service.
+ */
+it('marks a self-registered client and shows the resource the token is for', function (): void {
+    [$subjectId] = approvalsMember();
+
+    config(['cbox-id.oauth.protected_resources' => [[
+        'identifier' => 'https://brain.example.test/mcp',
+        'name' => 'Brain',
+        'scopes' => ['mcp:read'],
+    ]]]);
+
+    $client = app(ClientRegistry::class)->register(
+        new NewClient('Brain CLI', ClientType::Confidential, scopes: ['openid'])
+    )->client;
+    $client->forceFill(['registration_access_token_hash' => hash('sha256', 'rat')])->save();
+
+    app(BackchannelAuthentication::class)->request(
+        $client,
+        ['openid'],
+        $subjectId,
+        bindingMessage: 'BRAIN-4821',
+        resource: 'https://brain.example.test/mcp',
+    );
+
+    test()->get(route('approvals'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('requests.0.selfRegistered', true)
+            ->where('requests.0.bindingMessage', 'BRAIN-4821')
+            ->where('requests.0.resource', [
+                'identifier' => 'https://brain.example.test/mcp',
+                'name' => 'Brain',
+            ]));
+})->group('security');
+
+it('does not mark an operator-registered client, nor invent a resource', function (): void {
+    [$subjectId] = approvalsMember();
+
+    $client = app(ClientRegistry::class)->register(
+        new NewClient('Agent', ClientType::Confidential, scopes: ['openid'])
+    )->client;
+
+    app(BackchannelAuthentication::class)->request($client, ['openid'], $subjectId);
+
+    test()->get(route('approvals'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('requests.0.selfRegistered', false)
+            ->where('requests.0.resource', null));
+});
