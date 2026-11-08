@@ -57,7 +57,9 @@ agents › Approvals**, so one that looks like abuse can be denied.
 - **On a trusted device.** The Cbox Authenticator app answers approvals with the device's
   own key. See [Trusted devices](../guides/trusted-devices.md).
 - **In the console.** **Approvals** lists the requests to act as you; approving there works
-  too.
+  too. It is the whole path for anyone without the app: see
+  [Approvals without the mobile app](../guides/approvals-without-the-app.md) for what your
+  agent has to tell them.
 
 Every decision, approve or deny, is recorded on the [Audit log](../guides/activity-log.md).
 

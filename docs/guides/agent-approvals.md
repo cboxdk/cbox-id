@@ -104,6 +104,7 @@ there is no browser in front of it to notice a smaller grant.
 
 ## Related
 
+- [Approvals without the mobile app](approvals-without-the-app.md) — building requests that work for people with no trusted device.
 - [Step-up approvals](step-up-approvals.md) — the agent's side: why a call is held, and how it retries once approved.
 - [Trusted devices](trusted-devices.md) — the phone that answers these requests.
 - [Agents and MCP](agents-and-mcp.md) — connecting the agents that ask.
