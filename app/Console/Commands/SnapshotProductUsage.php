@@ -18,10 +18,14 @@ use Illuminate\Support\Facades\DB;
  * meter and hour, so a rerun, an overlap or a catch-up never counts anything twice. The
  * reporter sends them on like any other usage. Only customer projects are measured; the
  * platform root environment has no project and no customer.
+ *
+ * Billing accepts an event dated at most its usage grace window back (one hour by
+ * default). So an hour's activity is dated at that hour's last second, a few minutes old
+ * when the :05 run sends it, and only the latest closed hour is counted by default.
  */
 final class SnapshotProductUsage extends Command
 {
-    protected $signature = 'billing:snapshot-product-usage {--hours=3 : Closed hours of row-based activity to (re)count}';
+    protected $signature = 'billing:snapshot-product-usage {--hours=1 : Closed hours of row-based activity to (re)count}';
 
     protected $description = 'Record hourly identity stock and row-based activity for central billing.';
 
@@ -48,7 +52,7 @@ final class SnapshotProductUsage extends Command
             $from = $hour->subHours($back);
             foreach ($this->activity($from, $from->addHour()) as $meter => $counts) {
                 foreach (self::byWorkspace($counts, $workspaces) as $workspace => $value) {
-                    $rows[] = self::row("hourly:{$meter}:{$workspace}:".$from->format('YmdH'), $workspace, $meter, $from, $value);
+                    $rows[] = self::row("hourly:{$meter}:{$workspace}:".$from->format('YmdH'), $workspace, $meter, $from->addHour()->subSecond(), $value);
                 }
             }
         }
