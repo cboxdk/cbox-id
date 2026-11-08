@@ -37,7 +37,7 @@
                 <div class="preview-top"><span class="preview-monogram">ID</span><span>Identity workspace</span><span class="example-label">Example</span></div>
                 <div class="preview-body">
                     <div class="preview-context"><span class="workspace-avatar">N</span><div><strong>Northstar</strong><span>Production environment</span></div><span class="context-dots" aria-hidden="true">···</span></div>
-                    <div class="preview-heading"><span>Agent request</span><span class="tag">Production</span></div>
+                    <div class="preview-heading"><span>Approval request</span><span class="tag">Production</span></div>
                     <div class="identity-person"><span class="person-avatar">RA</span><div><strong>Release agent</strong><span>Acting for alex@example.com</span></div><span class="tag tag-blue">Agent</span></div>
                     <div class="access-step"><span class="step-icon" aria-hidden="true">01</span><div><strong>Delegated sign-in</strong><span>OAuth consent · Scoped token</span></div><span class="step-check" aria-hidden="true">✓</span></div>
                     <div class="access-step"><span class="step-icon" aria-hidden="true">02</span><div><strong>Ask before acting</strong><span>Deploy release 4.2 · Code K7Q2</span></div><span class="step-check" aria-hidden="true">✓</span></div>
