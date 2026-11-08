@@ -8,6 +8,8 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-08
+
 ### Changed
 
 - **The marketing site leads with agents.** cboxid.com now has an Agents section (delegated sign-in, approval before action, backchannel approval), a CIBA example, an agent approval in the hero preview, OpenID CIBA and MCP in the standards strip, and an FAQ answer on approving without the mobile app.
