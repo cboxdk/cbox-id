@@ -102,6 +102,9 @@ so they can check that the held action they approve is the one your agent is wai
 | The Authenticator app, enrolled | A push on their phone | The phone, or the Approvals page |
 | No app | Your agent's message, and a mail from Cbox ID | The Approvals page |
 
+A phone in a Focus mode can hold the push back without a banner. See
+[When an approval arrives silently](trusted-devices.md#when-an-approval-arrives-silently).
+
 You cannot tell from the CIBA response which row applies. Write the message for the second
 row every time. A person who also got a push loses nothing by reading it.
 

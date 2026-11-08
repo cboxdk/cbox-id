@@ -143,6 +143,47 @@ is what makes "durable row, then enqueue" true rather than aspirational.
 > has expired so the rescue can fire. Raising one without the other wedges the rescue
 > shut.
 
+## When an approval arrives silently
+
+A push can be delivered and still not show. The console then says *Delivered*, but the
+person sees nothing until they swipe down to the notification centre. The phone held the
+notification back, usually because a Focus mode or a notification summary was on. In
+that case the request waits until it expires, and the agent gets `expired_token`.
+
+Cbox ID sends approval pushes at the highest priority and asks iOS to treat them as
+**Time Sensitive**. Whether a Focus lets them through depends on the app build and on the
+person's settings. These steps work either way.
+
+**On iPhone:**
+
+1. **Settings › Focus**: open each Focus you use (Personal, Work, Sleep, Do Not
+   Disturb). Under **Allowed Notifications › Apps**, add **Cbox ID**. In the same place,
+   leave **Time Sensitive Notifications** on.
+2. **Settings › Notifications › Cbox ID**: turn on **Allow Notifications**, **Lock
+   Screen** and **Banners**, and **Time Sensitive Notifications** if it is listed.
+3. **Settings › Notifications › Scheduled Summary**: make sure Cbox ID is not in the
+   summary. A summarised approval arrives after it has expired.
+
+**On Android:**
+
+1. **Settings › Notifications › Do Not Disturb › Apps**: add **Cbox ID** as an
+   exception.
+2. **Settings › Apps › Cbox ID › Notifications**: allow notifications.
+3. **Settings › Apps › Cbox ID › Battery**: choose *Unrestricted*, so the system does
+   not delay pushes to save power.
+
+**Check it works.** Turn on the Focus you use most, then start a request, for example
+from your agent. The banner should appear on the lock screen within a few seconds.
+
+**If it still does not show,** the request is on the Approvals page,
+`https://<environment-host>/approvals`, as long as it is pending. An agent should always
+print that link next to the binding message; see
+[Approvals without the mobile app](approvals-without-the-app.md#what-your-agent-must-do).
+
+For administrators: *Delivered* in the console means Apple or Google accepted the push
+for the phone. It does not mean the phone showed it. A person who reports "no push"
+while the console says *Delivered* needs the steps above, not a server fix.
+
 ## Approvals on the critical path
 
 An approval push is racing a CIBA request's 300-second TTL, so give it a queue that is
