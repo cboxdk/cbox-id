@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    // Explicit source-owner opt-in, independent of SIGNALS_AUTH_ENABLED.
+    // Explicit source-owner opt-in, independent of SIGNALS_AUTH_ENABLED: environment ids, or `*` for every active environment.
     'environments' => array_values(array_filter(explode(',', (string) env('SIGNALS_DATA_ENVIRONMENTS', '')))),
     'retention_days' => 7,
     'raw_ip_days' => 7,

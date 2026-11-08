@@ -6,6 +6,7 @@ use App\Platform\Actions\Idempotency\IdempotencyRecord;
 use App\Platform\FrontendApi\LoginTicket;
 use App\Platform\Health\SchedulerHeartbeat;
 use App\SignalsData\Models\SourceHead;
+use App\SignalsData\SourceEnvironments;
 use Cbox\Id\Analytics\Models\AnalyticsEvent;
 use Cbox\Id\Devices\Models\EnrolmentCode;
 use Illuminate\Foundation\Inspiring;
@@ -89,9 +90,9 @@ Schedule::command('cbox-id:sso:certificate-expiry')
     ->onOneServer();
 
 Schedule::command('signals:source-maintain')->everyMinute()->withoutOverlapping()->onOneServer()
-    ->when(static fn (): bool => config()->array('signals-data.environments') !== [] || SourceHead::query()->exists());
+    ->when(static fn (): bool => SourceEnvironments::enabled() || SourceHead::query()->exists());
 Schedule::command('signals:managed-reconcile')->hourly()->withoutOverlapping()->onOneServer()
-    ->when(static fn (): bool => config()->string('signals.bundled.client_id', '') !== '' && (config()->array('signals-data.environments') !== [] || SourceHead::query()->exists()));
+    ->when(static fn (): bool => config()->string('signals.bundled.client_id', '') !== '' && (SourceEnvironments::enabled() || SourceHead::query()->exists()));
 
 // Metrics and the bounded OTLP spool need a shipper even when no request arrives.
 // The Redis store is shared by replicas, so only one scheduler flushes it.

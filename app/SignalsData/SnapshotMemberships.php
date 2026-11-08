@@ -19,7 +19,7 @@ final class SnapshotMemberships extends Command
         $environment = $this->argument('environment');
         $after = $this->option('after');
         $limit = filter_var($this->option('limit'), FILTER_VALIDATE_INT);
-        if (! in_array($environment, config()->array('signals-data.environments'), true)
+        if (! SourceEnvironments::includes($environment)
             || $limit === false || $limit < 1 || $limit > 1000) {
             $this->error('Choose an enabled owner environment and a limit from 1 to 1000.');
 

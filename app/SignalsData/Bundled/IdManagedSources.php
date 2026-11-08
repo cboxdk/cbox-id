@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\SignalsData\Bundled;
 
 use App\SignalsData\Models\SourceHead;
+use App\SignalsData\SourceEnvironments;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Models\Environment;
@@ -83,7 +84,7 @@ final readonly class IdManagedSources implements ManagedSources
     /** @return list<string> */
     private function known(): array
     {
-        $configured = array_values(array_filter(config()->array('signals-data.environments'), is_string(...)));
+        $configured = SourceEnvironments::listed();
         $heads = array_values(array_filter(SourceHead::query()->pluck('environment_id')->all(), is_string(...)));
 
         return array_values(array_unique([...$configured, ...$heads]));
