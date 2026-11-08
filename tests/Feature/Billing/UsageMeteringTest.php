@@ -92,6 +92,8 @@ it('measures each workspace stock and hourly activity once, never the platform r
         ->and((int) $rows["stock:verified_domains:{$workspace->id}:2026110810"]->value)->toBe(1)
         ->and((int) $rows["stock:environments:{$workspace->id}:2026110810"]->value)->toBeGreaterThanOrEqual(1)
         ->and((int) $rows["hourly:otp_codes_sent:{$workspace->id}:2026110809"]->value)->toBe(1)
+        // Inside Billing's one-hour grace window when the :05 run sends it.
+        ->and(Carbon::parse($rows["hourly:otp_codes_sent:{$workspace->id}:2026110809"]->occurred_at)->format('H:i:s'))->toBe('09:59:59')
         ->and($rows->keys()->filter(fn (string $id): bool => str_starts_with($id, 'stock:users:'))->count())->toBe(1);
 });
 
@@ -114,4 +116,16 @@ it('sends a workspace batch with its quantity, distinct key and dimensions and k
     $transport->withUsageEventMeter('cbox-id.invitations_sent');
     $this->artisan('billing:report-product-usage')->assertSuccessful();
     expect(DB::table('product_billing_usage_outbox')->whereNull('reported_at')->count())->toBe(0);
+});
+
+it('closes a row Billing can never accept instead of retrying it for ever', function (): void {
+    ['organization' => $workspace, 'environment' => $environment] = provisionAccount();
+    $transport = usageTransport();
+    deliverUsage('organization.invitation_created', $environment->id, [], 'evt_old');
+    $transport->withUsageEventMeter('cbox-id.invitations_sent', 'too_old');
+
+    $this->artisan('billing:report-product-usage')->assertSuccessful();
+
+    $row = DB::table('product_billing_usage_outbox')->where('event_id', 'evt_old')->first();
+    expect($row->last_error)->toBe('too_old')->and($row->reported_at)->not->toBeNull();
 });

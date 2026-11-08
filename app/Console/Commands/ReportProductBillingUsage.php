@@ -16,12 +16,17 @@ use Throwable;
  *
  * Rows go one batch per workspace. A rejected row keeps Billing's reason and stays pending,
  * and rows that have never failed are sent first, so a stuck row cannot hold back the rest.
+ * A row dated before Billing's grace window (`too_old`) can never be accepted: it is closed
+ * with that reason kept, instead of being retried every minute for ever.
  */
 final class ReportProductBillingUsage extends Command
 {
     protected $signature = 'billing:report-product-usage {--limit=1000}';
 
     protected $description = 'Report durable identity product usage to central billing.';
+
+    /** Rejections no retry can change. */
+    private const FINAL = ['too_old'];
 
     public function handle(BillingManagement $billing): int
     {
@@ -48,7 +53,9 @@ final class ReportProductBillingUsage extends Command
                     $rejected[$rejection->id] = $rejection->reason;
                 }
                 foreach ($rejected as $id => $reason) {
-                    DB::table('product_billing_usage_outbox')->where('event_id', $id)->update(['last_error' => $reason]);
+                    DB::table('product_billing_usage_outbox')->where('event_id', $id)->update([
+                        'last_error' => $reason, 'reported_at' => in_array($reason, self::FINAL, true) ? now() : null,
+                    ]);
                 }
                 $delivered = $chunk->pluck('event_id')->reject(static fn (string $id): bool => isset($rejected[$id]))->values();
                 foreach ($delivered->chunk(500) as $ids) {
@@ -56,7 +63,8 @@ final class ReportProductBillingUsage extends Command
                         ->update(['reported_at' => now(), 'last_error' => null]);
                 }
                 if ($rejected !== []) {
-                    $failed = true;
+                    $retrying = array_diff($rejected, self::FINAL);
+                    $failed = $failed || $retrying !== [];
                     report(new \RuntimeException(sprintf('Billing rejected %d usage event(s): %s', count($rejected),
                         implode(', ', array_unique(array_values($rejected))))));
                 }

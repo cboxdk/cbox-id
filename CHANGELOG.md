@@ -10,6 +10,7 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Fixed
 
+- **Hourly usage arrives inside Billing's grace window.** Row-based activity (tokens, one-time codes, MFA, passkeys) was dated at the start of the closed hour, 65 minutes old when sent, and Billing refused it as `too_old` (grace one hour). It is now dated at the hour's last second, and only the latest closed hour is counted by default. A `too_old` row is closed with its reason kept instead of failing the reporter every minute.
 - **Usage reaches Cbox Billing.** Every ID meter had been published without a source, so Billing created them totals-fed and refused each usage event (`meter_fed_by_totals`); no usage was ever recorded. The meters are replaced by event-fed keys (`cbox-id.sign_ins`, `cbox-id.sso_sign_ins`, …) and the old `cbox-id.auth.*` keys retire. Pending outbox rows move to the new keys (migration `2026_11_08_010000`, additive). The reporter sends one batch per workspace instead of one request per event and keeps Billing's rejection reason.
 
 ### Added
