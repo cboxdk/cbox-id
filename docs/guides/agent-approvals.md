@@ -48,6 +48,10 @@ were doing needs an explanation before it gets an approval.
   rather than approving something stale.
 - **Every decision is recorded** in the [audit log](activity-log.md), including
   denials.
+- **No banner on your phone?** A Focus mode or a notification summary may be holding
+  the push back. Allow Cbox ID in your Focus settings; see
+  [When an approval arrives silently](trusted-devices.md#when-an-approval-arrives-silently).
+  The request is on this page either way.
 
 ## Reviewing requests across an environment
 

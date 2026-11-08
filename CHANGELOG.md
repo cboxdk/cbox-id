@@ -8,10 +8,13 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-11-08
+
 ### Added
 
 - **Agents and CLIs can register themselves for CIBA and the device grant.** An operator opens a resource in `CBOX_ID_PROTECTED_RESOURCES` (`dynamic_client_grants`, and `dynamic_public_backchannel` for keyless CIBA). A self-registered client then registers with its own key (`private_key_jwt` with inline `jwks`), names the resource (RFC 8707) on every request, and gets a token whose `aud` is that resource. Docs: Agents and CLIs without a browser (laravel-id 2.1.0).
 - **The approval shows what it is for.** The Approvals page and the authenticator API show the resource a token will be for (name and identifier) and mark a client that registered itself, so its name reads as its own claim.
+- **Docs: when an approval arrives silently.** Trusted devices explains why a delivered approval push can stay hidden behind a Focus mode or a notification summary, and how a person allows Cbox ID on iPhone and Android. Linked from Approvals and Approvals without the mobile app.
 
 ### Changed
 

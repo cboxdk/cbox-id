@@ -14,6 +14,24 @@ package's own breaking changes are in
 this file covers what an **operator of this deployment** has to do, and repeats the
 package changes that need action here rather than in a client.
 
+## 2.2.0
+
+**cboxid.com took 2.2.0 continuously**, as it did 2.1.0. The `v2.2.0` tag marks a commit on
+`main`. Another deployment crossing from 2.1.x:
+
+- **laravel-id 2.1.0.** One additive migration (`ciba_requests.resource`), run with the
+  release as usual.
+- **CIBA `login_hint` must be a user id or a confirmed email address.** A request keyed to
+  an unconfirmed address now gets `unknown_user_id`. Check that your agents send ids, or
+  that the people they ask have confirmed their address.
+- **CIBA is rate limited**: 5 requests per client and hint per minute
+  (`CBOX_ID_CIBA_PER_CLIENT_HINT`) and 10 per person per 10 minutes
+  (`CBOX_ID_CIBA_PER_PERSON`). Past either, the client gets `429 slow_down` with
+  `Retry-After`.
+- **Optional:** to let self-registered agents and CLIs use CIBA or the device grant for a
+  resource, add `dynamic_client_grants` to its entry in `CBOX_ID_PROTECTED_RESOURCES`. See
+  *Agents and CLIs without a browser*. Nothing changes until you do.
+
 ## 2.1.0
 
 **cboxid.com took 2.1.0 continuously**, as it did 2.0.0: each change reached production as
