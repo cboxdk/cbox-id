@@ -8,6 +8,8 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-11-08
+
 ### Added
 
 - **Agents and CLIs can register themselves for CIBA and the device grant.** An operator opens a resource in `CBOX_ID_PROTECTED_RESOURCES` (`dynamic_client_grants`, and `dynamic_public_backchannel` for keyless CIBA). A self-registered client then registers with its own key (`private_key_jwt` with inline `jwks`), names the resource (RFC 8707) on every request, and gets a token whose `aud` is that resource. Docs: Agents and CLIs without a browser (laravel-id 2.1.0).
