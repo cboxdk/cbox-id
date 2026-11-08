@@ -117,4 +117,13 @@ return [
             'not_you' => 'Hagyd figyelmen kívül ezt az e-mailt. A kód használata nélkül semmi sem történik.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Jóváhagyás szükséges: :app',
+        'heading' => ':app a jóváhagyásodat kéri',
+        'lead' => ':app a jóváhagyásodat kérte itt: :brand. Nyisd meg a jóváhagyások oldalát, hogy lásd, mit szeretne tenni, majd hagyd jóvá vagy utasítsd el.',
+        'expires' => 'A kérés :time-kor lejár.',
+        'button' => 'Kérés megtekintése',
+        'not_you_title' => 'Nem számítottál erre?',
+        'not_you' => 'Utasítsd el. Semmi sem történik, amíg bejelentkezve jóvá nem hagyod.',
+    ],
 ];

@@ -11,6 +11,9 @@ use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
+use App\Platform\Agents\ApprovalMail;
+use App\Platform\EnvironmentOrigin;
+use App\Platform\PlaneResolver;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
@@ -18,6 +21,7 @@ use Cbox\Id\OAuthServer\Contracts\ActionApprovals;
 use Cbox\Id\OAuthServer\Enums\ActionApprovalStatus;
 use Cbox\Id\OAuthServer\ValueObjects\ActionApprovalRequest as ApprovalRequest;
 use Closure;
+use Throwable;
 
 /**
  * Holds an action until a person approves it, when the credential running it says so.
@@ -119,7 +123,43 @@ final readonly class ActionApprovalGate
             'input' => ApprovalInput::redact($action, $input),
         ]);
 
+        $this->mail($principal, $approver, $request);
+
         throw new ApprovalRequired($request->requestId, $code, CarbonImmutable::instance($request->expiresAt), $request->interval);
+    }
+
+    /**
+     * Mail the approver when no phone will tell them ({@see ApprovalMail}), in their realm and
+     * with a link to the Approvals page on the host that serves it: the account console for a
+     * person of the platform root, the environment's own host for one of its people. That page
+     * lists the held action beside any sign-in request and answers the same CIBA request the
+     * phone would. Fails open — the action is held either way.
+     */
+    private function mail(Principal $principal, string $approver, ApprovalRequest $request): void
+    {
+        try {
+            $environmentId = $principal->approverEnvironmentId();
+
+            $url = $environmentId === null
+                ? self::onConsoleHost(route('approvals', [], false))
+                : app(EnvironmentOrigin::class)->run($environmentId, static fn (): string => route('approvals'));
+
+            $this->inApproverRealm($principal, fn () => app(ApprovalMail::class)->notify(
+                subjectId: $approver,
+                app: $principal->label(),
+                url: $url,
+                expiresAt: $request->expiresAt,
+            ));
+        } catch (Throwable $e) {
+            report($e);
+        }
+    }
+
+    private static function onConsoleHost(string $path): string
+    {
+        $host = app(PlaneResolver::class)->consoleHost();
+
+        return $host === null ? url($path) : 'https://'.$host.$path;
     }
 
     /**

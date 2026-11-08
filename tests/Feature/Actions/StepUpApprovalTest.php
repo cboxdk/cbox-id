@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Mail\ApprovalRequestMail;
 use App\Platform\Actions\Approvals\ActionApprovalRequest;
 use App\Platform\Console\WebhookEventCatalogue;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -14,6 +15,7 @@ use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\KeyProvenance;
 use Cbox\Ssrf\Contracts\Resolver;
+use Illuminate\Support\Facades\Mail;
 
 /*
 |--------------------------------------------------------------------------
@@ -250,3 +252,19 @@ it('refuses an unsafe hook or log stream endpoint before holding a critical acti
 
     nothingHeldForApproval();
 })->group('security');
+
+it('mails the owner of a key whose action was held, with a link to their Approvals page', function (): void {
+    $owner = keyOwner();
+    Mail::fake();
+    [$key] = supervisedKey($owner, ['min_danger' => 'critical', 'actions' => []]);
+
+    $this->withToken($key)->withHeader('Idempotency-Key', 'mail-held')
+        ->postJson('/api/v1/keys', ['name' => 'Child', 'scopes' => ['keys:read']])
+        ->assertStatus(202);
+
+    Mail::assertSent(ApprovalRequestMail::class, fn (ApprovalRequestMail $mail): bool => $mail->hasTo('owner@workspace.test')
+        && str_ends_with($mail->url, '/approvals')
+        && str_contains($mail->app, 'Deploy agent'));
+
+    expect(app(PlatformRoot::class)->run(fn () => BackchannelAuthRequest::query()->where('user_id', $owner)->count()))->toBe(1);
+});

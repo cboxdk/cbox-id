@@ -117,4 +117,13 @@ return [
             'not_you' => 'Túto správu môžete ignorovať — bez kódu sa nič nestane.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Vyžaduje sa schválenie: :app',
+        'heading' => ':app žiada o vaše schválenie',
+        'lead' => ':app požiadala o vaše schválenie v :brand. Otvorte stránku so schváleniami, kde uvidíte, o čo ide, a žiadosť schváľte alebo zamietnite.',
+        'expires' => 'Žiadosť vyprší o :time.',
+        'button' => 'Zobraziť žiadosť',
+        'not_you_title' => 'Nečakali ste to?',
+        'not_you' => 'Zamietnite ju. Nič sa nestane, kým ju po prihlásení neschválite.',
+    ],
 ];

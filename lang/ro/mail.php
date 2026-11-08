@@ -117,4 +117,13 @@ return [
             'not_you' => 'Puteți ignora acest e-mail – nimic nu se întâmplă fără cod.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Aprobare necesară: :app',
+        'heading' => ':app îți cere aprobarea',
+        'lead' => ':app ți-a cerut aprobarea în :brand. Deschide pagina de aprobări ca să vezi ce vrea să facă, apoi aprobă sau respinge cererea.',
+        'expires' => 'Cererea expiră la :time.',
+        'button' => 'Vezi cererea',
+        'not_you_title' => 'Nu te așteptai la asta?',
+        'not_you' => 'Respinge-o. Nu se întâmplă nimic decât dacă o aprobi după ce te-ai autentificat.',
+    ],
 ];

@@ -117,4 +117,13 @@ return [
             'not_you' => 'Bu e-postayı yok sayabilirsiniz. Kod girilmeden hiçbir işlem yapılmaz.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Onay gerekiyor: :app',
+        'heading' => ':app onayınızı istiyor',
+        'lead' => ':app, :brand üzerinde onayınızı istedi. Ne yapmak istediğini görmek için onaylar sayfanızı açın, ardından isteği onaylayın veya reddedin.',
+        'expires' => 'İstek :time saatinde sona erer.',
+        'button' => 'İsteği incele',
+        'not_you_title' => 'Bunu beklemiyor muydunuz?',
+        'not_you' => 'Reddedin. Oturum açıkken onaylamadığınız sürece hiçbir şey olmaz.',
+    ],
 ];

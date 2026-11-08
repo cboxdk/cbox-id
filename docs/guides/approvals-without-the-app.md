@@ -23,19 +23,26 @@ action for approval, Cbox ID:
 1. **Creates the request** for the person named by `login_hint` (or the key's owner), with
    your `binding_message` and the scopes asked for. It lives for
    `CBOX_ID_CIBA_TTL_SECONDS`, 300 seconds by default.
-2. **Pushes it to their trusted devices**, if they have any. A person with no enrolled
-   device gets no push.
-3. **Lists it on their Approvals page**, `https://<environment-host>/approvals`, whether or
-   not a push went out. Approving there is the same decision as approving on the phone.
-4. **Answers your polling** on `/oauth/token` with `authorization_pending` until the person
+2. **Pushes it to their trusted devices**, if they have any.
+3. **Mails them, if no device can take the push.** The mail names who is asking, links to
+   their Approvals page and says when the request expires. It does not contain the
+   `binding_message`: an inbox preview is as readable as a lock screen. At most five such
+   mails go to one person in ten minutes; past that the request is still filed, unmailed.
+4. **Lists it on their Approvals page**, `https://<environment-host>/approvals`, whether or
+   not a push or a mail went out. Approving there is the same decision as approving on the
+   phone.
+5. **Answers your polling** on `/oauth/token` with `authorization_pending` until the person
    decides or the request expires.
 
-Steps 1, 3 and 4 always happen. Step 2 is the only part the app adds.
+Steps 1, 4 and 5 always happen. Step 2 needs the app; step 3 is what happens instead.
+`CBOX_ID_APPROVAL_EMAIL` changes step 3: `fallback` (the default), `always` (mail even
+when a push went out) or `off`.
 
 ## What your agent must do
 
 Your agent is the one thing the person is already looking at: a chat, a terminal, a
-Slack thread. When it starts a request, it has to say so there.
+Slack thread. When it starts a request, it has to say so there. The mail is a backstop,
+not a substitute: it can land in spam, arrive late, or be withheld by the per-person limit.
 
 **Tell them where to go.** Print the Approvals URL for the environment, not a generic
 "check your phone":
@@ -82,7 +89,8 @@ curl -s -X POST https://auth.example.com/oauth/token \
 ## Actions held by a key's approval policy
 
 An action held by a key's [approval policy](step-up-approvals.md) waits for the person who
-created the key. Without the app, they approve it on **AI agents › Approvals** in the
+created the key. Without the app, Cbox ID mails them a link to their Approvals page, which
+lists the held action, and they can also approve it on **AI agents › Approvals** in the
 environment console. The `202` response carries a `binding_code`. Show it next to the link,
 so they can check that the held action they approve is the one your agent is waiting on.
 
@@ -91,7 +99,7 @@ so they can check that the held action they approve is the one your agent is wai
 | The person has | They learn about the request from | They answer on |
 |---|---|---|
 | The Authenticator app, enrolled | A push on their phone | The phone, or the Approvals page |
-| No app | Your agent's message | The Approvals page |
+| No app | Your agent's message, and a mail from Cbox ID | The Approvals page |
 
 You cannot tell from the CIBA response which row applies. Write the message for the second
 row every time. A person who also got a push loses nothing by reading it.

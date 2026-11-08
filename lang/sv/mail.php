@@ -117,4 +117,13 @@ return [
             'not_you' => 'Du kan ignorera det här mejlet — ingenting händer utan koden.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Godkännande krävs: :app',
+        'heading' => ':app ber om ditt godkännande',
+        'lead' => ':app har bett om ditt godkännande i :brand. Öppna sidan med godkännanden för att se vad den vill göra och godkänn eller neka den.',
+        'expires' => 'Begäran upphör kl. :time.',
+        'button' => 'Granska begäran',
+        'not_you_title' => 'Väntade du dig inte detta?',
+        'not_you' => 'Neka den. Ingenting händer om du inte godkänner den medan du är inloggad.',
+    ],
 ];

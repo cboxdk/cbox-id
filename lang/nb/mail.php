@@ -117,4 +117,13 @@ return [
             'not_you' => 'Du kan se bort fra denne e-posten – ingenting skjer uten koden.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Godkjenning trengs: :app',
+        'heading' => ':app ber om godkjenningen din',
+        'lead' => ':app har bedt om godkjenningen din i :brand. Åpne siden med godkjenninger for å se hva den vil gjøre, og godkjenn eller avvis den.',
+        'expires' => 'Forespørselen utløper kl. :time.',
+        'button' => 'Se forespørselen',
+        'not_you_title' => 'Ventet du ikke dette?',
+        'not_you' => 'Avvis den. Ingenting skjer med mindre du godkjenner den mens du er logget inn.',
+    ],
 ];

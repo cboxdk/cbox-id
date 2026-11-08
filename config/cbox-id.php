@@ -104,6 +104,21 @@ return [
     ],
 
     /*
+     * Mail a person when an approval is waiting for them and no phone will tell them.
+     *
+     * A CIBA request, or an action a key's approval policy held, is pushed to the person's
+     * enrolled Cbox Authenticator. Somebody without the app hears nothing from Cbox ID —
+     * only from the agent that asked. This mails them a link to their Approvals page.
+     *
+     * `fallback` (default): only when no enrolled device can take the push.
+     * `always`: every request, push or not.
+     * `off`: never — the agent is the only notice.
+     */
+    'approvals' => [
+        'email' => env('CBOX_ID_APPROVAL_EMAIL', 'fallback'),
+    ],
+
+    /*
      * The retention sweep. Only the key this app changes is restated; every other table
      * keeps the framework's default and its `CBOX_ID_PRUNE_*` variable.
      *

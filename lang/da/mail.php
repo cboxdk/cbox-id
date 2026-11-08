@@ -117,4 +117,13 @@ return [
             'not_you' => 'Du kan ignorere denne e-mail — der sker ingenting uden koden.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Godkendelse nødvendig: :app',
+        'heading' => ':app beder om din godkendelse',
+        'lead' => ':app har bedt om din godkendelse i :brand. Åbn din side med godkendelser for at se, hvad den vil gøre, og godkend eller afvis den.',
+        'expires' => 'Anmodningen udløber kl. :time.',
+        'button' => 'Se anmodningen',
+        'not_you_title' => 'Forventede du ikke dette?',
+        'not_you' => 'Afvis den. Der sker intet, medmindre du godkender den, mens du er logget ind.',
+    ],
 ];

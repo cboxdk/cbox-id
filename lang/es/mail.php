@@ -117,4 +117,13 @@ return [
             'not_you' => 'Puedes ignorar este correo. No ocurre nada sin el código.',
         ],
     ],
+    'approval_request' => [
+        'subject' => 'Se necesita tu aprobación: :app',
+        'heading' => ':app solicita tu aprobación',
+        'lead' => ':app ha solicitado tu aprobación en :brand. Abre tu página de aprobaciones para ver qué quiere hacer y apruébala o recházala.',
+        'expires' => 'La solicitud caduca a las :time.',
+        'button' => 'Revisar la solicitud',
+        'not_you_title' => '¿No esperabas esto?',
+        'not_you' => 'Recházala. No ocurre nada a menos que la apruebes con tu sesión iniciada.',
+    ],
 ];
