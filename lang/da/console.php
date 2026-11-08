@@ -757,6 +757,8 @@ return [
     'confirm_phone_number_3afac393' => 'Bekræft telefonnummer',
     'confirm_this_matches_the_device_36b8bd55' => 'Bekræft, at dette stemmer med enheden',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Bekræft, at dette stemmer med din enhed',
+    'access_to_176da1cf' => 'Adgang til',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Denne app har registreret sig selv, så navnet kan være valgt af hvem som helst. Godkend kun, hvis beskeden ovenfor svarer til det, du lige har startet.',
     'confirm_who_the_person_is_required_for_single_sign_on_7944c28a' => 'Bekræft brugerens identitet. Påkrævet til SSO.',
     'confirm_your_email_address_part1_to_make_changes_in_the_7b9d8809' => 'Bekræft din e-mailadresse :part1 for at foretage ændringer i konsollen.',
     'confirm_your_email_to_finish_7ea7f091' => 'Bekræft din e-mailadresse for at afslutte',

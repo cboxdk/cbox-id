@@ -1780,6 +1780,8 @@ return [
     'compression_278b1b2a' => 'Συμπίεση',
     'confirm_this_matches_the_device_36b8bd55' => 'Επιβεβαιώστε ότι ταιριάζει με τη συσκευή',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Επιβεβαιώστε ότι ταιριάζει με τη συσκευή σας',
+    'access_to_176da1cf' => 'Πρόσβαση σε',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Αυτή η εφαρμογή καταχωρίστηκε μόνη της, οπότε το όνομά της μπορεί να το επέλεξε οποιοσδήποτε. Εγκρίνετε μόνο αν το παραπάνω μήνυμα ταιριάζει με αυτό που μόλις ξεκινήσατε.',
     'connect_a_directory_a1e72908' => 'Σύνδεση καταλόγου',
     'connect_a_provider_a002b3f3' => 'Σύνδεση παρόχου',
     'connect_an_ai_agent_d8f6c537' => 'Σύνδεση πράκτορα AI',

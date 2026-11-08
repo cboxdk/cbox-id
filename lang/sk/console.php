@@ -1779,6 +1779,8 @@ return [
     'compression_278b1b2a' => 'Kompresia',
     'confirm_this_matches_the_device_36b8bd55' => 'Potvrďte zhodu so zariadením',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Potvrďte zhodu s vaším zariadením',
+    'access_to_176da1cf' => 'Prístup k',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Táto aplikácia sa zaregistrovala sama, takže jej názov mohol zvoliť ktokoľvek. Schváľte len vtedy, ak správa vyššie zodpovedá tomu, čo ste práve spustili.',
     'connect_a_directory_a1e72908' => 'Pripojiť adresár',
     'connect_a_provider_a002b3f3' => 'Pripojiť poskytovateľa',
     'connect_an_ai_agent_d8f6c537' => 'Pripojiť AI agenta',

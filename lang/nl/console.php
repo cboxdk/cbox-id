@@ -659,6 +659,8 @@ return [
     'confirm_phone_number_3afac393' => 'Telefoonnummer bevestigen',
     'confirm_this_matches_the_device_36b8bd55' => 'Bevestig dat dit overeenkomt met het apparaat',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Bevestig dat dit overeenkomt met je apparaat',
+    'access_to_176da1cf' => 'Toegang tot',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Deze app heeft zichzelf geregistreerd, dus iedereen kan de naam hebben gekozen. Keur alleen goed als het bericht hierboven overeenkomt met wat je net hebt gestart.',
     'confirm_your_email_to_finish_7ea7f091' => 'Bevestig je e-mailadres om af te ronden',
     'conflicting_roles_60210f0e' => 'Onverenigbare rollen',
     'connect_1a2303ed' => 'Verbinden',

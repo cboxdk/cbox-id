@@ -1778,6 +1778,8 @@ return [
     'compression_278b1b2a' => 'Kompresija',
     'confirm_this_matches_the_device_36b8bd55' => 'Potvrdite da se podudara s uređajem',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Potvrdite da se podudara s vašim uređajem',
+    'access_to_176da1cf' => 'Pristup za',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Ova se aplikacija sama registrirala, pa je njezin naziv mogao odabrati bilo tko. Odobrite samo ako gornja poruka odgovara onome što ste upravo pokrenuli.',
     'connect_a_directory_a1e72908' => 'Poveži direktorij',
     'connect_a_provider_a002b3f3' => 'Poveži pružatelja',
     'connect_an_ai_agent_d8f6c537' => 'Poveži AI agenta',

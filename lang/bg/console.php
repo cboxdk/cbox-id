@@ -1781,6 +1781,8 @@ return [
     'compression_278b1b2a' => 'Компресия',
     'confirm_this_matches_the_device_36b8bd55' => 'Потвърдете, че съвпада с устройството',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Потвърдете, че съвпада с вашето устройство',
+    'access_to_176da1cf' => 'Достъп до',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Това приложение се е регистрирало само, така че името му може да е избрано от всеки. Одобрете само ако съобщението по-горе съвпада с това, което току-що започнахте.',
     'connect_a_directory_a1e72908' => 'Свързване на директория',
     'connect_a_provider_a002b3f3' => 'Свързване на доставчик',
     'connect_an_ai_agent_d8f6c537' => 'Свързване на AI агент',

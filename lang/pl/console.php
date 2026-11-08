@@ -1781,6 +1781,8 @@ return [
     'compression_278b1b2a' => 'Kompresja',
     'confirm_this_matches_the_device_36b8bd55' => 'Potwierdź zgodność z urządzeniem',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Potwierdź zgodność ze swoim urządzeniem',
+    'access_to_176da1cf' => 'Dostęp do',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Ta aplikacja zarejestrowała się sama, więc jej nazwę mógł wybrać ktokolwiek. Zatwierdź tylko wtedy, gdy powyższy komunikat zgadza się z tym, co właśnie uruchomiłeś.',
     'connect_a_directory_a1e72908' => 'Połącz katalog',
     'connect_a_provider_a002b3f3' => 'Połącz dostawcę',
     'connect_an_ai_agent_d8f6c537' => 'Połącz agenta AI',

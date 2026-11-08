@@ -548,6 +548,10 @@ the response carries no `registration_access_token` or `registration_client_uri`
 serves no [RFC 7592](https://www.rfc-editor.org/rfc/rfc7592) management. Protocol scopes
 other than `offline_access` are dropped from what you are registered for.
 
+An agent or CLI without a browser can register for CIBA or the device grant instead, with
+its own key (`private_key_jwt`). That works only for a resource the operator opened to it:
+see [Agents and CLIs without a browser](agents-and-clis-without-a-browser.md).
+
 ### Client ID metadata documents
 
 When the issuer's metadata says `client_id_metadata_document_supported: true`, use the
@@ -558,6 +562,7 @@ document's `redirect_uris` are matched exactly, port included.
 
 - [Step-up approvals](step-up-approvals.md) — a key's approval policy, and handling a held call.
 - [Approvals](agent-approvals.md) — what the person approving sees.
+- [Agents and CLIs without a browser](agents-and-clis-without-a-browser.md) — CIBA and the device grant for self-registered clients.
 - [Trusted devices](trusted-devices.md) — the phone the approvals go to.
 - [API keys](keys.md) — creating, expiring and revoking the keys agents use.
 - [Keys and tokens](../core-concepts/keys-and-tokens.md) — which credential acts as whom.

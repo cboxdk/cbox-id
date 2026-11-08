@@ -659,6 +659,8 @@ return [
     'confirm_phone_number_3afac393' => 'Telefonnummer bestätigen',
     'confirm_this_matches_the_device_36b8bd55' => 'Übereinstimmung mit dem Gerät bestätigen',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Übereinstimmung mit Ihrem Gerät bestätigen',
+    'access_to_176da1cf' => 'Zugriff auf',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Diese App hat sich selbst registriert, ihren Namen kann also jeder gewählt haben. Bestätigen Sie nur, wenn die Nachricht oben zu dem passt, was Sie gerade gestartet haben.',
     'confirm_your_email_to_finish_7ea7f091' => 'Bestätigen Sie zum Abschluss Ihre E-Mail-Adresse',
     'conflicting_roles_60210f0e' => 'Unvereinbare Rollen',
     'connect_1a2303ed' => 'Verbinden',

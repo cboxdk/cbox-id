@@ -67,8 +67,9 @@ final class PushNotifyingBackchannelAuthentication implements BackchannelAuthent
         ?string $bindingMessage = null,
         ?string $nonce = null,
         ?int $requestedExpiry = null,
+        ?string $resource = null,
     ): BackchannelAuthenticationResult {
-        $result = $this->inner->request($client, $scopes, $loginHint, $bindingMessage, $nonce, $requestedExpiry);
+        $result = $this->inner->request($client, $scopes, $loginHint, $bindingMessage, $nonce, $requestedExpiry, $resource);
 
         $this->notify($client, $result);
 

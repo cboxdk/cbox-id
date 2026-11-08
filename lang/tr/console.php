@@ -1779,6 +1779,8 @@ return [
     'compression_278b1b2a' => 'Sıkıştırma',
     'confirm_this_matches_the_device_36b8bd55' => 'Cihazdakiyle eşleştiğini onaylayın',
     'confirm_this_matches_your_device_ceb0f1cb' => 'Cihazınızdakiyle eşleştiğini onaylayın',
+    'access_to_176da1cf' => 'Erişim:',
+    'this_app_registered_itself_so_anyone_could_have_picked_b6f1f3e2' => 'Bu uygulama kendini kaydetti, yani adını herkes seçmiş olabilir. Yalnızca yukarıdaki mesaj az önce başlattığınız şeyle eşleşiyorsa onaylayın.',
     'connect_a_directory_a1e72908' => 'Dizin bağla',
     'connect_a_provider_a002b3f3' => 'Sağlayıcı bağla',
     'connect_an_ai_agent_d8f6c537' => 'Yapay zekâ aracısı bağla',
