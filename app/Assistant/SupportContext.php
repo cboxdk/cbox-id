@@ -89,7 +89,7 @@ final readonly class SupportContext
                     return false;
                 }
                 if ($withEnvironments) {
-                    app(ProductAdmission::class)->assertGranted($subject, $account);
+                    app(ProductAdmission::class)->assertGranted($subject, $account, acting: false);
                 }
             } catch (ActionRefused) {
                 return false;

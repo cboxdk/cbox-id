@@ -62,7 +62,7 @@ it('does not create product resources when a person verifies their email', funct
     $person = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('dana@acme.example'));
     expect($person)->not->toBeNull()->and(ownerOrganizationId($person->id))->toBe('');
     $url = null;
-    Mail::assertSent(EmailVerificationMail::class, function (EmailVerificationMail $mail) use (&$url): bool {
+    Mail::assertQueued(EmailVerificationMail::class, function (EmailVerificationMail $mail) use (&$url): bool {
         $url = $mail->url;
 
         return true;
@@ -76,7 +76,7 @@ it('keeps replayed identity confirmation from provisioning a product', function 
     rootForDeferredSignup();
     signUpForWorkspace();
     $url = null;
-    Mail::assertSent(EmailVerificationMail::class, function (EmailVerificationMail $mail) use (&$url): bool {
+    Mail::assertQueued(EmailVerificationMail::class, function (EmailVerificationMail $mail) use (&$url): bool {
         $url = $mail->url;
 
         return true;
@@ -95,7 +95,7 @@ it('lets a person without a team resend confirmation from their account page', f
         ->where('auth.user.confirmUrl', '/account/email/confirmation'));
     $this->from(route('account'))->post(route('account.email.confirmation'), ['email' => 'someone-else@example.test'])
         ->assertRedirect(route('account'))->assertSessionHasNoErrors()->assertSessionHas('status');
-    Mail::assertSent(EmailVerificationMail::class, 2);
-    Mail::assertNotSent(EmailVerificationMail::class, fn ($mail): bool => $mail->hasTo('someone-else@example.test'));
+    Mail::assertQueued(EmailVerificationMail::class, 2);
+    Mail::assertNotQueued(EmailVerificationMail::class, fn ($mail): bool => $mail->hasTo('someone-else@example.test'));
     expect(Project::query()->count())->toBe(0);
 });

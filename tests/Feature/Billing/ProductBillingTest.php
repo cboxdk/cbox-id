@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Billing\CaptureProductUsage;
+use App\Platform\Billing\Jobs\RefreshBillingSnapshot;
 use App\Platform\Billing\ProductBilling;
+use App\Platform\Entitlements;
 use Cbox\Billing\Client\BillingClient;
 use Cbox\Billing\Client\BillingManagement;
 use Cbox\Billing\Client\Contracts\ManagementTransport;
@@ -22,10 +24,11 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\Models\Project;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
-it('shares a read snapshot only within its exact HTTP request and workspace', function (): void {
+it('serves a read from the workspace snapshot and refreshes it once stale', function (): void {
     ['organization' => $workspace] = provisionAccount();
     $transport = centralBillingFixture();
     $transport->feature($workspace->id, new FeatureEntitlement('cbox-id.sso', FeatureType::Boolean, true));
@@ -37,7 +40,27 @@ it('shares a read snapshot only within its exact HTTP request and workspace', fu
     $this->getJson('/__billing-read/'.$workspace->id)->assertOk()->assertJson(['first' => true, 'second' => true]);
     $this->getJson('/__billing-read/unrelated-workspace')->assertOk()->assertJson(['first' => false, 'second' => false]);
     $transport->feature($workspace->id, new FeatureEntitlement('cbox-id.sso', FeatureType::Boolean, false));
+    $this->getJson('/__billing-read/'.$workspace->id)->assertOk()->assertJson(['first' => true, 'second' => true]);
+    $this->travel(31)->seconds();
+    $this->getJson('/__billing-read/'.$workspace->id)->assertOk()->assertJson(['first' => true, 'second' => true]);
     $this->getJson('/__billing-read/'.$workspace->id)->assertOk()->assertJson(['first' => false, 'second' => false]);
+});
+
+it('keeps a console feature on from the kept answer while Billing is down, and refreshes it once stale', function (): void {
+    ['organization' => $workspace] = provisionAccount();
+    $transport = centralBillingFixture();
+    $transport->feature($workspace->id, new FeatureEntitlement('cbox-id.sso', FeatureType::Boolean, true));
+    Route::get('/__billing-down/{organization}', fn (string $organization) => response()->json(['sso' => app(Entitlements::class)->entitled($organization, 'sso')]));
+    $this->getJson('/__billing-down/'.$workspace->id)->assertOk()->assertJson(['sso' => true]);
+    $transport->takeDown();
+
+    // Not "not entitled" after a timeout: the last answer, at once.
+    $this->getJson('/__billing-down/'.$workspace->id)->assertOk()->assertJson(['sso' => true]);
+
+    Bus::fake([RefreshBillingSnapshot::class]);
+    $this->travel(31)->seconds();
+    $this->getJson('/__billing-down/'.$workspace->id)->assertOk()->assertJson(['sso' => true]);
+    Bus::assertDispatched(RefreshBillingSnapshot::class, fn (RefreshBillingSnapshot $job): bool => $job->kind === RefreshBillingSnapshot::FEATURES && $job->parts === [$workspace->id]);
 });
 
 it('uses only current central grants for the exact workspace and honors immediate revocation', function (): void {

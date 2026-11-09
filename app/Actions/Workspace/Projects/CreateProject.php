@@ -66,7 +66,7 @@ final readonly class CreateProject implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $workspaceId = InWorkspace::id($context->principal);
-        app(ProductAdmission::class)->assertGranted($context->principal instanceof SignedInPerson ? $context->principal->subjectId() : $context->principal->id(), $workspaceId);
+        app(ProductAdmission::class)->assertGranted($context->principal instanceof SignedInPerson ? $context->principal->subjectId() : $context->principal->id(), $workspaceId, acting: true);
 
         // IN THE PLATFORM ROOT: `organizations` is environment-owned and this plane pins no
         // environment, so an unscoped read finds nothing.

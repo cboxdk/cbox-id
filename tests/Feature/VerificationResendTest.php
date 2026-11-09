@@ -107,7 +107,7 @@ function lastResendNotice(): string
 /** Every verification link mailed so far, oldest first. */
 function verificationLinks(): array
 {
-    return Mail::sent(EmailVerificationMail::class)
+    return Mail::queued(EmailVerificationMail::class)
         ->map(static fn (EmailVerificationMail $mail): string => $mail->url)
         ->all();
 }
@@ -126,7 +126,7 @@ it('sends a fresh link to the signed-in member and to nobody else', function ():
 
     expect(lastResendNotice())->toContain('on its way to dana@acme.example');
 
-    $sent = Mail::sent(EmailVerificationMail::class);
+    $sent = Mail::queued(EmailVerificationMail::class);
 
     expect($sent)->toHaveCount($before + 1);
 
@@ -198,7 +198,7 @@ it('refuses the fourth resend inside the window', function (): void {
         ->not->toContain('on its way to dana@acme.example');
 
     // Three links, not four: the throttle refuses before anything is mailed.
-    expect(Mail::sent(EmailVerificationMail::class))->toHaveCount(4); // 1 signup + 3 resends
+    expect(Mail::queued(EmailVerificationMail::class))->toHaveCount(4); // 1 signup + 3 resends
 });
 
 it('says exactly the same thing whether or not the address is already confirmed', function (): void {
@@ -218,7 +218,7 @@ it('says exactly the same thing whether or not the address is already confirmed'
     expect($subjectId)->toBeString();
     app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified((string) $subjectId, $member->email));
 
-    $mailedSoFar = Mail::sent(EmailVerificationMail::class)->count();
+    $mailedSoFar = Mail::queued(EmailVerificationMail::class)->count();
 
     resend();
     $verifiedNotice = lastResendNotice();
@@ -226,7 +226,7 @@ it('says exactly the same thing whether or not the address is already confirmed'
     expect($verifiedNotice)->toBe($unverifiedNotice)
         // Nothing was actually mailed to an address that needs no confirming — the
         // silence is what makes the identical message honest rather than merely quiet.
-        ->and(Mail::sent(EmailVerificationMail::class))->toHaveCount($mailedSoFar);
+        ->and(Mail::queued(EmailVerificationMail::class))->toHaveCount($mailedSoFar);
 });
 
 it('leaves exactly one live link: the resent one works and the earlier one does not', function (): void {
@@ -258,13 +258,13 @@ it('is a harmless no-op once the environment has been released', function (): vo
     $this->post($link)->assertRedirect();
     expect(environmentsOwnedBy((string) app(PlatformRoot::class)->run(fn () => app(Memberships::class)->forUser($member->id)->first()?->organization_id))->count())->toBe(1);
 
-    $mailedSoFar = Mail::sent(EmailVerificationMail::class)->count();
+    $mailedSoFar = Mail::queued(EmailVerificationMail::class)->count();
 
     resend()->assertSessionHasNoErrors();
 
     expect(lastResendNotice())->toContain('your environment is already up and running');
 
-    expect(Mail::sent(EmailVerificationMail::class))->toHaveCount($mailedSoFar)
+    expect(Mail::queued(EmailVerificationMail::class))->toHaveCount($mailedSoFar)
         ->and(environmentsOwnedBy((string) app(PlatformRoot::class)->run(fn () => app(Memberships::class)->forUser($member->id)->first()?->organization_id))->count())->toBe(1);
 });
 

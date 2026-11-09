@@ -317,7 +317,7 @@ readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, T
 
         $this->assertGranted(WorkspaceScopes::knows($action->scope), $action->scope);
         if (in_array($action->scope, ['workspace:read', 'projects:write', 'environments:write', 'keys:write'], true)) {
-            app(ProductAdmission::class)->assertGranted($this->signIn->subjectId, $workspace->id);
+            app(ProductAdmission::class)->assertGranted($this->signIn->subjectId, $workspace->id, acting: $action->danger->writes());
         }
     }
 

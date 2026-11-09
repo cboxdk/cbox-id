@@ -17,7 +17,7 @@ it('emails a single-use magic link', function () {
         ->assertRedirect(route('login'))
         ->assertSessionHasNoErrors();
 
-    Mail::assertSent(MagicLinkMail::class, fn (MagicLinkMail $mail) => $mail->hasTo('someone@acme.test'));
+    Mail::assertQueued(MagicLinkMail::class, fn (MagicLinkMail $mail) => $mail->hasTo('someone@acme.test'));
 });
 
 it('emails an invitation when an admin invites a member', function () {

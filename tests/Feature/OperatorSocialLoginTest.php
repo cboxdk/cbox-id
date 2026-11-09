@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Mail\EmailVerificationMail;
 use App\Platform\AccountLinking\FederationFailure;
 use App\Platform\AccountLinking\LinkHold;
 use App\Platform\PlatformAuth;
@@ -23,6 +24,7 @@ use Cbox\Ssrf\Contracts\UrlGuard;
 use Firebase\JWT\JWT;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia;
 
@@ -275,6 +277,7 @@ it('sends GitHub to the endpoint the catalogue names, with the scopes it names',
 */
 
 it('signs in a new user against a real signed id_token', function () {
+    Mail::fake();
     $stash = googleSignInInProgress();
 
     $this->get('/auth/google/callback?code=auth-code&state='.$stash['state'])
@@ -289,6 +292,11 @@ it('signs in a new user against a real signed id_token', function () {
         ->and(collect(app(Subjects::class)->linkedIdentities($subject->id))
             ->contains(fn ($i): bool => $i->provider === 'social:google' && $i->subject === 'google|12345'))
         ->toBeTrue();
+
+    // A first social sign-in is a signup: its confirmation mail is queued, never sent while
+    // the person waits on the callback.
+    Mail::assertQueued(EmailVerificationMail::class, fn (EmailVerificationMail $mail): bool => $mail->hasTo('newcomer@example.test'));
+    Mail::assertNothingSent();
 });
 
 it('refuses an id_token signed by the wrong key', function () {

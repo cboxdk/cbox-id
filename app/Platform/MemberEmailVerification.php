@@ -151,7 +151,7 @@ final class MemberEmailVerification
             return false;
         }
 
-        Mail::to($email)->locale(app(MailLocale::class)->forRecipient())->send(new EmailVerificationMail($url));
+        Mail::to($email)->locale(app(MailLocale::class)->forRecipient())->queue(new EmailVerificationMail($url));
 
         return true;
 

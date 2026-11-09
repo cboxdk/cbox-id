@@ -104,7 +104,7 @@ it('sends a self-service link in the language of the page it was asked from', fu
         ->from('/forgot-password')
         ->post(route('password.email'), ['email' => 'ada@acme.test'])->assertSessionHasNoErrors();
 
-    Mail::assertSent(PasswordResetMail::class, fn (PasswordResetMail $mail): bool => $mail->locale === 'sv');
+    Mail::assertQueued(PasswordResetMail::class, fn (PasswordResetMail $mail): bool => $mail->locale === 'sv');
 });
 
 it('sends an administrator’s invitation in the hosted pages’ default language', function (): void {

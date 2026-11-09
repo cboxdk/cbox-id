@@ -71,7 +71,7 @@ it('does not mint an account via a magic link for an unknown email when signup i
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('magicSentTo', 'ghost@nowhere.test'));
 
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
     expect(app(Subjects::class)->findByEmail('ghost@nowhere.test'))->toBeNull();
 });
 
@@ -89,7 +89,7 @@ it('still sends a magic link to an existing account when signup is closed', func
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('magicSentTo', 'member@acme.test'));
 
-    Mail::assertSent(MagicLinkMail::class);
+    Mail::assertQueued(MagicLinkMail::class);
 });
 
 it('offers the sign-in page a way to create an account only when signup is open', function (): void {

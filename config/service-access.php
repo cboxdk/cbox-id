@@ -14,4 +14,7 @@ return [
     'billing_url' => env('CBOX_WAITLISTS_BILLING_URL'),
     // A server-only Billing operator token with access:enroll, bound to its billing environment.
     'billing_token' => env('CBOX_WAITLISTS_BILLING_TOKEN'),
+    // Seconds Billing's last answer (admission, product features, the signup policy) counts as
+    // fresh. Older, a page still renders from it and a queued job asks Billing again.
+    'billing_snapshot_ttl' => (int) env('CBOX_ID_BILLING_SNAPSHOT_TTL', 30),
 ];
