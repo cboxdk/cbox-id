@@ -38,7 +38,7 @@ jobs:
     # org's own runners are for private repositories only.
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev-v2
 
     steps:
       - uses: actions/checkout@v4
@@ -90,7 +90,7 @@ jobs:
     # Composer, Node 22 and Playwright's Chromium are baked in, pinned by the `-v1` release
     # channel.
     container:
-      image: ghcr.io/cboxdk/php-baseimages/php-cli:${{ matrix.php }}-trixie-dev
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:${{ matrix.php }}-trixie-dev-v2
 
     steps:
       - uses: actions/checkout@v4
@@ -138,7 +138,7 @@ jobs:
     # rubber stamp. If the new picture is the one you meant, run the Visual baselines
     # workflow and commit what it uploads.
     container:
-      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev-v2
 
     steps:
       - uses: actions/checkout@v4
@@ -215,7 +215,7 @@ jobs:
   supply-chain:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev-v2
 
     steps:
       - uses: actions/checkout@v4
@@ -293,7 +293,7 @@ jobs:
     # The same dev-tier image as `test`. The job runs in a container on the service
     # network, so the database is reached by its service name on its own port.
     container:
-      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev-v2
     env:
       DB_CONNECTION: ${{ matrix.driver }}
       DB_HOST: db
@@ -348,7 +348,7 @@ jobs:
   source-data-postgres:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev-v2
     services:
       postgres:
         image: postgres:18
