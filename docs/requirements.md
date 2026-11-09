@@ -100,13 +100,12 @@ production identity provider, however, run a server database:
 
 | | Production (cboxid.com) | Also supported |
 |---|---|---|
-| Database | **PostgreSQL 18**, in the cluster beside the app, with continuous encrypted backups | MySQL **8.0.13 or later** (CI runs the suite on 8.4) |
+| Database | **PostgreSQL 18**, in the cluster beside the app, with continuous encrypted backups | — (PostgreSQL only) |
 | Cache, sessions, queue | **Valkey 8**, in the cluster beside the app, `noeviction` | Redis |
 
 - **Not SQLite** in production: one file, one writer, and no shared state for a second
   replica.
-- **MySQL's floor is 8.0.13** because that is where expression column defaults landed,
-  which is the only way MySQL accepts a default on a `json` column. MariaDB is not tested.
+- **PostgreSQL only.** MySQL and MariaDB are not supported and not tested.
 - **The store that holds the queue runs `maxmemory-policy noeviction`.** A queued job is
   data: under an evicting policy a full Valkey or Redis silently drops webhooks,
   back-channel logouts and mail. With `noeviction` a full instance refuses writes, which is

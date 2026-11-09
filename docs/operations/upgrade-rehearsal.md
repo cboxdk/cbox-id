@@ -1,7 +1,7 @@
 ---
 title: Rehearsing an upgrade
 weight: 6
-description: Prove a release upgrades your database before you deploy it — the seeded check on MySQL and PostgreSQL, and the rehearsal against a restored copy of your own data.
+description: Prove a release upgrades your database before you deploy it — the seeded check on PostgreSQL, and the rehearsal against a restored copy of your own data.
 ---
 
 # Rehearsing an upgrade
@@ -25,11 +25,10 @@ both:
 
 ```bash
 composer install && npm ci && npm run build      # this checkout, as for development
-scripts/upgrade-path-check.sh --from v1.1.1 --engine mysql
 scripts/upgrade-path-check.sh --from v1.1.1 --engine pgsql
 ```
 
-It needs PHP, Composer, git and Docker, starts its own `mysql:8.4` or `postgres:18`
+It needs PHP, Composer, git and Docker, starts its own `postgres:18`
 container on a free port, and removes everything when it is done (`--keep` leaves the
 container and the scratch directory for a look). In order:
 
@@ -61,8 +60,8 @@ Do this against a **copy**, on a machine that is not production, with the new re
 code. The copy holds every user's personal data and every sealed secret: treat the
 machine and the copy like production, and destroy both afterwards.
 
-1. **Take a backup** the way you would restore one — `pg_dump -Fc` or `mysqldump
-   --single-transaction`, or your provider's snapshot — and restore it into a new,
+1. **Take a backup** the way you would restore one — `pg_dump -Fc` or your provider's
+   snapshot — and restore it into a new,
    isolated database on the **same engine and major version** production runs.
 2. **Check out the new release** and install it (`composer install --no-dev`, `npm ci &&
    npm run build`). Give it the production `APP_KEY` and `CBOX_ID_CRYPTO_KEY` — from your
@@ -101,7 +100,7 @@ machine and the copy like production, and destroy both afterwards.
 
 ## What a rollback cannot undo (1.1.x → 2.0.0)
 
-The rehearsal from v1.1.1 on MySQL 8.4 and PostgreSQL 18 rolls back to v1.1.1's schema
+The rehearsal from v1.1.1 on PostgreSQL 18 rolls back to v1.1.1's schema
 exactly, but these data changes stay rolled forward:
 
 - **`cbid_org_` workspace keys stay revoked.** They cannot resolve under 2.0.0 either way
