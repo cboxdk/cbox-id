@@ -83,7 +83,7 @@ final class SocialController extends Controller
             // their relationship with the user, not ours.
             if ($provisioning->created && $principal->email !== null) {
                 $token = app(EmailVerification::class)->issue($subject->id, $principal->email);
-                Mail::to($principal->email)->locale(app(MailLocale::class)->forRecipient())->send(new EmailVerificationMail(
+                Mail::to($principal->email)->locale(app(MailLocale::class)->forRecipient())->queue(new EmailVerificationMail(
                     // MailLinks: mailed, so the origin comes from the deployment.
                     $links->route('verification.verify', $token),
                 ));

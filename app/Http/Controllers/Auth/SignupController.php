@@ -168,7 +168,7 @@ final readonly class SignupController extends PageController
         // The account is usable immediately; verification confirms the address out of
         // band rather than gating the way in.
         $token = app(EmailVerification::class)->issue($subject->id, $request->email());
-        Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->send(
+        Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->queue(
             new EmailVerificationMail($links->route('verification.verify', $token)),
         );
 

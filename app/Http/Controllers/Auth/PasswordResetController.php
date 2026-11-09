@@ -61,7 +61,7 @@ final readonly class PasswordResetController extends PageController
 
         if ($token !== null) {
             $url = $links->route('password.reset', $token);
-            Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->send(new PasswordResetMail($url));
+            Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->queue(new PasswordResetMail($url));
 
             // Surfaced only on a local install, so a developer with no mail transport can
             // still walk the flow. Never in any other environment: it is a live

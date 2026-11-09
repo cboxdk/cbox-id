@@ -138,7 +138,7 @@ final class SignupProvisioner
         }
 
         try {
-            app(ProductAdmission::class)->assertGranted($subjectId, $organizationId);
+            app(ProductAdmission::class)->assertGranted($subjectId, $organizationId, acting: true);
 
             // The organization's own status is checked INSIDE addEnvironment(), which is
             // where it belongs — an operator who suspended a signup while it was still

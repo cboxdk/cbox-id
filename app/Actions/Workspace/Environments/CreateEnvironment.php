@@ -87,7 +87,7 @@ final readonly class CreateEnvironment implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $workspaceId = InWorkspace::id($context->principal);
-        app(ProductAdmission::class)->assertGranted($context->principal instanceof SignedInPerson ? $context->principal->subjectId() : $context->principal->id(), $workspaceId);
+        app(ProductAdmission::class)->assertGranted($context->principal instanceof SignedInPerson ? $context->principal->subjectId() : $context->principal->id(), $workspaceId, acting: true);
         $project = $this->project($workspaceId, $context->nullableString('project_id'));
 
         InWorkspace::assertUnscoped($context->principal, $workspaceId);

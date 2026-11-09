@@ -81,7 +81,7 @@ function forceRisk(Outcome $outcome): void
 /** The last one-time-code mail sent to $email. */
 function codeMailTo(string $email): OneTimeCodeMail
 {
-    $mail = Mail::sent(OneTimeCodeMail::class, fn (OneTimeCodeMail $mail): bool => $mail->hasTo($email))->last();
+    $mail = Mail::queued(OneTimeCodeMail::class, fn (OneTimeCodeMail $mail): bool => $mail->hasTo($email))->last();
 
     expect($mail)->toBeInstanceOf(OneTimeCodeMail::class, "no one-time-code mail went to {$email}");
 

@@ -87,9 +87,17 @@ final readonly class BillingWaitlists
         }
     }
 
-    public function productPolicy(): RegistrationPolicy
+    /**
+     * The policy as Billing sent it, checked, so it can be kept as plain data.
+     *
+     * @return array<array-key, mixed>
+     */
+    public function productPolicyData(): array
     {
-        return RegistrationPolicy::from($this->request('GET', '/api/v1/access/services/cbox-id/policy', [])->json('program'));
+        $program = $this->request('GET', '/api/v1/access/services/cbox-id/policy', [])->json('program');
+        RegistrationPolicy::from($program);
+
+        return is_array($program) ? $program : throw new ServiceAccessUnavailable('Malformed registration policy.');
     }
 
     public function productAllowed(string $subject, string $organization): bool

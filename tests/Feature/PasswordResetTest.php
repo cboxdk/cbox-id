@@ -37,11 +37,11 @@ it('emails a reset link for a known account and resets the password end-to-end',
         ->assertRedirect(route('password.request'))
         ->assertSessionHasNoErrors();
 
-    Mail::assertSent(PasswordResetMail::class);
+    Mail::assertQueued(PasswordResetMail::class);
 
     // The raw token isn't stored (hash only) — capture it from the sent mailable.
     $raw = null;
-    Mail::assertSent(PasswordResetMail::class, function (PasswordResetMail $mail) use (&$raw) {
+    Mail::assertQueued(PasswordResetMail::class, function (PasswordResetMail $mail) use (&$raw) {
         $raw = str_contains($mail->url, '/reset-password/') ? substr($mail->url, strpos($mail->url, '/reset-password/') + 16) : null;
 
         return true;
@@ -71,7 +71,7 @@ it('shows the same confirmation and sends no mail for an unknown email (anti-enu
         // here would report that the address is unknown to anybody who asked.
         ->assertSessionHasNoErrors();
 
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 it('rejects an invalid reset token', function () {
@@ -93,7 +93,7 @@ it('signup sends an email-verification link, and the link verifies the address',
         ->assertRedirect(route('dashboard'));
 
     $raw = null;
-    Mail::assertSent(EmailVerificationMail::class, function (EmailVerificationMail $mail) use (&$raw) {
+    Mail::assertQueued(EmailVerificationMail::class, function (EmailVerificationMail $mail) use (&$raw) {
         $raw = substr($mail->url, strpos($mail->url, '/verify-email/') + 14);
 
         return true;

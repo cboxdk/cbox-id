@@ -273,7 +273,7 @@ final readonly class LoginController extends PageController
         if ($signup->isOpen() || $subjects->findByEmail($request->email()) !== null) {
             $url = $mailLinks->route('magic.redeem', $links->request($request->email()));
 
-            Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->send(new MagicLinkMail($url));
+            Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->queue(new MagicLinkMail($url));
 
             // Local installs only: a developer with no mail transport can still walk the
             // flow. It is a live credential in a page body anywhere else.

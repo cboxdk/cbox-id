@@ -172,6 +172,10 @@ it('offers a customer App audit logs only when their plan includes them', functi
     $this->post(route('audit-logs.exports.store'))->assertNotFound();
 
     grantFeature($organizationId, (string) config('cbox-id.entitlements.audit_logs'));
+    // The console reads Billing's last answer (a refusal is kept too); once it is stale the
+    // next page queues a refresh, and the page after it shows the new plan.
+    $this->travel(31)->seconds();
+    customerRail('dashboard');
 
     expect(customerRail('dashboard')['audit'])->toBe(['audit', 'audit-logs']);
     $this->get(route('audit-logs'))->assertOk();

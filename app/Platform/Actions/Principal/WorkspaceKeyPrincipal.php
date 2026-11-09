@@ -73,7 +73,7 @@ final readonly class WorkspaceKeyPrincipal implements Principal
             throw new AuthorizationException("This key is missing the required scope: {$action->scope}.");
         }
         if (in_array($action->scope, ['workspace:read', 'projects:write', 'environments:write', 'keys:write'], true)) {
-            app(ProductAdmission::class)->assertGranted($this->id(), $this->key->organization_id);
+            app(ProductAdmission::class)->assertGranted($this->id(), $this->key->organization_id, acting: $action->danger->writes());
         }
     }
 

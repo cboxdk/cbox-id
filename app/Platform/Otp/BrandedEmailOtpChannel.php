@@ -60,10 +60,11 @@ final readonly class BrandedEmailOtpChannel implements OtpChannel
 
         // The mailer is asked for at send time, not injected: the channel is cached for the
         // life of the registry, and the mailer it would have captured is not necessarily the
-        // one in place when the code is sent.
+        // one in place when the code is sent. Queued: the person waiting for the code never
+        // waits on the mail provider, and an outage is retried by the queue.
         Mail::to($delivery->recipient)
             ->locale(HostedLocale::fromTag($delivery->locale)->value ?? $this->locales->forRecipient())
-            ->send($mail);
+            ->queue($mail);
     }
 
     /**

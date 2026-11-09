@@ -4,9 +4,15 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\Listeners\SuppressSandboxMail;
 use App\Platform\Locale\MailLocale;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Mail\Factory;
+use Illuminate\Contracts\Mail\Mailer;
 use Illuminate\Contracts\Queue\Factory as Queue;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
@@ -33,14 +39,23 @@ use Illuminate\Queue\SerializesModels;
  * the sender and the parts are put together here.
  *
  * THE BRAND IS FIXED AT THE MOMENT THE MAIL IS ASKED FOR, not when it is rendered — see
- * {@see MailBrand}. Every send in this application is synchronous, so the two are the
- * same moment today; {@see self::queue()} resolves it before the message is serialized so
- * that a send moved onto a queue later keeps its brand rather than falling back to ours.
+ * {@see MailBrand}. {@see self::queue()} resolves it before the message is serialized, so
+ * a queued mail (every sign-in mail: a request never waits on the mail provider) keeps its
+ * brand rather than falling back to ours. It also keeps the ENVIRONMENT it was asked in, so
+ * the worker sends it inside that environment and a sandbox's mail is still suppressed
+ * ({@see SuppressSandboxMail}). Queued mail is encrypted on the queue (it carries sign-in
+ * links and codes), leaves only after the request's transaction commits, and is retried.
  */
-abstract class BrandedMailable extends Mailable
+abstract class BrandedMailable extends Mailable implements ShouldBeEncrypted
 {
     use Queueable;
     use SerializesModels;
+
+    /** A provider outage is retried, not lost. */
+    public int $tries = 5;
+
+    /** The environment the mail was asked in, for a worker that has none. */
+    protected ?string $environmentKey = null;
 
     /** Resolved on first use; NOT public, so it never shadows the views' `$brand` name. */
     protected ?MailBrand $mailBrand = null;
@@ -105,7 +120,7 @@ abstract class BrandedMailable extends Mailable
      */
     public function queue(Queue $queue): mixed
     {
-        $this->brand();
+        $this->prepareForQueue();
 
         return parent::queue($queue);
     }
@@ -115,9 +130,37 @@ abstract class BrandedMailable extends Mailable
      */
     public function later($delay, Queue $queue): mixed
     {
-        $this->brand();
+        $this->prepareForQueue();
 
         return parent::later($delay, $queue);
+    }
+
+    /** @return list<int> */
+    public function backoff(): array
+    {
+        return [10, 30, 60, 300];
+    }
+
+    /**
+     * Send inside the environment the mail was asked in, when a worker sends it.
+     *
+     * @param  Factory|Mailer  $mailer
+     */
+    public function send($mailer)
+    {
+        $context = app(EnvironmentContext::class);
+        if ($this->environmentKey === null || $context->current()?->environmentKey() === $this->environmentKey) {
+            return parent::send($mailer);
+        }
+
+        return $context->runAs(GenericEnvironment::of($this->environmentKey), fn () => parent::send($mailer));
+    }
+
+    private function prepareForQueue(): void
+    {
+        $this->brand();
+        $this->environmentKey = app(EnvironmentContext::class)->current()?->environmentKey();
+        $this->afterCommit();
     }
 
     /** The subject, in the recipient's language. */

@@ -162,7 +162,7 @@ final readonly class EnvironmentMemberPrincipal implements SignedInPerson, Token
             throw new AuthorizationException('You do not have permission to change this.');
         }
 
-        app(ProductAdmission::class)->assertGranted($this->signIn->subjectId, $workspace->id);
+        app(ProductAdmission::class)->assertGranted($this->signIn->subjectId, $workspace->id, acting: $action->danger->writes());
     }
 
     public function supportsIdempotency(): bool

@@ -93,7 +93,7 @@ it('shows an unconfirmed owner the banner, with a button that mails the link', f
 
     // A provisioned workspace: the signup resend would have answered "already provisioned"
     // and sent nothing. This sends.
-    Mail::assertSent(EmailVerificationMail::class);
+    Mail::assertQueued(EmailVerificationMail::class);
 });
 
 it('tells the API caller nothing was needed once the address is confirmed', function (): void {

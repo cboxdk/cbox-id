@@ -182,6 +182,7 @@ final readonly class ProductSignupController
             if ($this->admission->enabled()) {
                 $reference = hash('sha256', implode('|', [$this->me->id(), $organization->id, $code ?? 'open']));
                 $this->billing->admitProduct($this->me->id(), $this->me->email(), $organization->id, $organization->name, $code, $reference);
+                $this->admission->admitted($this->me->id(), $organization->id);
             }
             $request->session()->forget('product-signup.invitation');
 
@@ -195,6 +196,6 @@ final readonly class ProductSignupController
 
     private function policy(): RegistrationPolicy
     {
-        return $this->admission->enabled() ? $this->billing->productPolicy() : new RegistrationPolicy(0, 'open', false, 'hidden', [], []);
+        return $this->admission->policy();
     }
 }
