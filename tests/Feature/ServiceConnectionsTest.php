@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\ServiceConnections\ConnectionEvents;
+use App\ServiceConnections\Contracts\ReadsConnectionEvents;
 use App\ServiceConnections\ServiceConnection;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
@@ -123,4 +125,8 @@ it('preserves long client and service identifiers while enforcing the tenant own
 
     expect(fn () => $row->replicate()->save())
         ->toThrow(UniqueConstraintViolationException::class);
+});
+
+it('reads connection events through a bound reader, so the events API never fails to resolve it', function (): void {
+    expect(app(ReadsConnectionEvents::class))->toBeInstanceOf(ConnectionEvents::class);
 });
