@@ -39,10 +39,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - driver: mysql
-            image: mysql:8.4
-            port: 3306
-            health: mysqladmin ping -h 127.0.0.1 -u root -proot
           - driver: pgsql
             image: postgres:18
             port: 5432
@@ -52,10 +48,6 @@ jobs:
       db:
         image: ${{ matrix.image }}
         env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: cbox_id
-          MYSQL_USER: cbox_id
-          MYSQL_PASSWORD: secret
           POSTGRES_DB: cbox_id
           POSTGRES_USER: cbox_id
           POSTGRES_PASSWORD: secret

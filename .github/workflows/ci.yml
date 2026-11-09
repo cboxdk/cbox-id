@@ -242,16 +242,13 @@ jobs:
   # The job above runs the whole suite on sqlite :memory:, and until this job
   # existed that was the ONLY engine this application had ever been executed
   # against — production ran PostgreSQL and CI ran sqlite, so nothing tested what
-  # was deployed. The framework it embeds (cboxdk/laravel-id) has its own engines
-  # matrix and is green on MySQL; that proves the FRAMEWORK's migrations, not this
-  # app's own migrations, its five console modules, or 53k lines of Livewire
-  # queries.
+  # was deployed.
   #
-  # It matters because sqlite forgives what the servers do not: it accepts a
-  # literal DEFAULT on a json column (MySQL: error 1101), enforces no index-key
-  # size limit (InnoDB: 3072 bytes, and utf8mb4 charges 4 bytes a character), and
-  # has no identifier length cap (MySQL 64, PostgreSQL 63). It is also
-  # case-sensitive where MySQL's utf8mb4_unicode_ci is not.
+  # It matters because sqlite forgives what PostgreSQL does not: identifier length
+  # (63), strict types in comparisons, and transactions that abort on the first error.
+  #
+  # PostgreSQL is the only supported engine. Cbox ID is a hosted service; MySQL was
+  # tested for self-hosting, which is dropped (2026-11-09).
   #
   # NB the suite really does follow DB_CONNECTION here: a process environment
   # variable takes precedence over phpunit.xml's <env>, so setting it below
@@ -268,18 +265,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        driver: [mysql, pgsql]
+        driver: [pgsql]
         # Two halves of the suite per engine, as in `test`.
         shard: [1, 2]
         include:
-          # Kept green for self-hosters: MySQL is a supported production database.
-          # Floored at 8.0.13 in the docs because that is where EXPRESSION column
-          # defaults landed, which is the only spelling MySQL accepts for a json
-          # default.
-          - driver: mysql
-            image: mysql:8.4
-            port: 3306
-            health: mysqladmin ping -h 127.0.0.1 -u root -proot
           # The deployment target: production (cboxid.com, on Cbox's Kubernetes cluster)
           # runs PostgreSQL 18, with the en_US.UTF-8 locale this image defaults to. The
           # local manifest (cbox.yaml, `resources.database`) states the same major, and
@@ -292,12 +281,7 @@ jobs:
     services:
       db:
         image: ${{ matrix.image }}
-        # Both families' variables are set; each image ignores the other's.
         env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: cbox_id
-          MYSQL_USER: cbox_id
-          MYSQL_PASSWORD: secret
           POSTGRES_DB: cbox_id
           POSTGRES_USER: cbox_id
           POSTGRES_PASSWORD: secret
@@ -354,19 +338,7 @@ jobs:
       # once (RefreshDatabase). The migration above stays on `cbox_id` itself, which is
       # what a first deploy migrates.
       #
-      # PostgreSQL's POSTGRES_USER is a superuser and can create them. MySQL's
-      # MYSQL_USER is granted its own database and nothing else, so root grants it the
-      # test databases by name — the suite keeps running as the application's user,
-      # not as root.
-      - name: Let the app user create the per-worker test databases (MySQL)
-        if: matrix.driver == 'mysql'
-        run: |
-          php <<'PHP'
-          <?php
-          $pdo = new PDO('mysql:host=db;port=3306', 'root', 'root');
-          $pdo->exec("GRANT ALL PRIVILEGES ON `cbox\\_id\\_test\\_%`.* TO 'cbox_id'@'%'");
-          echo "granted cbox_id_test_* to cbox_id\n";
-          PHP
+      # POSTGRES_USER is a superuser, so it can create them.
 
       # Browser tests are excluded on purpose: they need Chromium and prove
       # rendering, not persistence. This job is about the engine.

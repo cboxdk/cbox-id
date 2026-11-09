@@ -236,7 +236,7 @@ shape above is one answer; the pieces every deployment needs are these:
 | Web | nginx + PHP-FPM (the `Dockerfile` image does both), behind your TLS proxy; as many replicas as you like once state is shared |
 | Queue manager | `php artisan queue:autoscale`, one per host, under a supervisor |
 | Scheduler | `php artisan schedule:work`, exactly one, under a supervisor (or `schedule:run` from cron) |
-| Database | PostgreSQL (production runs 18), or MySQL 8.0.13 or later |
+| Database | PostgreSQL (production runs 18) |
 | Cache, sessions, queue | Valkey or Redis, `maxmemory-policy noeviction` |
 | Secrets | your secrets manager, into the process environment |
 | Probes | liveness `/up`, readiness `/health/ready` with `HEALTH_TOKEN` |
@@ -246,7 +246,7 @@ shape above is one answer; the pieces every deployment needs are these:
 
 - **PHP 8.5** with `ext-sodium` and `ext-openssl` (the crypto layer needs both;
   `cbox-id:doctor` fails loudly if either is missing).
-- A database — **PostgreSQL or MySQL** in production (not SQLite).
+- A database — **PostgreSQL** in production (not SQLite or MySQL).
 - A cache/queue backend — **Valkey or Redis** (sessions, rate limits, queues), running
   `maxmemory-policy noeviction` because it holds the queue.
 - **TLS terminated in front of the app.** Passkeys (WebAuthn) and secure cookies

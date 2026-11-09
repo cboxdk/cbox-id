@@ -274,7 +274,7 @@ dashboard.
 
 The tables are created by the package's own migrations (`queue_monitor_jobs`,
 `queue_monitor_tags`, `queue_monitor_scaling_events`, `queue_monitor_cluster_events`) and
-run on SQLite, PostgreSQL and MySQL.
+run on PostgreSQL (and SQLite in the test suite).
 
 ## Troubleshooting
 
