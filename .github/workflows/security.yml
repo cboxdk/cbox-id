@@ -22,7 +22,7 @@ jobs:
     # org's own runners are for private repositories only.
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-bookworm-dev-v1
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev-v2
     steps:
       - uses: actions/checkout@v4
       - run: |

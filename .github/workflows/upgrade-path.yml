@@ -57,7 +57,7 @@ jobs:
           --health-timeout 5s
           --health-retries 30
     container:
-      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-bookworm-dev-v1
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev-v2
     env:
       DB_HOST: db
       DB_PORT: ${{ matrix.port }}

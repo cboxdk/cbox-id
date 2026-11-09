@@ -48,7 +48,7 @@ jobs:
     # The SAME image ci.yml's `test` job and visual-baselines.yml draw in. A picture drawn
     # anywhere else is a picture of a different renderer.
     container:
-      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-bookworm-dev-v1
+      image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev-v2
     steps:
       - uses: actions/checkout@v4
 
