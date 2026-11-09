@@ -8,6 +8,11 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Added
+
+- **Cbox Assistant knows the customer's projects and environments.** Through `cboxdk/laravel-assistant-client` 0.2, ID serves the customer profile: pickable `id_projects` and `id_environments`, plus signals (customer since, seats, recent workspace changes from the audit log, member role, environment count, SSO enabled, two-factor enforced). A member sees what the console shows them.
+- **Support elevations are audited in the workspace.** A verified Cbox support elevation widens the profile to the whole workspace (never another) and is written to the workspace's audit log as `organization.support_access_used` with the staff member, reason, expiry and what was read.
+
 ## [2.2.0] - 2026-11-08
 
 ### Added

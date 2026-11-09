@@ -119,17 +119,9 @@ final readonly class SupportContext
             if (! $withEnvironments) {
                 return $base;
             }
-            $projects = app(OrganizationProjects::class)->forOrganization($account);
-            $allowed = app(NativeEnvironmentAccess::class)->ids($account, $subject);
-            $scope = (array) ($context->principal['context'] ?? []);
-            $active = $scope['environment'] ?? null;
-            $environments = Environment::query()->whereIn('id', $allowed)
-                ->when($active !== $this->root->environment()?->environmentKey(), fn ($query) => $query->whereKey($active))
-                ->whereIn('project_id', $projects->pluck('id')->all())->orderBy('name')->get()->groupBy('project_id');
-
-            if (! app(NativeProductAccess::class)->forSubject($subject, $account)->isOwner()) {
-                $projects = $projects->filter(fn (Project $project): bool => $environments->has($project->id));
-            }
+            $scope = $this->scope($context, false);
+            $environments = $scope->environments()->orderBy('name')->get()->groupBy('project_id');
+            $projects = $scope->projects;
 
             return [...$base, 'projects' => $projects->map(fn (Project $project): array => [
                 'name' => $project->name, 'status' => $project->status->value,
@@ -142,6 +134,37 @@ final readonly class SupportContext
         abort_unless(is_array($result), 403);
 
         return $result;
+    }
+
+    /**
+     * The projects and environments this principal may see in its workspace. Without
+     * `$widened` it is exactly what the member sees in the console: the environments they
+     * were granted, only the active one inside an environment console, and (unless they own
+     * the workspace) only projects that hold one of those. `$widened` is for a verified Cbox
+     * support elevation: every project and environment of the SAME workspace, never another.
+     *
+     * Call it after {@see allowed()} and inside the platform root.
+     */
+    public function scope(ToolContext $context, bool $widened): SupportScope
+    {
+        $account = $context->accountId();
+        $subject = $context->userId();
+        abort_unless($account !== null && $subject !== null, 403);
+        $projects = app(OrganizationProjects::class)->forOrganization($account);
+        $environments = Environment::query()->whereIn('project_id', $projects->pluck('id')->all());
+        if ($widened) {
+            return new SupportScope($projects, $environments);
+        }
+        $scope = (array) ($context->principal['context'] ?? []);
+        $active = $scope['environment'] ?? null;
+        $environments->whereIn('id', app(NativeEnvironmentAccess::class)->ids($account, $subject))
+            ->when($active !== $this->root->environment()?->environmentKey(), fn ($query) => $query->whereKey($active));
+        if (! app(NativeProductAccess::class)->forSubject($subject, $account)->isOwner()) {
+            $reachable = (clone $environments)->distinct()->pluck('project_id')->all();
+            $projects = $projects->filter(fn (Project $project): bool => in_array($project->id, $reachable, true))->values();
+        }
+
+        return new SupportScope($projects, $environments);
     }
 
     /** @return array<string, mixed> */
