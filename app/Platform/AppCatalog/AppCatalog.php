@@ -76,6 +76,9 @@ final readonly class AppCatalog
                 if ($data->iconProvided) {
                     $entry->icon_data = $data->icon;
                 }
+                if ($data->iconDarkProvided) {
+                    $entry->icon_dark_data = $data->iconDark;
+                }
                 if (! $entry->exists || $entry->isDirty()) {
                     $entry->version = $data->version + 1;
                     $entry->save();
@@ -168,12 +171,17 @@ final readonly class AppCatalog
     /** @return array<string, mixed> */
     public function present(CatalogEntry $entry, bool $admin = false): array
     {
-        $hash = $entry->icon_data === null ? null : hash('sha256', $entry->icon_data);
         $item = ['key' => $entry->key, 'name' => $entry->name, 'description' => $entry->description,
-            'launch_url' => $entry->launch_url, 'icon_url' => $hash === null ? null : rtrim($this->issuer->issuer(), '/').'/app-icons/'.$entry->id.'/'.$hash,
-            'position' => $entry->position, 'version' => $entry->version];
+            'launch_url' => $entry->launch_url, 'icon_url' => $this->iconUrl($entry, $entry->icon_data),
+            'icon_dark_url' => $this->iconUrl($entry, $entry->icon_dark_data), 'position' => $entry->position, 'version' => $entry->version];
 
         return $admin ? [...$item, 'enabled' => $entry->enabled, 'audience' => $entry->audience, 'organization_ids' => $entry->organization_ids,
             'user_ids' => $entry->user_ids, 'client_ids' => $entry->client_ids, 'required_feature' => $entry->required_feature] : $item;
+    }
+
+    /** Content-addressed, so a new upload is a new URL and caches never serve a stale icon. */
+    private function iconUrl(CatalogEntry $entry, ?string $data): ?string
+    {
+        return $data === null ? null : rtrim($this->issuer->issuer(), '/').'/app-icons/'.$entry->id.'/'.hash('sha256', $data);
     }
 }

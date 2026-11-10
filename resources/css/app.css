@@ -463,6 +463,23 @@
         color: var(--mark-dark);
     }
 }
+.cbx-app-icon-dark {
+    display: none;
+}
+:root[data-theme='dark'] .cbx-app-icon-light {
+    display: none;
+}
+:root[data-theme='dark'] .cbx-app-icon-dark {
+    display: block;
+}
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) .cbx-app-icon-light {
+        display: none;
+    }
+    :root:not([data-theme='light']) .cbx-app-icon-dark {
+        display: block;
+    }
+}
 .cbx-rail .cbx-rail-brand {
     width: auto;
     height: 32px;

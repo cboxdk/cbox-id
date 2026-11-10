@@ -30,6 +30,8 @@ final readonly class CatalogEntryData
         public ?string $requiredFeature,
         public bool $iconProvided,
         public ?string $icon,
+        public bool $iconDarkProvided,
+        public ?string $iconDark,
         public int $version,
     ) {}
 
@@ -52,6 +54,7 @@ final readonly class CatalogEntryData
             'client_ids.*' => ['required', 'string', 'max:190', 'distinct'],
             'required_feature' => ['nullable', 'string', 'max:64'],
             'icon' => ['nullable', 'string', 'max:180000'],
+            'icon_dark' => ['nullable', 'string', 'max:180000'],
             'version' => ['required', 'integer', 'min:0'],
         ])->validate();
         $url = self::string($input, 'launch_url');
@@ -59,24 +62,37 @@ final readonly class CatalogEntryData
         if (! is_array($parts) || isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment'])) {
             throw ValidationException::withMessages(['launch_url' => __('console.catalog_invalid_launch_url')]);
         }
-        $icon = self::string($input, 'icon');
-        if ($icon !== '') {
-            try {
-                $image = BrandImageUpload::fromDataUri(BrandImage::Logo, $icon);
-                $size = getimagesizefromstring($image->bytes);
-                if (strlen($image->bytes) > 131072 || $size === false || max($size[0], $size[1]) > 512) {
-                    throw ValidationException::withMessages(['icon' => __('console.catalog_invalid_icon')]);
-                }
-                $icon = $image->dataUri();
-            } catch (InvalidBrandImage $e) {
-                throw ValidationException::withMessages(['icon' => __('console.catalog_invalid_icon')]);
-            }
-        }
 
         return new self(trim(self::string($input, 'name')), self::string($input, 'description'), $url,
             filter_var($input['enabled'], FILTER_VALIDATE_BOOLEAN), (int) self::string($input, 'position'), self::string($input, 'audience'),
             self::strings($input, 'organization_ids'), self::strings($input, 'user_ids'), self::strings($input, 'client_ids'),
-            self::string($input, 'required_feature') ?: null, array_key_exists('icon', $input), $icon ?: null, (int) self::string($input, 'version'));
+            self::string($input, 'required_feature') ?: null, array_key_exists('icon', $input), self::icon($input, 'icon'),
+            array_key_exists('icon_dark', $input), self::icon($input, 'icon_dark'), (int) self::string($input, 'version'));
+    }
+
+    /**
+     * A raster data URI, normalised, or null. SVG is refused on purpose: the icon is
+     * served from ID's own origin and an SVG is a document that can carry script.
+     *
+     * @param  array<string, mixed>  $input
+     */
+    private static function icon(array $input, string $key): ?string
+    {
+        $icon = self::string($input, $key);
+        if ($icon === '') {
+            return null;
+        }
+        try {
+            $image = BrandImageUpload::fromDataUri(BrandImage::Logo, $icon);
+        } catch (InvalidBrandImage) {
+            throw ValidationException::withMessages([$key => __('console.catalog_invalid_icon')]);
+        }
+        $size = getimagesizefromstring($image->bytes);
+        if (strlen($image->bytes) > 131072 || $size === false || max($size[0], $size[1]) > 512) {
+            throw ValidationException::withMessages([$key => __('console.catalog_invalid_icon')]);
+        }
+
+        return $image->dataUri();
     }
 
     /** @param array<string, mixed> $input */

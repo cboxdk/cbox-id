@@ -53,7 +53,7 @@ final readonly class AppCatalogController extends ConsoleController
         $this->scope->assertMayAdministerEnvironment();
         /** @var array<string, mixed> $input */
         $input = $request->all();
-        $fields = ['key', 'name', 'description', 'launch_url', 'position', 'audience', 'required_feature', 'icon'];
+        $fields = ['key', 'name', 'description', 'launch_url', 'position', 'audience', 'required_feature', 'icon', 'icon_dark'];
         $result = $this->act(SaveCatalogApp::class, [...$input, 'key' => $key], array_combine($fields, $fields));
 
         return $result instanceof RedirectResponse ? $result : to_route('environment.app-catalog')->with('status', __('console.catalog_saved'));

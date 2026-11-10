@@ -12,8 +12,9 @@ final class AppCatalogIconController
     public function __invoke(string $id, string $hash): Response
     {
         $entry = CatalogEntry::query()->whereKey($id)->firstOrFail();
-        $uri = $entry->icon_data;
-        abort_if($uri === null || ! hash_equals(hash('sha256', $uri), $hash), 404);
+        // Either variant, light or dark, is addressed by the hash of its own bytes.
+        $uri = array_find([$entry->icon_data, $entry->icon_dark_data], static fn (?string $data): bool => $data !== null && hash_equals(hash('sha256', $data), $hash));
+        abort_if($uri === null, 404);
         [$header, $encoded] = explode(',', $uri, 2);
         $mime = substr($header, 5, -7);
         $bytes = base64_decode($encoded, true);

@@ -90,6 +90,7 @@ it('validates launch destinations, grants and image formats', function (array $i
     [['launch_url' => 'javascript:alert(1)']], [['launch_url' => 'http://example.com']],
     [['launch_url' => 'https://user:pass@example.com']], [['launch_url' => 'https://example.com/#fragment']],
     [['icon' => 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=']], [['icon' => 'https://example.com/logo.png']],
+    [['icon_dark' => 'data:image/svg+xml;base64,PHN2Zz48L3N2Zz4=']], [['icon_dark' => 'https://example.com/logo.png']],
     [['organization_ids' => ['foreign']]], [['user_ids' => ['foreign']]], [['client_ids' => ['foreign']]],
 ]);
 
@@ -102,6 +103,37 @@ it('serves content-addressed icons and rotates their URL when removed', function
     $this->get($url)->assertOk()->assertHeader('Content-Type', 'image/png')->assertHeader('X-Content-Type-Options', 'nosniff');
     $this->withToken($token)->putJson('/api/v1/app-catalog/id', catalogInput(['version' => 1, 'icon' => null]))->assertOk()->assertJsonPath('data.icon_url', null);
     $this->get($url)->assertNotFound();
+});
+
+it('keeps, replaces and clears the dark icon independently and serves it by its own hash', function (): void {
+    installedDeployment();
+    $light = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aXioAAAAASUVORK5CYII=';
+    $dark = 'data:image/png;base64,'.base64_encode((string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', true));
+    $token = catalogKey();
+    $saved = $this->withToken($token)->putJson('/api/v1/app-catalog/billing', catalogInput(['icon' => $light, 'icon_dark' => $dark]))->assertOk();
+    $lightUrl = $saved->json('data.icon_url');
+    $darkUrl = $saved->json('data.icon_dark_url');
+    expect($darkUrl)->toBeString()->not->toBe($lightUrl);
+    $served = $this->get($darkUrl)->assertOk()->assertHeader('Content-Type', 'image/png')->assertHeader('X-Content-Type-Options', 'nosniff');
+    expect($served->getContent())->toBe(base64_decode(substr($dark, 22), true));
+    $this->get($lightUrl)->assertOk();
+
+    // Omitted: kept, and no new version.
+    $this->withToken($token)->putJson('/api/v1/app-catalog/billing', catalogInput(['version' => 1]))->assertOk()
+        ->assertJsonPath('data.version', 1)->assertJsonPath('data.icon_dark_url', $darkUrl)->assertJsonPath('data.icon_url', $lightUrl);
+
+    $ada = app(Subjects::class)->create('ada@catalog.example', 'Ada')->id;
+    FakeDelegatedTokens::install()->person('ada-catalog', $ada, ['account:apps:read']);
+    $before = $this->withToken('ada-catalog')->getJson('/api/v1/me/apps')->assertOk()
+        ->assertJsonPath('data.0.icon_url', $lightUrl)->assertJsonPath('data.0.icon_dark_url', $darkUrl);
+    expect($before->json('data.0'))->not->toHaveKey('icon_dark_data');
+
+    // Null: cleared, the light icon stays, the old dark URL stops resolving.
+    $this->withToken($token)->putJson('/api/v1/app-catalog/billing', catalogInput(['version' => 1, 'icon_dark' => null]))->assertOk()
+        ->assertJsonPath('data.version', 2)->assertJsonPath('data.icon_dark_url', null)->assertJsonPath('data.icon_url', $lightUrl);
+    $this->get($darkUrl)->assertNotFound();
+    $after = $this->withToken('ada-catalog')->getJson('/api/v1/me/apps')->assertOk()->assertJsonPath('data.0.icon_dark_url', null);
+    expect($after->json('meta.revision'))->not->toBe($before->json('meta.revision'));
 });
 
 it('reads a populated catalog without per-organization membership queries', function (): void {

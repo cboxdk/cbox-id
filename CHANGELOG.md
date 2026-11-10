@@ -12,6 +12,7 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 - **Cbox Assistant knows the customer's projects and environments.** Through `cboxdk/laravel-assistant-client` 0.2, ID serves the customer profile: pickable `id_projects` and `id_environments`, plus signals (customer since, seats, recent workspace changes from the audit log, member role, environment count, SSO enabled, two-factor enforced). A member sees what the console shows them.
 - **Support elevations are audited in the workspace.** A verified Cbox support elevation widens the profile to the whole workspace (never another) and is written to the workspace's audit log as `organization.support_access_used` with the staff member, reason, expiry and what was read.
+- **App catalog icons for dark mode.** Each catalog app takes a second icon, `icon_dark` (same PNG/JPEG/WebP rules, SVG refused; omit keeps, `null` clears), uploaded in the console next to the light one with a dark preview. `GET /api/v1/me/apps` adds `icon_dark_url` (null without a dark icon), and `meta.revision` changes when it changes. The catalog is now the single source of app icons for every Cbox product.
 
 ## [2.2.0] - 2026-11-08
 
