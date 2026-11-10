@@ -9,6 +9,7 @@ use App\Platform\Actions\ActionMessage;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\Principal\Principal;
+use App\Platform\Actions\RenamedActions;
 use Closure;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Arr;
@@ -65,7 +66,7 @@ final class IdempotencyGuard
                 ->first();
 
             if ($stored !== null) {
-                if ($stored->action !== $action->name || ! hash_equals($stored->request_hash, $hash)) {
+                if ($stored->action !== $action->name || ! $this->sameRequest($stored->request_hash, $action, $input)) {
                     throw ActionRefused::because(
                         'idempotency_key_reused',
                         new ActionMessage('console.this_idempotency_key_was_already_used_for_a_different_r_0c304fb5'),
@@ -124,9 +125,27 @@ final class IdempotencyGuard
     /**
      * @param  array<string, mixed>  $input
      */
-    private function hash(ActionDefinition $action, array $input): string
+    private function hash(ActionDefinition $action, array $input, ?string $name = null): string
     {
-        return hash('sha256', $action->name.'|'.json_encode($this->canonical($input), JSON_THROW_ON_ERROR));
+        return hash('sha256', ($name ?? $action->name).'|'.json_encode($this->canonical($input), JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * Whether $stored is this request's hash. An answer stored before v3 renamed the action
+     * was hashed under the old name (the migration renames the row, not the hash it holds),
+     * so the same request under a retired name is the same request.
+     *
+     * @param  array<string, mixed>  $input
+     */
+    private function sameRequest(string $stored, ActionDefinition $action, array $input): bool
+    {
+        foreach ([$action->name, ...RenamedActions::retired($action->name)] as $name) {
+            if (hash_equals($stored, $this->hash($action, $input, $name))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function canonical(mixed $value): mixed

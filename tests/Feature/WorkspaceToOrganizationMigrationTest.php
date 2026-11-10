@@ -137,12 +137,16 @@ it('replays an idempotent answer stored under the v2 action name and key kind', 
         ->postJson('/api/v1/workspace/keys', ['name' => 'Once', 'role' => 'developer'], ['Idempotency-Key' => 'rename-1'])
         ->assertCreated();
 
-    // As v2 stored it.
+    // As v2 stored it: the old action name and owner kind, and the request hashed under the
+    // old action name (the migration renames the row, not the hash inside it).
     $record = IdempotencyRecord::query()->where('idempotency_key', 'rename-1')->sole();
     expect($record->action)->toBe('keys.organization.create');
+    $hashed = static fn (string $action): string => hash('sha256', $action.'|'.json_encode(['name' => 'Once', 'role' => 'developer'], JSON_THROW_ON_ERROR));
+    expect($record->request_hash)->toBe($hashed('keys.organization.create'));
     DB::table('action_idempotency_records')->where('id', $record->id)->update([
         'action' => 'keys.workspace.create',
         'principal' => 'workspace_key:'.$token->key->id,
+        'request_hash' => $hashed('keys.workspace.create'),
     ]);
 
     runRenameMigration();
