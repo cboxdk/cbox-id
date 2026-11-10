@@ -7,6 +7,7 @@ namespace App\Platform\Actions\OpenApi;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
+use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\WorkspaceScopes;
@@ -244,6 +245,11 @@ final readonly class ActionOpenApi
 
         if ($action->consoleGate === ConsoleGate::Administer || $action->consoleGate === ConsoleGate::EnvironmentAdmin) {
             $security[] = ['WorkspaceAccessToken' => []];
+        }
+
+        // An app's own client-credentials token, where its scope lets one in.
+        if (AppManagementScopes::machine($action->scope)) {
+            $security[] = ['AppAccessToken' => []];
         }
 
         $parameters = is_array($operation['parameters'] ?? null) ? array_values($operation['parameters']) : [];

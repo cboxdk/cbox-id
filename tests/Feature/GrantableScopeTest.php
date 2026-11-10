@@ -38,6 +38,7 @@ it('offers every scope the code demands through some door a client can walk', fu
     $required = [
         'decisions:read',   // POST /oauth/decisions, behind oauth.decisions.require_scope
         'apps.manifest',    // POST /api/v1/apps/manifest
+        'app_catalog:resolve', // GET /api/v1/app-catalog/for-user, with an app's own token
         'vault.manage',
         'vault.lease',
         'user_properties:read',

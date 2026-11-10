@@ -7,12 +7,18 @@ namespace App\Http\Middleware;
 use App\Http\Controllers\Api\ActionController;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionRoutes;
+use App\Platform\Actions\AppManagementScopes;
+use App\Platform\Actions\Principal\AppTokenPrincipal;
 use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\OAuth\DelegatedAccess;
+use App\Platform\OAuth\MachineTokenAuthority;
 use App\Platform\OAuth\RootDelegatedAccess;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
+use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\Dpop\DpopResourceGuard;
+use Cbox\Id\OAuthServer\Exceptions\InvalidDpopProof;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Closure;
@@ -55,6 +61,13 @@ use Symfony\Component\HttpFoundation\Response;
  * every route {@see ActionRoutes} already registers, unchanged: the same operations, the
  * same OpenAPI document, the same paths a key uses on the environment's own host. A second
  * tree of every route would be a second surface to document, rate-limit and keep in step.
+ *
+ * AN APP'S OWN TOKEN, ON THE ROUTES WHOSE SCOPE IT MAY CARRY. A route requiring a scope
+ * marked `machine` ({@see AppManagementScopes::machine()}, e.g. `app_catalog:resolve`) also
+ * takes the client-credentials token of an app this environment issued — read like every
+ * other machine token here ({@see MachineTokenAuthority}, {@see RequireScope}): live, for
+ * this environment's management plane or its issuer, issued to the client itself and for
+ * nobody. It acts as that app ({@see AppTokenPrincipal}). No other route sees one.
  */
 final class AuthenticateEnvironmentApi
 {
@@ -71,6 +84,8 @@ final class AuthenticateEnvironmentApi
         private readonly DelegatedAccess $delegated,
         private readonly DpopResourceGuard $dpop,
         private readonly RootDelegatedAccess $root,
+        private readonly TokenIntrospector $introspector,
+        private readonly IssuerResolver $issuers,
     ) {}
 
     /**
@@ -83,6 +98,14 @@ final class AuthenticateEnvironmentApi
         $token = $this->dpop->bearer($request);
 
         if (is_string($token) && $token !== '' && ! str_starts_with($token, AuthenticateMcp::KEY_PREFIX)) {
+            if ($scope !== null && AppManagementScopes::machine($scope)) {
+                $app = $this->asApp($request, $next, $token, $scope);
+
+                if ($app !== null) {
+                    return $app;
+                }
+            }
+
             return $this->asPerson($request, $next, $scope, $doors === self::DELEGATED);
         }
 
@@ -104,6 +127,46 @@ final class AuthenticateEnvironmentApi
             return $next($request);
         } finally {
             // The key authenticated THIS request and nothing after it (see clear()).
+            $this->context->clear();
+        }
+    }
+
+    /**
+     * An app's client-credentials token on a route whose scope it may carry: null when the
+     * token is not one (a person's goes on to {@see asPerson()}), a refusal when it is one
+     * without the scope or without a valid DPoP proof.
+     *
+     * @param  Closure(Request): Response  $next
+     */
+    private function asApp(Request $request, Closure $next, string $token, string $scope): ?Response
+    {
+        $introspection = $this->introspector->introspect($token);
+
+        // Audienced to this environment's management plane — where the token endpoint puts a
+        // token carrying a management scope ({@see DelegatedAccess::resource()}) — or to the
+        // issuer itself, as the other machine endpoints take it ({@see RequireScope}).
+        $plane = $this->delegated->resource()?->identifier;
+        $audienced = $introspection->isAudience($this->issuers->issuer()) || ($plane !== null && $introspection->isAudience($plane));
+
+        if (! $introspection->active || $introspection->clientId === null || ! $audienced || ! MachineTokenAuthority::issued($introspection)) {
+            return null;
+        }
+
+        try {
+            $this->dpop->enforce($request, $token, $introspection);
+        } catch (InvalidDpopProof $e) {
+            return $this->deny('invalid_token', $e->getMessage(), 401);
+        }
+
+        if (! $introspection->hasScope($scope)) {
+            return $this->deny('forbidden', "This token was not granted the required scope: {$scope}.", 403);
+        }
+
+        $this->context->setApp(new AppTokenPrincipal($introspection->clientId, $introspection));
+
+        try {
+            return $next($request);
+        } finally {
             $this->context->clear();
         }
     }
