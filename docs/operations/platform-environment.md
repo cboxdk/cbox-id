@@ -185,7 +185,9 @@ The platform account is linked to the `cbox` user by that user's `sub`. The firs
 creates the platform account. If one already exists with the same address, the person
 proves it is theirs once (with a passkey or password) and the two are linked from then on.
 Operators keep their operator role: it belongs to the platform account, and the link only
-says which `cbox` user that account is.
+says which `cbox` user that account is. Operators must have used two factors. A passkey or
+second factor at `cbox.cboxid.com` counts, so the hop stays silent. After a password-only
+sign-in there, the console asks for the operator's own second factor first.
 
 **Sign-out.** Signing out of the console ends the platform session and the environment
 consoles it opened, as before. It does not sign the person out of `cbox.cboxid.com` or the

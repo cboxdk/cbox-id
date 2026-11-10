@@ -162,7 +162,7 @@ function rscFakeTokenEndpoint(string $sub, string $email, string $nonce, array $
  * Follow `/login` (or any page that bounces there) to the `cbox` environment and back as
  * $sub — the silent hop of somebody already signed in there. Returns the callback's answer.
  */
-function rscHop(string $sub, string $email, string $from = 'https://'.RSC_HOST.'/login'): TestResponse
+function rscHop(string $sub, string $email, string $from = 'https://'.RSC_HOST.'/login', array $claims = []): TestResponse
 {
     $location = $from;
 
@@ -183,7 +183,7 @@ function rscHop(string $sub, string $email, string $from = 'https://'.RSC_HOST.'
     expect($location)->toStartWith(RSC_ISSUER.'/oauth/authorize?');
     parse_str((string) parse_url($location, PHP_URL_QUERY), $query);
 
-    rscFakeTokenEndpoint($sub, $email, (string) $query['nonce']);
+    rscFakeTokenEndpoint($sub, $email, (string) $query['nonce'], $claims);
 
     return test()->get((string) $query['redirect_uri'].'?'.http_build_query(['code' => 'the-code', 'state' => (string) $query['state']]));
 }
@@ -384,7 +384,7 @@ it('signs out of the console without signing anybody out of the cbox environment
         || str_contains((string) $request->url(), 'cbox.cboxid.com/logout'));
 });
 
-it('keeps an operator the operator when they sign in through the cbox environment', function (): void {
+it('keeps an operator the operator, with no second prompt when they used a passkey at the cbox environment', function (): void {
     $connection = rscConnectCbox();
     $operatorSubject = RootGoogle::operatorSignedIn();
 
@@ -396,8 +396,19 @@ it('keeps an operator the operator when they sign in through the cbox environmen
         connectionId: $connection->id,
     )));
 
+    // Signed in at the cbox environment with a passkey: AAL2 there, so AAL2 here.
     RootGoogle::signedOutBrowser();
-    rscHop('usr_cbox_ops', 'ops@platform.test');
+    rscHop('usr_cbox_ops', 'ops@platform.test', claims: ['amr' => ['passkey', 'made-up']]);
 
     expect(rscSignedInSubject())->toBe($operatorSubject);
+    $this->get('https://'.RSC_HOST.'/admin/platform/environments')->assertOk();
+
+    $amr = app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->active((string) session(PlatformAuth::SESSION_KEY))?->amr);
+    expect($amr)->toContain('sso')->toContain('passkey')->not->toContain('made-up');
+
+    // With only a password there, the operator proves a second factor here, as always.
+    RootGoogle::signedOutBrowser();
+    rscHop('usr_cbox_ops', 'ops@platform.test', claims: ['amr' => ['pwd']]);
+
+    expect((string) $this->get('https://'.RSC_HOST.'/admin/platform/environments')->headers->get('Location'))->toContain('/mfa');
 });

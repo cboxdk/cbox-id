@@ -142,6 +142,10 @@ Send `"connection_id": null` to get the environment's own page back.
   asked to prove it is theirs before the two are linked.
 - If the provider refuses a sign-in or cannot be reached, the person lands on `/login`
   with the reason, and the provider is offered as a button there. It does not loop.
+- How the person signed in at the provider counts here. If its ID token says they used a
+  passkey or a second factor (`amr`), the session here is at that level too, so anybody
+  who must use two factors is not asked again. This applies only to the connection the
+  sign-in goes through, never to an organization's own identity provider.
 - Turning the connection off or deleting it brings the plain sign-in page back on its own.
 - Only a connection that belongs to the whole environment and is active can be named.
   Anything else is refused with `connection_not_eligible`.

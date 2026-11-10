@@ -10,6 +10,7 @@ use App\Platform\AccountLinking\ConnectFromAccount;
 use App\Platform\AccountLinking\ConnectIntent;
 use App\Platform\AccountLinking\FederationFailure;
 use App\Platform\FederatedLanding;
+use App\Platform\SignInThrough;
 use Cbox\Id\Federation\Contracts\AssertionValidator;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\FederationFlow;
@@ -22,6 +23,9 @@ use Cbox\Id\Federation\Support\FederationFlowStash;
 use Cbox\Id\Federation\Support\FirstAuthorizationProfile;
 use Cbox\Id\Identity\Exceptions\AccountExistsForEmail;
 use Cbox\Id\Identity\Exceptions\AccountInactive;
+use Cbox\Id\Identity\Models\Session;
+use Cbox\Id\Identity\ValueObjects\FederatedPrincipal;
+use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -51,6 +55,7 @@ final class OidcCallbackController extends Controller
         private readonly FirstAuthorizationProfile $firstAuthorization,
         private readonly AccountLinking $linking,
         private readonly ConnectFromAccount $connect,
+        private readonly SignInThrough $through,
     ) {}
 
     public function __invoke(Request $request, string $connection): RedirectResponse
@@ -158,8 +163,47 @@ final class OidcCallbackController extends Controller
             return $this->linking->begin($request, $principal, $model, null, $model->name, (string) ($model->provider ?? 'sso'));
         }
 
+        if ($this->through->connection()?->id === $model->id) {
+            $session = $this->withUpstreamMethods($session, $principal);
+        }
+
         // Plane-aware landing: a tenant host signs the subject in; the account host
         // signs an account MEMBER in, and refuses a subject that is not one.
         return $this->landing->land($request, $session);
+    }
+
+    /**
+     * HOW THE PERSON SIGNED IN UPSTREAM, kept — for the connection this environment signs in
+     * through, and only that one ({@see SignInThrough}).
+     *
+     * A federated session is recorded as `sso` and nothing else, which is AAL1: right for an
+     * organization's identity provider this environment knows nothing about. The connection
+     * an environment's whole sign-in goes through is different — its administrator chose it
+     * as THE way in — and its id_token's `amr` says whether the person used a passkey or a
+     * second factor there. Dropping that made every operator of the platform, who must be at
+     * AAL2, prove a second factor again on every hop from an app where they had just done so.
+     *
+     * Only methods this platform knows are carried; anything else in the claim is ignored.
+     */
+    private function withUpstreamMethods(Session $session, FederatedPrincipal $principal): Session
+    {
+        $claimed = $principal->raw['amr'] ?? null;
+
+        if (! is_array($claimed)) {
+            return $session;
+        }
+
+        $known = array_values(array_filter(
+            $claimed,
+            static fn (mixed $method): bool => is_string($method) && AuthMethod::tryFrom($method) !== null,
+        ));
+
+        if ($known === []) {
+            return $session;
+        }
+
+        $session->forceFill(['amr' => array_values(array_unique([...array_values((array) $session->amr), ...$known]))])->save();
+
+        return $session;
     }
 }
