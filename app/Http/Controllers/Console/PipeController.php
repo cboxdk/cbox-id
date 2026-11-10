@@ -13,6 +13,7 @@ use App\Actions\Pipes\UpdatePipe;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Platform\Help\HelpTopic;
+use App\Platform\IssuerUrl;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Pipes\Models\Pipe;
 use Cbox\Id\Pipes\Models\PipeConnection;
@@ -150,7 +151,7 @@ final readonly class PipeController extends ConsoleController
                 'enabled' => $model->enabled,
                 'redirectUri' => route('account.pipes.callback', $model->provider),
                 'connectUrl' => route('account.pipes.connect', $model->provider),
-                'leaseUrl' => url('/api/v1/vault/pipes/'.$model->provider.'/token'),
+                'leaseUrl' => IssuerUrl::to('/api/v1/vault/pipes/'.$model->provider.'/token'),
             ],
             'catalogue' => $entry === null ? null : $this->provider($entry),
             'grants' => array_map(fn (string $clientId): array => [

@@ -25,6 +25,7 @@ use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Entitlements;
 use App\Platform\Enums\PortalIntent;
 use App\Platform\Help\HelpTopic;
+use App\Platform\IssuerUrl;
 use App\Platform\OrgAccessRoles;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\AccessControl\Contracts\GroupRoleMappings;
@@ -125,7 +126,7 @@ final readonly class DirectoryController extends ConsoleController
             'entitled' => $organizationId === null || $this->scope->entitled('scim'),
             'showsEveryOrganization' => $organizationId === null,
             'organizationFilter' => $this->organizationFilterProps($filter),
-            'scimBaseUrl' => url('/scim/v2'),
+            'scimBaseUrl' => IssuerUrl::to('/scim/v2'),
             'createHref' => $this->createUrl('directories.create'),
             // A portal link is for ONE organization's IT administrator.
             'inviteHref' => $organizationId === null ? null : $this->url('directories.invite'),
@@ -412,7 +413,7 @@ final readonly class DirectoryController extends ConsoleController
              */
             'setup' => self::setupProps($model->provider),
             'organizationName' => Organization::query()->whereKey($organizationId)->value('name') ?? $organizationId,
-            'scimBaseUrl' => url('/scim/v2'),
+            'scimBaseUrl' => IssuerUrl::to('/scim/v2'),
             'groups' => $groups->map(fn (DirectoryGroup $group): array => [
                 'id' => $group->id,
                 'name' => $group->display_name,

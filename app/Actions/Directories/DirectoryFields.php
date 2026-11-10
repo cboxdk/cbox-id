@@ -8,6 +8,7 @@ use App\Http\Resources\Environment\Timestamp;
 use App\Platform\Actions\ActionContext;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Enterprise\EnterpriseReach;
+use App\Platform\IssuerUrl;
 use Cbox\Id\Directory\Enums\DirectoryStatus;
 use Cbox\Id\Directory\Hris\ValueObjects\HrisSyncOptions;
 use Cbox\Id\Directory\Models\Directory;
@@ -74,7 +75,7 @@ final class DirectoryFields
             'pull' => ! $scim,
             'active' => $directory->status === DirectoryStatus::Active,
             'status' => $directory->status->value,
-            'scim_base_url' => $scim ? url('/scim/v2') : null,
+            'scim_base_url' => $scim ? IssuerUrl::to('/scim/v2') : null,
             'hris' => $directory->provider->isHris(),
             'last_synced_at' => Timestamp::of($directory->last_synced_at),
             'last_sync_error' => $directory->last_sync_error,
