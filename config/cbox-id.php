@@ -540,6 +540,19 @@ return [
     ],
 
     /*
+     * THE ORGANIZATION EVERY CBOX APP SHARES.
+     *
+     * Work, Billing and the other Cbox apps keep their organizations in this environment
+     * and address them at `/orgs/{slug}`. Cbox ID's own console addresses the same
+     * organization by the same slug: a platform-root organization is linked to its
+     * organization here (`organization_links`), and the link decides the slug in every
+     * console URL. The slug of the environment, not its id, so a fresh install and the
+     * hosted service read the same value. Unset or missing, the console falls back to the
+     * platform-root organization's own slug.
+     */
+    'cbox_environment' => env('CBOX_ID_CBOX_ENVIRONMENT', 'cbox'),
+
+    /*
      * THE SHAPE OF THIS DEPLOYMENT, as its manifest declares it — read by `cbox-id:doctor`.
      *
      * How many copies of the web process run. The application cannot count its siblings,

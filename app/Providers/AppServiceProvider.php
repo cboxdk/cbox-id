@@ -32,6 +32,7 @@ use App\Platform\Keys\TransitionalOrganizationApiKeys;
 use App\Platform\OAuth\RootMcpAudiences;
 use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
 use App\Platform\OrganizationApiContext;
+use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\SignalsData\Bundled\IdMachineCredential;
 use App\SignalsData\Bundled\IdManagedSources;
@@ -125,6 +126,9 @@ class AppServiceProvider extends ServiceProvider
         // The authenticated account API key for the request — shared between the
         // auth middleware that sets it and the controllers that read it.
         $this->app->scoped(OrganizationApiContext::class);
+        // Per request: it memoises addresses, and a link written by one request must be
+        // read by the next.
+        $this->app->scoped(OrganizationLinks::class);
 
         // Its environment-plane counterpart: the authenticated environment API key
         // for the request (the environment itself is host-resolved separately).
