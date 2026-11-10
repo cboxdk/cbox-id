@@ -33,7 +33,7 @@ use Cbox\Id\Platform\PlatformRoot;
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['PATCH', '/members/{id}/role'],
-    consoleRoutes: ['members.role'],
+    consoleRoutes: ['orgs.settings.members.role'],
     consoleGate: ConsoleGate::ManageMembers,
     schema: 'Member',
     tag: 'Team',

@@ -54,7 +54,7 @@ final class SecurityHeaders
         // no directive here changes shape unless the feature is switched on.
         // Stripe.js is loaded only on the billing document, on demand for card setup.
         // https://docs.stripe.com/security/guide#content-security-policy
-        $billing = $request->routeIs('billing') && (bool) config('billing-client.api_token');
+        $billing = $request->routeIs('orgs.settings.billing') && (bool) config('billing-client.api_token');
         $turnstile = $this->turnstile->configured();
         $support = config('ai-assistant-connector.support.enabled') === true ? ' '.app(SupportSession::class)->frameOrigin() : '';
 

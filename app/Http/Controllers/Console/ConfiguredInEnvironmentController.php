@@ -33,7 +33,7 @@ final readonly class ConfiguredInEnvironmentController extends ConsoleController
             // Whether each environment's link opens this very page there, rather than its
             // front page — the switcher's rows carry it when there is one.
             'samePage' => $twin !== null,
-            'projectsHref' => $this->scope->capabilities()?->canReadEnvironments() === true ? route('projects') : null,
+            'projectsHref' => $this->scope->capabilities()?->canReadEnvironments() === true ? route('orgs.projects') : null,
             'consoleHref' => app(OrganizationLanding::class)->url(),
             'platformHref' => $this->scope->isPlatformOperator() ? route('environment.home') : null,
         ]);

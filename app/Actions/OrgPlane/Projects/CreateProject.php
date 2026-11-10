@@ -42,7 +42,7 @@ use Illuminate\Support\Facades\DB;
     plane: ActionPlane::Organization,
     rest: ['POST', '/projects'],
     status: 201,
-    consoleRoutes: ['projects.store'],
+    consoleRoutes: ['orgs.projects.store'],
     consoleGate: ConsoleGate::ManageEnvironments,
     schema: 'Project',
     tag: 'Projects',

@@ -48,7 +48,7 @@ ConsoleRoutes::moved('/sign-in/devices', '/trusted-devices');
  */
 ConsoleRoutes::organizationPage(
     feature: 'devices',
-    uri: '/account/devices',
+    uri: '/settings/devices',
     component: [MyDevicesController::class, 'index'],
     name: 'devices.mine',
 );
@@ -66,7 +66,7 @@ ConsoleRoutes::organizationPage(
 ConsoleRoutes::organizationAction(
     feature: 'devices',
     verb: 'delete',
-    uri: '/account/devices/{device}',
+    uri: '/settings/devices/{device}',
     action: [MyDevicesController::class, 'destroy'],
     name: 'devices.mine.destroy',
 );

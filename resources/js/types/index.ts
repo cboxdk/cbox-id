@@ -371,6 +371,8 @@ export interface CatalogApp {
 }
 
 export interface SharedProps {
+    /** The organization `/orgs/{org}/…` route helpers default to (the path's, or this session's). */
+    org?: { slug: string } | null;
     supportSessionUrl?: string | null;
     /** Same-origin JSON catalog for `<cbox-app-switcher>` (the signed-in person's; empty for nobody). */
     appCatalogUrl: string | null;

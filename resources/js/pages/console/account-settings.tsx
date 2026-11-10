@@ -4,7 +4,7 @@ import { useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import { Button, Field, Input, PageHeader, Panel } from '@/ui';
-import { update } from '@routes/organization-settings';
+import { update } from '@routes/orgs/settings';
 
 type Props = PageProps<{ name: string; help: HelpContent }>;
 

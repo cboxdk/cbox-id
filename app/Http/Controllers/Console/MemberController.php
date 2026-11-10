@@ -263,7 +263,7 @@ final readonly class MemberController extends ConsoleController
         // Back to page one: withdrawing the last row on a later page leaves the paginator
         // asking for a page that no longer exists, and the empty state then claims there
         // is nothing outstanding.
-        return to_route('members', ['organization' => $this->scope->organizationId()])->with('status', __('console.invitation_withdrawn_that_link_no_longer_works_a991b23a'));
+        return to_route('orgs.settings.members', ['organization' => $this->scope->organizationId()])->with('status', __('console.invitation_withdrawn_that_link_no_longer_works_a991b23a'));
     }
 
     public function changeRole(Request $request, string $member): RedirectResponse
@@ -301,7 +301,7 @@ final readonly class MemberController extends ConsoleController
 
         // Same reason as withdrawing an invitation: removing the last row on a later page
         // leaves the paginator pointed at a page that no longer exists.
-        return to_route('members', ['organization' => $this->scope->organizationId()])->with('status', __('console.member_removed_d6fe67b5'));
+        return to_route('orgs.settings.members', ['organization' => $this->scope->organizationId()])->with('status', __('console.member_removed_d6fe67b5'));
     }
 
     /**
@@ -502,8 +502,8 @@ final readonly class MemberController extends ConsoleController
         return array_map(
             static fn (PendingInvitationSummary $invitation): PendingInvitationProps => PendingInvitationProps::from(
                 $invitation,
-                $canManage ? route('members.invitations.resend', ['invitation' => $invitation->id, 'organization' => $organizationId]) : null,
-                $canManage ? route('members.invitations.revoke', ['invitation' => $invitation->id, 'organization' => $organizationId]) : null,
+                $canManage ? route('orgs.settings.members.invitations.resend', ['invitation' => $invitation->id, 'organization' => $organizationId]) : null,
+                $canManage ? route('orgs.settings.members.invitations.revoke', ['invitation' => $invitation->id, 'organization' => $organizationId]) : null,
             ),
             $team->pending($organizationId, self::INVITATIONS_SHOWN),
         );

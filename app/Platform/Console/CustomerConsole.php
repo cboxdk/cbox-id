@@ -96,7 +96,15 @@ final class CustomerConsole
         'get-started',
         'get-started.dismiss',
         'dashboard.checklist.dismiss',
+        // The Cbox organization console's own doors: the picker, an organization's front
+        // door and the v2 paths that redirect into `/orgs/{org}`. A customer's console
+        // has organizations of its own, which these never name.
+        'orgs.index',
+        'orgs.show',
     ];
+
+    /** Route-name prefixes withheld the same way: the v2 redirects into `/orgs/{org}`. */
+    private const WITHHELD_PREFIXES = ['legacy.orgs.'];
 
     /** Whether an area has any place in a customer's console. */
     public static function keepsArea(string $area): bool
@@ -139,6 +147,12 @@ final class CustomerConsole
     {
         if (in_array($route, self::WITHHELD, true)) {
             return false;
+        }
+
+        foreach (self::WITHHELD_PREFIXES as $prefix) {
+            if (str_starts_with($route, $prefix)) {
+                return false;
+            }
         }
 
         $owner = self::pageOf($route);

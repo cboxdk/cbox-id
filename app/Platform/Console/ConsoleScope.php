@@ -71,6 +71,11 @@ class ConsoleScope
     /** @var array<string, bool> memo for {@see subjectIsOperator()}, keyed on the subject asked about */
     private array $operatorBySubject = [];
 
+    /** Organization-console route names whose environment-console twin has another name. */
+    private const ENVIRONMENT_TWINS = [
+        'orgs.settings.api-keys' => 'keys',
+    ];
+
     /** @see bindOrganization() — the organization this request's URL names, environment plane only. */
     private ?string $boundOrganization = null;
 
@@ -429,7 +434,23 @@ class ConsoleScope
      */
     public function routeName(string $name): string
     {
-        return $this->plane() === ConsolePlane::Environment ? 'environment.'.$name : $name;
+        return $this->plane() === ConsolePlane::Environment ? self::environmentTwin($name) : $name;
+    }
+
+    /**
+     * The environment console's name for an organization-console route: `environment.`
+     * in front, except for a page the organization console serves under `/orgs/{org}` with
+     * a name of its own (its keys are `orgs.settings.api-keys`, the environment's `keys`).
+     */
+    public static function environmentTwin(string $name): string
+    {
+        foreach (self::ENVIRONMENT_TWINS as $organization => $environment) {
+            if ($name === $organization || str_starts_with($name, $organization.'.')) {
+                return 'environment.'.$environment.substr($name, strlen($organization));
+            }
+        }
+
+        return 'environment.'.$name;
     }
 
     /**
@@ -847,7 +868,7 @@ class ConsoleScope
             return null;
         }
 
-        return $this->ownsIdentityProviders() ? 'members' : 'directory.members';
+        return $this->ownsIdentityProviders() ? 'orgs.settings.members' : 'directory.members';
     }
 
     /** @throws AuthorizationException */

@@ -45,7 +45,7 @@ use Cbox\Id\Platform\ValueObjects\KeyProvenance;
     plane: ActionPlane::Organization,
     rest: ['POST', '/keys'],
     status: 201,
-    consoleRoutes: ['keys.organization.store'],
+    consoleRoutes: ['orgs.settings.api-keys.organization.store'],
     consoleGate: ConsoleGate::ManageMembers,
     schema: 'WorkspaceKey',
     tag: 'Keys',

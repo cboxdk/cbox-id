@@ -87,7 +87,7 @@ final readonly class EnvironmentChecklist
                 'description' => $step->description(),
                 'actionLabel' => $step->actionLabel(),
                 'href' => match (true) {
-                    $step === EnvironmentStep::InviteTeammate => $this->shell->onOrganizationHost('members'),
+                    $step === EnvironmentStep::InviteTeammate => $this->shell->onOrganizationHost('orgs.settings.members'),
                     $route !== null && Route::has($route) => route($route),
                     default => null,
                 },

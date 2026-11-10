@@ -40,7 +40,7 @@ use Cbox\Id\Organization\Exceptions\InvalidCustomDomain;
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['POST', '/environments/{environment_id}/domain'],
-    consoleRoutes: ['environment-domains.store'],
+    consoleRoutes: ['orgs.environment-domains.store'],
     consoleGate: ConsoleGate::ManageEnvironments,
     schema: 'CustomDomain',
     tag: 'Environments',

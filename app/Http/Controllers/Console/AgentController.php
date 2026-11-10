@@ -210,7 +210,7 @@ final readonly class AgentController extends ConsoleController
             // "Mint one under Keys › Workspace keys" — on the workspace's host, so absolute.
             'organizationKeysHref' => app(PlaneResolver::class)->consoleHost() === null
                 ? null
-                : app(ShellContext::class)->onOrganizationHost('keys.organization'),
+                : app(ShellContext::class)->onOrganizationHost('orgs.settings.api-keys.organization'),
         ];
     }
 

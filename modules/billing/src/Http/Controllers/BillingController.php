@@ -34,11 +34,11 @@ final readonly class BillingController extends ConsoleController
         if (! $request->has('organization')) {
             abort_unless($this->scope->capabilities()?->canReadBilling() === true, 403);
 
-            return redirect()->route('billing', ['organization' => $this->scope->organizationId()]);
+            return redirect()->route('orgs.settings.billing', ['organization' => $this->scope->organizationId()]);
         }
         $organization = $this->organization();
         if ($request->hasAny(['setup_intent', 'setup_intent_client_secret', 'redirect_status'])) {
-            return redirect()->route('billing', ['organization' => $organization, 'setup_return' => 1]);
+            return redirect()->route('orgs.settings.billing', ['organization' => $organization, 'setup_return' => 1]);
         }
         if ($request->hasHeader('X-Inertia') && $request->header('X-Inertia-Partial-Component') !== 'billing::billing') {
             return Inertia::location($request->fullUrl());
@@ -67,7 +67,7 @@ final readonly class BillingController extends ConsoleController
                 'number' => $invoice->number, 'date' => $invoice->date?->format('Y-m-d'),
                 'amountMinor' => $invoice->amountMinor, 'subtotalMinor' => $invoice->subtotalMinor,
                 'taxMinor' => $invoice->taxMinor, 'currency' => $invoice->currency, 'status' => $invoice->status,
-                'downloadUrl' => route('billing.invoice', ['invoice' => $invoice->number, 'organization' => $organization]),
+                'downloadUrl' => route('orgs.settings.billing.invoice', ['invoice' => $invoice->number, 'organization' => $organization]),
             ], $billing->invoices($organization))),
             'projectPayments' => $read('projectPayments', fn () => $this->projectPayments($billing, $organization)),
             'environmentAllowance' => $read('features', fn () => $product->environmentLimit($organization)),
@@ -204,8 +204,8 @@ final readonly class BillingController extends ConsoleController
 
                 return [
                     'id' => $project->id, 'name' => $project->name,
-                    'previewHref' => route('billing.preview', $project->id),
-                    'confirmHref' => route('billing.confirm', $project->id),
+                    'previewHref' => route('orgs.settings.billing.preview', $project->id),
+                    'confirmHref' => route('orgs.settings.billing.confirm', $project->id),
                     'subscription' => $subscription === null ? null : [
                         'plan' => $subscription['plan'] ?? null, 'status' => $subscription['status'] ?? null,
                         'data' => array_intersect_key($subscription, array_flip(['cancel_at_period_end', 'period_end'])),

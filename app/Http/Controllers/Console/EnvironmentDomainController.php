@@ -81,9 +81,9 @@ final readonly class EnvironmentDomainController extends ConsoleController
                 'verified' => $challenge->verified,
             ],
             'urls' => [
-                'request' => $this->url('environment-domains.store'),
-                'verify' => $this->url('environment-domains.verify'),
-                'destroy' => $this->url('environment-domains.destroy'),
+                'request' => $this->url('orgs.environment-domains.store'),
+                'verify' => $this->url('orgs.environment-domains.verify'),
+                'destroy' => $this->url('orgs.environment-domains.destroy'),
             ],
         ]);
     }

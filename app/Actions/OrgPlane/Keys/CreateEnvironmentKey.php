@@ -33,7 +33,7 @@ use App\Platform\Actions\Input\InputSchema;
     plane: ActionPlane::Organization,
     rest: ['POST', '/environments/{environment_id}/keys'],
     status: 201,
-    consoleRoutes: ['keys.store'],
+    consoleRoutes: ['orgs.settings.api-keys.store'],
     consoleGate: ConsoleGate::ManageEnvironments,
     schema: 'EnvironmentKey',
     tag: 'Keys',

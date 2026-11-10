@@ -28,7 +28,7 @@ use App\Platform\NativeProduct\NativeProductMembers;
     plane: ActionPlane::Organization,
     rest: ['DELETE', '/members/{id}'],
     status: 204,
-    consoleRoutes: ['members.remove'],
+    consoleRoutes: ['orgs.settings.members.remove'],
     consoleGate: ConsoleGate::ManageMembers,
     tag: 'Team',
 )]
