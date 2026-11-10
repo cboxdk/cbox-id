@@ -4052,6 +4052,7 @@ export type MessageKey =
     | 'console.sign_in_methods_and_sessions_saved_49b79196'
     | 'console.sign_in_on_your_own_domain_5fbbd0c6'
     | 'console.sign_in_only_527f76e3'
+    | 'console.sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e'
     | 'console.sign_in_to_one_of_your_apps_as_part1_to_see_what_they_s_1c96b645'
     | 'console.sign_in_to_part1_as_part2_8473a968'
     | 'console.sign_in_to_part1_de5fd86c'
