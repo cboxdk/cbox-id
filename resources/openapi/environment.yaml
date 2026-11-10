@@ -1549,6 +1549,24 @@ paths:
                             - string
                             - 'null'
                           description: 'Icon for dark surfaces. Null when the app has no dark icon; use icon_url in both themes.'
+                        purpose:
+                          type:
+                            - string
+                            - 'null'
+                          description: 'One line under the name in the app switcher.'
+                        hue:
+                          type:
+                            - string
+                            - 'null'
+                          description: 'The cbox-ui hue token the tile is drawn in, such as violet or amber.'
+                        admission_url:
+                          type:
+                            - string
+                            - 'null'
+                          format: uri
+                          description: 'Where a person who does not have the app asks for it.'
+                        promote_when_unavailable:
+                          type: boolean
                         position:
                           type: integer
                         version:
@@ -1679,6 +1697,19 @@ paths:
                             - string
                             - 'null'
                           description: 'Icon for dark surfaces. Null when the app has no dark icon; use icon_url in both themes.'
+                        purpose:
+                          type:
+                            - string
+                            - 'null'
+                          description: 'One line under the name in the app switcher.'
+                        hue:
+                          type:
+                            - string
+                            - 'null'
+                          description: 'The cbox-ui hue token the tile is drawn in, such as violet or amber.'
+                        available:
+                          type: boolean
+                          description: 'Always true here; the apps listed in meta.unavailable carry false.'
                         position:
                           type: integer
                         version:
@@ -1693,6 +1724,56 @@ paths:
                         type: string
                       refresh_after:
                         type: integer
+                      unavailable:
+                        type: array
+                        description: 'Published apps this person does not have but can ask for ("More from Cbox"): available false, admission_url instead of launch_url. A users-audience app is never listed.'
+                        items:
+                          type: object
+                          required:
+                            - key
+                            - name
+                            - purpose
+                            - hue
+                            - icon_url
+                            - icon_dark_url
+                            - available
+                            - admission_url
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              type: string
+                            description:
+                              type:
+                                - string
+                                - 'null'
+                            purpose:
+                              type:
+                                - string
+                                - 'null'
+                            hue:
+                              type:
+                                - string
+                                - 'null'
+                            icon_url:
+                              type:
+                                - string
+                                - 'null'
+                            icon_dark_url:
+                              type:
+                                - string
+                                - 'null'
+                            position:
+                              type: integer
+                            version:
+                              type: integer
+                            available:
+                              type: boolean
+                              enum:
+                                - false
+                            admission_url:
+                              type: string
+                              format: uri
         202:
           $ref: '#/components/responses/ApprovalRequired'
         400:
@@ -1891,6 +1972,46 @@ paths:
                     - 'null'
                   description: 'PNG, JPEG or WebP data URI, up to 128 KiB and 512 pixels. Omit to retain; null clears. SVG and remote URLs are refused.'
                   maxLength: 180000
+                purpose:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'One line the app switcher shows under the name. Omit to retain; null clears.'
+                  maxLength: 60
+                hue:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'The cbox-ui hue the tile is drawn in, light and dark. Omit to retain; null clears.'
+                  enum:
+                    - red
+                    - orange
+                    - amber
+                    - yellow
+                    - lime
+                    - green
+                    - emerald
+                    - teal
+                    - cyan
+                    - sky
+                    - blue
+                    - indigo
+                    - violet
+                    - purple
+                    - fuchsia
+                    - pink
+                    - rose
+                    - slate
+                    - stone
+                admission_url:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Public HTTPS page where a person who does not have the app asks for it (signup or waitlist). Omit to retain; null clears.'
+                  maxLength: 2048
+                promote_when_unavailable:
+                  type: boolean
+                  description: 'List the app under "not yet" for people who cannot open it, when it has an admission URL. Never for a users audience. Defaults to true; omit to retain.'
                 icon_dark:
                   type:
                     - string

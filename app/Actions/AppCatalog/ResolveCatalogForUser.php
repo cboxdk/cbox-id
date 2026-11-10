@@ -51,11 +51,11 @@ final readonly class ResolveCatalogForUser implements Action
         }
 
         try {
-            $apps = $this->catalog->forUser($userId, $context->string('organization_id'));
+            $catalog = $this->catalog->catalogFor($userId, $context->string('organization_id'));
         } catch (AuthorizationException) {
             throw ActionRefused::notFound('member');
         }
 
-        return ActionResult::page($apps, $apps, ['revision' => hash('sha256', json_encode($apps, JSON_THROW_ON_ERROR)), 'refresh_after' => 60]);
+        return ActionResult::page($catalog['apps'], $catalog['apps'], AppCatalog::meta($catalog));
     }
 }

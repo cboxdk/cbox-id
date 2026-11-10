@@ -12,6 +12,8 @@ export interface CatalogEntry extends CatalogApp {
     user_ids: string[];
     client_ids: string[];
     required_feature: string | null;
+    admission_url: string | null;
+    promote_when_unavailable: boolean;
 }
 
 export default function AppCatalog({

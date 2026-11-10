@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Platform\AppCatalog\AppCatalog;
 use App\Platform\AppCatalog\CatalogEntryData;
+use Cbox\Id\FeatureFlags\Contracts\FeatureFlags;
+use Cbox\Id\FeatureFlags\ValueObjects\NewFeatureFlag;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -17,6 +19,7 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
+use Illuminate\Validation\ValidationException;
 use Tests\Support\FakeDelegatedTokens;
 
 /*
@@ -161,4 +164,94 @@ it('reads in a fixed number of queries however many organizations the person is 
         }
     }
     expect($counts[1])->toBe($counts[0]);
+});
+
+it('lists the apps a person has and, beside them, the ones they can ask for', function (): void {
+    $catalog = app(AppCatalog::class);
+    $catalog->save('globex-only', forUserEntry(['name' => 'Globex only', 'position' => 5, 'audience' => 'organizations', 'organization_ids' => [$this->globex],
+        'version' => 1, 'purpose' => 'Signals for Globex', 'hue' => 'violet', 'admission_url' => 'https://globex.example.com/signup']));
+    $catalog->save('alpha', forUserEntry(['name' => 'Alpha', 'position' => 10, 'version' => 1, 'purpose' => 'Time and invoices', 'hue' => 'amber']));
+    // Not eligible but without an admission page, or not promoted: never "not yet".
+    $catalog->save('no-page', forUserEntry(['position' => 30, 'audience' => 'organizations', 'organization_ids' => [$this->globex]]));
+    $catalog->save('quiet', forUserEntry(['position' => 31, 'audience' => 'organizations', 'organization_ids' => [$this->globex],
+        'admission_url' => 'https://quiet.example.com/join', 'promote_when_unavailable' => false]));
+    // An unpublished app is never shown, even with an admission page.
+    $catalog->save('draft-promoted', forUserEntry(['enabled' => false, 'admission_url' => 'https://draft.example.com/join']));
+
+    $response = forUserRequest(forUserMachineToken(), $this->ada, $this->acme)->assertOk();
+
+    expect(array_column($response->json('data'), 'key'))->toBe(['zeta', 'alpha', 'acme-only'])
+        ->and($response->json('data.1'))->toMatchArray(['purpose' => 'Time and invoices', 'hue' => 'amber', 'available' => true])
+        ->and($response->json('data.1'))->not->toHaveKey('admission_url')
+        ->and($response->json('meta.unavailable'))->toBe([[
+            'key' => 'globex-only', 'name' => 'Globex only', 'description' => null, 'purpose' => 'Signals for Globex', 'hue' => 'violet',
+            'icon_url' => null, 'icon_dark_url' => null, 'position' => 5, 'version' => 2, 'available' => false,
+            'admission_url' => 'https://globex.example.com/signup?organization='.$this->acme,
+        ]])
+        ->and($response->json('meta.revision'))->toBe(AppCatalog::revision($catalog->catalogFor($this->ada, $this->acme)));
+});
+
+it('never lists a users-audience app as "not yet" to someone it does not name', function (): void {
+    $other = app(Subjects::class)->create('other@for-user.example', 'Other')->id;
+    app(AppCatalog::class)->save('private', forUserEntry(['name' => 'Private', 'audience' => 'users', 'user_ids' => [$other],
+        'admission_url' => 'https://private.example.com/join']));
+
+    $response = forUserRequest(forUserMachineToken(), $this->ada, $this->acme)->assertOk();
+
+    expect(array_column($response->json('data'), 'key'))->not->toContain('private')
+        ->and($response->json('meta.unavailable'))->toBe([])
+        ->and(json_encode($response->json(), JSON_THROW_ON_ERROR))->not->toContain('private.example.com');
+});
+
+it('lists an app hidden by its feature flag as "not yet" when it has an admission page', function (): void {
+    $flag = app(FeatureFlags::class)->create(new NewFeatureFlag(key: 'signals-beta', defaultValue: false));
+    app(AppCatalog::class)->save('signals', forUserEntry(['name' => 'Signals', 'required_feature' => $flag->key,
+        'admission_url' => 'https://signals.example.com/waitlist']));
+
+    $response = forUserRequest(forUserMachineToken(), $this->ada, $this->acme)->assertOk();
+
+    expect(array_column($response->json('data'), 'key'))->not->toContain('signals')
+        ->and(array_column($response->json('meta.unavailable'), 'key'))->toBe(['signals']);
+});
+
+it('answers the person and the app with the same two lists', function (): void {
+    app(AppCatalog::class)->save('globex-only', forUserEntry(['name' => 'Globex only', 'position' => 5, 'audience' => 'organizations',
+        'organization_ids' => [$this->globex], 'version' => 1, 'admission_url' => 'https://globex.example.com/signup']));
+    $machine = forUserRequest(forUserMachineToken(), $this->ada, $this->acme)->assertOk();
+
+    FakeDelegatedTokens::install()->person('ada-own', $this->ada, ['account:apps:read']);
+    $own = $this->withToken('ada-own')->getJson('/api/v1/me/apps?organization_id='.$this->acme)->assertOk();
+
+    expect($machine->json('meta.unavailable'))->toHaveCount(1)
+        ->and($machine->json())->toBe($own->json());
+});
+
+it('refuses an admission URL a browser should not be sent to', function (string $url): void {
+    expect(fn () => forUserEntry(['admission_url' => $url]))->toThrow(ValidationException::class);
+})->with([
+    'plain http' => 'http://signals.example.com/join',
+    'loopback' => 'https://127.0.0.1/join',
+    'private network' => 'https://10.0.0.8/join',
+    'link-local metadata' => 'https://169.254.169.254/latest',
+    'ipv6 loopback' => 'https://[::1]/join',
+    'localhost' => 'https://localhost/join',
+    'internal name' => 'https://intranet/join',
+    'internal suffix' => 'https://apps.corp.internal/join',
+    'credentials' => 'https://user:secret@signals.example.com/join',
+    'fragment' => 'https://signals.example.com/join#x',
+]);
+
+it('keeps the switcher fields when a client that predates them saves, and clears them on null', function (): void {
+    $catalog = app(AppCatalog::class);
+    $catalog->save('alpha', forUserEntry(['name' => 'Alpha', 'position' => 10, 'version' => 1, 'purpose' => 'Time', 'hue' => 'amber',
+        'admission_url' => 'https://alpha.example.com/join', 'promote_when_unavailable' => false]));
+
+    $kept = $catalog->save('alpha', forUserEntry(['name' => 'Alpha renamed', 'position' => 10, 'version' => 2]));
+    expect([$kept->purpose, $kept->hue, $kept->admission_url, $kept->promote_when_unavailable])->toBe(['Time', 'amber', 'https://alpha.example.com/join', false]);
+
+    $cleared = $catalog->save('alpha', forUserEntry(['name' => 'Alpha', 'position' => 10, 'version' => 3, 'purpose' => null, 'hue' => null, 'admission_url' => null]));
+    expect([$cleared->purpose, $cleared->hue, $cleared->admission_url])->toBe([null, null, null]);
+
+    expect(fn () => forUserEntry(['hue' => 'chartreuse']))->toThrow(ValidationException::class)
+        ->and(fn () => forUserEntry(['purpose' => str_repeat('x', 61)]))->toThrow(ValidationException::class);
 });

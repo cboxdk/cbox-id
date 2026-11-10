@@ -72,7 +72,7 @@ final readonly class AppCatalog
                 $entry->fill(['key' => $key, 'name' => $data->name, 'description' => $data->description ?: null,
                     'launch_url' => $data->launchUrl, 'enabled' => $data->enabled, 'position' => $data->position,
                     'audience' => $data->audience, 'organization_ids' => $data->organizations, 'user_ids' => $data->users,
-                    'client_ids' => $data->clients, 'required_feature' => $data->requiredFeature]);
+                    'client_ids' => $data->clients, 'required_feature' => $data->requiredFeature, ...$data->shell]);
                 if ($data->iconProvided) {
                     $entry->icon_data = $data->icon;
                 }
@@ -119,11 +119,29 @@ final readonly class AppCatalog
         ));
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * The apps one person has here, in catalog order.
+     *
+     * @return list<array<string, mixed>>
+     */
     public function forUser(string $userId, ?string $organizationId = null): array
     {
+        return $this->catalogFor($userId, $organizationId)['apps'];
+    }
+
+    /**
+     * What the switcher shows one person: the apps they have ("has", `available: true`) and
+     * the published apps they could ask for ("not yet", `available: false`), each with
+     * where to ask. An app only becomes "not yet" when it has an `admission_url` and is
+     * promoted; a `users`-audience app that does not name this person is never listed,
+     * so nobody learns a private app exists.
+     *
+     * @return array{apps: list<array<string, mixed>>, unavailable: list<array<string, mixed>>}
+     */
+    public function catalogFor(string $userId, ?string $organizationId = null): array
+    {
         if (! $this->subjects->isActive($userId)) {
-            return [];
+            return ['apps' => [], 'unavailable' => []];
         }
         $membershipIds = [];
         foreach ($this->memberships->forUser($userId) as $membership) {
@@ -139,44 +157,80 @@ final readonly class AppCatalog
         }
         $organizations = $organizationId === null ? $organizations : [$organizationId];
         $apps = [];
+        $unavailable = [];
         foreach (CatalogEntry::query()->where('enabled', true)->orderBy('position')->orderBy('key')->get() as $entry) {
-            $eligible = match ($entry->audience) {
-                'everyone' => true,
-                'users' => in_array($userId, $entry->user_ids, true),
-                'organizations' => array_intersect($organizations, $entry->organization_ids) !== [],
-                default => false,
-            };
-            if (! $eligible) {
+            if ($this->eligible($entry, $userId, $organizations)) {
+                $item = [...$this->present($entry), 'available' => true];
+                // The published launch endpoint starts authorization in the destination's
+                // own session. Organization is a request, never an access grant.
+                if ($organizationId !== null) {
+                    $item['launch_url'] = (string) Uri::of($entry->launch_url)
+                        ->withQuery(['organization' => $organizationId]);
+                }
+                $apps[] = $item;
+
                 continue;
             }
-            if ($entry->required_feature !== null) {
-                $contexts = $entry->audience === 'organizations' ? array_values(array_intersect($organizations, $entry->organization_ids)) : ($organizations ?: [null]);
-                if (! array_any($contexts, fn (?string $org): bool => $this->flags->isEnabled($entry->required_feature, $userId, $org))) {
-                    continue;
-                }
+            if ($entry->audience === 'users' || $entry->admission_url === null || ! $entry->promote_when_unavailable) {
+                continue;
             }
             $item = $this->present($entry);
-            // The published launch endpoint starts authorization in the destination's
-            // own session. Organization is a request, never an access grant.
-            if ($organizationId !== null) {
-                $item['launch_url'] = (string) Uri::of($entry->launch_url)
-                    ->withQuery(['organization' => $organizationId]);
-            }
-            $apps[] = $item;
+            unset($item['launch_url']);
+            $item['available'] = false;
+            $item['admission_url'] = $organizationId === null ? $entry->admission_url
+                : (string) Uri::of($entry->admission_url)->withQuery(['organization' => $organizationId]);
+            $unavailable[] = $item;
         }
 
-        return $apps;
+        return ['apps' => $apps, 'unavailable' => $unavailable];
+    }
+
+    /**
+     * The list `meta` both catalog reads answer with: the "not yet" apps travel in today's
+     * `{data, meta}` envelope, and the revision covers both lists, so a client that caches
+     * by revision sees an app move from one to the other.
+     *
+     * @param  array{apps: list<array<string, mixed>>, unavailable: list<array<string, mixed>>}  $catalog
+     * @return array{revision: string, refresh_after: int, unavailable: list<array<string, mixed>>}
+     */
+    public static function meta(array $catalog): array
+    {
+        return ['revision' => self::revision($catalog), 'refresh_after' => 60, 'unavailable' => $catalog['unavailable']];
+    }
+
+    /** @param  array{apps: list<array<string, mixed>>, unavailable: list<array<string, mixed>>}  $catalog */
+    public static function revision(array $catalog): string
+    {
+        return hash('sha256', json_encode($catalog['unavailable'] === [] ? $catalog['apps'] : $catalog, JSON_THROW_ON_ERROR));
+    }
+
+    /** @param  list<string>  $organizations */
+    private function eligible(CatalogEntry $entry, string $userId, array $organizations): bool
+    {
+        $eligible = match ($entry->audience) {
+            'everyone' => true,
+            'users' => in_array($userId, $entry->user_ids, true),
+            'organizations' => array_intersect($organizations, $entry->organization_ids) !== [],
+            default => false,
+        };
+        if (! $eligible || $entry->required_feature === null) {
+            return $eligible;
+        }
+        $contexts = $entry->audience === 'organizations' ? array_values(array_intersect($organizations, $entry->organization_ids)) : ($organizations ?: [null]);
+
+        return array_any($contexts, fn (?string $org): bool => $this->flags->isEnabled($entry->required_feature, $userId, $org));
     }
 
     /** @return array<string, mixed> */
     public function present(CatalogEntry $entry, bool $admin = false): array
     {
-        $item = ['key' => $entry->key, 'name' => $entry->name, 'description' => $entry->description,
+        $item = ['key' => $entry->key, 'name' => $entry->name, 'description' => $entry->description, 'purpose' => $entry->purpose, 'hue' => $entry->hue,
             'launch_url' => $entry->launch_url, 'icon_url' => $this->iconUrl($entry, $entry->icon_data),
             'icon_dark_url' => $this->iconUrl($entry, $entry->icon_dark_data), 'position' => $entry->position, 'version' => $entry->version];
 
         return $admin ? [...$item, 'enabled' => $entry->enabled, 'audience' => $entry->audience, 'organization_ids' => $entry->organization_ids,
-            'user_ids' => $entry->user_ids, 'client_ids' => $entry->client_ids, 'required_feature' => $entry->required_feature] : $item;
+            'user_ids' => $entry->user_ids, 'client_ids' => $entry->client_ids, 'required_feature' => $entry->required_feature,
+            'admission_url' => $entry->admission_url, 'promote_when_unavailable' => $entry->promote_when_unavailable] : $item;
     }
 
     /** Content-addressed, so a new upload is a new URL and caches never serve a stale icon. */
