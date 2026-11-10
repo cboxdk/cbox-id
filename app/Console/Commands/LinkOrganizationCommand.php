@@ -21,12 +21,21 @@ final class LinkOrganizationCommand extends Command
         {platform? : The platform-root organization, by slug or id}
         {cbox? : The organization in the cbox environment, by slug or id}
         {--unpaired : List the platform-root organizations with no link}
-        {--by-slug : Pair every unpaired organization whose slug matches, as the migration does}';
+        {--by-slug : Pair every unpaired organization whose slug matches and whose owner is a member there, as the migration does}
+        {--dry-run : With --by-slug, list the pairs without making them}';
 
     protected $description = 'Link a platform-root organization to the same organization in the cbox environment';
 
     public function handle(OrganizationLinks $links): int
     {
+        if ($this->option('by-slug') === true && $this->option('dry-run') === true) {
+            $pairs = $links->autoPairs();
+            $this->table(['platform', 'cbox', 'slug'], array_map(static fn (array $pair): array => [$pair['organization_id'], $pair['cbox_organization_id'], $pair['slug']], $pairs));
+            $this->line(count($pairs).' pair(s) would be made. Nothing was written.');
+
+            return self::SUCCESS;
+        }
+
         if ($this->option('by-slug') === true) {
             $this->info('Paired '.$links->pairBySlug().' organization(s) by slug.');
 
