@@ -26,10 +26,16 @@ use Symfony\Component\HttpFoundation\Response;
  * organization is a 404, exactly like one that names nothing. The session never decides
  * which organization a page acts on: it only remembers the last one, for `/`.
  *
- * Moving between organizations by URL is still a switch, and it keeps the switch's
- * rules: a step-up confirmed for one organization does not carry to another, and the
- * session id rotates ({@see PlatformAuth::switchOrganization()}). A support session is
- * pinned to the organization it was opened for; any other slug is a 404 for it.
+ * Opening another organization by URL binds it for THIS request only. The session is not
+ * written: no `cbox.org`, no regenerate, no rotated CSRF token. Two tabs in two
+ * organizations each act on the one in their own address, a page that still reads the
+ * session's organization keeps acting on the one it showed, and a cross-site link cannot
+ * move anybody's session. The session's organization changes only on the explicit
+ * `POST /orgs/switch` ({@see PlatformAuth::switchOrganization()}). A step-up confirms the
+ * person at the keyboard, within its window, and the authority it is used with is still
+ * this request's membership, so binding by address neither grants nor drops one; the
+ * explicit switch still drops it. A support session is pinned to the organization it was opened for;
+ * any other slug is a 404 for it.
  *
  * After binding, `{org}` is a URL default for the rest of the request, so every
  * `route('orgs.…')` the page builds stays in this organization, and the parameter is
@@ -41,7 +47,6 @@ final class BindOrganizationFromPath
         private readonly CurrentUser $user,
         private readonly OrganizationDirectory $directory,
         private readonly PlaneResolver $planes,
-        private readonly PlatformAuth $auth,
         private readonly Impersonation $impersonation,
         private readonly Organizations $organizations,
     ) {}
@@ -71,10 +76,6 @@ final class BindOrganizationFromPath
 
         $refusal = OrganizationAccess::refusalPhrase($organization->status);
         abort_if($refusal !== null, 403, 'This organization has been '.$refusal.'. Contact your platform operator.');
-
-        if ($this->user->organizationId() !== $entry->id) {
-            $this->auth->switchOrganization($request, $entry->id);
-        }
 
         $subject = $this->user->subject();
         $session = $this->user->session();
