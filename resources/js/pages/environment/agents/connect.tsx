@@ -7,7 +7,7 @@ import {
     cboxLogin,
     claudeCode,
     claudeCodeOAuth,
-    claudeCodeWorkspace,
+    claudeCodeOrganization,
     claudeDesktop,
     type ClientId,
     type ClientSnippet,
@@ -27,19 +27,19 @@ type Props = PageProps<{
     /** True once the MCP resource lets a client sign a person in instead of holding a key. */
     oauthAvailable: boolean;
     /** The platform root's `/mcp` — one connection for the whole workspace — when there is one. */
-    workspace: WorkspaceProps | null;
+    organization: OrgConnectionProps | null;
     urls: { createAgent: string; agents: string };
     help: HelpContent;
 }>;
 
-interface WorkspaceProps {
+interface OrgConnectionProps {
     mcpUrl: string;
     issuer: string;
     restBaseUrl: string;
     /** True while an MCP client may sign a person in at the root itself (`api.mcp.root_oauth`). */
     oauth: boolean;
     /** Keys › Workspace keys on the workspace's host; null on a single-host deployment. */
-    workspaceKeysHref: string | null;
+    organizationKeysHref: string | null;
 }
 
 const CLIENTS = (t: Translator['t']): { id: ClientId; label: string }[] => [
@@ -56,7 +56,7 @@ export default function ConnectAgent({
     restBaseUrl,
     openApiUrl,
     oauthAvailable,
-    workspace,
+    organization: orgConnection,
     urls,
     help,
 }: Props) {
@@ -176,7 +176,7 @@ export default function ConnectAgent({
                     </Tabs>
                 </Panel>
 
-                {workspace && <WorkspaceConnection workspace={workspace} />}
+                {orgConnection && <OrgConnection connection={orgConnection} />}
 
                 <Panel title={consoleT('console.for_developers_6f79cf5c')}>
                     <dl className="grid gap-3 text-sm">
@@ -299,7 +299,7 @@ function SignInOption({ available, mcpUrl }: { available: boolean; mcpUrl: strin
  * Signing the agent in at the root with the person's account is the first way offered: the
  * client needs nothing but the URL. The cbox CLI and a workspace key are the alternatives.
  */
-function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
+function OrgConnection({ connection }: { connection: OrgConnectionProps }) {
     const { t: consoleNestedText } = useConsoleTranslator();
     const { t: consoleText } = useConsoleTranslator();
     const { rich: consoleRich } = useConsoleTranslator();
@@ -317,7 +317,7 @@ function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
                 )}
             </p>
             <div className="mt-4 space-y-5">
-                {workspace.oauth ? (
+                {connection.oauth ? (
                     <div>
                         <p className="text-sm font-medium">
                             {consoleT('console.add_it_to_claude_code_and_sign_in_fb82849c')}
@@ -328,7 +328,7 @@ function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
                             )}
                         </p>
                         <div className="mt-2">
-                            <Snippet snippet={claudeCodeOAuth(workspace.mcpUrl)} />
+                            <Snippet snippet={claudeCodeOAuth(connection.mcpUrl)} />
                         </div>
                     </div>
                 ) : (
@@ -356,12 +356,12 @@ function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
                 )}
                 <div>
                     <p className="text-sm font-medium">
-                        {workspace.oauth
+                        {connection.oauth
                             ? consoleText('console.or_sign_the_cbox_cli_in_as_yourself_29d51963')
                             : consoleText('console.sign_the_cbox_cli_in_as_yourself_722a3ec5')}
                     </p>
                     <div className="mt-2">
-                        <Snippet snippet={cboxLogin(workspace.issuer)} />
+                        <Snippet snippet={cboxLogin(connection.issuer)} />
                     </div>
                 </div>
                 <div>
@@ -374,10 +374,10 @@ function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
                             {
                                 part1: ' ',
                                 part2:
-                                    workspace.workspaceKeysHref === null ? (
+                                    connection.organizationKeysHref === null ? (
                                         consoleNestedText('console.keys_organization_keys_a97fe2c6')
                                     ) : (
-                                        <a href={workspace.workspaceKeysHref}>
+                                        <a href={connection.organizationKeysHref}>
                                             {consoleT('console.keys_organization_keys_a97fe2c6')}
                                         </a>
                                     ),
@@ -386,18 +386,18 @@ function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
                         )}
                     </p>
                     <div className="mt-2">
-                        <Snippet snippet={claudeCodeWorkspace(workspace.mcpUrl)} />
+                        <Snippet snippet={claudeCodeOrganization(connection.mcpUrl)} />
                     </div>
                 </div>
             </div>
             <dl className="mt-5 grid gap-3 text-sm">
                 <Endpoint
                     label={consoleT('console.mcp_server_platform_root_925c6860')}
-                    value={workspace.mcpUrl}
+                    value={connection.mcpUrl}
                 />
                 <Endpoint
                     label={consoleT('console.rest_api_platform_root_061582e3')}
-                    value={workspace.restBaseUrl}
+                    value={connection.restBaseUrl}
                 />
             </dl>
         </Panel>

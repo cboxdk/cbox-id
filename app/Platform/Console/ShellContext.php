@@ -117,7 +117,7 @@ final readonly class ShellContext
 
         return new ShellContextProps(
             noun: $workspace ? __('console.organization_d764d425') : __('console.organization_d764d425'),
-            workspaces: $this->organizationOptions($memberships, $currentId, fallbackName: $this->user->organization()?->name),
+            organizations: $this->organizationOptions($memberships, $currentId, fallbackName: $this->user->organization()?->name),
             switchUrl: Route::has('organization.switch') ? route('organization.switch') : null,
             projects: $projects,
         );
@@ -175,7 +175,7 @@ final readonly class ShellContext
 
         return new ShellContextProps(
             noun: $onRoot ? __('console.platform_c78ffe19') : __('console.organization_d764d425'),
-            workspaces: $workspaces,
+            organizations: $workspaces,
             switchUrl: null,
             projects: $projects,
         );

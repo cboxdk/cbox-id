@@ -244,7 +244,7 @@ final readonly class ShellPayload
             accountHref: route('account'),
             switchUserHref: route('accounts'),
             altitude: $workspace ? ConsoleAltitude::OrgPlane : ConsoleAltitude::Organization,
-            workspaceSettingsHref: $this->scope->membershipRole() !== null
+            organizationSettingsHref: $this->scope->membershipRole() !== null
                 && $this->scope->capabilities()?->isOwner() === true
                 && Route::has('organization-settings')
                     ? route('organization-settings')
@@ -445,7 +445,7 @@ final readonly class ShellPayload
             accountHref: $this->context->onOrganizationHost('account'),
             switchUserHref: $this->context->onOrganizationHost('accounts'),
             altitude: ConsoleAltitude::Environment,
-            workspaceSettingsHref: $membership !== null && $membership->role === MembershipRole::Owner
+            organizationSettingsHref: $membership !== null && $membership->role === MembershipRole::Owner
                 ? $this->context->onOrganizationHost('organization-settings')
                 : null,
             // Platform admin is one click away from the console of the environment a tenant

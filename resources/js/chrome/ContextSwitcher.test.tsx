@@ -17,7 +17,7 @@ function project(id: string, name: string, environments: ContextEnvironment[]): 
 function environmentConsole(overrides: Partial<ShellContext> = {}): ShellContext {
     return {
         noun: 'Workspace',
-        workspaces: [
+        organizations: [
             {
                 id: 'w1',
                 label: 'Acme',
@@ -94,7 +94,7 @@ describe('ContextSwitcher', () => {
 
     it('switches workspace with a POST where the session lives, and by a link from elsewhere', async () => {
         const post = vi.spyOn(router, 'post').mockImplementation(() => undefined);
-        const workspaces = [
+        const organizations = [
             { id: 'w1', label: 'Acme', caption: 'Owner', current: true, openHref: null },
             { id: 'w2', label: 'Globex', caption: 'Developer', current: false, openHref: null },
         ];
@@ -102,7 +102,7 @@ describe('ContextSwitcher', () => {
         render(
             <ContextSwitcher
                 context={environmentConsole({
-                    workspaces,
+                    organizations,
                     switchUrl: '/organization/switch',
                     projects: [],
                 })}
@@ -122,7 +122,7 @@ describe('ContextSwitcher', () => {
             <ContextSwitcher
                 context={{
                     noun: 'Organization',
-                    workspaces: [
+                    organizations: [
                         {
                             id: 'o1',
                             label: 'Plain Co',
@@ -171,7 +171,7 @@ describe('ContextSwitcher', () => {
         render(
             <ContextSwitcher
                 context={environmentConsole({
-                    workspaces: many,
+                    organizations: many,
                     switchUrl: '/organization/switch',
                     projects: [],
                 })}

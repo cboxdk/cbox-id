@@ -63,7 +63,7 @@ final readonly class ShellProps implements Prop
          * The account menu's "Workspace settings", where this person may change them —
          * absolute on the environment console, for the same reason as `$accountHref`.
          */
-        public ?string $workspaceSettingsHref = null,
+        public ?string $organizationSettingsHref = null,
         /**
          * The account menu's way into platform admin — operators only, and only from a
          * console it is not part of: the workspace console on the root, a tenant's
@@ -108,7 +108,7 @@ final readonly class ShellProps implements Prop
             'accountHref' => $this->accountHref,
             'switchUserHref' => $this->switchUserHref,
             'altitude' => $this->altitude->value,
-            'workspaceSettingsHref' => $this->workspaceSettingsHref,
+            'organizationSettingsHref' => $this->organizationSettingsHref,
             'platformHref' => $this->platformHref,
             'notice' => $this->notice,
             'actsOn' => $this->actsOn,

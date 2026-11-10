@@ -185,8 +185,8 @@ it('gives the environment console a way back to its organization, on every page'
     // The context switcher's first crumb names the workspace and goes to its Projects —
     // not to the landing, which would hand them straight back here.
     expect($shell['context']['noun'])->toBe('Organization')
-        ->and($shell['context']['workspaces'])->toHaveCount(1)
-        ->and($shell['context']['workspaces'][0])->toMatchArray([
+        ->and($shell['context']['organizations'])->toHaveCount(1)
+        ->and($shell['context']['organizations'][0])->toMatchArray([
             'id' => $workspace->id,
             'label' => $workspace->name,
             'current' => true,

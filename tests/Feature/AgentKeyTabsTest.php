@@ -40,5 +40,5 @@ it('links Keys › Organization keys on Connect to the organization host', funct
     $host = app(PlaneResolver::class)->consoleHost();
 
     $this->get('/admin/agents/connect')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-        ->where('workspace.workspaceKeysHref', 'https://'.$host.'/keys/workspace'));
+        ->where('organization.organizationKeysHref', 'https://'.$host.'/keys/workspace'));
 });

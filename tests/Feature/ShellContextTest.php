@@ -81,8 +81,8 @@ it('lists the organization, its project and the environments its owner may open 
     $context = organizationContext('projects');
 
     expect($context['noun'])->toBe('Organization')
-        ->and($context['workspaces'])->toHaveCount(1)
-        ->and($context['workspaces'][0])->toMatchArray([
+        ->and($context['organizations'])->toHaveCount(1)
+        ->and($context['organizations'][0])->toMatchArray([
             'id' => $estate['organization']->id,
             'label' => 'Acme',
             'current' => true,
@@ -121,9 +121,9 @@ it('names every organization the person belongs to, and only those', function ()
 
     $context = organizationContext('projects');
 
-    expect(collect($context['workspaces'])->pluck('label')->sort()->values()->all())->toBe(['Acme', 'Globex'])
-        ->and(collect($context['workspaces'])->firstWhere('current', true)['label'])->toBe('Acme')
-        ->and(collect($context['workspaces'])->firstWhere('label', 'Globex')['caption'])->toBe(MembershipRole::Developer->label())
+    expect(collect($context['organizations'])->pluck('label')->sort()->values()->all())->toBe(['Acme', 'Globex'])
+        ->and(collect($context['organizations'])->firstWhere('current', true)['label'])->toBe('Acme')
+        ->and(collect($context['organizations'])->firstWhere('label', 'Globex')['caption'])->toBe(MembershipRole::Developer->label())
         // Belonging to Globex does not put Globex's environments in ACME's menus: those
         // are one switch away, answered by Globex's own access rules when it is current.
         ->and(array_column(contextEnvironments($context), 'id'))->not->toContain($estate['foreign']->id);
@@ -171,7 +171,7 @@ it('offers no operational environment to a Billing-only member', function (): vo
         ->toBe('https://cboxid.com/billing?organization='.$estate['organization']->id);
 
     expect($context['projects'])->toBe([])
-        ->and($context['workspaces'][0]['label'])->toBe('Acme');
+        ->and($context['organizations'][0]['label'])->toBe('Acme');
 });
 
 it('gives the environment console every environment it may switch to, landing on the same page', function (): void {
@@ -187,7 +187,7 @@ it('gives the environment console every environment it may switch to, landing on
 
     expect($context['noun'])->toBe('Organization')
         ->and($context['switchUrl'])->toBeNull()
-        ->and($context['workspaces'][0])->toMatchArray([
+        ->and($context['organizations'][0])->toMatchArray([
             'label' => 'Acme',
             'current' => true,
             'openHref' => 'https://cboxid.com/projects',
@@ -242,6 +242,6 @@ it('calls an organization that owns no projects an organization, with nothing be
     $context = (array) $this->get(route('dashboard'))->assertOk()->inertiaProps('shell.context');
 
     expect($context['noun'])->toBe('Organization')
-        ->and($context['workspaces'][0])->toMatchArray(['label' => 'Plain Co', 'current' => true])
+        ->and($context['organizations'][0])->toMatchArray(['label' => 'Plain Co', 'current' => true])
         ->and($context['projects'])->toBe([]);
 });

@@ -128,7 +128,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
 
     const active = shell.areas.find((area) => area.key === shell.activeArea);
     const organization = auth.organization;
-    const workspace = shell.context.workspaces.find((option) => option.current);
+    const currentOrganization = shell.context.organizations.find((option) => option.current);
     const onEnvironment = shell.altitude === 'environment';
     // The environment this console stands in, as the switcher names it — not the request's
     // own: a page of platform admin READS whichever environment the operator pointed it
@@ -161,7 +161,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                 <Rail
                     areas={shell.areas}
                     brandHref={shell.brandHref}
-                    brandLabel={workspace?.label ?? organization?.name ?? 'Console'}
+                    brandLabel={currentOrganization?.label ?? organization?.name ?? 'Console'}
                     pinned={pinned}
                     onTogglePin={togglePin}
                 />
@@ -187,18 +187,18 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                             ? (standingIn ??
                               environment.name ??
                               consoleShortText('console.environment_9e471951'))
-                            : (workspace?.label ??
+                            : (currentOrganization?.label ??
                               organization?.name ??
                               consoleShortText('console.console_29a40861'))
                     }
-                    subheading={onEnvironment ? (workspace?.label ?? null) : null}
+                    subheading={onEnvironment ? (currentOrganization?.label ?? null) : null}
                     user={auth.user}
                     logoutUrl={shell.logoutHref ?? logout.url()}
                     showEnvironment={shell.altitude !== 'org-plane'}
                     accountUrl={shell.accountHref}
                     showAccountLink={onEnvironment}
                     switchUserUrl={shell.switchUserHref}
-                    workspaceSettingsUrl={shell.workspaceSettingsHref}
+                    organizationSettingsUrl={shell.organizationSettingsHref}
                     platformUrl={shell.platformHref}
                 >
                     <div className="cbx-ctx-sheet">{context}</div>
@@ -219,7 +219,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                             <AccountMenu
                                 user={auth.user}
                                 logoutUrl={shell.logoutHref ?? logout.url()}
-                                workspaceSettingsHref={shell.workspaceSettingsHref}
+                                organizationSettingsHref={shell.organizationSettingsHref}
                                 accountHref={shell.accountHref}
                                 switchUserHref={shell.switchUserHref}
                                 platformHref={shell.platformHref}

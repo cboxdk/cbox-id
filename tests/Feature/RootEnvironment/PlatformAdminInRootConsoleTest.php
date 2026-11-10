@@ -71,7 +71,7 @@ it('draws platform admin as the Platform area of the platform environment\'s con
         ->and(collect($shell['areas'][0]['pages'])->pluck('label')->all())
         ->toBe(['Organizations', 'Environments', 'Organization tree', 'Operators', 'Usage', 'Queues', 'Search'])
         ->and($shell['brandHref'])->toBe('https://cboxid.com/admin/platform/workspaces')
-        ->and($shell['context']['workspaces'][0]['label'])->toBe('Platform admin')
+        ->and($shell['context']['organizations'][0]['label'])->toBe('Platform admin')
         ->and($shell['context']['projects'][0]['environments'][0]['current'])->toBeTrue()
         // In the rail, so not in the account menu as well.
         ->and($shell['platformHref'])->toBeNull()

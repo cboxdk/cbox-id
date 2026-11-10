@@ -80,7 +80,6 @@ export default function Organizations({
             member: 'console.count_members',
             project: 'console.count_projects',
             environment: 'console.count_environments',
-            workspace: 'console.count_organizations',
             organization: 'console.count_organizations',
         } as const;
         return consoleChoice(keys[noun], count);

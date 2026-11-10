@@ -43,7 +43,7 @@ type Props = PageProps<{
     help: HelpContent;
 }>;
 
-export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Props) {
+export default function OrganizationKeys({ tabs, keys, roles, lifetimes, help }: Props) {
     const { t: consoleShortText } = useConsoleTranslator();
     const { t: consoleUiText } = useConsoleTranslator();
     const { rich: consoleRich } = useConsoleTranslator();
@@ -239,4 +239,4 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
     );
 }
 
-WorkspaceKeys.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+OrganizationKeys.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;

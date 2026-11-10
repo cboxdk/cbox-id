@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Mcp;
 
 use App\Platform\Actions\AccountScopes;
-use App\Platform\Scopes\ScopeRegistry;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Actions\PlatformScopes;
 use App\Platform\OAuth\DelegatedAccess;
 use App\Platform\OAuth\RootDelegatedAccess;
+use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
