@@ -12,13 +12,13 @@ const AREAS: NavArea[] = [
         key: 'developers',
         label: 'Developers',
         icon: 'code',
-        href: '/admin/apps',
+        href: '/orgs/acme/projects/web/environments/production/apps',
         active: false,
         current: false,
         pages: [
             {
                 route: 'environment.clients',
-                href: '/admin/apps',
+                href: '/orgs/acme/projects/web/environments/production/apps',
                 label: 'Applications',
                 active: false,
             },
@@ -32,14 +32,20 @@ function answer(query: string): SearchResponse {
         id: 'usr1',
         title: 'Ada Lovelace',
         subtitle: 'ada@acme.test',
-        href: '/admin/users/usr1',
+        href: '/orgs/acme/projects/web/environments/production/users/usr1',
     };
 
     return {
         query,
         jump: query === 'usr1' ? ada : null,
         groups: query === '' ? [] : [{ key: 'users', label: 'Users', items: [ada] }],
-        actions: [{ name: 'apps.create', label: 'Create app', href: '/admin/apps/new' }],
+        actions: [
+            {
+                name: 'apps.create',
+                label: 'Create app',
+                href: '/orgs/acme/projects/web/environments/production/apps/new',
+            },
+        ],
     };
 }
 
@@ -47,6 +53,8 @@ describe('CommandPalette', () => {
     let fetchMock: ReturnType<typeof vi.fn<(url: string) => Promise<Response>>>;
 
     beforeEach(() => {
+        // The environment console's search lives under the console's own path.
+        window.history.replaceState({}, '', '/orgs/acme/projects/web/environments/production');
         setPageProps({
             shell: {
                 altitude: 'environment',
@@ -77,7 +85,10 @@ describe('CommandPalette', () => {
         expect(screen.getByRole('listbox')).toBeInTheDocument();
         expect(screen.getByText('Applications')).toBeInTheDocument();
         expect(await screen.findByText('Create app')).toBeInTheDocument();
-        expect(fetchMock).toHaveBeenCalledWith('/admin/search?q=', expect.anything());
+        expect(fetchMock).toHaveBeenCalledWith(
+            '/orgs/acme/projects/web/environments/production/search?q=',
+            expect.anything(),
+        );
     });
 
     it('waits for typing to pause, then shows what the server found', async () => {
@@ -89,8 +100,8 @@ describe('CommandPalette', () => {
         expect(await screen.findByText('Ada Lovelace')).toBeVisible();
         // One request for the actions on open, one for the pause — not one per keystroke.
         expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
-            '/admin/search?q=',
-            '/admin/search?q=ada',
+            '/orgs/acme/projects/web/environments/production/search?q=',
+            '/orgs/acme/projects/web/environments/production/search?q=ada',
         ]);
     });
 
@@ -107,7 +118,11 @@ describe('CommandPalette', () => {
             await userEvent.keyboard('{Enter}');
         });
 
-        await waitFor(() => expect(visit.mock.calls).toEqual([['/admin/users/usr1']]));
+        await waitFor(() =>
+            expect(visit.mock.calls).toEqual([
+                ['/orgs/acme/projects/web/environments/production/users/usr1'],
+            ]),
+        );
         expect(window.localStorage.getItem(`cbx.palette.recent:${window.location.host}`)).toContain(
             'usr1',
         );
@@ -119,7 +134,9 @@ describe('CommandPalette', () => {
         await userEvent.type(await screen.findByRole('combobox'), 'cbid_env_ab12SECRETSECRET');
 
         await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
-        expect(String(fetchMock.mock.calls[1]?.[0])).toBe('/admin/search?q=cbid_env_ab12');
+        expect(String(fetchMock.mock.calls[1]?.[0])).toBe(
+            '/orgs/acme/projects/web/environments/production/search?q=cbid_env_ab12',
+        );
     });
 
     it('stays navigation-only where the console has no search', async () => {
@@ -149,27 +166,27 @@ describe('CommandPalette', () => {
                 key: 'Authentication',
                 label: 'Authentication',
                 icon: 'fingerprint',
-                href: '/admin/sign-in-methods',
+                href: '/orgs/acme/projects/web/environments/production/sign-in-methods',
                 active: false,
                 current: false,
                 pages: [
                     {
                         route: 'environment.connections',
-                        href: '/admin/single-sign-on',
+                        href: '/orgs/acme/projects/web/environments/production/single-sign-on',
                         label: 'Enterprise SSO',
                         active: false,
                         keywords: ['SSO', 'SAML', 'OIDC', 'Okta'],
                     },
                     {
                         route: 'environment.directories',
-                        href: '/admin/sync-in',
+                        href: '/orgs/acme/projects/web/environments/production/sync-in',
                         label: 'Directory Sync',
                         active: false,
                         keywords: ['SCIM', 'HR system', 'Workday'],
                     },
                     {
                         route: 'environment.social-providers',
-                        href: '/admin/social-sign-in',
+                        href: '/orgs/acme/projects/web/environments/production/social-sign-in',
                         label: 'Social login',
                         active: false,
                         keywords: ['Google login', 'GitHub login'],
@@ -180,13 +197,13 @@ describe('CommandPalette', () => {
                 key: 'Users & orgs',
                 label: 'Users & orgs',
                 icon: 'members',
-                href: '/admin/users',
+                href: '/orgs/acme/projects/web/environments/production/users',
                 active: false,
                 current: false,
                 pages: [
                     {
                         route: 'environment.organizations',
-                        href: '/admin/organizations',
+                        href: '/orgs/acme/projects/web/environments/production/organizations',
                         label: 'Organizations',
                         active: false,
                         keywords: ['tenants', 'tenant', 'customers'],
@@ -197,13 +214,13 @@ describe('CommandPalette', () => {
                 key: 'Advanced',
                 label: 'Advanced',
                 icon: 'sliders',
-                href: '/admin/staff',
+                href: '/orgs/acme/projects/web/environments/production/staff',
                 active: false,
                 current: false,
                 pages: [
                     {
                         route: 'environment.sso-providers',
-                        href: '/admin/saml-apps',
+                        href: '/orgs/acme/projects/web/environments/production/saml-apps',
                         label: 'SAML apps',
                         active: false,
                         keywords: ['SAML IdP', 'outbound SAML'],
@@ -279,7 +296,7 @@ describe('CommandPalette', () => {
                                     name: 'Platform',
                                     type: 'production',
                                     current: false,
-                                    href: 'https://cboxid.com/admin',
+                                    href: 'https://cboxid.com/admin/environment',
                                 },
                             ],
                         },
@@ -297,6 +314,6 @@ describe('CommandPalette', () => {
         await userEvent.click(option);
 
         // Another host, possibly: never an Inertia visit, which is a same-origin XHR.
-        expect(assign).toHaveBeenCalledWith('https://cboxid.com/admin');
+        expect(assign).toHaveBeenCalledWith('https://cboxid.com/admin/environment');
     });
 });

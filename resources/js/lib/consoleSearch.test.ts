@@ -19,7 +19,13 @@ function memoryStorage(): Pick<Storage, 'getItem' | 'setItem'> & { data: Map<str
 }
 
 function item(id: string): SearchItem {
-    return { kind: 'user', id, title: `User ${id}`, subtitle: null, href: `/admin/users/${id}` };
+    return {
+        kind: 'user',
+        id,
+        title: `User ${id}`,
+        subtitle: null,
+        href: `/orgs/acme/projects/web/environments/production/users/${id}`,
+    };
 }
 
 describe('console search', () => {
@@ -29,7 +35,11 @@ describe('console search', () => {
     });
 
     it('searches the console it is on — platform admin included, which is part of one', () => {
-        expect(searchHref('environment')).toBe('/admin/search');
+        expect(
+            searchHref('environment', '/orgs/acme/projects/web/environments/production/users/usr1'),
+        ).toBe('/orgs/acme/projects/web/environments/production/search');
+        expect(searchHref('environment', '/admin/environment')).toBe('/admin/environment/search');
+        expect(searchHref('environment', '/projects')).toBeNull();
         expect(searchHref('organization')).toBe('/search');
         expect(searchHref('workspace')).toBe('/search');
         expect(searchHref(undefined)).toBeNull();
