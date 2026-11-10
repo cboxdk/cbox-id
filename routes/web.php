@@ -115,6 +115,7 @@ use App\Http\Controllers\InvitationController;
 use App\Http\Controllers\LegacySettingsPathController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MagicLinkController;
+use App\Http\Controllers\MovedOrganizationSettingsController;
 use App\Http\Controllers\OAuthConsentController;
 use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\PasskeyController;
@@ -1230,6 +1231,10 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::delete('/organization', [SettingsController::class, 'destroyOrganization'])
         ->middleware('sudo')
         ->name('settings.organization.destroy');
+    // The v2 writes of this page, while an old tab still has them open
+    // ({@see \App\Http\Controllers\MovedOrganizationSettingsController}).
+    Route::patch('/settings', MovedOrganizationSettingsController::class)->name('legacy.settings.rename');
+    Route::delete('/settings/organization', MovedOrganizationSettingsController::class)->name('legacy.settings.organization.destroy');
     // Branding: the SAME component the environment plane serves — the sign-in theme, the
     // logo and favicon, and (with the white-label module) the name, sender and palette.
     // What is being branded is the page's address: this organization's own here.

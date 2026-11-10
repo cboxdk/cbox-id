@@ -4771,4 +4771,5 @@ https://staging.example.com',
     'no_activity_recorded_fcfa3087' => 'Ei tallennettua toimintaa',
     'last_activity_0c278ed1' => 'Viimeinen toiminta ',
     'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Valitse aktiivinen OpenID Connect -yhteys, joka kuuluu koko ympäristölle.',
+    'organization_settings_moved_here_7b3e91c4' => 'Etsitkö organisaatiosi asetuksia? Ne ovat nyt omalla sivullaan.',
 ];

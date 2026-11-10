@@ -21,12 +21,14 @@ use App\Platform\AccountLinking\ConnectFromAccount;
 use App\Platform\AccountLinking\SignInIdentities;
 use App\Platform\AccountLinking\SignInIdentity;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Mfa\AuthenticatorEnrollment;
 use App\Platform\Passkeys\PasskeyName;
 use App\Platform\Passkeys\RecordsPasskeyUse;
+use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
@@ -100,6 +102,10 @@ final readonly class AccountController extends PageController
         return $this->page('account/security', __('console.security_8f6fb4eb'), [
             'help' => HelpProps::for(HelpTopic::AccountSecurity),
             'returnTo' => $this->validReturnTo($request),
+            // On a tenant host `/settings` was the organization's own settings until v3.
+            // A bookmark to it now opens this page, so an administrator is shown where
+            // those went instead of silently landing somewhere else.
+            'organizationSettingsMoved' => $this->organizationSettingsMoved(),
             'profile' => [
                 'name' => $me->name(),
                 'email' => $me->email(),
@@ -693,6 +699,15 @@ final readonly class AccountController extends PageController
         }
 
         return $model::query()->whereKey($subjectId)->value('password') !== null;
+    }
+
+    private function organizationSettingsMoved(): ?string
+    {
+        if (! app(PlaneResolver::class)->onCustomerEnvironment() || ! app(ConsoleScope::class)->mayAdminister()) {
+            return null;
+        }
+
+        return url(MovedOrganizationSettingsController::SUCCESSOR);
     }
 
     /**
