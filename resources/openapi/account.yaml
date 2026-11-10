@@ -216,6 +216,19 @@ paths:
                             - string
                             - 'null'
                           description: 'Icon for dark surfaces. Null when the app has no dark icon; use icon_url in both themes.'
+                        purpose:
+                          type:
+                            - string
+                            - 'null'
+                          description: 'One line under the name in the app switcher.'
+                        hue:
+                          type:
+                            - string
+                            - 'null'
+                          description: 'The cbox-ui hue token the tile is drawn in, such as violet or amber.'
+                        available:
+                          type: boolean
+                          description: 'Always true here; the apps listed in meta.unavailable carry false.'
                         position:
                           type: integer
                         version:
@@ -230,6 +243,56 @@ paths:
                         type: string
                       refresh_after:
                         type: integer
+                      unavailable:
+                        type: array
+                        description: 'Published apps this person does not have but can ask for ("More from Cbox"): available false, admission_url instead of launch_url. A users-audience app is never listed.'
+                        items:
+                          type: object
+                          required:
+                            - key
+                            - name
+                            - purpose
+                            - hue
+                            - icon_url
+                            - icon_dark_url
+                            - available
+                            - admission_url
+                          properties:
+                            key:
+                              type: string
+                            name:
+                              type: string
+                            description:
+                              type:
+                                - string
+                                - 'null'
+                            purpose:
+                              type:
+                                - string
+                                - 'null'
+                            hue:
+                              type:
+                                - string
+                                - 'null'
+                            icon_url:
+                              type:
+                                - string
+                                - 'null'
+                            icon_dark_url:
+                              type:
+                                - string
+                                - 'null'
+                            position:
+                              type: integer
+                            version:
+                              type: integer
+                            available:
+                              type: boolean
+                              enum:
+                                - false
+                            admission_url:
+                              type: string
+                              format: uri
         202:
           $ref: '#/components/responses/ApprovalRequired'
         401:

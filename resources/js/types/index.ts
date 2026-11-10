@@ -362,6 +362,10 @@ export interface CatalogApp {
     key: string;
     name: string;
     description: string | null;
+    /** One line under the name in the switcher. */
+    purpose: string | null;
+    /** A cbox-ui hue token (`violet`, `amber`, …) the tile is drawn in. */
+    hue: string | null;
     launch_url: string;
     icon_url: string | null;
     /** Null when the app has no dark icon; `icon_url` then serves both themes. */

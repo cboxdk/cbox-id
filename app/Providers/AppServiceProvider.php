@@ -6,6 +6,7 @@ use App\Http\ApiRateLimiters;
 use App\Http\Controllers\Api\DecisionController;
 use App\Http\Controllers\Api\Discovery\AuthorizationServerMetadataController as AppAuthorizationServerMetadataController;
 use App\Http\Controllers\Api\Discovery\OpenIdConfigurationController;
+use App\Http\Controllers\Api\UserInfoController;
 use App\Http\WebRateLimiters;
 use App\Listeners\SuppressSandboxMail;
 use App\Mcp\McpCaller;
@@ -66,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(\Cbox\Id\Api\Http\Controllers\DecisionController::class, DecisionController::class);
+        $this->app->bind(\Cbox\Id\Api\Http\Controllers\UserInfoController::class, UserInfoController::class);
 
         // The MCP server at `/mcp` is a protected resource of every environment's issuer,
         // declared beside whatever config declares (RFC 9728 metadata, RFC 8707 audience).

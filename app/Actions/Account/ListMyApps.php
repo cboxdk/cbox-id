@@ -33,8 +33,8 @@ final readonly class ListMyApps implements Action
         if ($confined !== null && $organization !== null && $confined !== $organization) {
             throw new AuthorizationException('This token cannot select another organization.');
         }
-        $apps = $this->catalog->forUser(AsPerson::subjectId($context->principal), $confined ?? $organization);
+        $catalog = $this->catalog->catalogFor(AsPerson::subjectId($context->principal), $confined ?? $organization);
 
-        return ActionResult::page($apps, $apps, ['revision' => hash('sha256', json_encode($apps, JSON_THROW_ON_ERROR)), 'refresh_after' => 60]);
+        return ActionResult::page($catalog['apps'], $catalog['apps'], AppCatalog::meta($catalog));
     }
 }

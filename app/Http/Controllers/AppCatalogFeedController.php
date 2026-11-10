@@ -13,21 +13,23 @@ use Illuminate\Http\JsonResponse;
  * shape every Cbox app serves to `<cbox-app-switcher>` (`{apps, revision, refresh_after}`).
  * ID is the catalog's source, so it reads {@see AppCatalog::forUser()}
  * directly — the same list `GET /api/v1/me/apps` gives other apps — with no OAuth round trip.
+ * `unavailable` is the "More from Cbox" section: apps the person can ask for, each with its
+ * `admission_url` and no `launch_url`.
  */
 final class AppCatalogFeedController
 {
-    private const array FIELDS = ['key', 'name', 'description', 'launch_url', 'icon_url', 'icon_dark_url'];
+    private const array FIELDS = ['key', 'name', 'description', 'purpose', 'hue', 'launch_url', 'admission_url', 'icon_url', 'icon_dark_url', 'available'];
 
     public function __invoke(AppLauncher $launcher): JsonResponse
     {
-        $apps = array_map(
-            static fn (array $app): array => array_intersect_key($app, array_flip(self::FIELDS)),
-            $launcher->apps(),
-        );
+        $catalog = $launcher->catalog();
+        $only = static fn (array $app): array => array_intersect_key($app, array_flip(self::FIELDS));
+        $catalog = ['apps' => array_map($only, $catalog['apps']), 'unavailable' => array_map($only, $catalog['unavailable'])];
 
         return response()->json([
-            'apps' => $apps,
-            'revision' => hash('sha256', json_encode($apps, JSON_THROW_ON_ERROR)),
+            'apps' => $catalog['apps'],
+            'unavailable' => $catalog['unavailable'],
+            'revision' => AppCatalog::revision($catalog),
             'refresh_after' => 60,
         ])->header('Cache-Control', 'private, no-store');
     }
