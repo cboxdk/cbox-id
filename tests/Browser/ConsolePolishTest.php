@@ -22,18 +22,18 @@ it('edits a user in context and keeps the query, focus and deep link', function 
     $user = app(Subjects::class)->create('dana@polish.test', 'Dana Example');
     $page = visit('/admin/users?q=dana');
     $row = '[data-user-id="'.$user->id.'"]';
-    $page->click($row)->assertVisible('[role="dialog"]')
+    $page->click($row)->assertVisible('[role="dialog"][data-state="open"]')
         ->assertScript('new URL(location.href).searchParams.get("selected")', $user->id)
         ->click('[aria-label="Edit Name"]')->fill('name', 'Dana Updated')
         ->click('button:has-text("Save")')
         ->assertSee('Profile updated.')
-        ->assertVisible('[role="dialog"]')
+        ->assertVisible('[role="dialog"][data-state="open"]')
         ->assertSee('Dana Updated')
         ->assertScript('document.activeElement?.getAttribute("aria-label")', 'Edit Name')
         ->assertScript('new URL(location.href).searchParams.get("q")', 'dana');
     $page->click('[aria-label="Edit Name"]')->fill('name', 'Not saved');
     $page->script('window.confirm = () => false');
-    $page->keys('input[name="name"]', 'Escape')->assertVisible('[role="dialog"]')
+    $page->keys('input[name="name"]', 'Escape')->assertVisible('[role="dialog"][data-state="open"]')
         ->assertScript('document.querySelector("input[name=name]").value', 'Not saved')
         ->click('button:has-text("Cancel")')
         ->assertScript('document.activeElement?.getAttribute("aria-label")', 'Edit Name')
@@ -43,11 +43,11 @@ it('edits a user in context and keeps the query, focus and deep link', function 
         ->screenshot(filename: 'polish-user-panel');
     // Let the original notification expire so Back cannot pass by retaining it.
     $page->wait(5)->assertDontSee('Profile updated.');
-    $page->click('[aria-label="Close"]')->assertNotPresent('[role="dialog"]')
+    $page->click('[aria-label="Close"]')->assertNotPresent('[role="dialog"][data-state="open"]')
         ->assertScript('new URL(location.href).searchParams.get("q")', 'dana')
         ->assertScript('document.activeElement?.getAttribute("data-user-id")', $user->id);
     $page->script('history.back()');
-    $page->assertVisible('[role="dialog"]')->assertSee('Dana Updated')
+    $page->assertVisible('[role="dialog"][data-state="open"]')->assertSee('Dana Updated')
         ->assertDontSee('Profile updated.');
     $page->click('Open full profile')
         ->click('a[href$="section=security"]')->assertSee('Security & lifecycle')
@@ -61,14 +61,14 @@ it('fits the user panel on a phone and restores the URL selection on reload', fu
     if ($dark) {
         $page = $page->inDarkMode();
     }
-    $page->resize(390, 844)->assertVisible('[role="dialog"]')
+    $page->resize(390, 844)->assertVisible('[role="dialog"][data-state="open"]')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
         ->assertScript('Math.round(document.querySelector("[role=dialog]").getBoundingClientRect().width)', 390)
         ->assertNoAccessibilityIssues()->assertNoJavaScriptErrors()
         ->screenshot(filename: $dark ? 'polish-user-mobile-dark' : 'polish-user-mobile');
     $page->script('location.reload()');
-    $page->assertVisible('[role="dialog"]')->assertSee('Mobile Example');
-    $page->click('[aria-label="Close"]')->assertNotPresent('[role="dialog"]')
+    $page->assertVisible('[role="dialog"][data-state="open"]')->assertSee('Mobile Example');
+    $page->click('[aria-label="Close"]')->assertNotPresent('[role="dialog"][data-state="open"]')
         ->assertScript('(() => {
             const row = document.querySelector("[data-user-id=\"'.$user->id.'\"]");
             const email = row.querySelector("span.text-sm");
@@ -88,7 +88,7 @@ it('reviews the portal task before creating a link and uses a sheet on a phone',
     $page = visit('/admin/organizations/'.$org->id);
     $page->assertSee('No connection yet.')->screenshot(filename: 'polish-organization');
     $page->resize(390, 844);
-    $page->click('Invite IT administrator')->assertVisible('[role="dialog"]')
+    $page->click('Invite IT administrator')->assertVisible('[role="dialog"][data-state="open"]')
         ->assertDontSee('Link expires after')->click('button:has-text("Continue")')
         ->assertSee('Link expires after')->assertNoJavaScriptErrors()
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
