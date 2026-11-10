@@ -35,7 +35,7 @@ use Cbox\Id\Platform\Models\Project;
 #[AsAction(
     name: 'keys.organization.revoke',
     summary: 'Revoke an organization key, and every key it minted on either plane (organization keys and environment management keys, all the way down); whatever uses them stops immediately.',
-    scope: 'keys:write',
+    scope: 'id:organization-keys:write',
     danger: Danger::Destructive,
     plane: ActionPlane::Organization,
     rest: ['DELETE', '/keys/{id}'],
@@ -108,7 +108,7 @@ final readonly class RevokeOrganizationKey implements Action
             $environmentId = $environment->id;
             $keys = $this->environmentKeys->forEnvironment($environmentId);
             $queue = $keys
-                ->filter(static fn ($key): bool => $key->created_by_type === 'workspace_key' && in_array($key->created_by_id, $workspaceKeyIds, true))
+                ->filter(static fn ($key): bool => in_array($key->created_by_type, ['organization_key', 'workspace_key'], true) && in_array($key->created_by_id, $workspaceKeyIds, true))
                 ->values()
                 ->all();
 

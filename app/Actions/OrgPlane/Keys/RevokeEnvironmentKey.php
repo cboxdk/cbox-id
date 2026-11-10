@@ -35,7 +35,7 @@ use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 #[AsAction(
     name: 'keys.environment.revoke',
     summary: 'Revoke one of an environment\'s management keys; whatever uses it stops immediately.',
-    scope: 'keys:write',
+    scope: 'id:environment-keys:write',
     danger: Danger::Destructive,
     plane: ActionPlane::Organization,
     rest: ['DELETE', '/environments/{environment_id}/keys/{id}'],

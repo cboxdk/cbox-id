@@ -4,13 +4,13 @@
   "status": "draft_specification_not_importable",
   "identity_namespace": "cbox-id-platform-root",
   "scope": [
-    "workspace_id",
+    "organization_id",
     "project_id",
     "environment_id"
   ],
   "observation_event": "onboarding.progress_observed",
   "enroll_from_observation_heartbeats": false,
-  "recipient": "one current authorized workspace member responsible for this environment; never tenant end users",
+  "recipient": "one current authorized organization member responsible for this environment; never tenant end users",
   "purpose": "product_updates",
   "requires_consent": true,
   "max_evidence_age_seconds": 120,

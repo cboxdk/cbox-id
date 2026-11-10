@@ -35,7 +35,7 @@ use Cbox\Id\Platform\PlatformRoot;
 #[AsAction(
     name: 'team.environment_access',
     summary: 'Set which of the organization\'s environments a team member reaches: all of them, or the listed ones.',
-    scope: 'team:write',
+    scope: 'id:members:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['PUT', '/members/{id}/access'],

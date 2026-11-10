@@ -24,7 +24,7 @@ use Cbox\Id\Platform\Contracts\OrganizationProjects;
 #[AsAction(
     name: 'projects.list',
     summary: 'List the organization\'s projects (IdP products), each with its environment allowance and how much of it is used.',
-    scope: 'workspace:read',
+    scope: 'id:organization:read',
     danger: Danger::Read,
     plane: ActionPlane::Organization,
     rest: ['GET', '/projects'],

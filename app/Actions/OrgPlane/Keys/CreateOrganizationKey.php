@@ -19,6 +19,7 @@ use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Actions\Principal\OrganizationKeyPrincipal;
+use App\Platform\Scopes\ScopeRegistry;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
@@ -26,7 +27,7 @@ use Cbox\Id\Platform\Models\OrganizationApiKey;
 use Cbox\Id\Platform\ValueObjects\KeyProvenance;
 
 /**
- * Mint a workspace key (`cbid_ws_…`): a role, optionally narrowed by scopes, acting across
+ * Mint an organization key (`cbid_org_…`): a role, optionally narrowed by scopes, acting across
  * the whole workspace without a person. The value is in `token`, once.
  *
  * A KEY MAY MINT KEYS, BUT NEVER A WIDER ONE. From another key, the new key's role does not
@@ -39,7 +40,7 @@ use Cbox\Id\Platform\ValueObjects\KeyProvenance;
 #[AsAction(
     name: 'keys.organization.create',
     summary: 'Mint an organization key with a role and optional scopes, never wider than the caller. The value is returned once, as `token`.',
-    scope: 'keys:write',
+    scope: 'id:organization-keys:write',
     danger: Danger::Critical,
     plane: ActionPlane::Organization,
     rest: ['POST', '/keys'],
@@ -59,7 +60,7 @@ final readonly class CreateOrganizationKey implements Action
         return InputSchema::of([
             Field::string('name')->required()->max(120),
             Field::string('role')->required()->oneOf(array_map(static fn (MembershipRole $role): string => $role->value, MembershipRole::assignable())),
-            Field::list('scopes', Field::string('scope')->oneOf(OrganizationScopes::all()))->nullable()->min(1)->describe('Narrow the key below its role. Left out, the role alone bounds it — or, minted by a key with scopes, that key\'s scopes.'),
+            Field::list('scopes', Field::string('scope')->oneOf(ScopeRegistry::withLegacy(OrganizationScopes::all())))->nullable()->min(1)->describe('Narrow the key below its role. Left out, the role alone bounds it — or, minted by a key with scopes, that key\'s scopes.'),
             Field::string('expires_at')->nullable()->format('date-time')->describe('When it stops working. Left out, it does not expire — or, minted by a key that does, expires with it.'),
         ]);
     }
@@ -70,7 +71,7 @@ final readonly class CreateOrganizationKey implements Action
         $name = trim($context->string('name'));
         $role = MembershipRole::from($context->string('role'));
         $scopes = $context->has('scopes') && is_array($context->input['scopes'])
-            ? array_values(array_unique(array_filter($context->input['scopes'], 'is_string')))
+            ? OrganizationScopes::normalise($context->input['scopes'])
             : null;
         $expiresAt = EnvironmentKeyIssuer::expiry($context, 'expires_at');
 
@@ -117,8 +118,9 @@ final readonly class CreateOrganizationKey implements Action
         }
 
         if ($parent->scopes !== null) {
-            $scopes ??= $parent->scopes;
-            $wider = array_values(array_diff($scopes, $parent->scopes));
+            $held = OrganizationScopes::normalise($parent->scopes);
+            $scopes ??= $held;
+            $wider = array_values(array_diff($scopes, $held));
 
             if ($wider !== []) {
                 throw ActionRefused::because('scope_exceeds_parent', new ActionMessage('console.a_key_can_only_mint_keys_within_its_own_scopes_not_held_e7bd86d4', ['part1' => (string) (implode(', ', $wider))]), 'scopes');

@@ -15,6 +15,7 @@ use App\Platform\Console\CustomerConsole;
 use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\OAuth\DelegatedAccess;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
+use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
@@ -127,7 +128,7 @@ final readonly class DelegatedTokenPrincipal implements PersonPrincipal, SignedI
             throw new AuthorizationException('A signed-in token reaches this environment\'s actions only. The organization is reached with an organization key.');
         }
 
-        if (! app(ManagementScopes::class)->knows($action->scope) || ! in_array($action->scope, $this->scopes, true)) {
+        if (! app(ManagementScopes::class)->knows($action->scope) || ! ScopeRegistry::satisfies($this->scopes, $action->scope)) {
             throw new AuthorizationException("This sign-in was not granted the required scope: {$action->scope}.");
         }
 
@@ -231,7 +232,7 @@ final readonly class DelegatedTokenPrincipal implements PersonPrincipal, SignedI
 
     public function grants(string $scope): bool
     {
-        return in_array($scope, $this->scopes, true);
+        return ScopeRegistry::satisfies($this->scopes, $scope);
     }
 
     public function expiresAt(): ?int

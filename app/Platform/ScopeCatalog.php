@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Platform\Locale\ConsoleScopeCopy;
+use App\Platform\Scopes\ScopeRegistry;
 
 /**
  * The catalog of permissions ("scopes") an app can request — the plain-language
@@ -52,7 +53,8 @@ final class ScopeCatalog
      */
     public static function reservedAmong(array $scopes): array
     {
-        return array_values(array_intersect($scopes, self::RESERVED_FOR_CONSOLE));
+        // By every name a reserved scope goes by: `id:vault-secrets:write` is `vault.manage`.
+        return array_values(array_filter($scopes, static fn (string $scope): bool => array_intersect(ScopeRegistry::equivalents($scope), self::RESERVED_FOR_CONSOLE) !== []));
     }
 
     /**

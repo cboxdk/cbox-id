@@ -56,14 +56,14 @@ final class SyncOnboardingCommand extends Command
                     $events->record(ProductEvent::byCompany(
                         'onboarding.progress_observed',
                         'cbox-id:onboarding:'.hash('sha256', $environment->id.'|'.$interval.'|'.json_encode($props, JSON_THROW_ON_ERROR)),
-                        $snapshot['workspace_id'],
+                        $snapshot['organization_id'],
                         $props,
                     ));
                     if ($snapshot['goals']['first_sign_in'] ?? false) {
                         $events->record(ProductEvent::byCompany(
                             'onboarding.first_sign_in_observed',
                             'cbox-id:first-sign-in:'.hash('sha256', $environment->id.'|'.$interval),
-                            $snapshot['workspace_id'],
+                            $snapshot['organization_id'],
                             $props,
                         ));
                     }

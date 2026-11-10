@@ -29,7 +29,7 @@ use Cbox\Id\Platform\PlatformRoot;
 #[AsAction(
     name: 'team.role',
     summary: 'Replace native ID app roles atomically. Shared organization membership is preserved.',
-    scope: 'team:write',
+    scope: 'id:members:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['PATCH', '/members/{id}/role'],

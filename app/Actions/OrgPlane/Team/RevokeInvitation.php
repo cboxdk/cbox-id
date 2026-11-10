@@ -24,7 +24,7 @@ use App\Platform\NativeProduct\NativeTeamInvitations as TeamInvitations;
 #[AsAction(
     name: 'team.invitations.revoke',
     summary: 'Withdraw a pending team invitation; its link stops working.',
-    scope: 'team:write',
+    scope: 'id:members:write',
     danger: Danger::Destructive,
     plane: ActionPlane::Organization,
     rest: ['DELETE', '/invitations/{id}'],

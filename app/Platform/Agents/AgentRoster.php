@@ -163,7 +163,7 @@ final readonly class AgentRoster
         foreach ($keys as $key) {
             if ($key->created_by_type === 'organization_member' && is_string($key->created_by_id)) {
                 $people[] = $key->created_by_id;
-            } elseif ($key->created_by_type === 'workspace_key' && is_string($key->created_by_id)) {
+            } elseif (in_array($key->created_by_type, ['organization_key', 'workspace_key'], true) && is_string($key->created_by_id)) {
                 $workspaceKeys[] = $key->created_by_id;
             }
         }
@@ -192,7 +192,7 @@ final readonly class AgentRoster
                 'environment_key' => $key->parent_key_id !== null && isset($byId[$key->parent_key_id])
                     ? 'Key "'.$byId[$key->parent_key_id]->name.'"'
                     : 'Another key',
-                'workspace_key' => is_string($id) ? ($workspace[$id] ?? 'An organization key') : 'An organization key',
+                'organization_key', 'workspace_key' => is_string($id) ? ($workspace[$id] ?? 'An organization key') : 'An organization key',
                 default => 'Unknown',
             };
         }

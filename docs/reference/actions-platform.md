@@ -39,7 +39,7 @@ Create an environment on the deployment, with its own signing key. A domain is v
 | | |
 |---|---|
 | REST | `POST /api/v1/platform/environments` → `201` |
-| Scope | `operator:environments:write` — on an access token delegated by an active platform operator. No management key is accepted. |
+| Scope | `id:admin-environments:write` (until v3.1 also `operator:environments:write`) — (until v3.1 also accepted as `operator:environments:write`) on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_environments_create` |
 | CLI | `cbox id admin environments create` |
@@ -56,7 +56,7 @@ Bootstrap an environment with its first organization and an owner administrator,
 | | |
 |---|---|
 | REST | `POST /api/v1/platform/environments/{environment_id}/provision` → `201` |
-| Scope | `operator:environments:write` — on an access token delegated by an active platform operator. No management key is accepted. |
+| Scope | `id:admin-environments:write` (until v3.1 also `operator:environments:write`) — (until v3.1 also accepted as `operator:environments:write`) on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_environments_provision` |
 | CLI | `cbox id admin environments provision <environment_id>` |
@@ -78,7 +78,7 @@ Add a platform operator: a person with authority over the whole deployment.
 | | |
 |---|---|
 | REST | `POST /api/v1/platform/operators` → `201` |
-| Scope | `operator:operators:write` — on an access token delegated by an active platform operator. No management key is accepted. |
+| Scope | `id:admin-operators:write` (until v3.1 also `operator:operators:write`) — (until v3.1 also accepted as `operator:operators:write`) on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_operators_create` |
 | CLI | `cbox id admin operators create` |
@@ -96,7 +96,7 @@ Suspend a platform operator, or reactivate one. Never yourself, and never the la
 | | |
 |---|---|
 | REST | `PUT /api/v1/platform/operators/{operator_id}/status` → `200` |
-| Scope | `operator:operators:write` — on an access token delegated by an active platform operator. No management key is accepted. |
+| Scope | `id:admin-operators:write` (until v3.1 also `operator:operators:write`) — (until v3.1 also accepted as `operator:operators:write`) on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_operators_set_status` |
 | CLI | `cbox id admin operators set_status <operator_id>` |
@@ -115,7 +115,7 @@ Create an organization with its owner, first project and first environment; the 
 | | |
 |---|---|
 | REST | `POST /api/v1/platform/workspaces` → `201` |
-| Scope | `operator:workspaces:write` — on an access token delegated by an active platform operator. No management key is accepted. |
+| Scope | `id:admin-organizations:write` (until v3.1 also `operator:workspaces:write`) — (until v3.1 also accepted as `operator:workspaces:write`) on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_organizations_create` |
 | CLI | `cbox id admin organizations create` |
@@ -134,7 +134,7 @@ Suspend an organization (its people can no longer sign in, its environments stop
 | | |
 |---|---|
 | REST | `PUT /api/v1/platform/workspaces/{workspace_id}/status` → `200` |
-| Scope | `operator:workspaces:write` — on an access token delegated by an active platform operator. No management key is accepted. |
+| Scope | `id:admin-organizations:write` (until v3.1 also `operator:workspaces:write`) — (until v3.1 also accepted as `operator:workspaces:write`) on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_organizations_set_status` |
 | CLI | `cbox id admin organizations set_status <workspace_id>` |
@@ -151,7 +151,7 @@ Create an organization inside an environment, optionally under a parent organiza
 | | |
 |---|---|
 | REST | `POST /api/v1/platform/environments/{environment_id}/organizations` → `201` |
-| Scope | `operator:organizations:write` — on an access token delegated by an active platform operator. No management key is accepted. |
+| Scope | `id:admin-tenant-organizations:write` (until v3.1 also `operator:organizations:write`) — (until v3.1 also accepted as `operator:organizations:write`) on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_tenant_organizations_create` |
 | CLI | `cbox id admin tenant_organizations create <environment_id>` |
@@ -170,7 +170,7 @@ Move an organization under another organization of the same environment, or to t
 | | |
 |---|---|
 | REST | `PUT /api/v1/platform/environments/{environment_id}/organizations/{organization_id}/parent` → `200` |
-| Scope | `operator:organizations:write` — on an access token delegated by an active platform operator. No management key is accepted. |
+| Scope | `id:admin-tenant-organizations:write` (until v3.1 also `operator:organizations:write`) — (until v3.1 also accepted as `operator:organizations:write`) on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_tenant_organizations_move` |
 | CLI | `cbox id admin tenant_organizations move <environment_id> <organization_id>` |
@@ -188,7 +188,7 @@ Suspend an organization inside an environment (its members can no longer sign in
 | | |
 |---|---|
 | REST | `PUT /api/v1/platform/environments/{environment_id}/organizations/{organization_id}/status` → `200` |
-| Scope | `operator:organizations:write` — on an access token delegated by an active platform operator. No management key is accepted. |
+| Scope | `id:admin-tenant-organizations:write` (until v3.1 also `operator:organizations:write`) — (until v3.1 also accepted as `operator:organizations:write`) on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_tenant_organizations_set_status` |
 | CLI | `cbox id admin tenant_organizations set_status <environment_id> <organization_id>` |

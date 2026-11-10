@@ -8,9 +8,12 @@ info:
     environments, its team, and its keys with an organization key.
 
     **Scopes.** An organization key carries a ROLE and, optionally, SCOPES. The role bounds
-    everything the machine key may do, and scopes narrow it further: `workspace:read`, `projects:write`,
-    `environments:write`, `team:read`, `team:write`, `keys:write`, `settings:write`, `billing:write`. A key
-    minted with no scopes is bounded by its role alone. Each operation names the scope and
+    everything the machine key may do, and scopes narrow it further: `id:organization:read`,
+    `id:projects:write`, `id:environments:write`, `id:members:read`, `id:members:write`,
+    `id:environment-keys:write`, `id:organization-keys:write`, `id:organization:write`,
+    `id:billing:write`. The v2 names (`workspace:read`, `team:read`, `keys:write`, …) are
+    accepted until v3.1 and answered in the new ones. A key minted with no scopes is bounded
+    by its role alone. Each operation names the scope and
     the capability it needs; a key missing either gets `403`.
 
     **As a member of the team.** Beside a key, the plane takes an access token the platform
@@ -557,10 +560,10 @@ components:
         role: { type: string, enum: [owner, admin, developer, member, viewer] }
         scopes:
           type: ["array", "null"]
-          items: { type: string, enum: ["workspace:read", "projects:write", "environments:write", "team:read", "team:write", "keys:write", "settings:write", "billing:write"] }
+          items: { type: string, enum: ["id:organization:read", "id:projects:write", "id:environments:write", "id:members:read", "id:members:write", "id:environment-keys:write", "id:organization-keys:write", "id:organization:write", "id:billing:write"] }
           description: Null when the role alone bounds the key.
         parent_key_id: { type: ["string", "null"], description: "The key that minted it, if a key did. Revoking the parent revokes it." }
-        created_by_type: { type: ["string", "null"], description: "`organization_member` or `workspace_key`; null for a key minted before this was recorded." }
+        created_by_type: { type: ["string", "null"], description: "`organization_member` or `organization_key` (`workspace_key` before v3); null for a key minted before this was recorded." }
         expires_at: { type: ["string", "null"], format: date-time }
         revoked_at: { type: ["string", "null"], format: date-time }
         last_used_at: { type: ["string", "null"], format: date-time }

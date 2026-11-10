@@ -23,7 +23,7 @@ use App\Platform\NativeProduct\NativeTeamInvitations as TeamInvitations;
 #[AsAction(
     name: 'team.invitations.list',
     summary: 'List the team\'s pending invitations, newest first.',
-    scope: 'team:read',
+    scope: 'id:members:read',
     danger: Danger::Read,
     plane: ActionPlane::Organization,
     rest: ['GET', '/invitations'],

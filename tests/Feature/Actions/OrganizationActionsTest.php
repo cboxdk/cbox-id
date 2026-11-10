@@ -86,7 +86,7 @@ it('lets one organization key bootstrap an environment end to end, and the envir
         ->whereKey($created->json('data.initial_key.id'))
         ->first());
 
-    expect($minted?->created_by_type)->toBe('workspace_key')
+    expect($minted?->created_by_type)->toBe('organization_key')
         ->and($minted?->created_by_id)->toBe($agentId);
 
     // 3. On the environment's OWN host, that key registers an API — the workspace key is
@@ -151,7 +151,7 @@ it('bounds an organization key by its scopes AND its role', function (): void {
 
     $this->withToken($reader)->getJson('/api/v1/workspace/projects')->assertOk();
     $this->withToken($reader)->postJson('/api/v1/workspace/projects', ['name' => 'Nope'])
-        ->assertForbidden()->assertJsonPath('message', 'This key is missing the required scope: projects:write.');
+        ->assertForbidden()->assertJsonPath('message', 'This key is missing the required scope: id:projects:write.');
 
     // A scope never lifts a key above its role: a Viewer carrying every scope still may not
     // create anything, and a Developer may not read the roster however it is scoped.
@@ -221,7 +221,7 @@ it('never keeps a minted key\'s value for an idempotent replay', function (): vo
     $replayed = $this->withToken($agent)->withHeader('Idempotency-Key', 'ws-1')
         ->postJson('/api/v1/workspace/keys', ['name' => 'Child', 'role' => 'developer'])->assertCreated();
 
-    expect($minted->json('data.token'))->toStartWith('cbid_ws_')
+    expect($minted->json('data.token'))->toStartWith('cbid_org_')
         ->and($replayed->json('data.token'))->toBeNull()
         ->and($replayed->json('data.id'))->toBe($minted->json('data.id'));
 });
@@ -239,8 +239,9 @@ it('lets a key mint organization keys only within itself, and revokes what it mi
     $child = $this->withToken($parent)->postJson('/api/v1/workspace/keys', ['name' => 'Child', 'role' => 'developer'])
         ->assertCreated()
         ->assertJsonPath('data.parent_key_id', $parentId)
-        ->assertJsonPath('data.created_by_type', 'workspace_key')
-        ->assertJsonPath('data.scopes', ['workspace:read', 'keys:write', 'projects:write']);
+        ->assertJsonPath('data.created_by_type', 'organization_key')
+        // Asked for by the v2 names, answered in the v3 ones; `keys:write` minted both kinds.
+        ->assertJsonPath('data.scopes', ['id:organization:read', 'id:environment-keys:write', 'id:organization-keys:write', 'id:projects:write']);
 
     $childToken = $child->json('data.token');
 

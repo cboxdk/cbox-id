@@ -10,9 +10,12 @@ info:
     environments, its team, and its keys with an organization key.
 
     **Scopes.** An organization key carries a ROLE and, optionally, SCOPES. The role bounds
-    everything the machine key may do, and scopes narrow it further: `workspace:read`, `projects:write`,
-    `environments:write`, `team:read`, `team:write`, `keys:write`, `settings:write`, `billing:write`. A key
-    minted with no scopes is bounded by its role alone. Each operation names the scope and
+    everything the machine key may do, and scopes narrow it further: `id:organization:read`,
+    `id:projects:write`, `id:environments:write`, `id:members:read`, `id:members:write`,
+    `id:environment-keys:write`, `id:organization-keys:write`, `id:organization:write`,
+    `id:billing:write`. The v2 names (`workspace:read`, `team:read`, `keys:write`, …) are
+    accepted until v3.1 and answered in the new ones. A key minted with no scopes is bounded
+    by its role alone. Each operation names the scope and
     the capability it needs; a key missing either gets `403`.
 
     **As a member of the team.** Beside a key, the plane takes an access token the platform
@@ -127,16 +130,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'workspace:read'
+      x-scope: 'id:organization:read'
+      x-scope-aliases:
+        - 'workspace:read'
       x-danger: read
     patch:
       tags:
         - Organization
       summary: 'Rename the organization.'
-      description: 'Requires scope `settings:write` and a role that may `own-organization` and `manage-members`. Danger: write.'
+      description: 'Requires scope `id:organization:write` (until v3.1 also accepted as `settings:write`) and a role that may `own-organization` and `manage-members`. Danger: write.'
       operationId: organization_settings_update
       x-action: organization.settings.update
-      x-scope: 'settings:write'
+      x-scope: 'id:organization:write'
+      x-scope-aliases:
+        - 'settings:write'
       x-danger: write
       parameters:
         -
@@ -239,10 +246,12 @@ paths:
       tags:
         - Billing
       summary: 'Update the organization billing contact and invoice address.'
-      description: 'Requires scope `billing:write` and a role that may `manage-billing`. Danger: write.'
+      description: 'Requires scope `id:billing:write` (until v3.1 also accepted as `billing:write`) and a role that may `manage-billing`. Danger: write.'
       operationId: billing_account_update
       x-action: billing.account.update
-      x-scope: 'billing:write'
+      x-scope: 'id:billing:write'
+      x-scope-aliases:
+        - 'billing:write'
       x-danger: write
       parameters:
         -
@@ -569,10 +578,12 @@ paths:
       tags:
         - Billing
       summary: 'Remove an unneeded payment card from this organization.'
-      description: 'Requires scope `billing:write` and a role that may `manage-billing`. Danger: write.'
+      description: 'Requires scope `id:billing:write` (until v3.1 also accepted as `billing:write`) and a role that may `manage-billing`. Danger: write.'
       operationId: billing_payment_method_remove
       x-action: billing.payment_method.remove
-      x-scope: 'billing:write'
+      x-scope: 'id:billing:write'
+      x-scope-aliases:
+        - 'billing:write'
       x-danger: write
       parameters:
         -
@@ -616,10 +627,12 @@ paths:
       tags:
         - Billing
       summary: 'Choose the organization default payment card.'
-      description: 'Requires scope `billing:write` and a role that may `manage-billing`. Danger: write.'
+      description: 'Requires scope `id:billing:write` (until v3.1 also accepted as `billing:write`) and a role that may `manage-billing`. Danger: write.'
       operationId: billing_payment_method_default
       x-action: billing.payment_method.default
-      x-scope: 'billing:write'
+      x-scope: 'id:billing:write'
+      x-scope-aliases:
+        - 'billing:write'
       x-danger: write
       parameters:
         -
@@ -722,7 +735,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'workspace:read'
+      x-scope: 'id:organization:read'
+      x-scope-aliases:
+        - 'workspace:read'
       x-danger: read
     post:
       tags:
@@ -835,17 +850,21 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         503:
           $ref: '#/components/responses/AdmissionUnavailable'
-      x-scope: 'environments:write'
+      x-scope: 'id:environments:write'
+      x-scope-aliases:
+        - 'environments:write'
       x-danger: critical
   '/workspace/environments/{environment_id}/domain':
     delete:
       tags:
         - Environments
       summary: "Stop serving one of the organization's environments on its custom domain. Anything using that domain stops reaching it."
-      description: 'Requires scope `environments:write` and a role that may `manage-environments`. Danger: destructive.'
+      description: 'Requires scope `id:environments:write` (until v3.1 also accepted as `environments:write`) and a role that may `manage-environments`. Danger: destructive.'
       operationId: environments_domain_remove
       x-action: environments.domain.remove
-      x-scope: 'environments:write'
+      x-scope: 'id:environments:write'
+      x-scope-aliases:
+        - 'environments:write'
       x-danger: destructive
       parameters:
         -
@@ -893,10 +912,12 @@ paths:
       tags:
         - Environments
       summary: "Start serving one of the organization's environments on a custom domain: returns the DNS TXT record that proves you control it."
-      description: 'Requires scope `environments:write` and a role that may `manage-environments`. Danger: write.'
+      description: 'Requires scope `id:environments:write` (until v3.1 also accepted as `environments:write`) and a role that may `manage-environments`. Danger: write.'
       operationId: environments_domain_request
       x-action: environments.domain.request
-      x-scope: 'environments:write'
+      x-scope: 'id:environments:write'
+      x-scope-aliases:
+        - 'environments:write'
       x-danger: write
       parameters:
         -
@@ -967,10 +988,12 @@ paths:
       tags:
         - Environments
       summary: "Look for the pending domain's DNS TXT record and, once it is visible, serve the environment on that domain."
-      description: 'Requires scope `environments:write` and a role that may `manage-environments`. Danger: write.'
+      description: 'Requires scope `id:environments:write` (until v3.1 also accepted as `environments:write`) and a role that may `manage-environments`. Danger: write.'
       operationId: environments_domain_verify
       x-action: environments.domain.verify
-      x-scope: 'environments:write'
+      x-scope: 'id:environments:write'
+      x-scope-aliases:
+        - 'environments:write'
       x-danger: write
       parameters:
         -
@@ -1028,10 +1051,12 @@ paths:
       tags:
         - Keys
       summary: "Mint a management key for one of the organization's environments, with the scopes it needs. The value is returned once, as `token`."
-      description: 'Requires scope `keys:write` and a role that may `manage-environments`. Danger: critical.'
+      description: 'Requires scope `id:environment-keys:write` (until v3.1 also accepted as `keys:write`) and a role that may `manage-environments`. Danger: critical.'
       operationId: keys_environment_create
       x-action: keys.environment.create
-      x-scope: 'keys:write'
+      x-scope: 'id:environment-keys:write'
+      x-scope-aliases:
+        - 'keys:write'
       x-danger: critical
       parameters:
         -
@@ -1116,10 +1141,12 @@ paths:
       tags:
         - Keys
       summary: "Revoke one of an environment's management keys; whatever uses it stops immediately."
-      description: 'Requires scope `keys:write` and a role that may `manage-environments`. Danger: destructive.'
+      description: 'Requires scope `id:environment-keys:write` (until v3.1 also accepted as `keys:write`) and a role that may `manage-environments`. Danger: destructive.'
       operationId: keys_environment_revoke
       x-action: keys.environment.revoke
-      x-scope: 'keys:write'
+      x-scope: 'id:environment-keys:write'
+      x-scope-aliases:
+        - 'keys:write'
       x-danger: destructive
       parameters:
         -
@@ -1208,7 +1235,9 @@ paths:
           $ref: '#/components/responses/Forbidden'
         429:
           $ref: '#/components/responses/TooManyRequests'
-      x-scope: 'team:read'
+      x-scope: 'id:members:read'
+      x-scope-aliases:
+        - 'team:read'
       x-danger: read
   '/workspace/invitations/{id}':
     delete:
@@ -1250,7 +1279,9 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-      x-scope: 'team:write'
+      x-scope: 'id:members:write'
+      x-scope-aliases:
+        - 'team:write'
       x-danger: destructive
   '/workspace/invitations/{id}/resend':
     post:
@@ -1308,17 +1339,21 @@ paths:
                 $ref: '#/components/schemas/Error'
         503:
           $ref: '#/components/responses/MailFailed'
-      x-scope: 'team:write'
+      x-scope: 'id:members:write'
+      x-scope-aliases:
+        - 'team:write'
       x-danger: write
   /workspace/keys:
     post:
       tags:
         - Keys
       summary: 'Mint an organization key with a role and optional scopes, never wider than the caller. The value is returned once, as `token`.'
-      description: 'Requires scope `keys:write` and a role that may `manage-environments` and `manage-members`. Danger: critical.'
+      description: 'Requires scope `id:organization-keys:write` (until v3.1 also accepted as `keys:write`) and a role that may `manage-environments` and `manage-members`. Danger: critical.'
       operationId: keys_organization_create
       x-action: keys.organization.create
-      x-scope: 'keys:write'
+      x-scope: 'id:organization-keys:write'
+      x-scope-aliases:
+        - 'keys:write'
       x-danger: critical
       parameters:
         -
@@ -1359,13 +1394,22 @@ paths:
                   items:
                     type: string
                     enum:
+                      - 'id:organization:read'
                       - 'workspace:read'
+                      - 'id:projects:write'
                       - 'projects:write'
+                      - 'id:environments:write'
                       - 'environments:write'
+                      - 'id:members:read'
                       - 'team:read'
+                      - 'id:members:write'
                       - 'team:write'
+                      - 'id:environment-keys:write'
                       - 'keys:write'
+                      - 'id:organization-keys:write'
+                      - 'id:billing:write'
                       - 'billing:write'
+                      - 'id:organization:write'
                       - 'settings:write'
                 expires_at:
                   type:
@@ -1410,10 +1454,12 @@ paths:
       tags:
         - Keys
       summary: "List the organization's keys, newest first, revoked ones included — names, roles, scopes and expiry, never their values."
-      description: 'Requires scope `workspace:read` and a role that may `manage-members`. Danger: read.'
+      description: 'Requires scope `id:organization:read` (until v3.1 also accepted as `workspace:read`) and a role that may `manage-members`. Danger: read.'
       operationId: keys_organization_list
       x-action: keys.organization.list
-      x-scope: 'workspace:read'
+      x-scope: 'id:organization:read'
+      x-scope-aliases:
+        - 'workspace:read'
       x-danger: read
       parameters:
         -
@@ -1478,10 +1524,12 @@ paths:
       tags:
         - Keys
       summary: 'Revoke an organization key, and every key it minted on either plane (organization keys and environment management keys, all the way down); whatever uses them stops immediately.'
-      description: 'Requires scope `keys:write` and a role that may `manage-environments` and `manage-members`. Danger: destructive.'
+      description: 'Requires scope `id:organization-keys:write` (until v3.1 also accepted as `keys:write`) and a role that may `manage-environments` and `manage-members`. Danger: destructive.'
       operationId: keys_organization_revoke
       x-action: keys.organization.revoke
-      x-scope: 'keys:write'
+      x-scope: 'id:organization-keys:write'
+      x-scope-aliases:
+        - 'keys:write'
       x-danger: destructive
       parameters:
         -
@@ -1583,7 +1631,9 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-      x-scope: 'team:read'
+      x-scope: 'id:members:read'
+      x-scope-aliases:
+        - 'team:read'
       x-danger: read
     post:
       tags:
@@ -1669,17 +1719,21 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         503:
           $ref: '#/components/responses/MailFailed'
-      x-scope: 'team:write'
+      x-scope: 'id:members:write'
+      x-scope-aliases:
+        - 'team:write'
       x-danger: write
   '/workspace/members/{id}':
     delete:
       tags:
         - Team
       summary: 'Remove native ID app roles while preserving shared organization membership and other apps. The current owner cannot be removed.'
-      description: 'Requires scope `team:write` and a role that may `manage-members`. Danger: destructive.'
+      description: 'Requires scope `id:members:write` (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. Danger: destructive.'
       operationId: team_remove
       x-action: team.remove
-      x-scope: 'team:write'
+      x-scope: 'id:members:write'
+      x-scope-aliases:
+        - 'team:write'
       x-danger: destructive
       parameters:
         -
@@ -1733,10 +1787,12 @@ paths:
       tags:
         - Team
       summary: "Set which of the organization's environments a team member reaches: all of them, or the listed ones."
-      description: 'Requires scope `team:write` and a role that may `manage-members`. Danger: write.'
+      description: 'Requires scope `id:members:write` (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. Danger: write.'
       operationId: team_environment_access
       x-action: team.environment_access
-      x-scope: 'team:write'
+      x-scope: 'id:members:write'
+      x-scope-aliases:
+        - 'team:write'
       x-danger: write
       parameters:
         -
@@ -1809,10 +1865,12 @@ paths:
       tags:
         - Team
       summary: 'Replace native ID app roles atomically. Shared organization membership is preserved.'
-      description: 'Requires scope `team:write` and a role that may `manage-members`. Danger: write.'
+      description: 'Requires scope `id:members:write` (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. Danger: write.'
       operationId: team_role
       x-action: team.role
-      x-scope: 'team:write'
+      x-scope: 'id:members:write'
+      x-scope-aliases:
+        - 'team:write'
       x-danger: write
       parameters:
         -
@@ -1885,10 +1943,12 @@ paths:
       tags:
         - Team
       summary: 'Transfer shared organization ownership. Existing app roles are preserved; the previous owner may lose native ID access. Only the current owner, signed in, may do this.'
-      description: 'Requires scope `team:write` and a role that may `manage-members`. Danger: critical.'
+      description: 'Requires scope `id:members:write` (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. Danger: critical.'
       operationId: team_transfer_ownership
       x-action: team.transfer_ownership
-      x-scope: 'team:write'
+      x-scope: 'id:members:write'
+      x-scope-aliases:
+        - 'team:write'
       x-danger: critical
       parameters:
         -
@@ -1973,7 +2033,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'workspace:read'
+      x-scope: 'id:organization:read'
+      x-scope-aliases:
+        - 'workspace:read'
       x-danger: read
     post:
       tags:
@@ -2036,17 +2098,21 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         503:
           $ref: '#/components/responses/AdmissionUnavailable'
-      x-scope: 'projects:write'
+      x-scope: 'id:projects:write'
+      x-scope-aliases:
+        - 'projects:write'
       x-danger: write
   /workspace/projects/verification/resend:
     post:
       tags:
         - Projects
       summary: "Re-send the signup confirmation the organization's first environment is waiting on, to the owner's address on file."
-      description: 'Requires scope `projects:write` and a role that may `manage-environments`. Danger: write.'
+      description: 'Requires scope `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. Danger: write.'
       operationId: projects_verification_resend
       x-action: projects.verification.resend
-      x-scope: 'projects:write'
+      x-scope: 'id:projects:write'
+      x-scope-aliases:
+        - 'projects:write'
       x-danger: write
       parameters:
         -
@@ -2096,10 +2162,12 @@ paths:
       tags:
         - Projects
       summary: 'Rename a project.'
-      description: 'Requires scope `projects:write` and a role that may `manage-environments`. Danger: write.'
+      description: 'Requires scope `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. Danger: write.'
       operationId: projects_rename
       x-action: projects.rename
-      x-scope: 'projects:write'
+      x-scope: 'id:projects:write'
+      x-scope-aliases:
+        - 'projects:write'
       x-danger: write
       parameters:
         -
@@ -2169,10 +2237,12 @@ paths:
       tags:
         - Projects
       summary: 'Reactivate a suspended project, so environments can be added to it again.'
-      description: 'Requires scope `projects:write` and a role that may `manage-environments`. Danger: write.'
+      description: 'Requires scope `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. Danger: write.'
       operationId: projects_reactivate
       x-action: projects.reactivate
-      x-scope: 'projects:write'
+      x-scope: 'id:projects:write'
+      x-scope-aliases:
+        - 'projects:write'
       x-danger: write
       parameters:
         -
@@ -2230,10 +2300,12 @@ paths:
       tags:
         - Projects
       summary: 'Suspend a project: its environments stay live, but no new ones can be added until it is reactivated.'
-      description: 'Requires scope `projects:write` and a role that may `manage-environments`. Danger: write.'
+      description: 'Requires scope `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. Danger: write.'
       operationId: projects_suspend
       x-action: projects.suspend
-      x-scope: 'projects:write'
+      x-scope: 'id:projects:write'
+      x-scope-aliases:
+        - 'projects:write'
       x-danger: write
       parameters:
         -
@@ -2609,14 +2681,15 @@ components:
           items:
             type: string
             enum:
-              - 'workspace:read'
-              - 'projects:write'
-              - 'environments:write'
-              - 'team:read'
-              - 'team:write'
-              - 'keys:write'
-              - 'settings:write'
-              - 'billing:write'
+              - 'id:organization:read'
+              - 'id:projects:write'
+              - 'id:environments:write'
+              - 'id:members:read'
+              - 'id:members:write'
+              - 'id:environment-keys:write'
+              - 'id:organization-keys:write'
+              - 'id:organization:write'
+              - 'id:billing:write'
           description: 'Null when the role alone bounds the key.'
         parent_key_id:
           type:
@@ -2627,7 +2700,7 @@ components:
           type:
             - string
             - 'null'
-          description: '`organization_member` or `workspace_key`; null for a key minted before this was recorded.'
+          description: '`organization_member` or `organization_key` (`workspace_key` before v3); null for a key minted before this was recorded.'
         expires_at:
           type:
             - string

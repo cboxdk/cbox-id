@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\OAuth;
 
 use App\Platform\PlaneResolver;
+use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\OAuthServer\Enums\ProtocolScope;
 use Cbox\Id\OAuthServer\Support\SelfRegisteredScopes;
 
@@ -40,7 +41,7 @@ final class RootMcpSelfRegisteredScopes extends SelfRegisteredScopes
         return array_values(array_filter(
             $allowed,
             static fn (string $scope): bool => $scope === ProtocolScope::OfflineAccess->value
-                || (! ProtocolScope::isProtocol($scope) && in_array($scope, $resourceScopes, true)),
+                || (! ProtocolScope::isProtocol($scope) && ScopeRegistry::satisfies($resourceScopes, $scope)),
         ));
     }
 }

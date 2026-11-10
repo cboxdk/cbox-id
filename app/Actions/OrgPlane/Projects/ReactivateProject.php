@@ -21,7 +21,7 @@ use Cbox\Id\Platform\Contracts\Projects;
 #[AsAction(
     name: 'projects.reactivate',
     summary: 'Reactivate a suspended project, so environments can be added to it again.',
-    scope: 'projects:write',
+    scope: 'id:projects:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['POST', '/projects/{id}/reactivate'],

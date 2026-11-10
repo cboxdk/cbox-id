@@ -125,7 +125,7 @@ final readonly class ActionOpenApi
         }
 
         if ($action->plane === ActionPlane::Environment
-            || ($action->plane === ActionPlane::Organization && in_array($action->scope, ['workspace:read', 'projects:write', 'environments:write', 'keys:write'], true))) {
+            || ($action->plane === ActionPlane::Organization && OrganizationScopes::admitted($action->scope))) {
             $responses = is_array($operation['responses'] ?? null) ? $operation['responses'] : [];
             $operation['responses'] = self::withResponse($responses, 503, [
                 'description' => 'Product admission could not be verified. The request is refused; retry later.',
@@ -170,7 +170,8 @@ final readonly class ActionOpenApi
             'operationId' => $action->toolName(),
             'x-action' => $action->name,
             // Machine-readable twins of the sentence above, for generated clients.
-            'x-scope' => $action->scope,
+            'x-scope' => $action->documentedScope(),
+            'x-scope-aliases' => $action->scopeAliases(),
             'x-danger' => $action->danger->value,
         ];
 
@@ -298,7 +299,8 @@ final readonly class ActionOpenApi
     private static function described(array $operation, ActionDefinition $action): array
     {
         $operation['x-action'] ??= $action->name;
-        $operation['x-scope'] ??= $action->scope;
+        $operation['x-scope'] ??= $action->documentedScope();
+        $operation['x-scope-aliases'] ??= $action->scopeAliases();
         $operation['x-danger'] ??= $action->danger->value;
 
         return $operation;
@@ -446,7 +448,8 @@ final readonly class ActionOpenApi
      */
     public function requirement(ActionDefinition $action): string
     {
-        $sentence = "Requires scope `{$action->scope}`";
+        $aliases = $action->scopeAliases();
+        $sentence = "Requires scope `{$action->documentedScope()}`".($aliases === [] ? '' : ' (until v3.1 also accepted as `'.implode('`, `', $aliases).'`)');
 
         if ($action->plane === ActionPlane::Platform) {
             return $sentence.' on an access token delegated by an active platform operator. No management key is accepted.';

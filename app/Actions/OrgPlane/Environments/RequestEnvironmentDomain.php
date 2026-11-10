@@ -36,7 +36,7 @@ use Cbox\Id\Organization\Exceptions\InvalidCustomDomain;
 #[AsAction(
     name: 'environments.domain.request',
     summary: 'Start serving one of the organization\'s environments on a custom domain: returns the DNS TXT record that proves you control it.',
-    scope: 'environments:write',
+    scope: 'id:environments:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['POST', '/environments/{environment_id}/domain'],

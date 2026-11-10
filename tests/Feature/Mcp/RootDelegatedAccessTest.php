@@ -356,13 +356,13 @@ it('bounds a member\'s organization token by their role, at both doors', functio
     $this->withToken(rootToken($this->account['subjectId'], ['workspace:read']))
         ->getJson('/api/v1/workspace/members')
         ->assertForbidden()
-        ->assertJsonPath('message', 'This sign-in was not granted the required scope: team:read.');
+        ->assertJsonPath('message', 'This sign-in was not granted the required scope: id:members:read.');
 })->group('security');
 
 it('still takes organization keys at the root\'s /mcp, as the key', function (): void {
     $key = app(OrganizationApiKeys::class)->issue($this->account['organization']->id, 'Agent', MembershipRole::Admin)->plaintext;
 
-    expect(mcpCall($key, 'whoami')['structuredContent'])->toMatchArray(['kind' => 'workspace_key'])
+    expect(mcpCall($key, 'whoami')['structuredContent'])->toMatchArray(['kind' => 'organization_key'])
         ->and(array_keys(mcpTools($key)))->toContain('projects_create')->not->toContain('apis_create')->not->toContain('account_profile_update');
 });
 

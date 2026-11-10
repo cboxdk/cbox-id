@@ -34,7 +34,7 @@ use Cbox\Id\Platform\PlatformRoot;
 #[AsAction(
     name: 'organization.settings.update',
     summary: 'Rename the organization.',
-    scope: 'settings:write',
+    scope: 'id:organization:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['PATCH', '/'],

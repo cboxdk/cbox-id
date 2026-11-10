@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Actions;
 
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Scopes\ScopeRegistry;
 use InvalidArgumentException;
 use ReflectionClass;
 
@@ -77,6 +78,25 @@ final readonly class ActionDefinition
     public function documentedPath(): string
     {
         return $this->plane->documentedPath($this->path);
+    }
+
+    /**
+     * The scope as the standard names it (`id:<resource>:<read|write>`), whatever name the
+     * action's vocabulary still files it under ({@see ScopeRegistry}).
+     */
+    public function documentedScope(): string
+    {
+        return ScopeRegistry::canonical($this->scope);
+    }
+
+    /**
+     * The other names a credential may hold this scope by until v3.1.
+     *
+     * @return list<string>
+     */
+    public function scopeAliases(): array
+    {
+        return array_values(array_diff(ScopeRegistry::equivalents($this->scope), [$this->documentedScope()]));
     }
 
     /** The MCP tool name: the action name with dots as underscores. */

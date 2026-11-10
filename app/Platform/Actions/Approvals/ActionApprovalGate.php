@@ -11,6 +11,7 @@ use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
+use App\Platform\Actions\RenamedActions;
 use App\Platform\Agents\ApprovalMail;
 use App\Platform\EnvironmentOrigin;
 use App\Platform\PlaneResolver;
@@ -74,7 +75,7 @@ final readonly class ActionApprovalGate
         $digest = $this->digest($principal, $action, $input);
 
         if ($approvalId !== null && $approvalId !== '') {
-            $this->spend($principal, $approvalId, $digest);
+            $this->spend($principal, $approvalId, $digest, $action, $input);
 
             return $approvalId;
         }
@@ -206,7 +207,10 @@ final readonly class ActionApprovalGate
     }
 
     /** @throws ActionRefused */
-    private function spend(Principal $principal, string $approvalId, string $digest): void
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function spend(Principal $principal, string $approvalId, string $digest, ActionDefinition $action, array $input): void
     {
         if (! $this->owns($principal, $approvalId)) {
             throw new ActionRefused('approval_invalid', new ActionMessage('console.no_approval_with_that_id_belongs_to_this_credential_5e7c701c'), 403);
@@ -214,6 +218,14 @@ final readonly class ActionApprovalGate
 
         if ($this->inApproverRealm($principal, fn (): bool => $this->approvals->consume($approvalId, $digest)) === true) {
             return;
+        }
+
+        // An approval given before v3 renamed the action (or the key kind) was given for a
+        // digest taken under the old names. It is the same request, so it is spent the same.
+        foreach ($this->retiredDigests($principal, $action, $input) as $retired) {
+            if ($this->inApproverRealm($principal, fn (): bool => $this->approvals->consume($approvalId, $retired)) === true) {
+                return;
+            }
         }
 
         throw match ($this->inApproverRealm($principal, fn (): ?ActionApprovalStatus => $this->approvals->status($approvalId))) {
@@ -266,6 +278,31 @@ final readonly class ActionApprovalGate
         return $principal instanceof RootPersonPrincipal
             ? $principal->owns($owner)
             : hash_equals($principal->kind().':'.$principal->id(), $owner);
+    }
+
+    /**
+     * The digests this request had under the names v3 retired ({@see RenamedActions}).
+     *
+     * @param  array<string, mixed>  $input
+     * @return list<string>
+     */
+    private function retiredDigests(Principal $principal, ActionDefinition $action, array $input): array
+    {
+        $kinds = [$principal->kind(), ...RenamedActions::retiredKinds($principal->kind())];
+        $names = [$action->name, ...RenamedActions::retired($action->name)];
+        $digests = [];
+
+        foreach ($kinds as $kind) {
+            foreach ($names as $name) {
+                if ($kind === $principal->kind() && $name === $action->name) {
+                    continue;
+                }
+
+                $digests[] = hash('sha256', json_encode([$kind.':'.$principal->id(), $name, self::canonical($input)], JSON_THROW_ON_ERROR));
+            }
+        }
+
+        return $digests;
     }
 
     /**

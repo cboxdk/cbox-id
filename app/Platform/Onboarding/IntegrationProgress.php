@@ -12,7 +12,7 @@ final readonly class IntegrationProgress
 {
     public function __construct(private EnvironmentChecklist $checklist, private EnvironmentOwner $workspace, private DocsLinks $docs) {}
 
-    /** @return array{version: int, workspace_id: string, project_id: string, environment_id: string, environment_type: string, observed_at: string, goals: array<string, bool>, first_sign_in_evidence: string, production_ready: null, guide_url: string|null} */
+    /** @return array{version: int, organization_id: string, workspace_id: string, project_id: string, environment_id: string, environment_type: string, observed_at: string, goals: array<string, bool>, first_sign_in_evidence: string, production_ready: null, guide_url: string|null} */
     public function read(): array
     {
         $environment = $this->workspace->environment();
@@ -23,6 +23,9 @@ final readonly class IntegrationProgress
 
         return [
             'version' => 1,
+            'organization_id' => $workspace,
+            // The v2 name of the same id, for readers that have not moved (Engage, Assistant).
+            // Removed in v3.1.
             'workspace_id' => $workspace,
             'project_id' => $environment->project_id,
             'environment_id' => $environment->id,

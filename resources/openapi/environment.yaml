@@ -157,10 +157,12 @@ paths:
       tags:
         - Governance
       summary: "Open an access review of one organization's roles and memberships — or of staff roles — for someone to certify or revoke."
-      description: 'Requires scope `governance:write`. Danger: write.'
+      description: 'Requires scope `id:governance:write` (until v3.1 also accepted as `governance:write`). Danger: write.'
       operationId: access_reviews_create
       x-action: access_reviews.create
-      x-scope: 'governance:write'
+      x-scope: 'id:governance:write'
+      x-scope-aliases:
+        - 'governance:write'
       x-danger: write
       parameters:
         -
@@ -252,10 +254,12 @@ paths:
       tags:
         - Governance
       summary: 'List access reviews (certification campaigns), open and closed, optionally those covering one organization.'
-      description: 'Requires scope `governance:read`. Danger: read.'
+      description: 'Requires scope `id:governance:read` (until v3.1 also accepted as `governance:read`). Danger: read.'
       operationId: access_reviews_list
       x-action: access_reviews.list
-      x-scope: 'governance:read'
+      x-scope: 'id:governance:read'
+      x-scope-aliases:
+        - 'governance:read'
       x-danger: read
       parameters:
         -
@@ -341,10 +345,12 @@ paths:
       tags:
         - Governance
       summary: 'Read one access review: its status, due date, pending-item policy and item count.'
-      description: 'Requires scope `governance:read`. Danger: read.'
+      description: 'Requires scope `id:governance:read` (until v3.1 also accepted as `governance:read`). Danger: read.'
       operationId: access_reviews_get
       x-action: access_reviews.get
-      x-scope: 'governance:read'
+      x-scope: 'id:governance:read'
+      x-scope-aliases:
+        - 'governance:read'
       x-danger: read
       parameters:
         -
@@ -418,10 +424,12 @@ paths:
       tags:
         - Governance
       summary: "Close an access review and apply it: every revoke is carried out, and undecided items get the review's pending policy (revoke by default)."
-      description: 'Requires scope `governance:write`. Danger: destructive.'
+      description: 'Requires scope `id:governance:write` (until v3.1 also accepted as `governance:write`). Danger: destructive.'
       operationId: access_reviews_close
       x-action: access_reviews.close
-      x-scope: 'governance:write'
+      x-scope: 'id:governance:write'
+      x-scope-aliases:
+        - 'governance:write'
       x-danger: destructive
       parameters:
         -
@@ -504,10 +512,12 @@ paths:
       tags:
         - Governance
       summary: 'List the items an access review asks someone to certify or revoke: who holds what, and the decision on each.'
-      description: 'Requires scope `governance:read`. Danger: read.'
+      description: 'Requires scope `id:governance:read` (until v3.1 also accepted as `governance:read`). Danger: read.'
       operationId: access_reviews_items_list
       x-action: access_reviews.items.list
-      x-scope: 'governance:read'
+      x-scope: 'id:governance:read'
+      x-scope-aliases:
+        - 'governance:read'
       x-danger: read
       parameters:
         -
@@ -600,10 +610,12 @@ paths:
       tags:
         - Governance
       summary: 'Certify or revoke one item of an open access review. Revokes are applied when the review closes.'
-      description: 'Requires scope `governance:write`. Danger: write.'
+      description: 'Requires scope `id:governance:write` (until v3.1 also accepted as `governance:write`). Danger: write.'
       operationId: access_reviews_items_decide
       x-action: access_reviews.items.decide
-      x-scope: 'governance:write'
+      x-scope: 'id:governance:write'
+      x-scope-aliases:
+        - 'governance:write'
       x-danger: write
       parameters:
         -
@@ -750,10 +762,12 @@ paths:
       tags:
         - Approvals
       summary: "List the pending requests from agents to act as one of this environment's people (CIBA): which app, for whom, and what it asks."
-      description: 'Requires scope `approvals:read`. Danger: read.'
+      description: 'Requires scope `id:approvals:read` (until v3.1 also accepted as `approvals:read`). Danger: read.'
       operationId: approvals_list
       x-action: approvals.list
-      x-scope: 'approvals:read'
+      x-scope: 'id:approvals:read'
+      x-scope-aliases:
+        - 'approvals:read'
       x-danger: read
       parameters:
         -
@@ -829,10 +843,12 @@ paths:
       tags:
         - Approvals
       summary: 'Deny a pending approval request (CIBA) for the person it was raised for: the agent gets access_denied and no token.'
-      description: 'Requires scope `approvals:write`. Danger: destructive.'
+      description: 'Requires scope `id:approvals:write` (until v3.1 also accepted as `approvals:write`). Danger: destructive.'
       operationId: approvals_deny
       x-action: approvals.deny
-      x-scope: 'approvals:write'
+      x-scope: 'id:approvals:write'
+      x-scope-aliases:
+        - 'approvals:write'
       x-danger: destructive
       parameters:
         -
@@ -941,7 +957,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'api_keys:write'
+      x-scope: 'id:api-keys:write'
+      x-scope-aliases:
+        - 'api_keys:write'
       x-danger: destructive
   /apis:
     get:
@@ -1007,7 +1025,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       x-action: apis.list
-      x-scope: 'apis:read'
+      x-scope: 'id:apis:read'
+      x-scope-aliases:
+        - 'apis:read'
       x-danger: read
     post:
       tags:
@@ -1104,7 +1124,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       x-action: apis.create
-      x-scope: 'apis:write'
+      x-scope: 'id:apis:write'
+      x-scope-aliases:
+        - 'apis:write'
       x-danger: write
   '/apis/{id}':
     get:
@@ -1163,7 +1185,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       x-action: apis.get
-      x-scope: 'apis:read'
+      x-scope: 'id:apis:read'
+      x-scope-aliases:
+        - 'apis:read'
       x-danger: read
     patch:
       tags:
@@ -1245,7 +1269,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       x-action: apis.update
-      x-scope: 'apis:write'
+      x-scope: 'id:apis:write'
+      x-scope-aliases:
+        - 'apis:write'
       x-danger: write
     delete:
       tags:
@@ -1296,17 +1322,21 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       x-action: apis.delete
-      x-scope: 'apis:write'
+      x-scope: 'id:apis:write'
+      x-scope-aliases:
+        - 'apis:write'
       x-danger: destructive
   '/apis/{id}/scopes/{key}':
     put:
       tags:
         - APIs
       summary: 'Add a scope to an API, or change the description or tenant access of one it owns.'
-      description: 'Requires scope `apis:write`. Danger: write.'
+      description: 'Requires scope `id:apis:write` (until v3.1 also accepted as `apis:write`). Danger: write.'
       operationId: apis_scopes_define
       x-action: apis.scopes.define
-      x-scope: 'apis:write'
+      x-scope: 'id:apis:write'
+      x-scope-aliases:
+        - 'apis:write'
       x-danger: write
       parameters:
         -
@@ -1396,10 +1426,12 @@ paths:
       tags:
         - APIs
       summary: 'Remove a scope from an API. Apps holding it keep it as a plain scope that no longer reaches the API.'
-      description: 'Requires scope `apis:write`. Danger: destructive.'
+      description: 'Requires scope `id:apis:write` (until v3.1 also accepted as `apis:write`). Danger: destructive.'
       operationId: apis_scopes_remove
       x-action: apis.scopes.remove
-      x-scope: 'apis:write'
+      x-scope: 'id:apis:write'
+      x-scope-aliases:
+        - 'apis:write'
       x-danger: destructive
       parameters:
         -
@@ -1557,6 +1589,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+      x-scope-aliases:
+        - 'app_catalog:read'
   /app-catalog/for-user:
     get:
       tags:
@@ -1696,15 +1730,19 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+      x-scope-aliases:
+        - 'app_catalog:resolve'
   '/app-catalog/{key}':
     delete:
       tags:
         - 'App catalog'
       summary: 'Remove a catalog app without deleting its OAuth clients or user data.'
-      description: 'Requires scope `app_catalog:write`. Danger: destructive.'
+      description: 'Requires scope `id:app-catalog:write` (until v3.1 also accepted as `app_catalog:write`). Danger: destructive.'
       operationId: app_catalog_delete
       x-action: app_catalog.delete
-      x-scope: 'app_catalog:write'
+      x-scope: 'id:app-catalog:write'
+      x-scope-aliases:
+        - 'app_catalog:write'
       x-danger: destructive
       parameters:
         -
@@ -1774,10 +1812,12 @@ paths:
       tags:
         - 'App catalog'
       summary: 'Create or replace a catalog app, its light and dark icons and visibility. Version zero creates; a stale version conflicts.'
-      description: 'Requires scope `app_catalog:write`. Danger: write.'
+      description: 'Requires scope `id:app-catalog:write` (until v3.1 also accepted as `app_catalog:write`). Danger: write.'
       operationId: app_catalog_save
       x-action: app_catalog.save
-      x-scope: 'app_catalog:write'
+      x-scope: 'id:app-catalog:write'
+      x-scope-aliases:
+        - 'app_catalog:write'
       x-danger: write
       parameters:
         -
@@ -1922,10 +1962,12 @@ paths:
       tags:
         - 'App catalog'
       summary: 'Read a catalog app and its publication settings.'
-      description: 'Requires scope `app_catalog:read`. Danger: read.'
+      description: 'Requires scope `id:app-catalog:read` (until v3.1 also accepted as `app_catalog:read`). Danger: read.'
       operationId: app_catalog_show
       x-action: app_catalog.show
-      x-scope: 'app_catalog:read'
+      x-scope: 'id:app-catalog:read'
+      x-scope-aliases:
+        - 'app_catalog:read'
       x-danger: read
       parameters:
         -
@@ -2197,7 +2239,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'apps:read'
+      x-scope: 'id:apps:read'
+      x-scope-aliases:
+        - 'apps:read'
       x-danger: read
     post:
       tags:
@@ -2340,17 +2384,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'apps:write'
+      x-scope: 'id:apps:write'
+      x-scope-aliases:
+        - 'apps:write'
       x-danger: critical
   '/apps/{id}':
     delete:
       tags:
         - Applications
       summary: 'Delete an app and every secret it holds. Anything signing in as it stops working immediately.'
-      description: 'Requires scope `apps:write`. Danger: critical.'
+      description: 'Requires scope `id:apps:write` (until v3.1 also accepted as `apps:write`). Danger: critical.'
       operationId: apps_delete
       x-action: apps.delete
-      x-scope: 'apps:write'
+      x-scope: 'id:apps:write'
+      x-scope-aliases:
+        - 'apps:write'
       x-danger: critical
       parameters:
         -
@@ -2410,10 +2458,12 @@ paths:
       tags:
         - Applications
       summary: 'Get one app (OAuth client) by its id or its client_id: its kind, grants, redirect URIs, scopes and settings. Never a secret.'
-      description: 'Requires scope `apps:read`. Danger: read.'
+      description: 'Requires scope `id:apps:read` (until v3.1 also accepted as `apps:read`). Danger: read.'
       operationId: apps_get
       x-action: apps.get
-      x-scope: 'apps:read'
+      x-scope: 'id:apps:read'
+      x-scope-aliases:
+        - 'apps:read'
       x-danger: read
       parameters:
         -
@@ -2476,10 +2526,12 @@ paths:
       tags:
         - Applications
       summary: 'Rename an app and replace its redirect URIs or sign-out redirect URIs. Fields left out are unchanged.'
-      description: 'Requires scope `apps:write`. Danger: write.'
+      description: 'Requires scope `id:apps:write` (until v3.1 also accepted as `apps:write`). Danger: write.'
       operationId: apps_update
       x-action: apps.update
-      x-scope: 'apps:write'
+      x-scope: 'id:apps:write'
+      x-scope-aliases:
+        - 'apps:write'
       x-danger: write
       parameters:
         -
@@ -2631,17 +2683,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'apps:read'
+      x-scope: 'id:apps:read'
+      x-scope-aliases:
+        - 'apps:read'
       x-danger: read
   '/apps/{id}/copy':
     post:
       tags:
         - Applications
       summary: 'Copy an app into another environment of this project, with a new client id and secret there. A person on the environment console only; a key exports the blueprint instead.'
-      description: 'Requires scope `apps:write`. Danger: critical.'
+      description: 'Requires scope `id:apps:write` (until v3.1 also accepted as `apps:write`). Danger: critical.'
       operationId: apps_copy
       x-action: apps.copy
-      x-scope: 'apps:write'
+      x-scope: 'id:apps:write'
+      x-scope-aliases:
+        - 'apps:write'
       x-danger: critical
       parameters:
         -
@@ -2735,10 +2791,12 @@ paths:
       tags:
         - Applications
       summary: 'Set or clear the URL an app publishes its roles-and-permissions manifest at. Does not fetch it; apps.manifest.sync does.'
-      description: 'Requires scope `apps:write`. Danger: write.'
+      description: 'Requires scope `id:apps:write` (until v3.1 also accepted as `apps:write`). Danger: write.'
       operationId: apps_manifest_set
       x-action: apps.manifest.set
-      x-scope: 'apps:write'
+      x-scope: 'id:apps:write'
+      x-scope-aliases:
+        - 'apps:write'
       x-danger: write
       parameters:
         -
@@ -2822,10 +2880,12 @@ paths:
       tags:
         - Applications
       summary: "Fetch an app's published manifest now and sync the roles and permissions it declares."
-      description: 'Requires scope `apps:write`. Danger: write.'
+      description: 'Requires scope `id:apps:write` (until v3.1 also accepted as `apps:write`). Danger: write.'
       operationId: apps_manifest_sync
       x-action: apps.manifest.sync
-      x-scope: 'apps:write'
+      x-scope: 'id:apps:write'
+      x-scope-aliases:
+        - 'apps:write'
       x-danger: write
       parameters:
         -
@@ -2895,10 +2955,12 @@ paths:
       tags:
         - Applications
       summary: "Replace an app's complete scope set — the ceiling of what it may request, applied from its next token."
-      description: 'Requires scope `apps:write`. Danger: write.'
+      description: 'Requires scope `id:apps:write` (until v3.1 also accepted as `apps:write`). Danger: write.'
       operationId: apps_scopes_set
       x-action: apps.scopes.set
-      x-scope: 'apps:write'
+      x-scope: 'id:apps:write'
+      x-scope-aliases:
+        - 'apps:write'
       x-danger: write
       parameters:
         -
@@ -3044,16 +3106,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'apps:read'
+      x-scope: 'id:apps:read'
+      x-scope-aliases:
+        - 'apps:read'
       x-danger: read
     post:
       tags:
         - Applications
       summary: 'Mint a new client secret for an app and retire the current ones after grace_seconds (0 = at once). The new secret is returned once.'
-      description: 'Requires scope `apps:write`. Danger: critical.'
+      description: 'Requires scope `id:apps:write` (until v3.1 also accepted as `apps:write`). Danger: critical.'
       operationId: apps_secrets_rotate
       x-action: apps.secrets.rotate
-      x-scope: 'apps:write'
+      x-scope: 'id:apps:write'
+      x-scope-aliases:
+        - 'apps:write'
       x-danger: critical
       parameters:
         -
@@ -3137,10 +3203,12 @@ paths:
       tags:
         - Applications
       summary: "Revoke one of an app's client secrets immediately. Never its last live secret — rotate that instead."
-      description: 'Requires scope `apps:write`. Danger: critical.'
+      description: 'Requires scope `id:apps:write` (until v3.1 also accepted as `apps:write`). Danger: critical.'
       operationId: apps_secrets_revoke
       x-action: apps.secrets.revoke
-      x-scope: 'apps:write'
+      x-scope: 'id:apps:write'
+      x-scope-aliases:
+        - 'apps:write'
       x-danger: critical
       parameters:
         -
@@ -3209,10 +3277,12 @@ paths:
       tags:
         - Applications
       summary: "Set the prefix of an app's customer API keys (acme_live), which lets its users create keys for it, or null to stop new keys."
-      description: 'Requires scope `apps:write`. Danger: write.'
+      description: 'Requires scope `id:apps:write` (until v3.1 also accepted as `apps:write`). Danger: write.'
       operationId: apps_settings_api_key_prefix
       x-action: apps.settings.api_key_prefix
-      x-scope: 'apps:write'
+      x-scope: 'id:apps:write'
+      x-scope-aliases:
+        - 'apps:write'
       x-danger: write
       parameters:
         -
@@ -3295,10 +3365,12 @@ paths:
       tags:
         - Applications
       summary: 'Set or clear the URI an app is sent a logout token at when somebody signs out (OIDC Back-Channel Logout).'
-      description: 'Requires scope `apps:write`. Danger: write.'
+      description: 'Requires scope `id:apps:write` (until v3.1 also accepted as `apps:write`). Danger: write.'
       operationId: apps_settings_backchannel_logout
       x-action: apps.settings.backchannel_logout
-      x-scope: 'apps:write'
+      x-scope: 'id:apps:write'
+      x-scope-aliases:
+        - 'apps:write'
       x-danger: write
       parameters:
         -
@@ -3385,10 +3457,12 @@ paths:
       tags:
         - Applications
       summary: 'Turn client-credentials authentication on or off for a confidential app; other grants and scopes stay unchanged.'
-      description: 'Requires scope `apps:write`. Danger: write.'
+      description: 'Requires scope `id:apps:write` (until v3.1 also accepted as `apps:write`). Danger: write.'
       operationId: apps_settings_client_credentials
       x-action: apps.settings.client_credentials
-      x-scope: 'apps:write'
+      x-scope: 'id:apps:write'
+      x-scope-aliases:
+        - 'apps:write'
       x-danger: write
       parameters:
         -
@@ -3469,10 +3543,12 @@ paths:
       tags:
         - Applications
       summary: 'Turn token exchange (RFC 8693) on or off for a confidential app.'
-      description: 'Requires scope `apps:write`. Danger: write.'
+      description: 'Requires scope `id:apps:write` (until v3.1 also accepted as `apps:write`). Danger: write.'
       operationId: apps_settings_token_exchange
       x-action: apps.settings.token_exchange
-      x-scope: 'apps:write'
+      x-scope: 'id:apps:write'
+      x-scope-aliases:
+        - 'apps:write'
       x-danger: write
       parameters:
         -
@@ -3553,10 +3629,12 @@ paths:
       tags:
         - Applications
       summary: "Set how long an app's access tokens live, in seconds, or null for the install's default."
-      description: 'Requires scope `apps:write`. Danger: write.'
+      description: 'Requires scope `id:apps:write` (until v3.1 also accepted as `apps:write`). Danger: write.'
       operationId: apps_settings_token_lifetime
       x-action: apps.settings.token_lifetime
-      x-scope: 'apps:write'
+      x-scope: 'id:apps:write'
+      x-scope-aliases:
+        - 'apps:write'
       x-danger: write
       parameters:
         -
@@ -3638,10 +3716,12 @@ paths:
       tags:
         - 'Audit log'
       summary: "Read this environment's audit trail oldest first, optionally narrowed by action, actor type or organization; pass the last id as `after` to page."
-      description: 'Requires scope `audit:read`. Danger: read.'
+      description: 'Requires scope `id:audit-events:read` (until v3.1 also accepted as `audit:read`). Danger: read.'
       operationId: audit_list
       x-action: audit.list
-      x-scope: 'audit:read'
+      x-scope: 'id:audit-events:read'
+      x-scope-aliases:
+        - 'audit:read'
       x-danger: read
       parameters:
         -
@@ -3748,10 +3828,12 @@ paths:
       tags:
         - 'App audit logs'
       summary: "Record 1–100 audit events your app's users caused, each for one of your organizations (customers); checked against the action's schema when it has one and appended to that organization's tamper-evident chain. Send an Idempotency-Key."
-      description: 'Requires scope `audit_logs:write`. Danger: write.'
+      description: 'Requires scope `id:audit-logs:write` (until v3.1 also accepted as `audit_logs:write`). Danger: write.'
       operationId: audit_logs_events_create
       x-action: audit_logs.events.create
-      x-scope: 'audit_logs:write'
+      x-scope: 'id:audit-logs:write'
+      x-scope-aliases:
+        - 'audit_logs:write'
       x-danger: write
       parameters:
         -
@@ -3914,10 +3996,12 @@ paths:
       tags:
         - 'App audit logs'
       summary: 'Read audit events newest first, for one organization or the whole environment, filtered by action, actor, target and time range; pass `next_cursor` as `after` to page.'
-      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      description: 'Requires scope `id:audit-logs:read` (until v3.1 also accepted as `audit_logs:read`). Danger: read.'
       operationId: audit_logs_events_list
       x-action: audit_logs.events.list
-      x-scope: 'audit_logs:read'
+      x-scope: 'id:audit-logs:read'
+      x-scope-aliases:
+        - 'audit_logs:read'
       x-danger: read
       parameters:
         -
@@ -4057,10 +4141,12 @@ paths:
       tags:
         - 'App audit logs'
       summary: 'Start a CSV export of audit events (same filters as the list). It is written on the queue: poll audit_logs.exports.get until state is ready, then download from its short-lived url.'
-      description: 'Requires scope `audit_logs:export`. Danger: write.'
+      description: 'Requires scope `id:audit-log-exports:write` (until v3.1 also accepted as `audit_logs:export`). Danger: write.'
       operationId: audit_logs_exports_create
       x-action: audit_logs.exports.create
-      x-scope: 'audit_logs:export'
+      x-scope: 'id:audit-log-exports:write'
+      x-scope-aliases:
+        - 'audit_logs:export'
       x-danger: write
       parameters:
         -
@@ -4157,10 +4243,12 @@ paths:
       tags:
         - 'App audit logs'
       summary: "Read an audit-log export's state; once ready it carries a signed download url valid for a few minutes (read it again for a fresh one)."
-      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      description: 'Requires scope `id:audit-logs:read` (until v3.1 also accepted as `audit_logs:read`). Danger: read.'
       operationId: audit_logs_exports_get
       x-action: audit_logs.exports.get
-      x-scope: 'audit_logs:read'
+      x-scope: 'id:audit-logs:read'
+      x-scope-aliases:
+        - 'audit_logs:read'
       x-danger: read
       parameters:
         -
@@ -4227,10 +4315,12 @@ paths:
       tags:
         - 'App audit logs'
       summary: "Define the schema one audit-log action's events must match — allowed target types and metadata schemas (a subset of JSON Schema). Events of that action are then validated on arrival."
-      description: 'Requires scope `audit_logs:manage`. Danger: write.'
+      description: 'Requires scope `id:audit-log-schemas:write` (until v3.1 also accepted as `audit_logs:manage`). Danger: write.'
       operationId: audit_logs_schemas_create
       x-action: audit_logs.schemas.create
-      x-scope: 'audit_logs:manage'
+      x-scope: 'id:audit-log-schemas:write'
+      x-scope-aliases:
+        - 'audit_logs:manage'
       x-danger: write
       parameters:
         -
@@ -4330,10 +4420,12 @@ paths:
       tags:
         - 'App audit logs'
       summary: 'List the audit-log schemas this environment validates events against, one per action.'
-      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      description: 'Requires scope `id:audit-logs:read` (until v3.1 also accepted as `audit_logs:read`). Danger: read.'
       operationId: audit_logs_schemas_list
       x-action: audit_logs.schemas.list
-      x-scope: 'audit_logs:read'
+      x-scope: 'id:audit-logs:read'
+      x-scope-aliases:
+        - 'audit_logs:read'
       x-danger: read
       parameters:
         -
@@ -4409,10 +4501,12 @@ paths:
       tags:
         - 'App audit logs'
       summary: "Delete an audit-log action's schema. Its events are then accepted unchecked — or refused, if the environment is in strict mode."
-      description: 'Requires scope `audit_logs:manage`. Danger: destructive.'
+      description: 'Requires scope `id:audit-log-schemas:write` (until v3.1 also accepted as `audit_logs:manage`). Danger: destructive.'
       operationId: audit_logs_schemas_delete
       x-action: audit_logs.schemas.delete
-      x-scope: 'audit_logs:manage'
+      x-scope: 'id:audit-log-schemas:write'
+      x-scope-aliases:
+        - 'audit_logs:manage'
       x-danger: destructive
       parameters:
         -
@@ -4471,10 +4565,12 @@ paths:
       tags:
         - 'App audit logs'
       summary: "Read the schema one audit-log action's events are validated against."
-      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      description: 'Requires scope `id:audit-logs:read` (until v3.1 also accepted as `audit_logs:read`). Danger: read.'
       operationId: audit_logs_schemas_get
       x-action: audit_logs.schemas.get
-      x-scope: 'audit_logs:read'
+      x-scope: 'id:audit-logs:read'
+      x-scope-aliases:
+        - 'audit_logs:read'
       x-danger: read
       parameters:
         -
@@ -4538,10 +4634,12 @@ paths:
       tags:
         - 'App audit logs'
       summary: "Replace an audit-log action's schema with a new version (omitted parts are removed). Recorded events keep the version they were checked against."
-      description: 'Requires scope `audit_logs:manage`. Danger: write.'
+      description: 'Requires scope `id:audit-log-schemas:write` (until v3.1 also accepted as `audit_logs:manage`). Danger: write.'
       operationId: audit_logs_schemas_update
       x-action: audit_logs.schemas.update
-      x-scope: 'audit_logs:manage'
+      x-scope: 'id:audit-log-schemas:write'
+      x-scope-aliases:
+        - 'audit_logs:manage'
       x-danger: write
       parameters:
         -
@@ -4644,10 +4742,12 @@ paths:
       tags:
         - 'App audit logs'
       summary: "Read this environment's audit-log settings: retention in days and whether strict schemas are on."
-      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      description: 'Requires scope `id:audit-logs:read` (until v3.1 also accepted as `audit_logs:read`). Danger: read.'
       operationId: audit_logs_settings_get
       x-action: audit_logs.settings.get
-      x-scope: 'audit_logs:read'
+      x-scope: 'id:audit-logs:read'
+      x-scope-aliases:
+        - 'audit_logs:read'
       x-danger: read
       parameters:
         -
@@ -4703,10 +4803,12 @@ paths:
       tags:
         - 'App audit logs'
       summary: "Change this environment's audit-log retention (days, 1–3650) and strict mode. Shortening retention deletes older events at the next daily prune — irreversibly."
-      description: 'Requires scope `audit_logs:manage`. Danger: destructive.'
+      description: 'Requires scope `id:audit-log-schemas:write` (until v3.1 also accepted as `audit_logs:manage`). Danger: destructive.'
       operationId: audit_logs_settings_update
       x-action: audit_logs.settings.update
-      x-scope: 'audit_logs:manage'
+      x-scope: 'id:audit-log-schemas:write'
+      x-scope-aliases:
+        - 'audit_logs:manage'
       x-danger: destructive
       parameters:
         -
@@ -4782,10 +4884,12 @@ paths:
       tags:
         - 'App audit logs'
       summary: "Re-hash one organization's audit-event chain (from the oldest event retention kept, or from_sequence) and report whether every event is unchanged and in place."
-      description: 'Requires scope `audit_logs:read`. Danger: read.'
+      description: 'Requires scope `id:audit-logs:read` (until v3.1 also accepted as `audit_logs:read`). Danger: read.'
       operationId: audit_logs_verify
       x-action: audit_logs.verify
-      x-scope: 'audit_logs:read'
+      x-scope: 'id:audit-logs:read'
+      x-scope-aliases:
+        - 'audit_logs:read'
       x-danger: read
       parameters:
         -
@@ -4902,10 +5006,12 @@ paths:
       tags:
         - Branding
       summary: "Read the hosted sign-in theme: the environment default, or one organization's own."
-      description: 'Requires scope `branding:read`. Danger: read.'
+      description: 'Requires scope `id:branding:read` (until v3.1 also accepted as `branding:read`). Danger: read.'
       operationId: branding_appearance_get
       x-action: branding.appearance.get
-      x-scope: 'branding:read'
+      x-scope: 'id:branding:read'
+      x-scope-aliases:
+        - 'branding:read'
       x-danger: read
       parameters:
         -
@@ -4969,10 +5075,12 @@ paths:
       tags:
         - Branding
       summary: 'Set the hosted sign-in theme (preset, colours, corners, type, uploaded logo and favicon) for the environment default or one organization.'
-      description: 'Requires scope `branding:write`. Danger: write.'
+      description: 'Requires scope `id:branding:write` (until v3.1 also accepted as `branding:write`). Danger: write.'
       operationId: branding_appearance_set
       x-action: branding.appearance.set
-      x-scope: 'branding:write'
+      x-scope: 'id:branding:write'
+      x-scope-aliases:
+        - 'branding:write'
       x-danger: write
       parameters:
         -
@@ -5110,10 +5218,12 @@ paths:
       tags:
         - Branding
       summary: 'Read the white-label branding (palette, app name, email sender, logo) of the environment default or one organization.'
-      description: 'Requires scope `branding:read`. Danger: read.'
+      description: 'Requires scope `id:branding:read` (until v3.1 also accepted as `branding:read`). Danger: read.'
       operationId: branding_whitelabel_get
       x-action: branding.whitelabel.get
-      x-scope: 'branding:read'
+      x-scope: 'id:branding:read'
+      x-scope-aliases:
+        - 'branding:read'
       x-danger: read
       parameters:
         -
@@ -5179,10 +5289,12 @@ paths:
       tags:
         - Branding
       summary: 'Save the white-label branding (palette, app name, email sender, welcome email) of the environment default or one organization.'
-      description: 'Requires scope `branding:write`. Danger: write.'
+      description: 'Requires scope `id:branding:write` (until v3.1 also accepted as `branding:write`). Danger: write.'
       operationId: branding_whitelabel_set
       x-action: branding.whitelabel.set
-      x-scope: 'branding:write'
+      x-scope: 'id:branding:write'
+      x-scope-aliases:
+        - 'branding:write'
       x-danger: write
       parameters:
         -
@@ -5471,10 +5583,12 @@ paths:
       tags:
         - 'Directory Sync'
       summary: 'Register a SCIM directory for an organization. Answers the SCIM base URL and a bearer token, shown once.'
-      description: 'Requires scope `directory_sync:write`. Danger: critical.'
+      description: 'Requires scope `id:directories:write` (until v3.1 also accepted as `directory_sync:write`). Danger: critical.'
       operationId: directories_create
       x-action: directories.create
-      x-scope: 'directory_sync:write'
+      x-scope: 'id:directories:write'
+      x-scope-aliases:
+        - 'directory_sync:write'
       x-danger: critical
       parameters:
         -
@@ -5554,10 +5668,12 @@ paths:
       tags:
         - 'Directory Sync'
       summary: 'List the directories (SCIM, Google Workspace, Microsoft Entra) syncing people in, optionally for one organization, with their last sync error.'
-      description: 'Requires scope `directory_sync:read`. Danger: read.'
+      description: 'Requires scope `id:directories:read` (until v3.1 also accepted as `directory_sync:read`). Danger: read.'
       operationId: directories_list
       x-action: directories.list
-      x-scope: 'directory_sync:read'
+      x-scope: 'id:directories:read'
+      x-scope-aliases:
+        - 'directory_sync:read'
       x-danger: read
       parameters:
         -
@@ -5643,10 +5759,12 @@ paths:
       tags:
         - 'Directory Sync'
       summary: "Connect a Google Workspace or Microsoft Entra directory to sync an organization's people from, verifying the credentials first. Runs the first sync."
-      description: 'Requires scope `directory_sync:write`. Danger: critical.'
+      description: 'Requires scope `id:directories:write` (until v3.1 also accepted as `directory_sync:write`). Danger: critical.'
       operationId: directories_connect
       x-action: directories.connect
-      x-scope: 'directory_sync:write'
+      x-scope: 'id:directories:write'
+      x-scope-aliases:
+        - 'directory_sync:write'
       x-danger: critical
       parameters:
         -
@@ -5754,10 +5872,12 @@ paths:
       tags:
         - 'Directory Sync'
       summary: "Connect an HR system (Workday, BambooHR, Rippling, HiBob or Personio) to sync an organization's people from, verifying the credentials first. The first sync is queued."
-      description: 'Requires scope `directory_sync:write`. Danger: critical.'
+      description: 'Requires scope `id:directories:write` (until v3.1 also accepted as `directory_sync:write`). Danger: critical.'
       operationId: directories_hris_connect
       x-action: directories.hris.connect
-      x-scope: 'directory_sync:write'
+      x-scope: 'id:directories:write'
+      x-scope-aliases:
+        - 'directory_sync:write'
       x-danger: critical
       parameters:
         -
@@ -5910,10 +6030,12 @@ paths:
       tags:
         - 'Directory Sync'
       summary: 'Delete an inbound directory. Its token stops working; the people it provisioned keep their accounts.'
-      description: 'Requires scope `directory_sync:write`. Danger: destructive.'
+      description: 'Requires scope `id:directories:write` (until v3.1 also accepted as `directory_sync:write`). Danger: destructive.'
       operationId: directories_delete
       x-action: directories.delete
-      x-scope: 'directory_sync:write'
+      x-scope: 'id:directories:write'
+      x-scope-aliases:
+        - 'directory_sync:write'
       x-danger: destructive
       parameters:
         -
@@ -5986,10 +6108,12 @@ paths:
       tags:
         - 'Directory Sync'
       summary: 'Read one inbound directory: its provider, status, SCIM base URL and last sync error. Never its token or credentials.'
-      description: 'Requires scope `directory_sync:read`. Danger: read.'
+      description: 'Requires scope `id:directories:read` (until v3.1 also accepted as `directory_sync:read`). Danger: read.'
       operationId: directories_get
       x-action: directories.get
-      x-scope: 'directory_sync:read'
+      x-scope: 'id:directories:read'
+      x-scope-aliases:
+        - 'directory_sync:read'
       x-danger: read
       parameters:
         -
@@ -6062,10 +6186,12 @@ paths:
       tags:
         - 'Directory Sync'
       summary: 'Rename an inbound directory.'
-      description: 'Requires scope `directory_sync:write`. Danger: write.'
+      description: 'Requires scope `id:directories:write` (until v3.1 also accepted as `directory_sync:write`). Danger: write.'
       operationId: directories_update
       x-action: directories.update
-      x-scope: 'directory_sync:write'
+      x-scope: 'id:directories:write'
+      x-scope-aliases:
+        - 'directory_sync:write'
       x-danger: write
       parameters:
         -
@@ -6154,10 +6280,12 @@ paths:
       tags:
         - 'Directory Sync'
       summary: "Replace a pull directory's provider credentials, verifying the new ones first. Write-only; never returned."
-      description: 'Requires scope `directory_sync:write`. Danger: critical.'
+      description: 'Requires scope `id:directories:write` (until v3.1 also accepted as `directory_sync:write`). Danger: critical.'
       operationId: directories_credentials_replace
       x-action: directories.credentials.replace
-      x-scope: 'directory_sync:write'
+      x-scope: 'id:directories:write'
+      x-scope-aliases:
+        - 'directory_sync:write'
       x-danger: critical
       parameters:
         -
@@ -6288,10 +6416,12 @@ paths:
       tags:
         - 'Directory Sync'
       summary: 'Map a directory group onto a role (everyone in the group holds it as membership syncs), or unmap it.'
-      description: 'Requires scope `directory_sync:write`. Danger: write.'
+      description: 'Requires scope `id:directories:write` (until v3.1 also accepted as `directory_sync:write`). Danger: write.'
       operationId: directories_groups_map
       x-action: directories.groups.map
-      x-scope: 'directory_sync:write'
+      x-scope: 'id:directories:write'
+      x-scope-aliases:
+        - 'directory_sync:write'
       x-danger: write
       parameters:
         -
@@ -6389,10 +6519,12 @@ paths:
       tags:
         - 'Directory Sync'
       summary: 'List the groups a directory has synced, with the role ids each group is mapped onto.'
-      description: 'Requires scope `directory_sync:read`. Danger: read.'
+      description: 'Requires scope `id:directories:read` (until v3.1 also accepted as `directory_sync:read`). Danger: read.'
       operationId: directories_groups_list
       x-action: directories.groups.list
-      x-scope: 'directory_sync:read'
+      x-scope: 'id:directories:read'
+      x-scope-aliases:
+        - 'directory_sync:read'
       x-danger: read
       parameters:
         -
@@ -6485,10 +6617,12 @@ paths:
       tags:
         - 'Directory Sync'
       summary: 'Issue a new bearer token for a SCIM directory, returned once. The old token stops working immediately.'
-      description: 'Requires scope `directory_sync:write`. Danger: critical.'
+      description: 'Requires scope `id:directories:write` (until v3.1 also accepted as `directory_sync:write`). Danger: critical.'
       operationId: directories_token_rotate
       x-action: directories.token.rotate
-      x-scope: 'directory_sync:write'
+      x-scope: 'id:directories:write'
+      x-scope-aliases:
+        - 'directory_sync:write'
       x-danger: critical
       parameters:
         -
@@ -6571,10 +6705,12 @@ paths:
       tags:
         - 'Directory Sync'
       summary: "Pause or resume an inbound directory's provisioning."
-      description: 'Requires scope `directory_sync:write`. Danger: write.'
+      description: 'Requires scope `id:directories:write` (until v3.1 also accepted as `directory_sync:write`). Danger: write.'
       operationId: directories_status_set
       x-action: directories.status.set
-      x-scope: 'directory_sync:write'
+      x-scope: 'id:directories:write'
+      x-scope-aliases:
+        - 'directory_sync:write'
       x-danger: write
       parameters:
         -
@@ -6662,10 +6798,12 @@ paths:
       tags:
         - 'Directory Sync'
       summary: 'Pull a Google Workspace, Microsoft Entra or HR-system directory now, on a worker. `full` asks an HR system for everybody rather than what changed.'
-      description: 'Requires scope `directory_sync:write`. Danger: write.'
+      description: 'Requires scope `id:directories:write` (until v3.1 also accepted as `directory_sync:write`). Danger: write.'
       operationId: directories_sync
       x-action: directories.sync
-      x-scope: 'directory_sync:write'
+      x-scope: 'id:directories:write'
+      x-scope-aliases:
+        - 'directory_sync:write'
       x-danger: write
       parameters:
         -
@@ -6785,10 +6923,12 @@ paths:
       tags:
         - 'Directory Sync'
       summary: 'Set how often a pull directory syncs, and for an HR system which of its fields pass through onto people.'
-      description: 'Requires scope `directory_sync:write`. Danger: write.'
+      description: 'Requires scope `id:directories:write` (until v3.1 also accepted as `directory_sync:write`). Danger: write.'
       operationId: directories_sync_settings_update
       x-action: directories.sync_settings.update
-      x-scope: 'directory_sync:write'
+      x-scope: 'id:directories:write'
+      x-scope-aliases:
+        - 'directory_sync:write'
       x-danger: write
       parameters:
         -
@@ -6941,10 +7081,12 @@ paths:
       tags:
         - Domains
       summary: 'Start serving this environment on a custom domain: returns the DNS TXT record that proves you control it.'
-      description: 'Requires scope `domains:write`. Danger: write.'
+      description: 'Requires scope `id:domains:write` (until v3.1 also accepted as `domains:write`). Danger: write.'
       operationId: domains_add
       x-action: domains.add
-      x-scope: 'domains:write'
+      x-scope: 'id:domains:write'
+      x-scope-aliases:
+        - 'domains:write'
       x-danger: write
       parameters:
         -
@@ -7017,10 +7159,12 @@ paths:
       tags:
         - Domains
       summary: "Read this environment's custom domain, and the DNS TXT record that proves a pending one."
-      description: 'Requires scope `domains:read`. Danger: read.'
+      description: 'Requires scope `id:domains:read` (until v3.1 also accepted as `domains:read`). Danger: read.'
       operationId: domains_get
       x-action: domains.get
-      x-scope: 'domains:read'
+      x-scope: 'id:domains:read'
+      x-scope-aliases:
+        - 'domains:read'
       x-danger: read
       parameters:
         -
@@ -7076,10 +7220,12 @@ paths:
       tags:
         - Domains
       summary: 'Stop serving this environment on its custom domain. Anything using that domain stops reaching the environment.'
-      description: 'Requires scope `domains:write`. Danger: destructive.'
+      description: 'Requires scope `id:domains:write` (until v3.1 also accepted as `domains:write`). Danger: destructive.'
       operationId: domains_remove
       x-action: domains.remove
-      x-scope: 'domains:write'
+      x-scope: 'id:domains:write'
+      x-scope-aliases:
+        - 'domains:write'
       x-danger: destructive
       parameters:
         -
@@ -7131,10 +7277,12 @@ paths:
       tags:
         - Domains
       summary: "Look for the pending domain's DNS TXT record and, once it is visible, serve this environment on that domain."
-      description: 'Requires scope `domains:write`. Danger: write.'
+      description: 'Requires scope `id:domains:write` (until v3.1 also accepted as `domains:write`). Danger: write.'
       operationId: domains_verify
       x-action: domains.verify
-      x-scope: 'domains:write'
+      x-scope: 'id:domains:write'
+      x-scope-aliases:
+        - 'domains:write'
       x-danger: write
       parameters:
         -
@@ -7195,10 +7343,12 @@ paths:
       tags:
         - Events
       summary: "Read this environment's domain events (the facts webhooks deliver) oldest first; pass the last id as `after` to poll for new ones."
-      description: 'Requires scope `events:read`. Danger: read.'
+      description: 'Requires scope `id:events:read` (until v3.1 also accepted as `events:read`). Danger: read.'
       operationId: events_list
       x-action: events.list
-      x-scope: 'events:read'
+      x-scope: 'id:events:read'
+      x-scope-aliases:
+        - 'events:read'
       x-danger: read
       parameters:
         -
@@ -7295,10 +7445,12 @@ paths:
       tags:
         - 'Feature flags'
       summary: 'Define a feature flag: a key apps ask about, its default, and who it is on for — named users, named organizations, a rollout percentage.'
-      description: 'Requires scope `feature_flags:write`. Danger: write.'
+      description: 'Requires scope `id:feature-flags:write` (until v3.1 also accepted as `feature_flags:write`). Danger: write.'
       operationId: feature_flags_create
       x-action: feature_flags.create
-      x-scope: 'feature_flags:write'
+      x-scope: 'id:feature-flags:write'
+      x-scope-aliases:
+        - 'feature_flags:write'
       x-danger: write
       parameters:
         -
@@ -7421,10 +7573,12 @@ paths:
       tags:
         - 'Feature flags'
       summary: "List this environment's feature flags with their default, kill switch and targeting rules."
-      description: 'Requires scope `feature_flags:read`. Danger: read.'
+      description: 'Requires scope `id:feature-flags:read` (until v3.1 also accepted as `feature_flags:read`). Danger: read.'
       operationId: feature_flags_list
       x-action: feature_flags.list
-      x-scope: 'feature_flags:read'
+      x-scope: 'id:feature-flags:read'
+      x-scope-aliases:
+        - 'feature_flags:read'
       x-danger: read
       parameters:
         -
@@ -7500,10 +7654,12 @@ paths:
       tags:
         - 'Feature flags'
       summary: 'Evaluate every feature flag for a user in an organization: whether each is on, and the rule that decided. For app backends without a token in hand.'
-      description: 'Requires scope `feature_flags:read`. Danger: read.'
+      description: 'Requires scope `id:feature-flags:read` (until v3.1 also accepted as `feature_flags:read`). Danger: read.'
       operationId: feature_flags_evaluate
       x-action: feature_flags.evaluate
-      x-scope: 'feature_flags:read'
+      x-scope: 'id:feature-flags:read'
+      x-scope-aliases:
+        - 'feature_flags:read'
       x-danger: read
       parameters:
         -
@@ -7576,10 +7732,12 @@ paths:
       tags:
         - 'Feature flags'
       summary: 'Delete a feature flag and its rules. Its key evaluates to off from now on; tokens already minted keep it until they expire.'
-      description: 'Requires scope `feature_flags:write`. Danger: destructive.'
+      description: 'Requires scope `id:feature-flags:write` (until v3.1 also accepted as `feature_flags:write`). Danger: destructive.'
       operationId: feature_flags_delete
       x-action: feature_flags.delete
-      x-scope: 'feature_flags:write'
+      x-scope: 'id:feature-flags:write'
+      x-scope-aliases:
+        - 'feature_flags:write'
       x-danger: destructive
       parameters:
         -
@@ -7637,10 +7795,12 @@ paths:
       tags:
         - 'Feature flags'
       summary: 'Read one feature flag: its default, whether it is switched on, and every user, organization and rollout rule.'
-      description: 'Requires scope `feature_flags:read`. Danger: read.'
+      description: 'Requires scope `id:feature-flags:read` (until v3.1 also accepted as `feature_flags:read`). Danger: read.'
       operationId: feature_flags_get
       x-action: feature_flags.get
-      x-scope: 'feature_flags:read'
+      x-scope: 'id:feature-flags:read'
+      x-scope-aliases:
+        - 'feature_flags:read'
       x-danger: read
       parameters:
         -
@@ -7703,10 +7863,12 @@ paths:
       tags:
         - 'Feature flags'
       summary: 'Change a feature flag: switch it on or off for everyone, change its default, or replace its user rules, organization rules or rollout percentage.'
-      description: 'Requires scope `feature_flags:write`. Danger: write.'
+      description: 'Requires scope `id:feature-flags:write` (until v3.1 also accepted as `feature_flags:write`). Danger: write.'
       operationId: feature_flags_update
       x-action: feature_flags.update
-      x-scope: 'feature_flags:write'
+      x-scope: 'id:feature-flags:write'
+      x-scope-aliases:
+        - 'feature_flags:write'
       x-danger: write
       parameters:
         -
@@ -7832,10 +7994,12 @@ paths:
       tags:
         - 'Fine-grained authorization'
       summary: 'Check whether a subject has a relation on a resource — directly, through computed relations, parents or nested groups. Optionally at least as fresh as a consistency_token.'
-      description: 'Requires scope `fga:read`. Danger: read.'
+      description: 'Requires scope `id:fga:read` (until v3.1 also accepted as `fga:read`). Danger: read.'
       operationId: fga_check
       x-action: fga.check
-      x-scope: 'fga:read'
+      x-scope: 'id:fga:read'
+      x-scope-aliases:
+        - 'fga:read'
       x-danger: read
       parameters:
         -
@@ -7950,10 +8114,12 @@ paths:
       tags:
         - 'Fine-grained authorization'
       summary: 'Run 1–100 checks in one round trip, each written resource#relation@subject (document:readme#viewer@user:alice), all at the same revision, answered in order.'
-      description: 'Requires scope `fga:read`. Danger: read.'
+      description: 'Requires scope `id:fga:read` (until v3.1 also accepted as `fga:read`). Danger: read.'
       operationId: fga_check_batch
       x-action: fga.check_batch
-      x-scope: 'fga:read'
+      x-scope: 'id:fga:read'
+      x-scope-aliases:
+        - 'fga:read'
       x-danger: read
       parameters:
         -
@@ -8032,10 +8198,12 @@ paths:
       tags:
         - 'Fine-grained authorization'
       summary: 'List the resources of one type a subject has a relation on (e.g. every document alice can view), through all inheritance; sorted ids, paged with after.'
-      description: 'Requires scope `fga:read`. Danger: read.'
+      description: 'Requires scope `id:fga:read` (until v3.1 also accepted as `fga:read`). Danger: read.'
       operationId: fga_resources_list
       x-action: fga.resources.list
-      x-scope: 'fga:read'
+      x-scope: 'id:fga:read'
+      x-scope-aliases:
+        - 'fga:read'
       x-danger: read
       parameters:
         -
@@ -8162,10 +8330,12 @@ paths:
       tags:
         - 'Fine-grained authorization'
       summary: "Read this environment's fine-grained authorization schema: the source text, its parsed types and relations, its version, and the current consistency token."
-      description: 'Requires scope `fga:read`. Danger: read.'
+      description: 'Requires scope `id:fga:read` (until v3.1 also accepted as `fga:read`). Danger: read.'
       operationId: fga_schema_get
       x-action: fga.schema.get
-      x-scope: 'fga:read'
+      x-scope: 'id:fga:read'
+      x-scope-aliases:
+        - 'fga:read'
       x-danger: read
       parameters:
         -
@@ -8221,10 +8391,12 @@ paths:
       tags:
         - 'Fine-grained authorization'
       summary: "Replace this environment's fine-grained authorization schema (types, relations and how each is decided). Changes the answer to every check at once; refused if invalid or if existing tuples would no longer fit."
-      description: 'Requires scope `fga:schema`. Danger: critical.'
+      description: 'Requires scope `id:fga-schema:write` (until v3.1 also accepted as `fga:schema`). Danger: critical.'
       operationId: fga_schema_update
       x-action: fga.schema.update
-      x-scope: 'fga:schema'
+      x-scope: 'id:fga-schema:write'
+      x-scope-aliases:
+        - 'fga:schema'
       x-danger: critical
       parameters:
         -
@@ -8298,10 +8470,12 @@ paths:
       tags:
         - 'Fine-grained authorization'
       summary: 'Check a fine-grained authorization schema without saving it: every error by line, or the parsed types and canonical text.'
-      description: 'Requires scope `fga:read`. Danger: read.'
+      description: 'Requires scope `id:fga:read` (until v3.1 also accepted as `fga:read`). Danger: read.'
       operationId: fga_schema_validate
       x-action: fga.schema.validate
-      x-scope: 'fga:read'
+      x-scope: 'id:fga:read'
+      x-scope-aliases:
+        - 'fga:read'
       x-danger: read
       parameters:
         -
@@ -8366,10 +8540,12 @@ paths:
       tags:
         - 'Fine-grained authorization'
       summary: 'List the subjects of one type that have a relation on a resource (e.g. every user who can view the readme), groups and inheritance expanded; sorted ids, paged with after.'
-      description: 'Requires scope `fga:read`. Danger: read.'
+      description: 'Requires scope `id:fga:read` (until v3.1 also accepted as `fga:read`). Danger: read.'
       operationId: fga_subjects_list
       x-action: fga.subjects.list
-      x-scope: 'fga:read'
+      x-scope: 'id:fga:read'
+      x-scope-aliases:
+        - 'fga:read'
       x-danger: read
       parameters:
         -
@@ -8488,10 +8664,12 @@ paths:
       tags:
         - 'Fine-grained authorization'
       summary: 'List stored relationship tuples oldest first, filtered by resource type and id, relation and subject; pass next_cursor as after to page.'
-      description: 'Requires scope `fga:read`. Danger: read.'
+      description: 'Requires scope `id:fga:read` (until v3.1 also accepted as `fga:read`). Danger: read.'
       operationId: fga_tuples_list
       x-action: fga.tuples.list
-      x-scope: 'fga:read'
+      x-scope: 'id:fga:read'
+      x-scope-aliases:
+        - 'fga:read'
       x-danger: read
       parameters:
         -
@@ -8615,10 +8793,12 @@ paths:
       tags:
         - 'Fine-grained authorization'
       summary: 'Write 1–100 relationship tuples (resource#relation@subject) in one atomic batch, each checked against the schema. Grants access at once; returns a consistency_token for checks that must see it.'
-      description: 'Requires scope `fga:write`. Danger: write.'
+      description: 'Requires scope `id:fga:write` (until v3.1 also accepted as `fga:write`). Danger: write.'
       operationId: fga_tuples_write
       x-action: fga.tuples.write
-      x-scope: 'fga:write'
+      x-scope: 'id:fga:write'
+      x-scope-aliases:
+        - 'fga:write'
       x-danger: write
       parameters:
         -
@@ -8734,10 +8914,12 @@ paths:
       tags:
         - 'Fine-grained authorization'
       summary: 'Delete 1–100 relationship tuples in one atomic batch. Revokes the access they granted, and everything inherited through them, at once.'
-      description: 'Requires scope `fga:write`. Danger: destructive.'
+      description: 'Requires scope `id:fga:write` (until v3.1 also accepted as `fga:write`). Danger: destructive.'
       operationId: fga_tuples_delete
       x-action: fga.tuples.delete
-      x-scope: 'fga:write'
+      x-scope: 'id:fga:write'
+      x-scope-aliases:
+        - 'fga:write'
       x-danger: destructive
       parameters:
         -
@@ -8853,10 +9035,12 @@ paths:
       tags:
         - 'Publishable keys'
       summary: 'Create a publishable frontend key for a browser app, usable only from the origins listed. The key is public by design.'
-      description: 'Requires scope `frontend_keys:write`. Danger: write.'
+      description: 'Requires scope `id:frontend-keys:write` (until v3.1 also accepted as `frontend_keys:write`). Danger: write.'
       operationId: frontend_keys_create
       x-action: frontend_keys.create
-      x-scope: 'frontend_keys:write'
+      x-scope: 'id:frontend-keys:write'
+      x-scope-aliases:
+        - 'frontend_keys:write'
       x-danger: write
       parameters:
         -
@@ -8945,10 +9129,12 @@ paths:
       tags:
         - 'Publishable keys'
       summary: 'List the publishable frontend keys browser apps present to the Frontend API, in full, with their allowed origins.'
-      description: 'Requires scope `frontend_keys:read`. Danger: read.'
+      description: 'Requires scope `id:frontend-keys:read` (until v3.1 also accepted as `frontend_keys:read`). Danger: read.'
       operationId: frontend_keys_list
       x-action: frontend_keys.list
-      x-scope: 'frontend_keys:read'
+      x-scope: 'id:frontend-keys:read'
+      x-scope-aliases:
+        - 'frontend_keys:read'
       x-danger: read
       parameters:
         -
@@ -9024,10 +9210,12 @@ paths:
       tags:
         - 'Publishable keys'
       summary: 'Revoke a publishable frontend key. Pages still holding it stop working immediately.'
-      description: 'Requires scope `frontend_keys:write`. Danger: destructive.'
+      description: 'Requires scope `id:frontend-keys:write` (until v3.1 also accepted as `frontend_keys:write`). Danger: destructive.'
       operationId: frontend_keys_revoke
       x-action: frontend_keys.revoke
-      x-scope: 'frontend_keys:write'
+      x-scope: 'id:frontend-keys:write'
+      x-scope-aliases:
+        - 'frontend_keys:write'
       x-danger: destructive
       parameters:
         -
@@ -9086,10 +9274,12 @@ paths:
       tags:
         - 'Publishable keys'
       summary: 'Replace the exact list of origins allowed to present a publishable frontend key. Live on the next request.'
-      description: 'Requires scope `frontend_keys:write`. Danger: write.'
+      description: 'Requires scope `id:frontend-keys:write` (until v3.1 also accepted as `frontend_keys:write`). Danger: write.'
       operationId: frontend_keys_set_origins
       x-action: frontend_keys.set_origins
-      x-scope: 'frontend_keys:write'
+      x-scope: 'id:frontend-keys:write'
+      x-scope-aliases:
+        - 'frontend_keys:write'
       x-danger: write
       parameters:
         -
@@ -9174,10 +9364,12 @@ paths:
       tags:
         - Hooks
       summary: 'Register a hook at a hook point (token minting, login, registration, password change). Returns its signing secret once.'
-      description: 'Requires scope `hooks:write`. Danger: critical.'
+      description: 'Requires scope `id:hooks:write` (until v3.1 also accepted as `hooks:write`). Danger: critical.'
       operationId: hooks_create
       x-action: hooks.create
-      x-scope: 'hooks:write'
+      x-scope: 'id:hooks:write'
+      x-scope-aliases:
+        - 'hooks:write'
       x-danger: critical
       parameters:
         -
@@ -9273,10 +9465,12 @@ paths:
       tags:
         - Hooks
       summary: 'List the hooks — endpoints called during sign-in and token issuance — with their hook point, owner and whether each is active.'
-      description: 'Requires scope `hooks:read`. Danger: read.'
+      description: 'Requires scope `id:hooks:read` (until v3.1 also accepted as `hooks:read`). Danger: read.'
       operationId: hooks_list
       x-action: hooks.list
-      x-scope: 'hooks:read'
+      x-scope: 'id:hooks:read'
+      x-scope-aliases:
+        - 'hooks:read'
       x-danger: read
       parameters:
         -
@@ -9354,10 +9548,12 @@ paths:
       tags:
         - Hooks
       summary: 'Remove a hook. It is no longer called at its hook point.'
-      description: 'Requires scope `hooks:write`. Danger: destructive.'
+      description: 'Requires scope `id:hooks:write` (until v3.1 also accepted as `hooks:write`). Danger: destructive.'
       operationId: hooks_delete
       x-action: hooks.delete
-      x-scope: 'hooks:write'
+      x-scope: 'id:hooks:write'
+      x-scope-aliases:
+        - 'hooks:write'
       x-danger: destructive
       parameters:
         -
@@ -9417,10 +9613,12 @@ paths:
       tags:
         - Hooks
       summary: 'Get one hook: its URL, hook point, owner and whether it is active. Never its signing secret.'
-      description: 'Requires scope `hooks:read`. Danger: read.'
+      description: 'Requires scope `id:hooks:read` (until v3.1 also accepted as `hooks:read`). Danger: read.'
       operationId: hooks_get
       x-action: hooks.get
-      x-scope: 'hooks:read'
+      x-scope: 'id:hooks:read'
+      x-scope-aliases:
+        - 'hooks:read'
       x-danger: read
       parameters:
         -
@@ -9485,10 +9683,12 @@ paths:
       tags:
         - Hooks
       summary: 'Pause (active: false) or activate (active: true) a hook.'
-      description: 'Requires scope `hooks:write`. Danger: critical.'
+      description: 'Requires scope `id:hooks:write` (until v3.1 also accepted as `hooks:write`). Danger: critical.'
       operationId: hooks_update
       x-action: hooks.update
-      x-scope: 'hooks:write'
+      x-scope: 'id:hooks:write'
+      x-scope-aliases:
+        - 'hooks:write'
       x-danger: critical
       parameters:
         -
@@ -9570,10 +9770,13 @@ paths:
       tags:
         - 'Secret keys'
       summary: 'Mint a management key for this environment, at most as wide as the caller. The value is returned once, as `token`.'
-      description: 'Requires scope `keys:write`. Danger: critical.'
+      description: 'Requires scope `id:environment-keys:write` (until v3.1 also accepted as `keys:write`, `id:organization-keys:write`). Danger: critical.'
       operationId: keys_create
       x-action: keys.create
-      x-scope: 'keys:write'
+      x-scope: 'id:environment-keys:write'
+      x-scope-aliases:
+        - 'keys:write'
+        - 'id:organization-keys:write'
       x-danger: critical
       parameters:
         -
@@ -9686,10 +9889,12 @@ paths:
       tags:
         - 'Secret keys'
       summary: "List this environment's management keys (names, scopes, parents, expiry, last use — never their values)."
-      description: 'Requires scope `keys:read`. Danger: read.'
+      description: 'Requires scope `id:environment-keys:read` (until v3.1 also accepted as `keys:read`). Danger: read.'
       operationId: keys_list
       x-action: keys.list
-      x-scope: 'keys:read'
+      x-scope: 'id:environment-keys:read'
+      x-scope-aliases:
+        - 'keys:read'
       x-danger: read
       parameters:
         -
@@ -9765,10 +9970,13 @@ paths:
       tags:
         - 'Secret keys'
       summary: 'Revoke a management key and every key it minted, immediately.'
-      description: 'Requires scope `keys:write`. Danger: destructive.'
+      description: 'Requires scope `id:environment-keys:write` (until v3.1 also accepted as `keys:write`, `id:organization-keys:write`). Danger: destructive.'
       operationId: keys_revoke
       x-action: keys.revoke
-      x-scope: 'keys:write'
+      x-scope: 'id:environment-keys:write'
+      x-scope-aliases:
+        - 'keys:write'
+        - 'id:organization-keys:write'
       x-danger: destructive
       parameters:
         -
@@ -9827,10 +10035,13 @@ paths:
       tags:
         - 'Secret keys'
       summary: 'Rotate a management key: mint a successor with the same scopes and retire the old one after a grace period.'
-      description: 'Requires scope `keys:write`. Danger: critical.'
+      description: 'Requires scope `id:environment-keys:write` (until v3.1 also accepted as `keys:write`, `id:organization-keys:write`). Danger: critical.'
       operationId: keys_rotate
       x-action: keys.rotate
-      x-scope: 'keys:write'
+      x-scope: 'id:environment-keys:write'
+      x-scope-aliases:
+        - 'keys:write'
+        - 'id:organization-keys:write'
       x-danger: critical
       parameters:
         -
@@ -9910,10 +10121,12 @@ paths:
       tags:
         - 'Legacy login'
       summary: 'Read the legacy login endpoint an app declared for migration, and whether it is approved to receive sign-ins.'
-      description: 'Requires scope `signin:read`. Danger: read.'
+      description: 'Requires scope `id:sign-in:read` (until v3.1 also accepted as `signin:read`). Danger: read.'
       operationId: legacy_login_get
       x-action: legacy_login.get
-      x-scope: 'signin:read'
+      x-scope: 'id:sign-in:read'
+      x-scope-aliases:
+        - 'signin:read'
       x-danger: read
       parameters:
         -
@@ -9970,10 +10183,12 @@ paths:
       tags:
         - 'Legacy login'
       summary: 'Approve the declared legacy login endpoint: sign-ins for people not yet migrated, with their passwords, go to that URL.'
-      description: 'Requires scope `signin:write`. Danger: critical.'
+      description: 'Requires scope `id:sign-in:write` (until v3.1 also accepted as `signin:write`). Danger: critical.'
       operationId: legacy_login_approve
       x-action: legacy_login.approve
-      x-scope: 'signin:write'
+      x-scope: 'id:sign-in:write'
+      x-scope-aliases:
+        - 'signin:write'
       x-danger: critical
       parameters:
         -
@@ -10034,10 +10249,12 @@ paths:
       tags:
         - 'Legacy login'
       summary: 'Ask the declared legacy login endpoint whether it knows an address — your own — to test it before approving. Sends no password.'
-      description: 'Requires scope `signin:write`. Danger: write.'
+      description: 'Requires scope `id:sign-in:write` (until v3.1 also accepted as `signin:write`). Danger: write.'
       operationId: legacy_login_probe
       x-action: legacy_login.probe
-      x-scope: 'signin:write'
+      x-scope: 'id:sign-in:write'
+      x-scope-aliases:
+        - 'signin:write'
       x-danger: write
       parameters:
         -
@@ -10112,10 +10329,12 @@ paths:
       tags:
         - 'Legacy login'
       summary: 'Withdraw the legacy login approval. People not yet migrated can no longer sign in; the declaration stays on file.'
-      description: 'Requires scope `signin:write`. Danger: critical.'
+      description: 'Requires scope `id:sign-in:write` (until v3.1 also accepted as `signin:write`). Danger: critical.'
       operationId: legacy_login_revoke
       x-action: legacy_login.revoke
-      x-scope: 'signin:write'
+      x-scope: 'id:sign-in:write'
+      x-scope-aliases:
+        - 'signin:write'
       x-danger: critical
       parameters:
         -
@@ -10176,10 +10395,12 @@ paths:
       tags:
         - 'Log streams'
       summary: 'Stream the audit trail to a SIEM (Splunk, Elastic, Graylog, CEF, JSON), Datadog, or an S3 or GCS bucket. A generated HMAC key is returned once.'
-      description: 'Requires scope `log_streams:write`. Danger: critical.'
+      description: 'Requires scope `id:log-streams:write` (until v3.1 also accepted as `log_streams:write`). Danger: critical.'
       operationId: log_streams_create
       x-action: log_streams.create
-      x-scope: 'log_streams:write'
+      x-scope: 'id:log-streams:write'
+      x-scope-aliases:
+        - 'log_streams:write'
       x-danger: critical
       parameters:
         -
@@ -10393,10 +10614,12 @@ paths:
       tags:
         - 'Log streams'
       summary: "List the SIEM destinations this environment's audit trail is streamed to, and whether each is enabled. Never a secret."
-      description: 'Requires scope `log_streams:read`. Danger: read.'
+      description: 'Requires scope `id:log-streams:read` (until v3.1 also accepted as `log_streams:read`). Danger: read.'
       operationId: log_streams_list
       x-action: log_streams.list
-      x-scope: 'log_streams:read'
+      x-scope: 'id:log-streams:read'
+      x-scope-aliases:
+        - 'log_streams:read'
       x-danger: read
       parameters:
         -
@@ -10474,10 +10697,12 @@ paths:
       tags:
         - 'Log streams'
       summary: 'Delete an audit log stream. Nothing more is delivered to its endpoint.'
-      description: 'Requires scope `log_streams:write`. Danger: destructive.'
+      description: 'Requires scope `id:log-streams:write` (until v3.1 also accepted as `log_streams:write`). Danger: destructive.'
       operationId: log_streams_delete
       x-action: log_streams.delete
-      x-scope: 'log_streams:write'
+      x-scope: 'id:log-streams:write'
+      x-scope-aliases:
+        - 'log_streams:write'
       x-danger: destructive
       parameters:
         -
@@ -10537,10 +10762,12 @@ paths:
       tags:
         - 'Log streams'
       summary: 'Get one audit log stream: destination, endpoint, auth scheme, owner and health. Never its secret.'
-      description: 'Requires scope `log_streams:read`. Danger: read.'
+      description: 'Requires scope `id:log-streams:read` (until v3.1 also accepted as `log_streams:read`). Danger: read.'
       operationId: log_streams_get
       x-action: log_streams.get
-      x-scope: 'log_streams:read'
+      x-scope: 'id:log-streams:read'
+      x-scope-aliases:
+        - 'log_streams:read'
       x-danger: read
       parameters:
         -
@@ -10605,10 +10832,12 @@ paths:
       tags:
         - 'Log streams'
       summary: "Change an audit log stream's name, destination, endpoint, options or credential (re-validated; resets its circuit breaker), or disable (enabled: false) / resume (enabled: true) it."
-      description: 'Requires scope `log_streams:write`. Danger: critical.'
+      description: 'Requires scope `id:log-streams:write` (until v3.1 also accepted as `log_streams:write`). Danger: critical.'
       operationId: log_streams_update
       x-action: log_streams.update
-      x-scope: 'log_streams:write'
+      x-scope: 'id:log-streams:write'
+      x-scope-aliases:
+        - 'log_streams:write'
       x-danger: critical
       parameters:
         -
@@ -10822,10 +11051,12 @@ paths:
       tags:
         - 'Log streams'
       summary: 'Send one test event to a log stream now and report whether the destination accepted it, and if not, why.'
-      description: 'Requires scope `log_streams:write`. Danger: write.'
+      description: 'Requires scope `id:log-streams:write` (until v3.1 also accepted as `log_streams:write`). Danger: write.'
       operationId: log_streams_test
       x-action: log_streams.test
-      x-scope: 'log_streams:write'
+      x-scope: 'id:log-streams:write'
+      x-scope-aliases:
+        - 'log_streams:write'
       x-danger: write
       parameters:
         -
@@ -11072,10 +11303,12 @@ paths:
       tags:
         - Onboarding
       summary: 'Read current environment onboarding evidence. Does not certify application security or production readiness.'
-      description: 'Requires scope `signin:read`. Danger: read.'
+      description: 'Requires scope `id:sign-in:read` (until v3.1 also accepted as `signin:read`). Danger: read.'
       operationId: onboarding_get
       x-action: onboarding.get
-      x-scope: 'signin:read'
+      x-scope: 'id:sign-in:read'
+      x-scope-aliases:
+        - 'signin:read'
       x-danger: read
       parameters:
         -
@@ -11210,7 +11443,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'organizations:read'
+      x-scope: 'id:organizations:read'
+      x-scope-aliases:
+        - 'organizations:read'
       x-danger: read
     post:
       operationId: organizations_create
@@ -11320,7 +11555,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'organizations:write'
+      x-scope: 'id:organizations:write'
+      x-scope-aliases:
+        - 'organizations:write'
       x-danger: write
   '/organizations/{id}':
     get:
@@ -11378,7 +11615,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'organizations:read'
+      x-scope: 'id:organizations:read'
+      x-scope-aliases:
+        - 'organizations:read'
       x-danger: read
     patch:
       operationId: organizations_update
@@ -11471,7 +11710,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'organizations:write'
+      x-scope: 'id:organizations:write'
+      x-scope-aliases:
+        - 'organizations:write'
       x-danger: write
     delete:
       operationId: organizations_delete
@@ -11541,17 +11782,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'organizations:write'
+      x-scope: 'id:organizations:write'
+      x-scope-aliases:
+        - 'organizations:write'
       x-danger: destructive
   '/organizations/{id}/reactivate':
     post:
       tags:
         - Organizations
       summary: "Lift an organization's suspension so its members can sign in again."
-      description: 'Requires scope `organizations:write`. Danger: write.'
+      description: 'Requires scope `id:organizations:write` (until v3.1 also accepted as `organizations:write`). Danger: write.'
       operationId: organizations_reactivate
       x-action: organizations.reactivate
-      x-scope: 'organizations:write'
+      x-scope: 'id:organizations:write'
+      x-scope-aliases:
+        - 'organizations:write'
       x-danger: write
       parameters:
         -
@@ -11620,10 +11865,12 @@ paths:
       tags:
         - Organizations
       summary: 'Suspend an organization: its members cannot sign in to it until it is reactivated.'
-      description: 'Requires scope `organizations:write`. Danger: write.'
+      description: 'Requires scope `id:organizations:write` (until v3.1 also accepted as `organizations:write`). Danger: write.'
       operationId: organizations_suspend
       x-action: organizations.suspend
-      x-scope: 'organizations:write'
+      x-scope: 'id:organizations:write'
+      x-scope-aliases:
+        - 'organizations:write'
       x-danger: write
       parameters:
         -
@@ -11771,7 +12018,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'organizations:write'
+      x-scope: 'id:organizations:write'
+      x-scope-aliases:
+        - 'organizations:write'
       x-danger: critical
   '/organizations/{organization_id}/api-keys':
     get:
@@ -11848,7 +12097,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'api_keys:read'
+      x-scope: 'id:api-keys:read'
+      x-scope-aliases:
+        - 'api_keys:read'
       x-danger: read
   '/organizations/{organization_id}/domains':
     get:
@@ -11912,16 +12163,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'organizations:read'
+      x-scope: 'id:organizations:read'
+      x-scope-aliases:
+        - 'organizations:read'
       x-danger: read
     post:
       tags:
         - Organizations
       summary: 'Claim an email domain (acme.com) for an organization. Returns the DNS TXT record to publish before verifying it.'
-      description: 'Requires scope `organizations:write`. Danger: write.'
+      description: 'Requires scope `id:organizations:write` (until v3.1 also accepted as `organizations:write`). Danger: write.'
       operationId: organizations_domains_add
       x-action: organizations.domains.add
-      x-scope: 'organizations:write'
+      x-scope: 'id:organizations:write'
+      x-scope-aliases:
+        - 'organizations:write'
       x-danger: write
       parameters:
         -
@@ -12003,10 +12258,12 @@ paths:
       tags:
         - Organizations
       summary: 'Remove a claimed email domain from an organization. Capture on it ends.'
-      description: 'Requires scope `organizations:write`. Danger: destructive.'
+      description: 'Requires scope `id:organizations:write` (until v3.1 also accepted as `organizations:write`). Danger: destructive.'
       operationId: organizations_domains_remove
       x-action: organizations.domains.remove
-      x-scope: 'organizations:write'
+      x-scope: 'id:organizations:write'
+      x-scope-aliases:
+        - 'organizations:write'
       x-danger: destructive
       parameters:
         -
@@ -12074,10 +12331,12 @@ paths:
       tags:
         - Organizations
       summary: "Turn capture on or off for a verified domain: with it on, everyone with an address there signs in through the organization's SSO."
-      description: 'Requires scope `organizations:write`. Danger: critical.'
+      description: 'Requires scope `id:organizations:write` (until v3.1 also accepted as `organizations:write`). Danger: critical.'
       operationId: organizations_domains_capture
       x-action: organizations.domains.capture
-      x-scope: 'organizations:write'
+      x-scope: 'id:organizations:write'
+      x-scope-aliases:
+        - 'organizations:write'
       x-danger: critical
       parameters:
         -
@@ -12166,10 +12425,12 @@ paths:
       tags:
         - Organizations
       summary: "Check a claimed domain's DNS TXT record and mark the domain verified if it is published."
-      description: 'Requires scope `organizations:write`. Danger: write.'
+      description: 'Requires scope `id:organizations:write` (until v3.1 also accepted as `organizations:write`). Danger: write.'
       operationId: organizations_domains_verify
       x-action: organizations.domains.verify
-      x-scope: 'organizations:write'
+      x-scope: 'id:organizations:write'
+      x-scope-aliases:
+        - 'organizations:write'
       x-danger: write
       parameters:
         -
@@ -12308,7 +12569,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'invitations:read'
+      x-scope: 'id:invitations:read'
+      x-scope-aliases:
+        - 'invitations:read'
       x-danger: read
     post:
       operationId: invitations_send
@@ -12425,7 +12688,9 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         503:
           $ref: '#/components/responses/MailFailed'
-      x-scope: 'invitations:write'
+      x-scope: 'id:invitations:write'
+      x-scope-aliases:
+        - 'invitations:write'
       x-danger: write
   '/organizations/{organization_id}/invitations/{invitation_id}':
     delete:
@@ -12486,16 +12751,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'invitations:write'
+      x-scope: 'id:invitations:write'
+      x-scope-aliases:
+        - 'invitations:write'
       x-danger: destructive
     get:
       tags:
         - Invitations
       summary: 'Get an invitation and its acceptance receipt, confined to its organization.'
-      description: 'Requires scope `invitations:read`. Danger: read.'
+      description: 'Requires scope `id:invitations:read` (until v3.1 also accepted as `invitations:read`). Danger: read.'
       operationId: invitations_get
       x-action: invitations.get
-      x-scope: 'invitations:read'
+      x-scope: 'id:invitations:read'
+      x-scope-aliases:
+        - 'invitations:read'
       x-danger: read
       parameters:
         -
@@ -12632,7 +12901,9 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
         503:
           $ref: '#/components/responses/MailFailed'
-      x-scope: 'invitations:write'
+      x-scope: 'id:invitations:write'
+      x-scope-aliases:
+        - 'invitations:write'
       x-danger: write
   '/organizations/{organization_id}/members':
     get:
@@ -12701,7 +12972,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'members:read'
+      x-scope: 'id:organization-memberships:read'
+      x-scope-aliases:
+        - 'members:read'
       x-danger: read
     post:
       operationId: members_add
@@ -12817,7 +13090,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'members:write'
+      x-scope: 'id:organization-memberships:write'
+      x-scope-aliases:
+        - 'members:write'
       x-danger: write
   '/organizations/{organization_id}/members/{user_id}':
     patch:
@@ -12900,7 +13175,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'members:write'
+      x-scope: 'id:organization-memberships:write'
+      x-scope-aliases:
+        - 'members:write'
       x-danger: write
     delete:
       operationId: members_remove
@@ -12960,17 +13237,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'members:write'
+      x-scope: 'id:organization-memberships:write'
+      x-scope-aliases:
+        - 'members:write'
       x-danger: destructive
   '/organizations/{organization_id}/members/{user_id}/apps/{client_id}/roles':
     put:
       tags:
         - Roles
       summary: "Replace one app's member roles atomically. Other apps and the organization membership remain unchanged. An empty role list removes this app's access only."
-      description: 'Requires scope `roles:write`. Danger: write.'
+      description: 'Requires scope `id:roles:write` (until v3.1 also accepted as `roles:write`). Danger: write.'
       operationId: members_apps_roles_replace
       x-action: members.apps.roles.replace
-      x-scope: 'roles:write'
+      x-scope: 'id:roles:write'
+      x-scope-aliases:
+        - 'roles:write'
       x-danger: write
       parameters:
         -
@@ -13137,7 +13418,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'roles:read'
+      x-scope: 'id:roles:read'
+      x-scope-aliases:
+        - 'roles:read'
       x-danger: read
   '/organizations/{organization_id}/members/{user_id}/roles/{role_id}':
     put:
@@ -13222,7 +13505,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'roles:write'
+      x-scope: 'id:roles:write'
+      x-scope-aliases:
+        - 'roles:write'
       x-danger: write
     delete:
       operationId: members_roles_revoke
@@ -13282,7 +13567,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'roles:write'
+      x-scope: 'id:roles:write'
+      x-scope-aliases:
+        - 'roles:write'
       x-danger: destructive
   '/organizations/{organization_id}/portal-links':
     get:
@@ -13351,14 +13638,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+      x-scope-aliases:
+        - 'portal_links:read'
     post:
       tags:
         - 'Admin Portal'
       summary: "Create a one-time Admin Portal link an organization's IT administrator uses to set up SSO, directory sync, domain verification, log streams or SAML certificate renewal, or to read its audit logs, without an account. The URL is shown once."
-      description: 'Requires scope `portal_links:write`. Danger: critical.'
+      description: 'Requires scope `id:portal-links:write` (until v3.1 also accepted as `portal_links:write`). Danger: critical.'
       operationId: organizations_portal_links_create
       x-action: organizations.portal_links.create
-      x-scope: 'portal_links:write'
+      x-scope: 'id:portal-links:write'
+      x-scope-aliases:
+        - 'portal_links:write'
       x-danger: critical
       parameters:
         -
@@ -13492,10 +13783,12 @@ paths:
       tags:
         - 'Admin Portal'
       summary: 'Withdraw an Admin Portal link: it can no longer be opened, and a setup session it already opened ends on its next request. What was already set up through it stays.'
-      description: 'Requires scope `portal_links:write`. Danger: destructive.'
+      description: 'Requires scope `id:portal-links:write` (until v3.1 also accepted as `portal_links:write`). Danger: destructive.'
       operationId: organizations_portal_links_revoke
       x-action: organizations.portal_links.revoke
-      x-scope: 'portal_links:write'
+      x-scope: 'id:portal-links:write'
+      x-scope-aliases:
+        - 'portal_links:write'
       x-danger: destructive
       parameters:
         -
@@ -13565,10 +13858,12 @@ paths:
       tags:
         - Roles
       summary: "Author a manual `feature:action` permission, shared with the environment (organization_id null) or one organization's own."
-      description: 'Requires scope `role_definitions:write`. Danger: write.'
+      description: 'Requires scope `id:role-definitions:write` (until v3.1 also accepted as `role_definitions:write`). Danger: write.'
       operationId: permissions_create
       x-action: permissions.create
-      x-scope: 'role_definitions:write'
+      x-scope: 'id:role-definitions:write'
+      x-scope-aliases:
+        - 'role_definitions:write'
       x-danger: write
       parameters:
         -
@@ -13657,10 +13952,12 @@ paths:
       tags:
         - Roles
       summary: "List the permission catalogue roles are composed from, a page at a time. Narrow by `client_id` (one app's), `organization_id` (what it can see) or a `q` fragment."
-      description: 'Requires scope `roles:read`. Danger: read.'
+      description: 'Requires scope `id:roles:read` (until v3.1 also accepted as `roles:read`). Danger: read.'
       operationId: permissions_list
       x-action: permissions.list
-      x-scope: 'roles:read'
+      x-scope: 'id:roles:read'
+      x-scope-aliases:
+        - 'roles:read'
       x-danger: read
       parameters:
         -
@@ -13760,10 +14057,12 @@ paths:
       tags:
         - Roles
       summary: 'Delete a manual permission: every role carrying it loses it first.'
-      description: 'Requires scope `role_definitions:write`. Danger: destructive.'
+      description: 'Requires scope `id:role-definitions:write` (until v3.1 also accepted as `role_definitions:write`). Danger: destructive.'
       operationId: permissions_delete
       x-action: permissions.delete
-      x-scope: 'role_definitions:write'
+      x-scope: 'id:role-definitions:write'
+      x-scope-aliases:
+        - 'role_definitions:write'
       x-danger: destructive
       parameters:
         -
@@ -13824,10 +14123,12 @@ paths:
       tags:
         - Roles
       summary: "Change a manual permission's description, and on the shared tier whether organizations may use it. The key itself never changes."
-      description: 'Requires scope `role_definitions:write`. Danger: write.'
+      description: 'Requires scope `id:role-definitions:write` (until v3.1 also accepted as `role_definitions:write`). Danger: write.'
       operationId: permissions_update
       x-action: permissions.update
-      x-scope: 'role_definitions:write'
+      x-scope: 'id:role-definitions:write'
+      x-scope-aliases:
+        - 'role_definitions:write'
       x-danger: write
       parameters:
         -
@@ -13913,10 +14214,12 @@ paths:
       tags:
         - Pipes
       summary: "Configure a pipe: the environment's OAuth app at a third-party provider (GitHub, Google, Microsoft 365, Slack, Salesforce, HubSpot, Linear, Notion), so people can connect their accounts. The client secret is sealed and never returned."
-      description: 'Requires scope `pipes:write`. Danger: write.'
+      description: 'Requires scope `id:pipes:write` (until v3.1 also accepted as `pipes:write`). Danger: write.'
       operationId: pipes_create
       x-action: pipes.create
-      x-scope: 'pipes:write'
+      x-scope: 'id:pipes:write'
+      x-scope-aliases:
+        - 'pipes:write'
       x-danger: write
       parameters:
         -
@@ -14025,10 +14328,12 @@ paths:
       tags:
         - Pipes
       summary: 'List the pipes — the third-party providers people can connect their accounts to — with their scopes and the apps granted their tokens. Never a client secret.'
-      description: 'Requires scope `pipes:read`. Danger: read.'
+      description: 'Requires scope `id:pipes:read` (until v3.1 also accepted as `pipes:read`). Danger: read.'
       operationId: pipes_list
       x-action: pipes.list
-      x-scope: 'pipes:read'
+      x-scope: 'id:pipes:read'
+      x-scope-aliases:
+        - 'pipes:read'
       x-danger: read
       parameters:
         -
@@ -14104,10 +14409,12 @@ paths:
       tags:
         - Pipes
       summary: 'Remove a pipe and every connection through it. Their tokens are revoked here, not at the provider — disconnect people first if that matters.'
-      description: 'Requires scope `pipes:write`. Danger: destructive.'
+      description: 'Requires scope `id:pipes:write` (until v3.1 also accepted as `pipes:write`). Danger: destructive.'
       operationId: pipes_delete
       x-action: pipes.delete
-      x-scope: 'pipes:write'
+      x-scope: 'id:pipes:write'
+      x-scope-aliases:
+        - 'pipes:write'
       x-danger: destructive
       parameters:
         -
@@ -14165,10 +14472,12 @@ paths:
       tags:
         - Pipes
       summary: 'Show one pipe: its provider, OAuth client id, scopes, the redirect URI to register at the provider, and the apps granted its tokens.'
-      description: 'Requires scope `pipes:read`. Danger: read.'
+      description: 'Requires scope `id:pipes:read` (until v3.1 also accepted as `pipes:read`). Danger: read.'
       operationId: pipes_get
       x-action: pipes.get
-      x-scope: 'pipes:read'
+      x-scope: 'id:pipes:read'
+      x-scope-aliases:
+        - 'pipes:read'
       x-danger: read
       parameters:
         -
@@ -14231,10 +14540,12 @@ paths:
       tags:
         - Pipes
       summary: 'Change a pipe — client id, client secret (sealed), scopes, parameters, or whether it is enabled. Only what is sent changes.'
-      description: 'Requires scope `pipes:write`. Danger: write.'
+      description: 'Requires scope `id:pipes:write` (until v3.1 also accepted as `pipes:write`). Danger: write.'
       operationId: pipes_update
       x-action: pipes.update
-      x-scope: 'pipes:write'
+      x-scope: 'id:pipes:write'
+      x-scope-aliases:
+        - 'pipes:write'
       x-danger: write
       parameters:
         -
@@ -14338,10 +14649,12 @@ paths:
       tags:
         - Pipes
       summary: 'List the accounts people connected through a pipe: who, which account, granted scopes, status (active / needs_reauth) and when the token expires. Never a token.'
-      description: 'Requires scope `pipes:read`. Danger: read.'
+      description: 'Requires scope `id:pipes:read` (until v3.1 also accepted as `pipes:read`). Danger: read.'
       operationId: pipes_connections_list
       x-action: pipes.connections.list
-      x-scope: 'pipes:read'
+      x-scope: 'id:pipes:read'
+      x-scope-aliases:
+        - 'pipes:read'
       x-danger: read
       parameters:
         -
@@ -14432,10 +14745,12 @@ paths:
       tags:
         - Pipes
       summary: "Disconnect a person's connected account: revoke it at the provider where supported, revoke its tokens here, and forget it."
-      description: 'Requires scope `pipes:write`. Danger: destructive.'
+      description: 'Requires scope `id:pipes:write` (until v3.1 also accepted as `pipes:write`). Danger: destructive.'
       operationId: pipes_connections_delete
       x-action: pipes.connections.delete
-      x-scope: 'pipes:write'
+      x-scope: 'id:pipes:write'
+      x-scope-aliases:
+        - 'pipes:write'
       x-danger: destructive
       parameters:
         -
@@ -14501,10 +14816,12 @@ paths:
       tags:
         - Pipes
       summary: 'Grant an app (by OAuth client id) the right to lease fresh access tokens for the accounts people connected through this pipe.'
-      description: 'Requires scope `pipes:write`. Danger: critical.'
+      description: 'Requires scope `id:pipes:write` (until v3.1 also accepted as `pipes:write`). Danger: critical.'
       operationId: pipes_grants_create
       x-action: pipes.grants.create
-      x-scope: 'pipes:write'
+      x-scope: 'id:pipes:write'
+      x-scope-aliases:
+        - 'pipes:write'
       x-danger: critical
       parameters:
         -
@@ -14585,10 +14902,12 @@ paths:
       tags:
         - Pipes
       summary: "Withdraw an app's right to lease the tokens people connected through this pipe."
-      description: 'Requires scope `pipes:write`. Danger: destructive.'
+      description: 'Requires scope `id:pipes:write` (until v3.1 also accepted as `pipes:write`). Danger: destructive.'
       operationId: pipes_grants_delete
       x-action: pipes.grants.delete
-      x-scope: 'pipes:write'
+      x-scope: 'id:pipes:write'
+      x-scope-aliases:
+        - 'pipes:write'
       x-danger: destructive
       parameters:
         -
@@ -14655,10 +14974,12 @@ paths:
       tags:
         - 'Outbound provisioning'
       summary: "Register a downstream app this platform pushes an organization's people to over SCIM, or every organization's with environment_wide."
-      description: 'Requires scope `provisioning:write`. Danger: critical.'
+      description: 'Requires scope `id:provisioning-targets:write` (until v3.1 also accepted as `provisioning:write`). Danger: critical.'
       operationId: provisioning_targets_create
       x-action: provisioning.targets.create
-      x-scope: 'provisioning:write'
+      x-scope: 'id:provisioning-targets:write'
+      x-scope-aliases:
+        - 'provisioning:write'
       x-danger: critical
       parameters:
         -
@@ -14779,10 +15100,12 @@ paths:
       tags:
         - 'Outbound provisioning'
       summary: 'List the downstream SCIM targets people are provisioned to, optionally for one organization, with their failures. Never their credentials.'
-      description: 'Requires scope `provisioning:read`. Danger: read.'
+      description: 'Requires scope `id:provisioning-targets:read` (until v3.1 also accepted as `provisioning:read`). Danger: read.'
       operationId: provisioning_targets_list
       x-action: provisioning.targets.list
-      x-scope: 'provisioning:read'
+      x-scope: 'id:provisioning-targets:read'
+      x-scope-aliases:
+        - 'provisioning:read'
       x-danger: read
       parameters:
         -
@@ -14868,10 +15191,12 @@ paths:
       tags:
         - 'Outbound provisioning'
       summary: 'Delete a downstream SCIM target. Nothing more is pushed to it.'
-      description: 'Requires scope `provisioning:write`. Danger: destructive.'
+      description: 'Requires scope `id:provisioning-targets:write` (until v3.1 also accepted as `provisioning:write`). Danger: destructive.'
       operationId: provisioning_targets_delete
       x-action: provisioning.targets.delete
-      x-scope: 'provisioning:write'
+      x-scope: 'id:provisioning-targets:write'
+      x-scope-aliases:
+        - 'provisioning:write'
       x-danger: destructive
       parameters:
         -
@@ -14944,10 +15269,12 @@ paths:
       tags:
         - 'Outbound provisioning'
       summary: 'Read one downstream SCIM target: its URL, auth scheme, status and last error. Never its credential.'
-      description: 'Requires scope `provisioning:read`. Danger: read.'
+      description: 'Requires scope `id:provisioning-targets:read` (until v3.1 also accepted as `provisioning:read`). Danger: read.'
       operationId: provisioning_targets_get
       x-action: provisioning.targets.get
-      x-scope: 'provisioning:read'
+      x-scope: 'id:provisioning-targets:read'
+      x-scope-aliases:
+        - 'provisioning:read'
       x-danger: read
       parameters:
         -
@@ -15021,10 +15348,12 @@ paths:
       tags:
         - 'Outbound provisioning'
       summary: 'Pause or resume pushing people to a downstream SCIM target.'
-      description: 'Requires scope `provisioning:write`. Danger: write.'
+      description: 'Requires scope `id:provisioning-targets:write` (until v3.1 also accepted as `provisioning:write`). Danger: write.'
       operationId: provisioning_targets_status_set
       x-action: provisioning.targets.status.set
-      x-scope: 'provisioning:write'
+      x-scope: 'id:provisioning-targets:write'
+      x-scope-aliases:
+        - 'provisioning:write'
       x-danger: write
       parameters:
         -
@@ -15112,10 +15441,12 @@ paths:
       tags:
         - Radar
       summary: "List this environment's Radar decisions newest first — verdict, deciding rule, every rule that fired, reasons and facts — filtered by verdict, flow, rule, country, email, IP, device or time; pass `next_cursor` as `after` to page. Email and IP are matched by keyed pseudonym and never returned."
-      description: 'Requires scope `radar:read`. Danger: read.'
+      description: 'Requires scope `id:radar:read` (until v3.1 also accepted as `radar:read`). Danger: read.'
       operationId: radar_decisions_list
       x-action: radar.decisions.list
-      x-scope: 'radar:read'
+      x-scope: 'id:radar:read'
+      x-scope-aliases:
+        - 'radar:read'
       x-danger: read
       parameters:
         -
@@ -15278,10 +15609,12 @@ paths:
       tags:
         - Radar
       summary: 'Read one Radar decision: the verdict, whether it was enforced, the deciding rule, every rule that fired, the reasons, the risk score and the facts it was decided on.'
-      description: 'Requires scope `radar:read`. Danger: read.'
+      description: 'Requires scope `id:radar:read` (until v3.1 also accepted as `radar:read`). Danger: read.'
       operationId: radar_decisions_get
       x-action: radar.decisions.get
-      x-scope: 'radar:read'
+      x-scope: 'id:radar:read'
+      x-scope-aliases:
+        - 'radar:read'
       x-danger: read
       parameters:
         -
@@ -15346,10 +15679,12 @@ paths:
       tags:
         - Radar
       summary: "Add an entry to this environment's Radar allow or deny list: an IP or CIDR range, an email address, a mail domain (and its subdomains), or a device id from the decisions explorer. Deny blocks before every rule; allow skips every rule."
-      description: 'Requires scope `radar:write`. Danger: write.'
+      description: 'Requires scope `id:radar:write` (until v3.1 also accepted as `radar:write`). Danger: write.'
       operationId: radar_lists_add
       x-action: radar.lists.add
-      x-scope: 'radar:write'
+      x-scope: 'id:radar:write'
+      x-scope-aliases:
+        - 'radar:write'
       x-danger: write
       parameters:
         -
@@ -15450,10 +15785,12 @@ paths:
       tags:
         - Radar
       summary: "List this environment's Radar allow and deny entries — IPs and CIDR ranges, addresses, mail domains, devices — optionally one list or one kind."
-      description: 'Requires scope `radar:read`. Danger: read.'
+      description: 'Requires scope `id:radar:read` (until v3.1 also accepted as `radar:read`). Danger: read.'
       operationId: radar_lists_list
       x-action: radar.lists.list
-      x-scope: 'radar:read'
+      x-scope: 'id:radar:read'
+      x-scope-aliases:
+        - 'radar:read'
       x-danger: read
       parameters:
         -
@@ -15551,10 +15888,12 @@ paths:
       tags:
         - Radar
       summary: "Remove an entry from this environment's Radar allow or deny list."
-      description: 'Requires scope `radar:write`. Danger: destructive.'
+      description: 'Requires scope `id:radar:write` (until v3.1 also accepted as `radar:write`). Danger: destructive.'
       operationId: radar_lists_remove
       x-action: radar.lists.remove
-      x-scope: 'radar:write'
+      x-scope: 'id:radar:write'
+      x-scope-aliases:
+        - 'radar:write'
       x-danger: destructive
       parameters:
         -
@@ -15614,10 +15953,12 @@ paths:
       tags:
         - Radar
       summary: "Switch this environment's Radar between `monitor` (verdicts recorded, never acted on) and `enforce` (blocks refuse sign-ins and sign-ups, challenges demand a second factor). Changes the environment's security posture."
-      description: 'Requires scope `radar:manage`. Danger: critical.'
+      description: 'Requires scope `id:radar-settings:write` (until v3.1 also accepted as `radar:manage`). Danger: critical.'
       operationId: radar_mode_set
       x-action: radar.mode.set
-      x-scope: 'radar:manage'
+      x-scope: 'id:radar-settings:write'
+      x-scope-aliases:
+        - 'radar:manage'
       x-danger: critical
       parameters:
         -
@@ -15693,10 +16034,12 @@ paths:
       tags:
         - Radar
       summary: 'Add a Radar rule: when EVERY condition (field, operator, value) holds, allow, challenge or block. Rules run in order after the allow/deny lists and before the built-in rules; the first match decides. Example: country not_in [DK, SE] → challenge.'
-      description: 'Requires scope `radar:write`. Danger: write.'
+      description: 'Requires scope `id:radar:write` (until v3.1 also accepted as `radar:write`). Danger: write.'
       operationId: radar_rules_create
       x-action: radar.rules.create
-      x-scope: 'radar:write'
+      x-scope: 'id:radar:write'
+      x-scope-aliases:
+        - 'radar:write'
       x-danger: write
       parameters:
         -
@@ -15866,10 +16209,12 @@ paths:
       tags:
         - Radar
       summary: "List this environment's own Radar rules in evaluation order (the first whose conditions all hold decides), with their conditions and a readable summary of each."
-      description: 'Requires scope `radar:read`. Danger: read.'
+      description: 'Requires scope `id:radar:read` (until v3.1 also accepted as `radar:read`). Danger: read.'
       operationId: radar_rules_list
       x-action: radar.rules.list
-      x-scope: 'radar:read'
+      x-scope: 'id:radar:read'
+      x-scope-aliases:
+        - 'radar:read'
       x-danger: read
       parameters:
         -
@@ -15946,10 +16291,12 @@ paths:
       tags:
         - Radar
       summary: 'Set the order Radar rules are evaluated in: `rule_ids` lists every rule of the environment exactly once, first evaluated first.'
-      description: 'Requires scope `radar:write`. Danger: write.'
+      description: 'Requires scope `id:radar:write` (until v3.1 also accepted as `radar:write`). Danger: write.'
       operationId: radar_rules_reorder
       x-action: radar.rules.reorder
-      x-scope: 'radar:write'
+      x-scope: 'id:radar:write'
+      x-scope-aliases:
+        - 'radar:write'
       x-danger: write
       parameters:
         -
@@ -16017,10 +16364,12 @@ paths:
       tags:
         - Radar
       summary: 'Delete a Radar rule. Attempts it decided are decided by the next matching rule, or the built-in rules, from then on.'
-      description: 'Requires scope `radar:write`. Danger: destructive.'
+      description: 'Requires scope `id:radar:write` (until v3.1 also accepted as `radar:write`). Danger: destructive.'
       operationId: radar_rules_delete
       x-action: radar.rules.delete
-      x-scope: 'radar:write'
+      x-scope: 'id:radar:write'
+      x-scope-aliases:
+        - 'radar:write'
       x-danger: destructive
       parameters:
         -
@@ -16079,10 +16428,12 @@ paths:
       tags:
         - Radar
       summary: 'Read one Radar rule: its action, the flows it applies to, its position and its conditions.'
-      description: 'Requires scope `radar:read`. Danger: read.'
+      description: 'Requires scope `id:radar:read` (until v3.1 also accepted as `radar:read`). Danger: read.'
       operationId: radar_rules_get
       x-action: radar.rules.get
-      x-scope: 'radar:read'
+      x-scope: 'id:radar:read'
+      x-scope-aliases:
+        - 'radar:read'
       x-danger: read
       parameters:
         -
@@ -16146,10 +16497,12 @@ paths:
       tags:
         - Radar
       summary: 'Change a Radar rule: its name, description, action, flows, enabled state, position, or (replaced whole) its conditions.'
-      description: 'Requires scope `radar:write`. Danger: write.'
+      description: 'Requires scope `id:radar:write` (until v3.1 also accepted as `radar:write`). Danger: write.'
       operationId: radar_rules_update
       x-action: radar.rules.update
-      x-scope: 'radar:write'
+      x-scope: 'id:radar:write'
+      x-scope-aliases:
+        - 'radar:write'
       x-danger: write
       parameters:
         -
@@ -16324,10 +16677,12 @@ paths:
       tags:
         - Radar
       summary: "Read this environment's Radar settings: the mode (monitor or enforce, and whether it is inherited from the deployment), the IP intelligence source, and every built-in rule with its action and threshold."
-      description: 'Requires scope `radar:read`. Danger: read.'
+      description: 'Requires scope `id:radar:read` (until v3.1 also accepted as `radar:read`). Danger: read.'
       operationId: radar_settings_get
       x-action: radar.settings.get
-      x-scope: 'radar:read'
+      x-scope: 'id:radar:read'
+      x-scope-aliases:
+        - 'radar:read'
       x-danger: read
       parameters:
         -
@@ -16383,10 +16738,12 @@ paths:
       tags:
         - Radar
       summary: "Tune this environment's built-in Radar rules: `builtin_rules` maps a rule key (credential_stuffing, bot_velocity, account_attack, impossible_travel, new_device, anonymous_network, hosting_network, disposable_email, risk_score_reject, risk_score_elevated) to any of enabled, action and threshold."
-      description: 'Requires scope `radar:write`. Danger: write.'
+      description: 'Requires scope `id:radar:write` (until v3.1 also accepted as `radar:write`). Danger: write.'
       operationId: radar_settings_update
       x-action: radar.settings.update
-      x-scope: 'radar:write'
+      x-scope: 'id:radar:write'
+      x-scope-aliases:
+        - 'radar:write'
       x-danger: write
       parameters:
         -
@@ -16528,16 +16885,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'roles:read'
+      x-scope: 'id:roles:read'
+      x-scope-aliases:
+        - 'roles:read'
       x-danger: read
     post:
       tags:
         - Roles
       summary: 'Define a role for one organization, or (organization_id null) for the whole environment, optionally scoped to one app, with its opening permissions.'
-      description: 'Requires scope `role_definitions:write`. Danger: write.'
+      description: 'Requires scope `id:role-definitions:write` (until v3.1 also accepted as `role_definitions:write`). Danger: write.'
       operationId: roles_create
       x-action: roles.create
-      x-scope: 'role_definitions:write'
+      x-scope: 'id:role-definitions:write'
+      x-scope-aliases:
+        - 'role_definitions:write'
       x-danger: write
       parameters:
         -
@@ -16636,10 +16997,12 @@ paths:
       tags:
         - Roles
       summary: "Delete a role: everyone who holds it loses it. An app-declared role is removed from the app's manifest instead."
-      description: 'Requires scope `role_definitions:write`. Danger: destructive.'
+      description: 'Requires scope `id:role-definitions:write` (until v3.1 also accepted as `role_definitions:write`). Danger: destructive.'
       operationId: roles_delete
       x-action: roles.delete
-      x-scope: 'role_definitions:write'
+      x-scope: 'id:role-definitions:write'
+      x-scope-aliases:
+        - 'role_definitions:write'
       x-danger: destructive
       parameters:
         -
@@ -16700,10 +17063,12 @@ paths:
       tags:
         - Roles
       summary: 'Get one role and the permissions it carries. Name it by id, or by manifest `key` with `client_id`.'
-      description: 'Requires scope `roles:read`. Danger: read.'
+      description: 'Requires scope `id:roles:read` (until v3.1 also accepted as `roles:read`). Danger: read.'
       operationId: roles_get
       x-action: roles.get
-      x-scope: 'roles:read'
+      x-scope: 'id:roles:read'
+      x-scope-aliases:
+        - 'roles:read'
       x-danger: read
       parameters:
         -
@@ -16775,10 +17140,12 @@ paths:
       tags:
         - Roles
       summary: "Rename a role or change its description. An app-declared role is changed in the app's manifest instead."
-      description: 'Requires scope `role_definitions:write`. Danger: write.'
+      description: 'Requires scope `id:role-definitions:write` (until v3.1 also accepted as `role_definitions:write`). Danger: write.'
       operationId: roles_update
       x-action: roles.update
-      x-scope: 'role_definitions:write'
+      x-scope: 'id:role-definitions:write'
+      x-scope-aliases:
+        - 'role_definitions:write'
       x-danger: write
       parameters:
         -
@@ -16865,10 +17232,12 @@ paths:
       tags:
         - Roles
       summary: 'Activate a reviewed application role definition for its existing holders.'
-      description: 'Requires scope `role_definitions:write`. Danger: destructive.'
+      description: 'Requires scope `id:role-definitions:write` (until v3.1 also accepted as `role_definitions:write`). Danger: destructive.'
       operationId: roles_definition_activate
       x-action: roles.definition.activate
-      x-scope: 'role_definitions:write'
+      x-scope: 'id:role-definitions:write'
+      x-scope-aliases:
+        - 'role_definitions:write'
       x-danger: destructive
       parameters:
         -
@@ -16949,10 +17318,12 @@ paths:
       tags:
         - Roles
       summary: "Add a permission to a role: everyone holding the role gains it. The permission must be unscoped or declared by the role's own app."
-      description: 'Requires scope `role_definitions:write`. Danger: write.'
+      description: 'Requires scope `id:role-definitions:write` (until v3.1 also accepted as `role_definitions:write`). Danger: write.'
       operationId: roles_permissions_grant
       x-action: roles.permissions.grant
-      x-scope: 'role_definitions:write'
+      x-scope: 'id:role-definitions:write'
+      x-scope-aliases:
+        - 'role_definitions:write'
       x-danger: write
       parameters:
         -
@@ -17030,10 +17401,12 @@ paths:
       tags:
         - Roles
       summary: 'Remove a permission from a role: everyone holding the role loses it.'
-      description: 'Requires scope `role_definitions:write`. Danger: destructive.'
+      description: 'Requires scope `id:role-definitions:write` (until v3.1 also accepted as `role_definitions:write`). Danger: destructive.'
       operationId: roles_permissions_revoke
       x-action: roles.permissions.revoke
-      x-scope: 'role_definitions:write'
+      x-scope: 'id:role-definitions:write'
+      x-scope-aliases:
+        - 'role_definitions:write'
       x-danger: destructive
       parameters:
         -
@@ -17112,10 +17485,12 @@ paths:
       tags:
         - 'SAML apps'
       summary: 'Register a SAML app that signs people in with their account here. Decides where assertions — and their attributes — are sent.'
-      description: 'Requires scope `saml_apps:write`. Danger: critical.'
+      description: 'Requires scope `id:saml-apps:write` (until v3.1 also accepted as `saml_apps:write`). Danger: critical.'
       operationId: saml_apps_create
       x-action: saml_apps.create
-      x-scope: 'saml_apps:write'
+      x-scope: 'id:saml-apps:write'
+      x-scope-aliases:
+        - 'saml_apps:write'
       x-danger: critical
       parameters:
         -
@@ -17239,10 +17614,12 @@ paths:
       tags:
         - 'SAML apps'
       summary: 'List the SAML apps that trust this environment as their identity provider.'
-      description: 'Requires scope `saml_apps:read`. Danger: read.'
+      description: 'Requires scope `id:saml-apps:read` (until v3.1 also accepted as `saml_apps:read`). Danger: read.'
       operationId: saml_apps_list
       x-action: saml_apps.list
-      x-scope: 'saml_apps:read'
+      x-scope: 'id:saml-apps:read'
+      x-scope-aliases:
+        - 'saml_apps:read'
       x-danger: read
       parameters:
         -
@@ -17318,10 +17695,12 @@ paths:
       tags:
         - 'SAML apps'
       summary: 'Remove a SAML app. People can no longer sign in to it with their account here.'
-      description: 'Requires scope `saml_apps:write`. Danger: critical.'
+      description: 'Requires scope `id:saml-apps:write` (until v3.1 also accepted as `saml_apps:write`). Danger: critical.'
       operationId: saml_apps_delete
       x-action: saml_apps.delete
-      x-scope: 'saml_apps:write'
+      x-scope: 'id:saml-apps:write'
+      x-scope-aliases:
+        - 'saml_apps:write'
       x-danger: critical
       parameters:
         -
@@ -17379,10 +17758,12 @@ paths:
       tags:
         - 'SAML apps'
       summary: 'Read one SAML app: its entity id, ACS URL, NameID and attribute mappings. Never its certificate.'
-      description: 'Requires scope `saml_apps:read`. Danger: read.'
+      description: 'Requires scope `id:saml-apps:read` (until v3.1 also accepted as `saml_apps:read`). Danger: read.'
       operationId: saml_apps_get
       x-action: saml_apps.get
-      x-scope: 'saml_apps:read'
+      x-scope: 'id:saml-apps:read'
+      x-scope-aliases:
+        - 'saml_apps:read'
       x-danger: read
       parameters:
         -
@@ -17445,10 +17826,12 @@ paths:
       tags:
         - 'SAML apps'
       summary: "Change a SAML app's entity id, ACS URL, NameID, attribute mappings, signing certificate or owning organization."
-      description: 'Requires scope `saml_apps:write`. Danger: critical.'
+      description: 'Requires scope `id:saml-apps:write` (until v3.1 also accepted as `saml_apps:write`). Danger: critical.'
       operationId: saml_apps_update
       x-action: saml_apps.update
-      x-scope: 'saml_apps:write'
+      x-scope: 'id:saml-apps:write'
+      x-scope-aliases:
+        - 'saml_apps:write'
       x-danger: critical
       parameters:
         -
@@ -17885,10 +18268,12 @@ paths:
       tags:
         - Sign-in
       summary: "Read the authentication policy (password, MFA, SSO, lockout): the environment baseline, or one organization's effective rules and override."
-      description: 'Requires scope `signin:read`. Danger: read.'
+      description: 'Requires scope `id:sign-in:read` (until v3.1 also accepted as `signin:read`). Danger: read.'
       operationId: signin_policy_get
       x-action: signin.policy.get
-      x-scope: 'signin:read'
+      x-scope: 'id:sign-in:read'
+      x-scope-aliases:
+        - 'signin:read'
       x-danger: read
       parameters:
         -
@@ -17952,10 +18337,12 @@ paths:
       tags:
         - Sign-in
       summary: "Change the authentication policy of the environment baseline — including whether passkeys and magic links are offered and how long sessions last — or tighten one organization's override. Requiring SSO signs out password sessions."
-      description: 'Requires scope `signin:write`. Danger: critical.'
+      description: 'Requires scope `id:sign-in:write` (until v3.1 also accepted as `signin:write`). Danger: critical.'
       operationId: signin_policy_update
       x-action: signin.policy.update
-      x-scope: 'signin:write'
+      x-scope: 'id:sign-in:write'
+      x-scope-aliases:
+        - 'signin:write'
       x-danger: critical
       parameters:
         -
@@ -18095,10 +18482,12 @@ paths:
       tags:
         - Sign-in
       summary: "Drop one organization's authentication policy override, so it inherits the environment baseline again."
-      description: 'Requires scope `signin:write`. Danger: critical.'
+      description: 'Requires scope `id:sign-in:write` (until v3.1 also accepted as `signin:write`). Danger: critical.'
       operationId: signin_policy_inherit
       x-action: signin.policy.inherit
-      x-scope: 'signin:write'
+      x-scope: 'id:sign-in:write'
+      x-scope-aliases:
+        - 'signin:write'
       x-danger: critical
       parameters:
         -
@@ -18160,10 +18549,12 @@ paths:
       tags:
         - Sign-in
       summary: 'Switch self-service sign-up on or off: whether people can create an account and their own organization in this environment.'
-      description: 'Requires scope `signin:write`. Danger: critical.'
+      description: 'Requires scope `id:sign-in:write` (until v3.1 also accepted as `signin:write`). Danger: critical.'
       operationId: signin_self_service_signup_set
       x-action: signin.self_service_signup.set
-      x-scope: 'signin:write'
+      x-scope: 'id:sign-in:write'
+      x-scope-aliases:
+        - 'signin:write'
       x-danger: critical
       parameters:
         -
@@ -18236,10 +18627,12 @@ paths:
       tags:
         - Sign-in
       summary: 'Read the SMS second-factor policy: whether text-message codes are accepted, for which countries, and the administrator rule.'
-      description: 'Requires scope `signin:read`. Danger: read.'
+      description: 'Requires scope `id:sign-in:read` (until v3.1 also accepted as `signin:read`). Danger: read.'
       operationId: signin_sms_get
       x-action: signin.sms.get
-      x-scope: 'signin:read'
+      x-scope: 'id:sign-in:read'
+      x-scope-aliases:
+        - 'signin:read'
       x-danger: read
       parameters:
         -
@@ -18295,10 +18688,12 @@ paths:
       tags:
         - Sign-in
       summary: "Change the SMS second-factor policy: accept text-message codes or not, the countries they may go to, and whether SMS may be an administrator's only factor."
-      description: 'Requires scope `signin:write`. Danger: critical.'
+      description: 'Requires scope `id:sign-in:write` (until v3.1 also accepted as `signin:write`). Danger: critical.'
       operationId: signin_sms_update
       x-action: signin.sms.update
-      x-scope: 'signin:write'
+      x-scope: 'id:sign-in:write'
+      x-scope-aliases:
+        - 'signin:write'
       x-danger: critical
       parameters:
         -
@@ -18611,10 +19006,12 @@ paths:
       tags:
         - Sign-in
       summary: "List the social login providers (Google, GitHub, Apple…) set up in this environment — the environment's own and organizations' — optionally for one organization."
-      description: 'Requires scope `signin:read`. Danger: read.'
+      description: 'Requires scope `id:sign-in:read` (until v3.1 also accepted as `signin:read`). Danger: read.'
       operationId: signin_social_list
       x-action: signin.social.list
-      x-scope: 'signin:read'
+      x-scope: 'id:sign-in:read'
+      x-scope-aliases:
+        - 'signin:read'
       x-danger: read
       parameters:
         -
@@ -18707,10 +19104,12 @@ paths:
       tags:
         - Sign-in
       summary: 'Enable a social login provider (Google, GitHub, Apple…) for the whole environment or for one organization, with its client credentials. The secret is never returned.'
-      description: 'Requires scope `signin:write`. Danger: critical.'
+      description: 'Requires scope `id:sign-in:write` (until v3.1 also accepted as `signin:write`). Danger: critical.'
       operationId: signin_social_set
       x-action: signin.social.set
-      x-scope: 'signin:write'
+      x-scope: 'id:sign-in:write'
+      x-scope-aliases:
+        - 'signin:write'
       x-danger: critical
       parameters:
         -
@@ -18865,10 +19264,12 @@ paths:
       tags:
         - Sign-in
       summary: "Turn one of the environment's social login providers off (or back on) for one organization's sign-in page."
-      description: 'Requires scope `signin:write`. Danger: write.'
+      description: 'Requires scope `id:sign-in:write` (until v3.1 also accepted as `signin:write`). Danger: write.'
       operationId: signin_social_inherit
       x-action: signin.social.inherit
-      x-scope: 'signin:write'
+      x-scope: 'id:sign-in:write'
+      x-scope-aliases:
+        - 'signin:write'
       x-danger: write
       parameters:
         -
@@ -18956,10 +19357,12 @@ paths:
       tags:
         - Sign-in
       summary: "The social login buttons one organization's sign-in page shows (or the plain sign-in page's), after inheritance from the environment, with where each comes from."
-      description: 'Requires scope `signin:read`. Danger: read.'
+      description: 'Requires scope `id:sign-in:read` (until v3.1 also accepted as `signin:read`). Danger: read.'
       operationId: signin_social_offered
       x-action: signin.social.offered
-      x-scope: 'signin:read'
+      x-scope: 'id:sign-in:read'
+      x-scope-aliases:
+        - 'signin:read'
       x-danger: read
       parameters:
         -
@@ -19024,10 +19427,12 @@ paths:
       tags:
         - Sign-in
       summary: 'Stop offering a social login provider. People who used it keep their accounts.'
-      description: 'Requires scope `signin:write`. Danger: critical.'
+      description: 'Requires scope `id:sign-in:write` (until v3.1 also accepted as `signin:write`). Danger: critical.'
       operationId: signin_social_delete
       x-action: signin.social.delete
-      x-scope: 'signin:write'
+      x-scope: 'id:sign-in:write'
+      x-scope-aliases:
+        - 'signin:write'
       x-danger: critical
       parameters:
         -
@@ -19100,10 +19505,12 @@ paths:
       tags:
         - Sign-in
       summary: "Change a social login provider's client credentials, provider values or extra scopes. Secrets left out keep the ones on file."
-      description: 'Requires scope `signin:write`. Danger: critical.'
+      description: 'Requires scope `id:sign-in:write` (until v3.1 also accepted as `signin:write`). Danger: critical.'
       operationId: signin_social_update
       x-action: signin.social.update
-      x-scope: 'signin:write'
+      x-scope: 'id:sign-in:write'
+      x-scope-aliases:
+        - 'signin:write'
       x-danger: critical
       parameters:
         -
@@ -19249,10 +19656,12 @@ paths:
       tags:
         - Sign-in
       summary: 'Turn a social login provider off without removing it. People who used it keep their accounts.'
-      description: 'Requires scope `signin:write`. Danger: critical.'
+      description: 'Requires scope `id:sign-in:write` (until v3.1 also accepted as `signin:write`). Danger: critical.'
       operationId: signin_social_disable
       x-action: signin.social.disable
-      x-scope: 'signin:write'
+      x-scope: 'id:sign-in:write'
+      x-scope-aliases:
+        - 'signin:write'
       x-danger: critical
       parameters:
         -
@@ -19335,10 +19744,12 @@ paths:
       tags:
         - Sign-in
       summary: 'Turn a social login provider that was turned off back on, with the credentials it already has.'
-      description: 'Requires scope `signin:write`. Danger: write.'
+      description: 'Requires scope `id:sign-in:write` (until v3.1 also accepted as `signin:write`). Danger: write.'
       operationId: signin_social_enable
       x-action: signin.social.enable
-      x-scope: 'signin:write'
+      x-scope: 'id:sign-in:write'
+      x-scope-aliases:
+        - 'signin:write'
       x-danger: write
       parameters:
         -
@@ -19421,10 +19832,12 @@ paths:
       tags:
         - Sign-in
       summary: "Send this environment's sign-in page straight to one of its own OpenID Connect connections (or back to its own page with null). /login/direct always stays the environment's own page."
-      description: 'Requires scope `signin:write`. Danger: critical.'
+      description: 'Requires scope `id:sign-in:write` (until v3.1 also accepted as `signin:write`). Danger: critical.'
       operationId: signin_through_set
       x-action: signin.through.set
-      x-scope: 'signin:write'
+      x-scope: 'id:sign-in:write'
+      x-scope-aliases:
+        - 'signin:write'
       x-danger: critical
       parameters:
         -
@@ -19746,10 +20159,12 @@ paths:
       tags:
         - Governance
       summary: 'Define a role-conflict rule: two or more roles no one person may hold together. Enforced on every grant from now on.'
-      description: 'Requires scope `governance:write`. Danger: write.'
+      description: 'Requires scope `id:governance:write` (until v3.1 also accepted as `governance:write`). Danger: write.'
       operationId: sod_policies_create
       x-action: sod_policies.create
-      x-scope: 'governance:write'
+      x-scope: 'id:governance:write'
+      x-scope-aliases:
+        - 'governance:write'
       x-danger: write
       parameters:
         -
@@ -19848,10 +20263,12 @@ paths:
       tags:
         - Governance
       summary: 'List role-conflict (segregation of duties) rules: sets of roles no one person may hold together. Optionally those binding one organization.'
-      description: 'Requires scope `governance:read`. Danger: read.'
+      description: 'Requires scope `id:governance:read` (until v3.1 also accepted as `governance:read`). Danger: read.'
       operationId: sod_policies_list
       x-action: sod_policies.list
-      x-scope: 'governance:read'
+      x-scope: 'id:governance:read'
+      x-scope-aliases:
+        - 'governance:read'
       x-danger: read
       parameters:
         -
@@ -19937,10 +20354,12 @@ paths:
       tags:
         - Governance
       summary: 'Remove a role-conflict rule. Grants it refused are allowed from then on.'
-      description: 'Requires scope `governance:write`. Danger: critical.'
+      description: 'Requires scope `id:governance:write` (until v3.1 also accepted as `governance:write`). Danger: critical.'
       operationId: sod_policies_delete
       x-action: sod_policies.delete
-      x-scope: 'governance:write'
+      x-scope: 'id:governance:write'
+      x-scope-aliases:
+        - 'governance:write'
       x-danger: critical
       parameters:
         -
@@ -20013,10 +20432,12 @@ paths:
       tags:
         - Governance
       summary: 'Read one role-conflict rule: the roles no one person may hold together, and whether it is enforced.'
-      description: 'Requires scope `governance:read`. Danger: read.'
+      description: 'Requires scope `id:governance:read` (until v3.1 also accepted as `governance:read`). Danger: read.'
       operationId: sod_policies_get
       x-action: sod_policies.get
-      x-scope: 'governance:read'
+      x-scope: 'id:governance:read'
+      x-scope-aliases:
+        - 'governance:read'
       x-danger: read
       parameters:
         -
@@ -20090,10 +20511,12 @@ paths:
       tags:
         - Governance
       summary: 'Enforce a role-conflict rule, or stop enforcing it — switched off, grants that break it are allowed again.'
-      description: 'Requires scope `governance:write`. Danger: critical.'
+      description: 'Requires scope `id:governance:write` (until v3.1 also accepted as `governance:write`). Danger: critical.'
       operationId: sod_policies_status_set
       x-action: sod_policies.status.set
-      x-scope: 'governance:write'
+      x-scope: 'id:governance:write'
+      x-scope-aliases:
+        - 'governance:write'
       x-danger: critical
       parameters:
         -
@@ -20181,10 +20604,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: "Connect an organization's SAML or OIDC identity provider as a draft. Activate it to start signing people in through it."
-      description: 'Requires scope `sso:write`. Danger: write.'
+      description: 'Requires scope `id:sso-connections:write` (until v3.1 also accepted as `sso:write`). Danger: write.'
       operationId: sso_connections_create
       x-action: sso.connections.create
-      x-scope: 'sso:write'
+      x-scope: 'id:sso-connections:write'
+      x-scope-aliases:
+        - 'sso:write'
       x-danger: write
       parameters:
         -
@@ -20335,10 +20760,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: 'List the SAML and OIDC connections organizations sign in through, optionally for one organization. Never a certificate or secret.'
-      description: 'Requires scope `sso:read`. Danger: read.'
+      description: 'Requires scope `id:sso-connections:read` (until v3.1 also accepted as `sso:read`). Danger: read.'
       operationId: sso_connections_list
       x-action: sso.connections.list
-      x-scope: 'sso:read'
+      x-scope: 'id:sso-connections:read'
+      x-scope-aliases:
+        - 'sso:read'
       x-danger: read
       parameters:
         -
@@ -20424,10 +20851,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: 'Delete an SSO connection and its settings. Where SSO is required, its people cannot sign in until another is activated.'
-      description: 'Requires scope `sso:write`. Danger: critical.'
+      description: 'Requires scope `id:sso-connections:write` (until v3.1 also accepted as `sso:write`). Danger: critical.'
       operationId: sso_connections_delete
       x-action: sso.connections.delete
-      x-scope: 'sso:write'
+      x-scope: 'id:sso-connections:write'
+      x-scope-aliases:
+        - 'sso:write'
       x-danger: critical
       parameters:
         -
@@ -20500,10 +20929,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: 'Read one SSO connection: its type, status, entity ids, URLs, issuer and client id. Never a certificate or secret.'
-      description: 'Requires scope `sso:read`. Danger: read.'
+      description: 'Requires scope `id:sso-connections:read` (until v3.1 also accepted as `sso:read`). Danger: read.'
       operationId: sso_connections_get
       x-action: sso.connections.get
-      x-scope: 'sso:read'
+      x-scope: 'id:sso-connections:read'
+      x-scope-aliases:
+        - 'sso:read'
       x-danger: read
       parameters:
         -
@@ -20576,10 +21007,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: "Change an SSO connection's name or identity-provider settings. Secrets left out keep the ones on file."
-      description: 'Requires scope `sso:write`. Danger: critical.'
+      description: 'Requires scope `id:sso-connections:write` (until v3.1 also accepted as `sso:write`). Danger: critical.'
       operationId: sso_connections_update
       x-action: sso.connections.update
-      x-scope: 'sso:write'
+      x-scope: 'id:sso-connections:write'
+      x-scope-aliases:
+        - 'sso:write'
       x-danger: critical
       parameters:
         -
@@ -20723,10 +21156,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: 'Activate an SSO connection: people whose email domain routes to it start signing in through it.'
-      description: 'Requires scope `sso:write`. Danger: critical.'
+      description: 'Requires scope `id:sso-connections:write` (until v3.1 also accepted as `sso:write`). Danger: critical.'
       operationId: sso_connections_activate
       x-action: sso.connections.activate
-      x-scope: 'sso:write'
+      x-scope: 'id:sso-connections:write'
+      x-scope-aliases:
+        - 'sso:write'
       x-danger: critical
       parameters:
         -
@@ -20809,10 +21244,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: "List a SAML connection's signing certificates — primary and staged — with each one's fingerprint and expiry."
-      description: 'Requires scope `sso:read`. Danger: read.'
+      description: 'Requires scope `id:sso-connections:read` (until v3.1 also accepted as `sso:read`). Danger: read.'
       operationId: sso_connections_certificates_list
       x-action: sso.connections.certificates.list
-      x-scope: 'sso:read'
+      x-scope: 'id:sso-connections:read'
+      x-scope-aliases:
+        - 'sso:read'
       x-danger: read
       parameters:
         -
@@ -20887,10 +21324,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: "Stage a SAML connection's new IdP signing certificate (PEM or IdP metadata) beside the current one, so a renewal has no outage. Activate it once the IdP signs with it."
-      description: 'Requires scope `sso:write`. Danger: critical.'
+      description: 'Requires scope `id:sso-connections:write` (until v3.1 also accepted as `sso:write`). Danger: critical.'
       operationId: sso_connections_certificates_stage
       x-action: sso.connections.certificates.stage
-      x-scope: 'sso:write'
+      x-scope: 'id:sso-connections:write'
+      x-scope-aliases:
+        - 'sso:write'
       x-danger: critical
       parameters:
         -
@@ -20985,10 +21424,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: "Make a staged SAML signing certificate the connection's primary. The certificate it replaces stops being trusted."
-      description: 'Requires scope `sso:write`. Danger: critical.'
+      description: 'Requires scope `id:sso-connections:write` (until v3.1 also accepted as `sso:write`). Danger: critical.'
       operationId: sso_connections_certificates_activate
       x-action: sso.connections.certificates.activate
-      x-scope: 'sso:write'
+      x-scope: 'id:sso-connections:write'
+      x-scope-aliases:
+        - 'sso:write'
       x-danger: critical
       parameters:
         -
@@ -21077,10 +21518,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: 'Disable an SSO connection without deleting it. Where SSO is required, its people cannot sign in until it is re-activated.'
-      description: 'Requires scope `sso:write`. Danger: critical.'
+      description: 'Requires scope `id:sso-connections:write` (until v3.1 also accepted as `sso:write`). Danger: critical.'
       operationId: sso_connections_disable
       x-action: sso.connections.disable
-      x-scope: 'sso:write'
+      x-scope: 'id:sso-connections:write'
+      x-scope-aliases:
+        - 'sso:write'
       x-danger: critical
       parameters:
         -
@@ -21163,10 +21606,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: 'Require single sign-on for the organization an SSO connection belongs to. Ends every password session there.'
-      description: 'Requires scope `sso:write`. Danger: critical.'
+      description: 'Requires scope `id:sso-connections:write` (until v3.1 also accepted as `sso:write`). Danger: critical.'
       operationId: sso_connections_require_sso
       x-action: sso.connections.require_sso
-      x-scope: 'sso:write'
+      x-scope: 'id:sso-connections:write'
+      x-scope-aliases:
+        - 'sso:write'
       x-danger: critical
       parameters:
         -
@@ -21249,10 +21694,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: "Claim an email domain for an organization's single sign-on, and get the DNS TXT record to publish to prove it."
-      description: 'Requires scope `sso:write`. Danger: write.'
+      description: 'Requires scope `id:sso-connections:write` (until v3.1 also accepted as `sso:write`). Danger: write.'
       operationId: sso_domains_create
       x-action: sso.domains.create
-      x-scope: 'sso:write'
+      x-scope: 'id:sso-connections:write'
+      x-scope-aliases:
+        - 'sso:write'
       x-danger: write
       parameters:
         -
@@ -21332,10 +21779,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: 'List the email domains organizations claimed for single sign-on, whether each is verified and captured, and the DNS record that proves an unverified one.'
-      description: 'Requires scope `sso:read`. Danger: read.'
+      description: 'Requires scope `id:sso-connections:read` (until v3.1 also accepted as `sso:read`). Danger: read.'
       operationId: sso_domains_list
       x-action: sso.domains.list
-      x-scope: 'sso:read'
+      x-scope: 'id:sso-connections:read'
+      x-scope-aliases:
+        - 'sso:read'
       x-danger: read
       parameters:
         -
@@ -21421,10 +21870,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: "Remove a claimed email domain. Its people stop being routed to the organization's SSO connection."
-      description: 'Requires scope `sso:write`. Danger: destructive.'
+      description: 'Requires scope `id:sso-connections:write` (until v3.1 also accepted as `sso:write`). Danger: destructive.'
       operationId: sso_domains_delete
       x-action: sso.domains.delete
-      x-scope: 'sso:write'
+      x-scope: 'id:sso-connections:write'
+      x-scope-aliases:
+        - 'sso:write'
       x-danger: destructive
       parameters:
         -
@@ -21498,10 +21949,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: "Turn capture on or off for a verified domain: captured, everyone with an address at it must sign in through the organization's SSO."
-      description: 'Requires scope `sso:write`. Danger: critical.'
+      description: 'Requires scope `id:sso-connections:write` (until v3.1 also accepted as `sso:write`). Danger: critical.'
       operationId: sso_domains_capture
       x-action: sso.domains.capture
-      x-scope: 'sso:write'
+      x-scope: 'id:sso-connections:write'
+      x-scope-aliases:
+        - 'sso:write'
       x-danger: critical
       parameters:
         -
@@ -21589,10 +22042,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: "Check a claimed domain's DNS TXT record now. Answers the domain, with verified true once the record is found."
-      description: 'Requires scope `sso:write`. Danger: write.'
+      description: 'Requires scope `id:sso-connections:write` (until v3.1 also accepted as `sso:write`). Danger: write.'
       operationId: sso_domains_verify
       x-action: sso.domains.verify
-      x-scope: 'sso:write'
+      x-scope: 'id:sso-connections:write'
+      x-scope-aliases:
+        - 'sso:write'
       x-danger: write
       parameters:
         -
@@ -21675,10 +22130,12 @@ paths:
       tags:
         - 'Enterprise SSO'
       summary: "Parse an identity provider's SAML metadata (XML or a metadata URL) into the entity id, SSO URL and certificate a SAML connection needs. Stores nothing."
-      description: 'Requires scope `sso:write`. Danger: write.'
+      description: 'Requires scope `id:sso-connections:write` (until v3.1 also accepted as `sso:write`). Danger: write.'
       operationId: sso_saml_metadata_import
       x-action: sso.saml_metadata.import
-      x-scope: 'sso:write'
+      x-scope: 'id:sso-connections:write'
+      x-scope-aliases:
+        - 'sso:write'
       x-danger: write
       parameters:
         -
@@ -21880,17 +22337,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'support:write'
+      x-scope: 'id:support-sessions:write'
+      x-scope-aliases:
+        - 'support:write'
       x-danger: critical
   '/support-sessions/{id}':
     delete:
       tags:
         - 'Support sessions'
       summary: 'End a support session now: every token it issued is revoked.'
-      description: 'Requires scope `support:write`. Danger: destructive.'
+      description: 'Requires scope `id:support-sessions:write` (until v3.1 also accepted as `support:write`). Danger: destructive.'
       operationId: support_sessions_end
       x-action: support_sessions.end
-      x-scope: 'support:write'
+      x-scope: 'id:support-sessions:write'
+      x-scope-aliases:
+        - 'support:write'
       x-danger: destructive
       parameters:
         -
@@ -21950,10 +22411,12 @@ paths:
       tags:
         - 'Token vault'
       summary: "Store a downstream credential (a third-party API key) in an organization's token vault, or the environment's own. The value is sealed and never returned."
-      description: 'Requires scope `token_vault:write`. Danger: write.'
+      description: 'Requires scope `id:vault-secrets:write` (until v3.1 also accepted as `token_vault:write`). Danger: write.'
       operationId: token_vault_secrets_create
       x-action: token_vault.secrets.create
-      x-scope: 'token_vault:write'
+      x-scope: 'id:vault-secrets:write'
+      x-scope-aliases:
+        - 'token_vault:write'
       x-danger: write
       parameters:
         -
@@ -22044,10 +22507,12 @@ paths:
       tags:
         - 'Token vault'
       summary: "List the downstream credentials stored in an organization's token vault (or the environment's own): names, providers, status. Never a value."
-      description: 'Requires scope `token_vault:read`. Danger: read.'
+      description: 'Requires scope `id:vault-secrets:read` (until v3.1 also accepted as `token_vault:read`). Danger: read.'
       operationId: token_vault_secrets_list
       x-action: token_vault.secrets.list
-      x-scope: 'token_vault:read'
+      x-scope: 'id:vault-secrets:read'
+      x-scope-aliases:
+        - 'token_vault:read'
       x-danger: read
       parameters:
         -
@@ -22133,10 +22598,12 @@ paths:
       tags:
         - 'Token vault'
       summary: 'Read one stored credential and the client ids granted to lease it. Never its value.'
-      description: 'Requires scope `token_vault:read`. Danger: read.'
+      description: 'Requires scope `id:vault-secrets:read` (until v3.1 also accepted as `token_vault:read`). Danger: read.'
       operationId: token_vault_secrets_get
       x-action: token_vault.secrets.get
-      x-scope: 'token_vault:read'
+      x-scope: 'id:vault-secrets:read'
+      x-scope-aliases:
+        - 'token_vault:read'
       x-danger: read
       parameters:
         -
@@ -22210,10 +22677,12 @@ paths:
       tags:
         - 'Token vault'
       summary: 'Grant an app (by OAuth client id) the right to lease a stored credential.'
-      description: 'Requires scope `token_vault:write`. Danger: critical.'
+      description: 'Requires scope `id:vault-secrets:write` (until v3.1 also accepted as `token_vault:write`). Danger: critical.'
       operationId: token_vault_grants_create
       x-action: token_vault.grants.create
-      x-scope: 'token_vault:write'
+      x-scope: 'id:vault-secrets:write'
+      x-scope-aliases:
+        - 'token_vault:write'
       x-danger: critical
       parameters:
         -
@@ -22302,10 +22771,12 @@ paths:
       tags:
         - 'Token vault'
       summary: "Withdraw an app's right to lease a stored credential."
-      description: 'Requires scope `token_vault:write`. Danger: destructive.'
+      description: 'Requires scope `id:vault-secrets:write` (until v3.1 also accepted as `token_vault:write`). Danger: destructive.'
       operationId: token_vault_grants_delete
       x-action: token_vault.grants.delete
-      x-scope: 'token_vault:write'
+      x-scope: 'id:vault-secrets:write'
+      x-scope-aliases:
+        - 'token_vault:write'
       x-danger: destructive
       parameters:
         -
@@ -22387,10 +22858,12 @@ paths:
       tags:
         - 'Token vault'
       summary: 'Revoke a stored credential permanently. No app can lease it again.'
-      description: 'Requires scope `token_vault:write`. Danger: destructive.'
+      description: 'Requires scope `id:vault-secrets:write` (until v3.1 also accepted as `token_vault:write`). Danger: destructive.'
       operationId: token_vault_secrets_revoke
       x-action: token_vault.secrets.revoke
-      x-scope: 'token_vault:write'
+      x-scope: 'id:vault-secrets:write'
+      x-scope-aliases:
+        - 'token_vault:write'
       x-danger: destructive
       parameters:
         -
@@ -22473,10 +22946,12 @@ paths:
       tags:
         - 'Token vault'
       summary: "Replace a stored credential's value. Every later lease hands out the new one. The value is never returned."
-      description: 'Requires scope `token_vault:write`. Danger: critical.'
+      description: 'Requires scope `id:vault-secrets:write` (until v3.1 also accepted as `token_vault:write`). Danger: critical.'
       operationId: token_vault_secrets_rotate
       x-action: token_vault.secrets.rotate
-      x-scope: 'token_vault:write'
+      x-scope: 'id:vault-secrets:write'
+      x-scope-aliases:
+        - 'token_vault:write'
       x-danger: critical
       parameters:
         -
@@ -22565,10 +23040,12 @@ paths:
       tags:
         - 'User properties'
       summary: 'Create or replace the app and webhook grants for a user-property namespace. Empty grants revoke access without deleting user data.'
-      description: 'Requires scope `user_property_namespaces:write`. Danger: critical.'
+      description: 'Requires scope `id:user-property-namespaces:write` (until v3.1 also accepted as `user_property_namespaces:write`). Danger: critical.'
       operationId: user_property_namespaces_configure
       x-action: user_property_namespaces.configure
-      x-scope: 'user_property_namespaces:write'
+      x-scope: 'id:user-property-namespaces:write'
+      x-scope-aliases:
+        - 'user_property_namespaces:write'
       x-danger: critical
       parameters:
         -
@@ -22660,10 +23137,12 @@ paths:
       tags:
         - 'User properties'
       summary: 'Read the app and webhook grants for a user-property namespace.'
-      description: 'Requires scope `user_property_namespaces:read`. Danger: read.'
+      description: 'Requires scope `id:user-property-namespaces:read` (until v3.1 also accepted as `user_property_namespaces:read`). Danger: read.'
       operationId: user_property_namespaces_show
       x-action: user_property_namespaces.show
-      x-scope: 'user_property_namespaces:read'
+      x-scope: 'id:user-property-namespaces:read'
+      x-scope-aliases:
+        - 'user_property_namespaces:read'
       x-danger: read
       parameters:
         -
@@ -22815,7 +23294,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'users:read'
+      x-scope: 'id:users:read'
+      x-scope-aliases:
+        - 'users:read'
       x-danger: read
     post:
       operationId: users_create
@@ -22903,7 +23384,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'users:write'
+      x-scope: 'id:users:write'
+      x-scope-aliases:
+        - 'users:write'
       x-danger: write
   '/users/{id}':
     get:
@@ -22961,7 +23444,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'users:read'
+      x-scope: 'id:users:read'
+      x-scope-aliases:
+        - 'users:read'
       x-danger: read
     delete:
       operationId: users_deactivate
@@ -23024,16 +23509,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'users:write'
+      x-scope: 'id:users:write'
+      x-scope-aliases:
+        - 'users:write'
       x-danger: destructive
     patch:
       tags:
         - Users
       summary: "Change a user's name and/or email address. A changed address must be verified again."
-      description: 'Requires scope `users:write`. Danger: critical.'
+      description: 'Requires scope `id:users:write` (until v3.1 also accepted as `users:write`). Danger: critical.'
       operationId: users_update
       x-action: users.update
-      x-scope: 'users:write'
+      x-scope: 'id:users:write'
+      x-scope-aliases:
+        - 'users:write'
       x-danger: critical
       parameters:
         -
@@ -23174,7 +23663,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'roles:read'
+      x-scope: 'id:roles:read'
+      x-scope-aliases:
+        - 'roles:read'
       x-danger: read
   '/users/{id}/environment-roles/{role_id}':
     get:
@@ -23238,7 +23729,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'roles:read'
+      x-scope: 'id:roles:read'
+      x-scope-aliases:
+        - 'roles:read'
       x-danger: read
     put:
       operationId: users_environment_roles_grant
@@ -23313,7 +23806,9 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'roles:write'
+      x-scope: 'id:roles:write'
+      x-scope-aliases:
+        - 'roles:write'
       x-danger: critical
     delete:
       operationId: users_environment_roles_revoke
@@ -23369,17 +23864,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'roles:write'
+      x-scope: 'id:roles:write'
+      x-scope-aliases:
+        - 'roles:write'
       x-danger: destructive
   '/users/{id}/erase':
     post:
       tags:
         - Users
       summary: 'Erase a person (GDPR Art. 17): revoke their sessions and tokens, delete their credentials, memberships and personal data, and pseudonymise their account. Cannot be undone.'
-      description: 'Requires scope `users:erase`. Danger: critical.'
+      description: 'Requires scope `id:user-erasures:write` (until v3.1 also accepted as `users:erase`). Danger: critical.'
       operationId: users_erase
       x-action: users.erase
-      x-scope: 'users:erase'
+      x-scope: 'id:user-erasures:write'
+      x-scope-aliases:
+        - 'users:erase'
       x-danger: critical
       parameters:
         -
@@ -23447,10 +23946,12 @@ paths:
       tags:
         - Users
       summary: "Reset a user's two-factor authentication: their authenticator and recovery codes are removed and they must enrol again."
-      description: 'Requires scope `users:write`. Danger: critical.'
+      description: 'Requires scope `id:users:write` (until v3.1 also accepted as `users:write`). Danger: critical.'
       operationId: users_mfa_reset
       x-action: users.mfa.reset
-      x-scope: 'users:write'
+      x-scope: 'id:users:write'
+      x-scope-aliases:
+        - 'users:write'
       x-danger: critical
       parameters:
         -
@@ -23510,10 +24011,12 @@ paths:
       tags:
         - Users
       summary: "Remove a user's phone number for text-message sign-in codes. Their other factors and recovery codes stay."
-      description: 'Requires scope `users:write`. Danger: critical.'
+      description: 'Requires scope `id:users:write` (until v3.1 also accepted as `users:write`). Danger: critical.'
       operationId: users_mfa_sms_remove
       x-action: users.mfa.sms.remove
-      x-scope: 'users:write'
+      x-scope: 'id:users:write'
+      x-scope-aliases:
+        - 'users:write'
       x-danger: critical
       parameters:
         -
@@ -23573,10 +24076,12 @@ paths:
       tags:
         - Users
       summary: "Set a user's password, temporary by default, and mail it to them unless told not to. Signs them out according to `revoke`."
-      description: 'Requires scope `users:write`. Danger: critical.'
+      description: 'Requires scope `id:users:write` (until v3.1 also accepted as `users:write`). Danger: critical.'
       operationId: users_password_set
       x-action: users.password.set
-      x-scope: 'users:write'
+      x-scope: 'id:users:write'
+      x-scope-aliases:
+        - 'users:write'
       x-danger: critical
       parameters:
         -
@@ -23681,10 +24186,12 @@ paths:
       tags:
         - Users
       summary: 'Mail a user a password-reset link at their own address.'
-      description: 'Requires scope `users:write`. Danger: write.'
+      description: 'Requires scope `id:users:write` (until v3.1 also accepted as `users:write`). Danger: write.'
       operationId: users_password_reset_send
       x-action: users.password_reset.send
-      x-scope: 'users:write'
+      x-scope: 'id:users:write'
+      x-scope-aliases:
+        - 'users:write'
       x-danger: write
       parameters:
         -
@@ -23744,10 +24251,12 @@ paths:
       tags:
         - Users
       summary: 'Reactivate a deactivated user so they can sign in again. Grants revoked on deactivation stay revoked.'
-      description: 'Requires scope `users:write`. Danger: write.'
+      description: 'Requires scope `id:users:write` (until v3.1 also accepted as `users:write`). Danger: write.'
       operationId: users_reactivate
       x-action: users.reactivate
-      x-scope: 'users:write'
+      x-scope: 'id:users:write'
+      x-scope-aliases:
+        - 'users:write'
       x-danger: write
       parameters:
         -
@@ -23874,16 +24383,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-      x-scope: 'users:read'
+      x-scope: 'id:users:read'
+      x-scope-aliases:
+        - 'users:read'
       x-danger: read
     delete:
       tags:
         - Users
       summary: 'Sign a user out everywhere: end every session and revoke every OAuth grant they hold.'
-      description: 'Requires scope `users:write`. Danger: destructive.'
+      description: 'Requires scope `id:users:write` (until v3.1 also accepted as `users:write`). Danger: destructive.'
       operationId: users_sessions_revoke_all
       x-action: users.sessions.revoke_all
-      x-scope: 'users:write'
+      x-scope: 'id:users:write'
+      x-scope-aliases:
+        - 'users:write'
       x-danger: destructive
       parameters:
         -
@@ -23943,10 +24456,12 @@ paths:
       tags:
         - Users
       summary: "End one of a user's sign-in sessions."
-      description: 'Requires scope `users:write`. Danger: destructive.'
+      description: 'Requires scope `id:users:write` (until v3.1 also accepted as `users:write`). Danger: destructive.'
       operationId: users_sessions_revoke
       x-action: users.sessions.revoke
-      x-scope: 'users:write'
+      x-scope: 'id:users:write'
+      x-scope-aliases:
+        - 'users:write'
       x-danger: destructive
       parameters:
         -
@@ -24014,10 +24529,12 @@ paths:
       tags:
         - Users
       summary: 'Mail a user the link that verifies their email address. Does nothing for an address already verified.'
-      description: 'Requires scope `users:write`. Danger: write.'
+      description: 'Requires scope `id:users:write` (until v3.1 also accepted as `users:write`). Danger: write.'
       operationId: users_verification_send
       x-action: users.verification.send
-      x-scope: 'users:write'
+      x-scope: 'id:users:write'
+      x-scope-aliases:
+        - 'users:write'
       x-danger: write
       parameters:
         -
@@ -24077,10 +24594,12 @@ paths:
       tags:
         - Users
       summary: "Mark a user's email address verified without the emailed link. It can then be used to recover the account."
-      description: 'Requires scope `users:write`. Danger: critical.'
+      description: 'Requires scope `id:users:write` (until v3.1 also accepted as `users:write`). Danger: critical.'
       operationId: users_verify
       x-action: users.verify
-      x-scope: 'users:write'
+      x-scope: 'id:users:write'
+      x-scope-aliases:
+        - 'users:write'
       x-danger: critical
       parameters:
         -
@@ -24598,10 +25117,12 @@ paths:
       tags:
         - Webhooks
       summary: 'Register a webhook endpoint for one organization or the whole environment. Returns its signing secret once.'
-      description: 'Requires scope `webhooks:write`. Danger: critical.'
+      description: 'Requires scope `id:webhooks:write` (until v3.1 also accepted as `webhooks:write`). Danger: critical.'
       operationId: webhooks_create
       x-action: webhooks.create
-      x-scope: 'webhooks:write'
+      x-scope: 'id:webhooks:write'
+      x-scope-aliases:
+        - 'webhooks:write'
       x-danger: critical
       parameters:
         -
@@ -24749,10 +25270,12 @@ paths:
       tags:
         - Webhooks
       summary: 'List the webhook endpoints registered in this environment: URL, owner, subscribed events and whether each is active.'
-      description: 'Requires scope `webhooks:read`. Danger: read.'
+      description: 'Requires scope `id:webhooks:read` (until v3.1 also accepted as `webhooks:read`). Danger: read.'
       operationId: webhooks_list
       x-action: webhooks.list
-      x-scope: 'webhooks:read'
+      x-scope: 'id:webhooks:read'
+      x-scope-aliases:
+        - 'webhooks:read'
       x-danger: read
       parameters:
         -
@@ -24830,10 +25353,12 @@ paths:
       tags:
         - Webhooks
       summary: 'Delete a webhook endpoint. It stops receiving events at once.'
-      description: 'Requires scope `webhooks:write`. Danger: destructive.'
+      description: 'Requires scope `id:webhooks:write` (until v3.1 also accepted as `webhooks:write`). Danger: destructive.'
       operationId: webhooks_delete
       x-action: webhooks.delete
-      x-scope: 'webhooks:write'
+      x-scope: 'id:webhooks:write'
+      x-scope-aliases:
+        - 'webhooks:write'
       x-danger: destructive
       parameters:
         -
@@ -24893,10 +25418,12 @@ paths:
       tags:
         - Webhooks
       summary: 'Get one webhook endpoint: URL, owner, subscribed events, health. Never its signing secret.'
-      description: 'Requires scope `webhooks:read`. Danger: read.'
+      description: 'Requires scope `id:webhooks:read` (until v3.1 also accepted as `webhooks:read`). Danger: read.'
       operationId: webhooks_get
       x-action: webhooks.get
-      x-scope: 'webhooks:read'
+      x-scope: 'id:webhooks:read'
+      x-scope-aliases:
+        - 'webhooks:read'
       x-danger: read
       parameters:
         -
@@ -24961,10 +25488,12 @@ paths:
       tags:
         - Webhooks
       summary: "Change a webhook endpoint's URL and/or the events it subscribes to."
-      description: 'Requires scope `webhooks:write`. Danger: write.'
+      description: 'Requires scope `id:webhooks:write` (until v3.1 also accepted as `webhooks:write`). Danger: write.'
       operationId: webhooks_update
       x-action: webhooks.update
-      x-scope: 'webhooks:write'
+      x-scope: 'id:webhooks:write'
+      x-scope-aliases:
+        - 'webhooks:write'
       x-danger: write
       parameters:
         -
@@ -25052,10 +25581,12 @@ paths:
       tags:
         - Webhooks
       summary: 'Pause a webhook endpoint: it stops receiving events until resumed.'
-      description: 'Requires scope `webhooks:write`. Danger: write.'
+      description: 'Requires scope `id:webhooks:write` (until v3.1 also accepted as `webhooks:write`). Danger: write.'
       operationId: webhooks_pause
       x-action: webhooks.pause
-      x-scope: 'webhooks:write'
+      x-scope: 'id:webhooks:write'
+      x-scope-aliases:
+        - 'webhooks:write'
       x-danger: write
       parameters:
         -
@@ -25125,10 +25656,12 @@ paths:
       tags:
         - Webhooks
       summary: 'Resume a paused webhook endpoint: it receives events again.'
-      description: 'Requires scope `webhooks:write`. Danger: write.'
+      description: 'Requires scope `id:webhooks:write` (until v3.1 also accepted as `webhooks:write`). Danger: write.'
       operationId: webhooks_resume
       x-action: webhooks.resume
-      x-scope: 'webhooks:write'
+      x-scope: 'id:webhooks:write'
+      x-scope-aliases:
+        - 'webhooks:write'
       x-danger: write
       parameters:
         -
@@ -25198,10 +25731,12 @@ paths:
       tags:
         - Webhooks
       summary: 'Issue a new signing secret for a webhook endpoint, returned once. The old secret stops verifying immediately.'
-      description: 'Requires scope `webhooks:write`. Danger: critical.'
+      description: 'Requires scope `id:webhooks:write` (until v3.1 also accepted as `webhooks:write`). Danger: critical.'
       operationId: webhooks_secret_rotate
       x-action: webhooks.secret.rotate
-      x-scope: 'webhooks:write'
+      x-scope: 'id:webhooks:write'
+      x-scope-aliases:
+        - 'webhooks:write'
       x-danger: critical
       parameters:
         -
@@ -25271,10 +25806,12 @@ paths:
       tags:
         - Webhooks
       summary: "Change how a webhook endpoint's deliveries are signed (cbox or standard_webhooks). No new secret is issued: a hex secret is used as whsec_ + base64 of itself. Update the receiver first."
-      description: 'Requires scope `webhooks:write`. Danger: destructive.'
+      description: 'Requires scope `id:webhooks:write` (until v3.1 also accepted as `webhooks:write`). Danger: destructive.'
       operationId: webhooks_signature_scheme_change
       x-action: webhooks.signature_scheme.change
-      x-scope: 'webhooks:write'
+      x-scope: 'id:webhooks:write'
+      x-scope-aliases:
+        - 'webhooks:write'
       x-danger: destructive
       parameters:
         -

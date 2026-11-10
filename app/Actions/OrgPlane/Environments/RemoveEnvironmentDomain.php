@@ -28,7 +28,7 @@ use Cbox\Id\Organization\Contracts\EnvironmentDomains;
 #[AsAction(
     name: 'environments.domain.remove',
     summary: 'Stop serving one of the organization\'s environments on its custom domain. Anything using that domain stops reaching it.',
-    scope: 'environments:write',
+    scope: 'id:environments:write',
     danger: Danger::Destructive,
     plane: ActionPlane::Organization,
     rest: ['DELETE', '/environments/{environment_id}/domain'],

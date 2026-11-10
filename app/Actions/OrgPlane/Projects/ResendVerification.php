@@ -39,7 +39,7 @@ use Illuminate\Support\Facades\RateLimiter;
 #[AsAction(
     name: 'projects.verification.resend',
     summary: 'Re-send the signup confirmation the organization\'s first environment is waiting on, to the owner\'s address on file.',
-    scope: 'projects:write',
+    scope: 'id:projects:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['POST', '/projects/verification/resend'],

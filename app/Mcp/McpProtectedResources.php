@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp;
 
 use App\Platform\Actions\AccountScopes;
+use App\Platform\Scopes\ScopeRegistry;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\OrganizationScopes;
@@ -116,7 +117,9 @@ final readonly class McpProtectedResources implements ProtectedResources
             ? [...AccountScopes::all(), ...OrganizationScopes::all(), ...PlatformScopes::all()]
             : AccountScopes::all();
 
-        $scopes = array_values(array_unique([...$scopes, ...$catalogued]));
+        // Both names of every scope while v3.0 accepts both ({@see ScopeRegistry}): a client
+        // asking for `team:read` is served as before, one asking for `id:members:read` too.
+        $scopes = ScopeRegistry::withLegacy(array_values(array_unique([...$scopes, ...$catalogued])));
         sort($scopes);
 
         return new ProtectedResource(

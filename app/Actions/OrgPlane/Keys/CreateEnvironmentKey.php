@@ -28,7 +28,7 @@ use App\Platform\Actions\Input\InputSchema;
 #[AsAction(
     name: 'keys.environment.create',
     summary: 'Mint a management key for one of the organization\'s environments, with the scopes it needs. The value is returned once, as `token`.',
-    scope: 'keys:write',
+    scope: 'id:environment-keys:write',
     danger: Danger::Critical,
     plane: ActionPlane::Organization,
     rest: ['POST', '/environments/{environment_id}/keys'],

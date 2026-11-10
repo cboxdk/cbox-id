@@ -33,7 +33,7 @@ use Illuminate\Pagination\Paginator;
 #[AsAction(
     name: 'team.list',
     summary: 'List the organization\'s team: each member\'s name, address, role and whether they reach every environment.',
-    scope: 'team:read',
+    scope: 'id:members:read',
     danger: Danger::Read,
     plane: ActionPlane::Organization,
     rest: ['GET', '/members'],

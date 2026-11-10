@@ -24,7 +24,7 @@ use Cbox\Id\Platform\Contracts\Projects;
 #[AsAction(
     name: 'projects.suspend',
     summary: 'Suspend a project: its environments stay live, but no new ones can be added until it is reactivated.',
-    scope: 'projects:write',
+    scope: 'id:projects:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['POST', '/projects/{id}/suspend'],

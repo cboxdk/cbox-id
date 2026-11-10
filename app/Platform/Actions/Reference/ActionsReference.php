@@ -152,7 +152,7 @@ final readonly class ActionsReference
             '| | |',
             '|---|---|',
             '| REST | `'.$action->method.' /api/v1'.$action->documentedPath().'` → `'.$action->status.'` |',
-            '| Scope | `'.$action->scope.'` — '.$this->scopeSentence($action).' |',
+            '| Scope | `'.$action->documentedScope().'`'.($action->scopeAliases() === [] ? '' : ' (until v3.1 also `'.implode('`, `', $action->scopeAliases()).'`)').' — '.$this->scopeSentence($action).' |',
             '| Danger | `'.$action->danger->value.'` |',
             '| MCP tool | `'.$action->toolName().'` |',
             '| CLI | `'.$this->cli($action).'` |',

@@ -28,7 +28,7 @@ use Cbox\Id\Platform\Contracts\Projects;
 #[AsAction(
     name: 'projects.rename',
     summary: 'Rename a project.',
-    scope: 'projects:write',
+    scope: 'id:projects:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['PATCH', '/projects/{id}'],

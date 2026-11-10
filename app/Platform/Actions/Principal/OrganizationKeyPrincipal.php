@@ -10,6 +10,7 @@ use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\Approvals\StepUpPolicy;
 use App\Platform\Actions\OrganizationScopes;
 use App\Platform\OrganizationCapabilities;
+use App\Platform\Scopes\ScopeRegistry;
 use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
@@ -38,7 +39,7 @@ final readonly class OrganizationKeyPrincipal implements Principal
 
     public function kind(): string
     {
-        return 'workspace_key';
+        return 'organization_key';
     }
 
     public function id(): string
@@ -69,10 +70,10 @@ final readonly class OrganizationKeyPrincipal implements Principal
             }
         }
 
-        if (! OrganizationScopes::knows($action->scope) || ! $this->key->permits($action->scope)) {
+        if (! OrganizationScopes::knows($action->scope) || ! ScopeRegistry::satisfiedBy($action->scope, $this->key->permits(...))) {
             throw new AuthorizationException("This key is missing the required scope: {$action->scope}.");
         }
-        if (in_array($action->scope, ['workspace:read', 'projects:write', 'environments:write', 'keys:write'], true)) {
+        if (OrganizationScopes::admitted($action->scope)) {
             app(ProductAdmission::class)->assertGranted($this->id(), $this->key->organization_id, acting: $action->danger->writes());
         }
     }

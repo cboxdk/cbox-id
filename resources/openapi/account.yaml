@@ -116,10 +116,12 @@ paths:
       tags:
         - Applications
       summary: "Withdraw an application's access to your account; it must ask you again to act as you."
-      description: 'Requires scope `account:applications:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
+      description: 'Requires scope `id:my-apps:write` (until v3.1 also accepted as `account:applications:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
       operationId: account_applications_revoke
       x-action: account.applications.revoke
-      x-scope: 'account:applications:write'
+      x-scope: 'id:my-apps:write'
+      x-scope-aliases:
+        - 'account:applications:write'
       x-danger: destructive
       parameters:
         -
@@ -240,15 +242,19 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope-aliases:
+        - 'account:apps:read'
   '/me/devices/{device_id}':
     delete:
       tags:
         - Devices
       summary: 'Remove one of your trusted devices; it is no longer asked to approve anything.'
-      description: 'Requires scope `account:devices:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
+      description: 'Requires scope `id:my-devices:write` (until v3.1 also accepted as `account:devices:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
       operationId: account_devices_remove
       x-action: account.devices.remove
-      x-scope: 'account:devices:write'
+      x-scope: 'id:my-devices:write'
+      x-scope-aliases:
+        - 'account:devices:write'
       x-danger: destructive
       parameters:
         -
@@ -283,10 +289,12 @@ paths:
       tags:
         - Profile
       summary: 'Mail yourself a link that confirms your email address.'
-      description: 'Requires scope `account:profile:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
+      description: 'Requires scope `id:my-profile:write` (until v3.1 also accepted as `account:profile:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
       operationId: account_email_confirmation_send
       x-action: account.email.confirmation.send
-      x-scope: 'account:profile:write'
+      x-scope: 'id:my-profile:write'
+      x-scope-aliases:
+        - 'account:profile:write'
       x-danger: write
       parameters:
         -
@@ -322,10 +330,12 @@ paths:
       tags:
         - 'Sign-in methods'
       summary: 'Remove your phone number for text-message sign-in codes.'
-      description: 'Requires scope `account:sign_in:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `id:my-sign-in:write` (until v3.1 also accepted as `account:sign_in:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_mfa_sms_remove
       x-action: account.mfa.sms.remove
-      x-scope: 'account:sign_in:write'
+      x-scope: 'id:my-sign-in:write'
+      x-scope-aliases:
+        - 'account:sign_in:write'
       x-danger: critical
       parameters:
         -
@@ -352,10 +362,12 @@ paths:
       tags:
         - 'API keys'
       summary: "Create an API key of your own for one of this environment's apps, in an organization you belong to. The value is returned once, as `token`."
-      description: 'Requires scope `account:api_keys:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `id:my-api-keys:write` (until v3.1 also accepted as `account:api_keys:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_api_keys_create
       x-action: account.api_keys.create
-      x-scope: 'account:api_keys:write'
+      x-scope: 'id:my-api-keys:write'
+      x-scope-aliases:
+        - 'account:api_keys:write'
       x-danger: critical
       parameters:
         -
@@ -430,10 +442,12 @@ paths:
       tags:
         - 'API keys'
       summary: 'Revoke one of your own API keys.'
-      description: 'Requires scope `account:api_keys:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
+      description: 'Requires scope `id:my-api-keys:write` (until v3.1 also accepted as `account:api_keys:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
       operationId: account_api_keys_revoke
       x-action: account.api_keys.revoke
-      x-scope: 'account:api_keys:write'
+      x-scope: 'id:my-api-keys:write'
+      x-scope-aliases:
+        - 'account:api_keys:write'
       x-danger: destructive
       parameters:
         -
@@ -474,10 +488,12 @@ paths:
       tags:
         - Organizations
       summary: 'Leave one of your own organizations. The last owner cannot leave — transfer ownership first.'
-      description: 'Requires scope `account:organizations:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
+      description: 'Requires scope `id:my-organizations:write` (until v3.1 also accepted as `account:organizations:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
       operationId: account_organizations_leave
       x-action: account.organizations.leave
-      x-scope: 'account:organizations:write'
+      x-scope: 'id:my-organizations:write'
+      x-scope-aliases:
+        - 'account:organizations:write'
       x-danger: destructive
       parameters:
         -
@@ -514,10 +530,12 @@ paths:
       tags:
         - 'Sign-in methods'
       summary: 'Remove one of your passkeys.'
-      description: 'Requires scope `account:sign_in:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `id:my-sign-in:write` (until v3.1 also accepted as `account:sign_in:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_passkeys_remove
       x-action: account.passkeys.remove
-      x-scope: 'account:sign_in:write'
+      x-scope: 'id:my-sign-in:write'
+      x-scope-aliases:
+        - 'account:sign_in:write'
       x-danger: critical
       parameters:
         -
@@ -551,10 +569,12 @@ paths:
       tags:
         - 'Sign-in methods'
       summary: 'Rename one of your passkeys.'
-      description: 'Requires scope `account:sign_in:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
+      description: 'Requires scope `id:my-sign-in:write` (until v3.1 also accepted as `account:sign_in:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
       operationId: account_passkeys_rename
       x-action: account.passkeys.rename
-      x-scope: 'account:sign_in:write'
+      x-scope: 'id:my-sign-in:write'
+      x-scope-aliases:
+        - 'account:sign_in:write'
       x-danger: write
       parameters:
         -
@@ -612,10 +632,12 @@ paths:
       tags:
         - 'Connected services'
       summary: 'Disconnect one of your connected services, revoking the access you gave it.'
-      description: 'Requires scope `account:pipes:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
+      description: 'Requires scope `id:my-pipes:write` (until v3.1 also accepted as `account:pipes:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
       operationId: account_pipes_disconnect
       x-action: account.pipes.disconnect
-      x-scope: 'account:pipes:write'
+      x-scope: 'id:my-pipes:write'
+      x-scope-aliases:
+        - 'account:pipes:write'
       x-danger: destructive
       parameters:
         -
@@ -652,10 +674,12 @@ paths:
       tags:
         - Profile
       summary: 'Change the display name on your own account.'
-      description: 'Requires scope `account:profile:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
+      description: 'Requires scope `id:my-profile:write` (until v3.1 also accepted as `account:profile:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
       operationId: account_profile_update
       x-action: account.profile.update
-      x-scope: 'account:profile:write'
+      x-scope: 'id:my-profile:write'
+      x-scope-aliases:
+        - 'account:profile:write'
       x-danger: write
       parameters:
         -
@@ -705,10 +729,12 @@ paths:
       tags:
         - 'Service waitlists'
       summary: 'Join a published service waitlist with your verified email. Does not buy a plan or grant access.'
-      description: 'Requires scope `account:waitlists:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
+      description: 'Requires scope `id:my-waitlists:write` (until v3.1 also accepted as `account:waitlists:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
       operationId: account_waitlists_join
       x-action: account.waitlists.join
-      x-scope: 'account:waitlists:write'
+      x-scope: 'id:my-waitlists:write'
+      x-scope-aliases:
+        - 'account:waitlists:write'
       x-danger: write
       parameters:
         -
@@ -792,10 +818,12 @@ paths:
       tags:
         - 'Service waitlists'
       summary: 'Withdraw your own feature interest or beta application for a team. Active grants are managed by the service.'
-      description: 'Requires scope `account:waitlists:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
+      description: 'Requires scope `id:my-waitlists:write` (until v3.1 also accepted as `account:waitlists:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
       operationId: account_waitlists_leave
       x-action: account.waitlists.leave
-      x-scope: 'account:waitlists:write'
+      x-scope: 'id:my-waitlists:write'
+      x-scope-aliases:
+        - 'account:waitlists:write'
       x-danger: write
       parameters:
         -
@@ -857,10 +885,12 @@ paths:
       tags:
         - Sessions
       summary: 'Sign out every one of your sessions except the one you are using.'
-      description: 'Requires scope `account:sessions:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `id:my-sessions:write` (until v3.1 also accepted as `account:sessions:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_sessions_revoke_others
       x-action: account.sessions.revoke_others
-      x-scope: 'account:sessions:write'
+      x-scope: 'id:my-sessions:write'
+      x-scope-aliases:
+        - 'account:sessions:write'
       x-danger: critical
       parameters:
         -
@@ -896,10 +926,12 @@ paths:
       tags:
         - Sessions
       summary: 'Sign out one of your own sessions.'
-      description: 'Requires scope `account:sessions:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
+      description: 'Requires scope `id:my-sessions:write` (until v3.1 also accepted as `account:sessions:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: destructive.'
       operationId: account_sessions_revoke
       x-action: account.sessions.revoke
-      x-scope: 'account:sessions:write'
+      x-scope: 'id:my-sessions:write'
+      x-scope-aliases:
+        - 'account:sessions:write'
       x-danger: destructive
       parameters:
         -
@@ -934,10 +966,12 @@ paths:
       tags:
         - 'Sign-in methods'
       summary: 'Disconnect one linked sign-in identity (Google, GitHub, …) from your account — never the last way you can sign in.'
-      description: 'Requires scope `account:sign_in:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `id:my-sign-in:write` (until v3.1 also accepted as `account:sign_in:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_sign_in_methods_disconnect
       x-action: account.sign_in_methods.disconnect
-      x-scope: 'account:sign_in:write'
+      x-scope: 'id:my-sign-in:write'
+      x-scope-aliases:
+        - 'account:sign_in:write'
       x-danger: critical
       parameters:
         -
@@ -973,10 +1007,12 @@ paths:
       tags:
         - 'Sign-in methods'
       summary: 'Disconnect a social account from yours — never the last way you can sign in.'
-      description: 'Requires scope `account:sign_in:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `id:my-sign-in:write` (until v3.1 also accepted as `account:sign_in:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_social_unlink
       x-action: account.social.unlink
-      x-scope: 'account:sign_in:write'
+      x-scope: 'id:my-sign-in:write'
+      x-scope-aliases:
+        - 'account:sign_in:write'
       x-danger: critical
       parameters:
         -
@@ -1012,10 +1048,12 @@ paths:
       tags:
         - 'Sign-in methods'
       summary: 'Remove one of your authenticator apps.'
-      description: 'Requires scope `account:sign_in:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `id:my-sign-in:write` (until v3.1 also accepted as `account:sign_in:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: critical.'
       operationId: account_totp_remove
       x-action: account.totp.remove
-      x-scope: 'account:sign_in:write'
+      x-scope: 'id:my-sign-in:write'
+      x-scope-aliases:
+        - 'account:sign_in:write'
       x-danger: critical
       parameters:
         -
@@ -1049,10 +1087,12 @@ paths:
       tags:
         - 'Sign-in methods'
       summary: 'Rename one of your authenticator apps.'
-      description: 'Requires scope `account:sign_in:write` on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
+      description: 'Requires scope `id:my-sign-in:write` (until v3.1 also accepted as `account:sign_in:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. Danger: write.'
       operationId: account_totp_rename
       x-action: account.totp.rename
-      x-scope: 'account:sign_in:write'
+      x-scope: 'id:my-sign-in:write'
+      x-scope-aliases:
+        - 'account:sign_in:write'
       x-danger: write
       parameters:
         -

@@ -27,7 +27,7 @@ use Cbox\Id\Platform\Models\Project;
 #[AsAction(
     name: 'environments.list',
     summary: 'List every environment the organization owns, across its projects, with each one\'s issuer.',
-    scope: 'workspace:read',
+    scope: 'id:organization:read',
     danger: Danger::Read,
     plane: ActionPlane::Organization,
     rest: ['GET', '/environments'],

@@ -23,7 +23,7 @@ use App\Platform\NativeProduct\NativeProductMembers;
 #[AsAction(
     name: 'team.remove',
     summary: 'Remove native ID app roles while preserving shared organization membership and other apps. The current owner cannot be removed.',
-    scope: 'team:write',
+    scope: 'id:members:write',
     danger: Danger::Destructive,
     plane: ActionPlane::Organization,
     rest: ['DELETE', '/members/{id}'],

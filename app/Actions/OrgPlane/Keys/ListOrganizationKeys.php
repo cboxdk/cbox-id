@@ -25,7 +25,7 @@ use Cbox\Id\Platform\Models\OrganizationApiKey;
 #[AsAction(
     name: 'keys.organization.list',
     summary: 'List the organization\'s keys, newest first, revoked ones included — names, roles, scopes and expiry, never their values.',
-    scope: 'workspace:read',
+    scope: 'id:organization:read',
     danger: Danger::Read,
     plane: ActionPlane::Organization,
     rest: ['GET', '/keys'],

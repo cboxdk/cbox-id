@@ -17,7 +17,7 @@ use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Billing\PaymentAccount;
 use Symfony\Component\Intl\Countries;
 
-#[AsAction(name: 'billing.account.update', summary: 'Update the organization billing contact and invoice address.', scope: 'billing:write', danger: Danger::Write, plane: ActionPlane::Organization, rest: ['PATCH', '/billing/account'], status: 204, consoleRoutes: ['billing.account'], consoleGate: ConsoleGate::ManageBilling, tag: 'Billing')]
+#[AsAction(name: 'billing.account.update', summary: 'Update the organization billing contact and invoice address.', scope: 'id:billing:write', danger: Danger::Write, plane: ActionPlane::Organization, rest: ['PATCH', '/billing/account'], status: 204, consoleRoutes: ['billing.account'], consoleGate: ConsoleGate::ManageBilling, tag: 'Billing')]
 final readonly class UpdateBillingAccount implements Action
 {
     public function __construct(private PaymentAccount $payments) {}

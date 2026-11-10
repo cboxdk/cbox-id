@@ -37,7 +37,7 @@ use Illuminate\Support\Facades\DB;
 #[AsAction(
     name: 'projects.create',
     summary: 'Create a project: another independently-billed IdP product, with its own environment allowance.',
-    scope: 'projects:write',
+    scope: 'id:projects:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['POST', '/projects'],

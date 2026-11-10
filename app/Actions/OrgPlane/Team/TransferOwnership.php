@@ -35,7 +35,7 @@ use Cbox\Id\Platform\PlatformRoot;
 #[AsAction(
     name: 'team.transfer_ownership',
     summary: 'Transfer shared organization ownership. Existing app roles are preserved; the previous owner may lose native ID access. Only the current owner, signed in, may do this.',
-    scope: 'team:write',
+    scope: 'id:members:write',
     danger: Danger::Critical,
     plane: ActionPlane::Organization,
     rest: ['POST', '/members/{id}/transfer-ownership'],

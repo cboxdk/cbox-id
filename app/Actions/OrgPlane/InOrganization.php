@@ -82,7 +82,7 @@ final class InOrganization
     /** How a key this principal mints records its maker ({@see KeyProvenance}). */
     public static function creatorType(Principal $principal): string
     {
-        return $principal instanceof OrganizationKeyPrincipal ? 'workspace_key' : 'organization_member';
+        return $principal instanceof OrganizationKeyPrincipal ? 'organization_key' : 'organization_member';
     }
 
     /**

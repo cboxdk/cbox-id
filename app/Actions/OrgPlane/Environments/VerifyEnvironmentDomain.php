@@ -33,7 +33,7 @@ use Cbox\Id\Organization\Exceptions\InvalidCustomDomain;
 #[AsAction(
     name: 'environments.domain.verify',
     summary: 'Look for the pending domain\'s DNS TXT record and, once it is visible, serve the environment on that domain.',
-    scope: 'environments:write',
+    scope: 'id:environments:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['POST', '/environments/{environment_id}/domain/verify'],

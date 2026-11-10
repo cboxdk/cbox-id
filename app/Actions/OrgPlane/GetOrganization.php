@@ -31,7 +31,7 @@ use Cbox\Id\Platform\PlatformRoot;
 #[AsAction(
     name: 'organization.get',
     summary: 'Get the current organization identity: its id, name and status. No operational or financial records.',
-    scope: 'workspace:read',
+    scope: 'id:organization:read',
     danger: Danger::Read,
     plane: ActionPlane::Organization,
     rest: ['GET', '/'],

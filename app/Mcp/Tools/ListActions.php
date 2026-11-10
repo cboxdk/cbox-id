@@ -49,7 +49,7 @@ final class ListActions extends Tool
                 'tool' => $action->toolName(),
                 'action' => $action->name,
                 'summary' => $action->summary,
-                'scope' => $action->scope,
+                'scope' => $action->documentedScope(),
                 'danger' => $action->danger->value,
             ];
         }

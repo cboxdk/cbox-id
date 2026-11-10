@@ -26,7 +26,7 @@ use App\Platform\NativeProduct\NativeTeamInvitations as TeamInvitations;
 #[AsAction(
     name: 'team.invite',
     summary: 'Invite somebody onto the organization\'s team with a role; they get a mail with a link to set a password.',
-    scope: 'team:write',
+    scope: 'id:members:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['POST', '/members'],

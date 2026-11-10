@@ -6,6 +6,7 @@ use App\Mcp\ActionTool;
 use App\Mcp\McpCaller;
 use App\Mcp\PortableSchema;
 use App\Platform\Actions\AccountScopes;
+use App\Platform\Scopes\ScopeRegistry;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRunner;
@@ -109,8 +110,10 @@ it('reports the application\'s own version, not a number of its own', function (
 
 it('serves RFC 9728 metadata for /mcp naming the environment\'s issuer', function (): void {
     // The environment's plane, and the person's own account on the same host.
-    $scopes = collect(app(ActionRegistry::class)->forPlane(ActionPlane::Environment))->pluck('scope')
-        ->merge(AccountScopes::all())
+    // Both names of each while v3.0 accepts both: the old one every client holds today and
+    // the `id:<resource>:<read|write>` one it moves to.
+    $scopes = collect(ScopeRegistry::withLegacy(collect(app(ActionRegistry::class)->forPlane(ActionPlane::Environment))->pluck('scope')
+        ->merge(AccountScopes::all())->unique()->values()->all()))
         ->unique()->sort()->values()->all();
 
     $this->getJson('/.well-known/oauth-protected-resource/mcp')
@@ -188,7 +191,7 @@ it('indexes only the actions the key may run', function (): void {
     $actions = mcpCall(mcpIssue([EnvironmentApiScope::ApisRead])->plaintext, 'list_actions')['structuredContent']['actions'];
 
     expect(collect($actions)->pluck('tool')->all())->toEqualCanonicalizing(['apis_list', 'apis_get'])
-        ->and(collect($actions)->firstWhere('tool', 'apis_list'))->toMatchArray(['action' => 'apis.list', 'scope' => 'apis:read', 'danger' => 'read']);
+        ->and(collect($actions)->firstWhere('tool', 'apis_list'))->toMatchArray(['action' => 'apis.list', 'scope' => 'id:apis:read', 'danger' => 'read']);
 });
 
 // ── Running actions ─────────────────────────────────────────────────────────────
@@ -512,7 +515,7 @@ it('takes an organization key too, and runs the organization plane\'s tools as t
 
     $me = mcpCall($key->plaintext, 'whoami');
 
-    expect($me['structuredContent']['kind'])->toBe('workspace_key')
+    expect($me['structuredContent']['kind'])->toBe('organization_key')
         ->and($me['structuredContent']['workspace'])->toBe($account['organization']->id)
         ->and($me['structuredContent']['scopes'])->toBe(['workspace:read', 'projects:write']);
 

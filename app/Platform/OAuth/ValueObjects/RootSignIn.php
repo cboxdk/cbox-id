@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\OAuth\ValueObjects;
 
 use App\Platform\OAuth\RootDelegatedAccess;
+use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 
 /**
@@ -34,7 +35,7 @@ final readonly class RootSignIn
 
     public function grants(string $scope): bool
     {
-        return in_array($scope, $this->scopes, true);
+        return ScopeRegistry::satisfies($this->scopes, $scope);
     }
 
     /**

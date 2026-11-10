@@ -14,6 +14,7 @@ use App\Platform\Actions\Principal\OrganizationKeyPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
 use App\Platform\EnvironmentApiContext;
+use App\Platform\Keys\OrganizationKeyPrefixes;
 use App\Platform\OAuth\DelegatedAccess;
 use App\Platform\OAuth\ManagementStepUp;
 use App\Platform\OAuth\RootDelegatedAccess;
@@ -23,7 +24,6 @@ use Cbox\Id\OAuthServer\Dpop\DpopResourceGuard;
 use Cbox\Id\OAuthServer\Support\BearerChallenge;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
-use Cbox\Id\Platform\DatabaseOrganizationApiKeys;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -119,7 +119,7 @@ final class AuthenticateMcp
         }
 
         try {
-            return $next($request);
+            return OrganizationKeyPrefixes::mark($request, $next($request));
         } finally {
             // This request's credential, and nothing after it (see McpCaller).
             $this->caller->clear();
@@ -137,7 +137,7 @@ final class AuthenticateMcp
      */
     private function principalFor(string $token, Request $request): ?Principal
     {
-        if (str_starts_with($token, DatabaseOrganizationApiKeys::prefix())) {
+        if (OrganizationKeyPrefixes::matches($token)) {
             $workspaceKey = $this->workspaceKeys->resolve($token);
 
             if ($workspaceKey === null) {

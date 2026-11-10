@@ -9,6 +9,7 @@ use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\Approvals\PlatformRootApprovals;
 use App\Platform\Actions\Approvals\StepUpPolicy;
+use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
@@ -48,7 +49,7 @@ final readonly class EnvironmentKeyPrincipal implements Principal
     {
         // An environment key reaches its own environment's actions only — the workspace above
         // it is reached with a workspace key, and no scope name can bridge the two.
-        if ($action->plane !== ActionPlane::Environment || ! app(ManagementScopes::class)->knows($action->scope) || ! $this->key->isActive() || ! $this->key->can($action->scope)) {
+        if ($action->plane !== ActionPlane::Environment || ! app(ManagementScopes::class)->knows($action->scope) || ! $this->key->isActive() || ! ScopeRegistry::satisfiedBy($action->scope, $this->key->can(...))) {
             throw new AuthorizationException("This key is missing the required scope: {$action->scope}.");
         }
     }
@@ -97,7 +98,7 @@ final readonly class EnvironmentKeyPrincipal implements Principal
             }
 
             // Minted from the workspace by a workspace key: that key's person answers.
-            if ($key->created_by_type === 'workspace_key' && is_string($key->created_by_id)) {
+            if (in_array($key->created_by_type, ['organization_key', 'workspace_key'], true) && is_string($key->created_by_id)) {
                 $minter = OrganizationApiKey::query()->whereKey($key->created_by_id)->first();
 
                 return $minter === null ? null : (new OrganizationKeyPrincipal($minter))->approverSubjectId();

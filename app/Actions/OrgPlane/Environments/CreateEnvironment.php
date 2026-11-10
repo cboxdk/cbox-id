@@ -51,7 +51,7 @@ use Illuminate\Support\Facades\DB;
 #[AsAction(
     name: 'environments.create',
     summary: 'Create an environment under one of the organization\'s projects; with `initial_key`, also mint its first management key, returned once as `initial_key.token`.',
-    scope: 'environments:write',
+    scope: 'id:environments:write',
     danger: Danger::Critical,
     plane: ActionPlane::Organization,
     rest: ['POST', '/environments'],

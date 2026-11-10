@@ -28,6 +28,7 @@ use App\Platform\Erasure\AppErasureSteps;
 use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
+use App\Platform\Keys\TransitionalOrganizationApiKeys;
 use App\Platform\OAuth\RootMcpAudiences;
 use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
 use App\Platform\OrganizationApiContext;
@@ -48,6 +49,7 @@ use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Support\SelfRegisteredScopes;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
+use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Signals\Contracts\ManagedCredential;
 use Cbox\Signals\Contracts\ManagedSources;
 use Illuminate\Contracts\Cache\Repository;
@@ -104,6 +106,8 @@ class AppServiceProvider extends ServiceProvider
         // The scopes a management key may carry: the framework's core set plus the ones
         // this app's actions guard. The framework refuses to mint anything else.
         $this->app->singleton(ManagementScopes::class, AppManagementScopes::class);
+        // Organization keys: `cbid_org_` minted, `cbid_ws_` still resolved until v3.1.
+        $this->app->singleton(OrganizationApiKeys::class, TransitionalOrganizationApiKeys::class);
 
         // Bundled Cbox Signals integration: this deployment enrols its live source
         // environments itself, authenticating as a confidential Cbox ID client.

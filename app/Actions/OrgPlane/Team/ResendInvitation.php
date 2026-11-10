@@ -25,7 +25,7 @@ use App\Platform\NativeProduct\NativeTeamInvitations as TeamInvitations;
 #[AsAction(
     name: 'team.invitations.resend',
     summary: 'Re-send a pending team invitation with a fresh link; the earlier link stops working and the invitation gets a new id.',
-    scope: 'team:write',
+    scope: 'id:members:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['POST', '/invitations/{id}/resend'],

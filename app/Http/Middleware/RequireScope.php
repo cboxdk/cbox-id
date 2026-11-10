@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\Dpop\DpopResourceGuard;
@@ -55,7 +56,7 @@ final class RequireScope
             return $this->challenge('invalid_token', 'The access token was not issued for this API.', 401);
         }
 
-        if (! $token->hasScope($scope)) {
+        if (! ScopeRegistry::satisfiedBy($scope, $token->hasScope(...))) {
             return $this->challenge('insufficient_scope', "This endpoint requires the {$scope} scope.", 403, $scope);
         }
 
