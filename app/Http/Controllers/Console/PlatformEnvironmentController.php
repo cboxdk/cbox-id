@@ -11,6 +11,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\SimplePaginationProps;
 use App\Http\Requests\Console\CreatePlatformEnvironmentRequest;
 use App\Http\Requests\Console\ProvisionEnvironmentAdminRequest;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\Console\EnvironmentLineage;
 use App\Platform\Console\EnvironmentLineages;
 use App\Platform\Console\LikeTerm;
@@ -120,7 +121,7 @@ final readonly class PlatformEnvironmentController extends ConsoleController
                         // The platform root's own environment has a console now — its
                         // operators', on this host — and this list is where they look for it.
                         'consoleHref' => $owner->isPlatformRoot && app(PlaneResolver::class)->isMultiTenant() && Route::has('environment.home')
-                            ? route('environment.home')
+                            ? route('environment.home', [EnvironmentConsolePath::PARAMETER => EnvironmentConsolePath::ROOT])
                             : null,
                     ];
                 })->all();

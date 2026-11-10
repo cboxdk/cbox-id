@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
-use App\Http\Controllers\EnvironmentAdminController;
 use App\Http\Middleware\Authenticate;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -32,7 +31,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
  * in the console page's `save()`, and that is a rule attached to whichever writer happened
  * to exist when it was written. The account organization's override — the policy that
  * governs an account MEMBER's password, and the one that
- * {@see EnvironmentAdminController::handoff()} leans on — has no writer at all today, so a
+ * the environment console's gate leans on — has no writer at all today, so a
  * fix aimed at the surfaces would have covered the population it was not written for and
  * missed the one it was written for. Here every writer passes through, the console page
  * that exists and the API path that does not yet.

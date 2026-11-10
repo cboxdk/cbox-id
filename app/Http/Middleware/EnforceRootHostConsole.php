@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use App\Http\Controllers\Console\ConfiguredInEnvironmentController;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\Console\RootHostConsole;
 use Closure;
 use Illuminate\Http\Request;
@@ -56,7 +57,7 @@ final class EnforceRootHostConsole
         $twin = RootHostConsole::environmentTwin($name);
 
         if ($twin !== null && $operator) {
-            $target = route($twin, $route->parameters());
+            $target = route($twin, [EnvironmentConsolePath::PARAMETER => EnvironmentConsolePath::ROOT, ...$route->parameters()]);
             $query = $request->getQueryString();
 
             return redirect()->to($query === null || $query === '' ? $target : $target.'?'.$query);

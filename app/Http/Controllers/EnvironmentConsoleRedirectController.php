@@ -1,0 +1,110 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers;
+
+use App\Http\Controllers\Console\EnvironmentRefusedController;
+use App\Http\Middleware\ResolveEnvironmentFromPath;
+use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\EnvironmentConsolePath;
+use App\Platform\NativeProduct\NativeEnvironmentAccess;
+use App\Platform\PlaneResolver;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * The environment console's OLD addresses, kept working while they are still used.
+ *
+ * - `{environment host}/admin/…` and `{root host}/admin/…` (the root's own console) answer
+ *   with a redirect to the same page on the app host: `/orgs/{org}/projects/{project}/
+ *   environments/{environment}/…`, or `/admin/environment/…` for the root.
+ * - `/open/{environment}` on the app host, which used to mint a signed handoff into the
+ *   environment's own host, now sends the browser straight to the console's path — or,
+ *   for somebody who does not administer that environment, the page that says so.
+ *
+ * GET only, and only a redirect: nothing here signs anybody in or decides access. The page
+ * redirected to asks every question itself ({@see ResolveEnvironmentFromPath}).
+ * Each answer carries `Deprecation`, so whoever still uses one can be found and told; the
+ * old addresses go once they have seen no traffic for seven days.
+ */
+final class EnvironmentConsoleRedirectController extends Controller
+{
+    public function __construct(
+        private readonly EnvironmentConsolePath $paths,
+        private readonly PlaneResolver $planes,
+    ) {}
+
+    /** `{host}/admin/{path?}` → the app host. */
+    public function __invoke(Request $request, EnvironmentContext $environments, ?string $path = null): Response
+    {
+        $environment = $environments->current()?->environmentKey();
+        $console = $environment === null ? null : $this->paths->for($environment);
+
+        abort_if($console === null, 404);
+
+        return $this->deprecated(redirect()->away($this->appHostUrl($console, $path).$this->query($request), 301));
+    }
+
+    /** `/open/{environment}` on the app host → the environment's console path. */
+    public function open(Request $request, string $environment, ConsoleScope $scope): Response
+    {
+        if ($request->header('X-Inertia')) {
+            return Inertia::location($request->fullUrl());
+        }
+
+        try {
+            $organizationId = $scope->organizationId();
+        } catch (AuthorizationException) {
+            $organizationId = null;
+        }
+
+        $subjectId = $scope->actorId();
+
+        if ($subjectId === '') {
+            return redirect()->route('login');
+        }
+
+        if ($organizationId === null
+            || $scope->capabilities()?->canReadEnvironments() !== true
+            || ! in_array($environment, app(NativeEnvironmentAccess::class)->ids($organizationId, $subjectId), true)) {
+            return app(EnvironmentRefusedController::class)->show($request, $environment);
+        }
+
+        $console = $this->paths->for($environment);
+
+        abort_if($console === null, 404);
+
+        // A page inside the console, from an old "open with ?to=/admin/users" link.
+        $to = $request->query('to');
+        $page = is_string($to) && preg_match('#\A/admin((?:/[A-Za-z0-9_-]+)*)\z#', $to, $match) === 1 ? ltrim($match[1], '/') : null;
+
+        return $this->deprecated(redirect()->to('/'.$console.($page === null || $page === '' ? '' : '/'.$page), 302));
+    }
+
+    private function appHostUrl(string $console, ?string $path): string
+    {
+        $host = $this->planes->consoleHost() ?? request()->getHost();
+        $page = $path === null ? '' : trim($path, '/');
+
+        return request()->getScheme().'://'.$host.'/'.$console.($page === '' ? '' : '/'.$page);
+    }
+
+    private function query(Request $request): string
+    {
+        $query = $request->getQueryString();
+
+        return $query === null || $query === '' ? '' : '?'.$query;
+    }
+
+    private function deprecated(RedirectResponse $response): RedirectResponse
+    {
+        $response->headers->set('Deprecation', 'true');
+
+        return $response;
+    }
+}

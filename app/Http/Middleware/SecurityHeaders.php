@@ -119,9 +119,9 @@ final class SecurityHeaders
                 "base-uri 'self'",
                 // `'self'` alone is wrong for this app, and logout is where it showed.
                 //
-                // Signing in is unified on the platform root, so a session that ends on an
-                // environment host finishes on another one: POST /admin/logout redirects to
-                // /admin/login, which redirects to the root's /login. The browser
+                // Signing in is unified on the platform root, so a submission that starts on an
+                // environment host can finish on the root's (it did for the environment
+                // console's own sign-out, when that console lived there). The browser
                 // checks `form-action` against EVERY hop of a submission's redirect chain,
                 // not just the address on the form — so the post was refused, and Chrome
                 // reported the original same-origin URL, which made it read as impossible.

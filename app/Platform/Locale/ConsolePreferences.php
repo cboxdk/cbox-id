@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Locale;
 
+use App\Http\Middleware\ResolveEnvironmentFromPath;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Platform\PlatformRoot;
@@ -43,7 +44,7 @@ final readonly class ConsolePreferences
     /** @param callable(string): PropertySnapshot $callback */
     private function inSubjectEnvironment(callable $callback): PropertySnapshot
     {
-        $environmentConsole = $this->request->is('admin', 'admin/*') && ! $this->request->routeIs('platform.*');
+        $environmentConsole = $this->request->attributes->has(ResolveEnvironmentFromPath::ATTRIBUTE);
         $administrator = $environmentConsole ? $this->admin->subjectId() : null;
         $id = $administrator ?? ($this->current->check() ? $this->current->id() : '');
         abort_if($id === '', 401);

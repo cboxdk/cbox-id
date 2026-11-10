@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Actions\Principal;
 
-use App\Http\Controllers\EnvironmentHandoffController;
+use App\Http\Middleware\ResolveEnvironmentFromPath;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\Approvals\PlatformRootApprovals;
@@ -31,7 +31,8 @@ use Illuminate\Auth\Access\AuthorizationException;
 /**
  * A workspace member's root-host token, BOUND TO ONE ENVIRONMENT of their workspace for one
  * call — what {@see RootPersonPrincipal::inEnvironment()} returns once the person has
- * passed the two checks `/open/{environment}` makes ({@see EnvironmentHandoffController}):
+ * passed the two checks the environment console's path makes
+ * ({@see ResolveEnvironmentFromPath}):
  * their role administers environments, and their membership reaches this one.
  *
  * THE ENVIRONMENT CONSOLE'S RIGHTS, within the token's scopes. Opening that console is

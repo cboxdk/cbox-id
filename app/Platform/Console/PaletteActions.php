@@ -152,7 +152,9 @@ final readonly class PaletteActions
         foreach ($creates ? [$list.'.create', $host, $list] : [$list] as $candidate) {
             $route = $this->router->getRoutes()->getByName($candidate);
 
-            if ($route instanceof Route && $route->parameterNames() === []) {
+            // Nothing to name but the environment console's own path, which this request
+            // already carries ({@see EnvironmentConsolePath}).
+            if ($route instanceof Route && collect($route->parameterNames())->reject(static fn (mixed $name): bool => $name === EnvironmentConsolePath::PARAMETER)->isEmpty()) {
                 return route($candidate);
             }
         }

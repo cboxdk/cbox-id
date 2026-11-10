@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Http\Controllers\EnvironmentConsoleRedirectController;
+use App\Http\Middleware\ResolveEnvironmentFromPath;
 use App\Http\Middleware\SetEnvironment;
 use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OAuth\RootMcpOAuth;
@@ -320,10 +322,12 @@ final class PlaneResolver
     }
 
     /**
-     * Whether the ENVIRONMENT CONSOLE is served here — `/admin/*`.
+     * Whether the environment console's OLD ADDRESS is answered here — `/admin/*`, which
+     * redirects to the console's one address on the app host
+     * ({@see EnvironmentConsoleRedirectController}). The console itself is served only on
+     * the app host, behind {@see ResolveEnvironmentFromPath}.
      *
-     * On a tenant environment's host, where an account reaches INTO an environment it
-     * administers by redeeming the platform root's signed handoff.
+     * On a tenant environment's host, which served the console before it moved.
      *
      * AND ON THE PLATFORM ROOT'S OWN HOST, for the root environment. It used to be absent
      * there, on the reasoning that "the root environment belongs to no account, so there is

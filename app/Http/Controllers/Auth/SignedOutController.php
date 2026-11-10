@@ -46,13 +46,9 @@ final readonly class SignedOutController extends PageController
 
     public function show(Request $request): Response
     {
-        // An environment's console signs in through its gate, which sends a signed-out
-        // administrator to the account host's sign-in and back; everybody else signs in on
-        // this host's own page. Only ever one of two routes on this host — the parameter
-        // picks between them and can name nothing else.
-        $signIn = $request->query('from') === self::FROM_CONSOLE
-            ? route('environment.home')
-            : route('login');
+        // Everybody signs in on this host's own page — the environment consoles too, which
+        // live on the app host now and sign in there.
+        $signIn = route('login');
 
         $response = $this->page('auth/signed-out', __('auth.signed_out.title'), [
             'signInUrl' => $signIn,

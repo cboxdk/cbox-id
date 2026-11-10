@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+
 /**
  * "Sudo mode" for the ENVIRONMENT control plane — a short-lived elevated-confirmation
  * window requiring the administrator to re-enter their password before a sensitive
@@ -38,16 +40,36 @@ final class EnvironmentSudo
     /** How long a sudo confirmation stays valid, in seconds. */
     public const WINDOW = 900;
 
+    /**
+     * Whether a confirmation for THIS environment is still fresh.
+     *
+     * Bound to the environment it was made in. The console moved to the app host, where one
+     * session administers every environment its person may reach; a confirmation made in a
+     * sandbox must not open the production vault two tabs over.
+     */
     public function confirmed(): bool
     {
-        $at = session()->get(self::SESSION_KEY);
+        $held = session()->get(self::SESSION_KEY);
 
-        return is_int($at) && (time() - $at) < self::WINDOW;
+        return is_array($held)
+            && is_int($held['at'] ?? null)
+            && ($held['environment'] ?? null) === $this->environment()
+            && $this->environment() !== null
+            && (time() - $held['at']) < self::WINDOW;
     }
 
-    public function confirm(): void
+    /**
+     * Confirm the step-up for an environment: the request's own unless named — a caller
+     * running in the platform root names the console's.
+     */
+    public function confirm(?string $environment = null): void
     {
-        session()->put(self::SESSION_KEY, time());
+        session()->put(self::SESSION_KEY, ['environment' => $environment ?? $this->environment(), 'at' => time()]);
+    }
+
+    private function environment(): ?string
+    {
+        return app(EnvironmentContext::class)->current()?->environmentKey();
     }
 
     public function forget(): void
