@@ -96,6 +96,36 @@ policy that names an old action still holds the renamed one.
 - The doc *Workspaces & organizations* is now
   [Organizations & customers](docs/core-concepts/organizations-and-customers.md).
 
+### The environment console moved to the app host
+
+Each environment's console is now on the app host, in the one session people sign in to
+there:
+
+- A customer's environment: `/orgs/{org}/projects/{project}/environments/{environment}/…`
+- The platform root's own environment: `/admin/environment/…`
+
+What changes for you:
+
+- The old addresses, `{environment host}/admin/…` and `{root host}/admin/…`, answer **301**
+  to the same page at the new address, with `Deprecation: true`. They go once they have
+  seen no traffic for seven days. `/open/{environment}` (and its `?to=/admin/…`) redirects
+  too. The signed handoff into an environment's host (`/admin/handoff`) and its sign-out
+  (`/admin/logout`) are gone.
+- Who may open a console is asked on every request: an active membership of the owning
+  organization, the native product's read role, and that environment among the ones the
+  member may reach. Anybody else signed in gets a 404. A Reader may open the console and
+  change nothing.
+- The environment step-up is its own, at `…/sudo` (and `…/sudo/mobile`), and is bound to
+  the environment it was confirmed in.
+- "Act as" and a support session start on the environment's own host through a signed,
+  single-use link, since the app host and an environment's host share no cookie.
+- Values a console page gives you to paste elsewhere (SCIM base URL, SAML entity id and ACS,
+  OIDC and OAuth callback URIs, sign-in links) still name the environment's own host.
+- A data migration attaches every environment that has no project to a project of the one
+  organization that grants it, since the console's address names a project. One it cannot
+  place (no organization, or several) is left as it is and logged as a warning: check the
+  log after migrating, and give each a project before its console can be opened.
+
 ## 2.2.0
 
 **cboxid.com took 2.2.0 continuously**, as it did 2.1.0. The `v2.2.0` tag marks a commit on
