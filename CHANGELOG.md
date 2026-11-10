@@ -18,6 +18,10 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 - **PKCE on hand-configured OpenID Connect connections.** Signing in through an OIDC connection that is not from the catalogue now sends an S256 `code_challenge` and proves it with the `code_verifier` at the token endpoint. Cbox ID itself requires PKCE of every client, so one Cbox ID environment can now sign in through another (the hosted platform environment through `cbox`). Catalogue providers are unchanged.
 
+### Changed
+
+- **The console's app switcher is the one every Cbox app draws.** The header renders `<cbox-app-switcher>` from `@cboxdk/cbox-ui` 0.9 (and the rail's mark is `<cbox-service-mark>`), the same element as Billing, Infra and the rest: icons from the catalog only, light and dark, with no Reconnect link. It reads the signed-in person's catalog from `GET /switch-app/catalog` (`apps.catalog`), same-origin JSON `{apps, revision, refresh_after}` straight from the catalog `GET /api/v1/me/apps` serves, with no OAuth round trip. The `appCatalog` page prop is replaced by `appCatalogUrl`; the console's own switcher, its local service marks and their CSS are gone. `img-src` admits the issuer, which serves the catalog's icons.
+
 ## [2.2.0] - 2026-11-08
 
 ### Added

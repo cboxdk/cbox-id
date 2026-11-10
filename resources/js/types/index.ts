@@ -372,7 +372,8 @@ export interface CatalogApp {
 
 export interface SharedProps {
     supportSessionUrl?: string | null;
-    appCatalog: CatalogApp[];
+    /** Same-origin JSON catalog for `<cbox-app-switcher>` (the signed-in person's; empty for nobody). */
+    appCatalogUrl: string | null;
     /**
      * Inertia's own `PageProps` is an open record, and `createInertiaApp` will not accept
      * a closed interface in its place. The index signature is that requirement and

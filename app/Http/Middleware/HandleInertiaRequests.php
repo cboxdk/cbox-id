@@ -13,7 +13,6 @@ use App\Http\Props\Shared\I18nProps;
 use App\Http\Props\Shared\ImpersonationProps;
 use App\Http\Props\Shell\ShellProps;
 use App\Platform\Appearance\BrandContext;
-use App\Platform\AppLauncher;
 use App\Platform\Connect\ActionSnippets;
 use App\Platform\Console\ShellPayload;
 use App\Platform\CurrentEnvironment;
@@ -72,7 +71,7 @@ final class HandleInertiaRequests extends Middleware
         'impersonation',
         'flash',
         'shell',
-        'appCatalog',
+        'appCatalogUrl',
         'i18n',
         'apiEquivalents',
         // Inertia's own, from `parent::share()`.
@@ -154,7 +153,8 @@ final class HandleInertiaRequests extends Middleware
              */
             'supportSessionUrl' => fn (): ?string => app(SupportContext::class)->sessionUrl($request),
             'shell' => fn (): ?ShellProps => app(ShellPayload::class)->build(),
-            'appCatalog' => fn (): array => app(AppLauncher::class)->apps(),
+            // Where the app switcher reads the signed-in person's catalog (AppCatalogFeedController).
+            'appCatalogUrl' => fn (): string => route('apps.catalog', [], false),
 
             /*
              * THE HOSTED PAGES' LANGUAGE — the locale, the picker's options, and the one

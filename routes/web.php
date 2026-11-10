@@ -7,6 +7,7 @@ use App\Http\Controllers\AccountApiKeyController;
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\Api\CliBootstrapController;
+use App\Http\Controllers\AppCatalogFeedController;
 use App\Http\Controllers\AppCatalogIconController;
 use App\Http\Controllers\AppsController;
 use App\Http\Controllers\AuditLogExportDownloadController;
@@ -727,6 +728,12 @@ Route::middleware(['plane:console', 'locale'])->group(function (): void {
  */
 Route::get('/switch-app', AppsController::class)
     ->middleware(['plane:console', 'platform.auth', 'locale.console', 'console.customer'])->name('apps');
+// The console's own app switcher (`<cbox-app-switcher>`): the signed-in person's catalog as
+// JSON, straight from the catalog. Not under `/apps`, which is the OAuth clients' page.
+// Every console layout draws the switcher, the environment console's too, so nobody signed
+// in to the console gets an empty list, as the shared prop it replaces gave them.
+Route::get('/switch-app/catalog', AppCatalogFeedController::class)
+    ->middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth:optional'])->name('apps.catalog');
 
 Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth', 'locale.console', 'console.customer', 'console.root'])->group(function (): void {
     Route::get('/support/session', App\Assistant\SessionController::class)->middleware('throttle:30,1')->name('support.session');

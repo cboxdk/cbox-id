@@ -101,6 +101,12 @@ it('allows images from this application and data: URIs, and nowhere else', funct
     expect(cspDirective('img-src', '/login'))->toBe("img-src 'self' data:");
 })->group('security');
 
+it('admits the issuer that serves the app catalog\'s icons to the console\'s app switcher', function (): void {
+    config()->set('cbox-id.issuer', 'https://cbox.cboxid.test');
+
+    expect(cspDirective('img-src', '/login'))->toBe("img-src 'self' data: https://cbox.cboxid.test");
+})->group('security');
+
 it('admits the deployment\'s own brand-asset CDN, and only that', function (): void {
     config()->set('whitelabel.assets.cdn_base_url', 'https://assets.example-cdn.test/brand');
 

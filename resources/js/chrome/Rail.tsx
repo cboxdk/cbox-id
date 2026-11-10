@@ -1,4 +1,4 @@
-import { ServiceMark } from './ServiceMark';
+import { ServiceMark } from './AppSwitcher';
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
