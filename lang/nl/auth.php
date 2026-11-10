@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Er zijn te veel codes aangevraagd. Wacht even en probeer het opnieuw.',
     ],
     'accounts' => [
-        'title' => 'Gebruiker wisselen',
+        'title' => 'Account wisselen',
         'lead' => 'Dit zijn de accounts die op dit apparaat zijn ingelogd. Kies er een of log in met een ander account.',
         'active' => 'Actief',
         'add' => 'Inloggen als een andere persoon',

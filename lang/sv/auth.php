@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'För många koder har begärts. Vänta en stund och försök igen.',
     ],
     'accounts' => [
-        'title' => 'Byt användare',
+        'title' => 'Byt konto',
         'lead' => 'Alla som är inloggade på den här enheten. Välj en, eller logga in som någon annan.',
         'active' => 'Aktiv',
         'add' => 'Logga in som någon annan',

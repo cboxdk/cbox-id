@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Hai richiesto troppi codici. Attendi un momento e riprova.',
     ],
     'accounts' => [
-        'title' => 'Cambia utente',
+        'title' => 'Cambia account',
         'lead' => 'Questi sono gli account con accesso attivo su questo dispositivo. Scegline uno oppure accedi con un altro account.',
         'active' => 'Attivo',
         'add' => 'Accedi come un\'altra persona',

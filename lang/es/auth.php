@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Has solicitado demasiados códigos. Espera un momento e inténtalo de nuevo.',
     ],
     'accounts' => [
-        'title' => 'Cambiar de usuario',
+        'title' => 'Cambiar de cuenta',
         'lead' => 'Estas son las cuentas con sesión iniciada en este dispositivo. Elige una o inicia sesión con otra cuenta.',
         'active' => 'Activo',
         'add' => 'Iniciar sesión como otra persona',

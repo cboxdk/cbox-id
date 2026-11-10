@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Demasiadas solicitações de código. Por favor, aguarde um momento e tente novamente.',
     ],
     'accounts' => [
-        'title' => 'Mudar utilizador',
+        'title' => 'Mudar de conta',
         'lead' => 'Estas são as contas com sessão iniciada neste dispositivo. Escolha uma ou inicie sessão com outra conta.',
         'active' => 'Ativo',
         'add' => 'Iniciar sessão como outra pessoa',

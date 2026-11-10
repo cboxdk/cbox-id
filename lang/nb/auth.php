@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Du har bedt om for mange koder. Vent litt, og prøv igjen.',
     ],
     'accounts' => [
-        'title' => 'Bytt bruker',
+        'title' => 'Bytt konto',
         'lead' => 'Alle som er logget inn på denne enheten. Velg én, eller logg inn som en annen.',
         'active' => 'Aktiv',
         'add' => 'Logg inn som en annen',

@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Ați solicitat prea multe coduri. Așteptați puțin și încercați din nou.',
     ],
     'accounts' => [
-        'title' => 'Schimbare utilizator',
+        'title' => 'Schimbați contul',
         'lead' => 'Acestea sunt conturile autentificate pe acest dispozitiv. Alegeți unul sau autentificați-vă cu alt cont.',
         'active' => 'Activ',
         'add' => 'Autentificare ca altcineva',

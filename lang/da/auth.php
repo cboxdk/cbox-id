@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Du har bedt om for mange koder. Vent lidt, og prøv igen.',
     ],
     'accounts' => [
-        'title' => 'Skift bruger',
+        'title' => 'Skift konto',
         'lead' => 'Alle der er logget ind på denne enhed. Vælg en, eller log ind som en anden.',
         'active' => 'Aktiv',
         'add' => 'Log ind som en anden',

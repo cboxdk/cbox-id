@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Liian monta koodia on pyydetty. Odota hetki ja yritä uudelleen.',
     ],
     'accounts' => [
-        'title' => 'Vaihda käyttäjä',
+        'title' => 'Vaihda tiliä',
         'lead' => 'Tällä laitteella kirjautuneena olevat käyttäjät. Valitse käyttäjä tai kirjaudu sisään toisella tilillä.',
         'active' => 'Aktiivinen',
         'add' => 'Kirjaudu sisään toisen henkilön tunnuksella',

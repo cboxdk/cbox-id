@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Zu viele Codes angefordert. Bitte warten Sie einen Moment und versuchen Sie es dann erneut.',
     ],
     'accounts' => [
-        'title' => 'Benutzer wechseln',
+        'title' => 'Konto wechseln',
         'lead' => 'Alle, die auf diesem Gerät angemeldet sind. Wählen Sie ein Konto aus, oder melden Sie sich als andere Person an.',
         'active' => 'Aktiv',
         'add' => 'Als andere Person anmelden',

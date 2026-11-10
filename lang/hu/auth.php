@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Túl sok kódot kértél. Várj egy kicsit, majd próbáld újra.',
     ],
     'accounts' => [
-        'title' => 'Felhasználó váltása',
+        'title' => 'Fiókváltás',
         'lead' => 'Az ezen az eszközön bejelentkezett felhasználók. Válassz közülük, vagy jelentkezz be másként.',
         'active' => 'Aktív',
         'add' => 'Bejelentkezés másik felhasználóként',

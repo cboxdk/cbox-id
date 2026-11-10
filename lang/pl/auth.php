@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Zbyt wiele próśb o kod. Poczekaj chwilę i spróbuj ponownie.',
     ],
     'accounts' => [
-        'title' => 'Zmień użytkownika',
+        'title' => 'Przełącz konto',
         'lead' => 'To konta zalogowane na tym urządzeniu. Wybierz jedno lub zaloguj się na inne konto.',
         'active' => 'Aktywne',
         'add' => 'Zaloguj się jako ktoś inny',

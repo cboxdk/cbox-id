@@ -105,6 +105,38 @@ it('says no language\'s word for workspace in that language\'s catalogue', funct
     expect($offenders)->toBe([]);
 });
 
+/**
+ * "Switch account" is a switch between Cbox ACCOUNTS, the same word the menu above it uses
+ * ("Account"). The translations carried over from "Switch user" said user; these are the
+ * phrasings that slipped through, matched case-insensitively.
+ */
+const SWITCH_USER_IN = [
+    'da' => 'skift\s+bruger',
+    'de' => 'benutzer\s+wechseln',
+    'es' => 'cambiar\s+de\s+usuario',
+    'fr' => 'changer\s+d.utilisateur',
+    'it' => 'cambia\s+utente',
+    'nb' => 'bytt\s+bruker',
+    'nl' => 'gebruiker\s+wisselen',
+    'sv' => 'byt\s+användare',
+];
+
+it('says switch account, never switch user, in the languages that drifted', function (): void {
+    $offenders = [];
+
+    foreach (SWITCH_USER_IN as $locale => $phrase) {
+        foreach ((array) glob(NO_WORKSPACE_ROOT."/lang/{$locale}/*.php") as $path) {
+            foreach (noWorkspaceLines((string) $path) as $key => $line) {
+                if (preg_match('/'.$phrase.'/iu', $line) === 1) {
+                    $offenders[] = "lang/{$locale}/".basename((string) $path).": {$key} — {$line}";
+                }
+            }
+        }
+    }
+
+    expect($offenders)->toBe([]);
+});
+
 it('keeps every key in every language: none lost in the rename, none left over', function (): void {
     $problems = [];
 

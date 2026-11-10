@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Požádali jste o příliš mnoho kódů. Chvíli počkejte a zkuste to znovu.',
     ],
     'accounts' => [
-        'title' => 'Přepnout uživatele',
+        'title' => 'Přepnout účet',
         'lead' => 'Toto jsou účty přihlášené na tomto zařízení. Vyberte jeden nebo se přihlaste k jinému účtu.',
         'active' => 'Aktivní',
         'add' => 'Přihlásit se jako někdo jiný',

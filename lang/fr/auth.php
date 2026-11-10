@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Trop de codes demandés. Veuillez patienter un instant, puis réessayer.',
     ],
     'accounts' => [
-        'title' => 'Changer d’utilisateur',
+        'title' => 'Changer de compte',
         'lead' => 'Toutes les personnes connectées sur cet appareil. Choisissez-en une, ou connectez-vous avec un autre compte.',
         'active' => 'Actif',
         'add' => 'Se connecter avec un autre compte',
