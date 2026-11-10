@@ -192,6 +192,7 @@ paths:
                         - description
                         - launch_url
                         - icon_url
+                        - icon_dark_url
                         - position
                         - version
                       properties:
@@ -210,6 +211,11 @@ paths:
                           type:
                             - string
                             - 'null'
+                        icon_dark_url:
+                          type:
+                            - string
+                            - 'null'
+                          description: 'Icon for dark surfaces. Null when the app has no dark icon; use icon_url in both themes.'
                         position:
                           type: integer
                         version:
