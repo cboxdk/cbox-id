@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 /*
- * After the upgrade: read what seed-v1.php wrote under the OLD release with the NEW
- * release's code, and check that every credential still does what it did.
+ * After the upgrade: read what seed-v1.php (or seed-v2.php) wrote under the OLD release
+ * with the NEW release's code, and check that every credential still does what it did.
  *
  * RUN WITH THE NEW RELEASE'S CODE, from its root, after `php artisan migrate --force`:
  *
@@ -15,10 +15,12 @@ declare(strict_types=1);
  * rather than comparing columns, so a changed hash scheme, sealing context or lookup
  * that the migrations did not carry across fails here the way it would fail a user.
  *
- * It also mints the NEW release's keys (`cbid_env_`, `cbid_ws_`) and writes them to
+ * It also mints the NEW release's keys (`cbid_env_`, `cbid_org_`) and writes them to
  * <smoke.json> for the HTTP smoke test that follows. Exits 1 if any check fails.
  */
 
+use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
+use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Models\Connection;
@@ -31,6 +33,7 @@ use Cbox\Id\Kernel\Crypto\Contracts\KeyManager;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
 use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
 use Cbox\Id\Organization\Contracts\UserApiTokens;
@@ -39,10 +42,13 @@ use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Contracts\OperatorMfa;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
+use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\TokenVault\ValueObjects\VaultOwner;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
 use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Contracts\Http\Kernel as HttpKernel;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -59,6 +65,8 @@ $app->make(Kernel::class)->bootstrap();
 /** @var array<string, mixed> $m */
 $m = json_decode((string) file_get_contents($manifestPath), true, flags: JSON_THROW_ON_ERROR);
 $failed = 0;
+/** The release the data was seeded with: 1 (seed-v1.php) or 2 (seed-v2.php). */
+$major = (int) ($m['from_major'] ?? 1);
 
 /** One named check: a closure that returns true, or a string saying what was wrong. */
 $check = static function (string $name, Closure $fn) use (&$failed): void {
@@ -97,7 +105,8 @@ $check('operator TOTP secret still opens (next step verifies)', function () use 
 
 $check('operator recovery code still verifies', fn (): bool|string => app(OperatorMfa::class)->verifyRecoveryCode($m['operator']['id'], $m['operator']['recovery_code']) ?: 'refused');
 
-$check('live cbid_org_ workspace key is marked revoked, and no longer resolves', function () use ($m, $envs, $root): bool|string {
+// 2.0 revoked every 1.x `cbid_org_` key; a 2.x `cbid_ws_` key keeps working until v3.1.
+$major === 1 && $check('live cbid_org_ workspace key is marked revoked, and no longer resolves', function () use ($m, $envs, $root): bool|string {
     $row = DB::table('organization_api_keys')->where('id', $m['workspace_keys']['live']['id'])->first();
     if ($row === null) {
         return 'row gone';
@@ -110,7 +119,13 @@ $check('live cbid_org_ workspace key is marked revoked, and no longer resolves',
     return $resolved === null ?: 'still resolves';
 });
 
-$check('an already-revoked cbid_org_ key keeps its original revoked_at', function () use ($m): bool|string {
+$major === 2 && $check('the 2.x cbid_ws_ workspace key still resolves', function () use ($m, $envs, $root): bool|string {
+    $resolved = $envs->runAs($root, fn () => app(OrganizationApiKeys::class)->resolve($m['workspace_keys']['live']['plaintext']));
+
+    return $resolved?->id === $m['workspace_keys']['live']['id'] ?: 'refused';
+});
+
+$check('an already-revoked workspace key keeps its original revoked_at', function () use ($m): bool|string {
     $at = (string) DB::table('organization_api_keys')->where('id', $m['workspace_keys']['revoked']['id'])->value('revoked_at');
 
     return substr($at, 0, 19) === substr($m['workspace_keys']['revoked']['revoked_at'], 0, 19) ?: "revoked_at moved to {$at}";
@@ -272,7 +287,7 @@ $envs->runAs($customer, function () use ($m, $check, $totp, $nextStep): void {
 
 // --- What the migrations reshaped ----------------------------------------------------
 
-$check('admin portal links carry their scope across as intents', function () use ($m): bool|string {
+$major === 1 && $check('admin portal links carry their scope across as intents', function () use ($m): bool|string {
     if (Schema::hasColumn('admin_portal_links', 'scope')) {
         return 'scope column still there';
     }
@@ -287,7 +302,7 @@ $check('admin portal links carry their scope across as intents', function () use
     return true;
 });
 
-$check('invitation role grants are keyed to the pending invitation; the revoked one\'s is gone', function () use ($m): bool|string {
+$major === 1 && $check('invitation role grants are keyed to the pending invitation; the revoked one\'s is gone', function () use ($m): bool|string {
     $grants = DB::table('invitation_role_grants')->get();
     if ($grants->count() !== 1) {
         return $grants->count().' grants left';
@@ -296,22 +311,116 @@ $check('invitation role grants are keyed to the pending invitation; the revoked 
     return $grants->first()->invitation_id === $m['invitations']['pending'] ?: 'keyed to '.$grants->first()->invitation_id;
 });
 
-$check('client secrets were backfilled into oauth_client_secrets', fn (): bool|string => DB::table('oauth_client_secrets')->count() === 2 ?: DB::table('oauth_client_secrets')->count().' rows');
+$major === 1 && $check('client secrets were backfilled into oauth_client_secrets', fn (): bool|string => DB::table('oauth_client_secrets')->count() === 2 ?: DB::table('oauth_client_secrets')->count().' rows');
+
+// --- What v3 renamed: the workspace is the organization (2.x data only) ---------------
+
+/** Send one request through the NEW release's HTTP kernel, as an agent would. */
+$call = static function (string $method, string $path, string $token, array $body = [], array $headers = []): array {
+    $server = ['HTTP_AUTHORIZATION' => 'Bearer '.$token, 'HTTP_ACCEPT' => 'application/json', 'CONTENT_TYPE' => 'application/json'];
+    foreach ($headers as $name => $value) {
+        $server['HTTP_'.strtoupper(str_replace('-', '_', $name))] = $value;
+    }
+    $kernel = app(HttpKernel::class);
+    $request = Request::create(rtrim((string) config('app.url'), '/').$path, $method, [], [], [], $server, $body === [] ? null : json_encode($body, JSON_THROW_ON_ERROR));
+    $response = $kernel->handle($request);
+    $kernel->terminate($request, $response);
+
+    return [$response->getStatusCode(), json_decode((string) $response->getContent(), true), $response->headers->get('Deprecation')];
+};
+
+if ($major === 2) {
+    $v2 = $m['v2'];
+
+    $check('workspace_key provenance reads organization_key, in both key tables', function () use ($v2): bool|string {
+        foreach (['organization_api_keys' => $v2['child_key_id'], 'environment_api_keys' => $v2['environment_key']['id']] as $table => $id) {
+            $type = DB::table($table)->where('id', $id)->value('created_by_type');
+            if ($type !== 'organization_key') {
+                return "{$table} {$id}: {$type}";
+            }
+            if (DB::table($table)->where('created_by_type', 'workspace_key')->exists()) {
+                return "{$table} still holds workspace_key rows";
+            }
+        }
+
+        return true;
+    });
+
+    $check('the environment key the 2.x agent minted still finds its approver', function () use ($m, $v2, $envs, $customer): bool|string {
+        $key = $envs->runAs($customer, fn () => EnvironmentApiKey::query()->withoutGlobalScopes()->find($v2['environment_key']['id']));
+
+        return $key !== null && (new EnvironmentKeyPrincipal($key))->approverSubjectId() === $m['workspace_owner_id'] ?: 'approver lost';
+    });
+
+    $check('the 2.x agent\'s scopes are stored in the v3 names', function () use ($v2): bool|string {
+        $scopes = json_decode((string) DB::table('organization_api_keys')->where('id', $v2['agent']['id'])->value('scopes'), true);
+        $want = ['id:organization:read', 'id:projects:write', 'id:environments:write', 'id:members:read', 'id:environment-keys:write', 'id:organization-keys:write'];
+
+        return $scopes === $want ?: 'stored '.json_encode($scopes);
+    });
+
+    $check('the 2.x agent still reads the organization on /api/v1/workspace, with Deprecation', function () use ($v2, $call): bool|string {
+        [$status, , $deprecation] = $call('GET', '/api/v1/workspace', $v2['agent']['plaintext']);
+
+        return ($status === 200 && $deprecation !== null) ?: "status {$status}, Deprecation ".var_export($deprecation, true);
+    });
+
+    $check('the idempotent answer 2.x stored under keys.workspace.create replays', function () use ($v2, $call): bool|string {
+        $row = DB::table('action_idempotency_records')->where('idempotency_key', $v2['idempotency_key'])->first();
+        if ($row === null || $row->action !== 'keys.organization.create' || ! str_starts_with((string) $row->principal, 'organization_key:')) {
+            return 'stored as '.json_encode($row);
+        }
+        [$status, $body] = $call('POST', '/api/v1/workspace/keys', $v2['agent']['plaintext'], $v2['idempotent_body'], ['Idempotency-Key' => $v2['idempotency_key']]);
+        if ($status !== 201 || ($body['data']['id'] ?? null) !== $v2['child_key_id']) {
+            return "replay answered {$status} ".json_encode($body['data']['id'] ?? $body);
+        }
+
+        return DB::table('organization_api_keys')->where('name', $v2['idempotent_body']['name'])->count() === 1 ?: 'minted twice';
+    });
+
+    $check('the approval 2.x filed under keys.workspace.create is spent by the v3 action', function () use ($m, $v2, $envs, $root, $call): bool|string {
+        $approval = $v2['approval'];
+        $action = DB::table('action_approval_requests')->where('id', $approval['id'])->value('action');
+        if ($action !== 'keys.organization.create') {
+            return "stored action {$action}";
+        }
+        $envs->runAs($root, fn () => app(BackchannelAuthentication::class)->approve($approval['id'], $m['workspace_owner_id']));
+        [$status, $body] = $call('POST', '/api/v1/workspace/keys', $approval['key'], $approval['body'], ['Cbox-Approval' => $approval['id']]);
+
+        return ($status === 201 && ($body['data']['name'] ?? null) === $approval['body']['name']) ?: "answered {$status} ".json_encode($body);
+    });
+
+    $check('a 2.x refresh token granted account:* names rotates, and its names pass the v3 checks', function () use ($v2, $envs, $root): bool|string {
+        $token = $v2['refresh_token'];
+        $grant = $envs->runAs($root, fn () => app(RefreshTokens::class)->rotate($token['client_id'], $token['token']));
+        if ($grant->userId !== $token['user_id']) {
+            return 'rotated to someone else';
+        }
+        foreach (['id:my-profile:write', 'id:my-sessions:write'] as $required) {
+            if (! ScopeRegistry::satisfies($grant->scopes, $required)) {
+                return "{$required} not satisfied by ".implode(' ', $grant->scopes);
+            }
+        }
+
+        return true;
+    });
+}
 
 // --- Mint the new release's keys for the HTTP smoke test ------------------------------
 
 $smoke = ['environment_slug' => $m['environment_slug']];
-$check('mint a cbid_env_ and a cbid_ws_ key with the new code', function () use (&$smoke, $m, $envs, $root, $customer): bool|string {
+$check('mint a cbid_env_ and a cbid_org_ key with the new code', function () use (&$smoke, $m, $major, $envs, $root, $customer): bool|string {
     $smoke['environment_key'] = $envs->runAs($customer, fn () => app(EnvironmentApiKeys::class)->issue($customer->id, 'Upgrade smoke', ['users:read', 'organizations:read'])->plaintext);
     $smoke['workspace_key'] = $envs->runAs($root, fn () => app(OrganizationApiKeys::class)->issue($m['workspace_id'], 'Upgrade smoke', MembershipRole::Admin)->plaintext);
     $smoke['old_environment_key'] = $m['environment_key']['plaintext'];
     $smoke['old_workspace_key'] = $m['workspace_keys']['live']['plaintext'];
+    $smoke['from_major'] = $major;
     $smoke['login_email'] = 'person05@acme.test';
     $smoke['signing_kid'] = $m['signing_kid'];
     $smoke['password'] = $m['password'];
     $smoke['organization_id'] = $m['organizations']['acme'];
 
-    return str_starts_with($smoke['workspace_key'], 'cbid_ws_') ?: 'workspace key minted as '.substr($smoke['workspace_key'], 0, 9);
+    return str_starts_with($smoke['workspace_key'], 'cbid_org_') ?: 'organization key minted as '.substr($smoke['workspace_key'], 0, 9);
 });
 file_put_contents($smokePath, json_encode($smoke, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 

@@ -15,7 +15,10 @@
 #      scripts/upgrade-path/seed-v1.php — people with passwords, TOTP and a passkey, apps
 #      with secrets, sessions and refresh tokens, webhooks, SSO connections, a SCIM
 #      directory, a vault secret, management keys (including the retired `cbid_org_`
-#      workspace keys), admin portal links, audit entries. Every write goes through that
+#      workspace keys), admin portal links, audit entries. From a 2.x tag,
+#      scripts/upgrade-path/seed-v2.php adds a `cbid_ws_` key with the v2 scope names, the
+#      keys it minted, an idempotent answer and a pending approval under the v2 action
+#      name, and a refresh token granted the v2 `account:*` names. Every write goes through that
 #      release's own services, so hashes and sealed columns are what it really writes.
 #   4. Row counts and the schema are recorded.
 #   5. With THIS checkout's code: `migrate --force`, then
@@ -23,7 +26,8 @@
 #        - scripts/upgrade-path/verify.php: every 1.x password, TOTP secret, recovery
 #          code, client secret, refresh token, session, webhook secret, SSO configuration,
 #          SCIM token, vault secret, personal token and environment key still works; the
-#          `cbid_org_` keys are revoked as UPGRADING.md says; the audit chains verify,
+#          1.x `cbid_org_` keys are revoked as UPGRADING.md says, a 2.x `cbid_ws_` key still
+#          works and its rows read in the v3 names; the audit chains verify,
 #        - `audit-chain:verify` and `cbox-id:doctor`,
 #        - an HTTP smoke test against `php artisan serve` (scripts/upgrade-path/http-smoke.sh):
 #          /login, OIDC discovery and JWKS on the environment host, the management API with
@@ -106,6 +110,7 @@ fi
 
 case "$from" in
     v1.*) seed="${tools}/seed-v1.php" ;;
+    v2.*) seed="${tools}/seed-v2.php" ;;
     *) fail "no seed script for ${from}: add scripts/upgrade-path/seed-<major>.php written against that release" ;;
 esac
 
@@ -149,6 +154,9 @@ export CBOX_ID_WEBAUTHN_RP_ID=id.localhost CBOX_ID_WEBAUTHN_ORIGIN="http://id.lo
 export SESSION_DRIVER=database CACHE_STORE=database QUEUE_CONNECTION=database
 # The seeded webhook endpoints are at hosts that do not resolve.
 export CBOX_ID_WEBHOOKS_VERIFY_URL=false
+# No Cbox Billing here to admit anyone, nor telemetry to report to: a checkout's .env
+# copied from .env.example turns both on.
+export CBOX_ID_PRODUCT_ACCESS_ENABLED=false TELEMETRY_ENABLED=false
 
 old() { (cd "$from_dir" && "$@"); }
 new() { (cd "$repo" && "$@"); }
@@ -157,9 +165,14 @@ new() { (cd "$repo" && "$@"); }
 
 stage "${from}: migrate, install, seed"
 old php artisan migrate --force --no-interaction >/dev/null || fail "${from} migrations"
+# 2.x ends the install with its health check, which fails when no queue manager is running
+# (none is, here): the deployment is installed all the same, and the install says so.
+install_log="${workdir}/install.log"
 old php artisan cbox-id:install --no-interaction --multi-tenant --console-host=id.localhost \
     --email=operator@upgrade.test --name="Upgrade Operator" --password='Operator-Passw0rd!' \
-    --environment=Production --organization="Acme Workspace" --issuer="$APP_URL" >/dev/null || fail "${from} install"
+    --environment=Production --organization="Acme Workspace" --issuer="$APP_URL" >"$install_log" 2>&1 \
+    || grep -q 'The deployment is installed' "$install_log" \
+    || { grep -v '^#' "$install_log" | tail -30; fail "${from} install"; }
 old php "$seed" "${workdir}/manifest.json" || fail "seeding ${from}"
 
 php "${tools}/row-counts.php" > "${workdir}/counts-before.json"
