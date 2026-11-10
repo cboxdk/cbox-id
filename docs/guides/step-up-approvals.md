@@ -22,7 +22,7 @@ request see [Approvals](agent-approvals.md) and [Trusted devices](trusted-device
 | Credential | Held when | Who approves |
 |---|---|---|
 | A secret key (`cbid_env_…`) with an approval policy | The action is at or above the policy's danger, or is named in it | The person who created the key. For a key minted by another key, the person at the top of that chain. |
-| An organization key (`cbid_org_…`) minted by a key with a policy | The same, with the policy it inherited | The person at the top of the minting chain |
+| An organization key (`cbid_ws_…`) minted by a key with a policy | The same, with the policy it inherited | The person at the top of the minting chain |
 | A token a person signed in with (an MCP client, `cbox login`) | Every **critical** action, always | That person |
 | A console session | Never. The console asks for your password before dangerous changes instead. | — |
 | An [Admin Portal](admin-portal.md) session | Never. The link is the approval. | — |

@@ -13,13 +13,14 @@ return [
     'issuer' => env('CBOX_ID_ISSUER'),
 
     /*
-     * Organization keys start `cbid_org_`, the framework's own prefix. v2 minted them as
-     * `cbid_ws_`; those keep working until v3.1, with a Deprecation header
-     * (App\Platform\Keys\OrganizationKeyPrefixes). The 1.x `cbid_org_` keys were revoked
-     * in October and stay revoked (see UPGRADING).
+     * Organization keys are minted `cbid_ws_` through v3.0, as v2 minted them: the released
+     * cbox-cli refuses a `cbid_org_` key. Both prefixes are resolved
+     * (App\Platform\Keys\OrganizationKeyPrefixes); minting switches to `cbid_org_` once a
+     * cbox-cli release reads it. The 1.x `cbid_org_` keys were revoked in October and stay
+     * revoked (see UPGRADING).
      */
     'management_keys' => [
-        'organization_prefix' => 'cbid_org_',
+        'organization_prefix' => 'cbid_ws_',
     ],
 
     'oauth' => [

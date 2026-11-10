@@ -30,7 +30,7 @@ for its area, for example [APIs](apis.md).
 | Who signs in there | The environment's own people: an organization's administrators | The organization's team, and the platform's operators |
 | What it reaches | That environment, and your own account there | The organization, every environment of it you administer, your own account and, for an operator, the deployment |
 | Signing in | An MCP client signs you in by itself, the `cbox` CLI, or a key | An MCP client signs you in by itself, the `cbox` CLI, or an organization key |
-| Keys it takes | `cbid_env_…` for that environment; a `cbid_org_…` organization key also works, with the organization's tools only | `cbid_org_…` for the organization |
+| Keys it takes | `cbid_env_…` for that environment; a `cbid_ws_…` organization key also works, with the organization's tools only | `cbid_ws_…` for the organization |
 
 Running an organization, you are a person of the platform root: you reach an environment's
 console through the organization console, and you have no account in the environment itself.
@@ -56,7 +56,7 @@ cbox login --issuer https://<platform-root>
 
 # Your whole organization, as an agent holding an organization key
 claude mcp add --transport http cbox-organization https://<platform-root>/mcp \
-  --header "Authorization: Bearer cbid_org_…"
+  --header "Authorization: Bearer cbid_ws_…"
 ```
 
 ## Two ways in
@@ -243,7 +243,7 @@ To share the setup with your team without sharing the key, put it in the project
 }
 ```
 
-A [organization key](keys.md#organization-keys) (`cbid_org_…`) works the same way and sees the
+A [organization key](keys.md#organization-keys) (`cbid_ws_…`) works the same way and sees the
 organization's tools: projects, environments, the team and keys. It is accepted on any host's
 `/mcp`, but never acts inside an environment.
 
@@ -334,7 +334,7 @@ To give an agent the organization without a person behind it, use an organizatio
 
 ```bash
 claude mcp add --transport http cbox-organization https://<platform-root>/mcp \
-  --header "Authorization: Bearer cbid_org_…"
+  --header "Authorization: Bearer cbid_ws_…"
 ```
 
 An organization key acts as the key, bounded by its role and scopes, and reaches the

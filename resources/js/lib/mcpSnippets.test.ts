@@ -36,7 +36,7 @@ describe('MCP client snippets', () => {
 
     it('adds the organization-wide server at the root under its own name, with an organization key', () => {
         expect(claudeCodeOrganization('https://cboxid.com/mcp').code).toBe(
-            'claude mcp add --transport http cbox-organization https://cboxid.com/mcp --header "Authorization: Bearer cbid_org_…"',
+            'claude mcp add --transport http cbox-organization https://cboxid.com/mcp --header "Authorization: Bearer cbid_ws_…"',
         );
     });
 

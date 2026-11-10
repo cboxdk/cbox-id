@@ -7,7 +7,6 @@ namespace App\Http\Middleware;
 use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Actions\Principal\OrganizationKeyPrincipal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
-use App\Platform\Keys\OrganizationKeyPrefixes;
 use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OrganizationApiContext;
 use App\Platform\OrganizationCapabilities;
@@ -19,7 +18,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Authenticate a request on the workspace management plane with a `Bearer cbid_org_…` (or a v2 `cbid_ws_…`)
+ * Authenticate a request on the workspace management plane with a `Bearer cbid_ws_…` (or a `cbid_org_…`)
  * workspace key. Resolves the key to its organization and role, then optionally enforces a
  * SCOPE (a route-middleware parameter, `org.api:projects:write` — the same shape as
  * `env.api:apis:write` on the environment plane).
@@ -93,7 +92,7 @@ final class AuthenticateOrganizationApi
         $this->context->set($key);
 
         try {
-            return OrganizationKeyPrefixes::mark($request, $next($request));
+            return $next($request);
         } finally {
             // The credential authenticated THIS request and nothing after it.
             $this->context->clear();

@@ -376,7 +376,7 @@ final readonly class ActionsReference
                 $openApi,
             ],
             ActionPlane::Organization => [
-                '| REST | `https://<root-host>/api/v1/workspace/…` with `Authorization: Bearer cbid_org_…` (an organization key, whose role must also allow the action; a `cbid_ws_…` key minted before v3 works until v3.1), or a team member\'s token from the root |',
+                '| REST | `https://<root-host>/api/v1/workspace/…` with `Authorization: Bearer cbid_ws_…` (an organization key, whose role must also allow the action), or a team member\'s token from the root |',
                 '| MCP | `/mcp` on the platform root, signed in as a member of the organization\'s team, or with an organization key |',
                 '| CLI | `cbox login` at the root, then the command below |',
                 $openApi,

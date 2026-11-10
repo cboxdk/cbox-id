@@ -106,7 +106,7 @@ class AppServiceProvider extends ServiceProvider
         // The scopes a management key may carry: the framework's core set plus the ones
         // this app's actions guard. The framework refuses to mint anything else.
         $this->app->singleton(ManagementScopes::class, AppManagementScopes::class);
-        // Organization keys: `cbid_org_` minted, `cbid_ws_` still resolved until v3.1.
+        // Organization keys: `cbid_ws_` minted through v3.0, `cbid_org_` resolved too.
         $this->app->singleton(OrganizationApiKeys::class, TransitionalOrganizationApiKeys::class);
 
         // Bundled Cbox Signals integration: this deployment enrols its live source

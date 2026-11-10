@@ -42,7 +42,7 @@ that reaches it and where its MCP tool is listed.
 | Plane | Path | Host | Credential | What it covers |
 |---|---|---|---|---|
 | **Environment** | `/api/v1/…` | the environment's | a secret key (`cbid_env_…`) or a token a person delegated | organizations, users, applications, APIs, keys, sign-in, governance — inside one environment |
-| **Organization** | `/api/v1/workspace/…` | the root | an organization key (`cbid_org_…`) or a team member's token | projects, environments, the team, keys |
+| **Organization** | `/api/v1/workspace/…` | the root | an organization key (`cbid_ws_…`) or a team member's token | projects, environments, the team, keys |
 | **Account** | `/api/v1/me/…` | wherever the person signs in | only a token the person delegated | one person's own profile, sessions, app grants, personal keys, devices |
 | **Platform** | `/api/v1/platform/…` | the root | only a platform operator's token | the deployment: organizations, environments, operators |
 

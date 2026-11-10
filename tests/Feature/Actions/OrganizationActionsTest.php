@@ -221,7 +221,7 @@ it('never keeps a minted key\'s value for an idempotent replay', function (): vo
     $replayed = $this->withToken($agent)->withHeader('Idempotency-Key', 'ws-1')
         ->postJson('/api/v1/workspace/keys', ['name' => 'Child', 'role' => 'developer'])->assertCreated();
 
-    expect($minted->json('data.token'))->toStartWith('cbid_org_')
+    expect($minted->json('data.token'))->toStartWith('cbid_ws_')
         ->and($replayed->json('data.token'))->toBeNull()
         ->and($replayed->json('data.id'))->toBe($minted->json('data.id'));
 });

@@ -119,7 +119,7 @@ final class AuthenticateMcp
         }
 
         try {
-            return OrganizationKeyPrefixes::mark($request, $next($request));
+            return $next($request);
         } finally {
             // This request's credential, and nothing after it (see McpCaller).
             $this->caller->clear();

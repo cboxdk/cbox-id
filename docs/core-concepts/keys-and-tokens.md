@@ -20,7 +20,7 @@ prefixes:
 | Key | Looks like | Held by | Reaches | Bounded by |
 |---|---|---|---|---|
 | **Secret key** | `cbid_env_…` | your backend, a CI job, an agent | one environment's API and `/mcp`, on that environment's host | its scopes, and its approval policy if it has one |
-| **Organization key** | `cbid_org_…` | automation for the organization | the organization API and the root's `/mcp` | a built-in role, narrowed by optional scopes |
+| **Organization key** | `cbid_ws_…` | automation for the organization | the organization API and the root's `/mcp` | a built-in role, narrowed by optional scopes |
 | **Publishable key** | `pk_live_…`, `pk_test_…` | a browser bundle, in public | the Frontend API, from the origins you list | its origin list |
 | **Member API key** | your app's prefix, e.g. `acme_live_…` | the people using your app | **your** app's API, which verifies it with Cbox ID | what your app decides |
 | **App credentials** | a client ID and a client secret | an app that signs people in | the OAuth and OpenID Connect endpoints | the grants and redirect URIs of the app |

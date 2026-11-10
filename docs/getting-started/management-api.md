@@ -328,7 +328,7 @@ the console runs — the same rules, refusals and activity-log entries.
 Everything above runs inside one environment, with that environment's key on its host.
 **Above** your environments is your organization — its projects, environments, team and keys —
 and the **organization API** at `/api/v1/workspace` runs it with an **organization key**
-(`cbid_org_…`, Keys › Organization keys in the console). Its contract is served at
+(`cbid_ws_…`, Keys › Organization keys in the console). Its contract is served at
 `/api/v1/workspace/openapi.yaml`.
 
 An organization key carries a **role** (admin, developer, member or viewer), which bounds it

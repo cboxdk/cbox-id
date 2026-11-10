@@ -54,7 +54,7 @@ export function claudeCodeOAuth(url: string): ClientSnippet {
 export const ORGANIZATION_SERVER_NAME = 'cbox-organization';
 
 /** What the organization snippet shows where an organization key goes. */
-export const ORGANIZATION_KEY_PLACEHOLDER = 'cbid_org_…';
+export const ORGANIZATION_KEY_PLACEHOLDER = 'cbid_ws_…';
 
 /**
  * The platform root's `/mcp`, with a WORKSPACE key: one server for the whole workspace —

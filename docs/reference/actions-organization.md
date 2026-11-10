@@ -15,7 +15,7 @@ Every row below is one action, reached through four doors that run the same code
 
 | | |
 |---|---|
-| REST | `https://<root-host>/api/v1/workspace/…` with `Authorization: Bearer cbid_org_…` (an organization key, whose role must also allow the action; a `cbid_ws_…` key minted before v3 works until v3.1), or a team member's token from the root |
+| REST | `https://<root-host>/api/v1/workspace/…` with `Authorization: Bearer cbid_ws_…` (an organization key, whose role must also allow the action; a `cbid_ws_…` key minted before v3 works until v3.1), or a team member's token from the root |
 | MCP | `/mcp` on the platform root, signed in as a member of the organization's team, or with an organization key |
 | CLI | `cbox login` at the root, then the command below |
 | OpenAPI | `/api/v1/organization/openapi.yaml` on the host above — public, no key needed ([source](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/organization.yaml)); every operation carries `x-action`, `x-scope` and `x-danger` |
