@@ -4772,4 +4772,5 @@ https://staging.example.com',
     'connections_1e5fac86' => 'Połączenia',
     'more_226ba18b' => 'Więcej',
     'opens_in_a_new_tab_1d183356' => 'Otwiera się w nowej karcie',
+    'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Wybierz aktywne połączenie OpenID Connect należące do całego środowiska.',
 ];

@@ -114,6 +114,42 @@ ends up with.
 Requiring SSO refuses every other way in, including passkeys and magic links, and signs
 out the sessions that used one. The page asks before it does that.
 
+## Sign in through another identity provider
+
+An environment can hand its whole sign-in page to one identity provider. Name one of its
+own OpenID Connect connections, and `/login` stops being a page: it sends everybody
+straight to that provider. Somebody who already has a session there comes back signed in
+without seeing anything.
+
+1. Create the connection for the whole environment and activate it:
+   `sso.connections.create` with `environment_wide: true` and `type: oidc`, then
+   `sso.connections.activate`.
+2. Point the sign-in at it with `signin.through.set`:
+
+```bash
+curl -X PUT https://your-environment.example/api/v1/sign-in/through \
+  -H "Authorization: Bearer $CBOX_KEY" -H 'Content-Type: application/json' \
+  -d '{"connection_id": "<connection id>"}'
+```
+
+Send `"connection_id": null` to get the environment's own page back.
+
+- **`/login/direct` is always the environment's own page**, with every method it has:
+  passkeys, password, magic link. Nothing redirects from there, so a provider that is down
+  does not lock anybody out who still has a local way in.
+- People are recognised by the provider's `sub`, not by their email address. The first
+  sign-in creates the account. If an account here already uses that address, the person is
+  asked to prove it is theirs before the two are linked.
+- If the provider refuses a sign-in or cannot be reached, the person lands on `/login`
+  with the reason, and the provider is offered as a button there. It does not loop.
+- How the person signed in at the provider counts here. If its ID token says they used a
+  passkey or a second factor (`amr`), the session here is at that level too, so anybody
+  who must use two factors is not asked again. This applies only to the connection the
+  sign-in goes through, never to an organization's own identity provider.
+- Turning the connection off or deleting it brings the plain sign-in page back on its own.
+- Only a connection that belongs to the whole environment and is active can be named.
+  Anything else is refused with `connection_not_eligible`.
+
 ## Related
 
 - [Social login](social-sign-in.md) — providers for the whole environment, and an organization's own.

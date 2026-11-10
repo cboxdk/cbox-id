@@ -4772,4 +4772,5 @@ https://staging.example.com',
     'sign_ins_and_requests_the_platform_scored_as_091fe5e6' => 'Prihlásenia a požiadavky, ktoré platforma vyhodnotila ako dostatočne podozrivé na označenie:value0. Od najnovších.',
     'value0_value1_none_failing_a5d264cb' => ':value0 :value1, všetky fungujú.',
     'detail_fb5f27d5' => 'Detail',
+    'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Vyberte aktívne pripojenie OpenID Connect, ktoré patrí celému prostrediu.',
 ];

@@ -4772,4 +4772,5 @@ https://staging.example.com',
     'sign_ins_and_requests_the_platform_scored_as_091fe5e6' => 'Platformun işaretleyecek kadar şüpheli bulduğu girişler ve istekler:value0. En yenisi önce.',
     'value0_value1_none_failing_a5d264cb' => ':value0 :value1, hiçbirinde hata yok.',
     'retention_3b1f58d9' => 'Saklama süresi',
+    'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Tüm ortama ait etkin bir OpenID Connect bağlantısı seçin.',
 ];

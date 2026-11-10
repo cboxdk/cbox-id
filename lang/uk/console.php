@@ -4772,4 +4772,5 @@ https://staging.example.com',
     'nothing_is_connected_value0_yet_the_catalog__ca6154d3' => 'Поки що нічого не підключено :value0. Каталог містить усі типи інтеграцій і запускає налаштування потрібної.',
     'sign_ins_and_requests_the_platform_scored_as_091fe5e6' => 'Входи й запити, які платформа оцінила як достатньо підозрілі, щоб позначити:value0. Від найновіших.',
     'value0_value1_none_failing_a5d264cb' => ':value0 :value1, жодне не має збоїв.',
+    'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Виберіть активне з’єднання OpenID Connect, яке належить усьому середовищу.',
 ];

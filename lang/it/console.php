@@ -4773,4 +4773,5 @@ Le connessioni',
     'whole_environment_fc5a0810' => 'Ambiente intero',
     'no_activity_recorded_fcfa3087' => 'Nessuna attività registrata',
     'last_activity_0c278ed1' => 'Ultima attività ',
+    'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Scegli una connessione OpenID Connect attiva che appartenga all’intero ambiente.',
 ];

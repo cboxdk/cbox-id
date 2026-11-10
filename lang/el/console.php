@@ -4772,4 +4772,5 @@ https://staging.example.com',
     'their_own_records_say_the_last_attempt_did_n_82c772c8' => '. Τα δικά τους αρχεία δείχνουν ότι η τελευταία προσπάθεια δεν ολοκληρώθηκε.',
     'value0_value1_none_failing_a5d264cb' => ':value0 :value1, χωρίς αποτυχίες σύνδεσης.',
     'an_upper_bound_the_file_itself_is_exact_and__1fc09fe1' => 'Ανώτατο όριο — το ίδιο το αρχείο είναι ακριβές και χωρίς διπλότυπα.',
+    'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Επιλέξτε μια ενεργή σύνδεση OpenID Connect που ανήκει σε ολόκληρο το περιβάλλον.',
 ];

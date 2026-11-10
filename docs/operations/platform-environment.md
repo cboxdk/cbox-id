@@ -118,7 +118,10 @@ The Google button is now on `https://cboxid.com/login`. Over the API, the same t
 
 ### It also signs people in to every environment console
 
-Environment administrators are platform-root accounts. Somebody who opens
+Environment administrators are platform-root accounts. On the hosted service the root's
+sign-in goes through the `cbox` environment
+([below](#cboxidcom-signs-in-through-the-cbox-environment)), so step 1 is a redirect there
+rather than a page. Somebody who opens
 `acme.cboxid.com/admin/users` signed out goes through these steps:
 
 1. They are sent to the root's sign-in page, `cboxid.com/login`. It offers the platform
@@ -145,6 +148,71 @@ administer this environment**. The page says their sign-in worked and offers
 A **tenant's own** social providers are for the people who sign in to that tenant's apps,
 on the tenant's hosted pages. They are never offered for the tenant's `/admin`. Each Social
 login page says which of the two it is.
+
+## cboxid.com signs in through the `cbox` environment
+
+On the hosted service the platform's console, `app.cboxid.com`, is one of Cbox's own apps.
+Every other Cbox app (Billing, Brain, Engage…) signs in through the `cbox` environment,
+`cbox.cboxid.com`. The platform environment does too, so **ID** in the app switcher is a
+single sign-on hop, not a second identity.
+
+It is set up with the same features any environment has:
+
+- In the `cbox` environment: an app (`apps.create`, `first_party: true` so there is no
+  consent screen) whose redirect URI is the root connection's callback,
+  `https://app.cboxid.com/sso/oidc/<connection id>/callback`.
+- In the platform environment: an OpenID Connect connection for the whole environment to
+  issuer `https://cbox.cboxid.com` with that app's client id and secret
+  (`sso.connections.create` with `environment_wide: true`, then
+  `sso.connections.activate`). The secret is sealed in the connection, not in the
+  deployment's environment.
+- `signin.through.set` with that connection's id. See
+  [Sign in through another identity provider](../guides/authentication-policy.md#sign-in-through-another-identity-provider).
+
+What a person sees:
+
+1. Signed in to Billing, they press **ID** in the app switcher, or open
+   `https://app.cboxid.com/admin`.
+2. The console has no session for them, so it sends them to `/login`, which sends them on
+   to `cbox.cboxid.com/oauth/authorize`.
+3. They are already signed in there, so `cbox.cboxid.com` answers at once and they land on
+   the page they asked for, signed in. Nobody sees a sign-in page.
+
+Without a session at `cbox.cboxid.com` they sign in there, on the same page every other
+Cbox app uses, and come back.
+
+The platform account is linked to the `cbox` user by that user's `sub`. The first sign-in
+creates the platform account. If one already exists with the same address, the person
+proves it is theirs once (with a passkey or password) and the two are linked from then on.
+Operators keep their operator role: it belongs to the platform account, and the link only
+says which `cbox` user that account is. Operators must have used two factors. A passkey or
+second factor at `cbox.cboxid.com` counts, so the hop stays silent. After a password-only
+sign-in there, the console asks for the operator's own second factor first.
+
+**Sign-out.** Signing out of the console ends the platform session and the environment
+consoles it opened, as before. It does not sign the person out of `cbox.cboxid.com` or the
+other apps. The next time they open the console they are signed straight back in.
+
+**Tenant consoles.** `acme.cboxid.com/admin` still sends a signed-out administrator to the
+root's sign-in. That now goes through `cbox.cboxid.com` and back, then the signed POST
+handoff, as described above.
+
+### Break-glass: when the `cbox` environment is down
+
+The platform's operators must not depend on the environment they would be fixing.
+
+- **`https://app.cboxid.com/login/direct`** is the platform environment's own sign-in page,
+  with passkeys, password and magic link. It never redirects to `cbox.cboxid.com`.
+  `https://app.cboxid.com/operator/login` goes to the same page.
+- Sign in there with your platform passkey, or your password and second factor. The
+  operator role and platform admin work as always.
+- To switch the redirect off entirely, sign in at `/login/direct` and run
+  `signin.through.set` with `connection_id: null` on the platform environment, or deactivate
+  the connection. `/login` is then the platform's own page again.
+
+Keep a passkey or a password and second factor on every operator account for this. A
+platform account created by signing in through `cbox` has neither until its owner adds one
+under **My account**.
 
 ## The guards
 

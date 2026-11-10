@@ -60,6 +60,9 @@ final readonly class SignInAudit
 
     public const string LEGACY_LOGIN_REVOKED = 'legacy_login.revoked';
 
+    /** The environment's sign-in page now goes through a connection, or is its own again. */
+    public const string SIGN_IN_THROUGH_UPDATED = 'auth_policy.sign_in_through_updated';
+
     public function __construct(private AuditLog $log) {}
 
     /**

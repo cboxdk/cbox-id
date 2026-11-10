@@ -2820,6 +2820,14 @@ components:
       properties:
         enabled: { type: boolean }
         decided_here: { type: boolean, description: "False on a single-tenant install, where sign-up follows CBOX_ID_SIGNUP_MODE and the switch changes nothing." }
+    SignInThrough:
+      type: object
+      required: [connection_id, connection_name, login_url, direct_login_url]
+      properties:
+        connection_id: { type: [string, "null"], description: "The OpenID Connect connection /login sends everybody to. Null: the environment's own sign-in page." }
+        connection_name: { type: [string, "null"] }
+        login_url: { type: string, format: uri, description: "The sign-in address: a redirect to the connection when one is set." }
+        direct_login_url: { type: string, format: uri, description: "The environment's own sign-in page, always — the way in when the connection's provider is down." }
     Device:
       type: object
       required: [id, install_id, platform, name, status]

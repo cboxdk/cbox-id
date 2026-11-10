@@ -19265,6 +19265,83 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /sign-in/through:
+    put:
+      tags:
+        - Sign-in
+      summary: "Send this environment's sign-in page straight to one of its own OpenID Connect connections (or back to its own page with null). /login/direct always stays the environment's own page."
+      description: 'Requires scope `signin:write`. Danger: critical.'
+      operationId: signin_through_set
+      x-action: signin.through.set
+      x-scope: 'signin:write'
+      x-danger: critical
+      parameters:
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
+        -
+          name: Cbox-Organization
+          in: header
+          required: false
+          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          schema:
+            type: string
+            minLength: 1
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                connection_id:
+                  type:
+                    - string
+                    - 'null'
+                  description: "An active OpenID Connect connection that belongs to the whole environment (sso.connections.create with environment_wide: true). Null for the environment's own sign-in page."
+                  maxLength: 64
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SignInThrough'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+        503:
+          description: 'Product admission could not be verified. The request is refused; retry later.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /signals/source:
     get:
       operationId: signals_source_list
@@ -25538,6 +25615,31 @@ components:
         decided_here:
           type: boolean
           description: 'False on a single-tenant install, where sign-up follows CBOX_ID_SIGNUP_MODE and the switch changes nothing.'
+    SignInThrough:
+      type: object
+      required:
+        - connection_id
+        - connection_name
+        - login_url
+        - direct_login_url
+      properties:
+        connection_id:
+          type:
+            - string
+            - 'null'
+          description: "The OpenID Connect connection /login sends everybody to. Null: the environment's own sign-in page."
+        connection_name:
+          type:
+            - string
+            - 'null'
+        login_url:
+          type: string
+          format: uri
+          description: 'The sign-in address: a redirect to the connection when one is set.'
+        direct_login_url:
+          type: string
+          format: uri
+          description: "The environment's own sign-in page, always — the way in when the connection's provider is down."
     Device:
       type: object
       required:
