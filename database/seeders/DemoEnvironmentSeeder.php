@@ -169,12 +169,12 @@ final class DemoEnvironmentSeeder extends Seeder
         $this->platformRoot();
 
         if (app(PlatformRoot::class)->run(fn (): bool => Organization::query()->where('slug', self::WORKSPACE_SLUG)->exists()) === true) {
-            $this->say('The demo workspace is already seeded — nothing to do.');
+            $this->say('The demo organization is already seeded — nothing to do.');
 
             return;
         }
 
-        $this->seedWorkspace();
+        $this->seedOrganization();
 
         $environment = $this->environment;
 
@@ -228,7 +228,7 @@ final class DemoEnvironmentSeeder extends Seeder
      * installer and sign-up use, so the first project and its production environment are
      * exactly what a real customer gets.
      */
-    private function seedWorkspace(): void
+    private function seedOrganization(): void
     {
         $provisioner = app(TenantProvisioner::class);
 

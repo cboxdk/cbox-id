@@ -13,7 +13,7 @@ info:
     the environment, and the request is authenticated with an environment API key
     (`cbid_env_…`).
 
-    This is distinct from the global organization API (`cbid_ws_…`), which manages the
+    This is distinct from the global organization API (`cbid_org_…`), which manages the
     organization, its environments and members. Credentials never cross planes — an
     organization key cannot call this API, and an environment key cannot call the organization
     API. An environment key is bound to the host it was minted for: presenting it on
@@ -55,15 +55,15 @@ info:
     **Rate limits.** Buckets are keyed on the API KEY, not the caller's IP, so a CI
     runner behind a shared NAT gets its own allowance. A `429` carries `Retry-After`.
 
-    **From the platform root.** The people who run a workspace — its team, signed in with
+    **From the platform root.** The people who run an organization — its team, signed in with
     `cbox login` at the platform root (`https://cboxid.com`) — reach every environment of
-    their workspace from there, with ONE access token (`WorkspaceAccessToken`): call these
+    their organization from there, with ONE access token (`OrganizationAccessToken`): call these
     same paths on the root's host and name the environment in the `Cbox-Environment` header
     (its id or slug). The token runs what the person could run on that environment's
     console — their role must administer environments, and their membership must reach
     that one — within the scopes it carries. Without the header the answer is
     `400 environment_required`; an environment the person cannot reach, or another
-    workspace's, is `404`. Everything is recorded in that environment's own trail, as the
+    organization's, is `404`. Everything is recorded in that environment's own trail, as the
     person (`actor_type: organization_member`), and every critical operation waits for
     their approval on their device.
 servers:
@@ -173,7 +173,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -290,7 +290,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -372,7 +372,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -441,7 +441,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -549,7 +549,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -630,7 +630,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -778,7 +778,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -851,7 +851,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -909,7 +909,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -962,7 +962,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -1024,7 +1024,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -1123,7 +1123,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -1185,7 +1185,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -1265,7 +1265,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -1334,7 +1334,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -1427,7 +1427,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -1480,7 +1480,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -1606,7 +1606,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -1724,7 +1724,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -1797,7 +1797,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -1943,7 +1943,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -2153,7 +2153,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -2234,7 +2234,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -2370,7 +2370,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -2431,7 +2431,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -2499,7 +2499,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -2592,7 +2592,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -2661,7 +2661,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -2758,7 +2758,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -2845,7 +2845,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -2918,7 +2918,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -3000,7 +3000,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -3073,7 +3073,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -3168,7 +3168,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -3232,7 +3232,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -3318,7 +3318,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -3408,7 +3408,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -3492,7 +3492,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -3576,7 +3576,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -3695,7 +3695,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -3764,7 +3764,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -4004,7 +4004,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -4073,7 +4073,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -4179,7 +4179,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -4243,7 +4243,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -4358,7 +4358,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -4433,7 +4433,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -4493,7 +4493,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -4562,7 +4562,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -4658,7 +4658,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -4719,7 +4719,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -4821,7 +4821,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -4924,7 +4924,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -4985,7 +4985,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -5132,7 +5132,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -5195,7 +5195,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -5487,7 +5487,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -5592,7 +5592,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -5659,7 +5659,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -5770,7 +5770,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -5933,7 +5933,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -6017,7 +6017,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -6085,7 +6085,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -6177,7 +6177,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -6311,7 +6311,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -6434,7 +6434,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -6508,7 +6508,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -6594,7 +6594,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -6685,7 +6685,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -6808,7 +6808,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -6957,7 +6957,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -7031,7 +7031,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -7092,7 +7092,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -7147,7 +7147,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -7242,7 +7242,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -7311,7 +7311,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -7449,7 +7449,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -7530,7 +7530,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -7599,7 +7599,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -7658,7 +7658,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -7726,7 +7726,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -7904,7 +7904,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -7986,7 +7986,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -8111,7 +8111,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -8176,7 +8176,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -8237,7 +8237,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -8320,7 +8320,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -8437,7 +8437,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -8565,7 +8565,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -8631,7 +8631,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -8750,7 +8750,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -8869,7 +8869,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -8973,7 +8973,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -9047,7 +9047,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -9109,7 +9109,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -9190,7 +9190,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -9301,7 +9301,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -9377,7 +9377,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -9438,7 +9438,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -9508,7 +9508,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -9586,7 +9586,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -9714,7 +9714,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -9788,7 +9788,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -9850,7 +9850,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -9924,7 +9924,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -9986,7 +9986,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -10050,7 +10050,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -10128,7 +10128,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -10192,7 +10192,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -10421,7 +10421,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -10497,7 +10497,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -10558,7 +10558,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -10628,7 +10628,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -10845,7 +10845,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -11086,7 +11086,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -11167,7 +11167,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -11230,7 +11230,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -11341,7 +11341,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -11404,7 +11404,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -11500,7 +11500,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -11572,7 +11572,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -11644,7 +11644,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -11715,7 +11715,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -11804,7 +11804,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -11871,7 +11871,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -11942,7 +11942,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -12035,7 +12035,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -12106,7 +12106,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -12198,7 +12198,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -12264,7 +12264,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -12349,7 +12349,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -12452,7 +12452,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -12522,7 +12522,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -12593,7 +12593,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -12657,7 +12657,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -12738,7 +12738,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -12844,7 +12844,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -12926,7 +12926,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -13004,7 +13004,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -13096,7 +13096,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -13177,7 +13177,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -13250,7 +13250,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -13310,7 +13310,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -13379,7 +13379,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -13524,7 +13524,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -13581,7 +13581,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -13709,7 +13709,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -13784,7 +13784,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -13848,7 +13848,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -13929,7 +13929,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -14053,7 +14053,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -14127,7 +14127,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -14186,7 +14186,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -14254,7 +14254,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -14381,7 +14381,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -14462,7 +14462,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -14524,7 +14524,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -14616,7 +14616,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -14671,7 +14671,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -14817,7 +14817,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -14891,7 +14891,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -14975,7 +14975,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -15044,7 +15044,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -15227,7 +15227,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -15300,7 +15300,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -15362,7 +15362,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -15500,7 +15500,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -15575,7 +15575,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -15630,7 +15630,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -15709,7 +15709,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -15895,7 +15895,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -15962,7 +15962,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -16041,7 +16041,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -16101,7 +16101,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -16170,7 +16170,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -16338,7 +16338,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -16399,7 +16399,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -16487,7 +16487,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -16550,7 +16550,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -16660,7 +16660,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -16730,7 +16730,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -16799,7 +16799,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -16888,7 +16888,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -16981,7 +16981,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -17062,7 +17062,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -17128,7 +17128,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -17267,7 +17267,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -17341,7 +17341,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -17400,7 +17400,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -17468,7 +17468,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -17907,7 +17907,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -17968,7 +17968,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -18119,7 +18119,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -18176,7 +18176,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -18250,7 +18250,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -18311,7 +18311,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -18657,7 +18657,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -18723,7 +18723,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -18889,7 +18889,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -18978,7 +18978,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -19047,7 +19047,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -19123,7 +19123,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -19272,7 +19272,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -19358,7 +19358,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -19437,7 +19437,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -19762,7 +19762,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -19886,7 +19886,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -19960,7 +19960,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -20044,7 +20044,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -20113,7 +20113,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -20197,7 +20197,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -20373,7 +20373,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -20447,7 +20447,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -20531,7 +20531,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -20599,7 +20599,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -20746,7 +20746,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -20840,7 +20840,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -20910,7 +20910,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -21008,7 +21008,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -21100,7 +21100,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -21186,7 +21186,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -21265,7 +21265,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -21370,7 +21370,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -21444,7 +21444,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -21521,7 +21521,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -21612,7 +21612,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -21691,7 +21691,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -21791,7 +21791,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -21911,7 +21911,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -21966,7 +21966,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -22082,7 +22082,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -22164,7 +22164,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -22233,7 +22233,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -22333,7 +22333,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -22410,7 +22410,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -22496,7 +22496,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -22588,7 +22588,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -22681,7 +22681,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -22772,7 +22772,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -22835,7 +22835,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -22924,7 +22924,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -22987,7 +22987,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -23054,7 +23054,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -23133,7 +23133,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -23199,7 +23199,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -23270,7 +23270,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -23339,7 +23339,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -23399,7 +23399,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -23471,7 +23471,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -23534,7 +23534,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -23597,7 +23597,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -23705,7 +23705,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -23768,7 +23768,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -23833,7 +23833,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -23904,7 +23904,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -23975,7 +23975,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -24038,7 +24038,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -24101,7 +24101,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -24614,7 +24614,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -24777,7 +24777,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -24853,7 +24853,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -24914,7 +24914,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -24984,7 +24984,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -25075,7 +25075,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -25148,7 +25148,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -25221,7 +25221,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -25294,7 +25294,7 @@ paths:
           name: Cbox-Organization
           in: header
           required: false
-          description: 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.'
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
           schema:
             type: string
             minLength: 1
@@ -25415,17 +25415,17 @@ components:
         people's API keys) the organization's own rules hold, as on its People page: an
         admin cannot change or remove an owner, nobody removes themselves, only the owner
         transfers ownership, a staff-only role is `role_not_assignable`, and a customer
-        workspace's roster — administered under Workspace › Team — is `409 managed_elsewhere`. A DPoP-bound token is presented as
+        organization's roster — administered under Organization › Team — is `409 managed_elsewhere`. A DPoP-bound token is presented as
         `Authorization: DPoP <token>` with a proof.
-    WorkspaceAccessToken:
+    OrganizationAccessToken:
       type: http
       scheme: bearer
       bearerFormat: JWT
       description: |
-        A workspace member's OAuth access token from the PLATFORM ROOT, audienced to the
+        An organization member's OAuth access token from the PLATFORM ROOT, audienced to the
         root's `/mcp` (`cbox login` at the root; an agent signed in there). Presented on the
         ROOT's host, with `Cbox-Environment` naming the environment of the person's
-        workspace to act in. It runs what that environment's console runs — when the
+        organization to act in. It runs what that environment's console runs — when the
         person's role administers environments and their membership reaches this one — and
         only within the scopes it carries. Every critical operation answers
         `202 approval_required` until the person approves it on their device. A DPoP-bound
@@ -25471,8 +25471,8 @@ components:
       in: header
       required: false
       description: |
-        Only with a `WorkspaceAccessToken`, on the platform root's host: the environment of
-        your workspace to act in, by id or slug. Required there; ignored with a key, which
+        Only with a `OrganizationAccessToken`, on the platform root's host: the environment of
+        your organization to act in, by id or slug. Required there; ignored with a key, which
         is bound to its own environment's host.
       schema:
         type: string
@@ -29543,7 +29543,7 @@ components:
           type:
             - string
             - 'null'
-          description: "The account's name at the provider, when it says (a GitHub login, an email, a workspace)."
+          description: "The account's name at the provider, when it says (a GitHub login, an email, an organization)."
         scopes:
           type: array
           items:
@@ -29764,7 +29764,7 @@ components:
             $ref: '#/components/schemas/Error'
     EnvironmentRequired:
       description: |
-        A `WorkspaceAccessToken` on the platform root's host named no environment
+        A `OrganizationAccessToken` on the platform root's host named no environment
         (`error: environment_required`): send `Cbox-Environment`.
       content:
         application/json:

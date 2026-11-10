@@ -978,9 +978,9 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      */
     Route::get('/keys', [EnvironmentKeyController::class, 'index'])->name('keys');
     Route::post('/keys', [EnvironmentKeyController::class, 'store'])->name('keys.store');
-    Route::get('/keys/workspace', [ApiKeyController::class, 'index'])->name('keys.workspace');
-    Route::post('/keys/workspace', [ApiKeyController::class, 'store'])->name('keys.workspace.store');
-    Route::delete('/keys/workspace/{key}', [ApiKeyController::class, 'destroy'])->name('keys.workspace.destroy');
+    Route::get('/keys/workspace', [ApiKeyController::class, 'index'])->name('keys.organization');
+    Route::post('/keys/workspace', [ApiKeyController::class, 'store'])->name('keys.organization.store');
+    Route::delete('/keys/workspace/{key}', [ApiKeyController::class, 'destroy'])->name('keys.organization.destroy');
     Route::delete('/keys/{key}', [EnvironmentKeyController::class, 'destroy'])->name('keys.destroy');
     Route::get('/environment-domains', [EnvironmentDomainController::class, 'index'])->name('environment-domains');
     Route::post('/environment-domains', [EnvironmentDomainController::class, 'store'])->name('environment-domains.store');
@@ -1939,7 +1939,7 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
 | "Platform" area of that console's rail instead — same paths, same names. Which shell
 | draws them is {@see \App\Platform\Console\ShellPayload}'s decision, not the route's.
 |
-| THE ROUTE NAMES DID NOT MOVE. `platform.workspaces` is still `platform.workspaces`: the
+| THE ROUTE NAMES DID NOT MOVE. `platform.orgs` is still `platform.orgs`: the
 | actions that declare these writes as their console routes, the parity sweep that holds
 | every write to one Action, and every `route()` call keep naming the same thing. Only
 | the path changed, and every old GET answers 301 (the moved-pages table below).
@@ -2000,19 +2000,19 @@ Route::prefix('admin/platform')->middleware('plane:operator')->group(function ()
         // WORKSPACES — the customers on the install. `/customers` until the console's own
         // word for a customer became the URL's too; the old paths answer 301 (see the
         // moved-pages table below), and the writes, which nothing bookmarks, simply moved.
-        Route::get('/workspaces', [PlatformCustomerController::class, 'index'])->name('platform.workspaces');
-        Route::post('/workspaces', [PlatformCustomerController::class, 'store'])->name('platform.workspaces.store');
+        Route::get('/workspaces', [PlatformCustomerController::class, 'index'])->name('platform.orgs');
+        Route::post('/workspaces', [PlatformCustomerController::class, 'store'])->name('platform.orgs.store');
 
-        // `platform.workspaces.show`, not `platform.workspace`. The console derives both the
+        // `platform.orgs.show`, not `platform.workspace`. The console derives both the
         // eyebrow above the page title and the lit rail entry from the route name by the
         // same prefix rule ({@see \App\Platform\Navigation\NavPage::owns()}), so a detail
         // page named as a CHILD of its list gets "Platform" over its heading and keeps
         // Workspaces lit in the rail without a single hand-written label. `platform.organization`
         // predates that rule and has to pass its own eyebrow; this one does not.
-        Route::get('/workspaces/{organization}', [PlatformCustomerController::class, 'show'])->name('platform.workspaces.show');
-        Route::post('/workspaces/{organization}/status', [PlatformCustomerController::class, 'toggle'])->name('platform.workspaces.toggle');
-        Route::post('/workspaces/{organization}/environments/{environment}/target', [PlatformCustomerController::class, 'target'])->name('platform.workspaces.target');
-        Route::post('/workspaces/{organization}/environments/{environment}/open', [PlatformCustomerController::class, 'open'])->name('platform.workspaces.open');
+        Route::get('/workspaces/{organization}', [PlatformCustomerController::class, 'show'])->name('platform.orgs.show');
+        Route::post('/workspaces/{organization}/status', [PlatformCustomerController::class, 'toggle'])->name('platform.orgs.toggle');
+        Route::post('/workspaces/{organization}/environments/{environment}/target', [PlatformCustomerController::class, 'target'])->name('platform.orgs.target');
+        Route::post('/workspaces/{organization}/environments/{environment}/open', [PlatformCustomerController::class, 'open'])->name('platform.orgs.open');
 
         // ENVIRONMENTS — every environment on the install. It was the section's front page
         // (`/platform`), which is why the old bare address lands here rather than on the

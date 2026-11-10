@@ -53,7 +53,7 @@ enum HelpTopic: string
     case SessionsAndActivity = 'sessions-and-activity';
     case ApiKeys = 'api-keys';
     case MemberApiKeys = 'member-api-keys';
-    case WorkspaceSettings = 'workspace-settings';
+    case OrganizationSettings = 'organization-settings';
     case Projects = 'projects';
     case Team = 'team';
     case Keys = 'keys';
@@ -81,7 +81,7 @@ enum HelpTopic: string
     case Radar = 'radar';
     case SignInActivity = 'sign-in-activity';
     case Branding = 'branding';
-    case Workspaces = 'workspaces';
+    case AllOrganizations = 'all-organizations';
     case Environments = 'environments';
     case PlatformOrganizations = 'platform-organizations';
     case PlatformUsage = 'platform-usage';
@@ -122,7 +122,7 @@ enum HelpTopic: string
             self::SessionsAndActivity => __('console.where_you_are_signed_in_a07510ca'),
             self::ApiKeys => __('console.keys_for_the_apis_of_the_apps_you_use_ec8ba965'),
             self::MemberApiKeys => __('console.keys_your_people_hold_for_your_apps_a5db71a6'),
-            self::WorkspaceSettings => __('console.organization_settings_4fd62541'),
+            self::OrganizationSettings => __('console.organization_settings_4fd62541'),
             self::Projects => __('console.your_products_and_their_environments_c6945f5f'),
             self::Team => __('console.the_people_who_run_this_organization_41e40bf5'),
             self::Keys => __('console.keys_for_your_own_code_4e040a24'),
@@ -150,7 +150,7 @@ enum HelpTopic: string
             self::Radar => __('console.allowing_challenging_and_blocking_sign_ins_1df777ec'),
             self::SignInActivity => __('console.sign_ins_over_time_7418e68f'),
             self::Branding => __('console.your_brand_on_the_sign_in_and_in_mail_459efaa4'),
-            self::Workspaces => __('console.every_organization_on_this_install_c06290a4'),
+            self::AllOrganizations => __('console.every_organization_on_this_install_c06290a4'),
             self::Environments => __('console.every_environment_on_this_install_8174d93f'),
             self::PlatformOrganizations => __('console.organizations_in_the_target_environment_d859f568'),
             self::PlatformUsage => __('console.usage_across_the_install_a13ed937'),
@@ -220,7 +220,7 @@ enum HelpTopic: string
 
             self::MemberApiKeys => __('console.every_api_key_the_people_in_this_organization_have_crea_51e4cae3'),
 
-            self::WorkspaceSettings => __('console.the_name_of_your_organization_which_your_projects_envir_fde906b5'),
+            self::OrganizationSettings => __('console.the_name_of_your_organization_which_your_projects_envir_fde906b5'),
 
             self::Projects => __('console.a_project_is_one_of_your_products_with_its_own_plan_sig_45d566d1'),
 
@@ -270,7 +270,7 @@ enum HelpTopic: string
 
             self::Branding => __('console.everything_your_people_see_of_your_brand_on_one_page_th_9d98e332'),
 
-            self::Workspaces => __('console.an_organization_is_one_signed_up_company_s_home_on_this_b98406a0'),
+            self::AllOrganizations => __('console.an_organization_is_one_signed_up_company_s_home_on_this_b98406a0'),
 
             self::Environments => __('console.an_environment_is_a_fully_isolated_identity_service_wit_993d6053'),
 
@@ -327,7 +327,7 @@ enum HelpTopic: string
             self::Staff => 'guides/roles',
             self::SupportAccess => 'guides/support-access',
             self::Projects,
-            self::Workspaces,
+            self::AllOrganizations,
             self::Environments,
             self::Organizations,
             self::PlatformOrganizations => 'core-concepts/workspaces-and-organizations',
@@ -344,7 +344,7 @@ enum HelpTopic: string
             self::Appearance,
             self::AccountSecurity,
             self::SessionsAndActivity,
-            self::WorkspaceSettings,
+            self::OrganizationSettings,
             self::Team,
             self::Billing,
             self::EnvironmentOverview,

@@ -13,7 +13,7 @@ use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Actions\OrganizationTarget;
-use App\Platform\EnvironmentWorkspace;
+use App\Platform\EnvironmentOwner;
 use Cbox\Id\Organization\Models\Organization;
 
 /**
@@ -31,7 +31,7 @@ use Cbox\Id\Organization\Models\Organization;
 )]
 final readonly class ShowAppearance implements Action
 {
-    public function __construct(private EnvironmentWorkspace $workspace) {}
+    public function __construct(private EnvironmentOwner $workspace) {}
 
     public static function input(): InputSchema
     {

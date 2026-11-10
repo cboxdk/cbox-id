@@ -100,7 +100,7 @@ final readonly class EnvironmentKeyPrincipal implements Principal
             if ($key->created_by_type === 'workspace_key' && is_string($key->created_by_id)) {
                 $minter = OrganizationApiKey::query()->whereKey($key->created_by_id)->first();
 
-                return $minter === null ? null : (new WorkspaceKeyPrincipal($minter))->approverSubjectId();
+                return $minter === null ? null : (new OrganizationKeyPrincipal($minter))->approverSubjectId();
             }
 
             if ($key->parent_key_id === null) {

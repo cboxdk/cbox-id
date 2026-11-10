@@ -599,7 +599,10 @@ function SyncSettings({ sync, hris, href }: { sync: SyncState; hris: boolean; hr
                             label:
                                 Number(minutes) < 60
                                     ? consoleDuration('console.duration_minute', Number(minutes))
-                                    : consoleDuration('console.duration_hour', Number(minutes) / 60),
+                                    : consoleDuration(
+                                          'console.duration_hour',
+                                          Number(minutes) / 60,
+                                      ),
                         }))}
                     />
                 </Field>

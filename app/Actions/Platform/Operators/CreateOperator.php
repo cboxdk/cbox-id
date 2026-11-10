@@ -30,7 +30,7 @@ use Illuminate\Support\Facades\Validator;
  * operator's ordinary subject and its hash, and nothing returns it.
  */
 #[AsAction(
-    name: 'platform.operators.create',
+    name: 'admin.operators.create',
     summary: 'Add a platform operator: a person with authority over the whole deployment.',
     scope: 'operator:operators:write',
     danger: Danger::Critical,

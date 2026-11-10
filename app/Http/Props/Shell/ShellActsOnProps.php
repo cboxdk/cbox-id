@@ -27,7 +27,7 @@ use App\Platform\Console\ShellPayload;
 final readonly class ShellActsOnProps implements Prop
 {
     /**
-     * @param  'environment'|'workspace'|'organization'|'platform'  $kind
+     * @param  'environment'|'org-plane'|'organization'|'platform'  $kind
      */
     public function __construct(
         public string $kind,

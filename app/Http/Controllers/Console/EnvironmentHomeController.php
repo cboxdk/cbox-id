@@ -38,7 +38,7 @@ final readonly class EnvironmentHomeController extends ConsoleController
         $subject = $admin->subjectId();
         // The workspace whose membership opened this console; none on the platform root's,
         // which its operators administer and no workspace owns.
-        $progress = $checklist->toProps($admin->workspaceId());
+        $progress = $checklist->toProps($admin->rootOrganizationId());
 
         return $this->page('environment/home', __('console.overview_d4b1ea57'), [
             /*

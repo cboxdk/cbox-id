@@ -454,7 +454,7 @@ final readonly class OAuthConsentController extends PageController
         if ($this->refusedAtRoot($client, $me)) {
             if ($silent) {
                 return $this->redirectError($redirectUri, 'access_denied', $state,
-                    'Only a member of a workspace\'s team or an operator can connect an MCP client at the platform root.');
+                    'Only a member of an organization\'s team or an operator can connect an MCP client at the platform root.');
             }
 
             return $this->failure(__('oauth.failure.no_organization'));

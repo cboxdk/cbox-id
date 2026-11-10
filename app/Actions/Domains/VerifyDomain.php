@@ -13,7 +13,7 @@ use App\Platform\Actions\AsAction;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\InputSchema;
-use App\Platform\EnvironmentWorkspace;
+use App\Platform\EnvironmentOwner;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
 use Cbox\Id\Organization\Exceptions\InvalidCustomDomain;
 
@@ -36,7 +36,7 @@ use Cbox\Id\Organization\Exceptions\InvalidCustomDomain;
 final readonly class VerifyDomain implements Action
 {
     public function __construct(
-        private EnvironmentWorkspace $workspace,
+        private EnvironmentOwner $workspace,
         private EnvironmentDomains $domains,
     ) {}
 

@@ -68,7 +68,7 @@ it('requires a new confirmation if the charge or consequences changed after prev
     $this->postJson(route('billing.confirm', $a['project']->id), ['quote' => $quote])->assertConflict();
 });
 
-it('does not apply an old billing form to the workspace selected in another tab', function (): void {
+it('does not apply an old billing form to the organization selected in another tab', function (): void {
     config(['billing-client.base_url' => 'https://payments.test', 'billing-client.api_token' => 'test']);
     $a = provisionAccount('tab-billing-a@example.test');
     $b = provisionAccount('tab-billing-b@example.test');

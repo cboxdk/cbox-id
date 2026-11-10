@@ -162,7 +162,7 @@ final readonly class AgentController extends ConsoleController
              * deployment ({@see RootDelegatedAccess}). Null where there is no root apart
              * from this host to point at.
              */
-            'workspace' => $this->workspaceConnection(),
+            'workspace' => $this->organizationConnection(),
             'urls' => [
                 'createAgent' => route('environment.agents.create', ['preset' => 'read-only', 'name' => 'Claude Code']),
                 'agents' => route('environment.agents'),
@@ -192,7 +192,7 @@ final readonly class AgentController extends ConsoleController
      *
      * @return array{mcpUrl: string, issuer: string, restBaseUrl: string, oauth: bool, workspaceKeysHref: string|null}|null
      */
-    private function workspaceConnection(): ?array
+    private function organizationConnection(): ?array
     {
         $resource = app(RootDelegatedAccess::class)->resource();
 
@@ -210,7 +210,7 @@ final readonly class AgentController extends ConsoleController
             // "Mint one under Keys › Workspace keys" — on the workspace's host, so absolute.
             'workspaceKeysHref' => app(PlaneResolver::class)->consoleHost() === null
                 ? null
-                : app(ShellContext::class)->onWorkspaceHost('keys.workspace'),
+                : app(ShellContext::class)->onOrganizationHost('keys.organization'),
         ];
     }
 

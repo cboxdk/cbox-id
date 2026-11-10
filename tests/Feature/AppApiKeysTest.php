@@ -288,7 +288,7 @@ it('offers the key page on the rail only where an app offers keys or a key is he
     expect(Console::featureActive('account.api-keys'))->toBeFalse();
 });
 
-it('lights the page being shown in My account, and not Security as well', function (string $route): void {
+it('lights the page being shown in Account, and not Security as well', function (string $route): void {
     $fixture = appKeyFixture();
     signInKeyHolder($fixture['ada'], $fixture['org']);
 

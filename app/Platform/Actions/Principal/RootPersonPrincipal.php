@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Actions\Principal;
 
-use App\Actions\Workspace\InWorkspace;
+use App\Actions\OrgPlane\InOrganization;
 use App\Mcp\ActionTool;
 use App\Platform\Actions\AccountScopes;
 use App\Platform\Actions\ActionDefinition;
@@ -12,11 +12,11 @@ use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Approvals\StepUpPolicy;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Actions\PlatformScopes;
-use App\Platform\Actions\WorkspaceScopes;
 use App\Platform\OAuth\RootDelegatedAccess;
+use App\Platform\OAuth\ValueObjects\RootOrganization;
 use App\Platform\OAuth\ValueObjects\RootSignIn;
-use App\Platform\OAuth\ValueObjects\RootWorkspace;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
@@ -41,9 +41,9 @@ use Illuminate\Auth\Access\AuthorizationException;
  *
  *  - THE WORKSPACE PLANE, as a MEMBER of the team: the role on the membership must hold the
  *    capability the scope needs and the capability the action's gate names
- *    ({@see WorkspaceScopes}, {@see OrganizationCapabilities}) — the answer
- *    {@see WorkspaceKeyPrincipal} gives a key holding that role, and the workspace
- *    console gives the person. The trail names the member ({@see InWorkspace::actor()}).
+ *    ({@see OrganizationScopes}, {@see OrganizationCapabilities}) — the answer
+ *    {@see OrganizationKeyPrincipal} gives a key holding that role, and the workspace
+ *    console gives the person. The trail names the member ({@see InOrganization::actor()}).
  *  - AN ENVIRONMENT'S PLANE, in one environment at a time, named per call
  *    ({@see inEnvironment()}): the person may act there when they could open its console —
  *    the role administers environments and the membership reaches that one, the two
@@ -64,7 +64,7 @@ readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, T
 {
     public function __construct(
         protected RootSignIn $signIn,
-        protected ?RootWorkspace $workspace,
+        protected ?RootOrganization $workspace,
     ) {}
 
     /** The root-issued token this person signed in with ({@see TokenAuthenticated}). */
@@ -98,8 +98,8 @@ readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, T
     {
         match ($action->plane) {
             ActionPlane::Account => $this->assertGranted(AccountScopes::knows($action->scope), $action->scope),
-            ActionPlane::Workspace => $this->assertWorkspaceMember($action),
-            ActionPlane::Environment => throw new AuthorizationException('Name the environment to act in: an environment action runs in one environment of your workspace at a time.'),
+            ActionPlane::Organization => $this->assertOrganizationMember($action),
+            ActionPlane::Environment => throw new AuthorizationException('Name the environment to act in: an environment action runs in one environment of your organization at a time.'),
             ActionPlane::Platform => throw new AuthorizationException('Only a platform operator can do this.'),
         };
     }
@@ -132,10 +132,10 @@ readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, T
      */
     public function inEnvironment(string $reference): EnvironmentMemberPrincipal
     {
-        $workspace = $this->workspace ?? throw new AuthorizationException('You are not on a workspace\'s team, so there is no environment to act in.');
+        $workspace = $this->workspace ?? throw new AuthorizationException('You are not on an organization\'s team, so there is no environment to act in.');
 
         if (! $workspace->capabilities()->canReadEnvironments()) {
-            throw new AuthorizationException('Your role in this workspace does not administer environments.');
+            throw new AuthorizationException('Your role in this organization does not administer environments.');
         }
 
         $reference = trim($reference);
@@ -208,7 +208,7 @@ readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, T
 
     /**
      * Nothing to be confined to, because nothing here is an organization of an environment:
-     * the workspace plane fences every id by the workspace ({@see InWorkspace}), the account
+     * the workspace plane fences every id by the workspace ({@see InOrganization}), the account
      * plane by the person, and every environment action is refused until the person is bound
      * to an environment by {@see inEnvironment()}.
      */
@@ -247,7 +247,7 @@ readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, T
         $environment = app(ManagementScopes::class);
 
         return array_values(array_filter($this->signIn->scopes, static fn (string $scope): bool => $environment->knows($scope)
-            || WorkspaceScopes::knows($scope)
+            || OrganizationScopes::knows($scope)
             || AccountScopes::knows($scope)
             || PlatformScopes::knows($scope)));
     }
@@ -274,7 +274,7 @@ readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, T
     }
 
     /** The workspace the person is on the team of, as it stands now — null for nobody's. */
-    public function workspace(): ?RootWorkspace
+    public function rootOrganization(): ?RootOrganization
     {
         return $this->workspace;
     }
@@ -302,20 +302,20 @@ readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, T
      *
      * @throws AuthorizationException
      */
-    private function assertWorkspaceMember(ActionDefinition $action): void
+    private function assertOrganizationMember(ActionDefinition $action): void
     {
-        $workspaceId = $this->workspace->id ?? throw new AuthorizationException('You are not on a workspace\'s team.');
-        $workspace = app(RootDelegatedAccess::class)->workspaceOf($this->signIn->subjectId, $workspaceId)
-            ?? throw new AuthorizationException('You are not on this workspace\'s team.');
+        $workspaceId = $this->workspace->id ?? throw new AuthorizationException('You are not on an organization\'s team.');
+        $workspace = app(RootDelegatedAccess::class)->organizationOf($this->signIn->subjectId, $workspaceId)
+            ?? throw new AuthorizationException('You are not on this organization\'s team.');
         $can = $workspace->capabilities();
 
-        foreach ([WorkspaceScopes::capability($action->scope), $action->consoleGate->capability()] as $capability) {
-            if ($capability === false || ! WorkspaceScopes::holds($can, $capability)) {
-                throw new AuthorizationException('Your role in this workspace may not '.($capability === false ? 'run this' : $capability).'.');
+        foreach ([OrganizationScopes::capability($action->scope), $action->consoleGate->capability()] as $capability) {
+            if ($capability === false || ! OrganizationScopes::holds($can, $capability)) {
+                throw new AuthorizationException('Your role in this organization may not '.($capability === false ? 'run this' : $capability).'.');
             }
         }
 
-        $this->assertGranted(WorkspaceScopes::knows($action->scope), $action->scope);
+        $this->assertGranted(OrganizationScopes::knows($action->scope), $action->scope);
         if (in_array($action->scope, ['workspace:read', 'projects:write', 'environments:write', 'keys:write'], true)) {
             app(ProductAdmission::class)->assertGranted($this->signIn->subjectId, $workspace->id, acting: $action->danger->writes());
         }

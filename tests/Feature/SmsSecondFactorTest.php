@@ -207,7 +207,7 @@ it('writes the challenge page and the text in the person\'s language', function 
 
 // ------------------------------------------------------------- My account
 
-it('adds a phone number from My account, proving it with a code, and hands out recovery codes', function (): void {
+it('adds a phone number from Account, proving it with a code, and hands out recovery codes', function (): void {
     smsfPolicy();
     $id = smsfPerson();
     smsfSignedIn($id);

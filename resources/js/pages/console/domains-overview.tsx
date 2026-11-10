@@ -205,10 +205,7 @@ export default function DomainsOverview({
                     )}
                 </div>
 
-                <Pagination
-                    pagination={pagination}
-                    href={(page) => listHref(search, page)}
-                />
+                <Pagination pagination={pagination} href={(page) => listHref(search, page)} />
             </div>
         </>
     );

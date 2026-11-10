@@ -164,7 +164,7 @@ it('has no accessibility issues on the ported console pages', function (string $
 })->with([
     'projects' => ['/projects', 'Projects'],
     'members' => ['/team', 'Team'],
-    'keys.workspace' => ['/keys/workspace', 'API keys'],
+    'keys.organization' => ['/keys/workspace', 'API keys'],
     'webhooks' => ['/webhooks', 'Webhooks'],
     'audit' => ['/audit', 'Audit log'],
     'settings' => ['/settings', 'Settings'],

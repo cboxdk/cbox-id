@@ -44,7 +44,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 final class TenantRoster
 {
     /** The sentence a refused roster write gets, and the People page's own banner. */
-    public const string MANAGED_ELSEWHERE = 'This organization is a Cbox workspace. Its team is managed under Workspace › Team.';
+    public const string MANAGED_ELSEWHERE = 'This organization has its own Cbox ID console. Its team is managed under Organization › Team.';
 
     /**
      * The organization the caller acts from inside of, or null for the environment's own
@@ -120,7 +120,7 @@ final class TenantRoster
     public static function assertManagedHere(string $organizationId, string $field): void
     {
         if (self::managedElsewhere($organizationId)) {
-            throw new ActionRefused('managed_elsewhere', new ActionMessage('console.this_organization_is_a_cbox_customer_its_team_is_manage_32dfc121'), 409, $field);
+            throw new ActionRefused('managed_elsewhere', new ActionMessage('console.this_organization_has_its_own_cbox_id_console_its_team__94b76d94'), 409, $field);
         }
     }
 

@@ -117,7 +117,7 @@ final readonly class ShellContext
 
         return new ShellContextProps(
             noun: $workspace ? __('console.organization_d764d425') : __('console.organization_d764d425'),
-            workspaces: $this->workspaceOptions($memberships, $currentId, fallbackName: $this->user->organization()?->name),
+            workspaces: $this->organizationOptions($memberships, $currentId, fallbackName: $this->user->organization()?->name),
             switchUrl: Route::has('organization.switch') ? route('organization.switch') : null,
             projects: $projects,
         );
@@ -142,11 +142,11 @@ final readonly class ShellContext
 
         $memberships = $this->root->run(fn (): Collection => $this->memberships->forUser($subjectId)) ?? new Collection;
 
-        $workspaces = $this->root->run(fn (): array => $this->workspaceOptions(
+        $workspaces = $this->root->run(fn (): array => $this->organizationOptions(
             $memberships,
             $workspaceId,
             fallbackName: null,
-            openHref: $this->onWorkspaceHost('projects'),
+            openHref: $this->onOrganizationHost('projects'),
         )) ?? [];
 
         $projects = $membership === null ? [] : $this->root->run(fn (): array => $this->projectsOf(
@@ -154,7 +154,7 @@ final readonly class ShellContext
             subjectId: $subjectId,
             capabilities: app(NativeProductAccess::class)->forWebSubject($subjectId, $membership->organization_id),
             currentEnvironmentId: $currentEnvironmentId,
-            href: fn (string $id): string => $this->withTarget($this->onWorkspaceHost('environment.open', ['environment' => $id]), $to),
+            href: fn (string $id): string => $this->withTarget($this->onOrganizationHost('environment.open', ['environment' => $id]), $to),
         )) ?? [];
 
         if ($onRoot || $this->isOperator($subjectId)) {
@@ -169,7 +169,7 @@ final readonly class ShellContext
                 label: __('console.platform_admin_69652f55'),
                 caption: __('console.operator_291101a0'),
                 current: true,
-                openHref: Route::has('platform.workspaces') ? $this->onWorkspaceHost('platform.workspaces') : null,
+                openHref: Route::has('platform.orgs') ? $this->onOrganizationHost('platform.orgs') : null,
             ));
         }
 
@@ -191,7 +191,7 @@ final readonly class ShellContext
     private function platformProject(bool $current, ?string $to): ContextProjectProps
     {
         $environment = $this->root->model();
-        $href = $this->onWorkspaceHost('environment.home');
+        $href = $this->onOrganizationHost('environment.home');
 
         if ($to !== null && $to !== '/admin') {
             $host = $this->planes->consoleHost();
@@ -231,7 +231,7 @@ final readonly class ShellContext
      *
      * @param  array<string, string>  $parameters
      */
-    public function onWorkspaceHost(string $route, array $parameters = []): string
+    public function onOrganizationHost(string $route, array $parameters = []): string
     {
         $host = $this->planes->consoleHost();
 
@@ -295,7 +295,7 @@ final readonly class ShellContext
      * @param  Collection<int, Membership>  $memberships
      * @return list<SwitchOptionProps>
      */
-    private function workspaceOptions(
+    private function organizationOptions(
         Collection $memberships,
         ?string $currentId,
         ?string $fallbackName,

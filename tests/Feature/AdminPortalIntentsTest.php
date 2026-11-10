@@ -265,7 +265,7 @@ it('drops an intent the plan stopped including from a live session', function ()
 
     $this->get(route('portal.sso'))->assertOk();
 
-    centralBillingFixture()->feature(app(ProductBilling::class)->owningWorkspace($org), new FeatureEntitlement('cbox-id.sso', FeatureType::Boolean, false));
+    centralBillingFixture()->feature(app(ProductBilling::class)->owningOrganization($org), new FeatureEntitlement('cbox-id.sso', FeatureType::Boolean, false));
 
     // Pages render from Billing's last answer; once it is stale a page still gets it and a
     // job asks Billing again, so the plan change reaches the session one page view later.

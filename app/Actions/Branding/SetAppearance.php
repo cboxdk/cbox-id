@@ -20,7 +20,7 @@ use App\Platform\Appearance\BrandImage;
 use App\Platform\Appearance\BrandImages;
 use App\Platform\Appearance\BrandImageUpload;
 use App\Platform\Appearance\InvalidBrandImage;
-use App\Platform\EnvironmentWorkspace;
+use App\Platform\EnvironmentOwner;
 use Cbox\Id\Organization\Contracts\Organizations;
 
 /**
@@ -51,7 +51,7 @@ final readonly class SetAppearance implements Action
 {
     public function __construct(
         private Organizations $organizations,
-        private EnvironmentWorkspace $workspace,
+        private EnvironmentOwner $workspace,
         private BrandImages $images,
     ) {}
 

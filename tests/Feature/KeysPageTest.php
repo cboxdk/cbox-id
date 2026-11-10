@@ -43,20 +43,20 @@ function anEnvironmentKeyAdmin(): array
     return $account;
 }
 
-it('gives the workspace console both of its kinds of key as tabs of one page', function (): void {
+it('gives the organization console both of its kinds of key as tabs of one page', function (): void {
     ['subjectId' => $subjectId] = provisionAccount();
     signInAsMember($subjectId);
 
-    expect(keyTabsOn(route('keys')))->toBe(['management', 'workspace'])
-        ->and(keyTabsOn(route('keys.workspace')))->toBe(['management', 'workspace']);
+    expect(keyTabsOn(route('keys')))->toBe(['management', 'organization'])
+        ->and(keyTabsOn(route('keys.organization')))->toBe(['management', 'organization']);
 
     $this->get(route('keys'))->assertInertia(fn (AssertableInertia $page) => $page
         ->component('console/keys/management')
         ->where('title', 'API keys')
         ->where('pickEnvironment', true));
 
-    $this->get(route('keys.workspace'))->assertInertia(fn (AssertableInertia $page) => $page
-        ->component('console/keys/workspace')
+    $this->get(route('keys.organization'))->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('console/keys/organization')
         ->where('title', 'API keys'));
 });
 
@@ -72,7 +72,7 @@ it('draws only the tabs a person may open', function (): void {
     // URL sends them somewhere they can be rather than to a page that refuses them.
     expect(keyTabsOn(route('keys')))->toBe(['management']);
 
-    $this->get(route('keys.workspace'))->assertRedirect(route('projects'));
+    $this->get(route('keys.organization'))->assertRedirect(route('projects'));
 });
 
 it('gives the environment console its management keys as Agents, and its frontend keys as API keys', function (): void {
@@ -89,10 +89,10 @@ it('gives the environment console its management keys as Agents, and its fronten
 
     // …and the workspace's own keys, on the workspace's host: one tab away from either page
     // rather than another host's rail away (tests/Feature/AgentKeyTabsTest.php).
-    expect(keyTabsOn(route('environment.keys.frontend')))->toBe(['management', 'frontend', 'workspace']);
+    expect(keyTabsOn(route('environment.keys.frontend')))->toBe(['management', 'frontend', 'organization']);
 });
 
-it('mints a management key for the environment the console stands on, on the workspace\'s record', function (): void {
+it('mints a management key for the environment the console stands on, on the organization\'s record', function (): void {
     ['environment' => $environment, 'organization' => $workspace] = anEnvironmentKeyAdmin();
 
     confirmConsoleStepUp();

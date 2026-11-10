@@ -16,7 +16,7 @@ uses(RefreshDatabase::class);
  * Both pages draw the same tabs now, Workspace keys as an absolute link to the workspace's
  * host, where that page lives.
  */
-it('draws the key tabs on the Agents page and on API keys, workspace keys on the workspace host', function (): void {
+it('draws the key tabs on the Agents page and on API keys, organization keys on the organization host', function (): void {
     actAsEnvironmentAdminOfATenant();
 
     $host = app(PlaneResolver::class)->consoleHost();
@@ -27,14 +27,14 @@ it('draws the key tabs on the Agents page and on API keys, workspace keys on the
             ->where('tabs.0.key', 'management')
             ->where('tabs.0.href', fn (string $href): bool => str_ends_with($href, '/admin/agents'))
             ->where('tabs.1.key', 'frontend')
-            ->where('tabs.2.key', 'workspace')
+            ->where('tabs.2.key', 'organization')
             ->where('tabs.2.href', 'https://'.$host.'/keys/workspace')
             ->where('tabs.2.current', false)
             ->where('tabs', fn ($tabs): bool => collect($tabs)->where('current', true)->pluck('key')->all() === [$current]));
     }
 });
 
-it('links Keys › Workspace keys on Connect to the workspace host', function (): void {
+it('links Keys › Organization keys on Connect to the organization host', function (): void {
     actAsEnvironmentAdminOfATenant();
 
     $host = app(PlaneResolver::class)->consoleHost();

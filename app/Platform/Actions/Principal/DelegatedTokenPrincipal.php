@@ -124,7 +124,7 @@ final readonly class DelegatedTokenPrincipal implements PersonPrincipal, SignedI
         }
 
         if ($action->plane !== ActionPlane::Environment) {
-            throw new AuthorizationException('A signed-in token reaches this environment\'s actions only. The workspace is reached with a workspace key.');
+            throw new AuthorizationException('A signed-in token reaches this environment\'s actions only. The organization is reached with an organization key.');
         }
 
         if (! app(ManagementScopes::class)->knows($action->scope) || ! in_array($action->scope, $this->scopes, true)) {

@@ -1,8 +1,8 @@
 <?php
 
-use App\Actions\Workspace\Environments\ListEnvironments;
-use App\Actions\Workspace\Projects\ListProjects;
-use App\Actions\Workspace\ShowWorkspace;
+use App\Actions\OrgPlane\Environments\ListEnvironments;
+use App\Actions\OrgPlane\GetOrganization;
+use App\Actions\OrgPlane\Projects\ListProjects;
 use App\Mail\InvitationMail;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionRunner;
@@ -145,14 +145,14 @@ it('uses independent optimistic versions for environment access and denies an em
     expect($rows->ids($account['organization']->id, $subject))->toBe([]);
 });
 
-it('lets a Billing-only native member read workspace identity but no operational lists', function () {
+it('lets a Billing-only native member read organization identity but no operational lists', function () {
     $account = provisionAccount();
     [$member, $subject] = addMember($account['organization']->id, MembershipRole::Member, 'native-billing-only@example.test');
     grantNativeProductRoles($member, ['billing']);
     signInAsMember($subject);
     $principal = new ConsoleSessionPrincipal(app(ConsoleScope::class));
     $runner = app(ActionRunner::class);
-    $result = $runner->run(ShowWorkspace::class, $principal, []);
+    $result = $runner->run(GetOrganization::class, $principal, []);
     expect($result->payload)->toMatchArray(['id' => $account['organization']->id, 'name' => 'Acme'])->not->toHaveKey('projects');
     expect(fn () => $runner->run(ListProjects::class, $principal, []))->toThrow(AuthorizationException::class);
     expect(fn () => $runner->run(ListEnvironments::class, $principal, []))->toThrow(AuthorizationException::class);

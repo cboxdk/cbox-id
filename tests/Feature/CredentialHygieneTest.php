@@ -276,15 +276,15 @@ it('mints an account key with an expiry and lists it as such', function (): void
     $this->travelTo(CarbonImmutable::parse('2026-09-24 10:00:00'));
     ['organizationId' => $organizationId] = aKeyManager();
 
-    $this->from(route('keys.workspace'))
-        ->post(route('keys.workspace.store'), ['name' => 'CI', 'role' => 'developer', 'expires' => '30'])
+    $this->from(route('keys.organization'))
+        ->post(route('keys.organization.store'), ['name' => 'CI', 'role' => 'developer', 'expires' => '30'])
         ->assertSessionHasNoErrors();
 
     $key = OrganizationApiKey::query()->where('name', 'CI')->firstOrFail();
 
     expect($key->expires_at?->toIso8601String())->toBe('2026-10-24T10:00:00+00:00');
 
-    $row = collect((array) $this->get(route('keys.workspace'))->assertOk()->inertiaProps('keys'))->firstWhere('name', 'CI');
+    $row = collect((array) $this->get(route('keys.organization'))->assertOk()->inertiaProps('keys'))->firstWhere('name', 'CI');
 
     expect($row['lifecycle']['status'])->toBe('active')
         ->and($row['lifecycle']['expiresAt'])->toBe('2026-10-24T10:00:00+00:00')
@@ -295,7 +295,7 @@ it('mints an account key with an expiry and lists it as such', function (): void
     // of travel would expire the session reading the page, too.)
     $key->forceFill(['expires_at' => CarbonImmutable::now()->subMinute()])->save();
 
-    $row = collect((array) $this->get(route('keys.workspace'))->assertOk()->inertiaProps('keys'))->firstWhere('name', 'CI');
+    $row = collect((array) $this->get(route('keys.organization'))->assertOk()->inertiaProps('keys'))->firstWhere('name', 'CI');
 
     expect($row['lifecycle']['status'])->toBe('expired')
         ->and($row['revokeHref'])->toBeNull()
@@ -309,13 +309,13 @@ it('mints an account key with an expiry and lists it as such', function (): void
 it('records minting and revoking an account API key on the account log', function (): void {
     ['organizationId' => $organizationId] = aKeyManager();
 
-    $this->from(route('keys.workspace'))
-        ->post(route('keys.workspace.store'), ['name' => 'Automation', 'role' => 'developer'])
+    $this->from(route('keys.organization'))
+        ->post(route('keys.organization.store'), ['name' => 'Automation', 'role' => 'developer'])
         ->assertSessionHasNoErrors();
 
     $key = OrganizationApiKey::query()->where('name', 'Automation')->firstOrFail();
 
-    $this->from(route('keys.workspace'))->delete(route('keys.workspace.destroy', $key->id))->assertRedirect(route('keys.workspace'));
+    $this->from(route('keys.organization'))->delete(route('keys.organization.destroy', $key->id))->assertRedirect(route('keys.organization'));
 
     $keyActions = ['organization.api_key_created', 'organization.api_key_revoked'];
 
@@ -330,7 +330,7 @@ it('records minting and revoking an account API key on the account log', functio
         ->and($created?->context['role'] ?? null)->toBe('developer');
 
     // A second revoke of the same key stops nothing and records nothing.
-    $this->from(route('keys.workspace'))->delete(route('keys.workspace.destroy', $key->id))->assertRedirect(route('keys.workspace'));
+    $this->from(route('keys.organization'))->delete(route('keys.organization.destroy', $key->id))->assertRedirect(route('keys.organization'));
 
     expect(accountActionsAmong($organizationId, $keyActions))->toHaveCount(2);
 })->group('security');
@@ -566,14 +566,14 @@ it('does not repeat the organization on a list that is already one organization\
  * bounce. It is a 404 now, like every other console lookup — and the foreign key is left
  * exactly as it was.
  */
-it('404s a workspace key revoke aimed at another organization\'s key, or at no key', function (): void {
+it('404s an organization key revoke aimed at another organization\'s key, or at no key', function (): void {
     aKeyManager();
 
     $other = app(Organizations::class)->create(new NewOrganization('Rival', 'rival-keys'));
     $theirs = app(OrganizationApiKeys::class)->issue($other->id, 'Their CI', MembershipRole::Developer);
 
-    $this->from(route('keys.workspace'))->delete(route('keys.workspace.destroy', $theirs->key->id))->assertNotFound();
-    $this->from(route('keys.workspace'))->delete(route('keys.workspace.destroy', '01JUNKNOWNKEYID0000000000'))->assertNotFound();
+    $this->from(route('keys.organization'))->delete(route('keys.organization.destroy', $theirs->key->id))->assertNotFound();
+    $this->from(route('keys.organization'))->delete(route('keys.organization.destroy', '01JUNKNOWNKEYID0000000000'))->assertNotFound();
 
     expect(OrganizationApiKey::query()->whereKey($theirs->key->id)->value('revoked_at'))->toBeNull();
 })->group('security');

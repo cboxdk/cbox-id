@@ -67,7 +67,7 @@ it('renders the environment console pages that draw the environment switcher', f
     }
 });
 
-it('renders the workspace pages that offer an environment', function (): void {
+it('renders the organization pages that offer an environment', function (): void {
     ['subjectId' => $subjectId] = provisionAccount();
     signInAsSubject($subjectId);
 

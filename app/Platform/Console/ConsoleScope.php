@@ -781,7 +781,7 @@ class ConsoleScope
     }
 
     /**
-     * Whether this console is a WORKSPACE's own — see {@see WorkspaceAltitude}.
+     * Whether this console is a WORKSPACE's own — see {@see OrganizationAltitude}.
      *
      * Three conditions, each load-bearing. The organization console, because the
      * environment console is already the product. The platform root of a multi-tenant
@@ -797,7 +797,7 @@ class ConsoleScope
      * and every organization in it is administered there; an operator's workspace console
      * is the workspace's, like anybody's. See {@see RootHostConsole}.
      */
-    public function atWorkspaceAltitude(): bool
+    public function atOrganizationAltitude(): bool
     {
         return $this->plane() === ConsolePlane::Organization
             && $this->planes->onAccountPlane()
@@ -812,7 +812,7 @@ class ConsoleScope
      * a multi-tenant deployment, because that is the one shape with an environment console
      * beside this one to have taken the rest: on a single-tenant install this console IS
      * the administration, and at the platform root it is the operator's and the workspace's.
-     * And not an operator, for the same reason {@see atWorkspaceAltitude()} gives — the
+     * And not an operator, for the same reason {@see atOrganizationAltitude()} gives — the
      * full console is their job, and an operator whose environment selection is pinned to a
      * tenant must not lose it for having looked there.
      *

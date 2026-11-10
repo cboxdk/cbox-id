@@ -199,10 +199,7 @@ export default function Clients({
             </div>
 
             <div className="mt-4">
-                <Pagination
-                    pagination={pagination}
-                    href={(page) => listHref(search, page)}
-                />
+                <Pagination pagination={pagination} href={(page) => listHref(search, page)} />
             </div>
 
             {/*

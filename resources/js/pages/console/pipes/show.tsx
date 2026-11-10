@@ -227,10 +227,7 @@ export default function PipeDetail({
                     </ul>
                 )}
                 <div className="mt-3">
-                    <Pagination
-                        pagination={pagination}
-                        href={(page) => `?page=${page}`}
-                    />
+                    <Pagination pagination={pagination} href={(page) => `?page=${page}`} />
                 </div>
             </Panel>
 

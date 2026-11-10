@@ -180,7 +180,7 @@ final class AuthenticateEnvironmentApi
     private function asPerson(Request $request, Closure $next, ?string $scope, bool $admitted): Response
     {
         if ($this->root->onRootHost()) {
-            return $this->asWorkspaceMember($request, $next, $scope, $admitted);
+            return $this->asOrganizationMember($request, $next, $scope, $admitted);
         }
 
         $person = $this->delegated->principal($request);
@@ -213,7 +213,7 @@ final class AuthenticateEnvironmentApi
      *
      * @param  Closure(Request): Response  $next
      */
-    private function asWorkspaceMember(Request $request, Closure $next, ?string $scope, bool $admitted): Response
+    private function asOrganizationMember(Request $request, Closure $next, ?string $scope, bool $admitted): Response
     {
         $person = $this->root->principal($request);
 
@@ -238,7 +238,7 @@ final class AuthenticateEnvironmentApi
         $reference = $request->headers->get(self::ENVIRONMENT_HEADER);
 
         if (! is_string($reference) || trim($reference) === '') {
-            return $this->deny('environment_required', 'Name the environment to act in with the '.self::ENVIRONMENT_HEADER.' header: an environment id or slug of your workspace.', 400);
+            return $this->deny('environment_required', 'Name the environment to act in with the '.self::ENVIRONMENT_HEADER.' header: an environment id or slug of your organization.', 400);
         }
 
         try {

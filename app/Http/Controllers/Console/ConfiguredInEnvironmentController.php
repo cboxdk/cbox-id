@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Http\Middleware\EnforceRootHostConsole;
+use App\Platform\Console\OrganizationLanding;
 use App\Platform\Console\RootHostConsole;
 use App\Platform\Console\ShellPayload;
-use App\Platform\Console\WorkspaceLanding;
 use Inertia\Response;
 
 /**
@@ -34,7 +34,7 @@ final readonly class ConfiguredInEnvironmentController extends ConsoleController
             // front page — the switcher's rows carry it when there is one.
             'samePage' => $twin !== null,
             'projectsHref' => $this->scope->capabilities()?->canReadEnvironments() === true ? route('projects') : null,
-            'consoleHref' => app(WorkspaceLanding::class)->url(),
+            'consoleHref' => app(OrganizationLanding::class)->url(),
             'platformHref' => $this->scope->isPlatformOperator() ? route('environment.home') : null,
         ]);
     }

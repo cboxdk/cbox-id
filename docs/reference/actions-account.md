@@ -15,7 +15,7 @@ Every row below is one action, reached through four doors that run the same code
 
 | | |
 |---|---|
-| REST | `https://<host>/api/v1/me/…` with a token you delegated — on your environment's host, or on the platform root for a workspace team member or operator |
+| REST | `https://<host>/api/v1/me/…` with a token you delegated — on your environment's host, or on the platform root for an organization team member or operator |
 | MCP | `/mcp` on the same host, signed in as yourself |
 | CLI | `cbox login`, then the command below |
 | OpenAPI | `/api/v1/me/openapi.yaml` on the host above — public, no key needed ([source](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/account.yaml)); every operation carries `x-action`, `x-scope` and `x-danger` |
@@ -335,7 +335,7 @@ Disconnect one linked sign-in identity (Google, GitHub, …) from your account �
 
 | Input | Type | Required | Description |
 |---|---|---|---|
-| `identity_id` | string (path) | yes | The linked identity's id, as My account lists it. |
+| `identity_id` | string (path) | yes | The linked identity's id, as Account lists it. |
 
 ### <a id="account.social.unlink"></a>account.social.unlink
 

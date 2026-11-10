@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Actions\Platform\Workspaces\SetWorkspaceStatus;
+use App\Actions\Platform\Organizations\SetOrganizationStatus;
 use App\Mail\PasswordResetMail;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
@@ -125,7 +125,7 @@ it('never runs an operator action for a console member who is not an operator', 
     signInAsMember($member);
 
     expect(fn () => app(ActionRunner::class)->run(
-        SetWorkspaceStatus::class,
+        SetOrganizationStatus::class,
         new ConsoleSessionPrincipal(app(ConsoleScope::class)),
         ['workspace_id' => $workspace->id, 'status' => 'suspended'],
     ))->toThrow(AuthorizationException::class);
@@ -133,7 +133,7 @@ it('never runs an operator action for a console member who is not an operator', 
     expect(Organization::query()->whereKey($workspace->id)->value('status'))->toBe(OrganizationStatus::Active);
 })->group('security');
 
-it('stands up a workspace over the API and emails its owner a link, never a password', function (): void {
+it('stands up an organization over the API and emails its owner a link, never a password', function (): void {
     $token = operatorToken($this->operator);
 
     $created = $this->withToken($token)->postJson('/api/v1/platform/workspaces', [
@@ -157,7 +157,7 @@ it('stands up a workspace over the API and emails its owner a link, never a pass
     ])->assertUnprocessable()->assertJsonPath('error', 'invalid_limit');
 });
 
-it('suspends a workspace over the API exactly as the console does, recorded as the operator', function (): void {
+it('suspends an organization over the API exactly as the console does, recorded as the operator', function (): void {
     $workspace = provisionAccount()['organization'];
     $token = operatorToken($this->operator);
 
@@ -309,7 +309,7 @@ it('serves the operator API\'s own contract, publicly', function (): void {
         ->assertSee('Operator API');
 });
 
-it('sends a bookmarked customers page to the workspaces one', function (): void {
+it('sends a bookmarked customers page to the organizations one', function (): void {
     $workspace = provisionAccount()['organization'];
 
     // Straight to where the workspaces page is now — inside `/admin` — not through

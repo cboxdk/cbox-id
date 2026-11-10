@@ -60,20 +60,20 @@ function signInMember(): string
 it('redirects account API key minting to sudo when not recently confirmed', function (): void {
     signInMember();
 
-    test()->from(route('keys.workspace'))
-        ->post(route('keys.workspace.store'), ['name' => 'ci', 'role' => 'developer'])
+    test()->from(route('keys.organization'))
+        ->post(route('keys.organization.store'), ['name' => 'ci', 'role' => 'developer'])
         ->assertRedirect(route('sudo'));
 
-    expect(session()->get('sudo.intended'))->toBe(route('keys.workspace'));
+    expect(session()->get('sudo.intended'))->toBe(route('keys.organization'));
 });
 
 it('mints an account API key once the step-up is confirmed', function (): void {
     signInMember();
     app(Sudo::class)->confirm();
 
-    test()->from(route('keys.workspace'))
-        ->post(route('keys.workspace.store'), ['name' => 'ci', 'role' => 'developer'])
-        ->assertRedirect(route('keys.workspace'))
+    test()->from(route('keys.organization'))
+        ->post(route('keys.organization.store'), ['name' => 'ci', 'role' => 'developer'])
+        ->assertRedirect(route('keys.organization'))
         ->assertSessionHasNoErrors()
         // ON THE FLASH CHANNEL, not in props: props are written into the browser's
         // history entry, and a full-authority credential there is readable by pressing
@@ -116,8 +116,8 @@ it('requires the step-up to revoke an account key, not just to mint one', functi
     // Mint with sudo confirmed, then drop back to an unconfirmed session — the shape a
     // stolen cookie has.
     app(Sudo::class)->confirm();
-    test()->from(route('keys.workspace'))
-        ->post(route('keys.workspace.store'), ['name' => 'automation', 'role' => 'developer'])
+    test()->from(route('keys.organization'))
+        ->post(route('keys.organization.store'), ['name' => 'automation', 'role' => 'developer'])
         ->assertSessionHasNoErrors();
 
     $keyId = OrganizationApiKey::query()->where('name', 'automation')->value('id');
@@ -126,8 +126,8 @@ it('requires the step-up to revoke an account key, not just to mint one', functi
 
     session()->forget(Sudo::SESSION_KEY);
 
-    test()->from(route('keys.workspace'))
-        ->delete(route('keys.workspace.destroy', $keyId))
+    test()->from(route('keys.organization'))
+        ->delete(route('keys.organization.destroy', $keyId))
         ->assertRedirect(route('sudo'));
 
     expect(OrganizationApiKey::query()->whereKey($keyId)->value('revoked_at'))

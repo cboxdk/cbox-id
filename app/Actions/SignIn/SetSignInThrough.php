@@ -13,7 +13,7 @@ use App\Platform\Actions\AsAction;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
-use App\Platform\EnvironmentWorkspace;
+use App\Platform\EnvironmentOwner;
 use App\Platform\SignInAudit;
 use App\Platform\SignInThrough;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -49,7 +49,7 @@ final readonly class SetSignInThrough implements Action
     public function __construct(
         private SignInThrough $through,
         private Connections $connections,
-        private EnvironmentWorkspace $workspace,
+        private EnvironmentOwner $workspace,
         private SignInAudit $audit,
     ) {}
 

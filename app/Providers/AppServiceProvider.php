@@ -30,8 +30,8 @@ use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
 use App\Platform\OAuth\RootMcpAudiences;
 use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
+use App\Platform\OrganizationApiContext;
 use App\Platform\Passkeys\RecordsPasskeyUse;
-use App\Platform\WorkspaceApiContext;
 use App\SignalsData\Bundled\IdMachineCredential;
 use App\SignalsData\Bundled\IdManagedSources;
 use Cbox\Dns\Dns;
@@ -120,7 +120,7 @@ class AppServiceProvider extends ServiceProvider
 
         // The authenticated account API key for the request — shared between the
         // auth middleware that sets it and the controllers that read it.
-        $this->app->scoped(WorkspaceApiContext::class);
+        $this->app->scoped(OrganizationApiContext::class);
 
         // Its environment-plane counterpart: the authenticated environment API key
         // for the request (the environment itself is host-resolved separately).

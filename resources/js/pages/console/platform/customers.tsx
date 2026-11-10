@@ -70,7 +70,7 @@ export default function Customers({
     const { choice: consoleChoice } = useConsoleTranslator();
     function plural(
         count: number,
-        noun: 'member' | 'project' | 'environment' | 'workspace' | 'organization',
+        noun: 'member' | 'project' | 'environment' | 'organization',
     ): string {
         const keys = {
             member: 'console.count_members',
@@ -157,7 +157,7 @@ export default function Customers({
                 />
                 <output className="sr-only">
                     {consoleRich('console._part1_on_this_page_adc43d3b', {
-                        part1: plural(pagination.count, 'workspace'),
+                        part1: plural(pagination.count, 'organization'),
                     })}
                 </output>
             </div>
@@ -172,9 +172,12 @@ export default function Customers({
                     {search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={consoleFinalText('console.no_organizations_match_part1__19b7019f', {
-                                part1: search,
-                            })}
+                            title={consoleFinalText(
+                                'console.no_organizations_match_part1__19b7019f',
+                                {
+                                    part1: search,
+                                },
+                            )}
                             description={consoleT(
                                 'console.try_part_of_the_organization_name_or_its_slug_51fd9569',
                             )}

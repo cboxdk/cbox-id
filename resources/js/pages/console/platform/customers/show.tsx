@@ -125,7 +125,7 @@ export default function Customer({
             </div>
 
             {/*
-                No hand-written eyebrow: the route is named `platform.workspaces.show`, so the
+                No hand-written eyebrow: the route is named `platform.orgs.show`, so the
                 nav registry already owns it under Platform › Customers and the header reads
                 the label from there.
             */}

@@ -70,7 +70,7 @@ it('refuses every organization-plane sign-in write on the root host to an operat
     expect($served)->toBe([], implode("\n", $served));
 })->group('security');
 
-it('keeps the workspace team\'s own sign-in for a workspace, and sends an operator to the platform\'s', function (): void {
+it('keeps the organization team\'s own sign-in for an organization, and sends an operator to the platform\'s', function (): void {
     expect(RootHostConsole::keepsRoute('connections'))->toBeTrue()
         ->and(RootHostConsole::keepsRoute('auth-policy.update'))->toBeTrue()
         ->and(RootHostConsole::keepsRoute('connections', operator: true))->toBeFalse()
@@ -92,7 +92,7 @@ it('says above every root-host page what it acts on', function (): void {
     $platform = (array) $this->get('https://cboxid.com/admin/platform/workspaces')->assertOk()->inertiaProps('shell.actsOn');
 
     expect($environment)->toMatchArray(['kind' => 'environment', 'critical' => true])
-        ->and((string) $environment['detail'])->toContain('every workspace owner and every operator')
+        ->and((string) $environment['detail'])->toContain('every organization owner and every operator')
         // Platform admin, in the same console: the whole deployment, in the warning colours
         // the amber strip used to carry.
         ->and($platform)->toMatchArray(['kind' => 'platform', 'label' => 'The whole deployment', 'critical' => true])

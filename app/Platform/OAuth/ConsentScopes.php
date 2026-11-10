@@ -10,8 +10,8 @@ use App\Platform\Actions\AccountScopes;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Actions\PlatformScopes;
-use App\Platform\Actions\WorkspaceScopes;
 use App\Platform\ScopeCatalog;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Support\Facades\Lang;
@@ -75,7 +75,7 @@ final readonly class ConsentScopes
         return match (true) {
             $this->management->knows($scope) => AppManagementScopes::label($scope),
             AccountScopes::knows($scope) => AccountScopes::label($scope),
-            WorkspaceScopes::knows($scope) => WorkspaceScopes::label($scope),
+            OrganizationScopes::knows($scope) => OrganizationScopes::label($scope),
             PlatformScopes::knows($scope) => PlatformScopes::label($scope),
             default => null,
         };

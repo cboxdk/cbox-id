@@ -111,7 +111,7 @@ it('creates only an identity team before product admission', function (): void {
     Http::assertNothingSent();
 });
 
-it('gates direct product creation through workspace API keys before writing', function (int $billingStatus, int $expectedStatus): void {
+it('gates direct product creation through organization API keys before writing', function (int $billingStatus, int $expectedStatus): void {
     $account = provisionAccount();
     config(['service-access.identity_environment' => platformRootEnvironment()->id]);
     $token = app(OrganizationApiKeys::class)->issue($account['organization']->id, 'Provisioning', MembershipRole::Admin, null, ['projects:write', 'environments:write'])->plaintext;

@@ -361,7 +361,7 @@ final readonly class AgentApprovalController extends ConsoleController
         $auth = app(EnvironmentAdminAuth::class);
         // None on the platform root's console, which no workspace owns: the act is on the
         // environment's own trail, and there is no workspace log to copy it to.
-        $workspaceId = $auth->workspaceId();
+        $workspaceId = $auth->rootOrganizationId();
 
         if ($workspaceId === null) {
             return;

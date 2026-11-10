@@ -123,7 +123,7 @@ function rootAuditActions(): array
 
 // ── The whole flow, as Claude Code runs it ──────────────────────────────────────
 
-it('signs a workspace member in from a bare /mcp URL, through to a held critical action', function (): void {
+it('signs an organization member in from a bare /mcp URL, through to a held critical action', function (): void {
     [$resource] = rootOAuthResource();
 
     // 1. The 401 says where to look.
@@ -205,7 +205,7 @@ it('signs a workspace member in from a bare /mcp URL, through to a held critical
     $this->withToken($token)->getJson('/api/v1/workspace')->assertOk();
 
     // 7. A critical action waits for the person.
-    $held = mcpCall($token, 'keys_workspace_create', ['name' => 'CI', 'role' => 'developer', 'idempotency_key' => 'root-oauth-once'])['structuredContent'];
+    $held = mcpCall($token, 'keys_organization_create', ['name' => 'CI', 'role' => 'developer', 'idempotency_key' => 'root-oauth-once'])['structuredContent'];
 
     expect($held['status'] ?? null)->toBe('approval_pending');
 
@@ -287,7 +287,7 @@ it('takes a client ID metadata document client through the root to its /mcp', fu
     ])->and(Client::query()->withoutGlobalScopes()->where('client_id', ROOT_MCP_DOCUMENT)->exists())->toBeFalse();
 });
 
-it('lets an operator on no workspace sign an MCP client in, for the deployment', function (): void {
+it('lets an operator on no organization sign an MCP client in, for the deployment', function (): void {
     $operator = actAsOperator('ops@platform.test');
     $clientId = (string) rootOAuthRegister()->assertCreated()->json('client_id');
 
@@ -297,7 +297,7 @@ it('lets an operator on no workspace sign an MCP client in, for the deployment',
     forgetSubjectSession();
 
     expect(mcpCall($token, 'whoami')['structuredContent']['operator'])->toBeTrue()
-        ->and(array_keys(mcpTools($token)))->toContain('platform_workspaces_create')
+        ->and(array_keys(mcpTools($token)))->toContain('admin_organizations_create')
         ->and(rootAuditActions())->toContain(RootMcpOAuth::AUTHORIZED)
         ->and((string) $operator->subject_id)->not->toBe('');
 });
@@ -357,7 +357,7 @@ it('refuses any audience but the root\'s /mcp', function (string $resource): voi
     'somebody else\'s API' => ['https://api.attacker.example'],
 ])->group('security');
 
-it('refuses the person who runs no workspace and is no operator, on the page', function (): void {
+it('refuses the person who runs no organization and is no operator, on the page', function (): void {
     $clientId = (string) rootOAuthRegister()->assertCreated()->json('client_id');
     $stranger = app(PlatformRoot::class)->run(static fn () => app(Subjects::class)->create('drifter@nowhere.example', 'Drifter', 'a-strong-unbreached-passphrase'));
 

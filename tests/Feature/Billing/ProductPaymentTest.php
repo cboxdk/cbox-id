@@ -38,7 +38,7 @@ it('shows the central account without exposing operational project records', fun
         ->missing('projects')->missing('usage')->has('countries'));
 });
 
-it('binds page account writes and card setup to the explicitly displayed workspace', function (): void {
+it('binds page account writes and card setup to the explicitly displayed organization', function (): void {
     ['subjectId' => $owner, 'organization' => $organization] = provisionAccount();
     signInAsMember($owner);
     $this->get('/billing')->assertRedirect(route('billing', ['organization' => $organization->id]));
@@ -48,7 +48,7 @@ it('binds page account writes and card setup to the explicitly displayed workspa
     $this->get('/billing/invoices/INV-1/download?organization=foreign')->assertForbidden();
 });
 
-it('confirms the first centrally stored card and never changes another workspace', function (): void {
+it('confirms the first centrally stored card and never changes another organization', function (): void {
     ['subjectId' => $owner, 'organization' => $organization] = provisionAccount();
     signInAsMember($owner);
     $this->postJson('/billing/payment-methods/setup', ['organization' => $organization->id])->assertOk()->assertJsonStructure(['clientSecret', 'publishableKey']);
@@ -79,7 +79,7 @@ it('gives billing members financial access and keeps readers out', function (): 
     $this->get(route('billing', ['organization' => $organization->id]))->assertOk()->assertInertia(fn (Page $page) => $page->where('canManage', true)->missing('projects'));
 });
 
-it('treats foreign and missing external payment method IDs identically on both workspace actions', function (): void {
+it('treats foreign and missing external payment method IDs identically on both organization actions', function (): void {
     ['organization' => $organization] = provisionAccount();
     $key = app(OrganizationApiKeys::class)->issue($organization->id, 'Billing worker', MembershipRole::Admin, null, ['billing:write'])->plaintext;
     $this->payments->withPaymentMethod('foreign-workspace', new PaymentMethod('pm_foreign', 'visa', '0000', 12, 2030, false));
@@ -92,7 +92,7 @@ it('treats foreign and missing external payment method IDs identically on both w
     expect($this->payments->paymentMethods('foreign-workspace'))->toHaveCount(1);
 });
 
-it('runs financial writes through workspace actions and preserves the required default card', function (): void {
+it('runs financial writes through organization actions and preserves the required default card', function (): void {
     ['subjectId' => $owner, 'organization' => $organization] = provisionAccount();
     signInAsMember($owner);
     $this->payments->withPaymentMethod($organization->id, new PaymentMethod('pm_first', 'visa', '4242', 12, 2030, false));

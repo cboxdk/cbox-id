@@ -17,7 +17,7 @@ summary and its input fields:
 | Page | Covers | Reached with |
 |---|---|---|
 | [Environment actions](actions-environment.md) | everything inside one environment: organizations, users, applications, APIs, keys, sign-in, governance, App audit logs, webhooks, log streams | a secret key (`cbid_env_…`) on the environment's host, or a delegated token |
-| [Workspace actions](actions-workspace.md) | projects, environments and their domains, the team, keys | a workspace key (`cbid_ws_…`) or a team member's token, at the root |
+| [Workspace actions](actions-organization.md) | projects, environments and their domains, the team, keys | a workspace key (`cbid_ws_…`) or a team member's token, at the root |
 | [Account actions](actions-account.md) | one person's own sessions, app grants, personal keys and devices | only a token that person delegated |
 | [Platform actions](actions-platform.md) | the deployment: workspaces, environments, operators | only a platform operator's token |
 

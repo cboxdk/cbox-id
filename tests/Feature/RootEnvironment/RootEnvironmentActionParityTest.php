@@ -174,7 +174,7 @@ it('holds every write an operator\'s token makes on the root environment for the
         ->assertOk();
 });
 
-it('refuses the root environment to a workspace owner who is not an operator', function (): void {
+it('refuses the root environment to an organization owner who is not an operator', function (): void {
     $token = parityToken($this->account['subjectId']);
 
     $this->withToken($token)

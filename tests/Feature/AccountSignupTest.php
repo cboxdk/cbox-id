@@ -51,7 +51,7 @@ it('creates only a person on root signup, with no organization or product resour
         ->and(Environment::query()->where('is_default', false)->count())->toBe(0);
 });
 
-it('refuses duplicate identity registration without creating a workspace', function (): void {
+it('refuses duplicate identity registration without creating an organization', function (): void {
     seedRootEnvironment();
     $register = fn () => $this->from(route('signup'))->post(route('signup.register'), ['name' => 'Dana', 'email' => 'dana@acme.example', 'password' => 'a-strong-unbreached-passphrase']);
     $register()->assertRedirect(route('account'));

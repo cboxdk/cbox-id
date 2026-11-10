@@ -104,7 +104,7 @@ it('puts the platform environment\'s Google on cboxid.com/login, for everybody',
         ->and($page->inertiaProps('audience.kind'))->toBe('platform');
 });
 
-it('does not let a workspace owner who is not an operator set the platform\'s Google', function (): void {
+it('does not let an organization owner who is not an operator set the platform\'s Google', function (): void {
     signInAsSubject($this->account['subjectId']);
 
     // Not the environment console — it is not theirs…

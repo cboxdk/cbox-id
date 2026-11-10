@@ -68,7 +68,7 @@ it('remembers the intended destination when a guest hits open-environment (hando
         ->assertSessionHas('url.intended', route('environment.open', $environment->id));
 });
 
-it('renders the workspace home with the account\'s projects', function (): void {
+it('renders the organization home with the account\'s projects', function (): void {
     ['member' => $member, 'subjectId' => $memberSubjectId] = provisionAccount();
 
     // Home is the Projects launchpad — the account's default project card, with its
@@ -203,8 +203,8 @@ it('lets a manager mint an API key and shows the plaintext once', function (): v
     signInAsMember($ownerSubjectId);
     app(Sudo::class)->confirm();
 
-    $this->from(route('keys.workspace'))
-        ->post(route('keys.workspace.store'), ['name' => 'CI deploy', 'role' => 'developer'])
+    $this->from(route('keys.organization'))
+        ->post(route('keys.organization.store'), ['name' => 'CI deploy', 'role' => 'developer'])
         ->assertSessionHasNoErrors()
         // ONCE, and on the flash channel: props are written into the history entry, so a
         // full-authority credential there is readable by pressing Back.
@@ -217,7 +217,7 @@ it('lets a manager mint an API key and shows the plaintext once', function (): v
 
     // AND NOT AGAIN. The next render of the page carries no key at all — the flash is
     // one-shot, which is the whole reason it is the channel this uses.
-    $this->get(route('keys.workspace'))->assertOk()->assertInertiaFlashMissing('freshKey');
+    $this->get(route('keys.organization'))->assertOk()->assertInertiaFlashMissing('freshKey');
 });
 
 it('redirects a non-manager away from API keys', function (): void {
@@ -226,7 +226,7 @@ it('redirects a non-manager away from API keys', function (): void {
     grantNativeProductRoles($dev, ['developer']);
 
     signInAsMember($devSubjectId);
-    $this->get(route('keys.workspace'))
+    $this->get(route('keys.organization'))
         ->assertRedirect(route('projects'));
 });
 
@@ -832,7 +832,7 @@ it('refuses to remove a customer\'s member from the environment roster', functio
     // only thing that says it.
     test()->from(route('directory.members'))
         ->delete(route('directory.members.remove', $targetSubjectId))
-        ->assertSessionHasErrors(['member' => 'This organization is a Cbox workspace. Its team is managed under Workspace › Team.']);
+        ->assertSessionHasErrors(['member' => 'This organization has its own Cbox ID console. Its team is managed under Organization › Team.']);
 
     // …and the membership is still there, which is the outcome that matters: removing it
     // alone would take somebody off the roster of the customer they belong to, from a page

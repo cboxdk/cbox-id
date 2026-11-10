@@ -7,8 +7,8 @@ namespace App\Mcp\Tools;
 use App\Mcp\McpCaller;
 use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
+use App\Platform\Actions\Principal\OrganizationKeyPrincipal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
-use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Api\Support\ServerMetadata;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -42,7 +42,7 @@ final class WhoAmI extends Tool
 
     protected string $title = 'Who am I';
 
-    protected string $description = 'Who this connection acts as: the credential kind and id (a management key, or a person who signed you in), the environment or workspace it is bound to, its issuer, and the scopes it holds. Signed in at the platform root, it also lists the environments you can act in — the values an environment tool\'s `environment` argument takes. Check this first when a tool you expected is not listed.';
+    protected string $description = 'Who this connection acts as: the credential kind and id (a management key, or a person who signed you in), the environment or organization it is bound to, its issuer, and the scopes it holds. Signed in at the platform root, it also lists the environments you can act in — the values an environment tool\'s `environment` argument takes. Check this first when a tool you expected is not listed.';
 
     public function handle(McpCaller $caller, EnvironmentContext $environments): ResponseFactory
     {
@@ -82,7 +82,7 @@ final class WhoAmI extends Tool
             // A workspace member — or an operator — signed in at the root: one connection
             // for the workspace, each environment of it they may administer, their own
             // account and, for an operator, the deployment.
-            $workspace = $principal->workspace();
+            $workspace = $principal->rootOrganization();
             $body['environment'] = null;
             $body['name'] = $principal->personName();
             $body['subject'] = $principal->subjectId();
@@ -99,7 +99,7 @@ final class WhoAmI extends Tool
             $body['expires_at'] = $principal->expiresAt() === null ? null : CarbonImmutable::createFromTimestamp($principal->expiresAt())->toIso8601String();
         }
 
-        if ($principal instanceof WorkspaceKeyPrincipal) {
+        if ($principal instanceof OrganizationKeyPrincipal) {
             $key = $principal->key();
             $body['environment'] = null;
             $body['workspace'] = $key->organization_id;

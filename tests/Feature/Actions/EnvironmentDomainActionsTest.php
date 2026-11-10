@@ -41,7 +41,7 @@ function domainLog(string $workspaceId, string $action): ?AuditEntry
     return app(OrganizationActivity::class)->recent($workspaceId)->first(static fn (AuditEntry $entry): bool => $entry->action === $action);
 }
 
-it('serves an environment on a custom domain from a workspace key, recorded as the key', function (): void {
+it('serves an environment on a custom domain from an organization key, recorded as the key', function (): void {
     ['organization' => $workspace, 'environment' => $environment] = provisionAccount();
     $key = domainKey($workspace->id);
     $keyId = OrganizationApiKey::query()->where('organization_id', $workspace->id)->sole()->id;
@@ -84,7 +84,7 @@ it('serves an environment on a custom domain from a workspace key, recorded as t
         ->assertJsonPath('error', 'invalid_domain');
 });
 
-it('records the console\'s change the same way, as the workspace member', function (): void {
+it('records the console\'s change the same way, as the organization member', function (): void {
     ['organization' => $workspace, 'subjectId' => $owner, 'environment' => $environment] = provisionAccount();
     $environment->update(['domain' => 'id.acme.com']);
     signInAsMember($owner);
@@ -100,7 +100,7 @@ it('records the console\'s change the same way, as the workspace member', functi
         ->and($entry?->actor_id)->toBe($owner);
 });
 
-it('answers 404 for another workspace\'s environment, and changes nothing there', function (): void {
+it('answers 404 for another organization\'s environment, and changes nothing there', function (): void {
     $mine = provisionAccount('mine@acme.example');
     $theirs = provisionAccount('theirs@other.example');
     app(EnvironmentDomains::class)->request($theirs['environment']->id, 'id.other.example');

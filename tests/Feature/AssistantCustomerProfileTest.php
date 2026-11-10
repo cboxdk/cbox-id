@@ -52,7 +52,7 @@ function profileMember(mixed $test, array $environmentIds): string
     return $subject;
 }
 
-it('serves the owner every project and environment of their workspace with signals', function (): void {
+it('serves the owner every project and environment of their organization with signals', function (): void {
     app(PlatformRoot::class)->run(fn () => $this->staging->forceFill(['status' => EnvironmentStatus::Suspended])->save());
     app(OrganizationActivity::class)->record($this->workspace->organization->id, 'organization.environment_created', $this->workspace->owner->id, 'environment', $this->staging->id, ['name' => 'Staging']);
     app(OrganizationActivity::class)->record($this->workspace->organization->id, 'organization.api_key_created', $this->workspace->owner->id);
@@ -93,7 +93,7 @@ it('announces both resources as pickable in the signed manifest', function (): v
     expect($resources['id_projects']['pickable'] ?? null)->toBeTrue()->and($resources['id_environments']['pickable'] ?? null)->toBeTrue();
 });
 
-it('shares nothing with a principal claiming another workspace', function (): void {
+it('shares nothing with a principal claiming another organization', function (): void {
     $this->getAssistantProfile(($this->principal)($this->workspace->owner->id, $this->other->organization->id))->assertOk()
         ->assertJsonMissingPath('resources.id_projects')->assertJsonMissingPath('resources.id_environments')
         ->assertJsonPath('signals', []);
@@ -114,7 +114,7 @@ it('limits a member to the environments they were granted', function (): void {
         ->assertJsonMissingPath('signals.recent_changes.0');
 });
 
-it('widens a verified support elevation to the same workspace only and audits it', function (): void {
+it('widens a verified support elevation to the same organization only and audits it', function (): void {
     $subject = profileMember($this, [$this->staging->id]);
     $access = $this->assistantSupportAccess(reason: 'Customer cannot sign in to production after a domain change');
 

@@ -326,7 +326,7 @@ export interface Shell {
     /** Where Sign out posts: the admin context's own logout on a tenant's console, else `/logout`. */
     logoutHref?: string | null;
     /** `App\Platform\Console\ConsoleAltitude` — which console this page is drawn in. */
-    altitude: 'workspace' | 'organization' | 'environment';
+    altitude: 'org-plane' | 'organization' | 'environment';
     /** The account menu's Workspace settings, where this person may change them. */
     workspaceSettingsHref: string | null;
     /**
@@ -344,7 +344,7 @@ export interface Shell {
 
 /** `App\Http\Props\Shell\ShellActsOnProps` */
 export interface ShellActsOn {
-    kind: 'environment' | 'workspace' | 'organization' | 'platform';
+    kind: 'environment' | 'org-plane' | 'organization' | 'platform';
     label: string;
     detail: string | null;
     /** The platform's own environment: a change there reaches every workspace owner and operator. */

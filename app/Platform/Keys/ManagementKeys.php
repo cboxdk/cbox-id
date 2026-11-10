@@ -229,7 +229,7 @@ final readonly class ManagementKeys
      */
     private function record(Principal $principal, string $environmentId, string $action, array $context): void
     {
-        $workspaceId = $this->workspaceOf($environmentId);
+        $workspaceId = $this->organizationOf($environmentId);
 
         if ($workspaceId === null) {
             return;
@@ -249,7 +249,7 @@ final readonly class ManagementKeys
     }
 
     /** The workspace (organization in the platform root) whose project the environment is in. */
-    private function workspaceOf(string $environmentId): ?string
+    private function organizationOf(string $environmentId): ?string
     {
         return $this->platformRoot->run(function () use ($environmentId): ?string {
             $projectId = Environment::query()->whereKey($environmentId)->value('project_id');

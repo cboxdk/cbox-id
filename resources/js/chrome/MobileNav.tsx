@@ -190,14 +190,17 @@ export function MobileNav({
                                 */}
                                 {workspaceSettingsUrl !== null && (
                                     <a href={workspaceSettingsUrl} className="nav-link w-full">
-                                        {consoleRich('console._part1_organization_settings_bc52a29f', {
-                                            part1: (
-                                                <Icon
-                                                    name="briefcase"
-                                                    className="w-[1.15rem] h-[1.15rem]"
-                                                />
-                                            ),
-                                        })}
+                                        {consoleRich(
+                                            'console._part1_organization_settings_bc52a29f',
+                                            {
+                                                part1: (
+                                                    <Icon
+                                                        name="briefcase"
+                                                        className="w-[1.15rem] h-[1.15rem]"
+                                                    />
+                                                ),
+                                            },
+                                        )}
                                     </a>
                                 )}
 

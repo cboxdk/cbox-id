@@ -212,9 +212,9 @@ it('drops a module page from the environment rail when the module is off', funct
  * doctor check, which went when the two consoles stopped having to match; the property it
  * held did not go with it.
  */
-it('never routes a workspace page on the environment plane', function (): void {
-    foreach (['projects', 'members', 'keys.workspace', 'environment-domains', 'activity', 'billing', 'organization-settings'] as $route) {
-        expect(Route::has($route))->toBeTrue("[{$route}] is no longer served by the workspace console")
+it('never routes an organization page on the environment plane', function (): void {
+    foreach (['projects', 'members', 'keys.organization', 'environment-domains', 'activity', 'billing', 'organization-settings'] as $route) {
+        expect(Route::has($route))->toBeTrue("[{$route}] is no longer served by the organization console")
             ->and(Route::has('environment.'.$route))->toBeFalse("[{$route}] is routed on the environment plane");
     }
 })->group('security');

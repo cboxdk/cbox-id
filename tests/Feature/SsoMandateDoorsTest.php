@@ -156,7 +156,7 @@ function doorMandatedAccount(string $email): array
     platformRootDeployment();
 
     $provisioned = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        organizationName: 'Workspace Co',
+        organizationName: 'Organization Co',
         ownerEmail: $email,
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
@@ -170,7 +170,7 @@ function doorMandatedAccount(string $email): array
         doorMandate($organizationId);
     });
 
-    return [$provisioned->owner, 'Workspace Co', $organizationId];
+    return [$provisioned->owner, 'Organization Co', $organizationId];
 }
 
 /*
@@ -303,7 +303,7 @@ it('refuses an account member\'s magic link while leaving the federated landing 
     $this->get(route('login'))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('auth/login')
-            ->hasFlash('mandate.organization', 'Workspace Co')
+            ->hasFlash('mandate.organization', 'Organization Co')
             ->hasFlash('mandate.reason', RefusedFactor::MagicLink->sentence()));
 
     // THE CONTROL, and the one that matters most: the door a mandate points AT must not
@@ -356,6 +356,6 @@ it('activates an account invitation under a mandate, and still refuses the sessi
     $this->get(route('login'))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('auth/login')
-            ->hasFlash('mandate.organization', 'Workspace Co')
+            ->hasFlash('mandate.organization', 'Organization Co')
             ->hasFlash('mandate.reason', RefusedFactor::Invitation->sentence()));
 })->group('security');

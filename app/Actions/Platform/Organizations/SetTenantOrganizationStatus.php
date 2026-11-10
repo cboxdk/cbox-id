@@ -24,15 +24,15 @@ use Cbox\Id\Organization\Models\Organization;
 /**
  * Suspend an organization inside an environment, or reactivate it.
  *
- * The state is named rather than flipped, for the reason {@see SetWorkspaceStatus} gives:
+ * The state is named rather than flipped, for the reason {@see SetOrganizationStatus} gives:
  * a retried toggle undoes itself. The organization is resolved through the SCOPED reader
  * inside the named environment, so an id from another plane is not found — and the change
  * is recorded by {@see Organizations::suspend()} itself, as the acting operator.
  *
- * @see \App\Actions\Platform\Workspaces\SetWorkspaceStatus
+ * @see SetOrganizationStatus
  */
 #[AsAction(
-    name: 'platform.organizations.set_status',
+    name: 'admin.tenant_organizations.set_status',
     summary: 'Suspend an organization inside an environment (its members can no longer sign in to it) or reactivate it.',
     scope: 'operator:organizations:write',
     danger: Danger::Critical,

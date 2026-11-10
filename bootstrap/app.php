@@ -6,7 +6,7 @@ use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\AuthenticateDelegatedApi;
 use App\Http\Middleware\AuthenticateEnvironmentAdmin;
 use App\Http\Middleware\AuthenticateEnvironmentApi;
-use App\Http\Middleware\AuthenticateWorkspaceApi;
+use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Http\Middleware\BindConsoleOrganization;
 use App\Http\Middleware\EnforceCustomerConsole;
 use App\Http\Middleware\EnforcePlane;
@@ -316,7 +316,7 @@ return Application::configure(basePath: dirname(__DIR__))
             // environment.
             'env.sudo' => RequireEnvironmentSudo::class,
             'scope' => RequireScope::class,
-            'workspace.api' => AuthenticateWorkspaceApi::class,
+            'org.api' => AuthenticateOrganizationApi::class,
             'env.api' => AuthenticateEnvironmentApi::class,
             // The planes only a person reaches (platform, account): a delegated token, never a key.
             'delegated.api' => AuthenticateDelegatedApi::class,

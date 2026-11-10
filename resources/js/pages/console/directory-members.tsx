@@ -170,7 +170,7 @@ export default function DirectoryMembers({
                                     part1: (
                                         <b>
                                             {consoleT(
-                                                'console.this_organization_is_a_cbox_customer__94cbf903',
+                                                'console.this_organization_has_its_own_cbox_id_console__91c0b7c6',
                                             )}
                                         </b>
                                     ),

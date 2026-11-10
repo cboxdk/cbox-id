@@ -42,7 +42,7 @@ final class SnapshotProductUsage extends Command
         $hour = CarbonImmutable::now()->startOfHour();
         $rows = [];
         foreach ($this->stock($hour) as $meter => $counts) {
-            foreach (self::byWorkspace($counts, $workspaces) as $workspace => $value) {
+            foreach (self::byOrganization($counts, $workspaces) as $workspace => $value) {
                 $rows[] = self::row("stock:{$meter}:{$workspace}:".$hour->format('YmdH'), $workspace, $meter, $hour, $value);
             }
         }
@@ -51,7 +51,7 @@ final class SnapshotProductUsage extends Command
         for ($back = $hours; $back >= 1; $back--) {
             $from = $hour->subHours($back);
             foreach ($this->activity($from, $from->addHour()) as $meter => $counts) {
-                foreach (self::byWorkspace($counts, $workspaces) as $workspace => $value) {
+                foreach (self::byOrganization($counts, $workspaces) as $workspace => $value) {
                     $rows[] = self::row("hourly:{$meter}:{$workspace}:".$from->format('YmdH'), $workspace, $meter, $from->addHour()->subSecond(), $value);
                 }
             }
@@ -127,7 +127,7 @@ final class SnapshotProductUsage extends Command
      * @param  array<string, string>  $workspaces
      * @return array<string, int>
      */
-    private static function byWorkspace(array $counts, array $workspaces): array
+    private static function byOrganization(array $counts, array $workspaces): array
     {
         $totals = [];
         foreach ($counts as $environment => $n) {

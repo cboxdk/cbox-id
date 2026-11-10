@@ -140,15 +140,15 @@ it('claims a page detail route without claiming its prefix siblings', function (
 it('knows where every page in every plane sits', function (): void {
     $location = app(ConsoleLocation::class);
 
-    expect($location->areaLabel('billing'))->toBe('Workspace')
-        ->and($location->areaLabel('account'))->toBe('My account')
+    expect($location->areaLabel('billing'))->toBe('Organization')
+        ->and($location->areaLabel('account'))->toBe('Account')
         ->and($location->areaLabel('environment.connections'))->toBe('Authentication')
         ->and($location->areaLabel('environment.users.show'))->toBe('Users & orgs')
         // Platform admin is ONE area now — "Insights" and "Administration" were two more
         // words beside the environment console's Monitoring and Advanced on one rail.
         ->and($location->areaLabel('platform.usage'))->toBe('Platform')
         ->and($location->areaLabel('platform.operators'))->toBe('Platform')
-        ->and($location->areaLabel('platform.workspaces.show'))->toBe('Platform');
+        ->and($location->areaLabel('platform.orgs.show'))->toBe('Platform');
 
     // A route belonging to no plane's navigation still answers null rather than
     // guessing — the eyebrow is omitted, not wrong.

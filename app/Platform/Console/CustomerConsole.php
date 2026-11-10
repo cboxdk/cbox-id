@@ -44,7 +44,7 @@ use Cbox\Console\Kit\Facades\Console;
  * drops a page this does not keep, and {@see EnforceCustomerConsole} answers 404 for any
  * route that belongs to such a page — so the rail cannot offer a link the door refuses,
  * and a page the rail hides cannot be reached by typing its URL. That is the difference
- * from {@see WorkspaceAltitude}, which hides but serves on purpose.
+ * from {@see OrganizationAltitude}, which hides but serves on purpose.
  */
 final class CustomerConsole
 {

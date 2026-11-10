@@ -7,8 +7,8 @@ namespace App\Http\Controllers\Console;
 use App\Actions\Keys\CreateKey;
 use App\Actions\Keys\RevokeKey;
 use App\Actions\Keys\RotateKey;
-use App\Actions\Workspace\Keys\CreateEnvironmentKey;
-use App\Actions\Workspace\Keys\RevokeEnvironmentKey;
+use App\Actions\OrgPlane\Keys\CreateEnvironmentKey;
+use App\Actions\OrgPlane\Keys\RevokeEnvironmentKey;
 use App\Http\Props\Console\EnvironmentKeyRowProps;
 use App\Http\Props\Console\EnvironmentScopeProps;
 use App\Http\Props\Shared\HelpProps;
@@ -16,7 +16,7 @@ use App\Http\Requests\Console\IssueEnvironmentKeyRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\KeyTabs;
-use App\Platform\Console\WorkspaceLanding;
+use App\Platform\Console\OrganizationLanding;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentKeyScopes;
@@ -75,7 +75,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
          * to send them to: it is refused.
          */
         if (! $this->mayManageEnvironments()) {
-            return redirect()->to(app(WorkspaceLanding::class)->url());
+            return redirect()->to(app(OrganizationLanding::class)->url());
         }
 
         /*
@@ -330,7 +330,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
         // scope they are recorded under.
         if ($this->onEnvironmentPlane()) {
             $auth = app(EnvironmentAdminAuth::class);
-            $organizationId = $auth->workspaceId() ?? ($auth->admitsRootOperator() ? $auth->environmentId() : null);
+            $organizationId = $auth->rootOrganizationId() ?? ($auth->admitsRootOperator() ? $auth->environmentId() : null);
 
             abort_unless(is_string($organizationId) && $organizationId !== '', 403);
 

@@ -59,7 +59,7 @@ final class ProductBilling
     {
         $features = $this->billing->features($workspaceId);
         if ($features->org !== $workspaceId) {
-            throw new \UnexpectedValueException('The billing account did not match the workspace.');
+            throw new \UnexpectedValueException('The billing account did not match the organization.');
         }
 
         return $features;
@@ -96,7 +96,7 @@ final class ProductBilling
     }
 
     /** Nested directory organizations consume their owning workspace's product grant. */
-    public function owningWorkspace(string $organizationId): ?string
+    public function owningOrganization(string $organizationId): ?string
     {
         $environmentId = DB::table('organizations')->where('id', $organizationId)->value('environment_id');
         if (! is_string($environmentId)) {
@@ -120,7 +120,7 @@ final class ProductBilling
         $memoize = $request->route() instanceof Route && $request->isMethodSafe();
         $workspaceKey = self::class.':workspace:'.$organizationId;
         $workspace = $memoize && $request->attributes->has($workspaceKey)
-            ? $request->attributes->get($workspaceKey) : $this->owningWorkspace($organizationId);
+            ? $request->attributes->get($workspaceKey) : $this->owningOrganization($organizationId);
         if ($memoize) {
             $request->attributes->set($workspaceKey, $workspace);
         }

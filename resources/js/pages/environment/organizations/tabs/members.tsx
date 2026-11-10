@@ -358,10 +358,7 @@ function Members({
                     </div>
                 )}
 
-                <Pagination
-                    pagination={pagination}
-                    href={() => window.location.pathname}
-                />
+                <Pagination pagination={pagination} href={() => window.location.pathname} />
             </div>
 
             <ConfirmDelete

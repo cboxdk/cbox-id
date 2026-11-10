@@ -28,7 +28,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 
-it('serves a read from the workspace snapshot and refreshes it once stale', function (): void {
+it('serves a read from the organization snapshot and refreshes it once stale', function (): void {
     ['organization' => $workspace] = provisionAccount();
     $transport = centralBillingFixture();
     $transport->feature($workspace->id, new FeatureEntitlement('cbox-id.sso', FeatureType::Boolean, true));
@@ -63,7 +63,7 @@ it('keeps a console feature on from the kept answer while Billing is down, and r
     Bus::assertDispatched(RefreshBillingSnapshot::class, fn (RefreshBillingSnapshot $job): bool => $job->kind === RefreshBillingSnapshot::FEATURES && $job->parts === [$workspace->id]);
 });
 
-it('uses only current central grants for the exact workspace and honors immediate revocation', function (): void {
+it('uses only current central grants for the exact organization and honors immediate revocation', function (): void {
     ['organization' => $workspace] = provisionAccount();
     $billing = app(ProductBilling::class);
     expect($billing->enabled($workspace->id, 'sso'))->toBeFalse();
@@ -75,13 +75,13 @@ it('uses only current central grants for the exact workspace and honors immediat
     expect($billing->environmentLimit($workspace->id))->toBe(0);
 });
 
-it('maps a directory organization to its project owning workspace without crossing accounts', function (): void {
+it('maps a directory organization to its project owning organization without crossing accounts', function (): void {
     ['organization' => $workspace, 'environment' => $environment] = provisionAccount();
     app(EnvironmentContext::class)->set(GenericEnvironment::of($environment->id));
     $customer = app(Organizations::class)->create(new NewOrganization('Customer', 'product-customer'));
     centralBillingFixture()->feature($customer->id, new FeatureEntitlement('cbox-id.scim', FeatureType::Boolean, true));
     $billing = app(ProductBilling::class);
-    expect($billing->owningWorkspace($customer->id))->toBe($workspace->id)
+    expect($billing->owningOrganization($customer->id))->toBe($workspace->id)
         ->and($billing->enabled($customer->id, 'scim'))->toBeFalse();
     centralBillingFixture()->feature($workspace->id, new FeatureEntitlement('cbox-id.scim', FeatureType::Boolean, true));
     expect($billing->enabled($customer->id, 'scim'))->toBeTrue();

@@ -229,8 +229,8 @@ it('puts the environment\'s sign-in settings a few clicks from home on a single-
  * because an operator starts in either.
  */
 const FINDING_YOUR_WAY_OPERATOR_FROM_HOME = [
-    'platform.workspaces' => [1, 'See every workspace (each row can be suspended)'],
-    'platform.workspaces.show' => [2, 'Suspend a workspace from its own page'],
+    'platform.orgs' => [1, 'See every organization (each row can be suspended)'],
+    'platform.orgs.show' => [2, 'Suspend an organization from its own page'],
     'platform.environments' => [2, 'See every environment, and provision one'],
     'platform.organizations' => [2, 'Walk the organization tree of an environment'],
     'platform.organization' => [3, 'Open an organization and start a support session'],
@@ -242,7 +242,7 @@ const FINDING_YOUR_WAY_OPERATOR_FROM_PLATFORM = [
     'environment.home' => [1, 'Open the platform environment\'s console'],
     'environment.sign-in-methods' => [1, 'See how everybody signs in to the platform'],
     'environment.users' => [1, 'Find a user of the platform environment'],
-    'platform.workspaces.show' => [1, 'Suspend a workspace from its own page'],
+    'platform.orgs.show' => [1, 'Suspend an organization from its own page'],
 ];
 
 it('puts every task an operator comes for a few clicks away, in one console on the root host', function (): void {

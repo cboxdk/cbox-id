@@ -140,7 +140,7 @@ final readonly class ShellPayload
 
         $isAdmin = Console::context()->isAdmin();
         $isOperator = $this->scope->isPlatformOperator();
-        $workspace = $this->scope->atWorkspaceAltitude();
+        $workspace = $this->scope->atOrganizationAltitude();
         $customer = $this->scope->atCustomerAltitude();
 
         // A page of platform admin, drawn in this console — a single-tenant install's, whose
@@ -217,7 +217,7 @@ final readonly class ShellPayload
 
             $areas[] = new NavAreaProps(
                 key: $area->key,
-                label: $rootHost ? WorkspaceAltitude::label($area->key, $area->label) : $area->label,
+                label: $rootHost ? OrganizationAltitude::label($area->key, $area->label) : $area->label,
                 // A plugin may register an area without one, and the rail is icons —
                 // rendering the blank is worse than rendering the wrong thing, because a
                 // blank square in the primary navigation reads as a broken build.
@@ -239,11 +239,11 @@ final readonly class ShellPayload
             section: $platformPage ? Vocabulary::PLATFORM : null,
             context: $this->context->forOrganizationPlane($this->activePageRoute($active)),
             isOperator: $isOperator,
-            brandHref: $workspace ? app(WorkspaceLanding::class)->url() : route('dashboard'),
+            brandHref: $workspace ? app(OrganizationLanding::class)->url() : route('dashboard'),
             navPinned: NavPin::pinned($this->request),
             accountHref: route('account'),
             switchUserHref: route('accounts'),
-            altitude: $workspace ? ConsoleAltitude::Workspace : ConsoleAltitude::Organization,
+            altitude: $workspace ? ConsoleAltitude::OrgPlane : ConsoleAltitude::Organization,
             workspaceSettingsHref: $this->scope->membershipRole() !== null
                 && $this->scope->capabilities()?->isOwner() === true
                 && Route::has('organization-settings')
@@ -253,7 +253,7 @@ final readonly class ShellPayload
             // `/admin` on this host — so the account menu is the way there. On a
             // single-tenant install it is in this rail, and a second link would be a
             // second way to the same place.
-            platformHref: $isOperator && $rootHost && Route::has('platform.workspaces') ? route('platform.workspaces') : null,
+            platformHref: $isOperator && $rootHost && Route::has('platform.orgs') ? route('platform.orgs') : null,
             actsOn: $this->organizationActsOn($platformPage, $workspace),
             // The platform's own environment console, beside platform admin in the account
             // menu: an operator at the root is one click from the environment they run.
@@ -442,17 +442,17 @@ final readonly class ShellPayload
             isOperator: $rootOperator,
             brandHref: $areas === [] ? route('environment.home') : $areas[0]->href,
             navPinned: NavPin::pinned($this->request),
-            accountHref: $this->context->onWorkspaceHost('account'),
-            switchUserHref: $this->context->onWorkspaceHost('accounts'),
+            accountHref: $this->context->onOrganizationHost('account'),
+            switchUserHref: $this->context->onOrganizationHost('accounts'),
             altitude: ConsoleAltitude::Environment,
             workspaceSettingsHref: $membership !== null && $membership->role === MembershipRole::Owner
-                ? $this->context->onWorkspaceHost('organization-settings')
+                ? $this->context->onOrganizationHost('organization-settings')
                 : null,
             // Platform admin is one click away from the console of the environment a tenant
             // operator is standing in. On the root's own console it is in the rail.
-            platformHref: $tenantOperator ? $this->context->onWorkspaceHost('platform.workspaces') : null,
+            platformHref: $tenantOperator ? $this->context->onOrganizationHost('platform.orgs') : null,
             actsOn: $actsOn,
-            platformEnvironmentHref: $tenantOperator ? $this->context->onWorkspaceHost('environment.home') : null,
+            platformEnvironmentHref: $tenantOperator ? $this->context->onOrganizationHost('environment.home') : null,
             // A tenant's console signs out of the ADMIN context, not the tenant's end-user
             // session that shares this host. On the platform root's own console the admin
             // context IS the root's session, which `/logout` ends.
@@ -517,14 +517,14 @@ final readonly class ShellPayload
             $teamSignIn = (CustomerConsole::pageOf($route)[0] ?? null) === 'authentication' && RootHostConsole::keepsRoute($route);
 
             return new ShellActsOnProps(
-                kind: 'workspace',
+                kind: 'org-plane',
                 label: $name,
                 detail: $teamSignIn ? __('console.how_your_organization_s_own_team_signs_in_to_cbox_id_no_11ea0db7') : __('console.your_organization_its_projects_team_keys_and_billing_si_152a2f42'),
             );
         }
 
         if ($this->scope->ownsIdentityProviders()) {
-            return new ShellActsOnProps(kind: 'workspace', label: $name, detail: __('console.organization_d764d425'));
+            return new ShellActsOnProps(kind: 'org-plane', label: $name, detail: __('console.organization_d764d425'));
         }
 
         $environment = $this->environmentName();

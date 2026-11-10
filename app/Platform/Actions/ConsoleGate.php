@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Actions;
 
 use App\Platform\Actions\Principal\OperatorPrincipal;
-use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
+use App\Platform\Actions\Principal\OrganizationKeyPrincipal;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\OrganizationCapabilities;
 
@@ -16,7 +16,7 @@ use App\Platform\OrganizationCapabilities;
  * The WORKSPACE gates are capabilities of the workspace being administered
  * ({@see OrganizationCapabilities}), and they are read by both doors: a person in the
  * workspace console must hold the capability, and so must a workspace key's role
- * ({@see WorkspaceKeyPrincipal}). One statement of who may do it, rather than a console
+ * ({@see OrganizationKeyPrincipal}). One statement of who may do it, rather than a console
  * rule and an API rule that agree today.
  */
 enum ConsoleGate
@@ -28,7 +28,7 @@ enum ConsoleGate
     case Administer;
 
     /** Anybody on the workspace's team, whatever their role: reads of the workspace itself. */
-    case WorkspaceMember;
+    case OrganizationMember;
 
     /** Create and administer projects, environments and their keys. */
     case ManageEnvironments;
@@ -60,20 +60,20 @@ enum ConsoleGate
     case Person;
 
     /** Whether this gate is a workspace capability — the only gates a workspace action may name. */
-    public function isWorkspace(): bool
+    public function isOrganizationPlane(): bool
     {
         return $this->capability() !== false;
     }
 
     /**
-     * The capability this gate asks of the workspace ({@see WorkspaceScopes::holds()}):
+     * The capability this gate asks of the workspace ({@see OrganizationScopes::holds()}):
      * null for "any member", false for a gate that is not a workspace capability at all.
      */
     public function capability(): string|false|null
     {
         return match ($this) {
             self::EnvironmentAdmin, self::Administer, self::Operator, self::Person => false,
-            self::WorkspaceMember => null,
+            self::OrganizationMember => null,
             self::ManageEnvironments => 'manage-environments',
             self::ReadEnvironments => 'read-environments',
             self::ReadMembers => 'read-members',

@@ -63,7 +63,7 @@ it('keeps the old operator URLs working, pointed at where those pages went', fun
 it('lets a signed-in operator in', function (): void {
     actAsOperator();
 
-    $this->get('/admin/platform')->assertRedirect(route('platform.workspaces'));
+    $this->get('/admin/platform')->assertRedirect(route('platform.orgs'));
     $this->get('/admin/platform/environments')->assertOk();
     $this->get(route('platform.organizations'))->assertOk();
 });

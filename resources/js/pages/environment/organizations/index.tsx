@@ -198,10 +198,7 @@ export default function OrganizationsIndex({
                 )}
             </div>
 
-            <Pagination
-                pagination={pagination}
-                href={(page) => listHref(search, page)}
-            />
+            <Pagination pagination={pagination} href={(page) => listHref(search, page)} />
         </>
     );
 }

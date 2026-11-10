@@ -332,7 +332,7 @@ final class EnvironmentAdminAuth
      * environment's administrator acts for, where the workspace console records their acts.
      * Null on the root environment's console, which no workspace owns.
      */
-    public function workspaceId(): ?string
+    public function rootOrganizationId(): ?string
     {
         $organizationId = $this->membership()?->organization_id;
 

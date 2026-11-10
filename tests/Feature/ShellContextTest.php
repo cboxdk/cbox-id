@@ -63,7 +63,7 @@ function contextEstate(): array
 }
 
 /** The shell's context for a URL on the workspace host. */
-function workspaceContext(string $route): array
+function organizationContext(string $route): array
 {
     return (array) test()->get('https://cboxid.com'.route($route, absolute: false))->assertOk()->inertiaProps('shell.context');
 }
@@ -74,13 +74,13 @@ function contextEnvironments(array $context): array
     return collect($context['projects'])->pluck('environments')->flatten(1)->values()->all();
 }
 
-it('lists the workspace, its project and the environments its owner may open — and no other customer\'s', function (): void {
+it('lists the organization, its project and the environments its owner may open — and no other customer\'s', function (): void {
     $estate = contextEstate();
     signInAsMember($estate['subjectId']);
 
-    $context = workspaceContext('projects');
+    $context = organizationContext('projects');
 
-    expect($context['noun'])->toBe('Workspace')
+    expect($context['noun'])->toBe('Organization')
         ->and($context['workspaces'])->toHaveCount(1)
         ->and($context['workspaces'][0])->toMatchArray([
             'id' => $estate['organization']->id,
@@ -107,7 +107,7 @@ it('lists the workspace, its project and the environments its owner may open —
     }
 });
 
-it('names every workspace the person belongs to, and only those', function (): void {
+it('names every organization the person belongs to, and only those', function (): void {
     $estate = contextEstate();
 
     // A member of Globex too — and of nothing else.
@@ -119,7 +119,7 @@ it('names every workspace the person belongs to, and only those', function (): v
 
     signInAsMember($estate['subjectId']);
 
-    $context = workspaceContext('projects');
+    $context = organizationContext('projects');
 
     expect(collect($context['workspaces'])->pluck('label')->sort()->values()->all())->toBe(['Acme', 'Globex'])
         ->and(collect($context['workspaces'])->firstWhere('current', true)['label'])->toBe('Acme')
@@ -135,7 +135,7 @@ it('carries the page being read into the environment it opens', function (): voi
 
     // Workspace › Keys is the same capability as an environment's Developers › API keys, so
     // opening production from here opens production's API keys.
-    $environments = contextEnvironments(workspaceContext('keys'));
+    $environments = contextEnvironments(organizationContext('keys'));
 
     expect($environments[0]['href'])->toBe('https://cboxid.com/open/'.$estate['production']->id.'?to=%2Fadmin%2Fkeys');
 });
@@ -154,7 +154,7 @@ it('lists only the environments a scoped member was granted', function (): void 
 
     signInAsMember($developerId);
 
-    expect(array_column(contextEnvironments(workspaceContext('projects')), 'id'))->toBe([$estate['sandbox']->id]);
+    expect(array_column(contextEnvironments(organizationContext('projects')), 'id'))->toBe([$estate['sandbox']->id]);
 });
 
 it('offers no operational environment to a Billing-only member', function (): void {
@@ -185,7 +185,7 @@ it('gives the environment console every environment it may switch to, landing on
     // environment's name, and nothing to switch to.
     $context = (array) $this->get(route('environment.users'))->assertOk()->inertiaProps('shell.context');
 
-    expect($context['noun'])->toBe('Workspace')
+    expect($context['noun'])->toBe('Organization')
         ->and($context['switchUrl'])->toBeNull()
         ->and($context['workspaces'][0])->toMatchArray([
             'label' => 'Acme',

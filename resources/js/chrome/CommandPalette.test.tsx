@@ -248,7 +248,7 @@ describe('CommandPalette', () => {
 
         setPageProps({
             shell: {
-                altitude: 'workspace',
+                altitude: 'org-plane',
                 areas: AREAS,
                 context: {
                     noun: 'Workspace',

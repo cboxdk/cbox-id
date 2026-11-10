@@ -71,7 +71,7 @@ final class ConsoleSynonyms
         'clients' => ['apps', 'OAuth apps', 'OIDC clients', 'clients', 'redirect URI', 'callback URL', 'client ID', 'client secret', 'credentials', 'integrate', 'SDK'],
         'apis' => ['resource servers', 'audiences', 'scopes', 'API scopes', 'access tokens'],
         'keys.frontend' => ['publishable key', 'secret key', 'management key', 'API key', 'frontend key', 'pk_live', 'tokens'],
-        'keys' => ['API key', 'workspace key', 'environment key', 'management key', 'tokens'],
+        'keys' => ['API key', 'organization key', 'environment key', 'management key', 'tokens'],
         'webhooks' => ['events', 'event subscriptions', 'notifications', 'callbacks'],
         'hooks' => ['inline hooks', 'actions', 'token hook', 'pre-sign-in hook', 'custom claims', 'extensibility'],
         'feature-flags' => ['flags', 'toggles', 'feature toggles', 'rollout', 'beta', 'kill switch'],
@@ -113,7 +113,7 @@ final class ConsoleSynonyms
         'projects' => ['environments', 'production', 'sandbox', 'new environment'],
         'members' => ['team', 'teammates', 'invite', 'colleagues'],
         'environment-domains' => ['custom domain', 'CNAME', 'vanity domain', 'auth domain'],
-        'organization-settings' => ['workspace name', 'delete workspace'],
+        'organization-settings' => ['organization name', 'delete organization'],
     ];
 
     /**
