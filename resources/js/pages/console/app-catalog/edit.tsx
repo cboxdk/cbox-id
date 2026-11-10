@@ -38,6 +38,7 @@ export default function EditApp({
     const { t } = useTranslator();
     const [removing, setRemoving] = useState(false);
     const [iconChanged, setIconChanged] = useState(false);
+    const [iconDarkChanged, setIconDarkChanged] = useState(false);
     const form = useForm({
         key: entry?.key ?? '',
         name: entry?.name ?? '',
@@ -52,9 +53,13 @@ export default function EditApp({
         required_feature: entry?.required_feature ?? '',
         version: entry?.version ?? 0,
         icon: null as string | null,
+        icon_dark: null as string | null,
         form: '',
     });
     const href = `${saveBaseHref}/${encodeURIComponent(form.data.key)}`;
+    const fallbackName = t('console.app_0d04bfeb');
+    const lightIcon = iconChanged ? form.data.icon : (entry?.icon_url ?? null);
+    const darkIcon = iconDarkChanged ? form.data.icon_dark : (entry?.icon_dark_url ?? null);
     return (
         <>
             <Breadcrumb href={indexHref} label={t('console.catalog_heading')} />
@@ -70,10 +75,12 @@ export default function EditApp({
                 className="mt-6 max-w-2xl space-y-6"
                 onSubmit={(event) => {
                     event.preventDefault();
-                    form.transform(({ icon, ...data }) => ({
+                    // An untouched icon is omitted, which keeps it; null clears it.
+                    form.transform(({ icon, icon_dark, ...data }) => ({
                         ...data,
                         required_feature: data.required_feature || null,
                         ...(iconChanged ? { icon } : {}),
+                        ...(iconDarkChanged ? { icon_dark } : {}),
                     }));
                     form.put(href);
                 }}
@@ -126,54 +133,60 @@ export default function EditApp({
                                 onChange={(event) => form.setData('launch_url', event.target.value)}
                             />
                         </Field>
-                        <Field
+                        <IconUpload
                             label={t('console.catalog_icon')}
-                            optional
-                            error={form.errors.icon}
                             hint={t('console.catalog_icon_hint')}
-                        >
-                            <Input
-                                type="file"
-                                accept="image/png,image/jpeg,image/webp"
-                                onChange={(event) => {
-                                    const file = event.target.files?.[0];
-                                    if (!file) return;
-                                    if (file.size > 131072) {
-                                        form.setError('icon', t('console.catalog_icon_size'));
-                                        return;
-                                    }
-                                    const reader = new FileReader();
-                                    reader.onload = () => {
-                                        if (typeof reader.result === 'string') {
-                                            form.setData('icon', reader.result);
-                                            setIconChanged(true);
-                                            form.clearErrors('icon');
-                                        }
-                                    };
-                                    reader.onerror = () =>
-                                        form.setError('icon', t('console.catalog_icon_read'));
-                                    reader.readAsDataURL(file);
-                                }}
-                            />
-                        </Field>
-                        <div className="flex items-center gap-3">
-                            <CatalogAppIcon
-                                app={{
-                                    name: form.data.name || t('console.app_0d04bfeb'),
-                                    icon_url: iconChanged
-                                        ? form.data.icon
-                                        : (entry?.icon_url ?? null),
-                                }}
-                            />
-                            <Button
-                                onClick={() => {
-                                    setIconChanged(true);
-                                    form.setData('icon', null);
-                                }}
-                            >
-                                {t('console.catalog_remove_icon')}
-                            </Button>
-                        </div>
+                            removeLabel={t('console.catalog_remove_icon')}
+                            error={form.errors.icon}
+                            onError={(message) => form.setError('icon', message)}
+                            onChange={(icon) => {
+                                form.setData('icon', icon);
+                                setIconChanged(true);
+                                form.clearErrors('icon');
+                            }}
+                            preview={
+                                <CatalogAppIcon
+                                    app={{
+                                        name: form.data.name || fallbackName,
+                                        icon_url: lightIcon,
+                                    }}
+                                />
+                            }
+                        />
+                        <IconUpload
+                            label={t('console.catalog_icon_dark')}
+                            hint={t('console.catalog_icon_dark_hint')}
+                            removeLabel={t('console.catalog_remove_icon_dark')}
+                            error={form.errors.icon_dark}
+                            onError={(message) => form.setError('icon_dark', message)}
+                            onChange={(icon) => {
+                                form.setData('icon_dark', icon);
+                                setIconDarkChanged(true);
+                                form.clearErrors('icon_dark');
+                            }}
+                            preview={
+                                // Previewed on a dark surface whatever the console's own theme,
+                                // showing what dark mode will paint: the light icon when none is set.
+                                <span
+                                    data-testid="dark-icon-preview"
+                                    className="flex h-12 w-12 items-center justify-center rounded-lg bg-[oklch(0.185_0.008_80)]"
+                                >
+                                    {(darkIcon ?? lightIcon) ? (
+                                        <img
+                                            src={(darkIcon ?? lightIcon)!}
+                                            alt=""
+                                            className="h-8 w-8 rounded-lg object-contain"
+                                        />
+                                    ) : (
+                                        <span className="text-sm font-semibold text-[oklch(0.965_0.006_90)]">
+                                            {(form.data.name || fallbackName)
+                                                .slice(0, 2)
+                                                .toUpperCase()}
+                                        </span>
+                                    )}
+                                </span>
+                            }
+                        />
                         <Field
                             label={t('console.catalog_position')}
                             error={form.errors.position}
@@ -301,4 +314,53 @@ export default function EditApp({
         </>
     );
 }
+/** One raster upload: read in the browser as a data URI, checked for size, with a preview. */
+function IconUpload({
+    label,
+    hint,
+    removeLabel,
+    error,
+    preview,
+    onChange,
+    onError,
+}: {
+    label: string;
+    hint: string;
+    removeLabel: string;
+    error?: string;
+    preview: React.ReactNode;
+    onChange: (icon: string | null) => void;
+    onError: (message: string) => void;
+}) {
+    const { t } = useTranslator();
+    return (
+        <>
+            <Field label={label} optional error={error} hint={hint}>
+                <Input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (!file) return;
+                        if (file.size > 131072) {
+                            onError(t('console.catalog_icon_size'));
+                            return;
+                        }
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                            if (typeof reader.result === 'string') onChange(reader.result);
+                        };
+                        reader.onerror = () => onError(t('console.catalog_icon_read'));
+                        reader.readAsDataURL(file);
+                    }}
+                />
+            </Field>
+            <div className="flex items-center gap-3">
+                {preview}
+                <Button onClick={() => onChange(null)}>{removeLabel}</Button>
+            </div>
+        </>
+    );
+}
+
 EditApp.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;

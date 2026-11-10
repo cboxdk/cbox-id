@@ -561,7 +561,7 @@ Takes no input.
 
 ### <a id="app_catalog.save"></a>app_catalog.save
 
-Create or replace a catalog app, its icon and visibility. Version zero creates; a stale version conflicts.
+Create or replace a catalog app, its light and dark icons and visibility. Version zero creates; a stale version conflicts.
 
 | | |
 |---|---|
@@ -586,6 +586,7 @@ Create or replace a catalog app, its icon and visibility. Version zero creates; 
 | `client_ids` | list of string | no | Environment-wide OAuth client ids associated with this app. Does not grant access. At most 100 items. |
 | `required_feature` | string, nullable | no | Optional feature-flag key. Hidden when off for this person and organization. At most 64 characters. |
 | `icon` | string, nullable | no | PNG, JPEG or WebP data URI, up to 128 KiB and 512 pixels. Omit to retain; null clears. SVG and remote URLs are refused. At most 180000 characters. |
+| `icon_dark` | string, nullable | no | Icon for dark surfaces, same rules as icon. Omit to retain; null clears. Without it, clients show icon in both themes. At most 180000 characters. |
 
 ### <a id="app_catalog.show"></a>app_catalog.show
 

@@ -1509,6 +1509,7 @@ paths:
                         - description
                         - launch_url
                         - icon_url
+                        - icon_dark_url
                         - position
                         - version
                       properties:
@@ -1527,6 +1528,11 @@ paths:
                           type:
                             - string
                             - 'null'
+                        icon_dark_url:
+                          type:
+                            - string
+                            - 'null'
+                          description: 'Icon for dark surfaces. Null when the app has no dark icon; use icon_url in both themes.'
                         position:
                           type: integer
                         version:
@@ -1628,7 +1634,7 @@ paths:
     put:
       tags:
         - 'App catalog'
-      summary: 'Create or replace a catalog app, its icon and visibility. Version zero creates; a stale version conflicts.'
+      summary: 'Create or replace a catalog app, its light and dark icons and visibility. Version zero creates; a stale version conflicts.'
       description: 'Requires scope `app_catalog:write`. Danger: write.'
       operationId: app_catalog_save
       x-action: app_catalog.save
@@ -1725,6 +1731,12 @@ paths:
                     - string
                     - 'null'
                   description: 'PNG, JPEG or WebP data URI, up to 128 KiB and 512 pixels. Omit to retain; null clears. SVG and remote URLs are refused.'
+                  maxLength: 180000
+                icon_dark:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Icon for dark surfaces, same rules as icon. Omit to retain; null clears. Without it, clients show icon in both themes.'
                   maxLength: 180000
               required:
                 - version

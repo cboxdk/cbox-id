@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property string|null $description
  * @property string $launch_url
  * @property string|null $icon_data
+ * @property string|null $icon_dark_data
  * @property bool $enabled
  * @property int $position
  * @property string $audience
@@ -35,7 +36,7 @@ final class CatalogEntry extends Model implements EnvironmentOwned
 
     protected $guarded = [];
 
-    protected $hidden = ['icon_data'];
+    protected $hidden = ['icon_data', 'icon_dark_data'];
 
     /** @return array<string, string> */
     protected function casts(): array

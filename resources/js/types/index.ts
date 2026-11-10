@@ -364,6 +364,8 @@ export interface CatalogApp {
     description: string | null;
     launch_url: string;
     icon_url: string | null;
+    /** Null when the app has no dark icon; `icon_url` then serves both themes. */
+    icon_dark_url: string | null;
     position: number;
     version: number;
 }

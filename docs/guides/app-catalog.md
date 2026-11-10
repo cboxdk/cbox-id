@@ -12,8 +12,13 @@ alone does not publish an app, and catalog visibility does not grant app access.
 
 Create a stable lowercase key, name, optional description, explicit HTTPS launch
 URL and position. Upload a PNG, JPEG or WebP icon (128 KiB / 512 pixels maximum),
-or use the automatic initials fallback. Icons are public assets served by ID;
-do not upload confidential artwork. Drafts stay hidden until published.
+and optionally a second icon for dark mode with the same limits, or use the
+automatic initials fallback. Without a dark icon, the light one is shown in both
+themes. Icons are public assets served by ID; do not upload confidential artwork.
+Drafts stay hidden until published.
+
+The catalog is the single source of truth for app icons. Products read the icons
+from here; they do not ship their own copy.
 
 Choose everyone in the environment, selected organizations, or selected users.
 Organization visibility requires active membership and an active organization.
@@ -32,8 +37,10 @@ membership. A token confined to an organization cannot select a different one.
 Without it, the list covers the person's active organizations.
 
 The response contains `data` entries with `key`, `name`, `description`,
-`launch_url`, `icon_url`, `position`, and `version`. `meta.revision` hashes that
-visible list; `meta.refresh_after` is 60 seconds. Administrative audiences,
+`launch_url`, `icon_url`, `icon_dark_url`, `position`, and `version`.
+`icon_dark_url` is `null` when the app has no dark icon; then use `icon_url` in
+both themes. `meta.revision` hashes that visible list, so it changes when either
+icon changes; `meta.refresh_after` is 60 seconds. Administrative audiences,
 OAuth client IDs and icon bytes are not included.
 
 Render the returned order with ordinary cross-app links. Cache only per issuer,
@@ -50,8 +57,8 @@ show initials when an image fails.
 - `DELETE /api/v1/app-catalog/{key}` requires `app_catalog:write` and the current `version`.
 
 A stale edit/delete returns 409. Reload and review before retrying. PUT omits
-`icon` to retain it, uses `null` to clear it, or a supported image data URI to
-replace it. A no-op does not bump the version. Saves and deletions are audited
+`icon` or `icon_dark` to retain it, uses `null` to clear it, or a supported image
+data URI to replace it. SVG is refused for both. A no-op does not bump the version. Saves and deletions are audited
 without copying the icon or target lists into the audit context.
 
 See the [environment actions](../reference/actions-environment.md) and
