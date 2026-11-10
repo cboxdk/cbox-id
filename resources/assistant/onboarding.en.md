@@ -8,10 +8,10 @@ During early access, product admission may still require an invitation.
 
 ## Your team and your customers are different scopes
 
-Your **workspace** is the team managing Cbox ID. A **project** is your product; its
+Your **organization** is the team managing Cbox ID. A **project** is your product; its
 **environments** separate identity data and configuration. A **customer organization**
 is a tenant inside that product. Do not invite your customers into your administrative
-workspace to let them use your app.
+organization to let them use your app.
 
 Individuals, your own staff and customer organizations can use the same product.
 One person can belong to several organizations with different roles. Your application

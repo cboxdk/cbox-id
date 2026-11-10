@@ -330,7 +330,7 @@ enum HelpTopic: string
             self::AllOrganizations,
             self::Environments,
             self::Organizations,
-            self::PlatformOrganizations => 'core-concepts/workspaces-and-organizations',
+            self::PlatformOrganizations => 'core-concepts/organizations-and-customers',
             self::DataExports => 'security/compliance',
             self::RiskEvents => 'security/adaptive-risk',
             self::SignInMethods,

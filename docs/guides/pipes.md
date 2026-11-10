@@ -7,7 +7,7 @@ description: Let the people who use your apps connect their GitHub, Google, Slac
 # Pipes
 
 **Console page:** Developers › Pipes (environment console)
-**For your users:** My account › Connected services
+**For your users:** Account › Connected services
 
 A pipe lets a person connect **their own account** at another service, so your app can
 call that service's API on their behalf: list their GitHub repositories, read their
@@ -183,7 +183,7 @@ the webhook to tell the person before they hit it.
 
 ## Disconnecting
 
-People disconnect under **My account › Connected services**. You can disconnect someone
+People disconnect under **Account › Connected services**. You can disconnect someone
 from the pipe's page (for a leaver, say), or with
 `DELETE /api/v1/pipes/{id}/connections/{connection_id}`. Where the provider supports it,
 access is revoked at the provider too.

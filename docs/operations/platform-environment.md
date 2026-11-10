@@ -1,13 +1,13 @@
 ---
 title: Administering the platform's own environment
 weight: 6
-description: The platform root environment — how every workspace owner and operator signs in — has the same console, API and MCP tools as any environment, with platform admin as one area of that console. Who administers it, where, and the guards that keep its operators able to sign in.
+description: The platform root environment — how every organization owner and operator signs in — has the same console, API and MCP tools as any environment, with platform admin as one area of that console. Who administers it, where, and the guards that keep its operators able to sign in.
 ---
 
 # Administering the platform's own environment
 
 On a multi-tenant deployment the **platform root environment** (`cboxid.com` on the
-hosted service, your root host when you self-host) is how every workspace owner and every
+hosted service, your root host when you self-host) is how every organization owner and every
 operator signs in to Cbox ID. It is an environment like any other. It has sign-in methods,
 an authentication policy, social login, branding and a typeface, SMS, Radar, apps, APIs,
 keys, webhooks, log streams, roles, feature flags, fine-grained authorization, pipes,
@@ -22,7 +22,7 @@ deployment itself: **platform admin** is its **Platform** area.
 | | A tenant's environment | The platform's own environment |
 |---|---|---|
 | Console | `https://<environment>.cboxid.com/admin/…` | `https://cboxid.com/admin/…`, the same paths |
-| Who | the workspace's owners, admins and developers | active platform operators |
+| Who | the organization's owners, admins and developers | active platform operators |
 | REST | `/api/v1/…` on the root with `Cbox-Environment: <slug>` | `/api/v1/…` on the root with `Cbox-Environment: <root slug or id>` |
 | MCP | the root's `/mcp`, `environment` argument | the root's `/mcp`, `environment` argument |
 | CLI | `cbox id use <environment>` | `cbox id use <root slug>` |
@@ -45,7 +45,7 @@ The deployment's own pages are the first area of the same console, **Platform**,
 
 | Page | Address | What it is for |
 |---|---|---|
-| Workspaces | `/admin/platform/workspaces` | Every workspace on the install. Open one to walk its projects and environments; **Suspend** and **Reactivate** are on its row and its page. |
+| Organizations | `/admin/platform/workspaces` | Every organization on the install. Open one to walk its projects and environments; **Suspend** and **Reactivate** are on its row and its page. |
 | Environments | `/admin/platform/environments` | Every environment and who owns it. Create one, point platform admin at it, and **Provision admin** to seed its first organization and owner. |
 | Organization tree | `/admin/platform/organizations` | The organizations of the environment platform admin is pointed at, as the reseller → customer → sub-unit tree. Re-parent, suspend, and open one to start a **support session** (impersonation) as one of its members. |
 | Operators | `/admin/platform/operators` | Who runs the install. Add or suspend an operator. |
@@ -101,7 +101,7 @@ to its new address, with the query string kept:
 Form posts to the old addresses are not redirected; a page rendered before the move posts
 to the new address the next time it loads.
 
-A workspace owner who is not an operator gets `404` for `cboxid.com/admin`. They cannot
+An organization owner who is not an operator gets `404` for `cboxid.com/admin`. They cannot
 name the root environment over REST or MCP either (`not_found`).
 
 ## Turn on Google for cboxid.com
@@ -143,7 +143,7 @@ console open.
 
 Somebody who signs in fine but administers nothing in that environment sees **You don't
 administer this environment**. The page says their sign-in worked and offers
-**Switch user** and their projects.
+**Switch account** and their projects.
 
 A **tenant's own** social providers are for the people who sign in to that tenant's apps,
 on the tenant's hosted pages. They are never offered for the tenant's `/admin`. Each Social
@@ -212,7 +212,7 @@ The platform's operators must not depend on the environment they would be fixing
 
 Keep a passkey or a password and second factor on every operator account for this. A
 platform account created by signing in through `cbox` has neither until its owner adds one
-under **My account**.
+under **Account**.
 
 ## The guards
 
@@ -263,14 +263,14 @@ kubectl -n cbox-id exec -it deploy/<web-deployment> -- php artisan cbox-id:opera
 The person can open `https://<root>/admin`, and platform admin at
 `https://<root>/admin/platform`, on their next page load.
 
-## The workspace console on the root host
+## The organization console on the root host
 
-`cboxid.com` without `/admin` is a workspace's console: projects, team, keys, billing,
+`cboxid.com` without `/admin` is an organization's console: projects, team, keys, billing,
 settings, the team's own sign-in to Cbox ID (**Team sign-in**) and its activity log.
 
 Pages that set something an environment owns are not pages there any more. These include
 Social login, Sign-in methods, Branding, Domains, Apps, Webhooks and Roles. Each used to
-configure the workspace's own record in the root environment while looking like the
+configure the organization's own record in the root environment while looking like the
 product's settings.
 
 - An **operator** who opens one is sent to the same page of the platform environment's
@@ -281,7 +281,7 @@ product's settings.
 - A write to one of those pages answers `404`.
 
 Single-tenant installs are unchanged. There the root environment is the product, and its
-organization console is its administration — with platform admin as its **Platform** area,
+customer organization console is its administration — with platform admin as its **Platform** area,
 at the same `/admin/platform` addresses, for its operators.
 
 ## Related

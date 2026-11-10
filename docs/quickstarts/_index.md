@@ -30,12 +30,12 @@ For the reasoning behind each step, see [Integrate your app](../getting-started/
 
 Every quickstart needs the same three things.
 
-1. **An environment.** Cbox ID is organized as workspace → project → environment →
+1. **An environment.** Cbox ID is organized as organization → project → environment →
    organizations → users. Your app signs people in to one environment, and each
    environment is a hard boundary with its own users, keys and issuer. Use a sandbox
    environment while you follow a quickstart. If you do not have one yet, create a
-   project and an environment from **Projects** in your workspace console. See
-   [Workspaces & organizations](../core-concepts/workspaces-and-organizations.md).
+   project and an environment from **Projects** in your organization console. See
+   [Organizations & customers](../core-concepts/organizations-and-customers.md).
 2. **An application.** Step 1 of every quickstart registers it, in the environment
    console, with the `cbox` CLI, or with the REST API. You come away with a client ID
    and, for a web app, a client secret that is shown once.

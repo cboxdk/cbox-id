@@ -90,7 +90,7 @@ final class ConsoleServiceProvider extends ServiceProvider
         // environments under them, the team that administers them, the keys and domains
         // those need, and the bill for the lot. It was labelled "Identity platform", with
         // "Administrators" and "Account settings" inside it, which gave one thing three
-        // names on one rail. See docs/core-concepts/workspaces-and-organizations.md.
+        // names on one rail. See docs/core-concepts/organizations-and-customers.md.
         //
         // Gated page-by-page rather than as a whole area, so the rail says the same thing
         // an attempted click would: a member who may read billing and nothing else sees

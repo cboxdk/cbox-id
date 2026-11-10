@@ -40,7 +40,7 @@ container and the scratch directory for a look). In order:
 | Verification | `scripts/upgrade-path/verify.php`, with the new code: every password, TOTP secret, recovery code, client secret, refresh token, session, webhook secret, SSO configuration, SCIM token, vault secret, personal token and environment key from the old release still works; the old signing key is still the active one; the audit chains verify; the documented data changes happened |
 | `audit-chain:verify` | every chain intact |
 | `cbox-id:doctor` | printed for reading; it fails here only because no scheduler or queue manager runs |
-| HTTP smoke | under `php artisan serve`: `/login` on the console and an environment host, OIDC discovery and JWKS on the environment host, the management API with an old and a new `cbid_env_` key, a new `cbid_ws_` key accepted and the old `cbid_org_` refused, and a browser-style sign-in with an old password |
+| HTTP smoke | under `php artisan serve`: `/login` on the console and an environment host, OIDC discovery and JWKS on the environment host, the management API with an old and a new `cbid_env_` key, a new `cbid_org_` key accepted and the old `cbid_org_` refused, and a browser-style sign-in with an old password |
 | Rollback | `migrate:rollback --step=<every migration the upgrade ran>` leaves a schema identical to the previous release's, and `migrate` applies cleanly again |
 
 **In CI** the same script runs as the *Upgrade path* workflow
@@ -103,7 +103,7 @@ machine and the copy like production, and destroy both afterwards.
 The rehearsal from v1.1.1 on PostgreSQL 18 rolls back to v1.1.1's schema
 exactly, but these data changes stay rolled forward:
 
-- **`cbid_org_` workspace keys stay revoked.** They cannot resolve under 2.0.0 either way
+- **`cbid_org_` organization keys stay revoked.** They cannot resolve under 2.0.0 either way
   ([UPGRADING](https://github.com/cboxdk/cbox-id/blob/main/UPGRADING.md)); mint a replacement.
 - **Role grants of invitations that were no longer pending** are deleted on the way up
   (they could never be applied again).

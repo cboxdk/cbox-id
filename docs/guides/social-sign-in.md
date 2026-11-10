@@ -80,12 +80,12 @@ own sign-in methods. The page says which of the two it is.
 **Google on cboxid.com itself.** That is the platform's own environment. Its operators turn
 it on the same way, in that environment's console at `cboxid.com/admin`. The redirect URI to
 register is on the root host. The button then appears on `cboxid.com/login`, the sign-in
-for every workspace owner and operator and for every environment console. See
+for every organization owner and operator and for every environment console. See
 [Administering the platform's own environment](../operations/platform-environment.md).
 
 On a single-tenant install, platform operators and owners of the install's own organization
 (see [Authentication policy](authentication-policy.md)) find the same form under
-**Sign-in › Social login** on the organization console, with **Who is it for?** set to **Every sign-in page in this
+**Sign-in › Social login** on the customer organization console, with **Who is it for?** set to **Every sign-in page in this
 environment**; choose **Only this organization's sign-in page** for the organization's own.
 
 For an OpenID Connect provider we run discovery the moment you save, so a mistyped domain
@@ -169,7 +169,7 @@ environment and organization that invited them.
 
 ## Connecting a provider to an existing account
 
-Someone who is signed in can add a provider from **My account › Sign-in methods**. The
+Someone who is signed in can add a provider from **Account › Sign-in methods**. The
 section lists every way into the account: whether a password is set, how many passkeys
 there are, and every linked provider account — its name, the address the provider gave,
 when it was linked and when it was last used. Under it is a **Connect** button for every
@@ -227,7 +227,7 @@ The rules around it:
   SSO for a domain it has verified. An organization's own Entra connection counts only
   inside a domain that organization has verified, the same as any other claim. Otherwise the
   person is told that the provider has not confirmed the address, and that they can sign in
-  another way and connect the provider from My account.
+  another way and connect the provider from Account.
 - **Short-lived and single-use.** The held identity lives in the server-side session,
   signed with the application key, for ten minutes. It is spent by the answer that links
   it; five wrong answers drop it, and they count against the account's lockout too.
@@ -240,7 +240,7 @@ The rules around it:
   The provider's say-so never does.
 - **Audit.** Every link is recorded as `user.identity_linked` — by the person, with the
   provider, the proof used (`password`, `email_code`, `totp`, …) and whether it came from
-  the link step or My account. A disconnect is `user.identity_unlinked`.
+  the link step or Account. A disconnect is `user.identity_unlinked`.
 
 ## When a sign-in with a provider does not complete
 
@@ -248,7 +248,7 @@ Whatever the reason — the person pressed Cancel at the provider, the sign-in l
 or was replayed, the provider's answer did not verify, the provider could not be reached,
 the provider was switched off, or a link was refused — they land on the sign-in page with
 a sentence saying which, in their language. Somebody already signed in (connecting from My
-account) sees it on My account instead.
+account) sees it on Account instead.
 
 ## Signing up with a provider
 
@@ -264,7 +264,7 @@ That account is a signup like any other, so it carries the same obligations:
   account, this one goes with it. A password is also what every step-up prompt asks for.
 
 The prompt is a prompt, not a wall — holding someone on a form at the first moment of a
-one-click sign-in defeats the purpose. Both actions live on **My account**, which is
+one-click sign-in defeats the purpose. Both actions live on **Account**, which is
 where they will still be tomorrow.
 
 ## What an unverified account can and cannot do

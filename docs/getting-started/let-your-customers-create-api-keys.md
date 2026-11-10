@@ -62,7 +62,7 @@ app that belongs to one organization is offered to that organization's people on
 
 ## 2. Send people to the hosted page
 
-Link to **My account › API keys** on your environment's host:
+Link to **Account › API keys** on your environment's host:
 
 ```
 https://<environment>.cboxid.com/account/api-keys?client_id=<your client id>&return_to=<a page in your app>
@@ -123,7 +123,7 @@ seconds is reasonable. Never cache `active: false` for longer than `active: true
 
 ## Who can see and revoke keys
 
-- **The holder**, on My account › API keys.
+- **The holder**, on Account › API keys.
 - **The organization's owners and admins**, on Members & roles › Member API keys: every key in the
   organization, with its holder, app, permissions, last use and expiry.
 - **Your environment's administrators**, on the organization's page in the environment

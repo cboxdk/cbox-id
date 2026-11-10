@@ -50,7 +50,7 @@ If you are a customer's IT admin who was sent a setup link, you want
 
 - [Applications](apps-and-api-keys.md) — register the apps people sign in to.
 - [APIs](apis.md) — the services your apps call, and which app may be given which of their scopes.
-- [API keys](keys.md) — Secret, Workspace and Publishable keys, for your own code.
+- [API keys](keys.md) — Secret, Organization and Publishable keys, for your own code.
 - [My API keys and Member API keys](api-keys.md) — keys people create for your apps' APIs, and how admins see and revoke them.
 - [Webhooks](webhooks.md) — get told when something happens.
 - [Hooks](inline-hooks.md) — have a say while it happens.
@@ -60,7 +60,7 @@ If you are a customer's IT admin who was sent a setup link, you want
 
 ## Agents
 
-- [Agents and MCP](agents-and-mcp.md) — connect Claude Code, Cursor or another MCP client to an environment or your whole workspace.
+- [Agents and MCP](agents-and-mcp.md) — connect Claude Code, Cursor or another MCP client to an environment or your whole organization.
 - [Step-up approvals](step-up-approvals.md) — make a key's dangerous calls wait for a person, and how an agent retries once approved.
 - [Approvals](agent-approvals.md) — approving a request to act as you, and reviewing every pending request in an environment.
 - [Trusted devices](trusted-devices.md) — a phone as the authenticator that answers those approvals.

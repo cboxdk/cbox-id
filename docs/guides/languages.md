@@ -185,7 +185,7 @@ page and in every email:
 | email | e-mail, e-mailadresse | "Arbejdsmail" for a work email field |
 | account | konto | |
 | organization | organisation | |
-| workspace | arbejdsområde | Never "workspace" |
+| organization | arbejdsområde | Never "organization" |
 | environment | miljø | |
 | identity provider | identitetsudbyder | |
 | single sign-on, SSO | single sign-on, SSO | Kept in English |

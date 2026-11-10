@@ -13,7 +13,7 @@ environment console (`/admin/approvals`)
 
 The two pages are named for what each does:
 
-- **Approvals** in the organization console is yours: the requests to act as *you*, which only you can
+- **Approvals** in the customer organization console is yours: the requests to act as *you*, which only you can
   approve or deny. Most of this guide is about it.
 - **Approvals** in an environment console is for an environment administrator: every pending request in
   the environment, so one that looks like abuse can be denied. See

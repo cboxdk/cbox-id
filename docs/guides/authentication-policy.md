@@ -10,7 +10,7 @@ description: Password rules, two-factor and SSO requirements, which sign-in meth
 Authentication policy. An organization's own rules are on its **Authentication policy** tab.
 
 On a **single-tenant install** there is no environment console, so the environment's
-settings are changed from the organization console — but only by **platform operators** and
+settings are changed from the customer organization console — but only by **platform operators** and
 by **owners of the install's own organization**. A single-tenant install can host customer
 organizations, and their owners and admins never change passkeys, sessions or social
 providers for everybody: they see those rows read-only. Name the install's own organization
@@ -26,7 +26,7 @@ Until one is named, only platform operators can change them. Its owners then get
 **Sign-in › Authentication policy** with the **Sign-in methods and sessions** and
 **Text-message codes** panels under *For the whole environment*, and **Sign-in › Social
 login** with the environment's providers. These are the same actions with the same limits.
-On a multi-tenant deployment an organization console belongs to one customer, and none of
+On a multi-tenant deployment an customer organization console belongs to one customer, and none of
 this is shown there.
 
 **Sign-in methods** is the overview: every way in, whether it is on, and which page changes
@@ -56,7 +56,7 @@ On **Authentication policy**, the **Sign-in methods and sessions** panel has:
 
 - **Passkeys.** Face ID, Touch ID, Windows Hello or a security key. Turning passkeys off
   removes the button from the sign-in page and the **Add passkey** button from
-  **My account**, and refuses passkey sign-in and enrolment. Passkeys people already added
+  **Account**, and refuses passkey sign-in and enrolment. Passkeys people already added
   are kept, and work again when you turn this back on. People can still see and remove them.
 - **Magic link.** A one-time sign-in link by email. Turning it off removes the button, and
   links already sent stop working too. The management API's `users.create` refuses

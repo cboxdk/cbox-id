@@ -1,20 +1,20 @@
 ---
 title: Agents and MCP
 weight: 23
-description: Connect Claude Code, Cursor, the cbox CLI or another MCP client to one environment's management plane, or to your whole workspace at the platform root, with a key or by signing yourself in, and what an agent can and cannot do there.
+description: Connect Claude Code, Cursor, the cbox CLI or another MCP client to one environment's management plane, or to your whole organization at the platform root, with a key or by signing yourself in, and what an agent can and cannot do there.
 ---
 
 # Agents and MCP
 
 **Endpoints:** `https://<environment-host>/mcp` for one environment, and
 `https://<platform-root>/mcp` (`https://cboxid.com/mcp` on the hosted platform) for your
-whole workspace.
+whole organization.
 
 ![AI agents, Agents, in an environment console](../screenshots/agents.png)
 
 Every environment serves an [MCP](https://modelcontextprotocol.io) server on its own
 host, next to its management API. The platform root serves one too, for the people who
-run a workspace. An AI agent connected to it can run the same actions the
+run an organization. An AI agent connected to it can run the same actions the
 API offers: register APIs, manage webhooks, read the audit log, and so on. It goes through
 the same checks, gets the same refusals and leaves the same audit log entries as the
 API and the console. There is no separate permission model to learn.
@@ -24,24 +24,24 @@ for its area, for example [APIs](apis.md).
 
 ## Where to connect
 
-| | One environment | Your whole workspace |
+| | One environment | Your whole organization |
 |---|---|---|
 | Address | `https://<environment-host>/mcp` | `https://<platform-root>/mcp` |
-| Who signs in there | The environment's own people: an organization's administrators | The workspace's team, and the platform's operators |
-| What it reaches | That environment, and your own account there | The workspace, every environment of it you administer, your own account and, for an operator, the deployment |
-| Signing in | An MCP client signs you in by itself, the `cbox` CLI, or a key | An MCP client signs you in by itself, the `cbox` CLI, or a workspace key |
-| Keys it takes | `cbid_env_…` for that environment; a `cbid_ws_…` workspace key also works, with the workspace's tools only | `cbid_ws_…` for the workspace |
+| Who signs in there | The environment's own people: an organization's administrators | The organization's team, and the platform's operators |
+| What it reaches | That environment, and your own account there | The organization, every environment of it you administer, your own account and, for an operator, the deployment |
+| Signing in | An MCP client signs you in by itself, the `cbox` CLI, or a key | An MCP client signs you in by itself, the `cbox` CLI, or an organization key |
+| Keys it takes | `cbid_env_…` for that environment; a `cbid_org_…` organization key also works, with the organization's tools only | `cbid_org_…` for the organization |
 
-Running a workspace, you are a person of the platform root: you reach an environment's
-console through the workspace console, and you have no account in the environment itself.
+Running an organization, you are a person of the platform root: you reach an environment's
+console through the organization console, and you have no account in the environment itself.
 So you sign in **at the root**, once, and name the environment each time you act in one.
 The rest of this page covers both; the root is described in
-[One connection for your whole workspace](#one-connection-for-your-whole-workspace).
+[One connection for your whole organization](#one-connection-for-your-whole-organization).
 
 The exact commands:
 
 ```bash
-# Your whole workspace, signed in as yourself: the one most people want
+# Your whole organization, signed in as yourself: the one most people want
 claude mcp add --transport http cbox-id https://<platform-root>/mcp
 
 # One environment, signing in as one of its own people
@@ -51,12 +51,12 @@ claude mcp add --transport http cbox-id https://<environment-host>/mcp
 claude mcp add --transport http cbox-id https://<environment-host>/mcp \
   --header "Authorization: Bearer cbid_env_…"
 
-# Your whole workspace, signed in as yourself through the cbox CLI
+# Your whole organization, signed in as yourself through the cbox CLI
 cbox login --issuer https://<platform-root>
 
-# Your whole workspace, as an agent holding a workspace key
-claude mcp add --transport http cbox-workspace https://<platform-root>/mcp \
-  --header "Authorization: Bearer cbid_ws_…"
+# Your whole organization, as an agent holding an organization key
+claude mcp add --transport http cbox-organization https://<platform-root>/mcp \
+  --header "Authorization: Bearer cbid_org_…"
 ```
 
 ## Two ways in
@@ -200,7 +200,7 @@ A **management key** (`cbid_env_…`) for the environment works without anybody 
 ### Creating a key in the console
 
 Create a management key on **AI agents › Agents** in the environment console (**New
-agent**), or on **API keys** in the workspace console ([API keys](keys.md#secret-keys)).
+agent**), or on **API keys** in the organization console ([API keys](keys.md#secret-keys)).
 **AI agents › Connect** shows this environment's MCP address and a ready-to-paste setup
 for Claude Code, Claude Desktop, Cursor and VS Code, with a shortcut to create a key.
 
@@ -210,7 +210,7 @@ page starts from a preset (**Read-only**, **Support agent**, **Full admin**) and
 each scope with the most harmful thing it allows. Set an expiry if the agent is for one
 piece of work; the create page defaults to 90 days.
 
-On **AI agents › Agents** (not on the workspace console's API keys page) you can also
+On **AI agents › Agents** (not on the organization console's API keys page) you can also
 choose which of the agent's actions wait for your approval: every critical action,
 everything destructive and above, every change, and any actions you name. A held call
 answers `approval_pending` over MCP (`202 approval_required` over REST) with a short
@@ -243,21 +243,21 @@ To share the setup with your team without sharing the key, put it in the project
 }
 ```
 
-A [workspace key](keys.md#workspace-keys) (`cbid_ws_…`) works the same way and sees the
-workspace's tools: projects, environments, the team and keys. It is accepted on any host's
+A [organization key](keys.md#organization-keys) (`cbid_org_…`) works the same way and sees the
+organization's tools: projects, environments, the team and keys. It is accepted on any host's
 `/mcp`, but never acts inside an environment.
 
-## One connection for your whole workspace
+## One connection for your whole organization
 
-The platform root's `/mcp` is for the people who run a workspace. Signed in there as
+The platform root's `/mcp` is for the people who run an organization. Signed in there as
 yourself, one connection reaches:
 
-- **The workspace**, as you, a member of its team: projects, environments, the team,
-  keys and settings. Your role in the workspace bounds it exactly as it bounds you in the
-  workspace console: a Developer manages environments but does not see the team, a Viewer
+- **The organization**, as you, a member of its team: projects, environments, the team,
+  keys and settings. Your role in the organization bounds it exactly as it bounds you in the
+  organization console: a Developer manages environments but does not see the team, a Viewer
   reads but changes nothing.
-- **Every environment of the workspace you administer**, with the rights of that
-  environment's console, the console the workspace console opens for you. Your role must
+- **Every environment of the organization you administer**, with the rights of that
+  environment's console, the console the organization console opens for you. Your role must
   manage environments (Owner, Admin or Developer) and your membership must reach that
   environment. Every environment tool takes a required `environment` argument, the
   environment's id or slug, and runs inside that environment only:
@@ -266,7 +266,7 @@ yourself, one connection reaches:
   { "name": "apis_create", "arguments": { "environment": "acme-production", "identifier": "https://api.acme.example", "name": "Acme API" } }
   ```
 
-  An environment you cannot reach, or another workspace's, is `not_found`.
+  An environment you cannot reach, or another organization's, is `not_found`.
 - **Your own account** at the root: your profile, sessions, applications, API keys,
   sign-in methods and devices (`account:*` scopes, `/api/v1/me` on the root).
 - **The deployment**, if you are a platform operator: the operator tools and
@@ -277,7 +277,7 @@ yourself. A scope never gives you more than your role does. Every critical actio
 your approval on your device, and `approval_status` at the root finds every approval you
 raised, in whichever environment.
 
-`whoami` at the root reports who you are, your workspace and your role there, whether you
+`whoami` at the root reports who you are, your organization and your role there, whether you
 are an operator, the scopes the token carries and the environments you can act in, which
 are the values the `environment` argument takes.
 
@@ -290,16 +290,16 @@ claude mcp add --transport http cbox-id https://<platform-root>/mcp
 ```
 
 Run `/mcp` in Claude Code and choose **Authenticate**. Your browser opens the root's
-sign-in page, the one the workspace console uses. Sign in, check what the consent screen
+sign-in page, the one the organization console uses. Sign in, check what the consent screen
 lists, and choose **Authorize**. Any MCP client that signs people in with OAuth works the
 same way with that URL. Underneath it is the flow in
 [Option 1](#option-1-sign-in-with-oauth), with three differences at the root:
 
-- Only someone on a workspace's team, or an operator, can finish signing in. Anyone else
+- Only someone on an organization's team, or an operator, can finish signing in. Anyone else
   is told so on the sign-in page.
 - The token is for the root's `/mcp` and nothing else. A client that asks for another
   `resource`, or for `openid`, is refused. There is no ID token.
-- The consent is recorded in your workspace's audit log as `mcp.client_authorized`.
+- The consent is recorded in your organization's audit log as `mcp.client_authorized`.
 
 Or sign the `cbox` CLI in at the root:
 
@@ -309,7 +309,7 @@ cbox login --issuer https://<platform-root>
 
 The CLI reads `/.well-known/cbox-cli` on the root, runs the device flow and asks for the
 root's `/mcp` as its `resource`. The token it holds works at the root's `/mcp`, on the
-workspace API, on `/api/v1/me` and, for an operator, on `/api/v1/platform`.
+organization API, on `/api/v1/me` and, for an operator, on `/api/v1/platform`.
 
 On the REST environment API, call the usual paths on the **root's** host and name the
 environment in a header:
@@ -330,15 +330,15 @@ Connect discovery, no UserInfo, no client an administrator created there. An ope
 turn MCP sign-in at the root off with `CBOX_ID_ROOT_MCP_OAUTH=false`; see
 [environment variables](../configuration/environment-variables.md#oauth--oidc-endpoint-policy).
 
-To give an agent the workspace without a person behind it, use a workspace key:
+To give an agent the organization without a person behind it, use an organization key:
 
 ```bash
-claude mcp add --transport http cbox-workspace https://<platform-root>/mcp \
-  --header "Authorization: Bearer cbid_ws_…"
+claude mcp add --transport http cbox-organization https://<platform-root>/mcp \
+  --header "Authorization: Bearer cbid_org_…"
 ```
 
-A workspace key acts as the key, bounded by its role and scopes, and reaches the
-workspace's own tools only: projects, environments, the team and keys. It does not act
+An organization key acts as the key, bounded by its role and scopes, and reaches the
+organization's own tools only: projects, environments, the team and keys. It does not act
 inside an environment; mint that environment a key for that.
 
 An operator provisions the root's CLI client the same way as an environment's,
@@ -368,7 +368,7 @@ request is a `POST`, answered on its own; `GET` and `DELETE` on `/mcp` answer `4
 ## The `cbox` CLI
 
 `cbox login` signs you in with the device flow against the issuer you point it at: an
-environment's own, as one of its people, or the platform root's, as one of a workspace's
+environment's own, as one of its people, or the platform root's, as one of an organization's
 team ([see above](#signing-in-at-the-root)). Against an environment's issuer: It
 reads `/.well-known/cbox-cli`, which names the CLI's client, the scopes to ask for (the
 sign-in ones and every management scope) and the `resource` to name: the same `/mcp`
@@ -389,7 +389,7 @@ Poll it, then repeat the call with the header `Cbox-Approval: <id>`.
 
 | Tool | What it is |
 |---|---|
-| `whoami` | Who this connection acts as: a key (its id, name and scopes) or a person (who, which client, which organization and role, the token's scopes), plus the environment and issuer. At the root: your workspace and role, whether you are an operator, and the environments you can act in. Check this first when a tool you expected is missing. |
+| `whoami` | Who this connection acts as: a key (its id, name and scopes) or a person (who, which client, which organization and role, the token's scopes), plus the environment and issuer. At the root: your organization and role, whether you are an operator, and the environments you can act in. Check this first when a tool you expected is missing. |
 | `list_actions` | A short list of every action this connection may run: tool name, summary, scope and danger. Cheaper to read than the full tool list. |
 | `approval_status` | Where a held call's approval stands. |
 | One tool per action | Named after the action, with dots and hyphens as underscores: `apis.create` is `apis_create`. The tool's title is the dotted action name. |
@@ -400,7 +400,7 @@ ordinary arguments. `PUT /apis/{id}/scopes/{key}` is `apis_scopes_define` with `
 `idempotency_key`.
 
 The server offers tools only: no MCP resources and no prompts. `whoami` reports the
-connection's `kind`: `environment_key`, `workspace_key`, `delegated` (a person on an
+connection's `kind`: `environment_key`, `organization_key`, `delegated` (a person on an
 environment's host) or `person` (a person at the platform root).
 
 ### Scopes decide what is listed
@@ -465,7 +465,7 @@ What an agent does is recorded on the [audit log](activity-log.md):
 - signed in, as **your** act, with the client you used recorded on every entry
   (`oauth_client_id`), so "you did it" and "your agent did it" can be told apart. Signed
   in at the root, an environment action is recorded in that environment's log as you, a
-  member of the workspace, and a workspace action in the workspace's log.
+  member of the organization, and an organization action in the organization's log.
 
 Every entry also records the door it came through (`via`: `mcp`, `rest`, `cli`, `console`
 or `portal`), so the [Audit log](activity-log.md) can be filtered to **Via: MCP**. An

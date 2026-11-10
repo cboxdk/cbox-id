@@ -9,7 +9,7 @@ description: Set up single sign-on with Google Workspace as a custom SAML app fo
 ## Single sign-on (SAML)
 
 In the portal, choose **Google Workspace** under Enterprise SSO and **Start with Google
-Workspace**. Then, in the Google Admin console (you need super admin rights):
+Organization**. Then, in the Google Admin console (you need super admin rights):
 
 1. Go to **Apps → Web and mobile apps**, then **Add app → Add custom SAML app**.
 2. Name the app and choose **Continue**.

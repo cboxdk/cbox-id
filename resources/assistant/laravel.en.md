@@ -197,7 +197,7 @@ it end the person's sessions everywhere, not only in this browser.
 
 ## Next steps
 
-- [Workspaces & organizations](/ai-assistant/guides/id-workspaces) — where
+- [Organizations & customers](/ai-assistant/guides/id-workspaces) — where
   your app sits in Cbox ID.
 - Organizations in your app — bind a
   sign-in to one of your customers; `CboxId::switchOrganization($id)` and the

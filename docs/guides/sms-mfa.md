@@ -8,7 +8,7 @@ description: Let people receive sign-in codes by text message — off until you 
 
 **Console page (environment console):** Authentication › Authentication policy › Text-message codes
 
-People can add a phone number in **My account › Security** and get a code by text message
+People can add a phone number in **Account › Security** and get a code by text message
 as the second step when they sign in, next to an authenticator app, a passkey and recovery
 codes. It is **off in every environment until you turn it on**, and it sends only to the
 countries you list.
@@ -71,7 +71,7 @@ that matters for your administrators, leave SMS off.
 
 ## What people see
 
-- **My account › Security** gets a **Text-message codes** panel. People type their number
+- **Account › Security** gets a **Text-message codes** panel. People type their number
   (international format, such as `+45 12 34 56 78`, works anywhere), receive a code and
   enter it. The first second factor anybody sets up also gives them recovery codes.
 - At sign-in, the second-factor page offers **Text me a code**. The text is sent only when
@@ -84,7 +84,7 @@ answer and a call to send the text — see [Integrate your app](../getting-start
 
 ## Removing a phone number
 
-- The person: **My account › Security › Remove phone number** (asks for their password).
+- The person: **Account › Security › Remove phone number** (asks for their password).
 - An administrator: **Users › *a person* › Remove phone number** — for a lost or ported
   number. Their authenticator app, passkeys and recovery codes stay. **Reset 2FA** removes
   every factor, the phone number included.
