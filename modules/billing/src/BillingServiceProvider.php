@@ -124,7 +124,7 @@ class BillingServiceProvider extends ServiceProvider
         // existing area when the host has already declared it — but it also APPLIES the
         // label and icon passed here, so they must be the host's own, word for word, or
         // whichever provider boots last renames the area.
-        Console::nav()->area('identity-platform', 'Workspace', 'briefcase', 15)
+        Console::nav()->area('identity-platform', 'Organization', 'briefcase', 15)
             ->page('billing', 'Billing', feature: 'organization.billing', order: self::NAV_ORDER);
     }
 

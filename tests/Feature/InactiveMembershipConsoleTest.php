@@ -42,7 +42,7 @@ it('does not retarget a revoked organization selection to another membership', f
     $this->assertDatabaseMissing('invitations', ['email' => 'unintended@example.test']);
 })->group('security');
 
-it('refuses a suspended workspace membership behind an environment admin session', function (): void {
+it('refuses a suspended organization membership behind an environment admin session', function (): void {
     crudSetup();
     $this->get(route('environment.home'))->assertOk();
     $membership = app(EnvironmentAdminAuth::class)->membership();

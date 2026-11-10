@@ -50,7 +50,7 @@ function rootForDeferredSignup(): Environment
     return $root;
 }
 
-function signUpForWorkspace(string $email = 'dana@acme.example'): void
+function signUpForOrganization(string $email = 'dana@acme.example'): void
 {
     test()->from(route('signup'))->post(route('signup.register'), ['organization' => 'Acme', 'name' => 'Dana Reeves', 'email' => $email, 'password' => 'a-strong-unbreached-passphrase'])
         ->assertSessionHasNoErrors();
@@ -58,7 +58,7 @@ function signUpForWorkspace(string $email = 'dana@acme.example'): void
 
 it('does not create product resources when a person verifies their email', function (): void {
     rootForDeferredSignup();
-    signUpForWorkspace();
+    signUpForOrganization();
     $person = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('dana@acme.example'));
     expect($person)->not->toBeNull()->and(ownerOrganizationId($person->id))->toBe('');
     $url = null;
@@ -74,7 +74,7 @@ it('does not create product resources when a person verifies their email', funct
 
 it('keeps replayed identity confirmation from provisioning a product', function (): void {
     rootForDeferredSignup();
-    signUpForWorkspace();
+    signUpForOrganization();
     $url = null;
     Mail::assertQueued(EmailVerificationMail::class, function (EmailVerificationMail $mail) use (&$url): bool {
         $url = $mail->url;
@@ -89,7 +89,7 @@ it('keeps replayed identity confirmation from provisioning a product', function 
 
 it('lets a person without a team resend confirmation from their account page', function (): void {
     rootForDeferredSignup();
-    signUpForWorkspace();
+    signUpForOrganization();
     config(['cbox-id.tenancy.account_host' => 'localhost']);
     $this->get(route('account'))->assertOk()->assertInertia(fn ($page) => $page
         ->where('auth.user.confirmUrl', '/account/email/confirmation'));

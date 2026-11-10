@@ -68,7 +68,7 @@ it('offers an account-less operator no area that needs an account', function ():
         ->and($routes)->not->toContain('billing')
         ->and($routes)->not->toContain('organization-settings')
         // …and the platform section IS there, or the assertions above pass on an empty rail.
-        ->and($routes)->toContain('platform.workspaces')
+        ->and($routes)->toContain('platform.orgs')
         ->and($routes)->toContain('platform.operators');
 
     // Their own security page survives, and should: it is the one thing that belongs to
@@ -107,7 +107,7 @@ it('names the section in the title of every platform page', function (): void {
         $html = (string) $this->get(route($route))->assertOk()->getContent();
 
         expect($html)->toContain(' · Platform · ')
-            ->and($html)->not->toContain(' · Workspace · ');
+            ->and($html)->not->toContain(' · Organization · ');
     }
 
     // …and a console page is not a platform page, whoever is reading it.
@@ -124,7 +124,7 @@ it('gives every platform page the eyebrow its rail area actually uses', function
     // hand-written word would be right again — and it is still read off the rail.
     $expected = [
         'platform.environments' => 'Platform',
-        'platform.workspaces' => 'Platform',
+        'platform.orgs' => 'Platform',
         'platform.organizations' => 'Platform',
         'platform.usage' => 'Platform',
         'platform.queues' => 'Platform',
@@ -186,7 +186,7 @@ it('will not suspend a live tenant or a fellow operator without a confirmed act'
     $lists = [
         'platform.organizations' => ['organizations', 'toggleHref'],
         'platform.operators' => ['operators', 'toggleHref'],
-        'platform.workspaces' => ['customers', 'toggleHref'],
+        'platform.orgs' => ['customers', 'toggleHref'],
     ];
 
     $checked = 0;

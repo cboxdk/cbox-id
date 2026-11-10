@@ -10,8 +10,8 @@ The environment console (`/admin` on your environment's host) is grouped by task
 words other identity platforms use.
 
 **Which console am I in?** Every page says, in one line above it: *Environment:
-Production · Environment on acme.cboxid.com*, *Workspace: Acme*, or *Platform admin*. On the
-root host (`cboxid.com`) the console without `/admin` is your **workspace**: projects,
+Production · Environment on acme.cboxid.com*, *Organization: Acme*, or *Platform admin*. On the
+root host (`cboxid.com`) the console without `/admin` is your **organization**: projects,
 team, keys, billing, settings and your team's own sign-in to Cbox ID. How people sign in to
 your apps is set in an **environment's** console. Opening Social login, Branding or Sign-in
 methods on the root host shows a link to that page in each of your environments. Platform
@@ -53,7 +53,7 @@ On the root host, platform operators have one more area, first on the rail:
 
 | Area | Pages | What it is for |
 |---|---|---|
-| **Platform** | Workspaces, Environments, Organization tree, Operators, Usage, Queues, Search | The whole deployment: every workspace and environment, the operators, and support sessions. Every page says *Platform admin: the whole deployment* above it. |
+| **Platform** | Organizations, Environments, Organization tree, Operators, Usage, Queues, Search | The whole deployment: every organization and environment, the operators, and support sessions. Every page says *Platform admin: the whole deployment* above it. |
 
 Modules add pages to these areas when they are switched on. Examples are *Sign-in
 activity*, *Risk events* and *Trusted devices*.
@@ -241,7 +241,7 @@ Three kinds of setting appear there:
   names the variable. Rows with a deployment limit, such as the longest session, show it.
 
 On a single-tenant install there is no environment console: the same page is under
-**Sign-in › Sign-in methods** in the organization console. Platform operators and owners of
+**Sign-in › Sign-in methods** in the customer organization console. Platform operators and owners of
 the install's own organization (`php artisan cbox-id:installation-organization`) change the
 environment's settings there too — passkeys, magic links, sessions and text-message
 codes on **Authentication policy**, and the environment's providers on **Social login**. [Authentication policy and sign-in methods](../guides/authentication-policy.md).
@@ -251,7 +251,7 @@ codes on **Authentication policy**, and the environment's providers on **Social 
 From `cboxid.com/admin`, **Platform** is one click away; from any Platform page, the
 platform environment's own areas are one click away. The same test checks both.
 
-- **Suspend a workspace:** **Platform** (1) lists every workspace with **Suspend** on its
+- **Suspend an organization:** **Platform** (1) lists every organization with **Suspend** on its
   row; its own page (2) has the same control. **Reactivate** undoes it.
 - **Open an environment's console as an operator:** **Home** (1) from any Platform page is
   the platform environment's console. On **Platform › Environments** (2), **Open console**

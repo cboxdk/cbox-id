@@ -193,7 +193,7 @@ it('refuses redemption when the org is no longer entitled', function () {
     grantFeature($orgId, 'cbox-id-sso');
     $token = app(AdminPortal::class)->generate($orgId, PortalScope::only(PortalIntent::Sso), 'sub_creator');
 
-    centralBillingFixture()->feature(app(ProductBilling::class)->owningWorkspace($orgId), new FeatureEntitlement('cbox-id.sso', FeatureType::Boolean, false));
+    centralBillingFixture()->feature(app(ProductBilling::class)->owningOrganization($orgId), new FeatureEntitlement('cbox-id.sso', FeatureType::Boolean, false));
 
     $this->post(route('portal.enter.store', $token))->assertRedirect(route('portal.expired'));
     expect(app(AdminPortal::class)->redeem($token))->toBeNull();

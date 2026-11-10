@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Billing\Http\Controllers;
 
-use App\Actions\Workspace\Billing\RemovePaymentMethod;
-use App\Actions\Workspace\Billing\SetDefaultPaymentMethod;
-use App\Actions\Workspace\Billing\UpdateBillingAccount;
+use App\Actions\OrgPlane\Billing\RemovePaymentMethod;
+use App\Actions\OrgPlane\Billing\SetDefaultPaymentMethod;
+use App\Actions\OrgPlane\Billing\UpdateBillingAccount;
 use App\Http\Controllers\Console\ConsoleController;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\Billing\ProductBilling;

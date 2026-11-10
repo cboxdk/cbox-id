@@ -9,8 +9,8 @@ use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\PlatformScopes;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\OAuth\RootDelegatedAccess;
+use App\Platform\OAuth\ValueObjects\RootOrganization;
 use App\Platform\OAuth\ValueObjects\RootSignIn;
-use App\Platform\OAuth\ValueObjects\RootWorkspace;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Cbox\Id\Platform\PlatformRoot;
@@ -36,7 +36,7 @@ final readonly class RootOperatorPrincipal extends RootPersonPrincipal implement
 {
     public function __construct(
         RootSignIn $signIn,
-        ?RootWorkspace $workspace,
+        ?RootOrganization $workspace,
         private string $operatorId,
     ) {
         parent::__construct($signIn, $workspace);

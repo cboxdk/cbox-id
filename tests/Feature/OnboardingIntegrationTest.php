@@ -36,7 +36,7 @@ it('keeps collection off until an operator configures the intended product', fun
     $this->artisan('onboarding:sync')->assertFailed();
 });
 
-it('publishes only workspace facts and deduplicates the same observation interval', function (): void {
+it('publishes only organization facts and deduplicates the same observation interval', function (): void {
     multiTenantDeployment();
     $tenant = provisionAccount();
     config(['onboarding.engage_enabled' => true, 'engage.url' => 'https://engage.example', 'engage.key' => 'test-only', 'engage.product' => 'cbox-id']);

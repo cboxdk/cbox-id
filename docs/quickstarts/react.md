@@ -307,7 +307,7 @@ in this browser.
 
 ## Next steps
 
-- [Workspaces & organizations](../core-concepts/workspaces-and-organizations.md) — where
+- [Organizations & customers](../core-concepts/organizations-and-customers.md) — where
   your app sits in Cbox ID.
 - [Organizations in your app](../getting-started/organizations-in-your-app.md) — bind a
   sign-in to one of your customers; `<OrganizationSwitcher>` draws the switcher.

@@ -69,7 +69,7 @@ export default function Devices({
                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                     {tc('console.anyone_can_enrol_their_own_phone_from_fd09b121')}{' '}
                     <Link href={personalPage} className="underline">
-                        {tc('console.my_account_trusted_devices_fcbd2d0b')}
+                        {tc('console.account_trusted_devices_07153b2a')}
                     </Link>
                     .
                 </p>

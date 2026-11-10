@@ -1,7 +1,7 @@
 ---
 title: Run your tenancy from your backend
 weight: 22
-description: The environment management API, and the workspace API above it — create a customer's team with its owner, add members, invite with roles, grant roles (in one organization or everywhere for staff), register apps and APIs, revoke customer API keys and start support sessions, all with one management key.
+description: The environment management API, and the organization API above it — create a customer's team with its owner, add members, invite with roles, grant roles (in one organization or everywhere for staff), register apps and APIs, revoke customer API keys and start support sessions, all with one management key.
 ---
 
 # Run your tenancy from your backend
@@ -17,7 +17,7 @@ The full contract is the OpenAPI document your environment serves at
 
 ## The key
 
-Create a **management key** (`cbid_env_…`) on the Keys page, in the workspace console or
+Create a **management key** (`cbid_env_…`) on the Keys page, in the organization console or
 in the environment's own console ([Keys](../guides/keys.md)). It works on **one
 environment's host** and nowhere else. Give it the scopes the job needs and no more:
 
@@ -323,30 +323,34 @@ the console runs — the same rules, refusals and activity-log entries.
 - **Custom domain** (`domains:*`): `POST /api/v1/domains` returns the DNS TXT record,
   `POST /domains/verify` promotes the domain once it is visible (`422 dns_not_propagated`
   until then), `DELETE /domains` removes it. Only ever the environment the key belongs to.
-## The workspace API: stand an environment up
+## The organization API: stand an environment up
 
 Everything above runs inside one environment, with that environment's key on its host.
-**Above** your environments is your workspace — its projects, environments, team and keys —
-and the **workspace API** at `/api/v1/workspace` runs it with a **workspace key**
-(`cbid_ws_…`, Keys › Workspace keys in the console). Its contract is served at
+**Above** your environments is your organization — its projects, environments, team and keys —
+and the **organization API** at `/api/v1/workspace` runs it with an **organization key**
+(`cbid_ws_…`, Keys › Organization keys in the console). Its contract is served at
 `/api/v1/workspace/openapi.yaml`.
 
-A workspace key carries a **role** (admin, developer, member or viewer), which bounds it
+An organization key carries a **role** (admin, developer, member or viewer), which bounds it
 exactly as it bounds a person in the console, and optionally **scopes** that narrow it
-further. A key with no scopes is bounded by its role alone.
+further. A key with no scopes is bounded by its role alone. Before v3 these scopes had
+other names (`workspace:read`, `keys:write`, `team:write`…); a key minted with them keeps
+working until v3.1, and [UPGRADING](https://github.com/cboxdk/cbox-id/blob/main/UPGRADING.md)
+lists each old name beside its new one.
 
 | Scope | Lets the key | Role must be able to |
 |---|---|---|
-| `workspace:read` | read the workspace, its projects and environments | — |
-| `projects:write` | create, rename, suspend and reactivate projects | manage environments |
-| `environments:write` | create environments, optionally with a first key, and serve them on a custom domain (`/environments/{id}/domain`) | manage environments |
-| `team:read` | list members and pending invitations | read members |
-| `team:write` | invite, re-role, scope and remove members | manage members |
-| `keys:write` | mint and revoke environment keys and workspace keys | manage environments (and manage members, for workspace keys) |
-| `settings:write` | rename the workspace | manage members |
-| `billing:write` | update invoice details and manage stored cards | manage billing |
+| `id:organization:read` | read the organization, its projects and environments | — |
+| `id:projects:write` | create, rename, suspend and reactivate projects | manage environments |
+| `id:environments:write` | create environments, optionally with a first key, and serve them on a custom domain (`/environments/{id}/domain`) | manage environments |
+| `id:members:read` | list members and pending invitations | read members |
+| `id:members:write` | invite, re-role, scope and remove members | manage members |
+| `id:environment-keys:write` | mint and revoke environment keys | manage environments |
+| `id:organization-keys:write` | mint and revoke organization keys | manage environments and manage members |
+| `id:organization:write` | rename the organization | manage members |
+| `id:billing:write` | update invoice details and manage stored cards | manage billing |
 
-This is enough for an agent holding one workspace key to stand a product up end to end:
+This is enough for an agent holding one organization key to stand a product up end to end:
 
 ```http
 POST /api/v1/workspace/projects
@@ -368,11 +372,11 @@ answer back; a replay never carries a key's value (`initial_key.token` is `null`
 caller that lost it revokes the key and mints another with
 `POST /api/v1/workspace/environments/{id}/keys`.
 
-A key can mint workspace keys (`POST /api/v1/workspace/keys`), but **never a wider one**:
+A key can mint organization keys (`POST /api/v1/workspace/keys`), but **never a wider one**:
 its role at most, its scopes at most (inherited when you send none), expiring no later than
-it does. Revoking a key revokes every key it minted. Handing the workspace to someone else
+it does. Revoking a key revokes every key it minted. Handing the organization to someone else
 (`transfer-ownership`) is the owner's act, in the console; a key is refused with
-`403 owner_only`. Everything a workspace key does is on the workspace's audit log with
+`403 owner_only`. Everything an organization key does is on the organization's audit log with
 the key as the actor.
 
 ## Your own account, and the operator API
@@ -384,13 +388,13 @@ Two more planes are served, and **no key of any kind reaches either**:
   the environment you belong to. Changing a password, turning on a second factor or
   registering a passkey are not in it: those are ceremonies in the browser.
 - `/api/v1/platform` is the **operator API**, for the staff who run a deployment: customer
-  workspaces, environments, organizations inside any environment, and the operator roster.
+  organizations, environments, customer organizations inside any environment, and the operator roster.
   Every write there is critical.
 
 Both take only an access token a **person** delegated — you, or a platform operator with
 `operator:*` scopes. On an environment's host that is the token the environment issued
 you; at the platform root, the token the root issued you (`cbox login` at the root, see
-[Agents and MCP](../guides/agents-and-mcp.md#one-connection-for-your-whole-workspace)), and
+[Agents and MCP](../guides/agents-and-mcp.md#one-connection-for-your-whole-organization)), and
 only an operator's reaches `/api/v1/platform`. Their contracts are at
 `/api/v1/me/openapi.yaml` and `/api/v1/platform/openapi.yaml`.
 

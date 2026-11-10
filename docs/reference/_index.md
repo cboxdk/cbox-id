@@ -17,9 +17,9 @@ summary and its input fields:
 | Page | Covers | Reached with |
 |---|---|---|
 | [Environment actions](actions-environment.md) | everything inside one environment: organizations, users, applications, APIs, keys, sign-in, governance, App audit logs, webhooks, log streams | a secret key (`cbid_env_…`) on the environment's host, or a delegated token |
-| [Workspace actions](actions-workspace.md) | projects, environments and their domains, the team, keys | a workspace key (`cbid_ws_…`) or a team member's token, at the root |
+| [Organization actions](actions-organization.md) | projects, environments and their domains, the team, keys | an organization key (`cbid_ws_…`) or a team member's token, at the root |
 | [Account actions](actions-account.md) | one person's own sessions, app grants, personal keys and devices | only a token that person delegated |
-| [Platform actions](actions-platform.md) | the deployment: workspaces, environments, operators | only a platform operator's token |
+| [Platform actions](actions-platform.md) | the deployment: organizations, environments, operators | only a platform operator's token |
 
 These pages are **generated** from the action registry by `php artisan docs:actions`, and
 the build fails when they fall behind (`php artisan docs:actions --check`). If one is
@@ -34,7 +34,7 @@ serves the plane. Every operation carries `x-action` (the action's name), `x-sco
 | Plane | Served at | Source |
 |---|---|---|
 | Environment | `https://<environment-host>/api/v1/environment/openapi.yaml` | [environment.yaml](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/environment.yaml) |
-| Workspace | `https://<root-host>/api/v1/workspace/openapi.yaml` | [workspace.yaml](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/workspace.yaml) |
+| Organization | `https://<root-host>/api/v1/workspace/openapi.yaml` | [workspace.yaml](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/organization.yaml) |
 | Account | `https://<host>/api/v1/me/openapi.yaml` | [account.yaml](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/account.yaml) |
 | Platform | `https://<root-host>/api/v1/platform/openapi.yaml` | [platform.yaml](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/platform.yaml) |
 

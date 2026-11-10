@@ -8,7 +8,7 @@ use App\Http\Props\Shared\HelpProps;
 use App\Platform\AppLauncher;
 use App\Platform\AuditNames;
 use App\Platform\Console\DashboardCards;
-use App\Platform\Console\WorkspaceLanding;
+use App\Platform\Console\OrganizationLanding;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Locale\ConsoleLabels;
@@ -49,13 +49,13 @@ final readonly class DashboardController extends ConsoleController
         SetupChecklist $checklist,
         AuditNames $names,
         DashboardCards $cards,
-        WorkspaceLanding $landing,
+        OrganizationLanding $landing,
     ): Response|RedirectResponse {
         // A WORKSPACE'S CONSOLE HAS NO OVERVIEW. Every number on this page would be about
         // the workspace's own record in Cbox's environment — its team signing in to Cbox —
         // which is not what anybody who owns an identity platform comes here to look at.
         // This is the page every sign-in lands on, so it hands them to where they work.
-        if ($this->scope->atWorkspaceAltitude()) {
+        if ($this->scope->atOrganizationAltitude()) {
             return redirect()->to($landing->url());
         }
 

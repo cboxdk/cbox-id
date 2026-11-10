@@ -123,7 +123,7 @@ function rootAuditActions(): array
 
 // ── The whole flow, as Claude Code runs it ──────────────────────────────────────
 
-it('signs a workspace member in from a bare /mcp URL, through to a held critical action', function (): void {
+it('signs an organization member in from a bare /mcp URL, through to a held critical action', function (): void {
     [$resource] = rootOAuthResource();
 
     // 1. The 401 says where to look.
@@ -153,7 +153,10 @@ it('signs a workspace member in from a bare /mcp URL, through to a held critical
         'response_types_supported' => ['code'],
         'client_id_metadata_document_supported' => true,
     ])->and($metadata['grant_types_supported'])->toContain('authorization_code', 'refresh_token')
-        ->and($metadata['scopes_supported'])->toContain('offline_access', 'team:read', 'apis:write')
+        // Each scope once, under the name its action declares: the organization plane's v3
+        // names, the environment plane's v2 ones.
+        ->and($metadata['scopes_supported'])->toContain('offline_access', 'id:members:read', 'apis:write')
+        ->and($metadata['scopes_supported'])->not->toContain('team:read')
         ->and($metadata['scopes_supported'])->not->toContain('openid')
         ->and($metadata['scopes_supported'])->not->toContain('email')
         ->and($metadata['scopes_supported'])->not->toContain('profile');
@@ -167,7 +170,7 @@ it('signs a workspace member in from a bare /mcp URL, through to a held critical
     $clientId = (string) $registered->json('client_id');
 
     expect($registered->json('token_endpoint_auth_method'))->toBe('none')
-        ->and(explode(' ', (string) $registered->json('scope')))->toContain('offline_access', 'team:read')->not->toContain('openid');
+        ->and(explode(' ', (string) $registered->json('scope')))->toContain('offline_access', 'id:members:read')->not->toContain('team:read')->not->toContain('openid');
 
     foreach (['client_secret', 'registration_access_token', 'registration_client_uri'] as $absent) {
         expect($registered->json())->not->toHaveKey($absent);
@@ -205,7 +208,7 @@ it('signs a workspace member in from a bare /mcp URL, through to a held critical
     $this->withToken($token)->getJson('/api/v1/workspace')->assertOk();
 
     // 7. A critical action waits for the person.
-    $held = mcpCall($token, 'keys_workspace_create', ['name' => 'CI', 'role' => 'developer', 'idempotency_key' => 'root-oauth-once'])['structuredContent'];
+    $held = mcpCall($token, 'keys_organization_create', ['name' => 'CI', 'role' => 'developer', 'idempotency_key' => 'root-oauth-once'])['structuredContent'];
 
     expect($held['status'] ?? null)->toBe('approval_pending');
 
@@ -262,6 +265,40 @@ it('audiences a token to the root\'s /mcp when the client named no resource, and
     expect($resource)->toEndWith('/mcp');
 })->group('security');
 
+it('serves a client registered before v3 the v2 scope names it asks for, through a refresh', function (): void {
+    [$resource, $scopes] = rootOAuthResource();
+    $clientId = (string) rootOAuthRegister()->assertCreated()->json('client_id');
+
+    // The resource advertises the v3 name only …
+    expect($scopes)->toContain('id:organization:read')->not->toContain('workspace:read');
+
+    // … but this client registered under v2, when the root advertised `workspace:read`.
+    app(PlatformRoot::class)->run(function () use ($clientId): void {
+        $client = Client::query()->where('client_id', $clientId)->sole();
+        $client->forceFill(['scopes' => ['workspace:read', 'offline_access']])->save();
+    });
+
+    signInAsMember($this->account['subjectId']);
+
+    $props = (array) rootOAuthAuthorize($clientId, ['scope' => 'workspace:read offline_access'])->assertOk()->inertiaProps();
+    $issued = rootOAuthRedeem($props, $clientId)->assertOk();
+
+    forgetSubjectSession();
+
+    $claims = json_decode((string) base64_decode(strtr(explode('.', (string) $issued->json('access_token'))[1], '-_', '+/')), true);
+    expect(explode(' ', (string) ($claims['scope'] ?? '')))->toContain('workspace:read')->not->toContain('id:organization:read');
+    $this->withToken((string) $issued->json('access_token'))->getJson('/api/v1/workspace')->assertOk();
+
+    $refreshed = $this->post('/oauth/token', [
+        'grant_type' => 'refresh_token',
+        'refresh_token' => $issued->json('refresh_token'),
+        'client_id' => $clientId,
+    ])->assertOk();
+
+    $this->withToken((string) $refreshed->json('access_token'))->getJson('/api/v1/workspace')->assertOk();
+    $this->withToken((string) $refreshed->json('access_token'))->getJson('/api/v1/workspace/members')->assertForbidden();
+});
+
 it('takes a client ID metadata document client through the root to its /mcp', function (): void {
     $this->fakeClientMetadataDocuments()->serve(ROOT_MCP_DOCUMENT, [
         'client_id' => ROOT_MCP_DOCUMENT,
@@ -287,7 +324,7 @@ it('takes a client ID metadata document client through the root to its /mcp', fu
     ])->and(Client::query()->withoutGlobalScopes()->where('client_id', ROOT_MCP_DOCUMENT)->exists())->toBeFalse();
 });
 
-it('lets an operator on no workspace sign an MCP client in, for the deployment', function (): void {
+it('lets an operator on no organization sign an MCP client in, for the deployment', function (): void {
     $operator = actAsOperator('ops@platform.test');
     $clientId = (string) rootOAuthRegister()->assertCreated()->json('client_id');
 
@@ -297,7 +334,7 @@ it('lets an operator on no workspace sign an MCP client in, for the deployment',
     forgetSubjectSession();
 
     expect(mcpCall($token, 'whoami')['structuredContent']['operator'])->toBeTrue()
-        ->and(array_keys(mcpTools($token)))->toContain('platform_workspaces_create')
+        ->and(array_keys(mcpTools($token)))->toContain('admin_organizations_create')
         ->and(rootAuditActions())->toContain(RootMcpOAuth::AUTHORIZED)
         ->and((string) $operator->subject_id)->not->toBe('');
 });
@@ -350,14 +387,14 @@ it('refuses any audience but the root\'s /mcp', function (string $resource): voi
     $clientId = (string) rootOAuthRegister()->assertCreated()->json('client_id');
     signInAsMember($this->account['subjectId']);
 
-    expect(rootOAuthError(rootOAuthAuthorize($clientId, ['scope' => 'team:read', 'resource' => $resource])))->toBe('invalid_target');
+    expect(rootOAuthError(rootOAuthAuthorize($clientId, ['scope' => 'id:members:read', 'resource' => $resource])))->toBe('invalid_target');
 })->with([
     'the root issuer' => ['http://localhost'],
     'another environment\'s /mcp' => ['https://acme.cboxid.test/mcp'],
     'somebody else\'s API' => ['https://api.attacker.example'],
 ])->group('security');
 
-it('refuses the person who runs no workspace and is no operator, on the page', function (): void {
+it('refuses the person who runs no organization and is no operator, on the page', function (): void {
     $clientId = (string) rootOAuthRegister()->assertCreated()->json('client_id');
     $stranger = app(PlatformRoot::class)->run(static fn () => app(Subjects::class)->create('drifter@nowhere.example', 'Drifter', 'a-strong-unbreached-passphrase'));
 
@@ -365,7 +402,7 @@ it('refuses the person who runs no workspace and is no operator, on the page', f
 
     $refused = rootOAuthAuthorize($clientId)->assertOk();
 
-    expect(consentRefusal($refused))->toBe(__('oauth.failure.no_workspace'))
+    expect(consentRefusal($refused))->toBe(__('oauth.failure.no_organization'))
         ->and(rootAuditActions())->not->toContain(RootMcpOAuth::AUTHORIZED);
 })->group('security');
 

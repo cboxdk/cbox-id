@@ -46,7 +46,7 @@ return [
         'stale' => 'Ovaj zahtjev za odobrenje pristupa više nije moguće dovršiti. Započnite ponovno.',
         'account_attention' => 'Vaš račun zahtijeva pažnju prije nego što možete nastaviti. Molimo, ponovno se prijavite.',
         'step_up' => 'Ova aplikacija zahtijeva noviju prijavu ili jaču provjeru identiteta. Pokušajte ponovno.',
-        'no_workspace' => 'Ova prijava povezuje agenta s radnim prostorom u sustavu Cbox ID, ali vaš račun nije član tima nijednog radnog prostora. Zatražite poziv od vlasnika radnog prostora ili povežite agenta putem vlastite adrese svojeg okruženja.',
+        'no_organization' => 'Ova prijava povezuje agenta s organizacijom u sustavu Cbox ID, ali vaš račun nije član tima nijedne organizacije. Zatražite poziv od vlasnika organizacije ili povežite agenta putem vlastite adrese svojeg okruženja.',
     ],
     'organization' => [
         'title' => 'Odaberite organizaciju',

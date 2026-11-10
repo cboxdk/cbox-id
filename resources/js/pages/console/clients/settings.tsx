@@ -206,7 +206,7 @@ function ApiKeysForm({ apiKeys }: { apiKeys: Props['apiKeys'] }) {
     return (
         <Panel
             title={tc('console.api_keys_98aae897')}
-            description={tc('console.lets_the_people_who_use_this_app_create_api__ba2ebdce')}
+            description={tc('console.lets_the_people_who_use_this_app_create_api__6ef80e45')}
         >
             <form
                 className="space-y-3"

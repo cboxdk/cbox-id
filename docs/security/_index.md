@@ -55,7 +55,7 @@ How it works, for anyone integrating with the console's endpoints:
   full-page `/sudo` screen and comes back to that page. Opened with nothing pending,
   `/sudo` returns you to the page you came from.
 
-There are two separate step-ups. The organization console and My account use `/sudo`,
+There are two separate step-ups. The customer organization console and Account use `/sudo`,
 which checks the signed-in person's password. The environment console uses
 `/admin/sudo`, which checks the administrator's own platform account. Confirming one
 never opens the other. Neither is offered during an impersonation.
@@ -95,12 +95,12 @@ three layers beyond the mode gate — described in full under
    never on every signup, and entirely inert unless
    [`CBOX_ID_TURNSTILE_*`](../configuration/environment-variables.md#bot-protection-captcha)
    is configured.
-3. **Deferred environment provisioning.** A self-serve signup creates the workspace, its
+3. **Deferred environment provisioning.** A self-serve signup creates the organization, its
    owner and its first project immediately, but the **environment** — the routable IdP
    with its own signing key — is stood up only when the owner opens the verification
    link in their inbox. An unverified signup therefore costs nothing worth farming.
 
-Because (3) puts a real owner's whole workspace behind one email, the workspace launchpad
+Because (3) puts a real owner's whole organization behind one email, the organization launchpad
 carries a **resend** control while the environment is held back. It re-sends only to the
 signed-in member's own address (the action accepts a member, never an address), retires
 every link issued before it so exactly one is ever live, answers identically whether or
@@ -118,7 +118,7 @@ in. It does sign in two kinds of client, both for its own `/mcp`:
 - the platform's own first-party clients, such as the `cbox` CLI (device grant);
 - since `CBOX_ID_ROOT_MCP_OAUTH` (on by default), any MCP client, so
   `claude mcp add --transport http cbox-id https://<platform-root>/mcp` gives a person one
-  connection for their whole workspace.
+  connection for their whole organization.
 
 What the second one exposes on the root, and what bounds it:
 
@@ -128,10 +128,10 @@ What the second one exposes on the root, and what bounds it:
 | `/.well-known/oauth-authorization-server` | Written for the root: code flow with S256 PKCE, public clients, the root `/mcp` scopes and `offline_access`. No OpenID Connect fields. |
 | `POST /oauth/register` | The `mcp` profile only (public client, PKCE, https or loopback redirects, the authorization-code and refresh grants). In any other `CBOX_ID_DCR_MODE` the root registers nothing. No RFC 7592 management. Per-address ceiling (`CBOX_ID_DCR_MAX_PER_IP_PER_HOUR`), and unused clients are pruned (`CBOX_ID_PRUNE_UNUSED_DYNAMIC_CLIENTS`). |
 | `/oauth/authorize`, consent, `/oauth/token`, `/oauth/revoke` | Only for a client that registered itself at the root or a client ID metadata document, besides the first-party clients. `/oauth/authorize` is metered per address at the root (60/min); the token endpoint keeps its 30/min. |
-| Who can finish signing in | Only a member of a workspace's team or an operator. Anyone else is refused on the page. |
+| Who can finish signing in | Only a member of an organization's team or an operator. Anyone else is refused on the page. |
 | What the token is for | The root's `/mcp` only. A missing `resource` defaults to it; any other (the root issuer, a registered API, another host) is `invalid_target`, at `/authorize` and at the token endpoint, refresh included. `openid`, `profile` and `email` are refused, so no ID token is issued. |
 | What the token can do | What the person can do, within the scopes they allowed. The consent screen is never skipped for these clients, and every critical action waits for the person's approval. |
-| Record | Each registration as `mcp.client_registered` with the address it came from; each consent as `mcp.client_authorized` in the person's workspace trail. |
+| Record | Each registration as `mcp.client_registered` with the address it came from; each consent as `mcp.client_authorized` in the person's organization trail. |
 
 Why this is acceptable: the risk the root's wall exists for is a customer turning the one
 host every customer's owner trusts into a sign-in page for their own app. These clients

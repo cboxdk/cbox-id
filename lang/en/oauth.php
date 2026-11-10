@@ -46,7 +46,7 @@ return [
         'stale' => 'This authorization request can no longer be completed. Please start again.',
         'account_attention' => 'Your account needs attention before you can continue. Please sign in again.',
         'step_up' => 'This application requires a more recent or stronger sign-in. Please start again.',
-        'no_workspace' => 'This sign-in connects an agent to a workspace on Cbox ID, and your account is not on a workspace’s team. Ask a workspace owner to invite you, or connect the agent at your environment’s own address instead.',
+        'no_organization' => 'This sign-in connects an agent to an organization on Cbox ID, and your account is not on an organization’s team. Ask an organization owner to invite you, or connect the agent at your environment’s own address instead.',
     ],
     'organization' => [
         'title' => 'Choose an organization',

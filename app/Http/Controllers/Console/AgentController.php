@@ -162,7 +162,7 @@ final readonly class AgentController extends ConsoleController
              * deployment ({@see RootDelegatedAccess}). Null where there is no root apart
              * from this host to point at.
              */
-            'workspace' => $this->workspaceConnection(),
+            'organization' => $this->organizationConnection(),
             'urls' => [
                 'createAgent' => route('environment.agents.create', ['preset' => 'read-only', 'name' => 'Claude Code']),
                 'agents' => route('environment.agents'),
@@ -190,9 +190,9 @@ final readonly class AgentController extends ConsoleController
      * `oauth` says whether an MCP client may sign the person in there itself — the command
      * that needs nothing but the URL, offered first when it works ({@see RootMcpOAuth}).
      *
-     * @return array{mcpUrl: string, issuer: string, restBaseUrl: string, oauth: bool, workspaceKeysHref: string|null}|null
+     * @return array{mcpUrl: string, issuer: string, restBaseUrl: string, oauth: bool, organizationKeysHref: string|null}|null
      */
-    private function workspaceConnection(): ?array
+    private function organizationConnection(): ?array
     {
         $resource = app(RootDelegatedAccess::class)->resource();
 
@@ -208,9 +208,9 @@ final readonly class AgentController extends ConsoleController
             'restBaseUrl' => $origin.'/api/v1',
             'oauth' => RootMcpOAuth::enabled() && $resource->dynamicClients,
             // "Mint one under Keys › Workspace keys" — on the workspace's host, so absolute.
-            'workspaceKeysHref' => app(PlaneResolver::class)->consoleHost() === null
+            'organizationKeysHref' => app(PlaneResolver::class)->consoleHost() === null
                 ? null
-                : app(ShellContext::class)->onWorkspaceHost('keys.workspace'),
+                : app(ShellContext::class)->onOrganizationHost('keys.organization'),
         ];
     }
 

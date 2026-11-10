@@ -97,7 +97,7 @@ it('serves the root environment\'s console to nobody but its operators', functio
     $served = array_filter($answers, static fn (int $status): bool => $status !== 404);
 
     expect($answers)->not->toBeEmpty()
-        ->and($served)->toBe([], 'a workspace owner reached the platform environment\'s console: '.implode(', ', array_keys($served)));
+        ->and($served)->toBe([], 'an organization owner reached the platform environment\'s console: '.implode(', ', array_keys($served)));
 })->group('security');
 
 it('sends somebody with no session to the root\'s sign-in, and back to the page afterwards', function (): void {

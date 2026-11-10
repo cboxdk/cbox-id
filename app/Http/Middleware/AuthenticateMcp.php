@@ -10,20 +10,20 @@ use App\Mcp\McpProtectedResources;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
+use App\Platform\Actions\Principal\OrganizationKeyPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
-use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\EnvironmentApiContext;
+use App\Platform\Keys\OrganizationKeyPrefixes;
 use App\Platform\OAuth\DelegatedAccess;
 use App\Platform\OAuth\ManagementStepUp;
 use App\Platform\OAuth\RootDelegatedAccess;
-use App\Platform\WorkspaceApiContext;
+use App\Platform\OrganizationApiContext;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Dpop\DpopResourceGuard;
 use Cbox\Id\OAuthServer\Support\BearerChallenge;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
-use Cbox\Id\Platform\DatabaseOrganizationApiKeys;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -38,8 +38,8 @@ use Symfony\Component\HttpFoundation\Response;
  *   environment simply does not resolve here. It sets {@see EnvironmentApiContext}, because
  *   the audit decorator reads the key from there to name it as the actor of whatever the
  *   framework records underneath an action — an MCP call leaves the same trail as REST.
- * - a workspace key (`Bearer cbid_ws_…`), as {@see AuthenticateWorkspaceApi} does: above
- *   every environment, so on any host. It sets {@see WorkspaceApiContext}.
+ * - a workspace key (`Bearer cbid_ws_…`), as {@see AuthenticateOrganizationApi} does: above
+ *   every environment, so on any host. It sets {@see OrganizationApiContext}.
  * - anything else is an OAuth ACCESS TOKEN a person signed an MCP client in for, with this
  *   environment's issuer as the authorization server: read by {@see DelegatedAccess} — live,
  *   audienced to this `/mcp`, a person's, DPoP-proven when bound — into a
@@ -83,7 +83,7 @@ final class AuthenticateMcp
         private readonly EnvironmentApiKeys $keys,
         private readonly OrganizationApiKeys $workspaceKeys,
         private readonly EnvironmentApiContext $context,
-        private readonly WorkspaceApiContext $workspace,
+        private readonly OrganizationApiContext $workspace,
         private readonly McpCaller $caller,
         private readonly ProtectedResources $resources,
         private readonly DpopResourceGuard $dpop,
@@ -137,7 +137,7 @@ final class AuthenticateMcp
      */
     private function principalFor(string $token, Request $request): ?Principal
     {
-        if (str_starts_with($token, DatabaseOrganizationApiKeys::prefix())) {
+        if (OrganizationKeyPrefixes::matches($token)) {
             $workspaceKey = $this->workspaceKeys->resolve($token);
 
             if ($workspaceKey === null) {
@@ -146,7 +146,7 @@ final class AuthenticateMcp
 
             $this->workspace->set($workspaceKey);
 
-            return new WorkspaceKeyPrincipal($workspaceKey);
+            return new OrganizationKeyPrincipal($workspaceKey);
         }
 
         if (! str_starts_with($token, self::KEY_PREFIX)) {
@@ -214,7 +214,7 @@ final class AuthenticateMcp
         }
 
         return response()->json(
-            ['error' => 'unauthorized', 'message' => 'A valid management key (Bearer cbid_env_… for an environment, cbid_ws_… for a workspace), or an access token this environment issued for its MCP server, is required.'],
+            ['error' => 'unauthorized', 'message' => 'A valid management key (Bearer cbid_env_… for an environment, cbid_ws_… for an organization), or an access token this environment issued for its MCP server, is required.'],
             401,
             $challenge->headers(),
         );

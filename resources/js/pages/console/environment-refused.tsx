@@ -32,7 +32,7 @@ export default function EnvironmentRefused({
                 description={
                     <>
                         {consoleRich(
-                            'console.you_are_signed_in_part1_but_your_account_does_not_admin_7c479112',
+                            'console.you_are_signed_in_part1_but_your_account_does_not_admin_1a2cb08a',
                             {
                                 part1:
                                     email !== null ? (
@@ -57,7 +57,7 @@ export default function EnvironmentRefused({
                             <Icon name="members" className="w-4 h-4 mt-0.5 shrink-0" />
                             <span>
                                 {consoleRich(
-                                    'console.ask_an_owner_of_the_workspace_to_give_you_access_to_par_a5e9b560',
+                                    'console.ask_an_owner_of_the_organization_to_give_you_access_to__74d808e8',
                                     { part1: name },
                                 )}
                             </span>
@@ -74,7 +74,7 @@ export default function EnvironmentRefused({
                                                 href={accountsHref}
                                                 className="underline underline-offset-2"
                                             >
-                                                {consoleT('console.switch_user_4f899129')}
+                                                {consoleT('console.switch_account_fedce010')}
                                             </a>
                                         ),
                                     },

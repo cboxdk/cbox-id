@@ -77,11 +77,11 @@ final readonly class EnvironmentLineage
     public function note(): ?string
     {
         if ($this->isPlatformRoot) {
-            return __('console.the_environment_this_deployment_itself_runs__4ac40531');
+            return __('console.the_environment_this_deployment_itself_runs__4fdb5a7a');
         }
 
         if ($this->isUnattached()) {
-            return __('console.no_project_so_no_workspace_owns_it_and_nothi_193af4a6');
+            return __('console.no_project_so_no_organization_owns_it_and_no_36fcb1c6');
         }
 
         return null;

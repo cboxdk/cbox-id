@@ -26,23 +26,26 @@ final class OnboardingEligibilityController extends Controller
         $key = config('onboarding.eligibility_key');
         abort_unless(is_string($key) && strlen($key) >= 32 && hash_equals($key, $request->bearerToken() ?? ''), 401);
         $request->validate([
-            'workspace_id' => ['required', 'string', 'max:100'],
+            // `workspace_id` is what Engage sends today; `organization_id` is the v3 name. Either
+            // is accepted until v3.1, so Engage can move first or last.
+            'organization_id' => ['required_without:workspace_id', 'string', 'max:100'],
+            'workspace_id' => ['required_without:organization_id', 'string', 'max:100'],
             'subject_id' => ['required', 'string', 'max:100'],
             'project_id' => ['required', 'string', 'max:100'],
             'environment_id' => ['required', 'string', 'max:100'],
             'check' => ['required', 'in:cbox_id_first_sign_in_pending'],
         ]);
-        $data = [];
-        foreach (['workspace_id', 'subject_id', 'project_id', 'environment_id'] as $field) {
+        $data = ['organization_id' => $request->string($request->has('organization_id') ? 'organization_id' : 'workspace_id')->toString()];
+        foreach (['subject_id', 'project_id', 'environment_id'] as $field) {
             $data[$field] = $request->string($field)->toString();
         }
         $eligible = $root->run(function () use ($data, $support, $environments): bool {
-            $context = $support->context(['subject' => $data['subject_id'], 'account' => $data['workspace_id'], 'environment' => $data['environment_id']]);
+            $context = $support->context(['subject' => $data['subject_id'], 'account' => $data['organization_id'], 'environment' => $data['environment_id']]);
             if (! $support->allowed($context, true)
-                || app(Memberships::class)->activeRole($data['workspace_id'], $data['subject_id'])?->canWrite() !== true) {
+                || app(Memberships::class)->activeRole($data['organization_id'], $data['subject_id'])?->canWrite() !== true) {
                 return false;
             }
-            $project = Project::query()->whereKey($data['project_id'])->where('organization_id', $data['workspace_id'])->first();
+            $project = Project::query()->whereKey($data['project_id'])->where('organization_id', $data['organization_id'])->first();
             $environment = Environment::query()->whereKey($data['environment_id'])->where('project_id', $data['project_id'])->first();
             if ($project === null || $project->status !== ProjectStatus::Active || $environment === null || ! $environment->status->canServe()) {
                 return false;
@@ -58,6 +61,6 @@ final class OnboardingEligibilityController extends Controller
             });
         });
 
-        return response()->json(['eligible' => $eligible === true && app(LifecycleSupport::class)->canRemind($data['workspace_id']), 'observed_at' => now()->toIso8601String()])->header('Cache-Control', 'no-store');
+        return response()->json(['eligible' => $eligible === true && app(LifecycleSupport::class)->canRemind($data['organization_id']), 'observed_at' => now()->toIso8601String()])->header('Cache-Control', 'no-store');
     }
 }

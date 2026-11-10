@@ -12,6 +12,7 @@ use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ActionApprovalGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\RenamedActions;
 use App\Platform\Agents\ActionApprovalEntry;
 use App\Platform\Agents\ActionApprovalInbox;
 use App\Platform\Console\ConsoleStepUp;
@@ -215,7 +216,7 @@ final readonly class AgentApprovalController extends ConsoleController
                 'approvals',
                 'environment.approvals',
                 [],
-                __('console.approving_lets_an_agent_run_a_critical_action_action_81ec66e8', ['action' => $entry->request->action]),
+                __('console.approving_lets_an_agent_run_a_critical_action_action_81ec66e8', ['action' => RenamedActions::current($entry->request->action)]),
             );
 
             if ($sudo !== null) {
@@ -301,7 +302,7 @@ final readonly class AgentApprovalController extends ConsoleController
 
             return (new ActionApprovalRowProps(
                 entry: $entry,
-                agent: $keyId === null ? __('console.a_workspace_key_b3b36ed9') : ($keys[$keyId] ?? __('console.a_revoked_key_c42c275c')),
+                agent: $keyId === null ? __('console.an_organization_key_5626d71a') : ($keys[$keyId] ?? __('console.a_revoked_key_c42c275c')),
                 agentId: $keyId,
                 action: $definition,
                 target: self::target($entry->request->action, $input, $pathFields, $keys),
@@ -361,7 +362,7 @@ final readonly class AgentApprovalController extends ConsoleController
         $auth = app(EnvironmentAdminAuth::class);
         // None on the platform root's console, which no workspace owns: the act is on the
         // environment's own trail, and there is no workspace log to copy it to.
-        $workspaceId = $auth->workspaceId();
+        $workspaceId = $auth->rootOrganizationId();
 
         if ($workspaceId === null) {
             return;

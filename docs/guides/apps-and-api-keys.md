@@ -15,7 +15,7 @@ here and gets its own credentials. Registering an app is what turns Cbox ID from
 directory into something your colleagues actually use — it is the step that gives
 them a thing to sign in *to*.
 
-Machine keys that are not tied to an app (secret keys, workspace keys and publishable
+Machine keys that are not tied to an app (secret keys, organization keys and publishable
 keys) are on the [API keys](keys.md) page.
 
 ## Register one
@@ -112,7 +112,7 @@ and revoking both ask for your password first.
   are removed or deactivated. Tick **The app needs the session id** if it ends one session
   at a time.
 - **API keys** — set a **key prefix** such as `acme_live` and the people who use the
-  app can create API keys for its API under My account › [API keys](api-keys.md), each tied to them, one organization and a subset of their
+  app can create API keys for its API under Account › [API keys](api-keys.md), each tied to them, one organization and a subset of their
   permissions in this app. Your API checks a key by calling Cbox ID with this app's own
   credentials, and a key loses a permission the moment its holder does. The prefix is
   2–16 lowercase letters or digits followed by `_live` or `_test`, unique in the
@@ -181,7 +181,7 @@ organizations' apps request it.
 ## Related
 
 - [APIs](apis.md) — the services your apps call, and who owns their scopes.
-- [API keys](keys.md) — secret, workspace and publishable keys.
+- [API keys](keys.md) — secret, organization and publishable keys.
 - [Roles](roles.md), [Webhooks](webhooks.md), [Token vault](token-vault.md).
 
 

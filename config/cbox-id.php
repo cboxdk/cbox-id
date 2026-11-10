@@ -13,9 +13,11 @@ return [
     'issuer' => env('CBOX_ID_ISSUER'),
 
     /*
-     * Workspace keys start `cbid_ws_`: the console calls the plane a workspace, so the
-     * credential says so too, and a leaked one reads as what it is. The framework's
-     * default is `cbid_org_`; keys minted under it no longer resolve (see UPGRADING).
+     * Organization keys are minted `cbid_ws_` through v3.0, as v2 minted them: the released
+     * cbox-cli refuses a `cbid_org_` key. Both prefixes are resolved
+     * (App\Platform\Keys\OrganizationKeyPrefixes); minting switches to `cbid_org_` once a
+     * cbox-cli release reads it. The 1.x `cbid_org_` keys were revoked in October and stay
+     * revoked (see UPGRADING).
      */
     'management_keys' => [
         'organization_prefix' => 'cbid_ws_',

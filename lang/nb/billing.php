@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'description' => 'Administrer faktureringsopplysninger, betalingskort og fakturaer for dette arbeidsområdet.',
+    'description' => 'Administrer faktureringsopplysninger, betalingskort og fakturaer for denne organisasjonen.',
     'account' => 'Faktureringsopplysninger',
     'invoice_name' => 'Navn på fakturaer',
     'billing_email' => 'E-post for fakturering',
@@ -39,7 +39,7 @@ return [
     'subtotal' => 'Delsum',
     'tax' => 'Avgift',
     'tax_pending' => 'Avgiften er ikke beregnet ennå.',
-    'no_subscription' => 'Det er ikke knyttet noe abonnement til dette arbeidsområdet.',
+    'no_subscription' => 'Det er ikke knyttet noe abonnement til denne organisasjonen.',
     'allowance' => 'Tillatt antall miljøer',
     'allowance_description' => 'Tilgang og grenser tildeles av en administrator.',
     'period' => 'Faktureringsperiode',
@@ -71,8 +71,8 @@ return [
     'credits_granted' => 'Inkluderte kreditter som legges til',
     'credits_carried' => 'Inkluderte kreditter som overføres',
     'address_required' => 'Fyll ut og lagre fakturaadressen før du velger et betalt abonnement.',
-    'workspace_changed' => 'Arbeidsområdet ble endret i en annen fane. Last siden på nytt før du endrer faktureringen.',
-    'explanation' => 'Abonnementer gjelder per prosjekt. Sammenlign priser og antall tillatte miljøer. Fakturaopplysninger, kort og fakturaer deles av arbeidsområdet. Brukstall viser aktivitet; kostnader følger valgt abonnement.',
+    'organization_changed' => 'Organisasjonen ble endret i en annen fane. Last siden på nytt før du endrer faktureringen.',
+    'explanation' => 'Abonnementer gjelder per prosjekt. Sammenlign priser og antall tillatte miljøer. Fakturaopplysninger, kort og fakturaer deles av organisasjonen. Brukstall viser aktivitet; kostnader følger valgt abonnement.',
     'connections' => 'SSO-tilkoblinger',
     'environments' => 'Miljøer',
     'replace_default' => 'Velg et annet standardkort før du fjerner dette.',

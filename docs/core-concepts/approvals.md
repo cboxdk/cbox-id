@@ -19,7 +19,7 @@ approve it first:
   (or with `keys.create`, its `require_approval` field) may set its **approval policy**:
   every action at or above a danger (`critical`, `destructive`, or every `write`), plus any
   actions named one by one. A key with no policy needs no approval; its scopes are its
-  limit. A key minted *by* a key, workspace keys included, inherits its parent's policy,
+  limit. A key minted *by* a key, organization keys included, inherits its parent's policy,
   so an agent cannot shed its supervision by minting itself a fresh key.
 - **A token a person delegated.** Every `critical` action tried with a delegated token
   (an MCP sign-in, `cbox login`) waits for that person, whatever its scopes.

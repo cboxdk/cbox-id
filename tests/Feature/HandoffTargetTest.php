@@ -77,7 +77,7 @@ it('binds a target to the token it was minted with', function (): void {
         ->and($targets->verify('token-one', '//evil.example', $targets->sign('token-one', '//evil.example')))->toBeNull();
 });
 
-it('carries a valid target from the workspace host into the handoff, and drops an invalid one', function (): void {
+it('carries a valid target from the organization host into the handoff, and drops an invalid one', function (): void {
     ['subjectId' => $subjectId, 'project' => $project] = provisionAccount('owner@handoff-target.example');
     multiTenantDeployment();
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);

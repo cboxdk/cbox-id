@@ -17,7 +17,7 @@ git clone … && cd cbox-id
 composer setup          # installs deps, copies .env, creates the sqlite db,
                         # then runs `cbox-id:install` (guided: mints the crypto
                         # master key, migrates, and creates the first operator,
-                        # environment and — in the SaaS shape — workspace)
+                        # environment and — in the SaaS shape — organization)
 composer run dev        # serve + queue + vite + logs
 ```
 
@@ -43,7 +43,7 @@ artisan cbox-id:setup-token` for a container). Completing the form does what the
 command does, then the route 404s for good.
 
 The **platform operator** it creates is the identity above every environment — it
-administers workspaces, environments, organizations, and other operators. Enroll a
+administers organizations, environments, organizations, and other operators. Enroll a
 passkey or TOTP factor immediately; this is the most sensitive account on the
 system.
 

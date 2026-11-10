@@ -35,7 +35,7 @@ it('serves every environment-console page of the root environment, and every lin
         ->and($crawl->components)->toHaveKeys(['console/sign-in-methods', 'console/social-providers', 'console/auth-policy']);
 });
 
-it('serves an operator the root host\'s workspace console, sending every environment page to the platform environment\'s', function (): void {
+it('serves an operator the root host\'s organization console, sending every environment page to the platform environment\'s', function (): void {
     $world = ConsoleCrawl::world();
     $root = Environment::query()->where('is_default', true)->sole();
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Environment;
 
+use App\Platform\Actions\RenamedActions;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 
 /**
@@ -27,7 +28,7 @@ final class ManagementKeyResource
             'parent_key_id' => $key->parent_key_id,
             'rotated_from_id' => $key->rotated_from_id,
             'require_approval' => $key->step_up_policy,
-            'created_by' => $key->created_by_type === null ? null : ['type' => $key->created_by_type, 'id' => $key->created_by_id],
+            'created_by' => $key->created_by_type === null ? null : ['type' => RenamedActions::currentKind($key->created_by_type), 'id' => $key->created_by_id],
             'expires_at' => Timestamp::of($key->expires_at),
             'last_used_at' => Timestamp::of($key->last_used_at),
             'revoked_at' => Timestamp::of($key->revoked_at),

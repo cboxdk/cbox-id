@@ -18,7 +18,7 @@ onboarding, the action layer and the hosted-cloud concerns.
 | | |
 |---|---|
 | Sign in to your first app | [Quickstarts](docs/quickstarts/_index.md): Next.js, React, Laravel, Nuxt, Go, Python |
-| Understand the model | [Concepts](docs/core-concepts/_index.md), starting with [Workspaces & organizations](docs/core-concepts/workspaces-and-organizations.md) |
+| Understand the model | [Concepts](docs/core-concepts/_index.md), starting with [Organizations & customers](docs/core-concepts/organizations-and-customers.md) |
 | Wire up an AI agent | [Agents and MCP](docs/guides/agents-and-mcp.md), [Actions reference](docs/reference/_index.md) |
 | Administer an environment | [Admin guides](docs/guides/_index.md) |
 | Hand a customer's IT admin a setup link | [Admin Portal](docs/guides/admin-portal.md), [For IT admins](docs/for-it-admins/_index.md) |
@@ -29,14 +29,14 @@ All documentation starts at [`docs/index.md`](docs/index.md).
 
 ## How it is put together
 
-**Workspace → project → environment → organizations → users.** Your workspace is your own
+**Organization → project → environment → customer organizations → users.** Your organization is your own
 Cbox account; it owns projects (one identity product each), each project has environments
 (production, sandbox), and each environment is a fully isolated identity provider on its
 own host, holding your customers' organizations and their people.
-[More](docs/core-concepts/workspaces-and-organizations.md).
+[More](docs/core-concepts/organizations-and-customers.md).
 
-**Two kinds of host.** The platform root (`cboxid.com`) serves the workspace console, the
-workspace and platform APIs, and one MCP server for your whole workspace. Each
+**Two kinds of host.** The platform root (`cboxid.com`) serves the organization console, the
+organization and platform APIs, and one MCP server for your whole organization. Each
 environment's own host (`<environment>.cboxid.com`, or a custom domain) is the OpenID
 Connect issuer your apps use, with its hosted sign-in pages, its console at `/admin`, its
 management API and its own MCP server. [More](docs/core-concepts/planes-and-hosts.md).
@@ -51,7 +51,7 @@ dangerous actions run, and a token a person delegated always waits for them on c
 ones. [More](docs/core-concepts/actions.md).
 
 **Four planes.** The management API is split by who acts over what: environment
-(`/api/v1`), workspace (`/api/v1/workspace`), account (`/api/v1/me`) and platform
+(`/api/v1`), organization (`/api/v1/workspace`), account (`/api/v1/me`) and platform
 (`/api/v1/platform`). Each publishes a public OpenAPI 3.1 document, and the
 [actions reference](docs/reference/_index.md) is generated from the same registry.
 
@@ -75,7 +75,7 @@ git clone https://github.com/cboxdk/cbox-id.git && cd cbox-id
 composer setup          # installs deps, copies .env, creates the sqlite db, then runs
                         # `cbox-id:install`: mints the crypto master key, migrates, and
                         # creates the first operator and environment (and, in the
-                        # SaaS shape, the first workspace)
+                        # SaaS shape, the first organization)
 composer run dev        # serve + queue + vite + logs
 ```
 
@@ -149,14 +149,14 @@ own customers, get in touch about a commercial licence.
 
 ## Product support with Cbox Assistant
 
-Cbox ID uses the public MIT `cboxdk/laravel-assistant-client` package for its signed SDK bridge and global console support drawer. It exposes workspace status and environment status; every tool rechecks the subject, workspace membership, product admission and current environment grants. The signed `id_workspace` inbox card exposes the same authorized workspace and member role to support staff. Hosted customer sign-in pages do not expose workspace support.
+Cbox ID uses the public MIT `cboxdk/laravel-assistant-client` package for its signed SDK bridge and global console support drawer. It exposes organization status and environment status; every tool rechecks the subject, organization membership, product admission and current environment grants. The signed `id_workspace` inbox card exposes the same authorized organization and member role to support staff. Hosted customer sign-in pages do not expose organization support.
 
-It also provides Assistant's customer profile (`GET /ai-assistant/profile`): pickable `id_projects` and `id_environments` (parent `id_projects:<id>`, status, host, user and application counts), and signals (customer since, seats, recent changes from the workspace audit log, and facts: member role, environment count, SSO enabled, two-factor enforced). The profile uses the same check as the tools, so a member sees only what the console shows them. Seats need the member roster permission; security facts and recent changes are for workspace administrators. A verified Cbox support elevation (`support_access`, written reason, at most 60 minutes) widens the profile to every project and environment of the same workspace, never another, and is recorded in that workspace's audit log as `organization.support_access_used`.
+It also provides Assistant's customer profile (`GET /ai-assistant/profile`): pickable `id_projects` and `id_environments` (parent `id_projects:<id>`, status, host, user and application counts), and signals (customer since, seats, recent changes from the organization audit log, and facts: member role, environment count, SSO enabled, two-factor enforced). The profile uses the same check as the tools, so a member sees only what the console shows them. Seats need the member roster permission; security facts and recent changes are for organization administrators. A verified Cbox support elevation (`support_access`, written reason, at most 60 minutes) widens the profile to every project and environment of the same organization, never another, and is recorded in that organization's audit log as `organization.support_access_used`.
 
 Configure `AI_ASSISTANT_SUPPORT_ENABLED`, the support widget/profile/product IDs, `AI_ASSISTANT_PLATFORM_URL`, `AI_ASSISTANT_JWKS_URL`, the exact service audience, a dedicated connector handshake and a server knowledge API key. Use `AI_ASSISTANT_IDENTITY_NAMESPACE=cbox-id-platform-root` for Cbox's platform console: its root subjects and organizations differ from the product issuer consumed by Billing and Engage. Never join these accounts by matching email or organization name. Provision the connection and product-scoped widget in Assistant before enabling the host. No server key is exposed to the browser.
 
-The support session comes from the existing authenticated workspace or environment-admin session. Changing subject, workspace or environment replaces its scope URL and closes the old support frame. The host CSP allows only the configured Assistant origin.
+The support session comes from the existing authenticated organization or environment-admin session. Changing subject, organization or environment replaces its scope URL and closes the old support frame. The host CSP allows only the configured Assistant origin.
 
 `resources/assistant/manifest.php` is an explicit customer-safe source allowlist. Run `php bin/prepare-assistant-docs.php` after changing an approved source and increase the relevant document revision. CI checks the generated guides with `--check`; `/ai-assistant/guides/{key}` provides stable public citations. Run `php artisan assistant:sync-support` after a successful deployment and fail the release if indexing fails. Remove withdrawn sources explicitly in Assistant before omitting them from the manifest; omission alone does not delete indexed content.
 
-A complete rollout requires a live cited answer, an authorized SDK tool call, rejection of a different workspace/environment, and human handover with a reply visible in the original console conversation.
+A complete rollout requires a live cited answer, an authorized SDK tool call, rejection of a different organization/environment, and human handover with a reply visible in the original console conversation.

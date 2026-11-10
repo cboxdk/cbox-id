@@ -220,8 +220,8 @@ final class ParityAllowlist
             // Which environment the operator's console is pointed at — from the switcher, or
             // from a workspace's own page. The operator API names its environment instead.
             'platform.environment.switch',
-            'platform.workspaces.open',
-            'platform.workspaces.target',
+            'platform.orgs.open',
+            'platform.orgs.target',
         ];
     }
 

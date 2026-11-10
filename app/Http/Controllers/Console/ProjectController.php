@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
-use App\Actions\Workspace\Environments\CreateEnvironment;
-use App\Actions\Workspace\Projects\CreateProject;
-use App\Actions\Workspace\Projects\ReactivateProject;
-use App\Actions\Workspace\Projects\RenameProject;
-use App\Actions\Workspace\Projects\ResendVerification;
-use App\Actions\Workspace\Projects\SuspendProject;
+use App\Actions\OrgPlane\Environments\CreateEnvironment;
+use App\Actions\OrgPlane\Projects\CreateProject;
+use App\Actions\OrgPlane\Projects\ReactivateProject;
+use App\Actions\OrgPlane\Projects\RenameProject;
+use App\Actions\OrgPlane\Projects\ResendVerification;
+use App\Actions\OrgPlane\Projects\SuspendProject;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\RenameProjectRequest;
 use App\Http\Requests\Console\StoreEnvironmentRequest;
@@ -46,7 +46,7 @@ use Inertia\Response;
  * confined to staging was refused on the page that says so and permitted on the page that
  * does not. Two spellings of one rule is not a rule; {@see self::assertMayManage()} is.
  *
- * EVERY WRITE IS AN ACTION (`app/Actions/Workspace/Projects`, `…/Environments`), the same
+ * EVERY WRITE IS AN ACTION (`app/Actions/OrgPlane/Projects`, `…/Environments`), the same
  * one `/api/v1/workspace` runs for a workspace key — so the page and the API refuse and
  * record alike. This controller keeps what is the console's own: which page a refusal
  * lands on, and the 403 a person who may not manage gets before anything runs.

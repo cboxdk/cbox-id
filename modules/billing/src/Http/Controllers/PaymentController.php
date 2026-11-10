@@ -217,7 +217,7 @@ final readonly class PaymentController extends ConsoleController
 
         $org = $this->scope->requireOrganizationId();
         $target = request()->route('billingOrganization');
-        abort_unless($target === null || $target === $org, 409, __('billing.workspace_changed'));
+        abort_unless($target === null || $target === $org, 409, __('billing.organization_changed'));
 
         return $org;
     }

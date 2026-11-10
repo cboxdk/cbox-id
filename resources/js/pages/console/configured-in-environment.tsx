@@ -47,7 +47,7 @@ export default function ConfiguredInEnvironment({
                 description={
                     <>
                         {consoleRich(
-                            'console.this_console_is_your_workspace_its_projects_team_keys_a_66180b31',
+                            'console.this_console_is_your_organization_its_projects_team_key_15ebbd0f',
                             { part1: label },
                         )}
                     </>
@@ -68,7 +68,7 @@ export default function ConfiguredInEnvironment({
                                 </a>
                             ) : (
                                 consoleRich(
-                                    'console.you_have_no_environment_to_open_yet_part1_part2_part3_t_26e057f8',
+                                    'console.you_have_no_environment_to_open_yet_part1_part2_part3_t_3a10832d',
                                     {
                                         part1: ' ',
                                         part2: (
@@ -125,7 +125,7 @@ export default function ConfiguredInEnvironment({
                     <Panel title={consoleT('console.the_platform_s_own_sign_in_1b8b2a80')}>
                         <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                             {consoleT(
-                                'console.how_workspace_owners_and_operators_sign_in_to_cbox_id_i_293f421d',
+                                'console.how_organization_owners_and_operators_sign_in_to_cbox_i_444d5c8b',
                             )}
                         </p>
                         <a

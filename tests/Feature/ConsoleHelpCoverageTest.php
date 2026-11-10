@@ -135,7 +135,7 @@ it('gives every organization console page on the rail a help topic', function ()
         ->and(count($routes))->toBeGreaterThanOrEqual(25);
 });
 
-it('gives every workspace page, and both Keys tabs, a help topic', function (): void {
+it('gives every organization page, and both Keys tabs, a help topic', function (): void {
     everyModuleOnForHelp();
     platformRootDeployment();
 
@@ -154,7 +154,7 @@ it('gives every workspace page, and both Keys tabs, a help topic', function (): 
     expect($routes)->toHaveCount(6);
 
     // The Keys page's second tab is its own URL and not on the rail.
-    expect(pagesWithoutHelp([...$routes, 'keys.workspace']))->toBe([]);
+    expect(pagesWithoutHelp([...$routes, 'keys.organization']))->toBe([]);
 });
 
 it('gives every environment console page on the rail a help topic', function (): void {

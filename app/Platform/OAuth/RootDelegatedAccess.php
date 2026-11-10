@@ -11,8 +11,8 @@ use App\Platform\Actions\Principal\RootPersonPrincipal;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\NativeProduct\NativeProductAccess;
+use App\Platform\OAuth\ValueObjects\RootOrganization;
 use App\Platform\OAuth\ValueObjects\RootSignIn;
-use App\Platform\OAuth\ValueObjects\RootWorkspace;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -58,7 +58,7 @@ use Illuminate\Http\Request;
  *    wearing somebody's identity, and the management planes are reached as yourself;
  *  - PRESENTED BY ITS HOLDER: a DPoP-bound token with a valid proof for this request.
  *
- * WHAT THE PERSON HOLDS is read NOW, never from the token ({@see RootWorkspace}): the
+ * WHAT THE PERSON HOLDS is read NOW, never from the token ({@see RootOrganization}): the
  * workspace from an active membership of a live organization that owns products — the one
  * the token was bound to (`org`), refusing when that membership no longer holds; an
  * unbound token resolves the person's first active workspace — and the
@@ -128,7 +128,7 @@ final readonly class RootDelegatedAccess
             || ($signIn->organizationId !== null && $selected !== $signIn->organizationId))) {
             throw new AuthorizationException('The selected organization does not match this sign-in.');
         }
-        $workspace = $this->workspaceOf($signIn->subjectId, $selected ?? $signIn->organizationId);
+        $workspace = $this->organizationOf($signIn->subjectId, $selected ?? $signIn->organizationId);
         $operatorId = $this->operatorIdOf($signIn->subjectId);
 
         // Existing password-only tokens must not acquire platform authority, including
@@ -214,7 +214,7 @@ final readonly class RootDelegatedAccess
 
         return $this->root->run(function () use ($subjectId): bool {
             foreach ($this->memberships->forUser($subjectId) as $membership) {
-                if ($this->workspaceOf($subjectId, $membership->organization_id) !== null) {
+                if ($this->organizationOf($subjectId, $membership->organization_id) !== null) {
                     return true;
                 }
             }
@@ -239,9 +239,9 @@ final readonly class RootDelegatedAccess
      * of a LIVE organization that owns products, which is what makes an organization a
      * workspace rather than somebody's tenant ({@see ConsoleScope::membershipRole()}).
      */
-    public function workspaceOf(string $subjectId, ?string $preferred = null): ?RootWorkspace
+    public function organizationOf(string $subjectId, ?string $preferred = null): ?RootOrganization
     {
-        return $this->root->run(function () use ($subjectId, $preferred): ?RootWorkspace {
+        return $this->root->run(function () use ($subjectId, $preferred): ?RootOrganization {
             $memberships = $this->memberships->forUser($subjectId)
                 ->filter(static fn (Membership $membership): bool => $membership->status === MembershipStatus::Active)
                 ->filter(static fn (Membership $membership): bool => $preferred === null || $membership->organization_id === $preferred)
@@ -265,7 +265,7 @@ final readonly class RootDelegatedAccess
                     return null;
                 }
 
-                $resolved = new RootWorkspace(
+                $resolved = new RootOrganization(
                     id: $organization->id,
                     name: $organization->name,
                     role: $membership->role,

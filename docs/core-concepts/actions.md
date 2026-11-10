@@ -8,7 +8,7 @@ description: One action, four doors — every change in Cbox ID is one action, r
 
 **One action, four doors.** Every change you can make in Cbox ID, and every read behind a
 console page, is one **action**: `apps.create`, `organizations.portal_links.create`,
-`keys.workspace.revoke`. The console, the REST API, the MCP server and the `cbox` CLI are
+`keys.organization.revoke`. The console, the REST API, the MCP server and the `cbox` CLI are
 four doors to the same action. They run the same code, with the same checks, and leave the
 same audit entry.
 
@@ -60,7 +60,7 @@ Every action states how much harm it can do in the wrong hands:
 | `read` | reads only | `apps.list`, `audit.list` |
 | `write` | a change another write can undo | `apps.update`, `roles.create` |
 | `destructive` | removes or revokes; undoing it means recreating it | `webhooks.delete`, `api_keys.revoke` |
-| `critical` | mints credentials, takes over access, or changes how people sign in | `apps.secrets.rotate`, `keys.workspace.create` |
+| `critical` | mints credentials, takes over access, or changes how people sign in | `apps.secrets.rotate`, `keys.organization.create` |
 
 An MCP client is told a destructive or critical tool is destructive, so it asks you before
 calling it. The CLI asks before running one unless you pass `--yes`. An approval policy keys

@@ -9,7 +9,7 @@ info:
     signed in, which applications may act as you, your own API keys for the apps built on
     this environment, your sign-in methods, your trusted devices and the organizations you
     belong to. The same actions the
-    console's My account pages run, with the same rules, refusals and audit trail.
+    console's Account pages run, with the same rules, refusals and audit trail.
 
     **Who may call it.** Only you, through an access token you delegated carrying the
     `account:*` scope each operation names. **No management key is accepted** — no key
@@ -23,7 +23,7 @@ info:
 
     Served on the host of the environment your account belongs to: an environment's own
     host for its own people, with a token that environment issued; the platform root's
-    host for a workspace's team and the operators, with the token the root issued them
+    host for an organization's team and the operators, with the token the root issued them
     (`cbox login` at the root).
 
     **Envelope.** Every success returns `{ "data": … }` (or `204` with no body). Every
@@ -120,6 +120,7 @@ paths:
       operationId: account_applications_revoke
       x-action: account.applications.revoke
       x-scope: 'account:applications:write'
+      x-scope-aliases: []
       x-danger: destructive
       parameters:
         -
@@ -303,6 +304,7 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+      x-scope-aliases: []
   '/me/devices/{device_id}':
     delete:
       tags:
@@ -312,6 +314,7 @@ paths:
       operationId: account_devices_remove
       x-action: account.devices.remove
       x-scope: 'account:devices:write'
+      x-scope-aliases: []
       x-danger: destructive
       parameters:
         -
@@ -350,6 +353,7 @@ paths:
       operationId: account_email_confirmation_send
       x-action: account.email.confirmation.send
       x-scope: 'account:profile:write'
+      x-scope-aliases: []
       x-danger: write
       parameters:
         -
@@ -389,6 +393,7 @@ paths:
       operationId: account_mfa_sms_remove
       x-action: account.mfa.sms.remove
       x-scope: 'account:sign_in:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -419,6 +424,7 @@ paths:
       operationId: account_api_keys_create
       x-action: account.api_keys.create
       x-scope: 'account:api_keys:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -497,6 +503,7 @@ paths:
       operationId: account_api_keys_revoke
       x-action: account.api_keys.revoke
       x-scope: 'account:api_keys:write'
+      x-scope-aliases: []
       x-danger: destructive
       parameters:
         -
@@ -541,6 +548,7 @@ paths:
       operationId: account_organizations_leave
       x-action: account.organizations.leave
       x-scope: 'account:organizations:write'
+      x-scope-aliases: []
       x-danger: destructive
       parameters:
         -
@@ -581,6 +589,7 @@ paths:
       operationId: account_passkeys_remove
       x-action: account.passkeys.remove
       x-scope: 'account:sign_in:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -618,6 +627,7 @@ paths:
       operationId: account_passkeys_rename
       x-action: account.passkeys.rename
       x-scope: 'account:sign_in:write'
+      x-scope-aliases: []
       x-danger: write
       parameters:
         -
@@ -679,6 +689,7 @@ paths:
       operationId: account_pipes_disconnect
       x-action: account.pipes.disconnect
       x-scope: 'account:pipes:write'
+      x-scope-aliases: []
       x-danger: destructive
       parameters:
         -
@@ -719,6 +730,7 @@ paths:
       operationId: account_profile_update
       x-action: account.profile.update
       x-scope: 'account:profile:write'
+      x-scope-aliases: []
       x-danger: write
       parameters:
         -
@@ -772,6 +784,7 @@ paths:
       operationId: account_waitlists_join
       x-action: account.waitlists.join
       x-scope: 'account:waitlists:write'
+      x-scope-aliases: []
       x-danger: write
       parameters:
         -
@@ -859,6 +872,7 @@ paths:
       operationId: account_waitlists_leave
       x-action: account.waitlists.leave
       x-scope: 'account:waitlists:write'
+      x-scope-aliases: []
       x-danger: write
       parameters:
         -
@@ -924,6 +938,7 @@ paths:
       operationId: account_sessions_revoke_others
       x-action: account.sessions.revoke_others
       x-scope: 'account:sessions:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -963,6 +978,7 @@ paths:
       operationId: account_sessions_revoke
       x-action: account.sessions.revoke
       x-scope: 'account:sessions:write'
+      x-scope-aliases: []
       x-danger: destructive
       parameters:
         -
@@ -1001,6 +1017,7 @@ paths:
       operationId: account_sign_in_methods_disconnect
       x-action: account.sign_in_methods.disconnect
       x-scope: 'account:sign_in:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -1009,7 +1026,7 @@ paths:
           required: true
           schema:
             type: string
-            description: "The linked identity's id, as My account lists it."
+            description: "The linked identity's id, as Account lists it."
         -
           $ref: '#/components/parameters/IdempotencyKey'
         -
@@ -1040,6 +1057,7 @@ paths:
       operationId: account_social_unlink
       x-action: account.social.unlink
       x-scope: 'account:sign_in:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -1079,6 +1097,7 @@ paths:
       operationId: account_totp_remove
       x-action: account.totp.remove
       x-scope: 'account:sign_in:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -1116,6 +1135,7 @@ paths:
       operationId: account_totp_rename
       x-action: account.totp.rename
       x-scope: 'account:sign_in:write'
+      x-scope-aliases: []
       x-danger: write
       parameters:
         -

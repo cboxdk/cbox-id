@@ -136,7 +136,7 @@ final readonly class PlatformEnvironmentController extends ConsoleController
             'activeId' => $activeId,
             'storeHref' => route('platform.environments.store'),
             'targetHref' => route('platform.environment.switch'),
-            'customersHref' => route('platform.workspaces'),
+            'customersHref' => route('platform.orgs'),
         ]);
     }
 
@@ -210,7 +210,7 @@ final readonly class PlatformEnvironmentController extends ConsoleController
             'organizationId' => $lineage->organizationId,
             'organizationName' => $lineage->organizationName,
             'organizationHref' => $lineage->belongsToOrganization() && $lineage->organizationId !== null
-                ? route('platform.workspaces.show', $lineage->organizationId)
+                ? route('platform.orgs.show', $lineage->organizationId)
                 : null,
             'projectName' => $lineage->projectName,
             'isPlatformRoot' => $lineage->isPlatformRoot,

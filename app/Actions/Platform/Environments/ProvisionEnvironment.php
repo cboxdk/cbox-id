@@ -44,7 +44,7 @@ use Illuminate\Support\Str;
  * checked against the policy, hashed, never returned.
  */
 #[AsAction(
-    name: 'platform.environments.provision',
+    name: 'admin.environments.provision',
     summary: 'Bootstrap an environment with its first organization and an owner administrator, so people can sign in to it.',
     scope: 'operator:environments:write',
     danger: Danger::Critical,

@@ -152,7 +152,7 @@ final readonly class ActionsReference
             '| | |',
             '|---|---|',
             '| REST | `'.$action->method.' /api/v1'.$action->documentedPath().'` → `'.$action->status.'` |',
-            '| Scope | `'.$action->scope.'` — '.$this->scopeSentence($action).' |',
+            '| Scope | `'.$action->documentedScope().'`'.(str_starts_with($this->scopeSentence($action), '(') ? ' ' : ' — ').$this->scopeSentence($action).' |',
             '| Danger | `'.$action->danger->value.'` |',
             '| MCP tool | `'.$action->toolName().'` |',
             '| CLI | `'.$this->cli($action).'` |',
@@ -301,7 +301,7 @@ final readonly class ActionsReference
     {
         return match ($plane) {
             ActionPlane::Environment => 'Environment actions',
-            ActionPlane::Workspace => 'Workspace actions',
+            ActionPlane::Organization => 'Organization actions',
             ActionPlane::Account => 'Account actions',
             ActionPlane::Platform => 'Platform actions',
         };
@@ -311,7 +311,7 @@ final readonly class ActionsReference
     {
         return match ($plane) {
             ActionPlane::Environment => 20,
-            ActionPlane::Workspace => 30,
+            ActionPlane::Organization => 30,
             ActionPlane::Account => 40,
             ActionPlane::Platform => 50,
         };
@@ -321,7 +321,7 @@ final readonly class ActionsReference
     {
         return match ($plane) {
             ActionPlane::Environment => "All {$count} actions inside one environment — organizations, users, apps, APIs, keys, sign-in, governance — with their REST route, scope, danger, MCP tool and CLI command.",
-            ActionPlane::Workspace => "All {$count} workspace actions — projects, environments, the team and keys — with their REST route, scope, danger, MCP tool and CLI command.",
+            ActionPlane::Organization => "All {$count} organization actions — projects, environments, the team and keys — with their REST route, scope, danger, MCP tool and CLI command.",
             ActionPlane::Account => "All {$count} actions a person runs on their own account — sessions, app grants, personal keys, devices — with their REST route, scope, danger, MCP tool and CLI command.",
             ActionPlane::Platform => "All {$count} platform-operator actions on the deployment itself, with their REST route, scope, danger, MCP tool and CLI command.",
         };
@@ -338,8 +338,8 @@ final readonly class ActionsReference
                 '',
                 $common,
             ],
-            ActionPlane::Workspace => [
-                'The workspace plane is the customer\'s own Cbox account, above every environment it owns: projects, environments (and their custom domains), the team, workspace keys and the keys of each environment. It is served on the platform root and resolves no environment.',
+            ActionPlane::Organization => [
+                'The organization plane is the customer\'s own Cbox account, above every environment it owns: projects, environments (and their custom domains), the team, organization keys and the keys of each environment. It is served on the platform root and resolves no environment.',
                 '',
                 $common,
             ],
@@ -349,7 +349,7 @@ final readonly class ActionsReference
                 $common,
             ],
             ActionPlane::Platform => [
-                'The platform plane is **the deployment itself**, for the people who run the install: workspaces, environments, organizations inside any environment, and the operator roster. No key of any kind reaches it — only a platform operator, in the console or through a token they delegated, carrying the `operator:*` scope an action asks for.',
+                'The platform plane is **the deployment itself**, for the people who run the install: organizations, environments, the organizations inside each environment, and the operator roster. No key of any kind reaches it — only a platform operator, in the console or through a token they delegated, carrying the `operator:*` scope an action asks for.',
                 '',
                 $common,
             ],
@@ -375,14 +375,14 @@ final readonly class ActionsReference
                 '| CLI | `cbox login`, `cbox id use <environment>`, then the command below — or `CBOX_ID_ENDPOINT` + `CBOX_ID_TOKEN=cbid_env_…` for CI |',
                 $openApi,
             ],
-            ActionPlane::Workspace => [
-                '| REST | `https://<root-host>/api/v1/workspace/…` with `Authorization: Bearer cbid_ws_…` (a workspace key, whose role must also allow the action), or a team member\'s token from the root |',
-                '| MCP | `/mcp` on the platform root, signed in as a member of the workspace\'s team, or with a workspace key |',
+            ActionPlane::Organization => [
+                '| REST | `https://<root-host>/api/v1/workspace/…` with `Authorization: Bearer cbid_ws_…` (an organization key, whose role must also allow the action), or a team member\'s token from the root |',
+                '| MCP | `/mcp` on the platform root, signed in as a member of the organization\'s team, or with an organization key |',
                 '| CLI | `cbox login` at the root, then the command below |',
                 $openApi,
             ],
             ActionPlane::Account => [
-                '| REST | `https://<host>/api/v1/me/…` with a token you delegated — on your environment\'s host, or on the platform root for a workspace team member or operator |',
+                '| REST | `https://<host>/api/v1/me/…` with a token you delegated — on your environment\'s host, or on the platform root for an organization team member or operator |',
                 '| MCP | `/mcp` on the same host, signed in as yourself |',
                 '| CLI | `cbox login`, then the command below |',
                 $openApi,

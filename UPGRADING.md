@@ -14,6 +14,88 @@ package's own breaking changes are in
 this file covers what an **operator of this deployment** has to do, and repeats the
 package changes that need action here rather than in a client.
 
+## 3.0.0 (unreleased): the workspace is the organization
+
+The Cbox customer was called a *workspace*; v3 calls it an **organization**, in the
+console, the API and all 21 languages. URLs do not change in this step:
+`/api/v1/workspace/…` and the console paths still answer. Everything renamed below keeps
+its old name working **until v3.1**; move to the new names before then.
+
+- **No migration, and nothing stored is rewritten.** ID is live: the release before v3
+  keeps serving while v3 rolls out, and comes back if the rollout fails, on the same
+  database. So v3.0 is expand-only. It reads the v2 names and the v3 names everywhere, and it
+  still writes the v2 spelling wherever v2 reads a row: key provenance (`workspace_key`), the
+  action name and owner kind of a pending approval or an idempotent answer, and the approval
+  digest. It writes organization keys' scope lists in both spellings, and the billing usage
+  outbox keeps its `workspace_id` column. The hash-chained audit tables are never touched.
+  The rewrite to the v3 names (and the outbox column rename) ships one release later, once
+  v2 can no longer come back.
+
+### Organization keys stay cbid_ws_ in v3.0
+
+New organization keys are still minted `cbid_ws_…`: the released cbox-cli reads a
+`cbid_org_…` key as retired and refuses it. v3 already resolves both prefixes, with no
+`Deprecation` header on either. Minting switches to `cbid_org_` once a cbox-cli release that
+reads it as an organization key is out. A revoked 1.x `cbid_org_` key stays revoked.
+
+### Organization-plane scopes are `id:<resource>:<read|write>`
+
+| v2 | v3 |
+|---|---|
+| `workspace:read` | `id:organization:read` |
+| `settings:write` | `id:organization:write` |
+| `projects:write` | `id:projects:write` |
+| `environments:write` | `id:environments:write` |
+| `team:read` / `team:write` | `id:members:read` / `id:members:write` |
+| `keys:write` | `id:environment-keys:write` **and** `id:organization-keys:write` |
+| `billing:write` | `id:billing:write` |
+
+Existing organization keys keep their v2 names, and every check accepts both. A request may
+send either name when minting a key; v3.0 stores both spellings, so v2 reads the key as it
+was minted. `keys:write` split in two: a key that held it holds both halves, and a new key
+stores `keys:write` only when it holds both. The OpenAPI document carries `x-scope` and
+`x-scope-aliases`. An MCP resource advertises each scope once, under the name its action
+declares, and still grants a client the other spelling when it asks for it.
+
+The other planes' scopes (environment keys, OAuth tokens, `account:*`, `operator:*`) keep
+their v2 names in v3.0: laravel-id's key and token vocabulary does not know the new names
+yet, and a key minted with an unknown name is refused. The registry
+(`App\Platform\Scopes\ScopeRegistry`) already maps them and every check accepts both, so
+they move with laravel-id.
+
+### Action and MCP tool names
+
+| v2 | v3 |
+|---|---|
+| `workspace.get` | `organization.get` |
+| `workspace.settings.update` | `organization.settings.update` |
+| `keys.workspace.list` / `.create` / `.revoke` | `keys.organization.list` / `.create` / `.revoke` |
+| `platform.workspaces.create` / `.set_status` | `admin.organizations.create` / `.set_status` |
+| `platform.organizations.create` / `.set_status` / `.move` | `admin.tenant_organizations.create` / `.set_status` / `.move` |
+| `platform.operators.create` / `.set_status` | `admin.operators.create` / `.set_status` |
+| `platform.environments.create` / `.provision` | `admin.environments.create` / `.provision` |
+
+A call by the old action name still resolves. MCP tool names follow the action names
+(`workspace_get` is now `organization_get`). `tools/list` shows only the new names, but
+`tools/call` still takes the old ones until v3.1. Every such call is counted
+(`cbox_id_retired_name_uses_total`, by surface and name) and logged, and the alias goes once
+the count has been zero for seven days. The OpenAPI operations carry the old names as
+`x-action-aliases`, for a client that builds its verbs from `x-action`. A stored step-up
+policy that names an old action still holds the renamed one.
+
+### Smaller renames
+
+- `whoami` calls an organization key's connection kind `organization_key` (was
+  `workspace_key`), and so does a key's `created_by.type` in the API (stored as
+  `workspace_key` through v3.0).
+- `CBOX_ID_API_RATE_LIMIT_ORGANIZATION` replaces `CBOX_ID_API_RATE_LIMIT_WORKSPACE`; the old
+  variable is read when the new one is unset.
+- The console's API snippets read the key from `CBOX_ID_ORGANIZATION_KEY`.
+- Onboarding (`/api/v1/onboarding/eligibility` and the Engage snapshot) takes and sends
+  `organization_id`; `workspace_id` is still accepted and still sent until v3.1.
+- The doc *Workspaces & organizations* is now
+  [Organizations & customers](docs/core-concepts/organizations-and-customers.md).
+
 ## 2.2.0
 
 **cboxid.com took 2.2.0 continuously**, as it did 2.1.0. The `v2.2.0` tag marks a commit on

@@ -50,24 +50,24 @@ export function claudeCodeOAuth(url: string): ClientSnippet {
     };
 }
 
-/** The name the workspace-wide server is added under, beside an environment's. */
-export const WORKSPACE_SERVER_NAME = 'cbox-workspace';
+/** The name the organization-wide server is added under, beside an environment's. */
+export const ORGANIZATION_SERVER_NAME = 'cbox-organization';
 
-/** What the workspace snippet shows where a workspace key goes. */
-export const WORKSPACE_KEY_PLACEHOLDER = 'cbid_ws_…';
+/** What the organization snippet shows where an organization key goes. */
+export const ORGANIZATION_KEY_PLACEHOLDER = 'cbid_ws_…';
 
 /**
  * The platform root's `/mcp`, with a WORKSPACE key: one server for the whole workspace —
  * its projects, environments, team and keys — rather than one per environment.
  */
-export function claudeCodeWorkspace(
+export function claudeCodeOrganization(
     url: string,
-    key: string = WORKSPACE_KEY_PLACEHOLDER,
+    key: string = ORGANIZATION_KEY_PLACEHOLDER,
 ): ClientSnippet {
     return {
         where: 'In a terminal',
         language: 'bash',
-        code: `claude mcp add --transport http ${WORKSPACE_SERVER_NAME} ${url} --header "Authorization: Bearer ${key}"`,
+        code: `claude mcp add --transport http ${ORGANIZATION_SERVER_NAME} ${url} --header "Authorization: Bearer ${key}"`,
     };
 }
 

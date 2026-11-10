@@ -6,7 +6,7 @@ description: Add independent TOTP apps to your account and remove one without af
 
 # Authenticator apps
 
-Open **My account → Authenticator apps → Add authenticator app**. Give the app a
+Open **Account → Authenticator apps → Add authenticator app**. Give the app a
 recognisable name, such as “Personal phone”, then show the QR code. Scan it with the
 app you are adding and enter its six-digit code to finish. Complete setup within ten
 minutes, or cancel and start again.

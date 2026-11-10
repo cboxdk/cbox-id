@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Actions;
 
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Scopes\ScopeRegistry;
 use InvalidArgumentException;
 use ReflectionClass;
 
@@ -77,6 +78,30 @@ final readonly class ActionDefinition
     public function documentedPath(): string
     {
         return $this->plane->documentedPath($this->path);
+    }
+
+    /**
+     * The scope as a credential of this action's plane holds it today. Organization-plane
+     * actions declare the v3 names (`id:<resource>:<read|write>`); the other planes keep
+     * v2's until laravel-id's key and token vocabulary learns the new ones, since a key
+     * minted with a name its vocabulary does not know is refused ({@see ScopeRegistry}).
+     */
+    public function documentedScope(): string
+    {
+        return $this->scope;
+    }
+
+    /**
+     * The v2 names a credential may still hold this scope by, until v3.1.
+     *
+     * @return list<string>
+     */
+    public function scopeAliases(): array
+    {
+        return array_values(array_filter(
+            ScopeRegistry::equivalents($this->scope),
+            fn (string $name): bool => $name !== $this->scope && ScopeRegistry::isLegacy($name),
+        ));
     }
 
     /** The MCP tool name: the action name with dots as underscores. */

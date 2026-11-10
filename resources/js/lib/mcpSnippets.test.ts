@@ -2,7 +2,7 @@ import {
     cboxLogin,
     claudeCode,
     claudeCodeOAuth,
-    claudeCodeWorkspace,
+    claudeCodeOrganization,
     claudeDesktop,
     cursor,
     generic,
@@ -34,9 +34,9 @@ describe('MCP client snippets', () => {
         expect(claudeCodeOAuth(URL).code).not.toContain('Authorization');
     });
 
-    it('adds the workspace-wide server at the root under its own name, with a workspace key', () => {
-        expect(claudeCodeWorkspace('https://cboxid.com/mcp').code).toBe(
-            'claude mcp add --transport http cbox-workspace https://cboxid.com/mcp --header "Authorization: Bearer cbid_ws_…"',
+    it('adds the organization-wide server at the root under its own name, with an organization key', () => {
+        expect(claudeCodeOrganization('https://cboxid.com/mcp').code).toBe(
+            'claude mcp add --transport http cbox-organization https://cboxid.com/mcp --header "Authorization: Bearer cbid_ws_…"',
         );
     });
 

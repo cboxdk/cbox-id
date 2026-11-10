@@ -138,7 +138,7 @@ it('accepts a signed invite, sets a password, and signs in', function (): void {
  * being asserted is that a MEMBER is reachable by the ordinary flow, and that is exactly
  * the claim that would rot silently if it were nobody's test.
  */
-it('accepts into the invited workspace instead of the existing persons oldest membership', function (): void {
+it('accepts into the invited organization instead of the existing persons oldest membership', function (): void {
     $existing = provisionAccount('existing@invite.example');
     $target = provisionAccount('target-owner@invite.example');
     $pending = app(PlatformRoot::class)->run(fn () => app(Invitations::class)->invite(

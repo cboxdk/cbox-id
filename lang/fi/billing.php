@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'description' => 'Hallitse tämän työtilan laskutustietoja, maksukortteja ja laskuja.',
+    'description' => 'Hallitse tämän organisaation laskutustietoja, maksukortteja ja laskuja.',
     'account' => 'Laskutustiedot',
     'invoice_name' => 'Nimi laskuissa',
     'billing_email' => 'Laskutuksen sähköposti',
@@ -39,7 +39,7 @@ return [
     'subtotal' => 'Välisumma',
     'tax' => 'Vero',
     'tax_pending' => 'Veroa ei ole vielä laskettu.',
-    'no_subscription' => 'Tähän työtilaan ei ole liitetty tilausta.',
+    'no_subscription' => 'Tähän organisaatioon ei ole liitetty tilausta.',
     'allowance' => 'Sallittu ympäristöjen määrä',
     'allowance_description' => 'Ylläpitäjä myöntää käyttöoikeudet ja kiintiöt.',
     'period' => 'Laskutuskausi',
@@ -71,8 +71,8 @@ return [
     'credits_granted' => 'Lisättävät pakettiin sisältyvät käyttöhyvitykset',
     'credits_carried' => 'Siirtyvät pakettiin sisältyvät käyttöhyvitykset',
     'address_required' => 'Täytä ja tallenna laskutusosoite ennen maksullisen tilauksen valitsemista.',
-    'workspace_changed' => 'Työtila vaihtui toisessa välilehdessä. Lataa sivu uudelleen ennen laskutuksen muokkaamista.',
-    'explanation' => 'Tilaukset ovat projektikohtaisia. Vertaa hintoja ja sallittujen ympäristöjen määriä. Laskutustiedot, kortit ja laskut ovat työtilan yhteisiä. Käyttöluvut kertovat toiminnasta; veloitukset määräytyvät valitun tilauksen mukaan.',
+    'organization_changed' => 'Organisaatio vaihtui toisessa välilehdessä. Lataa sivu uudelleen ennen laskutuksen muokkaamista.',
+    'explanation' => 'Tilaukset ovat projektikohtaisia. Vertaa hintoja ja sallittujen ympäristöjen määriä. Laskutustiedot, kortit ja laskut ovat organisaation yhteisiä. Käyttöluvut kertovat toiminnasta; veloitukset määräytyvät valitun tilauksen mukaan.',
     'connections' => 'SSO-yhteydet',
     'environments' => 'Ympäristöt',
     'replace_default' => 'Valitse toinen oletuskortti ennen tämän poistamista.',

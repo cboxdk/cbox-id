@@ -165,12 +165,12 @@ export default function DirectoryMembers({
                     >
                         <p className="text-sm">
                             {consoleRich(
-                                'console._part1_its_team_is_administered_under_workspace_team_by_939d535a',
+                                'console._part1_its_team_is_administered_under_organization_team_6abad4af',
                                 {
                                     part1: (
                                         <b>
                                             {consoleT(
-                                                'console.this_organization_is_a_cbox_workspace_a78218a1',
+                                                'console.this_organization_has_its_own_cbox_id_console__91c0b7c6',
                                             )}
                                         </b>
                                     ),

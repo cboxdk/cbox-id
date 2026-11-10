@@ -71,7 +71,7 @@ return [
     'credits_granted' => 'Dodane kredyty wliczone w plan',
     'credits_carried' => 'Przeniesione kredyty wliczone w plan',
     'address_required' => 'Przed wybraniem płatnego planu uzupełnij i zapisz adres rozliczeniowy.',
-    'workspace_changed' => 'Obszar roboczy został zmieniony w innej karcie. Przed edycją rozliczeń odśwież tę stronę.',
+    'organization_changed' => 'Obszar roboczy został zmieniony w innej karcie. Przed edycją rozliczeń odśwież tę stronę.',
     'explanation' => 'Subskrypcje dotyczą poszczególnych projektów. Porównaj plany, aby sprawdzić ceny i limity środowisk. Dane rozliczeniowe, karty i faktury są wspólne dla całego obszaru roboczego. Dane o wykorzystaniu pokazują aktywność, a opłaty wynikają z wybranego planu.',
     'connections' => 'Połączenia SSO',
     'environments' => 'Środowiska',

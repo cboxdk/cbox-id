@@ -36,7 +36,7 @@ use Illuminate\Support\Str;
  * The new plane's signing key is warmed at once, so its JWKS and discovery are live now.
  */
 #[AsAction(
-    name: 'platform.environments.create',
+    name: 'admin.environments.create',
     summary: 'Create an environment on the deployment, with its own signing key. A domain is verified separately, by DNS.',
     scope: 'operator:environments:write',
     danger: Danger::Critical,

@@ -46,7 +46,7 @@ return [
         'stale' => 'Esta solicitação de autorização não pode ser concluída. Por favor, tente novamente.',
         'account_attention' => 'A sua conta necessita de atenção antes de poder continuar. Por favor, inicie sessão novamente.',
         'step_up' => 'Esta aplicação exige um início de sessão mais recente ou uma autenticação mais forte. Recomece o processo.',
-        'no_workspace' => 'Este início de sessão liga um agente a um espaço de trabalho no Cbox ID, mas a sua conta não pertence à equipa de nenhum espaço de trabalho. Peça um convite a um proprietário de espaço de trabalho ou ligue o agente através do endereço do seu próprio ambiente.',
+        'no_organization' => 'Este início de sessão liga um agente a uma organização no Cbox ID, mas a sua conta não pertence à equipa de nenhuma organização. Peça um convite a um proprietário de organização ou ligue o agente através do endereço do seu próprio ambiente.',
     ],
     'organization' => [
         'title' => 'Escolha uma organização',

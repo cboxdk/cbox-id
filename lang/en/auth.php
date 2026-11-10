@@ -108,18 +108,18 @@ return [
     'signup' => [
         'title' => 'Get started',
         'heading' => [
-            'creates_idp' => 'Create your workspace',
+            'creates_idp' => 'Create your organization',
             'for_app' => 'Create your account',
             'default' => 'Create your organization',
         ],
         'lead' => [
-            'creates_idp' => 'A workspace for your company, and your own hosted identity provider — SSO, users and sign-in you fully control, live in a minute.',
+            'creates_idp' => 'An organization for your company, and your own hosted identity provider — SSO, users and sign-in you fully control, live in a minute.',
             // `:name` is the app waiting for the sign-up, or the customer's own brand.
             'join' => 'Sign up for :name. You will be the owner of your team, and can invite people once you are in.',
             'default' => 'Set up Cbox ID for your team in under a minute.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Workspace name',
+            'creates_idp' => 'Organization name',
             'for_app' => 'Team or company name',
             'default' => 'Organization name',
         ],
@@ -129,7 +129,7 @@ return [
         'email_label' => 'Work email',
         'breach_note' => 'Checked against known breaches.',
         'submit' => [
-            'creates_idp' => 'Create workspace',
+            'creates_idp' => 'Create organization',
             'for_app' => 'Create account and continue',
             'default' => 'Create organization',
         ],
@@ -212,7 +212,7 @@ return [
     ],
 
     'accounts' => [
-        'title' => 'Switch user',
+        'title' => 'Switch account',
         'lead' => 'Everyone signed in on this device. Pick one, or sign in as someone else.',
         'active' => 'Active',
         'add' => 'Sign in as someone else',
@@ -283,7 +283,7 @@ return [
         // Both the field's placeholder and the name it starts out holding.
         'environment_default' => 'Production',
         'organization_label' => 'Organization name',
-        'organization_hint' => 'This deployment is configured as multi-tenant, so the install also creates the first workspace — the organization that owns environments and billing.',
+        'organization_hint' => 'This deployment is configured as multi-tenant, so the install also creates the first organization — the one that owns environments and billing.',
         'organization_placeholder' => 'Your company',
         'submit' => 'Install this deployment',
         'token_mismatch' => 'That setup token does not match this deployment’s, or it has expired. Print a fresh one with php artisan cbox-id:setup-token.',
@@ -318,7 +318,7 @@ return [
         'cancelled' => 'Sign-in with :provider was cancelled or did not finish. Please try again.',
         'unavailable' => ':provider cannot be reached right now. Please try again in a moment, or sign in another way.',
         'incomplete' => 'That sign-in response from :provider was incomplete. Start again from your identity provider.',
-        'unverified' => ':provider has not confirmed that :email is yours, so we cannot link it to the account that uses that address. Sign in another way, then connect :provider under My account › Sign-in methods.',
+        'unverified' => ':provider has not confirmed that :email is yours, so we cannot link it to the account that uses that address. Sign in another way, then connect :provider under Account › Sign-in methods.',
         'already_linked' => 'That :provider account is already linked to a different account here.',
         'account_disabled' => 'This account has been deactivated. Contact your administrator.',
         'link_expired' => 'That request to link :provider has expired or was already used. Sign in with :provider again to start over.',
@@ -381,7 +381,7 @@ return [
         'disconnect_title' => 'Disconnect :provider?',
         'disconnect_body' => 'Apps here will no longer be able to use your :provider account. Where :provider supports it, the access is withdrawn there too.',
         'cancel' => 'Cancel',
-        'back' => 'Back to my account',
+        'back' => 'Back to your account',
         'connected' => ':provider connected.',
         'cancelled' => 'You did not connect :provider.',
         'failed' => ':provider could not be connected. Please try again.',

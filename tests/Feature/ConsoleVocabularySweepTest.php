@@ -93,7 +93,7 @@ it('never calls a customer an account in user-facing copy', function (): void {
     // "account" was the clearest word left for the customer's own record. That record is
     // the WORKSPACE now — Workspace settings, Team, "hand this workspace to" — so the old
     // meaning has no place left to be legitimate, and the rule applies everywhere. See
-    // docs/core-concepts/workspaces-and-organizations.md and ConsoleVocabularyTest.
+    // docs/core-concepts/organizations-and-customers.md and ConsoleVocabularyTest.
     $firstPersonExempt = [];
     $firstPersonRoots = [];
 

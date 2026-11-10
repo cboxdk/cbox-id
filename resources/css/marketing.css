@@ -284,7 +284,7 @@ h1 span {
     gap: 11px;
     margin-bottom: 29px;
 }
-.workspace-avatar {
+.org-avatar {
     width: 34px;
     height: 34px;
     display: grid;
@@ -904,7 +904,31 @@ pre {
     }
 }
 
-.header-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
-.header-actions .button { padding: 10px 14px; font-size: 13px; }
-@media (max-width: 1000px) { .site-header { flex-wrap: wrap; padding-block: 20px; } .site-header nav { order: 3; width: 100%; } }
-@media (max-width: 760px) { .site-header { display: flex; } .header-actions { margin-left: auto; } }
+.header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+}
+.header-actions .button {
+    padding: 10px 14px;
+    font-size: 13px;
+}
+@media (max-width: 1000px) {
+    .site-header {
+        flex-wrap: wrap;
+        padding-block: 20px;
+    }
+    .site-header nav {
+        order: 3;
+        width: 100%;
+    }
+}
+@media (max-width: 760px) {
+    .site-header {
+        display: flex;
+    }
+    .header-actions {
+        margin-left: auto;
+    }
+}

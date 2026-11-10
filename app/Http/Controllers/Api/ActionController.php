@@ -20,7 +20,7 @@ use App\Platform\DelegatedApiContext;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\OAuth\Exceptions\StepUpAuthenticationRequired;
 use App\Platform\OAuth\ManagementStepUp;
-use App\Platform\WorkspaceApiContext;
+use App\Platform\OrganizationApiContext;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -121,7 +121,7 @@ final readonly class ActionController
             // A key, or the person whose access token `env.api` admitted on this route.
             ActionPlane::Environment => app(EnvironmentApiContext::class)->principal() ?? abort(401),
             // A workspace key, or a member of the team through a token the root issued them.
-            ActionPlane::Workspace => app(WorkspaceApiContext::class)->principal() ?? abort(401),
+            ActionPlane::Organization => app(OrganizationApiContext::class)->principal() ?? abort(401),
             // A person's delegated token — and on the platform plane, only an operator's.
             ActionPlane::Platform => ($person = app(DelegatedApiContext::class)->principal()) instanceof OperatorPrincipal ? $person : abort(401),
             ActionPlane::Account => app(DelegatedApiContext::class)->principal() ?? abort(401),

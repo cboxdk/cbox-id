@@ -31,7 +31,7 @@ use Cbox\Id\Platform\Models\PlatformOperator;
  * The change is recorded by the roster itself, as the acting operator.
  */
 #[AsAction(
-    name: 'platform.operators.set_status',
+    name: 'admin.operators.set_status',
     summary: 'Suspend a platform operator, or reactivate one. Never yourself, and never the last active operator.',
     scope: 'operator:operators:write',
     danger: Danger::Critical,

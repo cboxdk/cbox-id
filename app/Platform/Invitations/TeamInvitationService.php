@@ -257,7 +257,7 @@ final readonly class TeamInvitationService implements TeamInvitations
 
             return new InvitationPreview(
                 email: $invitation->email,
-                organizationName: $this->organizations->find($invitation->organization_id)->name ?? 'the workspace',
+                organizationName: $this->organizations->find($invitation->organization_id)->name ?? 'the organization',
                 role: $invitation->role,
                 inviterName: is_string($name) ? $name : null,
             );
@@ -288,7 +288,7 @@ final readonly class TeamInvitationService implements TeamInvitations
     private function mail(Invitation $invitation, string $token, Inviter $inviter): void
     {
         Mail::to($invitation->email)->locale(app(MailLocale::class)->forRecipient(false))->send(new OrganizationInviteMail(
-            organization: $this->organizations->find($invitation->organization_id)->name ?? 'your workspace',
+            organization: $this->organizations->find($invitation->organization_id)->name ?? 'your organization',
             inviter: $inviter->name,
             // MailLinks, not URL::: a mailed link's origin comes from the deployment, not
             // from the Host header of whoever asked to send it — browser or API caller.
@@ -364,7 +364,7 @@ final readonly class TeamInvitationService implements TeamInvitations
         $result = $this->root->run(static fn (): array => [$callback()]);
 
         if ($result === null) {
-            throw new LogicException('There is no platform root, so there is no workspace team to invite onto.');
+            throw new LogicException('There is no platform root, so there is no organization team to invite onto.');
         }
 
         return $result[0];

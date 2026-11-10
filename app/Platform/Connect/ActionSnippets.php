@@ -249,7 +249,7 @@ final class ActionSnippets
         $segments = array_map(static fn (string $segment): string => Str::camel(str_replace('-', '_', $segment)), explode('.', $action->name));
         $client = match ($action->plane) {
             ActionPlane::Environment => 'env',
-            ActionPlane::Workspace => 'workspace',
+            ActionPlane::Organization => 'workspace',
             ActionPlane::Platform => 'platform',
             ActionPlane::Account => 'account',
         };

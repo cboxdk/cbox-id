@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'description' => 'Upravljajte podacima za naplatu, platnim karticama i računima ovog radnog prostora.',
+    'description' => 'Upravljajte podacima za naplatu, platnim karticama i računima ove organizacije.',
     'account' => 'Podaci za naplatu',
     'invoice_name' => 'Ime na računima',
     'billing_email' => 'E-pošta za naplatu',
@@ -39,7 +39,7 @@ return [
     'subtotal' => 'Međuzbroj',
     'tax' => 'Porez',
     'tax_pending' => 'Porez još nije izračunat.',
-    'no_subscription' => 'Ovom radnom prostoru nije dodijeljena pretplata.',
+    'no_subscription' => 'Ovoj organizaciji nije dodijeljena pretplata.',
     'allowance' => 'Dopušteni broj okruženja',
     'allowance_description' => 'Pristup i ograničenja dodjeljuje administrator.',
     'period' => 'Obračunsko razdoblje',
@@ -73,8 +73,8 @@ return [
     'credits_granted' => 'Dodani uključeni krediti',
     'credits_carried' => 'Preneseni uključeni krediti',
     'address_required' => 'Prije odabira plaćenog paketa ispunite i spremite adresu za naplatu.',
-    'workspace_changed' => 'Radni prostor promijenjen je u drugoj kartici. Ponovno učitajte ovu stranicu prije uređivanja naplate.',
-    'explanation' => 'Pretplate se ugovaraju po projektu. Usporedite pakete kako biste vidjeli cijene i ograničenja broja okruženja. Podaci za naplatu, kartice i računi zajednički su cijelom radnom prostoru. Podaci o korištenju prikazuju aktivnost, a naknade ovise o odabranom paketu.',
+    'organization_changed' => 'Organizacija je promijenjena u drugoj kartici. Ponovno učitajte ovu stranicu prije uređivanja naplate.',
+    'explanation' => 'Pretplate se ugovaraju po projektu. Usporedite pakete kako biste vidjeli cijene i ograničenja broja okruženja. Podaci za naplatu, kartice i računi zajednički su cijeloj organizaciji. Podaci o korištenju prikazuju aktivnost, a naknade ovise o odabranom paketu.',
     'connections' => 'SSO veze',
     'environments' => 'Okruženja',
     'replace_default' => 'Prije uklanjanja ove kartice odaberite drugu zadanu karticu.',

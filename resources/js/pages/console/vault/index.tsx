@@ -229,10 +229,7 @@ export default function VaultIndex({
                 )}
             </div>
 
-            <Pagination
-                pagination={pagination}
-                href={(page) => listHref(search, page)}
-            />
+            <Pagination pagination={pagination} href={(page) => listHref(search, page)} />
         </>
     );
 }

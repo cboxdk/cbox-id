@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'description' => 'Gérez les coordonnées de facturation, les cartes de paiement et les factures de cet espace de travail.',
+    'description' => 'Gérez les coordonnées de facturation, les cartes de paiement et les factures de cette organisation.',
     'account' => 'Coordonnées de facturation',
     'invoice_name' => 'Nom sur les factures',
     'billing_email' => 'E-mail de facturation',
@@ -37,7 +37,7 @@ return [
     'subtotal' => 'Sous-total',
     'tax' => 'Taxes',
     'tax_pending' => 'Les taxes n’ont pas encore été calculées.',
-    'no_subscription' => 'Aucun abonnement n’est attribué à cet espace de travail.',
+    'no_subscription' => 'Aucun abonnement n’est attribué à cette organisation.',
     'allowance' => 'Nombre d’environnements autorisés',
     'allowance_description' => 'Les accès et les limites sont attribués par un administrateur.',
     'period' => 'Période de facturation',
@@ -69,8 +69,8 @@ return [
     'credits_granted' => 'Crédits inclus ajoutés',
     'credits_carried' => 'Crédits inclus reportés',
     'address_required' => 'Complétez et enregistrez votre adresse de facturation avant de choisir une offre payante.',
-    'workspace_changed' => 'L’espace de travail a changé dans un autre onglet. Rechargez cette page avant de modifier la facturation.',
-    'explanation' => 'Les abonnements sont propres à chaque projet. Comparez les prix et les quotas d’environnements. Les coordonnées, cartes et factures sont partagées dans l’espace de travail. Les chiffres d’utilisation indiquent l’activité ; les frais suivent l’offre choisie.',
+    'organization_changed' => 'L\'organisation a changé dans un autre onglet. Rechargez cette page avant de modifier la facturation.',
+    'explanation' => 'Les abonnements sont propres à chaque projet. Comparez les prix et les quotas d’environnements. Les coordonnées, cartes et factures sont partagées dans l\'organisation. Les chiffres d’utilisation indiquent l’activité ; les frais suivent l’offre choisie.',
     'connections' => 'Connexions SSO',
     'environments' => 'Environnements',
     'replace_default' => 'Choisissez une autre carte par défaut avant de supprimer celle-ci.',

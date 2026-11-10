@@ -35,7 +35,7 @@ export default function OrganizationApiKeys({ apiKeys, appsHref }: Props) {
                     description: (
                         <>
                             {consoleRich(
-                                'console.nobody_in_this_organization_has_created_a_key_for_one_o_462fe672',
+                                'console.nobody_in_this_organization_has_created_a_key_for_one_o_d0240315',
                                 {
                                     part1: (
                                         <Link href={appsHref}>

@@ -9,7 +9,7 @@ description: All 9 platform-operator actions on the deployment itself, with thei
 
 # Platform actions
 
-The platform plane is **the deployment itself**, for the people who run the install: workspaces, environments, organizations inside any environment, and the operator roster. No key of any kind reaches it — only a platform operator, in the console or through a token they delegated, carrying the `operator:*` scope an action asks for.
+The platform plane is **the deployment itself**, for the people who run the install: organizations, environments, the organizations inside each environment, and the operator roster. No key of any kind reaches it — only a platform operator, in the console or through a token they delegated, carrying the `operator:*` scope an action asks for.
 
 Every row below is one action, reached through four doors that run the same code, with the same authorization, validation, approvals and [Audit log](../guides/activity-log.md) entry: the console, the REST API, the MCP server and the `cbox` CLI. See [Actions](../core-concepts/actions.md) for how that works and [Planes and hosts](../core-concepts/planes-and-hosts.md) for where each plane is served.
 
@@ -26,14 +26,13 @@ Danger is how much harm the action can do in the wrong hands: `read` only reads;
 
 | Area | Actions |
 |---|---|
-| [Environments](#environments) | [`platform.environments.create`](#platform.environments.create), [`platform.environments.provision`](#platform.environments.provision) |
-| [Operators](#operators) | [`platform.operators.create`](#platform.operators.create), [`platform.operators.set_status`](#platform.operators.set_status) |
-| [Organizations](#organizations) | [`platform.organizations.create`](#platform.organizations.create), [`platform.organizations.move`](#platform.organizations.move), [`platform.organizations.set_status`](#platform.organizations.set_status) |
-| [Workspaces](#workspaces) | [`platform.workspaces.create`](#platform.workspaces.create), [`platform.workspaces.set_status`](#platform.workspaces.set_status) |
+| [Environments](#environments) | [`admin.environments.create`](#admin.environments.create), [`admin.environments.provision`](#admin.environments.provision) |
+| [Operators](#operators) | [`admin.operators.create`](#admin.operators.create), [`admin.operators.set_status`](#admin.operators.set_status) |
+| [Organizations](#organizations) | [`admin.organizations.create`](#admin.organizations.create), [`admin.organizations.set_status`](#admin.organizations.set_status), [`admin.tenant_organizations.create`](#admin.tenant_organizations.create), [`admin.tenant_organizations.move`](#admin.tenant_organizations.move), [`admin.tenant_organizations.set_status`](#admin.tenant_organizations.set_status) |
 
 ## Environments
 
-### <a id="platform.environments.create"></a>platform.environments.create
+### <a id="admin.environments.create"></a>admin.environments.create
 
 Create an environment on the deployment, with its own signing key. A domain is verified separately, by DNS.
 
@@ -42,15 +41,15 @@ Create an environment on the deployment, with its own signing key. A domain is v
 | REST | `POST /api/v1/platform/environments` → `201` |
 | Scope | `operator:environments:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
-| MCP tool | `platform_environments_create` |
-| CLI | `cbox id platform environments create` |
+| MCP tool | `admin_environments_create` |
+| CLI | `cbox id admin environments create` |
 
 | Input | Type | Required | Description |
 |---|---|---|---|
 | `name` | string | yes | At most 190 characters. |
 | `domain` | string, nullable | no | The domain it will serve on, once verified by DNS. Checked to be free; not written yet. At most 190 characters. |
 
-### <a id="platform.environments.provision"></a>platform.environments.provision
+### <a id="admin.environments.provision"></a>admin.environments.provision
 
 Bootstrap an environment with its first organization and an owner administrator, so people can sign in to it.
 
@@ -59,8 +58,8 @@ Bootstrap an environment with its first organization and an owner administrator,
 | REST | `POST /api/v1/platform/environments/{environment_id}/provision` → `201` |
 | Scope | `operator:environments:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
-| MCP tool | `platform_environments_provision` |
-| CLI | `cbox id platform environments provision <environment_id>` |
+| MCP tool | `admin_environments_provision` |
+| CLI | `cbox id admin environments provision <environment_id>` |
 
 | Input | Type | Required | Description |
 |---|---|---|---|
@@ -72,7 +71,7 @@ Bootstrap an environment with its first organization and an owner administrator,
 
 ## Operators
 
-### <a id="platform.operators.create"></a>platform.operators.create
+### <a id="admin.operators.create"></a>admin.operators.create
 
 Add a platform operator: a person with authority over the whole deployment.
 
@@ -81,8 +80,8 @@ Add a platform operator: a person with authority over the whole deployment.
 | REST | `POST /api/v1/platform/operators` → `201` |
 | Scope | `operator:operators:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
-| MCP tool | `platform_operators_create` |
-| CLI | `cbox id platform operators create` |
+| MCP tool | `admin_operators_create` |
+| CLI | `cbox id admin operators create` |
 
 | Input | Type | Required | Description |
 |---|---|---|---|
@@ -90,7 +89,7 @@ Add a platform operator: a person with authority over the whole deployment.
 | `email` | string (email) | yes | At most 190 characters. |
 | `password` | string | yes | Write-only. At least 12 characters, and not one known from a breach. At least 12 characters. At most 200 characters. |
 
-### <a id="platform.operators.set_status"></a>platform.operators.set_status
+### <a id="admin.operators.set_status"></a>admin.operators.set_status
 
 Suspend a platform operator, or reactivate one. Never yourself, and never the last active operator.
 
@@ -99,8 +98,8 @@ Suspend a platform operator, or reactivate one. Never yourself, and never the la
 | REST | `PUT /api/v1/platform/operators/{operator_id}/status` → `200` |
 | Scope | `operator:operators:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
-| MCP tool | `platform_operators_set_status` |
-| CLI | `cbox id platform operators set_status <operator_id>` |
+| MCP tool | `admin_operators_set_status` |
+| CLI | `cbox id admin operators set_status <operator_id>` |
 
 | Input | Type | Required | Description |
 |---|---|---|---|
@@ -109,7 +108,43 @@ Suspend a platform operator, or reactivate one. Never yourself, and never the la
 
 ## Organizations
 
-### <a id="platform.organizations.create"></a>platform.organizations.create
+### <a id="admin.organizations.create"></a>admin.organizations.create
+
+Create an organization with its owner, first project and first environment; the owner is emailed a link to set their password.
+
+| | |
+|---|---|
+| REST | `POST /api/v1/platform/workspaces` → `201` |
+| Scope | `operator:workspaces:write` — on an access token delegated by an active platform operator. No management key is accepted. |
+| Danger | `critical` |
+| MCP tool | `admin_organizations_create` |
+| CLI | `cbox id admin organizations create` |
+
+| Input | Type | Required | Description |
+|---|---|---|---|
+| `name` | string | yes | The organization's name — usually the company it belongs to. At least 2 characters. At most 120 characters. |
+| `owner_email` | string (email) | yes | The owner. An address that already has an account keeps it; the organization is added to it. At most 255 characters. |
+| `owner_name` | string | yes | At least 2 characters. At most 120 characters. |
+| `environment_limit` | integer | yes | The first project's environment allowance: 1, 2, 3, 5, 10 or 25. At least 1. At most 25. |
+
+### <a id="admin.organizations.set_status"></a>admin.organizations.set_status
+
+Suspend an organization (its people can no longer sign in, its environments stop serving) or reactivate it.
+
+| | |
+|---|---|
+| REST | `PUT /api/v1/platform/workspaces/{workspace_id}/status` → `200` |
+| Scope | `operator:workspaces:write` — on an access token delegated by an active platform operator. No management key is accepted. |
+| Danger | `critical` |
+| MCP tool | `admin_organizations_set_status` |
+| CLI | `cbox id admin organizations set_status <workspace_id>` |
+
+| Input | Type | Required | Description |
+|---|---|---|---|
+| `workspace_id` | string (path) | yes |  |
+| `status` | string | yes | One of `active`, `suspended`. |
+
+### <a id="admin.tenant_organizations.create"></a>admin.tenant_organizations.create
 
 Create an organization inside an environment, optionally under a parent organization of the same environment.
 
@@ -118,8 +153,8 @@ Create an organization inside an environment, optionally under a parent organiza
 | REST | `POST /api/v1/platform/environments/{environment_id}/organizations` → `201` |
 | Scope | `operator:organizations:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
-| MCP tool | `platform_organizations_create` |
-| CLI | `cbox id platform organizations create <environment_id>` |
+| MCP tool | `admin_tenant_organizations_create` |
+| CLI | `cbox id admin tenant_organizations create <environment_id>` |
 
 | Input | Type | Required | Description |
 |---|---|---|---|
@@ -128,7 +163,7 @@ Create an organization inside an environment, optionally under a parent organiza
 | `type` | string | yes | One of `customer`, `reseller`. |
 | `parent_id` | string, nullable | no | An organization of the same environment to create it under. |
 
-### <a id="platform.organizations.move"></a>platform.organizations.move
+### <a id="admin.tenant_organizations.move"></a>admin.tenant_organizations.move
 
 Move an organization under another organization of the same environment, or to the top of its hierarchy.
 
@@ -137,8 +172,8 @@ Move an organization under another organization of the same environment, or to t
 | REST | `PUT /api/v1/platform/environments/{environment_id}/organizations/{organization_id}/parent` → `200` |
 | Scope | `operator:organizations:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
-| MCP tool | `platform_organizations_move` |
-| CLI | `cbox id platform organizations move <environment_id> <organization_id>` |
+| MCP tool | `admin_tenant_organizations_move` |
+| CLI | `cbox id admin tenant_organizations move <environment_id> <organization_id>` |
 
 | Input | Type | Required | Description |
 |---|---|---|---|
@@ -146,7 +181,7 @@ Move an organization under another organization of the same environment, or to t
 | `organization_id` | string (path) | yes |  |
 | `parent_id` | string, nullable | no | The new parent, of the same environment; null for the top of the hierarchy. |
 
-### <a id="platform.organizations.set_status"></a>platform.organizations.set_status
+### <a id="admin.tenant_organizations.set_status"></a>admin.tenant_organizations.set_status
 
 Suspend an organization inside an environment (its members can no longer sign in to it) or reactivate it.
 
@@ -155,49 +190,11 @@ Suspend an organization inside an environment (its members can no longer sign in
 | REST | `PUT /api/v1/platform/environments/{environment_id}/organizations/{organization_id}/status` → `200` |
 | Scope | `operator:organizations:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
-| MCP tool | `platform_organizations_set_status` |
-| CLI | `cbox id platform organizations set_status <environment_id> <organization_id>` |
+| MCP tool | `admin_tenant_organizations_set_status` |
+| CLI | `cbox id admin tenant_organizations set_status <environment_id> <organization_id>` |
 
 | Input | Type | Required | Description |
 |---|---|---|---|
 | `environment_id` | string (path) | yes |  |
 | `organization_id` | string (path) | yes |  |
-| `status` | string | yes | One of `active`, `suspended`. |
-
-## Workspaces
-
-### <a id="platform.workspaces.create"></a>platform.workspaces.create
-
-Create a workspace with its owner, first project and first environment; the owner is emailed a link to set their password.
-
-| | |
-|---|---|
-| REST | `POST /api/v1/platform/workspaces` → `201` |
-| Scope | `operator:workspaces:write` — on an access token delegated by an active platform operator. No management key is accepted. |
-| Danger | `critical` |
-| MCP tool | `platform_workspaces_create` |
-| CLI | `cbox id platform workspaces create` |
-
-| Input | Type | Required | Description |
-|---|---|---|---|
-| `name` | string | yes | The workspace's name — usually the company it belongs to. At least 2 characters. At most 120 characters. |
-| `owner_email` | string (email) | yes | The owner. An address that already has an account keeps it; the workspace is added to it. At most 255 characters. |
-| `owner_name` | string | yes | At least 2 characters. At most 120 characters. |
-| `environment_limit` | integer | yes | The first project's environment allowance: 1, 2, 3, 5, 10 or 25. At least 1. At most 25. |
-
-### <a id="platform.workspaces.set_status"></a>platform.workspaces.set_status
-
-Suspend a workspace (its people can no longer sign in, its environments stop serving) or reactivate it.
-
-| | |
-|---|---|
-| REST | `PUT /api/v1/platform/workspaces/{workspace_id}/status` → `200` |
-| Scope | `operator:workspaces:write` — on an access token delegated by an active platform operator. No management key is accepted. |
-| Danger | `critical` |
-| MCP tool | `platform_workspaces_set_status` |
-| CLI | `cbox id platform workspaces set_status <workspace_id>` |
-
-| Input | Type | Required | Description |
-|---|---|---|---|
-| `workspace_id` | string (path) | yes |  |
 | `status` | string | yes | One of `active`, `suspended`. |

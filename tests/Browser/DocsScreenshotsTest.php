@@ -261,7 +261,7 @@ function signInAsDemoOwner(DemoEnvironmentSeeder $demo): void
     app(Sudo::class)->confirm();
 }
 
-it('pictures the hosted sign-in page and the workspace sign-up', function (): void {
+it('pictures the hosted sign-in page and the organization sign-up', function (): void {
     docsWorld();
 
     // The environment's own door, which its end users meet under its name.
@@ -332,7 +332,7 @@ it('pictures the environment console', function (): void {
     saveDocsScreenshot($page, 'mobile-overview');
 })->group('docs-screenshots');
 
-it('pictures the workspace\'s projects on the account host', function (): void {
+it('pictures the organization\'s projects on the account host', function (): void {
     $demo = docsWorld();
     signInAsDemoOwner($demo);
 

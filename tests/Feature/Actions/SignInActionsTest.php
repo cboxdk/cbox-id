@@ -250,7 +250,7 @@ it('writes the same sign-in rules entry from the console, as the person', functi
 |--------------------------------------------------------------------------
 */
 
-it('switches self-service sign-up, on the workspace trail, as the console does', function (): void {
+it('switches self-service sign-up, on the organization trail, as the console does', function (): void {
     ['environment' => $environment, 'workspaceId' => $workspaceId, 'ownerId' => $ownerId] = siaTenant();
     [$key, $keyId] = siaKey($environment, ['signin:write']);
 
@@ -654,7 +654,7 @@ it('keeps an organization administrator on their own organization, whichever doo
 |--------------------------------------------------------------------------
 */
 
-it('adds and verifies this environment\'s custom domain, on the workspace trail', function (): void {
+it('adds and verifies this environment\'s custom domain, on the organization trail', function (): void {
     config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
     $dns = new FakeDnsResolver;
     app()->instance(DnsResolver::class, $dns);

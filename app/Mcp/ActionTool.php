@@ -101,7 +101,7 @@ final class ActionTool extends Tool
     public function description(): string
     {
         $description = $this->action->summary
-            ."\n\nAction `{$this->action->name}` · scope `{$this->action->scope}` · danger: {$this->action->danger->value}.";
+            ."\n\nAction `{$this->action->name}` · scope `{$this->action->documentedScope()}` · danger: {$this->action->danger->value}.";
 
         // Said as what it IS. Critical counts as destructive for the annotation below, but a
         // critical action mints a credential or changes how people sign in far more often
@@ -183,7 +183,7 @@ final class ActionTool extends Tool
             $properties = [self::ENVIRONMENT => [
                 'type' => 'string',
                 'minLength' => 1,
-                'description' => 'The environment of your workspace to act in: its id or its slug. `whoami` lists the ones you can act in.',
+                'description' => 'The environment of your organization to act in: its id or its slug. `whoami` lists the ones you can act in.',
             ], ...$properties];
 
             $required = is_array($schema['required'] ?? null) ? array_values($schema['required']) : [];

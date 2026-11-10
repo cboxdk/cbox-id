@@ -47,7 +47,7 @@ final readonly class SupportContext
             $account = $current->organizationId() ?? $request->session()->get(PlatformAuth::ORG_KEY);
         } else {
             $subject = $admin->subjectId();
-            $account = $admin->workspaceId();
+            $account = $admin->rootOrganizationId();
         }
         if (! is_string($subject) || $subject === '' || ! is_string($account) || $account === '') {
             return null;

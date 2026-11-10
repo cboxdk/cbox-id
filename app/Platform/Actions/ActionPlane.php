@@ -22,7 +22,7 @@ enum ActionPlane: string
      * A workspace — the customer above every environment it owns: `/api/v1/workspace/…`
      * with a workspace key (`cbid_ws_…`), resolving no environment.
      */
-    case Workspace = 'workspace';
+    case Organization = 'organization';
 
     /**
      * The deployment itself — Cbox staff running the install: `/api/v1/platform/…`, served
@@ -51,7 +51,7 @@ enum ActionPlane: string
     {
         return match ($this) {
             self::Environment => '',
-            self::Workspace => '/workspace',
+            self::Organization => '/workspace',
             self::Platform => '/platform',
             self::Account => '/me',
         };

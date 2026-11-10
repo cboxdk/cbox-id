@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
-use App\Actions\Platform\Workspaces\CreateWorkspace;
-use App\Actions\Platform\Workspaces\SetWorkspaceStatus;
+use App\Actions\Platform\Organizations\OnboardOrganization;
+use App\Actions\Platform\Organizations\SetOrganizationStatus;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\SimplePaginationProps;
 use App\Http\Requests\Console\CreateCustomerRequest;
@@ -139,20 +139,20 @@ final readonly class PlatformCustomerController extends ConsoleController
                     'projects' => (int) ($projectCounts[$organization->id] ?? 0),
                     'environments' => (int) ($environmentCounts[$organization->id] ?? 0),
                     'createdAt' => $this->createdAt($organization),
-                    'href' => route('platform.workspaces.show', $organization->id),
-                    'toggleHref' => route('platform.workspaces.toggle', $organization->id),
+                    'href' => route('platform.orgs.show', $organization->id),
+                    'toggleHref' => route('platform.orgs.toggle', $organization->id),
                 ];
             })->all();
 
             return ['rows' => array_values($rows), 'pagination' => SimplePaginationProps::from($customers)];
         });
 
-        return $this->page('console/platform/customers', __('console.workspaces_1377264b'), [
-            'help' => HelpProps::for(HelpTopic::Workspaces),
+        return $this->page('console/platform/customers', __('console.organizations_2730183d'), [
+            'help' => HelpProps::for(HelpTopic::AllOrganizations),
             'customers' => $page['rows'],
             'pagination' => $page['pagination'],
             'search' => $term,
-            'storeHref' => route('platform.workspaces.store'),
+            'storeHref' => route('platform.orgs.store'),
             'environmentsHref' => route('platform.environments'),
             'environmentLimits' => CreateCustomerRequest::LIMITS,
         ]);
@@ -160,7 +160,7 @@ final readonly class PlatformCustomerController extends ConsoleController
 
     /**
      * Stand up a whole customer — the organization, its owner, its first IdP product and
-     * that product's first environment — through {@see CreateWorkspace}, the action the
+     * that product's first environment — through {@see OnboardOrganization}, the action the
      * operator API runs too. The page keeps what is its own: where a refusal lands, and
      * the sentence that says whether the owner's link went.
      */
@@ -168,7 +168,7 @@ final readonly class PlatformCustomerController extends ConsoleController
     {
         $this->assertOperator();
 
-        $result = $this->act(CreateWorkspace::class, [
+        $result = $this->act(OnboardOrganization::class, [
             'name' => $request->name(),
             'owner_email' => $request->ownerEmail(),
             'owner_name' => $request->ownerName(),
@@ -186,10 +186,10 @@ final readonly class PlatformCustomerController extends ConsoleController
         // provisioning has just made impossible — so it means something changed underneath,
         // and the operator should know the workspace exists but the invitation did not go.
         $status = $workspace['owner_invited']
-            ? __('console.workspace_created_owner_invited_status', ['email' => $request->ownerEmail()])
-            : __('console.workspace_created_but_the_owner_could_not_be_61b8b11a');
+            ? __('console.organization_created_owner_invited_status', ['email' => $request->ownerEmail()])
+            : __('console.organization_created_but_the_owner_could_not_21800822');
 
-        return redirect()->route('platform.workspaces.show', $workspace['id'])->with('status', $status);
+        return redirect()->route('platform.orgs.show', $workspace['id'])->with('status', $status);
     }
 
     /** One customer, and everything that hangs off it. */
@@ -254,8 +254,8 @@ final readonly class PlatformCustomerController extends ConsoleController
                 'isTarget' => $environment->id === $activeEnvironmentId,
                 'orgs' => (int) ($orgCounts[$environment->id] ?? 0),
                 'users' => (int) ($userCounts[$environment->id] ?? 0),
-                'targetHref' => route('platform.workspaces.target', [$customer->id, $environment->id]),
-                'openHref' => route('platform.workspaces.open', [$customer->id, $environment->id]),
+                'targetHref' => route('platform.orgs.target', [$customer->id, $environment->id]),
+                'openHref' => route('platform.orgs.open', [$customer->id, $environment->id]),
             ];
         };
 
@@ -313,8 +313,8 @@ final readonly class PlatformCustomerController extends ConsoleController
             ])->values()->all(),
             'unfiledEnvironments' => $unfiled,
             'environmentTotal' => $environments->count(),
-            'indexHref' => route('platform.workspaces'),
-            'toggleHref' => route('platform.workspaces.toggle', $customer->id),
+            'indexHref' => route('platform.orgs'),
+            'toggleHref' => route('platform.orgs.toggle', $customer->id),
         ]);
     }
 
@@ -363,7 +363,7 @@ final readonly class PlatformCustomerController extends ConsoleController
 
     /**
      * Suspend or reactivate a customer: the button flips what it shows, so it asks
-     * {@see SetWorkspaceStatus} for the opposite of the current state — the action itself
+     * {@see SetOrganizationStatus} for the opposite of the current state — the action itself
      * takes a state rather than a flip, so an API retry cannot undo itself.
      */
     public function toggle(string $organization, Organizations $organizations, PlatformRoot $platformRoot): RedirectResponse
@@ -378,7 +378,7 @@ final readonly class PlatformCustomerController extends ConsoleController
 
         $suspending = ! $current->status->revokesAccess();
 
-        $result = $this->act(SetWorkspaceStatus::class, [
+        $result = $this->act(SetOrganizationStatus::class, [
             'workspace_id' => $current->id,
             'status' => $suspending ? 'suspended' : 'active',
         ]);
@@ -387,7 +387,7 @@ final readonly class PlatformCustomerController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', $suspending ? __('console.workspace_suspended_its_members_can_no_longer_sign_in_a_82d7790e') : __('console.workspace_reactivated_d4e75684'));
+        return back()->with('status', $suspending ? __('console.organization_suspended_its_members_can_no_longer_sign_i_35d8877a') : __('console.organization_reactivated__cdae875e'));
     }
 
     /**

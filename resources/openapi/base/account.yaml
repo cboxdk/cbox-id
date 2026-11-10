@@ -7,7 +7,7 @@ info:
     signed in, which applications may act as you, your own API keys for the apps built on
     this environment, your sign-in methods, your trusted devices and the organizations you
     belong to. The same actions the
-    console's My account pages run, with the same rules, refusals and audit trail.
+    console's Account pages run, with the same rules, refusals and audit trail.
 
     **Who may call it.** Only you, through an access token you delegated carrying the
     `account:*` scope each operation names. **No management key is accepted** — no key
@@ -21,7 +21,7 @@ info:
 
     Served on the host of the environment your account belongs to: an environment's own
     host for its own people, with a token that environment issued; the platform root's
-    host for a workspace's team and the operators, with the token the root issued them
+    host for an organization's team and the operators, with the token the root issued them
     (`cbox login` at the root).
 
     **Envelope.** Every success returns `{ "data": … }` (or `204` with no body). Every

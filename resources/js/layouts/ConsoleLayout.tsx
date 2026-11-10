@@ -53,7 +53,8 @@ export interface ConsoleLayoutProps {
  */
 export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
     const { t: consoleShortText } = useConsoleTranslator();
-    const { shell, auth, title, environment, organizationHub, i18n, supportSessionUrl } = usePage<SharedProps>().props;
+    const { shell, auth, title, environment, organizationHub, i18n, supportSessionUrl } =
+        usePage<SharedProps>().props;
 
     // A page under `/admin/organizations/{organization}/…` is a tab of that organization's
     // page: its header and tabs go around it, whichever page it is.
@@ -127,7 +128,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
 
     const active = shell.areas.find((area) => area.key === shell.activeArea);
     const organization = auth.organization;
-    const workspace = shell.context.workspaces.find((option) => option.current);
+    const currentOrganization = shell.context.organizations.find((option) => option.current);
     const onEnvironment = shell.altitude === 'environment';
     // The environment this console stands in, as the switcher names it — not the request's
     // own: a page of platform admin READS whichever environment the operator pointed it
@@ -160,7 +161,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                 <Rail
                     areas={shell.areas}
                     brandHref={shell.brandHref}
-                    brandLabel={workspace?.label ?? organization?.name ?? 'Console'}
+                    brandLabel={currentOrganization?.label ?? organization?.name ?? 'Console'}
                     pinned={pinned}
                     onTogglePin={togglePin}
                 />
@@ -186,18 +187,18 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                             ? (standingIn ??
                               environment.name ??
                               consoleShortText('console.environment_9e471951'))
-                            : (workspace?.label ??
+                            : (currentOrganization?.label ??
                               organization?.name ??
                               consoleShortText('console.console_29a40861'))
                     }
-                    subheading={onEnvironment ? (workspace?.label ?? null) : null}
+                    subheading={onEnvironment ? (currentOrganization?.label ?? null) : null}
                     user={auth.user}
                     logoutUrl={shell.logoutHref ?? logout.url()}
-                    showEnvironment={shell.altitude !== 'workspace'}
+                    showEnvironment={shell.altitude !== 'org-plane'}
                     accountUrl={shell.accountHref}
                     showAccountLink={onEnvironment}
                     switchUserUrl={shell.switchUserHref}
-                    workspaceSettingsUrl={shell.workspaceSettingsHref}
+                    organizationSettingsUrl={shell.organizationSettingsHref}
                     platformUrl={shell.platformHref}
                 >
                     <div className="cbx-ctx-sheet">{context}</div>
@@ -218,7 +219,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                             <AccountMenu
                                 user={auth.user}
                                 logoutUrl={shell.logoutHref ?? logout.url()}
-                                workspaceSettingsHref={shell.workspaceSettingsHref}
+                                organizationSettingsHref={shell.organizationSettingsHref}
                                 accountHref={shell.accountHref}
                                 switchUserHref={shell.switchUserHref}
                                 platformHref={shell.platformHref}
@@ -256,7 +257,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
 
 const ACTS_ON_ICON = {
     environment: 'layers',
-    workspace: 'briefcase',
+    'org-plane': 'briefcase',
     organization: 'building',
     platform: 'lock',
 } as const;
@@ -265,13 +266,13 @@ const ACTS_ON_ICON = {
  * WHAT THIS PAGE ACTS ON — `Environment: Production · Environment on acme.cboxid.com` — so
  * nobody saves a setting believing it is somebody else's. On the platform's own environment
  * it is a warning: that sign-in is every workspace owner's and every operator's. On platform
- * admin it is a warning too, with the lock: those pages act on every workspace at once.
+ * admin it is a warning too, with the lock: those pages act on every organization at once.
  */
 function ActsOn({ actsOn }: { actsOn: ShellActsOn }) {
     const { t: tc } = useTranslator();
     const ACTS_ON_NOUN: Record<ShellActsOn['kind'], string> = {
         environment: tc('console.environment_9e471951'),
-        workspace: tc('console.workspace_87bb59ba'),
+        'org-plane': tc('console.organization_d764d425'),
         organization: tc('console.organization_d764d425'),
         platform: tc('console.platform_admin_69652f55'),
     };

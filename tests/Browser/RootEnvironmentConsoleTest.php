@@ -63,7 +63,7 @@ it('draws the platform environment\'s console in the dark and on a phone', funct
         ->assertNoJavaScriptErrors();
 })->group('a11y');
 
-it('tells a workspace owner on the root where an environment\'s settings are, without an accessibility issue', function (): void {
+it('tells an organization owner on the root where an environment\'s settings are, without an accessibility issue', function (): void {
     ['subjectId' => $owner] = provisionAccount('owner@acme.example');
     app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified($owner, 'owner@acme.example'));
     signInAsSubject($owner);
@@ -107,7 +107,7 @@ it('draws platform admin inside the platform environment\'s console, without an 
         ->assertNoAccessibilityIssues()
         ->assertNoJavaScriptErrors();
 })->with([
-    'workspaces' => ['/admin/platform/workspaces', 'Workspaces'],
+    'workspaces' => ['/admin/platform/workspaces', 'Organizations'],
     'environments' => ['/admin/platform/environments', 'Environments'],
     'organization tree' => ['/admin/platform/organizations', 'Organization tree'],
     'operators' => ['/admin/platform/operators', 'Operators'],

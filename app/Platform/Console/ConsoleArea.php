@@ -65,7 +65,7 @@ enum ConsoleArea: string
             self::Connectors => 'Connectors',
             self::Logs => Vocabulary::AUDIT_LOG,
             self::Settings => 'Settings',
-            self::Account => 'My account',
+            self::Account => 'Account',
         };
     }
 

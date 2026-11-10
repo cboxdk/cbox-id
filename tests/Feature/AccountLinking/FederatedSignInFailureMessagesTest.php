@@ -136,7 +136,7 @@ it('shows a refused link — an address the provider did not verify — with wha
 
     expect(shownOnSignIn($response))
         ->toBe(FederationFailure::Unverified->message(['provider' => $this->google->name, 'email' => 'owner@acme.example']))
-        ->toContain('My account › Sign-in methods');
+        ->toContain('Account › Sign-in methods');
 });
 
 it('says it in the visitor\'s language', function (): void {
@@ -155,7 +155,7 @@ it('says it in the visitor\'s language', function (): void {
     expect((string) parse_url((string) $response->headers->get('Location'), PHP_URL_PATH))->toBe('/login');
 });
 
-it('tells somebody already signed in on My account, in the console\'s English, rather than losing it behind the guest guard', function (): void {
+it('tells somebody already signed in on Account, in the console\'s English, rather than losing it behind the guest guard', function (): void {
     signInAsSubject($this->account['subjectId']);
 
     $response = $this->get('https://'.RootGoogle::HOST.'/sso/oidc/'.$this->google->id.'/callback?code=c&state=forged');

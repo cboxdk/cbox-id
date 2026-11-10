@@ -41,17 +41,18 @@ export interface ContextSwitcherProps {
  */
 export function ContextSwitcher({ context, onNavigate = defaultNavigate }: ContextSwitcherProps) {
     const { t: consoleT } = useConsoleTranslator();
-    const workspace = context.workspaces.find((option) => option.current) ?? context.workspaces[0];
+    const currentOrganization =
+        context.organizations.find((option) => option.current) ?? context.organizations[0];
     const project = context.projects.find((candidate) => candidate.current);
     const environment = project?.environments.find((candidate) => candidate.current);
 
     return (
         <nav className="cbx-ctx" aria-label={consoleT('console.context_a6e600a1')}>
-            {workspace !== undefined && (
-                <WorkspaceCrumb
+            {currentOrganization !== undefined && (
+                <OrganizationCrumb
                     noun={context.noun}
-                    current={workspace}
-                    workspaces={context.workspaces}
+                    current={currentOrganization}
+                    organizations={context.organizations}
                     switchUrl={context.switchUrl}
                     onNavigate={onNavigate}
                 />
@@ -102,16 +103,16 @@ function Separator() {
  * (it re-scopes the session) and a page load from anywhere else, where that session is not
  * this one — the server says which by sending a `switchUrl` or not.
  */
-function WorkspaceCrumb({
+function OrganizationCrumb({
     noun,
     current,
-    workspaces,
+    organizations,
     switchUrl,
     onNavigate,
 }: {
     noun: string;
     current: SwitchOption;
-    workspaces: SwitchOption[];
+    organizations: SwitchOption[];
     switchUrl: string | null;
     onNavigate: (href: string) => void;
 }) {
@@ -120,7 +121,7 @@ function WorkspaceCrumb({
 
     // A menu that cannot change anything is a control that lies about what it does. With
     // one workspace and no link out, the crumb is a label.
-    const actionable = workspaces.length > 1 || current.openHref !== null;
+    const actionable = organizations.length > 1 || current.openHref !== null;
 
     const tile = (
         <span className="cbx-ctx-tile" aria-hidden="true">
@@ -152,9 +153,9 @@ function WorkspaceCrumb({
             }
             groups={[
                 {
-                    key: 'workspaces',
+                    key: 'organizations',
                     heading: null,
-                    items: workspaces.map((option) => ({
+                    items: organizations.map((option) => ({
                         key: option.id,
                         label: option.label,
                         hint: option.caption,
@@ -178,7 +179,7 @@ function WorkspaceCrumb({
                 },
             ]}
             footnote={
-                switchUrl === null && workspaces.length > 1
+                switchUrl === null && organizations.length > 1
                     ? consoleAttributeText('console.open_console_to_switch')
                     : null
             }

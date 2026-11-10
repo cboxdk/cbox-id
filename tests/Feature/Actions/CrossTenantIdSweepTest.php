@@ -11,9 +11,9 @@ use App\Platform\Actions\Danger;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
+use App\Platform\Actions\Principal\OrganizationKeyPrincipal;
 use App\Platform\Actions\Principal\PortalPrincipal;
 use App\Platform\Actions\Principal\Principal;
-use App\Platform\Actions\Principal\WorkspaceKeyPrincipal;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\Enums\PortalIntent;
@@ -98,10 +98,10 @@ const SWEEP_UNSWEPT = [
     // deployment: an id of one of those is never somebody else's to an operator. What can be
     // foreign is a PAIR — an organization named under an environment it is not in — and the
     // two actions that take one are swept below.
-    'platform.environments.provision' => 'an operator reaches every environment; nothing is foreign to them.',
-    'platform.operators.set_status' => 'an operator administers every operator; nothing is foreign to them.',
-    'platform.organizations.create' => 'an operator reaches every environment; nothing is foreign to them.',
-    'platform.workspaces.set_status' => 'an operator administers every workspace; nothing is foreign to them.',
+    'admin.environments.provision' => 'an operator reaches every environment; nothing is foreign to them.',
+    'admin.operators.set_status' => 'an operator administers every operator; nothing is foreign to them.',
+    'admin.tenant_organizations.create' => 'an operator reaches every environment; nothing is foreign to them.',
+    'admin.organizations.set_status' => 'an operator administers every organization; nothing is foreign to them.',
     'audit_logs.schemas.update' => 'PUT upserts the schema {action} names; a name is not an id. GET and DELETE are swept.',
 ];
 
@@ -499,7 +499,7 @@ function sweepWorkspace(string $email): array
     $account = provisionAccount($email);
     $workspace = $account['organization'];
     $slug = Str::lower(Str::random(6));
-    $principal = new WorkspaceKeyPrincipal(app(OrganizationApiKeys::class)->issue($workspace->id, 'Sweep agent', MembershipRole::Owner)->key);
+    $principal = new OrganizationKeyPrincipal(app(OrganizationApiKeys::class)->issue($workspace->id, 'Sweep agent', MembershipRole::Owner)->key);
     $run = static fn (string $action, array $input): array => (array) app(ActionRunner::class)->run(app(ActionRegistry::class)->named($action), $principal, $input)->payload;
 
     $member = app(PlatformRoot::class)->run(static fn () => app(Memberships::class)->add(
@@ -522,13 +522,13 @@ function sweepWorkspace(string $email): array
     return [$principal, $world];
 }
 
-it('answers 404 to every id from another workspace, for every workspace action that takes one', function (): void {
+it('answers 404 to every id from another organization, for every organization action that takes one', function (): void {
     [$key, $mine] = sweepWorkspace('owner@mine.example');
     [, $theirs] = sweepWorkspace('owner@theirs.example');
 
-    ['wrong' => $wrong, 'blind' => $blind, 'swept' => $swept] = sweepAs($key, 'workspace key', $mine, $theirs, ActionPlane::Workspace);
+    ['wrong' => $wrong, 'blind' => $blind, 'swept' => $swept] = sweepAs($key, 'organization key', $mine, $theirs, ActionPlane::Organization);
 
-    expect($wrong)->toBe([], "Another workspace's id must answer 404:\n".implode("\n", $wrong))
+    expect($wrong)->toBe([], "Another organization's id must answer 404:\n".implode("\n", $wrong))
         ->and($blind)->toBe([], "The caller's own ids must be found, or the sweep proves nothing:\n".implode("\n", $blind))
         ->and($swept)->toBeGreaterThan(14);
 })->group('security');
@@ -602,15 +602,15 @@ it('answers 404 to an organization named under an environment it is not in', fun
     $principal = new FakeOperatorToken($operator->id, (string) $operator->subject_id, ['operator:workspaces:write', 'operator:environments:write', 'operator:organizations:write', 'operator:operators:write']);
     $run = static fn (string $action, array $input): array => (array) app(ActionRunner::class)->run(app(ActionRegistry::class)->named($action), $principal, $input)->payload;
 
-    $here = $run('platform.environments.create', ['name' => 'Sweep here'])['id'];
-    $there = $run('platform.environments.create', ['name' => 'Sweep there'])['id'];
-    $ours = $run('platform.organizations.create', ['environment_id' => $here, 'name' => 'Ours', 'type' => 'customer'])['id'];
-    $theirs = $run('platform.organizations.create', ['environment_id' => $there, 'name' => 'Theirs', 'type' => 'customer'])['id'];
+    $here = $run('admin.environments.create', ['name' => 'Sweep here'])['id'];
+    $there = $run('admin.environments.create', ['name' => 'Sweep there'])['id'];
+    $ours = $run('admin.tenant_organizations.create', ['environment_id' => $here, 'name' => 'Ours', 'type' => 'customer'])['id'];
+    $theirs = $run('admin.tenant_organizations.create', ['environment_id' => $there, 'name' => 'Theirs', 'type' => 'customer'])['id'];
 
     $registry = app(ActionRegistry::class);
     $wrong = [];
 
-    foreach (['platform.organizations.move' => ['parent_id' => null], 'platform.organizations.set_status' => ['status' => 'suspended']] as $name => $body) {
+    foreach (['admin.tenant_organizations.move' => ['parent_id' => null], 'admin.tenant_organizations.set_status' => ['status' => 'suspended']] as $name => $body) {
         $action = $registry->named($name);
 
         foreach (['their organization under our environment' => [$here, $theirs], 'our organization under their environment' => [$there, $ours]] as $label => [$environment, $organization]) {

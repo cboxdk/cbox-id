@@ -107,7 +107,7 @@ it('shows why a sign-in did not complete, on the sign-in page itself', function 
         ->screenshot(filename: 'link-accounts-login-reason-390');
 })->group('a11y');
 
-it('lists every way in on My account › Sign-in methods', function (): void {
+it('lists every way in on Account › Sign-in methods', function (): void {
     platformRootEnvironment();
 
     config([

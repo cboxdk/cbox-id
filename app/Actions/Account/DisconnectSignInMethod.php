@@ -58,7 +58,7 @@ final readonly class DisconnectSignInMethod implements Action
     public static function input(): InputSchema
     {
         return InputSchema::of([
-            Field::string('identity_id')->inPath()->describe('The linked identity\'s id, as My account lists it.'),
+            Field::string('identity_id')->inPath()->describe('The linked identity\'s id, as Account lists it.'),
         ]);
     }
 

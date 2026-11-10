@@ -46,7 +46,7 @@ return [
         'stale' => 'Questa richiesta di autorizzazione non può più essere completata. Ricomincia.',
         'account_attention' => 'Il tuo account richiede attenzione prima di poter continuare. Accedi di nuovo.',
         'step_up' => 'Questa applicazione richiede un accesso più recente o un’autenticazione più forte. Ricomincia.',
-        'no_workspace' => 'Questo accesso collega un agente a uno spazio di lavoro su Cbox ID, e il tuo account non fa parte di un team all\'interno di uno spazio di lavoro. Chiedi al proprietario dello spazio di lavoro di invitarti, oppure connetti l\'agente utilizzando l\'indirizzo specifico del tuo ambiente.',
+        'no_organization' => 'Questo accesso collega un agente a un\'organizzazione su Cbox ID, e il tuo account non fa parte di un team all\'interno di un\'organizzazione. Chiedi al proprietario dell\'organizzazione di invitarti, oppure connetti l\'agente utilizzando l\'indirizzo specifico del tuo ambiente.',
     ],
     'organization' => [
         'title' => 'Seleziona un\'organizzazione',

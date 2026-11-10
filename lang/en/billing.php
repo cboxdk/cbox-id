@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'description' => 'Manage billing details, payment cards and invoices for this workspace.',
+    'description' => 'Manage billing details, payment cards and invoices for this organization.',
     'account' => 'Billing details',
     'invoice_name' => 'Name on invoices',
     'billing_email' => 'Billing email',
@@ -37,7 +37,7 @@ return [
     'subtotal' => 'Subtotal',
     'tax' => 'Tax',
     'tax_pending' => 'Tax has not been calculated yet.',
-    'no_subscription' => 'No subscription is assigned to this workspace.',
+    'no_subscription' => 'No subscription is assigned to this organization.',
     'allowance' => 'Environment allowance',
     'allowance_description' => 'Access and allowances are assigned by an administrator.',
     'period' => 'Billing period',
@@ -69,8 +69,8 @@ return [
     'credits_granted' => 'Included credits added',
     'credits_carried' => 'Included credits carried over',
     'address_required' => 'Complete and save your billing address before choosing a paid plan.',
-    'workspace_changed' => 'The workspace changed in another tab. Reload this page before editing billing.',
-    'explanation' => 'Subscriptions are per project. Compare plans to see prices and environment allowances. Billing details, cards and invoices are shared by the workspace. Usage figures show activity; charges follow your selected plan.',
+    'organization_changed' => 'The organization changed in another tab. Reload this page before editing billing.',
+    'explanation' => 'Subscriptions are per project. Compare plans to see prices and environment allowances. Billing details, cards and invoices are shared by the organization. Usage figures show activity; charges follow your selected plan.',
     'connections' => 'SSO connections',
     'environments' => 'Environments',
     'replace_default' => 'Choose another default card before removing this one.',

@@ -204,7 +204,7 @@ it('accepts sixty-four characters, and letters from any script', function (): vo
     expect(passkeyNameOf($mine))->toBe('Søren\'s <b>YubiKey</b> 🔑');
 });
 
-it('renames from My account with no step-up, as the console runs the same action', function (): void {
+it('renames from Account with no step-up, as the console runs the same action', function (): void {
     ['subjectId' => $me] = provisionAccount();
     $mine = passkeyOf($me, 'Passkey on Chrome · macOS');
     signInAsMember($me);

@@ -69,9 +69,9 @@ it('draws platform admin as the Platform area of the platform environment\'s con
         ->and($keys)->toContain('Home', 'Authentication', 'Users & orgs', 'Settings')
         ->and($shell['activeArea'])->toBe('platform')
         ->and(collect($shell['areas'][0]['pages'])->pluck('label')->all())
-        ->toBe(['Workspaces', 'Environments', 'Organization tree', 'Operators', 'Usage', 'Queues', 'Search'])
+        ->toBe(['Organizations', 'Environments', 'Organization tree', 'Operators', 'Usage', 'Queues', 'Search'])
         ->and($shell['brandHref'])->toBe('https://cboxid.com/admin/platform/workspaces')
-        ->and($shell['context']['workspaces'][0]['label'])->toBe('Platform admin')
+        ->and($shell['context']['organizations'][0]['label'])->toBe('Platform admin')
         ->and($shell['context']['projects'][0]['environments'][0]['current'])->toBeTrue()
         // In the rail, so not in the account menu as well.
         ->and($shell['platformHref'])->toBeNull()
@@ -94,7 +94,7 @@ it('keeps the Platform area lit on every page of it, detail pages included', fun
     ['organization' => $workspace] = rootPlatformWorld();
 
     foreach ([
-        '/admin/platform/workspaces/'.$workspace->id => 'Workspaces',
+        '/admin/platform/workspaces/'.$workspace->id => 'Organizations',
         '/admin/platform/environments' => 'Environments',
         '/admin/platform/environments/root/organizations' => 'Organization tree',
         '/admin/platform/operators' => 'Operators',
@@ -110,7 +110,7 @@ it('keeps the Platform area lit on every page of it, detail pages included', fun
     }
 });
 
-it('leaves platform admin off the root host\'s workspace console, and links it from the account menu', function (): void {
+it('leaves platform admin off the root host\'s organization console, and links it from the account menu', function (): void {
     rootPlatformWorld();
 
     $shell = (array) $this->get('https://cboxid.com/account')->assertOk()->inertiaProps('shell');

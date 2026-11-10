@@ -403,7 +403,7 @@ it('holds every Critical enterprise change for its owner\'s approval, and change
 it('holds a change to how an organization signs in, and lets a Write through', function (): void {
     $key = govSupervisedKey(['sso:read', 'sso:write']);
     $org = govOrg();
-    $workspace = app(PlatformRoot::class)->run(fn () => app(Organizations::class)->create(new NewOrganization('Enterprise workspace', 'enterprise-workspace')));
+    $workspace = app(PlatformRoot::class)->run(fn () => app(Organizations::class)->create(new NewOrganization('Enterprise organization', 'enterprise-workspace')));
     $project = app(Projects::class)->createForOrganization($workspace->id, 'Enterprise');
     Environment::query()->whereKey('env_test')->update(['project_id' => $project->id]);
     grantFeature($org, 'cbox-id-sso');

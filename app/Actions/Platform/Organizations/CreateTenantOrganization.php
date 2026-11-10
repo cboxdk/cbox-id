@@ -34,7 +34,7 @@ use Illuminate\Support\Str;
  * than spliced in.
  */
 #[AsAction(
-    name: 'platform.organizations.create',
+    name: 'admin.tenant_organizations.create',
     summary: 'Create an organization inside an environment, optionally under a parent organization of the same environment.',
     scope: 'operator:organizations:write',
     danger: Danger::Critical,

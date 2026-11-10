@@ -29,10 +29,11 @@ use App\Platform\Erasure\AppErasureSteps;
 use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
+use App\Platform\Keys\TransitionalOrganizationApiKeys;
 use App\Platform\OAuth\RootMcpAudiences;
 use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
+use App\Platform\OrganizationApiContext;
 use App\Platform\Passkeys\RecordsPasskeyUse;
-use App\Platform\WorkspaceApiContext;
 use App\SignalsData\Bundled\IdMachineCredential;
 use App\SignalsData\Bundled\IdManagedSources;
 use Cbox\Dns\Dns;
@@ -49,6 +50,7 @@ use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Support\SelfRegisteredScopes;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
+use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Signals\Contracts\ManagedCredential;
 use Cbox\Signals\Contracts\ManagedSources;
 use Illuminate\Contracts\Cache\Repository;
@@ -106,6 +108,8 @@ class AppServiceProvider extends ServiceProvider
         // The scopes a management key may carry: the framework's core set plus the ones
         // this app's actions guard. The framework refuses to mint anything else.
         $this->app->singleton(ManagementScopes::class, AppManagementScopes::class);
+        // Organization keys: `cbid_ws_` minted through v3.0, `cbid_org_` resolved too.
+        $this->app->singleton(OrganizationApiKeys::class, TransitionalOrganizationApiKeys::class);
 
         // Bundled Cbox Signals integration: this deployment enrols its live source
         // environments itself, authenticating as a confidential Cbox ID client.
@@ -122,7 +126,7 @@ class AppServiceProvider extends ServiceProvider
 
         // The authenticated account API key for the request — shared between the
         // auth middleware that sets it and the controllers that read it.
-        $this->app->scoped(WorkspaceApiContext::class);
+        $this->app->scoped(OrganizationApiContext::class);
 
         // Its environment-plane counterpart: the authenticated environment API key
         // for the request (the environment itself is host-resolved separately).

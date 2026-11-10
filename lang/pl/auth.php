@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Rozpocznij',
         'heading' => [
-            'creates_idp' => 'Utwórz swoją przestrzeń roboczą',
+            'creates_idp' => 'Utwórz swoją organizację',
             'for_app' => 'Utwórz swoje konto',
             'default' => 'Utwórz swoją organizację',
         ],
         'lead' => [
-            'creates_idp' => 'Przestrzeń robocza dla Twojej firmy, oraz Twój własny, hostowany dostawca tożsamości – SSO, użytkownicy i logowanie, które całkowicie kontrolujesz, dostępne w ciągu minuty.',
+            'creates_idp' => 'Organizacja dla Twojej firmy, oraz Twój własny, hostowany dostawca tożsamości – SSO, użytkownicy i logowanie, które całkowicie kontrolujesz, dostępne w ciągu minuty.',
             'join' => 'Zarejestruj się w :name. Uzyskasz rolę właściciela zespołu i po zalogowaniu możesz zapraszać inne osoby.',
             'default' => 'Skonfiguruj Cbox ID dla swojego zespołu w mniej niż minutę.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Nazwa przestrzeni roboczej',
+            'creates_idp' => 'Nazwa organizacji',
             'for_app' => 'Nazwa zespołu lub firmy',
             'default' => 'Nazwa organizacji',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'Adres e-mail służbowy',
         'breach_note' => 'Sprawdzane pod kątem znanych wycieków danych.',
         'submit' => [
-            'creates_idp' => 'Utwórz przestrzeń roboczą',
+            'creates_idp' => 'Utwórz organizację',
             'for_app' => 'Utwórz konto i kontynuuj',
             'default' => 'Utwórz organizację',
         ],
@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Zbyt wiele próśb o kod. Poczekaj chwilę i spróbuj ponownie.',
     ],
     'accounts' => [
-        'title' => 'Zmień użytkownika',
+        'title' => 'Przełącz konto',
         'lead' => 'To konta zalogowane na tym urządzeniu. Wybierz jedno lub zaloguj się na inne konto.',
         'active' => 'Aktywne',
         'add' => 'Zaloguj się jako ktoś inny',
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'Każde środowisko jest całkowicie odizolowane i ma własnych użytkowników, klucze oraz wystawcę tokenów.',
         'environment_default' => 'Produkcja',
         'organization_label' => 'Nazwa organizacji',
-        'organization_hint' => 'Ta instalacja jest skonfigurowana do obsługi wielu organizacji. Dlatego tworzy też pierwszą przestrzeń roboczą: organizację, do której należą środowiska i rozliczenia.',
+        'organization_hint' => 'Ta instalacja jest skonfigurowana do obsługi wielu organizacji. Dlatego tworzy też pierwszą organizację: organizację, do której należą środowiska i rozliczenia.',
         'organization_placeholder' => 'Twoja firma',
         'submit' => 'Zainstaluj',
         'token_mismatch' => 'Ten token konfiguracji nie odpowiada tej instalacji lub wygasł. Wygeneruj nowy poleceniem php artisan cbox-id:setup-token.',

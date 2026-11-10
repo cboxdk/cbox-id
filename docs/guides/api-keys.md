@@ -1,24 +1,24 @@
 ---
 title: My API keys and Member API keys
 weight: 22
-description: Keys people create for the APIs of the apps they use — creating your own under My account, and seeing and revoking everybody's as an organization admin.
+description: Keys people create for the APIs of the apps they use — creating your own under Account, and seeing and revoking everybody's as an organization admin.
 ---
 
 # My API keys and Member API keys
 
-**Console pages:** My account › My API keys, Members & roles › Member API keys, and each
+**Console pages:** Account › My API keys, Members & roles › Member API keys, and each
 organization's page in an environment console
 
 Some apps that sign you in through Cbox ID have an API of their own. An API key lets
 your scripts and integrations call that API as you, without signing in. You create the
 key here; the app checks it with Cbox ID every time it is used.
 
-These are not the [API keys](keys.md) page under Workspace, whose keys are for your own
+These are not the [API keys](keys.md) page under Organization, whose keys are for your own
 code calling Cbox ID.
 
 ## Creating a key
 
-**My account › API keys.** The page appears once an app in your organization offers
+**Account › API keys.** The page appears once an app in your organization offers
 keys, and an app can link you straight to it.
 
 1. If you belong to several organizations, pick the one the key should act in.
@@ -53,7 +53,7 @@ Revoke a key the moment it leaks or its integration is retired. Anything still u
 stops working at once. The list shows when each key was last used, which tells you
 whether anything still depends on it.
 
-- **Your own keys:** My account › API keys.
+- **Your own keys:** Account › API keys.
 - **Everybody's keys in an organization:** Members & roles › Member API keys, for owners and
   admins. The environment console shows the same list, as **Member API keys**, on each
   organization's page.

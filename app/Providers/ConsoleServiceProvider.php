@@ -64,7 +64,7 @@ final class ConsoleServiceProvider extends ServiceProvider
         // ONE RAIL, THREE CONSOLES. Everything below is the organization console in full —
         // what a single-tenant install and an operator get. Two altitudes draw less of it,
         // each from a list of its own: a workspace at the platform root
-        // ({@see \App\Platform\Console\WorkspaceAltitude}) and a customer's administrator on
+        // ({@see \App\Platform\Console\OrganizationAltitude}) and a customer's administrator on
         // a customer's environment host ({@see \App\Platform\Console\CustomerConsole}), who
         // gets an admin portal and their own pages. An area added here appears on neither
         // of those until its list says so.
@@ -90,7 +90,7 @@ final class ConsoleServiceProvider extends ServiceProvider
         // environments under them, the team that administers them, the keys and domains
         // those need, and the bill for the lot. It was labelled "Identity platform", with
         // "Administrators" and "Account settings" inside it, which gave one thing three
-        // names on one rail. See docs/core-concepts/workspaces-and-organizations.md.
+        // names on one rail. See docs/core-concepts/organizations-and-customers.md.
         //
         // Gated page-by-page rather than as a whole area, so the rail says the same thing
         // an attempted click would: a member who may read billing and nothing else sees
@@ -100,7 +100,7 @@ final class ConsoleServiceProvider extends ServiceProvider
         //
         // The area KEY stays `identity-platform`: it is the socket the billing module
         // plugs into, and a key is not something a person reads.
-        $nav->area('identity-platform', 'Workspace', 'briefcase', 15)
+        $nav->area('identity-platform', 'Organization', 'briefcase', 15)
             ->page('projects', 'Projects', feature: 'organization.projects', order: 10)
             // TEAM — the people who administer the workspace. Not "Members", which is the
             // People page of every organization, and not "Administrators", which a Viewer on
@@ -116,7 +116,7 @@ final class ConsoleServiceProvider extends ServiceProvider
             // Left as a gap rather than closed up: the orders in this area are unique
             // across modules by contract, and renumbering to fill it would collide with a
             // module the host cannot see.
-            ->page('organization-settings', 'Workspace settings', feature: 'organization.own', order: 80);
+            ->page('organization-settings', 'Organization settings', feature: 'organization.own', order: 80);
 
         // Plain-language labels for non-experts (the technical term lives on the page
         // header, not the nav). "Directory" → Members & roles, "Authentication" → Sign-in.
@@ -215,7 +215,7 @@ final class ConsoleServiceProvider extends ServiceProvider
 
         // Every user's own security — shown to members and admins alike (the app
         // layout gates the admin-only areas above by role, this one is universal).
-        $nav->area('account', 'My account', 'user', 90)
+        $nav->area('account', 'Account', 'user', 90)
             ->page('account', 'Security', order: 10)
             // Beside it, because "change my password" and "sign that laptop out" are the
             // two halves of the same worry and people arrive looking for either.
@@ -266,7 +266,7 @@ final class ConsoleServiceProvider extends ServiceProvider
         // WORKSPACES, not "Customers": the word the workspace's own console uses for itself,
         // so an operator and the person on the phone to them say the same word.
         $nav->area('platform', Vocabulary::PLATFORM, 'rocket', 100)
-            ->page('platform.workspaces', Vocabulary::WORKSPACES, feature: 'platform.operator', order: 10)
+            ->page('platform.orgs', Vocabulary::ORGANIZATIONS, feature: 'platform.operator', order: 10)
             ->page('platform.environments', Vocabulary::ENVIRONMENTS, feature: 'platform.operator', order: 20)
             ->page('platform.organizations', Vocabulary::ORGANIZATION_TREE, feature: 'platform.operator', order: 30)
             // "Security" is gone, and its absence is the fix. It enrolled a SEPARATE operator

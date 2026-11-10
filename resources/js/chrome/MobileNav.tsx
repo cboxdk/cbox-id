@@ -28,7 +28,7 @@ export interface MobileNavProps {
     /** The signed-in-user switcher. */
     switchUserUrl?: string;
     /** The workspace's settings, where this person may change them. */
-    workspaceSettingsUrl?: string | null;
+    organizationSettingsUrl?: string | null;
     /** Platform admin, for whoever runs the install. */
     platformUrl?: string | null;
     /** Plane-specific content above the navigation — the context switcher. */
@@ -60,7 +60,7 @@ export function MobileNav({
     accountUrl,
     showAccountLink = false,
     switchUserUrl,
-    workspaceSettingsUrl = null,
+    organizationSettingsUrl = null,
     platformUrl = null,
     children,
 }: MobileNavProps) {
@@ -185,30 +185,33 @@ export function MobileNav({
                             <div id="mobile-account-actions" className="flex flex-col gap-0.5 pb-1">
                                 {/*
                                     Plain anchors throughout: on the environment console
-                                    every one of these is on the workspace's host, so it is
+                                    every one of these is on the organization's host, so it is
                                     a page load rather than a visit.
                                 */}
-                                {workspaceSettingsUrl !== null && (
-                                    <a href={workspaceSettingsUrl} className="nav-link w-full">
-                                        {consoleRich('console._part1_workspace_settings_908122da', {
-                                            part1: (
-                                                <Icon
-                                                    name="briefcase"
-                                                    className="w-[1.15rem] h-[1.15rem]"
-                                                />
-                                            ),
-                                        })}
+                                {organizationSettingsUrl !== null && (
+                                    <a href={organizationSettingsUrl} className="nav-link w-full">
+                                        {consoleRich(
+                                            'console._part1_organization_settings_bc52a29f',
+                                            {
+                                                part1: (
+                                                    <Icon
+                                                        name="briefcase"
+                                                        className="w-[1.15rem] h-[1.15rem]"
+                                                    />
+                                                ),
+                                            },
+                                        )}
                                     </a>
                                 )}
 
                                 {/*
                                     MY ACCOUNT only where the rail has no area for it — the
                                     environment console, whose account pages are on the
-                                    workspace's host. Everywhere else it is a section above.
+                                    organization's host. Everywhere else it is a section above.
                                 */}
                                 {showAccountLink && accountUrl !== undefined && (
                                     <a href={accountUrl} className="nav-link w-full">
-                                        {consoleRich('console._part1_my_account_e642603a', {
+                                        {consoleRich('console._part1_account_ceb06aa9', {
                                             part1: (
                                                 <Icon
                                                     name="user"
@@ -221,7 +224,7 @@ export function MobileNav({
 
                                 {switchUserUrl !== undefined && (
                                     <a href={switchUserUrl} className="nav-link w-full">
-                                        {consoleRich('console._part1_switch_user_704d5a0f', {
+                                        {consoleRich('console._part1_switch_account_790ff16d', {
                                             part1: (
                                                 <Icon
                                                     name="switch"

@@ -140,7 +140,7 @@ it('refuses a crafted hook point instead of throwing', function (): void {
  * probe to ask: the only refusal left is "already a member HERE", which is a fact the
  * roster on the same page already shows them.
  */
-it('accepts an invitation to another workspace owner and protects this workspace owner', function (): void {
+it('accepts an invitation to another organization owner and protects this organization owner', function (): void {
     platformRootEnvironment();
     $mine = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'description' => 'Gestionați datele de facturare, cardurile de plată și facturile acestui spațiu de lucru.',
+    'description' => 'Gestionați datele de facturare, cardurile de plată și facturile acestei organizații.',
     'account' => 'Date de facturare',
     'invoice_name' => 'Numele de pe facturi',
     'billing_email' => 'E-mail de facturare',
@@ -39,7 +39,7 @@ return [
     'subtotal' => 'Subtotal',
     'tax' => 'Taxe',
     'tax_pending' => 'Taxele nu au fost calculate încă.',
-    'no_subscription' => 'Acestui spațiu de lucru nu îi este atribuit niciun abonament.',
+    'no_subscription' => 'Acestei organizații nu îi este atribuit niciun abonament.',
     'allowance' => 'Număr permis de medii',
     'allowance_description' => 'Accesul și limitele sunt atribuite de un administrator.',
     'period' => 'Perioadă de facturare',
@@ -73,8 +73,8 @@ return [
     'credits_granted' => 'Credite incluse adăugate',
     'credits_carried' => 'Credite incluse reportate',
     'address_required' => 'Completați și salvați adresa de facturare înainte de a alege un plan cu plată.',
-    'workspace_changed' => 'Spațiul de lucru a fost schimbat într-o altă filă. Reîncărcați această pagină înainte de a modifica facturarea.',
-    'explanation' => 'Abonamentele se aplică fiecărui proiect în parte. Comparați planurile pentru a vedea prețurile și limitele pentru medii. Datele de facturare, cardurile și facturile sunt comune întregului spațiu de lucru. Datele de utilizare arată activitatea, iar sumele facturate depind de planul ales.',
+    'organization_changed' => 'Organizația a fost schimbat într-o altă filă. Reîncărcați această pagină înainte de a modifica facturarea.',
+    'explanation' => 'Abonamentele se aplică fiecărui proiect în parte. Comparați planurile pentru a vedea prețurile și limitele pentru medii. Datele de facturare, cardurile și facturile sunt comune întregului organizație. Datele de utilizare arată activitatea, iar sumele facturate depind de planul ales.',
     'connections' => 'Conexiuni SSO',
     'environments' => 'Medii',
     'replace_default' => 'Alegeți alt card implicit înainte de a-l elimina pe acesta.',

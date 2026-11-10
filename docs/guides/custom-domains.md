@@ -6,7 +6,7 @@ description: Serve an environment's sign-in and identity endpoints on a domain y
 
 # Custom domains
 
-**Console page:** Workspace › Environment domains
+**Console page:** Organization › Environment domains
 
 By default an environment is served on the platform's host for it, such as
 `acme.<platform domain>`. A custom domain serves it on an address you own, such as
@@ -28,7 +28,7 @@ differ, so copy the one the page shows you.
 
 ## Set one up
 
-1. In the workspace console, open **Environment domains** and pick the **Environment**.
+1. In the organization console, open **Environment domains** and pick the **Environment**.
 2. Under **Add a domain**, enter the **Custom domain**: a host you control, usually a
    subdomain such as `id.yourcompany.com`. Choose **Add domain**.
 3. Publish the TXT record shown under **Prove you control the domain**:
@@ -83,12 +83,12 @@ places:
 
 | From | Actions | REST | Scope |
 |---|---|---|---|
-| The workspace, for any of its environments (a workspace key) | `environments.domain.request`, `environments.domain.verify`, `environments.domain.remove` | `POST /api/v1/workspace/environments/{environment_id}/domain`, `…/domain/verify`, `DELETE …/domain` | `environments:write` |
+| The organization, for any of its environments (an organization key) | `environments.domain.request`, `environments.domain.verify`, `environments.domain.remove` | `POST /api/v1/workspace/environments/{environment_id}/domain`, `…/domain/verify`, `DELETE …/domain` | `id:environments:write` |
 | The environment itself (a secret key) | `domains.add`, `domains.get`, `domains.verify`, `domains.remove` | `POST /api/v1/domains`, `GET /api/v1/domains`, `POST /api/v1/domains/verify`, `DELETE /api/v1/domains` | `domains:read`, `domains:write` |
 
 The answer is the environment's `domain` (live, or null), `verified_at`, and `pending`
 with the `record_name` and `record_value` to publish. Verifying and removing are recorded
-on the workspace's Audit log as `organization.custom_domain_verified` and
+on the organization's Audit log as `organization.custom_domain_verified` and
 `organization.custom_domain_removed`.
 
 ## Related

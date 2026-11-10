@@ -18,7 +18,7 @@ export interface AccountMenuProps {
     user: User;
     logoutUrl: string;
     /** The workspace's settings, where this person may change them; null hides the row. */
-    workspaceSettingsHref: string | null;
+    organizationSettingsHref: string | null;
     /** The person's own account page — on the workspace host when drawn on an environment. */
     accountHref: string;
     /** The signed-in-user switcher. */
@@ -40,7 +40,7 @@ export interface AccountMenuProps {
 export function AccountMenu({
     user,
     logoutUrl,
-    workspaceSettingsHref,
+    organizationSettingsHref,
     accountHref,
     switchUserHref,
     platformHref,
@@ -73,25 +73,25 @@ export function AccountMenu({
                     {user.email !== null && <p className="cbx-account-email">{user.email}</p>}
                 </div>
 
-                {workspaceSettingsHref !== null && (
-                    <AccountMenuLink href={workspaceSettingsHref} icon="briefcase">
-                        {consoleT('console.workspace_settings_5ebc5914')}
+                {organizationSettingsHref !== null && (
+                    <AccountMenuLink href={organizationSettingsHref} icon="briefcase">
+                        {consoleT('console.organization_settings_4fd62541')}
                     </AccountMenuLink>
                 )}
                 {/*
                     From the SHELL, not from the route helpers: on the environment console
-                    these pages are on the workspace's host, and a relative link sent the
+                    these pages are on the organization's host, and a relative link sent the
                     administrator to a sign-in form for the tenant's end users.
                 */}
                 <AccountMenuLink href={accountHref} icon="user">
-                    {consoleT('console.my_account_b53181a4')}
+                    {consoleT('console.account_7e1b0d56')}
                 </AccountMenuLink>
                 {/*
                     "Switch user": it moves between the people signed in on this device.
-                    "Switch account" read as switching workspace.
+                    "Switch account" read as switching organization.
                 */}
                 <AccountMenuLink href={switchUserHref} icon="switch">
-                    {consoleT('console.switch_user_4f899129')}
+                    {consoleT('console.switch_account_fedce010')}
                 </AccountMenuLink>
 
                 {(platformHref !== null || platformEnvironmentHref !== null) && (
@@ -103,7 +103,7 @@ export function AccountMenu({
                     </AccountMenuLink>
                 )}
                 {/*
-                    The platform's own environment — the sign-in every workspace owner and
+                    The platform's own environment — the sign-in every organization owner and
                     operator uses: its social login, sign-in methods and branding.
                 */}
                 {platformEnvironmentHref !== null && (
@@ -148,7 +148,7 @@ export function AccountMenu({
  * One entry of the menu, styled as a menu row.
  *
  * An ABSOLUTE href is another host — the environment console's links to the person's own
- * account, which lives on the workspace's host — and is a plain anchor: Inertia visits
+ * account, which lives on the organization's host — and is a plain anchor: Inertia visits
  * are same-origin XHRs, and one aimed at another host fails without a word.
  */
 export function AccountMenuLink({

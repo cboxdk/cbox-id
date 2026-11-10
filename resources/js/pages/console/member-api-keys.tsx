@@ -22,7 +22,7 @@ export default function MemberApiKeys({ help, keys }: Props) {
             <PageHeader
                 help={help}
                 description={consoleT(
-                    'console.every_api_key_the_people_in_this_organization_have_crea_15e73625',
+                    'console.every_api_key_the_people_in_this_organization_have_crea_b802c1e7',
                 )}
             />
 

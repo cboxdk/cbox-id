@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Začněte',
         'heading' => [
-            'creates_idp' => 'Vytvořte svůj pracovní prostor',
+            'creates_idp' => 'Vytvořte svou organizaci',
             'for_app' => 'Vytvořte svůj účet',
             'default' => 'Vytvořte svou organizaci',
         ],
         'lead' => [
-            'creates_idp' => 'Pracovní prostor pro vaši firmu a vlastní hostovaný poskytovatel identity. SSO, uživatele i přihlašování máte plně pod kontrolou, vše připravené za minutu.',
+            'creates_idp' => 'Organizace pro vaši firmu a vlastní hostovaný poskytovatel identity. SSO, uživatele i přihlašování máte plně pod kontrolou, vše připravené za minutu.',
             'join' => 'Registrujte se pro :name. Budete vlastníkem svého týmu a budete moci pozvat lidi, jakmile budete přihlášeni.',
             'default' => 'Nastavte Cbox ID pro vaši skupinu během méně než minuty.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Název pracovního prostoru',
+            'creates_idp' => 'Název organizace',
             'for_app' => 'Název týmu nebo společnosti',
             'default' => 'Název organizace',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'Pracovní e-mail',
         'breach_note' => 'Kontroluje se vůči známým únikům dat.',
         'submit' => [
-            'creates_idp' => 'Vytvořte pracovní prostor',
+            'creates_idp' => 'Vytvořte organizaci',
             'for_app' => 'Vytvořit účet a pokračovat',
             'default' => 'Vytvořit organizaci',
         ],
@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Požádali jste o příliš mnoho kódů. Chvíli počkejte a zkuste to znovu.',
     ],
     'accounts' => [
-        'title' => 'Přepnout uživatele',
+        'title' => 'Přepnout účet',
         'lead' => 'Toto jsou účty přihlášené na tomto zařízení. Vyberte jeden nebo se přihlaste k jinému účtu.',
         'active' => 'Aktivní',
         'add' => 'Přihlásit se jako někdo jiný',
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'Každé prostředí je zcela izolované a má vlastní uživatele, klíče a vydavatele tokenů.',
         'environment_default' => 'Produkce',
         'organization_label' => 'Název organizace',
-        'organization_hint' => 'Tato instalace je konfigurována jako multi-tenant, takže instalace také vytvoří první pracovní prostor – organizaci, která vlastní prostředí a fakturaci.',
+        'organization_hint' => 'Tato instalace je konfigurována jako multi-tenant, takže instalace také vytvoří první organizaci – tu, která vlastní prostředí a fakturaci.',
         'organization_placeholder' => 'Vaše společnost',
         'submit' => 'Nainstalovat',
         'token_mismatch' => 'Tento token pro nastavení nepatří k této instalaci nebo jeho platnost vypršela. Vygenerujte nový příkazem php artisan cbox-id:setup-token.',

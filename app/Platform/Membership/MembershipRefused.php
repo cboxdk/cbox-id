@@ -56,7 +56,7 @@ final class MembershipRefused extends RuntimeException
     {
         return new self(
             MembershipRefusalReason::OwnsProducts,
-            'This organization owns identity providers on this platform. Close its projects under Workspace › Projects first.',
+            'This organization owns identity providers on this platform. Close its projects under Organization › Projects first.',
         );
     }
 
@@ -69,7 +69,7 @@ final class MembershipRefused extends RuntimeException
             MembershipRefusalReason::NotTheOwner => 'console.only_the_owner_can_do_that_6e95698b',
             MembershipRefusalReason::LastOwner => 'console.you_are_the_only_owner_transfer_ownership_to_someone_el_1e7b6195',
             MembershipRefusalReason::NameMismatch => 'console.type_the_organization_s_name_exactly_as_shown_to_confir_f021127d',
-            MembershipRefusalReason::OwnsProducts => 'console.this_organization_owns_identity_providers_on_this_platf_675ba170',
+            MembershipRefusalReason::OwnsProducts => 'console.this_organization_owns_identity_providers_on_this_platf_f47c5479',
         });
     }
 }

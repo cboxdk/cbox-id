@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Locale;
 
+use App\Platform\Scopes\ScopeRegistry;
 use Illuminate\Support\Facades\Lang;
 
 /** Localized console descriptions; API scope values and permission checks stay unchanged. */
@@ -217,12 +218,33 @@ final class ConsoleScopeCopy
 
     public static function label(string $scope): string
     {
-        return isset(self::LABELS[$scope]) ? __(self::LABELS[$scope]) : $scope;
+        $known = self::filed(self::LABELS, $scope);
+
+        return $known !== null ? __(self::LABELS[$known]) : $scope;
     }
 
     public static function description(string $scope): ?string
     {
-        return isset(self::DESCRIPTIONS[$scope]) ? Lang::string(self::DESCRIPTIONS[$scope]) : null;
+        $known = self::filed(self::DESCRIPTIONS, $scope);
+
+        return $known !== null ? Lang::string(self::DESCRIPTIONS[$known]) : null;
+    }
+
+    /**
+     * The name $copy files $scope's text under: itself, or the old name its new one stands
+     * for ({@see ScopeRegistry}) — the copy is keyed by the names the vocabularies use.
+     *
+     * @param  array<string, string>  $copy
+     */
+    private static function filed(array $copy, string $scope): ?string
+    {
+        foreach (ScopeRegistry::equivalents($scope) as $name) {
+            if (isset($copy[$name])) {
+                return $name;
+            }
+        }
+
+        return null;
     }
 
     public static function resource(string $resource): string

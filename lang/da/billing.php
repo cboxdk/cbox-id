@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'description' => 'Administrer faktureringsoplysninger, betalingskort og fakturaer for dette arbejdsområde.',
+    'description' => 'Administrer faktureringsoplysninger, betalingskort og fakturaer for denne organisation.',
     'account' => 'Faktureringsoplysninger',
     'invoice_name' => 'Navn på fakturaer',
     'billing_email' => 'E-mail til fakturering',
@@ -39,7 +39,7 @@ return [
     'subtotal' => 'Subtotal',
     'tax' => 'Moms og afgifter',
     'tax_pending' => 'Moms og afgifter er endnu ikke beregnet.',
-    'no_subscription' => 'Der er ikke tildelt et abonnement til dette arbejdsområde.',
+    'no_subscription' => 'Der er ikke tildelt et abonnement til denne organisation.',
     'allowance' => 'Tilladt antal miljøer',
     'allowance_description' => 'Adgang og grænser tildeles af en administrator.',
     'period' => 'Faktureringsperiode',
@@ -71,8 +71,8 @@ return [
     'credits_granted' => 'Inkluderede credits, der tilføjes',
     'credits_carried' => 'Inkluderede credits, der videreføres',
     'address_required' => 'Udfyld og gem faktureringsadressen, før du vælger en betalt plan.',
-    'workspace_changed' => 'Arbejdsområdet blev ændret i en anden fane. Genindlæs siden, før du ændrer betaling.',
-    'explanation' => 'Abonnementer gælder pr. projekt. Sammenlign planer for at se priser og antal miljøer. Faktureringsoplysninger, kort og fakturaer deles af arbejdsområdet. Forbrugstallene viser aktivitet; betaling følger din valgte plan.',
+    'organization_changed' => 'Organisationen blev ændret i en anden fane. Genindlæs siden, før du ændrer betaling.',
+    'explanation' => 'Abonnementer gælder pr. projekt. Sammenlign planer for at se priser og antal miljøer. Faktureringsoplysninger, kort og fakturaer deles af organisationen. Forbrugstallene viser aktivitet; betaling følger din valgte plan.',
     'connections' => 'SSO-forbindelser',
     'environments' => 'Miljøer',
     'replace_default' => 'Vælg et andet standardkort, før du fjerner dette.',

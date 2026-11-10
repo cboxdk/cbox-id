@@ -6,6 +6,7 @@ namespace App\Platform\Actions;
 
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Platform\ScopeCatalog;
+use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Cbox\Id\Platform\EnumManagementScopes;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
@@ -265,7 +266,22 @@ class AppManagementScopes extends EnumManagementScopes
 
     public function knows(string $scope): bool
     {
-        return isset(self::APP_SCOPES[$scope]) || parent::knows($scope);
+        return ScopeRegistry::satisfiedBy($scope, fn (string $name): bool => isset(self::APP_SCOPES[$name]) || parent::knows($name));
+    }
+
+    /**
+     * The name the vocabulary files $scope under — itself, or the old name a new one stands
+     * for ({@see ScopeRegistry}).
+     */
+    public static function resolve(string $scope): string
+    {
+        foreach (ScopeRegistry::equivalents($scope) as $name) {
+            if (isset(self::APP_SCOPES[$name]) || EnvironmentApiScope::tryFrom($name) !== null) {
+                return $name;
+            }
+        }
+
+        return $scope;
     }
 
     public function all(): array
@@ -281,24 +297,28 @@ class AppManagementScopes extends EnumManagementScopes
     /** The label the key form shows for $scope. */
     public static function label(string $scope): string
     {
-        return self::APP_SCOPES[$scope]['label'] ?? EnvironmentApiScope::tryFrom($scope)?->label() ?? $scope;
+        $known = self::resolve($scope);
+
+        return self::APP_SCOPES[$known]['label'] ?? EnvironmentApiScope::tryFrom($known)?->label() ?? $scope;
     }
 
     /** Whether $scope lets a key do something that cannot be undone. */
     public static function critical(string $scope): bool
     {
-        return self::APP_SCOPES[$scope]['critical'] ?? false;
+        return self::APP_SCOPES[self::resolve($scope)]['critical'] ?? false;
     }
 
     /** Whether a credential carrying $scope can change data: anything but a read. */
     public static function writes(string $scope): bool
     {
-        return ! str_ends_with($scope, ':read') && ! (self::APP_SCOPES[$scope]['reads'] ?? false);
+        $known = self::resolve($scope);
+
+        return ! str_ends_with($known, ':read') && ! (self::APP_SCOPES[$known]['reads'] ?? false);
     }
 
     /** Whether an app's own client-credentials token may carry $scope on the environment plane. */
     public static function machine(string $scope): bool
     {
-        return self::APP_SCOPES[$scope]['machine'] ?? false;
+        return self::APP_SCOPES[self::resolve($scope)]['machine'] ?? false;
     }
 }

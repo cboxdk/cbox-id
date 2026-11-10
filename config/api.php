@@ -14,7 +14,7 @@ return [
      * plan/apply or an SDK sync is exactly the burst that used to collide.
      */
     'rate_limits' => [
-        'workspace' => (int) env('CBOX_ID_API_RATE_LIMIT_WORKSPACE', 120),
+        'organization' => (int) env('CBOX_ID_API_RATE_LIMIT_ORGANIZATION', env('CBOX_ID_API_RATE_LIMIT_WORKSPACE', 120)),
         'environment' => (int) env('CBOX_ID_API_RATE_LIMIT_ENVIRONMENT', 240),
         // The operator API (`/api/v1/platform`) and a person's own account (`/api/v1/me`):
         // a person's delegated token, so a person's pace.

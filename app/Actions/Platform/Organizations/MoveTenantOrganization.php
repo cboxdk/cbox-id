@@ -34,7 +34,7 @@ use Cbox\Id\Organization\Models\Organization;
  * refused by the hierarchy and nothing is moved.
  */
 #[AsAction(
-    name: 'platform.organizations.move',
+    name: 'admin.tenant_organizations.move',
     summary: 'Move an organization under another organization of the same environment, or to the top of its hierarchy.',
     scope: 'operator:organizations:write',
     danger: Danger::Critical,

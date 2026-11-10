@@ -109,9 +109,10 @@ it('reports the application\'s own version, not a number of its own', function (
 
 it('serves RFC 9728 metadata for /mcp naming the environment\'s issuer', function (): void {
     // The environment's plane, and the person's own account on the same host.
+    // Each once, under the name its action declares; the other spelling is accepted when a
+    // client asks for it, never advertised beside it.
     $scopes = collect(app(ActionRegistry::class)->forPlane(ActionPlane::Environment))->pluck('scope')
-        ->merge(AccountScopes::all())
-        ->unique()->sort()->values()->all();
+        ->merge(AccountScopes::all())->unique()->sort()->values()->all();
 
     $this->getJson('/.well-known/oauth-protected-resource/mcp')
         ->assertOk()
@@ -423,18 +424,18 @@ it('offers every action in the registry as a tool, with its own input schema', f
     $workspace = app(OrganizationApiKeys::class)->issue(provisionAccount()['organization']->id, 'Agent', MembershipRole::Admin)->plaintext;
     $workspaceTools = mcpTools($workspace);
 
-    foreach (app(ActionRegistry::class)->forPlane(ActionPlane::Workspace) as $action) {
+    foreach (app(ActionRegistry::class)->forPlane(ActionPlane::Organization) as $action) {
         expect($tools)->not->toHaveKey($action->toolName());
 
-        if (! in_array($action->name, ['team.transfer_ownership', 'workspace.settings.update'], true)) {
-            expect($workspaceTools)->toHaveKey($action->toolName(), message: "Workspace action {$action->name} has no MCP tool.");
+        if (! in_array($action->name, ['team.transfer_ownership', 'organization.settings.update'], true)) {
+            expect($workspaceTools)->toHaveKey($action->toolName(), message: "Organization action {$action->name} has no MCP tool.");
         }
     }
 
     $tools = [...$workspaceTools, ...$tools];
 
     foreach (app(ActionRegistry::class)->all() as $action) {
-        if (in_array($action->name, ['team.transfer_ownership', 'workspace.settings.update'], true)) {
+        if (in_array($action->name, ['team.transfer_ownership', 'organization.settings.update'], true)) {
             expect($tools)->not->toHaveKey($action->toolName());
 
             continue; // Shared ownership operations require the current human owner.
@@ -506,15 +507,16 @@ it('holds an action for the owner\'s approval and finishes it with approval_id',
         ->and($done['structuredContent']['data']['name'])->toBe('Minted by an agent');
 })->group('security');
 
-it('takes a workspace key too, and runs the workspace plane\'s tools as that key', function (): void {
+it('takes an organization key too, and runs the organization plane\'s tools as that key', function (): void {
     $account = provisionAccount();
     $key = app(OrganizationApiKeys::class)->issue($account['organization']->id, 'Agent', MembershipRole::Admin, null, ['workspace:read', 'projects:write']);
 
     $me = mcpCall($key->plaintext, 'whoami');
 
-    expect($me['structuredContent']['kind'])->toBe('workspace_key')
+    expect($me['structuredContent']['kind'])->toBe('organization_key')
         ->and($me['structuredContent']['workspace'])->toBe($account['organization']->id)
-        ->and($me['structuredContent']['scopes'])->toBe(['workspace:read', 'projects:write']);
+        // Read in v3's names, whatever spelling the key was minted with.
+        ->and($me['structuredContent']['scopes'])->toBe(['id:organization:read', 'id:projects:write']);
 
     $tools = mcpTools($key->plaintext);
 

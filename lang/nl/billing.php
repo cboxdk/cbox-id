@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'description' => 'Beheer factuurgegevens, betaalkaarten en facturen voor deze werkruimte.',
+    'description' => 'Beheer factuurgegevens, betaalkaarten en facturen voor deze organisatie.',
     'account' => 'Factuurgegevens',
     'invoice_name' => 'Naam op facturen',
     'billing_email' => 'E-mailadres voor facturering',
@@ -39,7 +39,7 @@ return [
     'subtotal' => 'Subtotaal',
     'tax' => 'Belasting',
     'tax_pending' => 'De belasting is nog niet berekend.',
-    'no_subscription' => 'Aan deze werkruimte is geen abonnement toegewezen.',
+    'no_subscription' => 'Aan deze organisatie is geen abonnement toegewezen.',
     'allowance' => 'Toegestaan aantal omgevingen',
     'allowance_description' => 'Toegang en limieten worden door een beheerder toegewezen.',
     'period' => 'Factureringsperiode',
@@ -71,8 +71,8 @@ return [
     'credits_granted' => 'Toegevoegde inbegrepen credits',
     'credits_carried' => 'Overgedragen inbegrepen credits',
     'address_required' => 'Vul je factuuradres in en sla het op voordat je een betaald abonnement kiest.',
-    'workspace_changed' => 'De werkruimte is in een ander tabblad gewijzigd. Herlaad deze pagina voordat je de facturatie bewerkt.',
-    'explanation' => 'Abonnementen gelden per project. Vergelijk prijzen en limieten voor omgevingen. Factuurgegevens, kaarten en facturen worden binnen de werkruimte gedeeld. Gebruikscijfers tonen activiteit; kosten volgen je gekozen abonnement.',
+    'organization_changed' => 'De organisatie is in een ander tabblad gewijzigd. Herlaad deze pagina voordat je de facturatie bewerkt.',
+    'explanation' => 'Abonnementen gelden per project. Vergelijk prijzen en limieten voor omgevingen. Factuurgegevens, kaarten en facturen worden binnen de organisatie gedeeld. Gebruikscijfers tonen activiteit; kosten volgen je gekozen abonnement.',
     'connections' => 'SSO-verbindingen',
     'environments' => 'Omgevingen',
     'replace_default' => 'Kies een andere standaardkaart voordat je deze verwijdert.',

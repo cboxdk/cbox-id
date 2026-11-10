@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Başlayın',
         'heading' => [
-            'creates_idp' => 'Yeni bir çalışma alanı oluşturun',
+            'creates_idp' => 'Yeni bir kuruluş oluşturun',
             'for_app' => 'Hesabınızı oluşturun',
             'default' => 'Kuruluşunuzu oluşturun',
         ],
         'lead' => [
-            'creates_idp' => 'Şirketiniz için bir çalışma alanı ve size ait barındırılan kimlik sağlayıcısı — SSO, kullanıcılar ve giriş süreçleri tamamen sizin kontrolünüzde, bir dakika içinde hazır.',
+            'creates_idp' => 'Şirketiniz için bir kuruluş ve size ait barındırılan kimlik sağlayıcısı — SSO, kullanıcılar ve giriş süreçleri tamamen sizin kontrolünüzde, bir dakika içinde hazır.',
             'join' => ':name için kaydolun. Ekibinizin sahibi olacaksınız ve giriş yaptıktan sonra başkalarını davet edebileceksiniz.',
             'default' => 'Ekibiniz için Cbox ID’yi bir dakikadan kısa sürede kurun.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Çalışma alanı adı',
+            'creates_idp' => 'Kuruluş adı',
             'for_app' => 'Ekip veya şirket adı',
             'default' => 'Kuruluş adı',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'İş e-postası',
         'breach_note' => 'Bilinen veri sızıntılarına karşı kontrol edilir.',
         'submit' => [
-            'creates_idp' => 'Çalışma alanı oluştur',
+            'creates_idp' => 'Kuruluş oluştur',
             'for_app' => 'Hesap oluştur ve devam et',
             'default' => 'Kuruluş oluştur',
         ],
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'Her ortam tamamen yalıtılmıştır; kendine ait kullanıcıları, anahtarları ve kimlik belirteci düzenleyicisi vardır.',
         'environment_default' => 'Üretim',
         'organization_label' => 'Kuruluş adı',
-        'organization_hint' => 'Bu kurulum çok kiracılı olarak yapılandırılmış. Bu nedenle kurulum sırasında ilk çalışma alanı da oluşturulur: ortamları ve faturalandırmayı yöneten kuruluş.',
+        'organization_hint' => 'Bu kurulum çok kiracılı olarak yapılandırılmış. Bu nedenle kurulum sırasında ilk kuruluş da oluşturulur: ortamları ve faturalandırmayı yöneten kuruluş.',
         'organization_placeholder' => 'Şirketiniz',
         'submit' => 'Kurulumu tamamla',
         'token_mismatch' => 'Bu kurulum belirteci bu kurulumla eşleşmiyor veya süresi dolmuş. php artisan cbox-id:setup-token komutuyla yeni bir belirteç oluşturun.',

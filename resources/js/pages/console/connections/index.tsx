@@ -308,10 +308,7 @@ export default function ConnectionsIndex({
                         )}
                     </div>
 
-                    <Pagination
-                        pagination={pagination}
-                        href={(page) => listHref(search, page)}
-                    />
+                    <Pagination pagination={pagination} href={(page) => listHref(search, page)} />
 
                     {/*
                         Verified domains — DNS-proven ownership powers home-realm discovery

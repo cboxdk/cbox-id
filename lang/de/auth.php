@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Jetzt loslegen',
         'heading' => [
-            'creates_idp' => 'Arbeitsbereich erstellen',
+            'creates_idp' => 'Organisation erstellen',
             'for_app' => 'Konto erstellen',
             'default' => 'Organisation erstellen',
         ],
         'lead' => [
-            'creates_idp' => 'Ein Arbeitsbereich für Ihr Unternehmen und Ihr eigener gehosteter Identitätsanbieter – SSO, Benutzer und Anmeldung vollständig unter Ihrer Kontrolle, in einer Minute einsatzbereit.',
+            'creates_idp' => 'Eine Organisation für Ihr Unternehmen und Ihr eigener gehosteter Identitätsanbieter – SSO, Benutzer und Anmeldung vollständig unter Ihrer Kontrolle, in einer Minute einsatzbereit.',
             'join' => 'Registrieren Sie sich bei :name. Sie werden Inhaber Ihres Teams und können anschließend weitere Personen einladen.',
             'default' => 'Richten Sie Cbox ID in weniger als einer Minute für Ihr Team ein.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Name des Arbeitsbereichs',
+            'creates_idp' => 'Name des Organisation',
             'for_app' => 'Team- oder Firmenname',
             'default' => 'Name der Organisation',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'Geschäftliche E-Mail-Adresse',
         'breach_note' => 'Wird mit bekannten Datenlecks abgeglichen.',
         'submit' => [
-            'creates_idp' => 'Arbeitsbereich erstellen',
+            'creates_idp' => 'Organisation erstellen',
             'for_app' => 'Konto erstellen und fortfahren',
             'default' => 'Organisation erstellen',
         ],
@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Zu viele Codes angefordert. Bitte warten Sie einen Moment und versuchen Sie es dann erneut.',
     ],
     'accounts' => [
-        'title' => 'Benutzer wechseln',
+        'title' => 'Konto wechseln',
         'lead' => 'Alle, die auf diesem Gerät angemeldet sind. Wählen Sie ein Konto aus, oder melden Sie sich als andere Person an.',
         'active' => 'Aktiv',
         'add' => 'Als andere Person anmelden',
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'Eine Umgebung ist die harte Isolationsgrenze – mit eigenen Benutzern, eigenen Schlüsseln und eigenem Issuer.',
         'environment_default' => 'Produktion',
         'organization_label' => 'Name der Organisation',
-        'organization_hint' => 'Diese Bereitstellung ist als mandantenfähig konfiguriert, daher erstellt die Installation auch den ersten Arbeitsbereich – die Organisation, der die Umgebungen und die Abrechnung gehören.',
+        'organization_hint' => 'Diese Bereitstellung ist als mandantenfähig konfiguriert, daher erstellt die Installation auch die erste Organisation – die Organisation, der die Umgebungen und die Abrechnung gehören.',
         'organization_placeholder' => 'Ihr Unternehmen',
         'submit' => 'Bereitstellung installieren',
         'token_mismatch' => 'Dieses Einrichtungstoken passt nicht zu dieser Bereitstellung oder ist abgelaufen. Geben Sie mit php artisan cbox-id:setup-token ein neues aus.',

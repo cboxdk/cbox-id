@@ -128,7 +128,7 @@ it('draws the settings page', function (): void {
         ->assertSee('Token exchange')
         ->assertSee('Back-channel logout')
         ->assertSee('Key prefix')
-        ->assertSee('My account › API keys')
+        ->assertSee('Account › API keys')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'c7-settings-light');
 
