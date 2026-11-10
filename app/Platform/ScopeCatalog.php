@@ -31,7 +31,8 @@ final class ScopeCatalog
      * and a key that can only register apps (`apps:write`) must not be able to mint itself
      * that authority by creating an app that holds it and asking for a token. An
      * administrator grants them in the console; the management API refuses them until it
-     * has a scope of its own for this.
+     * has a scope of its own for this. `app_catalog:resolve` is one: it answers, for any
+     * person and organization in the environment, whether that person is an active member.
      *
      * Not here, deliberately:
      *  - `vault.lease` opens nothing without a grant from a holder of `vault.manage`;
@@ -41,7 +42,7 @@ final class ScopeCatalog
      *
      * @var list<string>
      */
-    public const array RESERVED_FOR_CONSOLE = ['vault.manage', 'decisions:read'];
+    public const array RESERVED_FOR_CONSOLE = ['vault.manage', 'decisions:read', 'app_catalog:resolve'];
 
     /**
      * The reserved platform scopes among $scopes.
@@ -104,6 +105,9 @@ final class ScopeCatalog
             // in an organization, which is strictly more than UserInfo gives out. That is
             // an operator's decision, like the vault and manifest scopes beside it, not
             // something a client grants itself by asking.
+            // The app switcher's machine read (`GET /api/v1/app-catalog/for-user`): the app's
+            // backend reads the catalog of a person it has signed in, with no grant from them.
+            ['key' => 'app_catalog:resolve', 'label' => 'Read a person\'s app catalog', 'description' => 'Let this app\'s backend read the apps a person it signed in sees in the app switcher, for one of their organizations, with its own client-credentials token.', 'category' => self::PLATFORM_API, 'recommended' => false],
             ['key' => 'decisions:read', 'label' => 'Ask for authorization decisions', 'description' => "Let this app call the decision endpoint for a person's permissions and entitlements in an organization.", 'category' => self::PLATFORM_API, 'recommended' => false],
         ];
     }

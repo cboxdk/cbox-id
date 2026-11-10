@@ -50,9 +50,37 @@ not HTTP-cacheable. There is no catalog-change webhook in this release.
 Icons use content-addressed public URLs; allow the issuer in your image CSP and
 show initials when an image fails.
 
+## Read a person's apps from your app's backend
+
+An app that has already signed a person in can read their catalog with its own
+client-credentials token, so its switcher never needs the person's
+`account:apps:read` grant, a reconnect or a sign-in hop:
+
+```
+GET /api/v1/app-catalog/for-user?user_id={user id}&organization_id={organization id}
+Authorization: Bearer {client-credentials access token}
+```
+
+Grant the app the `app_catalog:resolve` scope in the console, among its
+Platform API scopes. The scope is reserved for the console: a management key cannot
+hand it to an app. Then fetch a token with `grant_type=client_credentials` and
+`scope=app_catalog:resolve` from this environment's token endpoint and reuse it
+until it expires.
+
+`organization_id` is required. The answer is exactly that of `GET /api/v1/me/apps`
+with the same `organization_id`: the same items, in the same order, with the same
+`meta.revision` and `meta.refresh_after`. A person who does not exist, is not
+active, or is not an active member of the organization gets `404 not_found`. The
+answer does not say which of these it is. A token without the scope gets `403`.
+A person's account token (`account:apps:read`) is refused; this route is for the app.
+
+The read is not audited. Like `/me/apps`, cache it per issuer, person and
+organization for `refresh_after` seconds.
+
 ## Management API
 
 - `GET /api/v1/app-catalog` and `GET /api/v1/app-catalog/{key}` require `app_catalog:read`.
+- `GET /api/v1/app-catalog/for-user` requires `app_catalog:resolve` (see above).
 - `PUT /api/v1/app-catalog/{key}` requires `app_catalog:write`; send the full entry with `version: 0` to create, or the version read to update.
 - `DELETE /api/v1/app-catalog/{key}` requires `app_catalog:write` and the current `version`.
 

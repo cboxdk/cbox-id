@@ -215,6 +215,116 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+  /app-catalog/for-user:
+    get:
+      tags:
+        - 'App catalog'
+      summary: "List the published apps one person sees in one of their organizations, in catalog order. For an app's backend, with its own client-credentials token."
+      description: |
+        Requires scope `app_catalog:resolve`. Danger: read.
+
+        What an app's backend asks to draw its app switcher for a person it has already signed
+        in — with the app's OWN client-credentials token (`grant_type=client_credentials`,
+        `scope=app_catalog:resolve`), so the switcher never needs the person's
+        `account:apps:read` grant, a reconnect or a sign-in hop. An administrator grants the
+        scope to the app in the console.
+
+        The items, their order and the envelope are exactly those of `GET /api/v1/me/apps` with
+        the same `organization_id`. A person who does not exist, is not active, or is not an
+        active member of the organization is the same `404 not_found`.
+
+        A hot read: no audit entry is written. Cache it for `meta.refresh_after` seconds, and
+        compare `meta.revision` to tell whether anything changed.
+      operationId: app_catalog_for_user
+      x-action: app_catalog.for_user
+      x-scope: 'app_catalog:resolve'
+      x-danger: read
+      parameters:
+        -
+          name: user_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: 'The person, by their Cbox ID user id.'
+            maxLength: 64
+        -
+          name: organization_id
+          in: query
+          required: true
+          schema:
+            type: string
+            description: 'The organization they are working in, which they must be an active member of.'
+            maxLength: 64
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - meta
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                        - key
+                        - name
+                        - description
+                        - launch_url
+                        - icon_url
+                        - icon_dark_url
+                        - position
+                        - version
+                      properties:
+                        key:
+                          type: string
+                        name:
+                          type: string
+                        description:
+                          type:
+                            - string
+                            - 'null'
+                        launch_url:
+                          type: string
+                          format: uri
+                        icon_url:
+                          type:
+                            - string
+                            - 'null'
+                        icon_dark_url:
+                          type:
+                            - string
+                            - 'null'
+                          description: Icon for dark surfaces. Null when the app has no dark icon; use icon_url in both themes.
+                        position:
+                          type: integer
+                        version:
+                          type: integer
+                  meta:
+                    type: object
+                    required:
+                      - revision
+                      - refresh_after
+                    properties:
+                      revision:
+                        type: string
+                      refresh_after:
+                        type: integer
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
   /app-catalog:
     get:
       tags:
@@ -2596,6 +2706,15 @@ components:
         in the console under Identity platform › Environment keys — not in the environment's own
         console. Bound to that environment's host, and carries an explicit list of scopes; it may
         also carry an expiry.
+    AppAccessToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        An app's OWN OAuth access token from the client-credentials grant, issued by this
+        environment and standing for no person. Accepted only by the operations whose scope an
+        administrator may grant an app for this (`app_catalog:resolve`), and only when the token
+        carries it. DPoP-bound tokens require the DPoP authorization scheme and proof header.
     ManagementAccessToken:
       type: http
       scheme: bearer

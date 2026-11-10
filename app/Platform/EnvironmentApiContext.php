@@ -6,6 +6,8 @@ namespace App\Platform;
 
 use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateMcp;
+use App\Platform\Actions\AppManagementScopes;
+use App\Platform\Actions\Principal\AppTokenPrincipal;
 use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
@@ -22,7 +24,11 @@ use Cbox\Id\Platform\Models\EnvironmentApiKey;
  * credential. Bound per-request (scoped) and populated by {@see AuthenticateEnvironmentApi}
  * and {@see AuthenticateMcp}.
  *
- * At most one of the two is set. {@see key()} stays the KEY alone, because the routes that
+ * On a route whose scope an app's own token may carry
+ * ({@see AppManagementScopes::machine()}), the credential can
+ * instead be that app's client-credentials token ({@see AppTokenPrincipal}).
+ *
+ * At most one of them is set. {@see key()} stays the KEY alone, because the routes that
  * read it — the ones not yet actions — act as a key and nothing else; {@see Principal()} is
  * the question the action layer asks.
  *
@@ -37,16 +43,28 @@ final class EnvironmentApiContext
 
     private ?SignedInPerson $delegated = null;
 
+    private ?AppTokenPrincipal $app = null;
+
     public function set(EnvironmentApiKey $key): void
     {
         $this->key = $key;
         $this->delegated = null;
+        $this->app = null;
     }
 
     public function setDelegated(SignedInPerson $principal): void
     {
         $this->delegated = $principal;
         $this->key = null;
+        $this->app = null;
+    }
+
+    /** An app's own client-credentials token, admitted on a route whose scope it may carry. */
+    public function setApp(AppTokenPrincipal $principal): void
+    {
+        $this->app = $principal;
+        $this->key = null;
+        $this->delegated = null;
     }
 
     /**
@@ -62,6 +80,7 @@ final class EnvironmentApiContext
     {
         $this->key = null;
         $this->delegated = null;
+        $this->app = null;
     }
 
     public function key(): ?EnvironmentApiKey
@@ -82,7 +101,7 @@ final class EnvironmentApiContext
             return new EnvironmentKeyPrincipal($this->key);
         }
 
-        return $this->delegated;
+        return $this->delegated ?? $this->app;
     }
 
     /** The environment the authenticated credential belongs to (host-resolved and credential-bound agree). */

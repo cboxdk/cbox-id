@@ -96,7 +96,7 @@ final readonly class ActionController
         }
 
         $response = $this->render($result, $action->status);
-        if ($action->name === 'account.apps.list') {
+        if (in_array($action->name, ['account.apps.list', 'app_catalog.for_user'], true)) {
             $response->headers->set('Cache-Control', 'private, no-store');
         }
 

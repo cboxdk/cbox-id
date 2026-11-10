@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\Actions\AppManagementScopes;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Support\Facades\Route as Router;
 
@@ -48,10 +49,10 @@ final class EnvironmentKeyScopes
         return self::offered();
     }
 
-    /** True for anything that is not `:read` — a key carrying it can change data. */
+    /** True for anything that is not a read — a key carrying it can change data. */
     public static function writes(string $scope): bool
     {
-        return ! str_ends_with($scope, ':read');
+        return AppManagementScopes::writes($scope);
     }
 
     /**

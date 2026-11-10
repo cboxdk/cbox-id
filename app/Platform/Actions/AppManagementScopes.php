@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform\Actions;
 
+use App\Http\Middleware\AuthenticateEnvironmentApi;
+use App\Platform\ScopeCatalog;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Cbox\Id\Platform\EnumManagementScopes;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
@@ -25,11 +27,23 @@ class AppManagementScopes extends EnumManagementScopes
      * the key form flags it, because ticking it hands a credential the power to destroy
      * something nothing brings back.
      *
-     * @var array<string, array{label: string, description: string, critical?: bool}>
+     * `reads` marks a scope that only reads although its name does not end in `:read`.
+     *
+     * `machine` marks a scope an app's own client-credentials token may carry on the
+     * environment plane, beside a key ({@see AuthenticateEnvironmentApi}).
+     * An administrator grants it to the app in the console ({@see ScopeCatalog}).
+     *
+     * @var array<string, array{label: string, description: string, critical?: bool, reads?: bool, machine?: bool}>
      */
     public const array APP_SCOPES = [
         'app_catalog:read' => ['label' => 'Read app catalog', 'description' => 'Read app publication and visibility settings.'],
         'app_catalog:write' => ['label' => 'Manage app catalog', 'description' => 'Publish, change and remove app catalog entries.'],
+        'app_catalog:resolve' => [
+            'label' => 'Resolve a person\'s app catalog',
+            'description' => 'Read the apps one person sees in the app switcher for one of their organizations. What an app\'s backend asks with its own client-credentials token, so its switcher needs no grant from the person.',
+            'reads' => true,
+            'machine' => true,
+        ],
         'signals_source:read' => [
             'label' => 'Read identity security source',
             'description' => 'Read this environment’s opted-in identity event feed, including pre-organization sign-ins and short-lived IP context.',
@@ -276,8 +290,15 @@ class AppManagementScopes extends EnumManagementScopes
         return self::APP_SCOPES[$scope]['critical'] ?? false;
     }
 
+    /** Whether a credential carrying $scope can change data: anything but a read. */
     public static function writes(string $scope): bool
     {
-        return ! str_ends_with($scope, ':read');
+        return ! str_ends_with($scope, ':read') && ! (self::APP_SCOPES[$scope]['reads'] ?? false);
+    }
+
+    /** Whether an app's own client-credentials token may carry $scope on the environment plane. */
+    public static function machine(string $scope): bool
+    {
+        return self::APP_SCOPES[$scope]['machine'] ?? false;
     }
 }

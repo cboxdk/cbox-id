@@ -7,6 +7,7 @@ use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRoutes;
+use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\PlatformScopes;
 use App\Platform\Actions\WorkspaceScopes;
@@ -89,7 +90,7 @@ it('matches its danger to its method and scope', function (ActionDefinition $act
     $readMethod = $action->method === 'GET';
 
     expect($action->danger->writes())->toBe(! $readMethod)
-        ->and(str_ends_with($action->scope, ':read'))->toBe($readMethod);
+        ->and(AppManagementScopes::writes($action->scope))->toBe(! $readMethod);
 })->with('actions');
 
 it('declares an input schema an MCP client can read, with the path parameters it routes on', function (ActionDefinition $action): void {

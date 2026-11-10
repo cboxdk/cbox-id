@@ -6,6 +6,7 @@ namespace App\Platform\Agents;
 
 use App\Http\Props\Console\AgentRowProps;
 use App\Http\Props\Console\KeyLifecycleProps;
+use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\Approvals\StepUpPolicy;
 use App\Platform\Keys\ManagementKeys;
 use Carbon\CarbonImmutable;
@@ -114,7 +115,7 @@ final readonly class AgentRoster
     public static function summary(array $scopes, int $offered): string
     {
         $count = count($scopes);
-        $readOnly = array_filter($scopes, static fn (string $scope): bool => ! str_ends_with($scope, ':read')) === [];
+        $readOnly = array_filter($scopes, static fn (string $scope): bool => AppManagementScopes::writes($scope)) === [];
 
         return match (true) {
             $readOnly && $count > 0 => 'Read-only · '.$count.' '.($count === 1 ? 'scope' : 'scopes'),
