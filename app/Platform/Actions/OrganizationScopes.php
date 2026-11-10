@@ -12,7 +12,7 @@ use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Organization\Enums\MembershipRole;
 
 /**
- * Every scope an organization key (`cbid_org_…`, or a `cbid_ws_…` one minted before v3) may carry, and the capability each one needs
+ * Every scope an organization key (`cbid_ws_…`) may carry, and the capability each one needs
  * the key's ROLE to hold.
  *
  * TWO LOCKS, NOT ONE. An organization key has always carried a role, and the role still bounds
@@ -126,6 +126,31 @@ final class OrganizationScopes
     public static function normalise(iterable $scopes): array
     {
         return array_values(array_filter(ScopeRegistry::normalise($scopes), static fn (string $scope): bool => isset(self::SCOPES[$scope])));
+    }
+
+    /**
+     * What a key minted with $scopes stores through v3.0: the v3 names AND the v2 name of
+     * each, so the release still running while v3 rolls out (whose check is an exact match on
+     * the v2 name) reads the key as it was minted. A v2 name that split (`keys:write` granted
+     * organization AND environment keys) is stored only when every name it split into is held:
+     * v2 must never read a key as wider than it is. v3 reads either spelling
+     * ({@see ScopeRegistry::satisfiedBy()}); v3.1 drops the v2 names.
+     *
+     * @param  iterable<mixed>  $scopes
+     * @return list<string>
+     */
+    public static function stored(iterable $scopes): array
+    {
+        $current = self::normalise($scopes);
+        $legacy = [];
+
+        foreach (ScopeRegistry::RENAMED as $old => $new) {
+            if (array_diff($new, $current) === []) {
+                $legacy[] = $old;
+            }
+        }
+
+        return array_values(array_unique([...$current, ...$legacy]));
     }
 
     /** Whether $scope also needs the product's admission. */

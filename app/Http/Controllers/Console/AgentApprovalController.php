@@ -12,6 +12,7 @@ use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ActionApprovalGate;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\RenamedActions;
 use App\Platform\Agents\ActionApprovalEntry;
 use App\Platform\Agents\ActionApprovalInbox;
 use App\Platform\Console\ConsoleStepUp;
@@ -215,7 +216,7 @@ final readonly class AgentApprovalController extends ConsoleController
                 'approvals',
                 'environment.approvals',
                 [],
-                __('console.approving_lets_an_agent_run_a_critical_action_action_81ec66e8', ['action' => $entry->request->action]),
+                __('console.approving_lets_an_agent_run_a_critical_action_action_81ec66e8', ['action' => RenamedActions::current($entry->request->action)]),
             );
 
             if ($sudo !== null) {

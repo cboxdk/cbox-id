@@ -9,6 +9,7 @@ use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Actions\Principal\OrganizationKeyPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
+use App\Platform\Actions\RenamedActions;
 use App\Platform\Invitations\ValueObjects\Inviter;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\OrganizationActivity;
@@ -79,10 +80,14 @@ final class InOrganization
             : AuditActor::organizationMember(self::personId($principal) ?? $principal->id());
     }
 
-    /** How a key this principal mints records its maker ({@see KeyProvenance}). */
+    /**
+     * How a key this principal mints records its maker ({@see KeyProvenance}). A key records
+     * v2's `workspace_key` through v3.0, which v2's approver lookup reads
+     * ({@see RenamedActions::storedKind()}); v3 reads both.
+     */
     public static function creatorType(Principal $principal): string
     {
-        return $principal instanceof OrganizationKeyPrincipal ? 'organization_key' : 'organization_member';
+        return $principal instanceof OrganizationKeyPrincipal ? RenamedActions::storedKind($principal->kind()) : 'organization_member';
     }
 
     /**

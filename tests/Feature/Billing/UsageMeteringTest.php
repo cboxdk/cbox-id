@@ -54,7 +54,7 @@ it('counts a sign-in by method and the person once towards monthly active users'
         'evt_a' => 'cbox-id.sign_ins', 'evt_a:active' => 'cbox-id.monthly_active_users',
         'evt_b' => 'cbox-id.sign_ins', 'evt_b:active' => 'cbox-id.monthly_active_users',
         'evt_c' => 'cbox-id.sign_ins', 'evt_c:active' => 'cbox-id.monthly_active_users',
-    ])->and($rows->pluck('organization_id')->unique()->all())->toBe([$workspace->id]);
+    ])->and($rows->pluck('workspace_id')->unique()->all())->toBe([$workspace->id]);
 
     $methods = $rows->where('meter', 'cbox-id.sign_ins')->map(fn (object $row): string => json_decode($row->dimensions, true)['method'])->values()->all();
     expect($methods)->toBe(['password', 'social', 'handoff'])
@@ -87,7 +87,7 @@ it('measures each organization stock and hourly activity once, never the platfor
     $this->artisan('billing:snapshot-product-usage')->assertSuccessful();
 
     $rows = DB::table('product_billing_usage_outbox')->get()->keyBy('event_id');
-    expect($rows->pluck('organization_id')->unique()->values()->all())->toBe([$workspace->id])
+    expect($rows->pluck('workspace_id')->unique()->values()->all())->toBe([$workspace->id])
         ->and((int) $rows["stock:users:{$workspace->id}:2026110810"]->value)->toBe(2)
         ->and((int) $rows["stock:verified_domains:{$workspace->id}:2026110810"]->value)->toBe(1)
         ->and((int) $rows["stock:environments:{$workspace->id}:2026110810"]->value)->toBeGreaterThanOrEqual(1)

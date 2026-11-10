@@ -49,8 +49,11 @@ final class IdempotencyGuard
      */
     public function once(Principal $principal, string $key, ActionDefinition $action, array $input, Closure $run): ActionResult
     {
-        $owner = $principal->kind().':'.$principal->id();
-        $hash = $this->hash($action, $input);
+        // Written in v2's spellings, read in every spelling, while v2 may still serve this
+        // database ({@see RenamedActions}).
+        $owner = RenamedActions::storedKind($principal->kind()).':'.$principal->id();
+        $owners = array_map(static fn (string $kind): string => $kind.':'.$principal->id(), RenamedActions::kindSpellings($principal->kind()));
+        $hash = $this->hash($action, $input, RenamedActions::stored($action->name));
 
         $lock = Cache::lock('action-idempotency:'.hash('sha256', $owner.'|'.$key), self::LOCK_SECONDS);
 
@@ -60,13 +63,13 @@ final class IdempotencyGuard
 
         try {
             $stored = IdempotencyRecord::query()
-                ->where('principal', $owner)
+                ->whereIn('principal', $owners)
                 ->where('idempotency_key', $key)
                 ->where('expires_at', '>', Carbon::now())
                 ->first();
 
             if ($stored !== null) {
-                if ($stored->action !== $action->name || ! $this->sameRequest($stored->request_hash, $action, $input)) {
+                if (! in_array($stored->action, RenamedActions::spellings($action->name), true) || ! $this->sameRequest($stored->request_hash, $action, $input)) {
                     throw ActionRefused::because(
                         'idempotency_key_reused',
                         new ActionMessage('console.this_idempotency_key_was_already_used_for_a_different_r_0c304fb5'),
@@ -78,11 +81,11 @@ final class IdempotencyGuard
 
             $result = $run();
 
-            IdempotencyRecord::query()->where('principal', $owner)->where('idempotency_key', $key)->delete();
+            IdempotencyRecord::query()->whereIn('principal', $owners)->where('idempotency_key', $key)->delete();
             IdempotencyRecord::query()->create([
                 'principal' => $owner,
                 'idempotency_key' => $key,
-                'action' => $action->name,
+                'action' => RenamedActions::stored($action->name),
                 'request_hash' => $hash,
                 'status' => $result->status ?? $action->status,
                 'payload' => $this->redacted($result->payload, $action->redact),
@@ -131,15 +134,14 @@ final class IdempotencyGuard
     }
 
     /**
-     * Whether $stored is this request's hash. An answer stored before v3 renamed the action
-     * was hashed under the old name (the migration renames the row, not the hash it holds),
-     * so the same request under a retired name is the same request.
+     * Whether $stored is this request's hash, under any spelling of the action's name: v2
+     * hashed it under the old name, and v3.1 hashes it under the new one.
      *
      * @param  array<string, mixed>  $input
      */
     private function sameRequest(string $stored, ActionDefinition $action, array $input): bool
     {
-        foreach ([$action->name, ...RenamedActions::retired($action->name)] as $name) {
+        foreach (RenamedActions::spellings($action->name) as $name) {
             if (hash_equals($stored, $this->hash($action, $input, $name))) {
                 return true;
             }

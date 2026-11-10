@@ -27,7 +27,8 @@
 #          code, client secret, refresh token, session, webhook secret, SSO configuration,
 #          SCIM token, vault secret, personal token and environment key still works; the
 #          1.x `cbid_org_` keys are revoked as UPGRADING.md says, a 2.x `cbid_ws_` key still
-#          works and its rows read in the v3 names; the audit chains verify,
+#          works and v3 reads its rows as 2.x wrote them (v3.0 rewrites none); the audit
+#          chains verify,
 #        - `audit-chain:verify` and `cbox-id:doctor`,
 #        - an HTTP smoke test against `php artisan serve` (scripts/upgrade-path/http-smoke.sh):
 #          /login, OIDC discovery and JWKS on the environment host, the management API with

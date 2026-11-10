@@ -27,7 +27,7 @@ use Cbox\Id\Platform\Models\OrganizationApiKey;
 use Cbox\Id\Platform\ValueObjects\KeyProvenance;
 
 /**
- * Mint an organization key (`cbid_org_…`): a role, optionally narrowed by scopes, acting across
+ * Mint an organization key (`cbid_ws_…`): a role, optionally narrowed by scopes, acting across
  * the whole workspace without a person. The value is in `token`, once.
  *
  * A KEY MAY MINT KEYS, BUT NEVER A WIDER ONE. From another key, the new key's role does not
@@ -81,7 +81,7 @@ final readonly class CreateOrganizationKey implements Action
             [$scopes, $expiresAt] = $this->bounded($parent, $role, $scopes, $expiresAt);
         }
 
-        $issued = $this->keys->issue($workspaceId, $name, $role, $expiresAt, $scopes, new KeyProvenance(
+        $issued = $this->keys->issue($workspaceId, $name, $role, $expiresAt, $scopes === null ? null : OrganizationScopes::stored($scopes), new KeyProvenance(
             createdByType: InOrganization::creatorType($context->principal),
             createdById: InOrganization::creatorId($context->principal),
             parentKeyId: $parent?->id,

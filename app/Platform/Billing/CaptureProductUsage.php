@@ -58,13 +58,16 @@ final class CaptureProductUsage
     }
 
     /**
+     * The column keeps its v2 name, `workspace_id`, through v3.0: the release still running
+     * while v3 rolls out writes it too. It is renamed one release later (UPGRADING, v3.1).
+     *
      * @param  array<string, string>  $dimensions
      * @return array<string, mixed>
      */
     private static function row(string $id, string $workspace, string $meter, mixed $occurredAt, array $dimensions, ?string $uniqueKey = null): array
     {
         return [
-            'event_id' => $id, 'organization_id' => $workspace, 'meter' => UsageMeters::key($meter),
+            'event_id' => $id, 'workspace_id' => $workspace, 'meter' => UsageMeters::key($meter),
             'occurred_at' => $occurredAt, 'value' => 1, 'unique_key' => $uniqueKey,
             'dimensions' => json_encode($dimensions, JSON_THROW_ON_ERROR),
         ];

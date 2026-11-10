@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mcp\Tools;
 
 use App\Mcp\McpCaller;
+use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\OrganizationKeyPrincipal;
@@ -105,7 +106,7 @@ final class WhoAmI extends Tool
             $body['workspace'] = $key->organization_id;
             $body['name'] = $key->name;
             $body['role'] = $key->role->value;
-            $body['scopes'] = $key->scopes ?? [];
+            $body['scopes'] = OrganizationScopes::normalise($key->scopes ?? []);
             $body['expires_at'] = $key->expires_at?->toIso8601String();
         }
 

@@ -113,8 +113,9 @@ final readonly class ActionApprovalGate
         // its secrets taken out. Reading only — the repeat is what runs, against the digest.
         ActionApprovalRequest::query()->create([
             'id' => $request->requestId,
-            'principal' => $principal->kind().':'.$principal->id(),
-            'action' => $action->name,
+            // v2's spellings while v2 may still serve this database ({@see RenamedActions}).
+            'principal' => RenamedActions::storedKind($principal->kind()).':'.$principal->id(),
+            'action' => RenamedActions::stored($action->name),
             'environment_id' => match (true) {
                 $principal instanceof EnvironmentKeyPrincipal => $principal->key()->environment_id,
                 $principal instanceof EnvironmentMemberPrincipal => $principal->environmentId(),
@@ -220,9 +221,9 @@ final readonly class ActionApprovalGate
             return;
         }
 
-        // An approval given before v3 renamed the action (or the key kind) was given for a
-        // digest taken under the old names. It is the same request, so it is spent the same.
-        foreach ($this->retiredDigests($principal, $action, $input) as $retired) {
+        // The same request under the other spellings of the action and the key kind — an
+        // approval raised under the v3 names, or one a later release raises under them.
+        foreach ($this->otherDigests($principal, $action, $input, $digest) as $retired) {
             if ($this->inApproverRealm($principal, fn (): bool => $this->approvals->consume($approvalId, $retired)) === true) {
                 return;
             }
@@ -275,30 +276,37 @@ final readonly class ActionApprovalGate
             return false;
         }
 
-        return $principal instanceof RootPersonPrincipal
-            ? $principal->owns($owner)
-            : hash_equals($principal->kind().':'.$principal->id(), $owner);
+        if ($principal instanceof RootPersonPrincipal) {
+            return $principal->owns($owner);
+        }
+
+        foreach (RenamedActions::kindSpellings($principal->kind()) as $kind) {
+            if (hash_equals($kind.':'.$principal->id(), $owner)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
-     * The digests this request had under the names v3 retired ({@see RenamedActions}).
+     * The digests this request has under every other spelling of its action and its kind
+     * ({@see RenamedActions}): the one it is asked for is $digest.
      *
      * @param  array<string, mixed>  $input
      * @return list<string>
      */
-    private function retiredDigests(Principal $principal, ActionDefinition $action, array $input): array
+    private function otherDigests(Principal $principal, ActionDefinition $action, array $input, string $digest): array
     {
-        $kinds = [$principal->kind(), ...RenamedActions::retiredKinds($principal->kind())];
-        $names = [$action->name, ...RenamedActions::retired($action->name)];
         $digests = [];
 
-        foreach ($kinds as $kind) {
-            foreach ($names as $name) {
-                if ($kind === $principal->kind() && $name === $action->name) {
-                    continue;
-                }
+        foreach (RenamedActions::kindSpellings($principal->kind()) as $kind) {
+            foreach (RenamedActions::spellings($action->name) as $name) {
+                $other = self::hashed($kind.':'.$principal->id(), $name, $input);
 
-                $digests[] = hash('sha256', json_encode([$kind.':'.$principal->id(), $name, self::canonical($input)], JSON_THROW_ON_ERROR));
+                if ($other !== $digest) {
+                    $digests[] = $other;
+                }
             }
         }
 
@@ -310,11 +318,17 @@ final readonly class ActionApprovalGate
      */
     private function digest(Principal $principal, ActionDefinition $action, array $input): string
     {
-        return hash('sha256', json_encode([
-            $principal->kind().':'.$principal->id(),
-            $action->name,
-            self::canonical($input),
-        ], JSON_THROW_ON_ERROR));
+        // Taken under the names v2 reads, so an approval v3 raises can still be spent by v2
+        // during the rollout ({@see RenamedActions::stored()}).
+        return self::hashed(RenamedActions::storedKind($principal->kind()).':'.$principal->id(), RenamedActions::stored($action->name), $input);
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private static function hashed(string $owner, string $name, array $input): string
+    {
+        return hash('sha256', json_encode([$owner, $name, self::canonical($input)], JSON_THROW_ON_ERROR));
     }
 
     private static function canonical(mixed $value): mixed

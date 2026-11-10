@@ -144,7 +144,7 @@ final class SnapshotProductUsage extends Command
     private static function row(string $id, string $workspace, string $meter, CarbonImmutable $at, int $value): array
     {
         return [
-            'event_id' => $id, 'organization_id' => $workspace, 'meter' => UsageMeters::key($meter),
+            'event_id' => $id, 'workspace_id' => $workspace, 'meter' => UsageMeters::key($meter),
             'occurred_at' => $at, 'value' => $value, 'unique_key' => null, 'dimensions' => null,
         ];
     }

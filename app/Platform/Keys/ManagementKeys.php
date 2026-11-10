@@ -10,6 +10,7 @@ use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
 use App\Platform\Actions\Principal\Principal;
+use App\Platform\Actions\RenamedActions;
 use App\Platform\OrganizationActivity;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
@@ -207,7 +208,8 @@ final readonly class ManagementKeys
         return match (true) {
             $principal instanceof EnvironmentKeyPrincipal => 'environment_key',
             $principal instanceof ConsoleSessionPrincipal, $principal instanceof EnvironmentMemberPrincipal => 'organization_member',
-            default => $principal->kind(),
+            // v2's spelling of the kind through v3.0 ({@see RenamedActions::storedKind()}).
+            default => RenamedActions::storedKind($principal->kind()),
         };
     }
 

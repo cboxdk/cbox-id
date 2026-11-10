@@ -15,7 +15,7 @@ declare(strict_types=1);
  * rather than comparing columns, so a changed hash scheme, sealing context or lookup
  * that the migrations did not carry across fails here the way it would fail a user.
  *
- * It also mints the NEW release's keys (`cbid_env_`, `cbid_org_`) and writes them to
+ * It also mints the NEW release's keys (`cbid_env_`, `cbid_ws_`) and writes them to
  * <smoke.json> for the HTTP smoke test that follows. Exits 1 if any check fails.
  */
 
@@ -332,14 +332,13 @@ $call = static function (string $method, string $path, string $token, array $bod
 if ($major === 2) {
     $v2 = $m['v2'];
 
-    $check('workspace_key provenance reads organization_key, in both key tables', function () use ($v2): bool|string {
+    // v3.0 is EXPAND-ONLY: 2.x keeps serving this database while v3 rolls out, so nothing
+    // 2.x stored is rewritten — every row below is read by v3 as 2.x wrote it.
+    $check('workspace_key provenance is left as 2.x wrote it, in both key tables', function () use ($v2): bool|string {
         foreach (['organization_api_keys' => $v2['child_key_id'], 'environment_api_keys' => $v2['environment_key']['id']] as $table => $id) {
             $type = DB::table($table)->where('id', $id)->value('created_by_type');
-            if ($type !== 'organization_key') {
+            if ($type !== 'workspace_key') {
                 return "{$table} {$id}: {$type}";
-            }
-            if (DB::table($table)->where('created_by_type', 'workspace_key')->exists()) {
-                return "{$table} still holds workspace_key rows";
             }
         }
 
@@ -352,22 +351,22 @@ if ($major === 2) {
         return $key !== null && (new EnvironmentKeyPrincipal($key))->approverSubjectId() === $m['workspace_owner_id'] ?: 'approver lost';
     });
 
-    $check('the 2.x agent\'s scopes are stored in the v3 names', function () use ($v2): bool|string {
+    $check('the 2.x agent\'s scopes are left in the v2 names', function () use ($v2): bool|string {
         $scopes = json_decode((string) DB::table('organization_api_keys')->where('id', $v2['agent']['id'])->value('scopes'), true);
-        $want = ['id:organization:read', 'id:projects:write', 'id:environments:write', 'id:members:read', 'id:environment-keys:write', 'id:organization-keys:write'];
+        $want = ['workspace:read', 'projects:write', 'environments:write', 'team:read', 'keys:write'];
 
         return $scopes === $want ?: 'stored '.json_encode($scopes);
     });
 
-    $check('the 2.x agent still reads the organization on /api/v1/workspace, with Deprecation', function () use ($v2, $call): bool|string {
+    $check('the 2.x agent still reads the organization on /api/v1/workspace, with no Deprecation', function () use ($v2, $call): bool|string {
         [$status, , $deprecation] = $call('GET', '/api/v1/workspace', $v2['agent']['plaintext']);
 
-        return ($status === 200 && $deprecation !== null) ?: "status {$status}, Deprecation ".var_export($deprecation, true);
+        return ($status === 200 && $deprecation === null) ?: "status {$status}, Deprecation ".var_export($deprecation, true);
     });
 
     $check('the idempotent answer 2.x stored under keys.workspace.create replays', function () use ($v2, $call): bool|string {
         $row = DB::table('action_idempotency_records')->where('idempotency_key', $v2['idempotency_key'])->first();
-        if ($row === null || $row->action !== 'keys.organization.create' || ! str_starts_with((string) $row->principal, 'organization_key:')) {
+        if ($row === null || $row->action !== 'keys.workspace.create' || ! str_starts_with((string) $row->principal, 'workspace_key:')) {
             return 'stored as '.json_encode($row);
         }
         [$status, $body] = $call('POST', '/api/v1/workspace/keys', $v2['agent']['plaintext'], $v2['idempotent_body'], ['Idempotency-Key' => $v2['idempotency_key']]);
@@ -381,7 +380,7 @@ if ($major === 2) {
     $check('the approval 2.x filed under keys.workspace.create is spent by the v3 action', function () use ($m, $v2, $envs, $root, $call): bool|string {
         $approval = $v2['approval'];
         $action = DB::table('action_approval_requests')->where('id', $approval['id'])->value('action');
-        if ($action !== 'keys.organization.create') {
+        if ($action !== 'keys.workspace.create') {
             return "stored action {$action}";
         }
         $envs->runAs($root, fn () => app(BackchannelAuthentication::class)->approve($approval['id'], $m['workspace_owner_id']));
@@ -389,6 +388,8 @@ if ($major === 2) {
 
         return ($status === 201 && ($body['data']['name'] ?? null) === $approval['body']['name']) ?: "answered {$status} ".json_encode($body);
     });
+
+    $check('the billing usage outbox keeps the workspace_id column 2.x writes', fn (): bool|string => Schema::hasColumn('product_billing_usage_outbox', 'workspace_id') ?: 'workspace_id is gone');
 
     $check('a 2.x refresh token granted account:* names rotates, and its names pass the v3 checks', function () use ($v2, $envs, $root): bool|string {
         $token = $v2['refresh_token'];
@@ -409,7 +410,7 @@ if ($major === 2) {
 // --- Mint the new release's keys for the HTTP smoke test ------------------------------
 
 $smoke = ['environment_slug' => $m['environment_slug']];
-$check('mint a cbid_env_ and a cbid_org_ key with the new code', function () use (&$smoke, $m, $major, $envs, $root, $customer): bool|string {
+$check('mint a cbid_env_ and a cbid_ws_ organization key with the new code', function () use (&$smoke, $m, $major, $envs, $root, $customer): bool|string {
     $smoke['environment_key'] = $envs->runAs($customer, fn () => app(EnvironmentApiKeys::class)->issue($customer->id, 'Upgrade smoke', ['users:read', 'organizations:read'])->plaintext);
     $smoke['workspace_key'] = $envs->runAs($root, fn () => app(OrganizationApiKeys::class)->issue($m['workspace_id'], 'Upgrade smoke', MembershipRole::Admin)->plaintext);
     $smoke['old_environment_key'] = $m['environment_key']['plaintext'];
@@ -420,7 +421,7 @@ $check('mint a cbid_env_ and a cbid_org_ key with the new code', function () use
     $smoke['password'] = $m['password'];
     $smoke['organization_id'] = $m['organizations']['acme'];
 
-    return str_starts_with($smoke['workspace_key'], 'cbid_org_') ?: 'organization key minted as '.substr($smoke['workspace_key'], 0, 9);
+    return str_starts_with($smoke['workspace_key'], 'cbid_ws_') ?: 'organization key minted as '.substr($smoke['workspace_key'], 0, 9);
 });
 file_put_contents($smokePath, json_encode($smoke, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 

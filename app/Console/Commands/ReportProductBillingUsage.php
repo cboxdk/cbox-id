@@ -34,7 +34,7 @@ final class ReportProductBillingUsage extends Command
             ->orderByRaw('case when last_error is null then 0 else 1 end')->orderBy('occurred_at')
             ->limit(max(1, min(5000, (int) $this->option('limit'))))->get();
         $failed = false;
-        foreach ($rows->groupBy('organization_id') as $workspace => $pending) {
+        foreach ($rows->groupBy('workspace_id') as $workspace => $pending) {
             foreach ($pending->chunk(1000) as $chunk) {
                 $chunk = $chunk->values();
                 try {
@@ -79,7 +79,7 @@ final class ReportProductBillingUsage extends Command
         $id = $row->event_id ?? null;
         $meter = $row->meter ?? null;
         $occurredAt = $row->occurred_at ?? null;
-        if (! is_string($id) || ! is_string($meter) || ! is_string($row->organization_id ?? null) || ! is_string($occurredAt)) {
+        if (! is_string($id) || ! is_string($meter) || ! is_string($row->workspace_id ?? null) || ! is_string($occurredAt)) {
             throw new \UnexpectedValueException('Invalid persisted usage payload.');
         }
         $value = $row->value ?? 1;

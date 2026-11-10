@@ -59,20 +59,21 @@ fi
 
 # Management API: the old environment key and one minted by the new code both work; the
 # environment API did not change. The organization API (still at /api/v1/workspace) takes
-# a new cbid_org_ key. A 1.x cbid_org_ key stays refused (2.0 revoked it, a documented clean
-# break); a 2.x cbid_ws_ key still works until v3.1 and says so in a Deprecation header.
+# a cbid_ws_ key minted by the new code (v3.0 still mints cbid_ws_: the released cbox-cli
+# refuses cbid_org_). A 1.x cbid_org_ key stays refused (2.0 revoked it, a documented clean
+# break); a 2.x cbid_ws_ key works as before, with no Deprecation header.
 expect "env API with a new cbid_env_ key" 200 "$(status -H "Host: ${env_host}" -H "Authorization: Bearer $(field environment_key)" -H 'Accept: application/json' "${base}/api/v1/users")"
 expect "env API with the old cbid_env_ key" 200 "$(status -H "Host: ${env_host}" -H "Authorization: Bearer $(field old_environment_key)" -H 'Accept: application/json' "${base}/api/v1/users")"
-expect "organization API with a new cbid_org_ key" 200 "$(status -H "Host: ${console}" -H "Authorization: Bearer $(field workspace_key)" -H 'Accept: application/json' "${base}/api/v1/workspace")"
+expect "organization API with a new cbid_ws_ key" 200 "$(status -H "Host: ${console}" -H "Authorization: Bearer $(field workspace_key)" -H 'Accept: application/json' "${base}/api/v1/workspace")"
 if [[ "$(field from_major)" == "1" ]]; then
     expect "organization API refuses the revoked 1.x cbid_org_ key" 401 "$(status -H "Host: ${console}" -H "Authorization: Bearer $(field old_workspace_key)" -H 'Accept: application/json' "${base}/api/v1/workspace")"
 else
     expect "organization API with the 2.x cbid_ws_ key" 200 "$(status -H "Host: ${console}" -H "Authorization: Bearer $(field old_workspace_key)" -H 'Accept: application/json' "${base}/api/v1/workspace")"
     deprecation="$(curl -s -o /dev/null -D - -H "Host: ${console}" -H "Authorization: Bearer $(field old_workspace_key)" -H 'Accept: application/json' "${base}/api/v1/workspace" | tr -d '\r' | grep -i '^deprecation:' || true)"
-    if [[ -n "$deprecation" ]]; then
-        printf '  ok    the 2.x cbid_ws_ key is answered with %s\n' "$deprecation"
+    if [[ -z "$deprecation" ]]; then
+        printf '  ok    the 2.x cbid_ws_ key is answered without a Deprecation header\n'
     else
-        printf '  FAIL  the 2.x cbid_ws_ key is answered without a Deprecation header\n'
+        printf '  FAIL  the 2.x cbid_ws_ key is answered with %s, but v3.0 still mints cbid_ws_\n' "$deprecation"
         failures=$((failures + 1))
     fi
 fi

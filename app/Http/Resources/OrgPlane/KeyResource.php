@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\OrgPlane;
 
+use App\Platform\Actions\OrganizationScopes;
+use App\Platform\Actions\RenamedActions;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
 
@@ -26,9 +28,10 @@ final class KeyResource
             'prefix' => $key->prefix,
             'role' => $key->role->value,
             // Null: bounded by the role alone, as every key minted before scopes existed.
-            'scopes' => $key->scopes,
+            // Stored in both spellings through v3.0 ({@see OrganizationScopes::stored()}); read in v3's.
+            'scopes' => $key->scopes === null ? null : OrganizationScopes::normalise($key->scopes),
             'parent_key_id' => $key->parent_key_id,
-            'created_by_type' => $key->created_by_type,
+            'created_by_type' => $key->created_by_type === null ? null : RenamedActions::currentKind($key->created_by_type),
             'expires_at' => $key->expires_at?->toIso8601String(),
             'revoked_at' => $key->revoked_at?->toIso8601String(),
             'last_used_at' => $key->last_used_at?->toIso8601String(),
