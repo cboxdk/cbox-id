@@ -16,6 +16,8 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 - **An environment can sign in through another identity provider.** `signin.through.set` (`PUT /api/v1/sign-in/through`, critical, schema `SignInThrough`) names one of the environment's own active OpenID Connect connections; `/login` then redirects straight to it, so a person with a session there arrives signed in. `/login/direct` is always the environment's own sign-in page (`/operator/login` now goes there). Audit action `auth_policy.sign_in_through_updated`. The hosted platform environment uses it to sign in through the `cbox` environment, so the console at app.cboxid.com is a single sign-on hop from the other Cbox apps. See *Administering the platform's own environment*.
 
+- **PKCE on hand-configured OpenID Connect connections.** Signing in through an OIDC connection that is not from the catalogue now sends an S256 `code_challenge` and proves it with the `code_verifier` at the token endpoint. Cbox ID itself requires PKCE of every client, so one Cbox ID environment can now sign in through another (the hosted platform environment through `cbox`). Catalogue providers are unchanged.
+
 ## [2.2.0] - 2026-11-08
 
 ### Added

@@ -11,6 +11,7 @@ use App\Platform\AccountLinking\ConnectIntent;
 use App\Platform\AccountLinking\FederationFailure;
 use App\Platform\FederatedLanding;
 use App\Platform\SignInThrough;
+use App\Platform\Sso\OidcPkce;
 use Cbox\Id\Federation\Contracts\AssertionValidator;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\FederationFlow;
@@ -56,6 +57,7 @@ final class OidcCallbackController extends Controller
         private readonly AccountLinking $linking,
         private readonly ConnectFromAccount $connect,
         private readonly SignInThrough $through,
+        private readonly OidcPkce $pkce,
     ) {}
 
     public function __invoke(Request $request, string $connection): RedirectResponse
@@ -104,7 +106,11 @@ final class OidcCallbackController extends Controller
         }
 
         try {
-            $idToken = $this->client->exchangeCode($model, $code, url('/sso/oidc/'.$model->id.'/callback'));
+            $redirectUri = url('/sso/oidc/'.$model->id.'/callback');
+            // With the verifier for the challenge the redirect leg sent ({@see OidcPkce}).
+            $idToken = $this->pkce->applies($model)
+                ? $this->pkce->exchange($model, $code, $redirectUri, $state)
+                : $this->client->exchangeCode($model, $code, $redirectUri);
             $principal = $this->validator->validate($model, $idToken);
 
             $nonce = $principal->raw['nonce'] ?? null;
