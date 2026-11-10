@@ -603,6 +603,10 @@ Create or replace a catalog app, its light and dark icons and visibility. Versio
 | `client_ids` | list of string | no | Environment-wide OAuth client ids associated with this app. Does not grant access. At most 100 items. |
 | `required_feature` | string, nullable | no | Optional feature-flag key. Hidden when off for this person and organization. At most 64 characters. |
 | `icon` | string, nullable | no | PNG, JPEG or WebP data URI, up to 128 KiB and 512 pixels. Omit to retain; null clears. SVG and remote URLs are refused. At most 180000 characters. |
+| `purpose` | string, nullable | no | One line the app switcher shows under the name. Omit to retain; null clears. At most 60 characters. |
+| `hue` | string, nullable | no | The cbox-ui hue the tile is drawn in, light and dark. Omit to retain; null clears. One of `red`, `orange`, `amber`, `yellow`, `lime`, `green`, `emerald`, `teal`, `cyan`, `sky`, `blue`, `indigo`, `violet`, `purple`, `fuchsia`, `pink`, `rose`, `slate`, `stone`. |
+| `admission_url` | string, nullable | no | Public HTTPS page where a person who does not have the app asks for it (signup or waitlist). Omit to retain; null clears. At most 2048 characters. |
+| `promote_when_unavailable` | boolean | no | List the app under "not yet" for people who cannot open it, when it has an admission URL. Never for a users audience. Defaults to true; omit to retain. |
 | `icon_dark` | string, nullable | no | Icon for dark surfaces, same rules as icon. Omit to retain; null clears. Without it, clients show icon in both themes. At most 180000 characters. |
 
 ### <a id="app_catalog.show"></a>app_catalog.show

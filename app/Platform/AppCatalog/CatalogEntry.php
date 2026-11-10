@@ -25,6 +25,10 @@ use Illuminate\Database\Eloquent\Model;
  * @property list<string> $user_ids
  * @property list<string> $client_ids
  * @property string|null $required_feature
+ * @property string|null $purpose
+ * @property string|null $hue
+ * @property string|null $admission_url
+ * @property bool $promote_when_unavailable
  * @property int $version
  */
 final class CatalogEntry extends Model implements EnvironmentOwned
@@ -41,6 +45,6 @@ final class CatalogEntry extends Model implements EnvironmentOwned
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['enabled' => 'boolean', 'position' => 'integer', 'version' => 'integer', 'organization_ids' => 'array', 'user_ids' => 'array', 'client_ids' => 'array'];
+        return ['enabled' => 'boolean', 'promote_when_unavailable' => 'boolean', 'position' => 'integer', 'version' => 'integer', 'organization_ids' => 'array', 'user_ids' => 'array', 'client_ids' => 'array'];
     }
 }

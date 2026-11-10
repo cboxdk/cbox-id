@@ -15,16 +15,22 @@ final readonly class AppLauncher
     /** @return list<array<string, mixed>> */
     public function apps(): array
     {
+        return $this->catalog()['apps'];
+    }
+
+    /** @return array{apps: list<array<string, mixed>>, unavailable: list<array<string, mixed>>} */
+    public function catalog(): array
+    {
         if (! $this->me->check() || ! $this->catalog->hasPublishedApps()) {
-            return [];
+            return ['apps' => [], 'unavailable' => []];
         }
 
         try {
-            return $this->catalog->forUser($this->me->id(), $this->me->organizationId());
+            return $this->catalog->catalogFor($this->me->id(), $this->me->organizationId());
         } catch (AuthorizationException) {
             // A withdrawn membership must not prevent rendering account recovery or
             // organization switching. The explicit account API still refuses this context.
-            return [];
+            return ['apps' => [], 'unavailable' => []];
         }
     }
 }

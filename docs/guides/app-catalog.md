@@ -37,10 +37,22 @@ membership. A token confined to an organization cannot select a different one.
 Without it, the list covers the person's active organizations.
 
 The response contains `data` entries with `key`, `name`, `description`,
-`launch_url`, `icon_url`, `icon_dark_url`, `position`, and `version`.
-`icon_dark_url` is `null` when the app has no dark icon; then use `icon_url` in
-both themes. `meta.revision` hashes that visible list, so it changes when either
-icon changes; `meta.refresh_after` is 60 seconds. Administrative audiences,
+`purpose`, `hue`, `launch_url`, `icon_url`, `icon_dark_url`, `available` (always
+`true`), `position`, and `version`. `purpose` is the one line under the name and
+`hue` the cbox-ui hue token (`violet`, `amber`, …) the tile is drawn in; both may be
+`null`. `icon_dark_url` is `null` when the app has no dark icon; then use `icon_url`
+in both themes.
+
+`meta.unavailable` lists the apps the person can ask for but does not have yet,
+the switcher's "More from Cbox" section: same fields, `available: false`, and an
+`admission_url` (with `?organization=` when you passed one) instead of
+`launch_url`. An app is listed there only when it is published, the person is not
+in its audience or its feature flag is off for them, it has an `admission_url`, and
+"show to people who do not have it yet" is on. An app whose audience is selected
+people is never listed to anyone else.
+
+`meta.revision` hashes both lists, so it changes when an app moves between them
+or an icon changes; `meta.refresh_after` is 60 seconds. Administrative audiences,
 OAuth client IDs and icon bytes are not included.
 
 Render the returned order with ordinary cross-app links. Cache only per issuer,
@@ -86,8 +98,25 @@ organization for `refresh_after` seconds.
 
 A stale edit/delete returns 409. Reload and review before retrying. PUT omits
 `icon` or `icon_dark` to retain it, uses `null` to clear it, or a supported image
-data URI to replace it. SVG is refused for both. A no-op does not bump the version. Saves and deletions are audited
+data URI to replace it. SVG is refused for both. `purpose`, `hue`, `admission_url`
+and `promote_when_unavailable` work the same way: omit to keep, `null` to clear.
+`hue` must be one of the cbox-ui hues; `admission_url` must be a public HTTPS
+address (no credentials, fragment, loopback, private or internal host). A no-op does not bump the version. Saves and deletions are audited
 without copying the icon or target lists into the audit context.
+
+## Seed the Cbox catalog
+
+The `purpose` and `hue` of the Cbox products live in `resources/app-catalog/cbox.json`.
+Apply them with:
+
+```
+php artisan app-catalog:apply resources/app-catalog/cbox.json
+```
+
+It patches only the fields the file names, through the same validation and audit
+as the console, and leaves icons, audiences and URLs alone. An app the catalog does
+not have is reported, not invented; give `name` and `launch_url` in the file to
+create it as a draft. Running it twice changes nothing.
 
 See the [environment actions](../reference/actions-environment.md) and
 [account actions](../reference/actions-account.md) for the generated schemas.

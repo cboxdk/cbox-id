@@ -1,0 +1,19 @@
+{
+    "environment": "cbox",
+    "apps": [
+        {"key": "id", "purpose": "Sign-in, people and access", "hue": "indigo"},
+        {"key": "billing", "purpose": "Plans, payments and invoices", "hue": "emerald"},
+        {"key": "engage", "purpose": "Contacts, events and mail", "hue": "pink"},
+        {"key": "telemetry", "purpose": "Logs, metrics and traces", "hue": "sky"},
+        {"key": "work", "purpose": "Time and invoices", "hue": "amber"},
+        {"key": "brain", "purpose": "Your team's shared memory", "hue": "violet"},
+        {"key": "infra", "purpose": "Servers, clusters and deploys", "hue": "slate"},
+        {"key": "assistant", "purpose": "Product help and support", "hue": "teal"},
+        {"key": "sites", "purpose": "Websites without code", "hue": "blue"},
+        {"key": "stache", "purpose": "Statamic and Laravel hosting", "hue": "fuchsia"},
+        {"key": "status", "purpose": "Status pages that stay up", "hue": "green"},
+        {"key": "tax", "purpose": "VAT, GST and sales tax", "hue": "lime"},
+        {"key": "signals", "purpose": "Events turned into signals", "hue": "rose"},
+        {"key": "domains", "purpose": "Domains and DNS", "hue": "cyan"}
+    ]
+}
