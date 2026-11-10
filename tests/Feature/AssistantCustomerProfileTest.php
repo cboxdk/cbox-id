@@ -61,11 +61,13 @@ it('serves the owner every project and environment of their organization with si
 
     $projects = collect($response->json('resources.id_projects.items'))->keyBy('id');
     expect($projects->keys()->sort()->values()->all())->toBe(collect([$this->workspace->project->id, $this->billingProject->id])->sort()->values()->all())
-        ->and($projects[$this->billingProject->id])->toMatchArray(['label' => 'Billing app', 'status' => 'ok', 'url' => 'https://id.example/projects/'.$this->billingProject->id])
+        ->and($projects[$this->billingProject->id])->toMatchArray(['label' => 'Billing app', 'status' => 'ok', 'url' => 'https://id.example/orgs/'.orgSlug($this->workspace->organization->id).'/projects/'.$this->billingProject->id])
         ->and($projects[$this->billingProject->id]['metrics'])->toBe(['environments' => 1]);
     $environments = collect($response->json('resources.id_environments.items'))->keyBy('id');
     expect($environments)->toHaveCount(2)
         ->and($environments[$this->staging->id])->toMatchArray(['status' => 'inactive', 'parent' => 'id_projects:'.$this->billingProject->id])
+        // The project's own organization, at its address, never the viewer's last-used one.
+        ->and($environments[$this->staging->id]['url'])->toBe('https://id.example/orgs/'.orgSlug($this->workspace->organization->id).'/projects/'.$this->billingProject->id)
         ->and($environments[$this->staging->id]['attributes']['host'])->toBe($this->staging->slug.'.cboxid.example')
         ->and($environments[$this->staging->id]['metrics'])->toHaveKeys(['users', 'applications'])
         ->and($environments[$this->workspace->environment->id]['parent'])->toBe('id_projects:'.$this->workspace->project->id);
