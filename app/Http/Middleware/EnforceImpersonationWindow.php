@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Http\Controllers\ImpersonationController;
 use App\Platform\Impersonation;
 use Closure;
 use Illuminate\Http\Request;
@@ -37,8 +38,11 @@ final class EnforceImpersonationWindow
             $isMembership = $marker->isMembership();
             $this->impersonation->exit($request);
 
-            return redirect()->route($isMembership ? 'environment.home' : 'platform.organizations')
-                ->with('status', 'Impersonation session expired.');
+            $back = $isMembership
+                ? ImpersonationController::backToConsole($marker->environmentKey, $request)
+                : redirect()->route('platform.organizations');
+
+            return $back->with('status', 'Impersonation session expired.');
         }
 
         return $next($request);

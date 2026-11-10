@@ -5,12 +5,19 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Impersonation;
+use App\Platform\IssuerUrl;
+use App\Platform\PlaneResolver;
+use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\URL;
 
 /**
  * Thin entry points for support impersonation — all state and transitions live in
@@ -112,9 +119,57 @@ final class ImpersonationController extends Controller
 
         $request->validate(['reason' => ['required', 'string', 'max:200']]);
 
-        $impersonation->startAsMembership($request, $actorSubjectId, $user, $orgId, $request->string('reason')->toString());
+        // ON THE PLATFORM ROOT'S OWN CONSOLE the person stepped into lives on this very host:
+        // in place, as before.
+        if ($auth->onRootConsole()) {
+            $impersonation->startAsMembership($request, $actorSubjectId, $user, $orgId, $request->string('reason')->toString());
 
-        return $this->landing();
+            return $this->landing();
+        }
+
+        // A customer's environment: its people sign in on its own host, which shares no
+        // cookie with the console's. The session starts THERE, through a signed, single-use
+        // link that names exactly what was authorized here ({@see launch()}).
+        $door = URL::temporarySignedRoute('impersonation.launch', now()->addSeconds(self::LAUNCH_TTL), [
+            'user' => $user,
+            'organization' => $orgId,
+            'actor' => $actorSubjectId,
+            'console' => $auth->sessionId(),
+            'reason' => $request->string('reason')->toString(),
+        ], absolute: false);
+
+        return redirect()->away(IssuerUrl::to($door));
+    }
+
+    /** How long the impersonation launch link works, in seconds. */
+    public const LAUNCH_TTL = 60;
+
+    /**
+     * The impersonation's step onto the environment's own host: signed by the console that
+     * authorized it, spent on first use, and refused once the administrator's own app-host
+     * session has ended. Starts the session here and lands on the impersonated person's
+     * console, where the banner and its Exit are.
+     */
+    public function launch(Request $request, Impersonation $impersonation): RedirectResponse
+    {
+        $user = $request->query('user');
+        $actor = $request->query('actor');
+        $console = $request->query('console');
+        $organization = $request->query('organization');
+        $reason = $request->query('reason');
+
+        abort_unless(is_string($user) && is_string($actor) && is_string($console) && is_string($reason), 404);
+        abort_unless(Cache::add('cbox.impersonation_launch.'.hash('sha256', (string) $request->query('signature')), true, self::LAUNCH_TTL), 404);
+
+        $live = app(PlatformRoot::class)->run(
+            fn (): bool => app(SessionManager::class)->active($console)?->user_id === $actor,
+        ) === true;
+
+        abort_unless($live, 404);
+
+        $impersonation->startAsMembership($request, $actor, $user, is_string($organization) && $organization !== '' ? $organization : null, $reason);
+
+        return $this->landing()->withHeaders(['Referrer-Policy' => 'no-referrer', 'Cache-Control' => 'no-store']);
     }
 
     /**
@@ -132,9 +187,7 @@ final class ImpersonationController extends Controller
      * unnoticed: the suite runs single-tenant.
      *
      * Deliberately not a cross-host redirect to the member's own environment. The session
-     * is host-scoped — {@see EnvironmentHandoffController::openEnvironment()} mints a
-     * signed handoff token precisely because a session does not travel between hosts — so
-     * bouncing there would land the operator with no session at all.
+     * is host-scoped, so bouncing there would land the operator with no session at all.
      *
      * Exit is unchanged: it returns to the caller's own console ({@see exit()}), because by
      * then the caller's own session is back.
@@ -161,6 +214,29 @@ final class ImpersonationController extends Controller
 
         $impersonation->exit($request);
 
-        return redirect()->route($wasMembership ? 'environment.home' : 'platform.organizations');
+        if (! $wasMembership) {
+            return redirect()->route('platform.organizations');
+        }
+
+        return self::backToConsole($marker->environmentKey, $request);
+    }
+
+    /**
+     * Back to the environment console an impersonation was started from — on the app host,
+     * where the administrator's own session never left. The dashboard when that environment
+     * has no console any more.
+     */
+    public static function backToConsole(?string $environmentKey, Request $request): RedirectResponse
+    {
+        $path = $environmentKey === null ? null : app(EnvironmentConsolePath::class)->for($environmentKey);
+        $host = app(PlaneResolver::class)->consoleHost();
+
+        if ($path === null) {
+            return redirect()->route('dashboard');
+        }
+
+        return $host === null || $host === $request->getHost()
+            ? redirect()->to('/'.$path)
+            : redirect()->away($request->getScheme().'://'.$host.'/'.$path);
     }
 }

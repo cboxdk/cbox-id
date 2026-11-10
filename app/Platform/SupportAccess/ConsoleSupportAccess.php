@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Platform\SupportAccess;
 
+use App\Http\Controllers\SupportLaunchController;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\IssuerUrl;
 use App\Platform\OAuth\Enums\AuthorizationPrompt;
 use App\Platform\OAuth\PendingAuthorization;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
@@ -12,6 +14,7 @@ use App\Platform\SupportAccess\Exceptions\SupportRequestRefused;
 use App\Platform\SupportAccess\ValueObjects\ActiveSupportSession;
 use App\Platform\SupportAccess\ValueObjects\SupportApp;
 use App\Platform\SupportAccess\ValueObjects\SupportSignInRequest;
+use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\SupportSessions;
 use Cbox\Id\OAuthServer\Enums\SupportActorKind;
@@ -26,6 +29,7 @@ use Cbox\Id\OAuthServer\ValueObjects\SupportCodeRequest;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\URL;
 
 /**
  * {@see SupportAccess} over the framework's {@see SupportSessions}.
@@ -99,9 +103,18 @@ class ConsoleSupportAccess implements SupportAccess
             ttlSeconds: min($request->minutes, $this->maxMinutes()) * 60,
         ));
 
-        $this->handoff->put($request->clientId, $started->session->id, $request->actorId);
+        // Through the environment's own host first: the app's sign-in arrives there, and the
+        // console that started this is on the app host, which shares no cookie with it
+        // ({@see SupportLaunchController}). A relative signature, so the link is valid on the
+        // host it names rather than on the one that minted it.
+        $door = URL::temporarySignedRoute(
+            'support.launch',
+            now()->addSeconds(SupportLaunchController::TTL),
+            ['session' => $started->session->id, 'to' => $app->launchUrl, 'console' => $this->admins->sessionId()],
+            absolute: false,
+        );
 
-        return $app->launchUrl;
+        return IssuerUrl::to($door);
     }
 
     public function activeForUser(string $userId): array
@@ -140,9 +153,17 @@ class ConsoleSupportAccess implements SupportAccess
         // The administrator who started it, still signed in to THIS environment's console
         // — asked of the live session, not of the note. Anybody else at this browser, or
         // the same person signed out or revoked, gets an ordinary sign-in.
-        $actor = $this->admins->subjectId();
+        // The hand-off was put in this browser's session by the signed launch door, which only
+        // the console that started the session hands out — and it names the administrator's
+        // app-host session, which must still be theirs and still live. Signing out of the
+        // console, or having one's sessions revoked, ends what it started.
+        $actor = $entry->actorId;
+        $console = $entry->consoleSessionId;
+        $live = $console !== null && $this->platformRoot->run(
+            fn (): bool => app(SessionManager::class)->active($console)?->user_id === $actor,
+        ) === true;
 
-        if ($actor === null || $actor !== $entry->actorId) {
+        if (! $live) {
             $this->handoff->forgetApp($clientId);
 
             return null;

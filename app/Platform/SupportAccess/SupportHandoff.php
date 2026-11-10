@@ -24,10 +24,10 @@ class SupportHandoff
 
     public function __construct(private readonly Session $session) {}
 
-    public function put(string $clientId, string $sessionId, string $actorId): void
+    public function put(string $clientId, string $sessionId, string $actorId, ?string $consoleSessionId = null): void
     {
         $all = $this->all();
-        $all[$clientId] = ['session' => $sessionId, 'actor' => $actorId];
+        $all[$clientId] = ['session' => $sessionId, 'actor' => $actorId, 'console' => $consoleSessionId];
 
         $this->session->put(self::KEY, $all);
     }
@@ -36,7 +36,7 @@ class SupportHandoff
     {
         $entry = $this->all()[$clientId] ?? null;
 
-        return $entry === null ? null : new SupportHandoffEntry($clientId, $entry['session'], $entry['actor']);
+        return $entry === null ? null : new SupportHandoffEntry($clientId, $entry['session'], $entry['actor'], $entry['console']);
     }
 
     public function forgetApp(string $clientId): void
@@ -59,7 +59,7 @@ class SupportHandoff
      * What is stored, re-validated on the way out: the session is server-side, but a shape
      * this class did not write is not one it will act on.
      *
-     * @return array<string, array{session: string, actor: string}>
+     * @return array<string, array{session: string, actor: string, console: ?string}>
      */
     private function all(): array
     {
@@ -76,7 +76,11 @@ class SupportHandoff
                 && is_array($entry)
                 && is_string($entry['session'] ?? null)
                 && is_string($entry['actor'] ?? null)) {
-                $out[$clientId] = ['session' => $entry['session'], 'actor' => $entry['actor']];
+                $out[$clientId] = [
+                    'session' => $entry['session'],
+                    'actor' => $entry['actor'],
+                    'console' => is_string($entry['console'] ?? null) ? $entry['console'] : null,
+                ];
             }
         }
 
