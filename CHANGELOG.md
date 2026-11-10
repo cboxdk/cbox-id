@@ -21,6 +21,7 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 ### Changed
 
 - **The console's app switcher is the one every Cbox app draws.** The header renders `<cbox-app-switcher>` from `@cboxdk/cbox-ui` 0.9 (and the rail's mark is `<cbox-service-mark>`), the same element as Billing, Infra and the rest: icons from the catalog only, light and dark, with no Reconnect link. It reads the signed-in person's catalog from `GET /switch-app/catalog` (`apps.catalog`), same-origin JSON `{apps, revision, refresh_after}` straight from the catalog `GET /api/v1/me/apps` serves, with no OAuth round trip. The `appCatalog` page prop is replaced by `appCatalogUrl`; the console's own switcher, its local service marks and their CSS are gone. `img-src` admits the issuer, which serves the catalog's icons.
+- **The app switcher's catalog token lives 12 hours.** An access token whose scopes are exactly `account:apps:read` (token exchange at sign-in, or the `/apps/authorize` fallback at `{issuer}/mcp`) now lives 43200 s instead of 900 s, so app switchers no longer lose the catalog after 15 minutes. Tune with `CBOX_ID_APP_CATALOG_TOKEN_TTL` (0 turns it off); still capped by `CBOX_ID_MAX_ACCESS_TOKEN_TTL`. A token with any other scope keeps the normal lifetime (laravel-id 2.2.0, `oauth.scope_token_ttls`).
 
 ## [2.2.0] - 2026-11-08
 
