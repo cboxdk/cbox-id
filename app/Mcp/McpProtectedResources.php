@@ -117,12 +117,14 @@ final readonly class McpProtectedResources implements ProtectedResources
             ? [...AccountScopes::all(), ...OrganizationScopes::all(), ...PlatformScopes::all()]
             : AccountScopes::all();
 
-        // Both names of every scope while v3.0 accepts both ({@see ScopeRegistry}): a client
-        // asking for `team:read` is served as before, one asking for `id:members:read` too.
-        $scopes = ScopeRegistry::withLegacy(array_values(array_unique([...$scopes, ...$catalogued])));
+        // The names the actions declare, ONCE each: v2's on the environment, account and
+        // platform planes, v3's on the organization plane. Publishing both spellings put both
+        // in a no-scope client's registration, its consent screen and its token. A credential
+        // that holds the other spelling still passes every check ({@see ScopeRegistry::satisfiedBy()}).
+        $scopes = array_values(array_unique([...$scopes, ...$catalogued]));
         sort($scopes);
 
-        return new ProtectedResource(
+        return new TransitionalProtectedResource(
             identifier: rtrim($this->issuers->issuer(), '/').self::PATH,
             scopes: $scopes,
             // An MCP client registers itself — that is the whole MCP authorization model —

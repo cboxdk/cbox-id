@@ -27,7 +27,34 @@ use Cbox\Id\OAuthServer\Support\SelfRegisteredScopes;
  */
 final class RootMcpSelfRegisteredScopes extends SelfRegisteredScopes
 {
+    /**
+     * What a self-registered client may hold: the framework's set — narrowed at the root —
+     * plus the OTHER spelling of each scope a resource publishes ({@see ScopeRegistry}), so a
+     * client that still asks for `team:read` registers and is served as it was under v2.
+     * The published names are what {@see self::defaults()} hands out.
+     */
     public function allowed(): array
+    {
+        $allowed = $this->published();
+
+        $legacy = ScopeRegistry::withLegacy(array_values(array_filter($allowed, static fn (string $scope): bool => ! ProtocolScope::isProtocol($scope))));
+
+        return array_values(array_unique([...$allowed, ...$legacy]));
+    }
+
+    /**
+     * What a client that named no scope is registered for: the published names only, each
+     * once. Both spellings here would put both on its consent screen and in its token.
+     */
+    public function defaults(bool $refreshes): array
+    {
+        $published = $this->published();
+
+        return array_values(array_filter(parent::defaults($refreshes), static fn (string $scope): bool => in_array($scope, $published, true)));
+    }
+
+    /** @return list<string> the framework's set, narrowed to the root's `/mcp` on the root. */
+    private function published(): array
     {
         $allowed = parent::allowed();
 
@@ -41,7 +68,7 @@ final class RootMcpSelfRegisteredScopes extends SelfRegisteredScopes
         return array_values(array_filter(
             $allowed,
             static fn (string $scope): bool => $scope === ProtocolScope::OfflineAccess->value
-                || (! ProtocolScope::isProtocol($scope) && ScopeRegistry::satisfies($resourceScopes, $scope)),
+                || (! ProtocolScope::isProtocol($scope) && in_array($scope, $resourceScopes, true)),
         ));
     }
 }
