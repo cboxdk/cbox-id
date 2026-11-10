@@ -118,7 +118,7 @@ export default function Customer({
                     className="inline-flex items-center gap-1 text-sm"
                     style={{ color: 'var(--muted)' }}
                 >
-                    {consoleRich('console._part1_back_to_workspaces_9c031d6c', {
+                    {consoleRich('console._part1_back_to_organizations_9fbdab0c', {
                         part1: <span aria-hidden="true">{consoleT('console._larr_848fc0e7')}</span>,
                     })}
                 </Link>
@@ -131,7 +131,7 @@ export default function Customer({
             */}
             <PageHeader
                 description={consoleT(
-                    'console.one_workspace_on_this_install_its_team_its_projects_and_e343ed1c',
+                    'console.one_organization_on_this_install_its_team_its_projects__42711bef',
                 )}
                 actions={
                     <Button
@@ -187,7 +187,7 @@ export default function Customer({
                         style={{ color: 'var(--faint)' }}
                     >
                         {consoleT(
-                            'console.nobody_is_on_this_workspace_it_has_no_owner_so_nobody_c_554101fb',
+                            'console.nobody_is_on_this_organization_it_has_no_owner_so_nobod_0a51d66d',
                         )}
                     </div>
                 ) : (
@@ -270,7 +270,7 @@ export default function Customer({
                         icon="layers"
                         title={consoleT('console.no_projects_yet_f83c8065')}
                         description={consoleT(
-                            'console.a_project_is_one_idp_product_this_workspace_owns_and_it_a5e40dff',
+                            'console.a_project_is_one_idp_product_this_organization_owns_and_d87379c8',
                         )}
                     />
                 )}
@@ -343,7 +343,7 @@ export default function Customer({
                         <div className="mt-4">
                             <EnvironmentTable
                                 caption={consoleUiText(
-                                    'console.environments_this_workspace_owns_that_no_project_holds_c28359ff',
+                                    'console.environments_this_organization_owns_that_no_project_hol_a7254a00',
                                 )}
                                 environments={unfiledEnvironments}
                                 onConfirm={setConfirming}

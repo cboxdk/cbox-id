@@ -46,7 +46,7 @@ return [
         'stale' => 'Ez az engedélyezési kérelem már nem teljesíthető. Kezdje újra.',
         'account_attention' => 'A folytatáshoz a fiókja további figyelmet igényel. Jelentkezzen be újra.',
         'step_up' => 'Ez az alkalmazás frissebb bejelentkezést vagy erősebb hitelesítést igényel. Kezdje újra.',
-        'no_workspace' => 'Ez a bejelentkezés egy ügynököt kapcsol a Cbox ID egyik munkaterületéhez, de a fiókja nem tagja egyetlen munkaterület csapatának sem. Kérjen meghívást egy munkaterület tulajdonosától, vagy csatlakoztassa az ügynököt a saját környezete címén.',
+        'no_organization' => 'Ez a bejelentkezés egy ügynököt kapcsol a Cbox ID egyik munkaterületéhez, de a fiókja nem tagja egyetlen munkaterület csapatának sem. Kérjen meghívást egy munkaterület tulajdonosától, vagy csatlakoztassa az ügynököt a saját környezete címén.',
     ],
     'organization' => [
         'title' => 'Szervezet kiválasztása',

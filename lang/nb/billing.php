@@ -71,7 +71,7 @@ return [
     'credits_granted' => 'Inkluderte kreditter som legges til',
     'credits_carried' => 'Inkluderte kreditter som overføres',
     'address_required' => 'Fyll ut og lagre fakturaadressen før du velger et betalt abonnement.',
-    'workspace_changed' => 'Arbeidsområdet ble endret i en annen fane. Last siden på nytt før du endrer faktureringen.',
+    'organization_changed' => 'Arbeidsområdet ble endret i en annen fane. Last siden på nytt før du endrer faktureringen.',
     'explanation' => 'Abonnementer gjelder per prosjekt. Sammenlign priser og antall tillatte miljøer. Fakturaopplysninger, kort og fakturaer deles av arbeidsområdet. Brukstall viser aktivitet; kostnader følger valgt abonnement.',
     'connections' => 'SSO-tilkoblinger',
     'environments' => 'Miljøer',

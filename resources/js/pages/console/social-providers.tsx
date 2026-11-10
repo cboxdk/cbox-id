@@ -1275,7 +1275,7 @@ function AudienceNote({ audience }: { audience: NonNullable<Props['audience']> }
                 <Icon name="info" className="w-4 h-4 shrink-0" />
                 <span className="min-w-0 flex-1">
                     {consoleRich(
-                        'console.these_are_the_buttons_on_part1_how_every_workspace_owne_5c0655c0',
+                        'console.these_are_the_buttons_on_part1_how_every_organization_o_ca549807',
                         {
                             part1: (
                                 <span className="mono">

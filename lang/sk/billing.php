@@ -71,7 +71,7 @@ return [
     'credits_granted' => 'Pridané zahrnuté kredity',
     'credits_carried' => 'Prenesené zahrnuté kredity',
     'address_required' => 'Pred výberom plateného programu vyplňte a uložte fakturačnú adresu.',
-    'workspace_changed' => 'Pracovný priestor sa zmenil na inej karte. Pred úpravou fakturácie túto stránku znova načítajte.',
+    'organization_changed' => 'Pracovný priestor sa zmenil na inej karte. Pred úpravou fakturácie túto stránku znova načítajte.',
     'explanation' => 'Predplatné sa vzťahuje na jednotlivé projekty. Porovnajte programy a pozrite si ceny a limity prostredí. Fakturačné údaje, karty a faktúry sú spoločné pre celý pracovný priestor. Údaje o využití zobrazujú aktivitu; poplatky sa riadia vybraným programom.',
     'connections' => 'Pripojenia SSO',
     'environments' => 'Prostredia',

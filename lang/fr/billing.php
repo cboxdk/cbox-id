@@ -69,7 +69,7 @@ return [
     'credits_granted' => 'Crédits inclus ajoutés',
     'credits_carried' => 'Crédits inclus reportés',
     'address_required' => 'Complétez et enregistrez votre adresse de facturation avant de choisir une offre payante.',
-    'workspace_changed' => 'L’espace de travail a changé dans un autre onglet. Rechargez cette page avant de modifier la facturation.',
+    'organization_changed' => 'L’espace de travail a changé dans un autre onglet. Rechargez cette page avant de modifier la facturation.',
     'explanation' => 'Les abonnements sont propres à chaque projet. Comparez les prix et les quotas d’environnements. Les coordonnées, cartes et factures sont partagées dans l’espace de travail. Les chiffres d’utilisation indiquent l’activité ; les frais suivent l’offre choisie.',
     'connections' => 'Connexions SSO',
     'environments' => 'Environnements',

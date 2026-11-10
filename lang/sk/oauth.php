@@ -46,7 +46,7 @@ return [
         'stale' => 'Túto žiadosť o autorizáciu už nemožno dokončiť. Začnite znova.',
         'account_attention' => 'Váš účet potrebuje pozornosť, aby ste mohli pokračovať. Prosím, znovu sa prihláste.',
         'step_up' => 'Táto aplikácia vyžaduje novšie prihlásenie alebo silnejšie overenie totožnosti. Skúste to znova.',
-        'no_workspace' => 'Toto prihlásenie pripája agenta k pracovnému priestoru v Cbox ID, ale váš účet nie je členom tímu žiadneho pracovného priestoru. Požiadajte vlastníka pracovného priestoru o pozvánku alebo pripojte agenta cez vlastnú adresu svojho prostredia.',
+        'no_organization' => 'Toto prihlásenie pripája agenta k pracovnému priestoru v Cbox ID, ale váš účet nie je členom tímu žiadneho pracovného priestoru. Požiadajte vlastníka pracovného priestoru o pozvánku alebo pripojte agenta cez vlastnú adresu svojho prostredia.',
     ],
     'organization' => [
         'title' => 'Vyberte organizáciu',

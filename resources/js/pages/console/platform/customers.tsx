@@ -76,7 +76,7 @@ export default function Customers({
             member: 'console.count_members',
             project: 'console.count_projects',
             environment: 'console.count_environments',
-            workspace: 'console.count_workspaces',
+            workspace: 'console.count_organizations',
             organization: 'console.count_organizations',
         } as const;
         return consoleChoice(keys[noun], count);
@@ -113,7 +113,7 @@ export default function Customers({
             <PageHeader
                 help={help}
                 description={consoleT(
-                    'console.every_workspace_on_this_install_open_one_to_walk_its_pr_4abbea51',
+                    'console.every_organization_on_this_install_open_one_to_walk_its_f0bd9340',
                 )}
                 actions={
                     <Button
@@ -121,7 +121,7 @@ export default function Customers({
                         aria-expanded={creating}
                         onClick={() => setCreating((open) => !open)}
                     >
-                        {consoleRich('console._part1_new_workspace_b18271fa', {
+                        {consoleRich('console._part1_new_organization_c7c173b3', {
                             part1: <Icon name="plus" className="w-4 h-4" />,
                         })}
                     </Button>
@@ -151,7 +151,7 @@ export default function Customers({
                     type="search"
                     style={{ maxWidth: '24rem' }}
                     placeholder={consoleUiText('console.search_by_name_or_slug_bfd8464a')}
-                    aria-label={consoleT('console.search_workspaces_c0cd6bdf')}
+                    aria-label={consoleT('console.search_organizations_c1b2693a')}
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
@@ -172,7 +172,7 @@ export default function Customers({
                     {search !== '' ? (
                         <EmptyState
                             icon="search"
-                            title={consoleFinalText('console.no_workspaces_match_part1_013d5449', {
+                            title={consoleFinalText('console.no_organizations_match_part1__19b7019f', {
                                 part1: search,
                             })}
                             description={consoleT(
@@ -182,13 +182,13 @@ export default function Customers({
                     ) : (
                         <EmptyState
                             icon="settings"
-                            title={consoleT('console.no_workspaces_yet_97d0b117')}
+                            title={consoleT('console.no_organizations_yet_5b7a7cbd')}
                             description={consoleT(
-                                'console.a_workspace_appears_here_the_moment_somebody_signs_up_o_ce907423',
+                                'console.an_organization_appears_here_the_moment_somebody_signs__d46ff7af',
                             )}
                             actions={
                                 <Button variant="primary" onClick={() => setCreating(true)}>
-                                    {consoleRich('console._part1_new_workspace_b18271fa', {
+                                    {consoleRich('console._part1_new_organization_c7c173b3', {
                                         part1: <Icon name="plus" className="w-4 h-4" />,
                                     })}
                                 </Button>
@@ -208,12 +208,12 @@ export default function Customers({
                         <div className="overflow-x-auto">
                             <Table
                                 caption={consoleUiText(
-                                    'console.workspaces_on_this_install_with_the_size_of_each_estate_23b98cfe',
+                                    'console.organizations_on_this_install_with_the_size_of_each_est_8d93e033',
                                 )}
                             >
                                 <thead>
                                     <tr>
-                                        <Th>{consoleT('console.workspace_87bb59ba')}</Th>
+                                        <Th>{consoleT('console.organization_d764d425')}</Th>
                                         <Th className="text-right">
                                             {consoleT('console.members_1044a4c0')}
                                         </Th>
@@ -357,7 +357,7 @@ export default function Customers({
 
             <p className="mt-6 text-xs" style={{ color: 'var(--faint)' }}>
                 {consoleRich(
-                    'console.suspension_is_the_only_lever_here_and_it_is_reversible_84455a59',
+                    'console.suspension_is_the_only_lever_here_and_it_is_reversible__9f87c506',
                     {
                         part1: ' ',
                         part2: (
@@ -455,7 +455,7 @@ function CreateCustomer({
     }, []);
 
     return (
-        <Panel title={consoleT('console.new_workspace_df0caf1b')} className="mt-6">
+        <Panel title={consoleT('console.new_organization_62e34b70')} className="mt-6">
             <form
                 onSubmit={(event) => {
                     event.preventDefault();
@@ -471,7 +471,7 @@ function CreateCustomer({
                 <div className="mt-5 grid gap-4 sm:grid-cols-2">
                     <div className="sm:col-span-2">
                         <Field
-                            label={consoleT('console.workspace_name_9619649d')}
+                            label={consoleT('console.organization_name_9a807d52')}
                             error={form.errors.name}
                         >
                             <Input
@@ -515,7 +515,7 @@ function CreateCustomer({
                     <Field
                         label={consoleT('console.environment_allowance_f277ec0f')}
                         hint={consoleT(
-                            'console.the_plan_allowance_on_their_first_product_billing_hangs_982af408',
+                            'console.the_plan_allowance_on_their_first_product_billing_hangs_f5035935',
                         )}
                         error={form.errors.environmentLimit}
                     >
@@ -534,7 +534,7 @@ function CreateCustomer({
 
                 <div className="mt-6 flex items-center gap-3">
                     <Button type="submit" variant="primary" loading={form.processing}>
-                        {consoleT('console.create_workspace_4b892277')}
+                        {consoleT('console.create_organization_f14e1b22')}
                     </Button>
                     <Button type="button" onClick={onDone}>
                         {consoleT('console.cancel_19766ed6')}

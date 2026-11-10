@@ -66,7 +66,7 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
             <PageHeader
                 help={help}
                 description={consoleT(
-                    'console.the_workspace_s_own_keys_for_the_workspace_api_list_pro_d42a9e3f',
+                    'console.the_organization_s_own_keys_for_the_organization_api_li_86017b30',
                 )}
                 actions={
                     <Button asChild size="sm">
@@ -117,9 +117,9 @@ export default function WorkspaceKeys({ tabs, keys, roles, lifetimes, help }: Pr
                         <EmptyState
                             icon="key"
                             equivalent="keys.workspace.create"
-                            title={consoleT('console.no_workspace_keys_yet_92b8986e')}
+                            title={consoleT('console.no_organization_keys_yet_7338155c')}
                             description={consoleT(
-                                'console.create_a_key_to_reach_the_workspace_api_from_your_own_s_0addbbd5',
+                                'console.create_a_key_to_reach_the_organization_api_from_your_ow_55fda87d',
                             )}
                         />
                     ) : (

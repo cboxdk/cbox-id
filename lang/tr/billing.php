@@ -73,7 +73,7 @@ return [
     'credits_granted' => 'Plana dahil krediler eklendi',
     'credits_carried' => 'Plana dahil krediler devredildi',
     'address_required' => 'Ücretli bir plan seçmeden önce fatura adresinizi doldurup kaydedin.',
-    'workspace_changed' => 'Çalışma alanı başka bir sekmede değiştirildi. Faturalandırmayı düzenlemeden önce bu sayfayı yeniden yükleyin.',
+    'organization_changed' => 'Çalışma alanı başka bir sekmede değiştirildi. Faturalandırmayı düzenlemeden önce bu sayfayı yeniden yükleyin.',
     'explanation' => 'Abonelikler proje bazındadır. Fiyatları ve ortam kotalarını görmek için planları karşılaştırın. Fatura bilgileri, kartlar ve faturalar çalışma alanının tamamında paylaşılır. Kullanım verileri etkinliği gösterir; ücretler seçtiğiniz plana göre belirlenir.',
     'connections' => 'SSO bağlantıları',
     'environments' => 'Ortamlar',

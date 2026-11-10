@@ -18,7 +18,7 @@ export default function AccountSettings({ name, help }: Props) {
             <PageHeader
                 help={help}
                 description={consoleT(
-                    'console.the_name_of_the_workspace_these_identity_providers_are_7bb1773d',
+                    'console.the_name_of_the_organization_these_identity_providers_a_72767cbb',
                 )}
             />
 
@@ -32,7 +32,7 @@ export default function AccountSettings({ name, help }: Props) {
                 <Panel>
                     <div className="flex items-start gap-2">
                         <Field
-                            label={consoleT('console.workspace_name_9619649d')}
+                            label={consoleT('console.organization_name_9a807d52')}
                             hint={consoleT('console.shown_across_the_console_fe4b6d94')}
                             error={form.errors.name}
                             className="flex-1 max-w-sm"
@@ -64,10 +64,10 @@ export default function AccountSettings({ name, help }: Props) {
                 conversation, not a control somebody would then have to be talked out of.
             */}
             <div className="mt-4">
-                <Panel title={consoleT('console.delete_workspace_55f033db')}>
+                <Panel title={consoleT('console.delete_organization_a70d189a')}>
                     <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                         {consoleT(
-                            'console.deleting_this_workspace_tears_down_every_project_and_en_f26b2e2f',
+                            'console.deleting_this_organization_tears_down_every_project_and_0d442c8e',
                         )}
                     </p>
                 </Panel>

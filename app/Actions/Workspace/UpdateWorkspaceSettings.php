@@ -71,7 +71,7 @@ final readonly class UpdateWorkspaceSettings implements Action
         $to = trim($context->string('name'));
 
         if ($to === '') {
-            throw ActionRefused::because('validation_failed', new ActionMessage('console.the_workspace_needs_a_name_16e53b34'), 'name');
+            throw ActionRefused::because('validation_failed', new ActionMessage('console.the_organization_needs_a_name__69c1bbb0'), 'name');
         }
 
         if ($to !== $from) {

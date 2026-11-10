@@ -120,7 +120,7 @@ final class TenantRoster
     public static function assertManagedHere(string $organizationId, string $field): void
     {
         if (self::managedElsewhere($organizationId)) {
-            throw new ActionRefused('managed_elsewhere', new ActionMessage('console.this_organization_is_a_cbox_workspace_its_team_is_manag_354a43db'), 409, $field);
+            throw new ActionRefused('managed_elsewhere', new ActionMessage('console.this_organization_is_a_cbox_customer_its_team_is_manage_32dfc121'), 409, $field);
         }
     }
 

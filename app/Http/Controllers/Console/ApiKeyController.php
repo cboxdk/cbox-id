@@ -97,7 +97,7 @@ final readonly class ApiKeyController extends ConsoleController
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
 
         $challenge = $this->stepUp(
-            __('console.a_workspace_key_acts_with_its_built_in_role__4dec8eb1'),
+            __('console.an_organization_key_acts_with_its_built_in_r_5906ff85'),
         );
 
         if ($challenge !== null) {
@@ -126,7 +126,7 @@ final readonly class ApiKeyController extends ConsoleController
          */
         $this->inertia->flash('freshKey', $issued->plaintext);
 
-        return back()->with('status', __('console.workspace_key_created_copy_it_now_it_will_not_be_shown_146ccee1'));
+        return back()->with('status', __('console.organization_key_created_copy_it_now_it_will_not_be_sho_f57569af'));
     }
 
     public function destroy(string $key): RedirectResponse
@@ -136,7 +136,7 @@ final readonly class ApiKeyController extends ConsoleController
         abort_if($organizationId === null, 403);
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
 
-        $challenge = $this->stepUp(__('console.revoking_a_workspace_key_stops_whatever_is_u_8adf3587'));
+        $challenge = $this->stepUp(__('console.revoking_an_organization_key_stops_whatever__fd3cd5f4'));
 
         if ($challenge !== null) {
             return $challenge;
@@ -166,7 +166,7 @@ final readonly class ApiKeyController extends ConsoleController
             return back();
         }
 
-        return back()->with('status', __('console.workspace_key_revoked_d031a10f'));
+        return back()->with('status', __('console.organization_key_revoked__9589e4ad'));
     }
 
     /**

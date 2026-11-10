@@ -79,7 +79,7 @@ final readonly class SetEnvironmentAccess implements Action
         $foreign = array_values(array_diff($ids, $owned));
 
         if (! $all && $foreign !== []) {
-            throw ActionRefused::because('environment_not_found', new ActionMessage('console.not_an_environment_of_this_workspace_part1_b0a90405', ['part1' => (string) (implode(', ', $foreign))]), 'environment_ids');
+            throw ActionRefused::because('environment_not_found', new ActionMessage('console.not_an_environment_of_this_organization_part1__bc7a18a4', ['part1' => (string) (implode(', ', $foreign))]), 'environment_ids');
         }
 
         app(NativeEnvironmentAccess::class)->replace($target, $all, $ids, $context->string('environment_access_version'));

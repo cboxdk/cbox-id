@@ -69,7 +69,7 @@ return [
     'credits_granted' => 'Créditos incluidos añadidos',
     'credits_carried' => 'Créditos incluidos conservados',
     'address_required' => 'Completa y guarda tu dirección de facturación antes de elegir un plan de pago.',
-    'workspace_changed' => 'El espacio de trabajo cambió en otra pestaña. Recarga esta página antes de editar la facturación.',
+    'organization_changed' => 'El espacio de trabajo cambió en otra pestaña. Recarga esta página antes de editar la facturación.',
     'explanation' => 'Las suscripciones son por proyecto. Compara precios y límites de entornos. Los datos de facturación, tarjetas y facturas se comparten en el espacio de trabajo. Las cifras de uso muestran actividad; los cargos siguen el plan elegido.',
     'connections' => 'Conexiones SSO',
     'environments' => 'Entornos',

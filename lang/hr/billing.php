@@ -73,7 +73,7 @@ return [
     'credits_granted' => 'Dodani uključeni krediti',
     'credits_carried' => 'Preneseni uključeni krediti',
     'address_required' => 'Prije odabira plaćenog paketa ispunite i spremite adresu za naplatu.',
-    'workspace_changed' => 'Radni prostor promijenjen je u drugoj kartici. Ponovno učitajte ovu stranicu prije uređivanja naplate.',
+    'organization_changed' => 'Radni prostor promijenjen je u drugoj kartici. Ponovno učitajte ovu stranicu prije uređivanja naplate.',
     'explanation' => 'Pretplate se ugovaraju po projektu. Usporedite pakete kako biste vidjeli cijene i ograničenja broja okruženja. Podaci za naplatu, kartice i računi zajednički su cijelom radnom prostoru. Podaci o korištenju prikazuju aktivnost, a naknade ovise o odabranom paketu.',
     'connections' => 'SSO veze',
     'environments' => 'Okruženja',

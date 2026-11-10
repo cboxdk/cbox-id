@@ -73,7 +73,7 @@ return [
     'credits_granted' => 'Créditos incluídos adicionados',
     'credits_carried' => 'Créditos incluídos transitados',
     'address_required' => 'Preencha e guarde a morada de faturação antes de escolher um plano pago.',
-    'workspace_changed' => 'O espaço de trabalho foi alterado noutro separador. Recarregue esta página antes de editar a faturação.',
+    'organization_changed' => 'O espaço de trabalho foi alterado noutro separador. Recarregue esta página antes de editar a faturação.',
     'explanation' => 'As subscrições são por projeto. Compare os planos para consultar os preços e os limites de ambientes. Os dados de faturação, os cartões e as faturas são partilhados pelo espaço de trabalho. Os dados de utilização mostram a atividade; os valores cobrados dependem do plano selecionado.',
     'connections' => 'Ligações SSO',
     'environments' => 'Ambientes',

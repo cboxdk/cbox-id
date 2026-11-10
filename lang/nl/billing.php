@@ -71,7 +71,7 @@ return [
     'credits_granted' => 'Toegevoegde inbegrepen credits',
     'credits_carried' => 'Overgedragen inbegrepen credits',
     'address_required' => 'Vul je factuuradres in en sla het op voordat je een betaald abonnement kiest.',
-    'workspace_changed' => 'De werkruimte is in een ander tabblad gewijzigd. Herlaad deze pagina voordat je de facturatie bewerkt.',
+    'organization_changed' => 'De werkruimte is in een ander tabblad gewijzigd. Herlaad deze pagina voordat je de facturatie bewerkt.',
     'explanation' => 'Abonnementen gelden per project. Vergelijk prijzen en limieten voor omgevingen. Factuurgegevens, kaarten en facturen worden binnen de werkruimte gedeeld. Gebruikscijfers tonen activiteit; kosten volgen je gekozen abonnement.',
     'connections' => 'SSO-verbindingen',
     'environments' => 'Omgevingen',

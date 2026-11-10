@@ -71,7 +71,7 @@ return [
     'credits_granted' => 'Zusätzliches enthaltenes Guthaben',
     'credits_carried' => 'Übertragenes enthaltenes Guthaben',
     'address_required' => 'Vervollständigen und speichern Sie Ihre Rechnungsadresse, bevor Sie einen kostenpflichtigen Tarif wählen.',
-    'workspace_changed' => 'Der Arbeitsbereich wurde in einem anderen Tab gewechselt. Laden Sie diese Seite neu, bevor Sie die Abrechnung bearbeiten.',
+    'organization_changed' => 'Der Arbeitsbereich wurde in einem anderen Tab gewechselt. Laden Sie diese Seite neu, bevor Sie die Abrechnung bearbeiten.',
     'explanation' => 'Abonnements gelten pro Projekt. Vergleichen Sie Preise und Umgebungskontingente. Rechnungsdaten, Karten und Rechnungen gelten für den gesamten Arbeitsbereich. Nutzungswerte zeigen Aktivitäten; Gebühren richten sich nach Ihrem Tarif.',
     'connections' => 'SSO-Verbindungen',
     'environments' => 'Umgebungen',

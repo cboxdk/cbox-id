@@ -365,7 +365,7 @@ it('refuses the person who runs no workspace and is no operator, on the page', f
 
     $refused = rootOAuthAuthorize($clientId)->assertOk();
 
-    expect(consentRefusal($refused))->toBe(__('oauth.failure.no_workspace'))
+    expect(consentRefusal($refused))->toBe(__('oauth.failure.no_organization'))
         ->and(rootAuditActions())->not->toContain(RootMcpOAuth::AUTHORIZED);
 })->group('security');
 

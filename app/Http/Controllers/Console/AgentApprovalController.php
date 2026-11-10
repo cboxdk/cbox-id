@@ -301,7 +301,7 @@ final readonly class AgentApprovalController extends ConsoleController
 
             return (new ActionApprovalRowProps(
                 entry: $entry,
-                agent: $keyId === null ? __('console.a_workspace_key_b3b36ed9') : ($keys[$keyId] ?? __('console.a_revoked_key_c42c275c')),
+                agent: $keyId === null ? __('console.an_organization_key_5626d71a') : ($keys[$keyId] ?? __('console.a_revoked_key_c42c275c')),
                 agentId: $keyId,
                 action: $definition,
                 target: self::target($entry->request->action, $input, $pathFields, $keys),

@@ -190,7 +190,7 @@ export function MobileNav({
                                 */}
                                 {workspaceSettingsUrl !== null && (
                                     <a href={workspaceSettingsUrl} className="nav-link w-full">
-                                        {consoleRich('console._part1_workspace_settings_908122da', {
+                                        {consoleRich('console._part1_organization_settings_bc52a29f', {
                                             part1: (
                                                 <Icon
                                                     name="briefcase"
@@ -208,7 +208,7 @@ export function MobileNav({
                                 */}
                                 {showAccountLink && accountUrl !== undefined && (
                                     <a href={accountUrl} className="nav-link w-full">
-                                        {consoleRich('console._part1_my_account_e642603a', {
+                                        {consoleRich('console._part1_account_ceb06aa9', {
                                             part1: (
                                                 <Icon
                                                     name="user"
@@ -221,7 +221,7 @@ export function MobileNav({
 
                                 {switchUserUrl !== undefined && (
                                     <a href={switchUserUrl} className="nav-link w-full">
-                                        {consoleRich('console._part1_switch_user_704d5a0f', {
+                                        {consoleRich('console._part1_switch_account_790ff16d', {
                                             part1: (
                                                 <Icon
                                                     name="switch"

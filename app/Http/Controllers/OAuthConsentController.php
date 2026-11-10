@@ -457,7 +457,7 @@ final readonly class OAuthConsentController extends PageController
                     'Only a member of a workspace\'s team or an operator can connect an MCP client at the platform root.');
             }
 
-            return $this->failure(__('oauth.failure.no_workspace'));
+            return $this->failure(__('oauth.failure.no_organization'));
         }
 
         if (! $reauthed && $authorization->asks(AuthorizationPrompt::Login)) {
@@ -996,7 +996,7 @@ final readonly class OAuthConsentController extends PageController
         // …and at the platform root, still somebody who runs a workspace: a membership ended
         // or an operator suspended while the screen sat open mints nothing.
         if ($this->refusedAtRoot($authorizing->client, $me)) {
-            return $this->failure(__('oauth.failure.no_workspace'));
+            return $this->failure(__('oauth.failure.no_organization'));
         }
 
         /*

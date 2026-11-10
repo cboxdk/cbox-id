@@ -305,10 +305,10 @@ function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
     const { rich: consoleRich } = useConsoleTranslator();
     const { t: consoleT } = useConsoleTranslator();
     return (
-        <Panel title={consoleT('console.one_connection_for_your_whole_workspace_7b9b1116')}>
+        <Panel title={consoleT('console.one_connection_for_your_whole_organization_215c630d')}>
             <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {consoleRich(
-                    'console.connect_once_at_the_platform_root_instead_of_once_per_e_fbee6c88',
+                    'console.connect_once_at_the_platform_root_instead_of_once_per_e_df000287',
                     {
                         part1: <span className="mono">environment</span>,
                         part2: ' ',
@@ -348,7 +348,7 @@ function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
                                 style={{ color: 'var(--muted-foreground)' }}
                             >
                                 {consoleT(
-                                    'console.this_deployment_does_not_let_an_mcp_client_sign_you_in_b8375ebb',
+                                    'console.this_deployment_does_not_let_an_mcp_client_sign_you_in__2bbe3144',
                                 )}
                             </p>
                         </div>
@@ -366,19 +366,19 @@ function WorkspaceConnection({ workspace }: { workspace: WorkspaceProps }) {
                 </div>
                 <div>
                     <p className="text-sm font-medium">
-                        {consoleT('console.or_give_an_agent_a_workspace_key_03647658')}
+                        {consoleT('console.or_give_an_agent_an_organization_key_2a85f987')}
                     </p>
                     <p className="text-xs mt-0.5" style={{ color: 'var(--muted-foreground)' }}>
                         {consoleRich(
-                            'console.a_workspace_key_reaches_the_workspace_itself_projects_e_28317ec8',
+                            'console.an_organization_key_reaches_the_organization_itself_pro_0257779c',
                             {
                                 part1: ' ',
                                 part2:
                                     workspace.workspaceKeysHref === null ? (
-                                        consoleNestedText('console.keys_workspace_keys_6b727150')
+                                        consoleNestedText('console.keys_organization_keys_a97fe2c6')
                                     ) : (
                                         <a href={workspace.workspaceKeysHref}>
-                                            {consoleT('console.keys_workspace_keys_6b727150')}
+                                            {consoleT('console.keys_organization_keys_a97fe2c6')}
                                         </a>
                                     ),
                                 part3: ' ',

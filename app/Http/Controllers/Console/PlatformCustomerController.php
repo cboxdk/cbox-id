@@ -147,7 +147,7 @@ final readonly class PlatformCustomerController extends ConsoleController
             return ['rows' => array_values($rows), 'pagination' => SimplePaginationProps::from($customers)];
         });
 
-        return $this->page('console/platform/customers', __('console.workspaces_1377264b'), [
+        return $this->page('console/platform/customers', __('console.organizations_2730183d'), [
             'help' => HelpProps::for(HelpTopic::Workspaces),
             'customers' => $page['rows'],
             'pagination' => $page['pagination'],
@@ -186,8 +186,8 @@ final readonly class PlatformCustomerController extends ConsoleController
         // provisioning has just made impossible — so it means something changed underneath,
         // and the operator should know the workspace exists but the invitation did not go.
         $status = $workspace['owner_invited']
-            ? __('console.workspace_created_owner_invited_status', ['email' => $request->ownerEmail()])
-            : __('console.workspace_created_but_the_owner_could_not_be_61b8b11a');
+            ? __('console.organization_created_owner_invited_status', ['email' => $request->ownerEmail()])
+            : __('console.organization_created_but_the_owner_could_not_21800822');
 
         return redirect()->route('platform.workspaces.show', $workspace['id'])->with('status', $status);
     }
@@ -387,7 +387,7 @@ final readonly class PlatformCustomerController extends ConsoleController
             return $result;
         }
 
-        return back()->with('status', $suspending ? __('console.workspace_suspended_its_members_can_no_longer_sign_in_a_82d7790e') : __('console.workspace_reactivated_d4e75684'));
+        return back()->with('status', $suspending ? __('console.organization_suspended_its_members_can_no_longer_sign_i_35d8877a') : __('console.organization_reactivated__cdae875e'));
     }
 
     /**

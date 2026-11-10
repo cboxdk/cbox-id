@@ -128,7 +128,7 @@ final class ActionRefused extends RuntimeException
             'support session' => 'console.missing_resource_support_session',
             'user' => 'console.missing_resource_user',
             'webhook endpoint' => 'console.missing_resource_webhook_endpoint',
-            'workspace' => 'console.missing_resource_workspace',
+            'workspace' => 'console.missing_resource_organization',
             default => 'console.missing_resource_unknown',
         };
 

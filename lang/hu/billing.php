@@ -73,7 +73,7 @@ return [
     'credits_granted' => 'Hozzáadott, csomagban foglalt kreditek',
     'credits_carried' => 'Átvitt, csomagban foglalt kreditek',
     'address_required' => 'Fizetős csomag választása előtt töltse ki és mentse a számlázási címét.',
-    'workspace_changed' => 'A munkaterület egy másik lapon megváltozott. A számlázási adatok szerkesztése előtt töltse újra ezt az oldalt.',
+    'organization_changed' => 'A munkaterület egy másik lapon megváltozott. A számlázási adatok szerkesztése előtt töltse újra ezt az oldalt.',
     'explanation' => 'Az előfizetések projektenként érvényesek. Hasonlítsa össze a csomagokat az árak és a környezetekre vonatkozó keretek megtekintéséhez. A számlázási adatok, kártyák és számlák a munkaterület egészére vonatkoznak. A használati adatok a tevékenységet mutatják; a díjakat a választott csomag határozza meg.',
     'connections' => 'SSO-kapcsolatok',
     'environments' => 'Környezetek',

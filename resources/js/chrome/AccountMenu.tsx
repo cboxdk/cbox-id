@@ -75,7 +75,7 @@ export function AccountMenu({
 
                 {workspaceSettingsHref !== null && (
                     <AccountMenuLink href={workspaceSettingsHref} icon="briefcase">
-                        {consoleT('console.workspace_settings_5ebc5914')}
+                        {consoleT('console.organization_settings_4fd62541')}
                     </AccountMenuLink>
                 )}
                 {/*
@@ -84,14 +84,14 @@ export function AccountMenu({
                     administrator to a sign-in form for the tenant's end users.
                 */}
                 <AccountMenuLink href={accountHref} icon="user">
-                    {consoleT('console.my_account_b53181a4')}
+                    {consoleT('console.account_7e1b0d56')}
                 </AccountMenuLink>
                 {/*
                     "Switch user": it moves between the people signed in on this device.
                     "Switch account" read as switching workspace.
                 */}
                 <AccountMenuLink href={switchUserHref} icon="switch">
-                    {consoleT('console.switch_user_4f899129')}
+                    {consoleT('console.switch_account_fedce010')}
                 </AccountMenuLink>
 
                 {(platformHref !== null || platformEnvironmentHref !== null) && (

@@ -73,7 +73,7 @@ return [
     'credits_granted' => 'Credite incluse adăugate',
     'credits_carried' => 'Credite incluse reportate',
     'address_required' => 'Completați și salvați adresa de facturare înainte de a alege un plan cu plată.',
-    'workspace_changed' => 'Spațiul de lucru a fost schimbat într-o altă filă. Reîncărcați această pagină înainte de a modifica facturarea.',
+    'organization_changed' => 'Spațiul de lucru a fost schimbat într-o altă filă. Reîncărcați această pagină înainte de a modifica facturarea.',
     'explanation' => 'Abonamentele se aplică fiecărui proiect în parte. Comparați planurile pentru a vedea prețurile și limitele pentru medii. Datele de facturare, cardurile și facturile sunt comune întregului spațiu de lucru. Datele de utilizare arată activitatea, iar sumele facturate depind de planul ales.',
     'connections' => 'Conexiuni SSO',
     'environments' => 'Medii',

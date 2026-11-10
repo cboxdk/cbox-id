@@ -69,7 +69,7 @@ return [
     'credits_granted' => 'Crediti inclusi aggiunti',
     'credits_carried' => 'Crediti inclusi trasferiti',
     'address_required' => 'Completa e salva l’indirizzo di fatturazione prima di scegliere un piano a pagamento.',
-    'workspace_changed' => 'Lo spazio di lavoro è cambiato in un’altra scheda. Ricarica la pagina prima di modificare la fatturazione.',
+    'organization_changed' => 'Lo spazio di lavoro è cambiato in un’altra scheda. Ricarica la pagina prima di modificare la fatturazione.',
     'explanation' => 'Gli abbonamenti sono per progetto. Confronta prezzi e limiti degli ambienti. Dati di fatturazione, carte e fatture sono condivisi nello spazio di lavoro. I dati di utilizzo mostrano l’attività; gli addebiti seguono il piano scelto.',
     'connections' => 'Connessioni SSO',
     'environments' => 'Ambienti',

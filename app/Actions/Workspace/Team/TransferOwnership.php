@@ -67,11 +67,11 @@ final readonly class TransferOwnership implements Action
         $target = InWorkspace::member($workspaceId, $context->string('id'));
 
         if (! $principal instanceof ConsoleSessionPrincipal || $ownerId === null || $principal->scope()->membershipRole() !== MembershipRole::Owner) {
-            throw new ActionRefused('owner_only', new ActionMessage('console.only_the_workspace_s_owner_can_hand_it_over_signed_in_t_eae1f61a'), 403);
+            throw new ActionRefused('owner_only', new ActionMessage('console.only_the_organization_s_owner_can_hand_it_over_signed_i_0ebe977c'), 403);
         }
 
         if ($target->user_id === $ownerId) {
-            throw ActionRefused::because('already_owner', new ActionMessage('console.you_already_own_this_workspace_81bb6c42'));
+            throw ActionRefused::because('already_owner', new ActionMessage('console.you_already_own_this_organization__62baf6a4'));
         }
 
         try {

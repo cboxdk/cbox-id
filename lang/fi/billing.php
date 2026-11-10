@@ -71,7 +71,7 @@ return [
     'credits_granted' => 'Lisättävät pakettiin sisältyvät käyttöhyvitykset',
     'credits_carried' => 'Siirtyvät pakettiin sisältyvät käyttöhyvitykset',
     'address_required' => 'Täytä ja tallenna laskutusosoite ennen maksullisen tilauksen valitsemista.',
-    'workspace_changed' => 'Työtila vaihtui toisessa välilehdessä. Lataa sivu uudelleen ennen laskutuksen muokkaamista.',
+    'organization_changed' => 'Työtila vaihtui toisessa välilehdessä. Lataa sivu uudelleen ennen laskutuksen muokkaamista.',
     'explanation' => 'Tilaukset ovat projektikohtaisia. Vertaa hintoja ja sallittujen ympäristöjen määriä. Laskutustiedot, kortit ja laskut ovat työtilan yhteisiä. Käyttöluvut kertovat toiminnasta; veloitukset määräytyvät valitun tilauksen mukaan.',
     'connections' => 'SSO-yhteydet',
     'environments' => 'Ympäristöt',

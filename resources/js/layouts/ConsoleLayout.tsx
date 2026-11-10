@@ -271,7 +271,7 @@ function ActsOn({ actsOn }: { actsOn: ShellActsOn }) {
     const { t: tc } = useTranslator();
     const ACTS_ON_NOUN: Record<ShellActsOn['kind'], string> = {
         environment: tc('console.environment_9e471951'),
-        workspace: tc('console.workspace_87bb59ba'),
+        workspace: tc('console.organization_d764d425'),
         organization: tc('console.organization_d764d425'),
         platform: tc('console.platform_admin_69652f55'),
     };

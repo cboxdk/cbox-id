@@ -229,12 +229,12 @@ export default function Environments({
 
             <p className="mt-6 text-xs" style={{ color: 'var(--faint)' }}>
                 {consoleRich(
-                    'console.environments_nest_under_a_project_and_a_project_under_a_03ba63b6',
+                    'console.environments_nest_under_a_project_and_a_project_under_a_a7f5aa8e',
                     {
                         part1: ' ',
                         part2: (
                             <Link href={customersHref} className="underline">
-                                {consoleT('console.workspace_21a3230e')}
+                                {consoleT('console.organization_af3a1bb3')}
                             </Link>
                         ),
                         part3: ' ',
@@ -392,7 +392,7 @@ function EnvironmentRows({
                             <p className="text-xs" style={{ color: 'var(--faint)' }}>
                                 {lineage.note ??
                                     consoleRuntimeText(
-                                        'console.no_project_so_no_workspace_305f3951',
+                                        'console.no_project_so_no_organization_71d53bb1',
                                     )}
                             </p>
                         </>

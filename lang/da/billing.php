@@ -71,7 +71,7 @@ return [
     'credits_granted' => 'Inkluderede credits, der tilføjes',
     'credits_carried' => 'Inkluderede credits, der videreføres',
     'address_required' => 'Udfyld og gem faktureringsadressen, før du vælger en betalt plan.',
-    'workspace_changed' => 'Arbejdsområdet blev ændret i en anden fane. Genindlæs siden, før du ændrer betaling.',
+    'organization_changed' => 'Arbejdsområdet blev ændret i en anden fane. Genindlæs siden, før du ændrer betaling.',
     'explanation' => 'Abonnementer gælder pr. projekt. Sammenlign planer for at se priser og antal miljøer. Faktureringsoplysninger, kort og fakturaer deles af arbejdsområdet. Forbrugstallene viser aktivitet; betaling følger din valgte plan.',
     'connections' => 'SSO-forbindelser',
     'environments' => 'Miljøer',

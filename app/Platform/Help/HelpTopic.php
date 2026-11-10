@@ -122,9 +122,9 @@ enum HelpTopic: string
             self::SessionsAndActivity => __('console.where_you_are_signed_in_a07510ca'),
             self::ApiKeys => __('console.keys_for_the_apis_of_the_apps_you_use_ec8ba965'),
             self::MemberApiKeys => __('console.keys_your_people_hold_for_your_apps_a5db71a6'),
-            self::WorkspaceSettings => __('console.workspace_settings_5ebc5914'),
+            self::WorkspaceSettings => __('console.organization_settings_4fd62541'),
             self::Projects => __('console.your_products_and_their_environments_c6945f5f'),
-            self::Team => __('console.the_people_who_run_this_workspace_b77b436b'),
+            self::Team => __('console.the_people_who_run_this_organization_41e40bf5'),
             self::Keys => __('console.keys_for_your_own_code_4e040a24'),
             self::EnvironmentDomains => __('console.sign_in_on_your_own_domain_5fbbd0c6'),
             self::Billing => __('console.plans_and_what_they_count_4637cc71'),
@@ -150,7 +150,7 @@ enum HelpTopic: string
             self::Radar => __('console.allowing_challenging_and_blocking_sign_ins_1df777ec'),
             self::SignInActivity => __('console.sign_ins_over_time_7418e68f'),
             self::Branding => __('console.your_brand_on_the_sign_in_and_in_mail_459efaa4'),
-            self::Workspaces => __('console.every_workspace_on_this_install_397903d5'),
+            self::Workspaces => __('console.every_organization_on_this_install_c06290a4'),
             self::Environments => __('console.every_environment_on_this_install_8174d93f'),
             self::PlatformOrganizations => __('console.organizations_in_the_target_environment_d859f568'),
             self::PlatformUsage => __('console.usage_across_the_install_a13ed937'),
@@ -218,19 +218,19 @@ enum HelpTopic: string
 
             self::ApiKeys => __('console.a_key_lets_your_own_scripts_and_integrations_call_an_ap_4edbc37d'),
 
-            self::MemberApiKeys => __('console.every_api_key_the_people_in_this_organization_have_crea_fe7787a7'),
+            self::MemberApiKeys => __('console.every_api_key_the_people_in_this_organization_have_crea_51e4cae3'),
 
-            self::WorkspaceSettings => __('console.the_name_of_your_workspace_which_your_projects_environm_3fa3245f'),
+            self::WorkspaceSettings => __('console.the_name_of_your_organization_which_your_projects_envir_fde906b5'),
 
             self::Projects => __('console.a_project_is_one_of_your_products_with_its_own_plan_sig_45d566d1'),
 
-            self::Team => __('console.everyone_who_administers_this_workspace_the_built_in_ro_26825e5f'),
+            self::Team => __('console.everyone_who_administers_this_organization_the_built_in_69802df4'),
 
-            self::Keys => __('console.the_keys_your_own_code_presents_to_cbox_id_one_tab_per_42243556'),
+            self::Keys => __('console.the_keys_your_own_code_presents_to_cbox_id_one_tab_per__a0955137'),
 
             self::EnvironmentDomains => __('console.serves_an_environment_s_identity_endpoints_on_a_domain_f6582d38'),
 
-            self::Billing => __('console.each_project_in_your_workspace_has_its_own_plan_and_env_c5ff35b1'),
+            self::Billing => __('console.each_project_in_your_organization_has_its_own_plan_and__0a007c9c'),
 
             self::EnvironmentOverview => __('console.how_many_organizations_users_single_sign_on_connections_8e80258f'),
 
@@ -270,9 +270,9 @@ enum HelpTopic: string
 
             self::Branding => __('console.everything_your_people_see_of_your_brand_on_one_page_th_9d98e332'),
 
-            self::Workspaces => __('console.a_workspace_is_one_signed_up_company_s_home_on_this_ins_3053f712'),
+            self::Workspaces => __('console.an_organization_is_one_signed_up_company_s_home_on_this_b98406a0'),
 
-            self::Environments => __('console.an_environment_is_a_fully_isolated_identity_service_wit_fed9a3d8'),
+            self::Environments => __('console.an_environment_is_a_fully_isolated_identity_service_wit_993d6053'),
 
             self::PlatformOrganizations => __('console.every_organization_in_the_environment_the_console_is_po_0de4eff9'),
 
@@ -281,7 +281,7 @@ enum HelpTopic: string
             self::PlatformSearch => __('console.looks_up_an_organization_by_name_or_handle_or_a_user_by_d7460886'),
 
             self::PlatformQueues => __('console.webhooks_sign_out_notices_to_connected_apps_role_update_776577f9'),
-            self::Operators => __('console.platform_operators_administer_every_workspace_and_envir_fb24c050'),
+            self::Operators => __('console.platform_operators_administer_every_organization_and_en_36866fb1'),
         };
     }
 

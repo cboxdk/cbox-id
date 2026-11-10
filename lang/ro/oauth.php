@@ -46,7 +46,7 @@ return [
         'stale' => 'Această cerere de autorizare nu poate fi finalizată. Începeți din nou.',
         'account_attention' => 'Contul dumneavoastră necesită atenție înainte de a putea continua. Autentificați-vă din nou.',
         'step_up' => 'Această aplicație necesită autentificare mai recentă sau mai puternică. Vă rugăm să începeți din nou.',
-        'no_workspace' => 'Această autentificare conectează un agent la un spațiu de lucru în Cbox ID, dar contul dumneavoastră nu face parte din echipa niciunui spațiu de lucru. Solicitați unui proprietar de spațiu de lucru să vă invite sau conectați agentul folosind adresa propriului mediu.',
+        'no_organization' => 'Această autentificare conectează un agent la un spațiu de lucru în Cbox ID, dar contul dumneavoastră nu face parte din echipa niciunui spațiu de lucru. Solicitați unui proprietar de spațiu de lucru să vă invite sau conectați agentul folosind adresa propriului mediu.',
     ],
     'organization' => [
         'title' => 'Selectați o organizație',

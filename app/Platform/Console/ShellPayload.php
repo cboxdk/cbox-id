@@ -473,7 +473,7 @@ final readonly class ShellPayload
             return new ShellActsOnProps(
                 kind: 'environment',
                 label: $name,
-                detail: __('console.the_platform_s_own_environment_on_part1_how_every_works_07c8a7ac', ['part1' => $host]),
+                detail: __('console.the_platform_s_own_environment_on_part1_how_every_organ_acd123ad', ['part1' => $host]),
                 critical: true,
             );
         }
@@ -495,7 +495,7 @@ final readonly class ShellPayload
         return new ShellActsOnProps(
             kind: 'platform',
             label: __('console.the_whole_deployment_3cbe949f'),
-            detail: __('console.every_workspace_environment_and_operator_on_part1_a_sus_e4247a2d', ['part1' => $this->request->getHost()]),
+            detail: __('console.every_organization_environment_and_operator_on_part1_a__f425b7e6', ['part1' => $this->request->getHost()]),
             critical: true,
         );
     }
@@ -519,12 +519,12 @@ final readonly class ShellPayload
             return new ShellActsOnProps(
                 kind: 'workspace',
                 label: $name,
-                detail: $teamSignIn ? __('console.how_your_workspace_s_own_team_signs_in_to_cbox_id_not_y_8f578e9b') : __('console.your_workspace_its_projects_team_keys_and_billing_sign_d55c648f'),
+                detail: $teamSignIn ? __('console.how_your_organization_s_own_team_signs_in_to_cbox_id_no_11ea0db7') : __('console.your_organization_its_projects_team_keys_and_billing_si_152a2f42'),
             );
         }
 
         if ($this->scope->ownsIdentityProviders()) {
-            return new ShellActsOnProps(kind: 'workspace', label: $name, detail: __('console.workspace_87bb59ba'));
+            return new ShellActsOnProps(kind: 'workspace', label: $name, detail: __('console.organization_d764d425'));
         }
 
         $environment = $this->environmentName();
