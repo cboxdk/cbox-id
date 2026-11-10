@@ -191,7 +191,7 @@ it('indexes only the actions the key may run', function (): void {
     $actions = mcpCall(mcpIssue([EnvironmentApiScope::ApisRead])->plaintext, 'list_actions')['structuredContent']['actions'];
 
     expect(collect($actions)->pluck('tool')->all())->toEqualCanonicalizing(['apis_list', 'apis_get'])
-        ->and(collect($actions)->firstWhere('tool', 'apis_list'))->toMatchArray(['action' => 'apis.list', 'scope' => 'id:apis:read', 'danger' => 'read']);
+        ->and(collect($actions)->firstWhere('tool', 'apis_list'))->toMatchArray(['action' => 'apis.list', 'scope' => 'apis:read', 'danger' => 'read']);
 });
 
 // ── Running actions ─────────────────────────────────────────────────────────────

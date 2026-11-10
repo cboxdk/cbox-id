@@ -107,7 +107,7 @@ it('draws platform admin inside the platform environment\'s console, without an 
         ->assertNoAccessibilityIssues()
         ->assertNoJavaScriptErrors();
 })->with([
-    'workspaces' => ['/admin/platform/workspaces', 'Workspaces'],
+    'workspaces' => ['/admin/platform/workspaces', 'Organizations'],
     'environments' => ['/admin/platform/environments', 'Environments'],
     'organization tree' => ['/admin/platform/organizations', 'Organization tree'],
     'operators' => ['/admin/platform/operators', 'Operators'],

@@ -515,7 +515,7 @@ it('has no accessibility issues on the ported platform console pages', function 
  */
 dataset('platform pages', [
     'environments' => ['/admin/platform/environments', 'Environments'],
-    'customers' => ['/admin/platform/workspaces', 'Workspaces'],
+    'customers' => ['/admin/platform/workspaces', 'Organizations'],
     // The customer's OWN page, which is where the plane's real density is: a team table, a
     // panel per project, and an environment row with two controls that repoint the console.
     'customer' => ['/admin/platform/workspaces/first', 'Acme'],
