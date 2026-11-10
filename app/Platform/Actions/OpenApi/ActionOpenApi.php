@@ -11,6 +11,7 @@ use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\OrganizationScopes;
+use App\Platform\Actions\RenamedActions;
 
 /**
  * A management API's OpenAPI document — one per plane — with every action's operation
@@ -175,6 +176,12 @@ final readonly class ActionOpenApi
             'x-danger' => $action->danger->value,
         ];
 
+        // The names this action had before v3, which a generated client (cbox-cli builds its
+        // verbs from `x-action`) keeps as aliases until v3.1 ({@see RenamedActions}).
+        if (RenamedActions::retired($action->name) !== []) {
+            $operation['x-action-aliases'] = RenamedActions::retired($action->name);
+        }
+
         $operation['parameters'] = $parameters;
 
         if (! $reads && $rest !== []) {
@@ -302,6 +309,10 @@ final readonly class ActionOpenApi
         $operation['x-scope'] ??= $action->documentedScope();
         $operation['x-scope-aliases'] ??= $action->scopeAliases();
         $operation['x-danger'] ??= $action->danger->value;
+
+        if (RenamedActions::retired($action->name) !== []) {
+            $operation['x-action-aliases'] ??= RenamedActions::retired($action->name);
+        }
 
         return $operation;
     }

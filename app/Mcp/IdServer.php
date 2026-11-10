@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp;
 
+use App\Mcp\Methods\CallTool;
 use App\Mcp\Tools\ApprovalStatus;
 use App\Mcp\Tools\ListActions;
 use App\Mcp\Tools\WhoAmI;
@@ -80,6 +81,9 @@ final class IdServer extends Server
         // so a client's logs say which Cbox ID it talked to. It said `1.0.0` whatever ran.
         $version = config('app.version');
         $this->version = is_string($version) && $version !== '' ? $version : 'dev';
+
+        // A tool name v3 retired still calls its action until v3.1, unlisted and counted.
+        $this->addMethod('tools/call', CallTool::class);
 
         $actions = array_values(array_map(
             static fn ($action): ActionTool => new ActionTool($action),

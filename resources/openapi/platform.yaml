@@ -13,7 +13,7 @@ info:
     **Who may call it.** Only a platform OPERATOR, through an access token they delegated
     carrying the `operator:*` scope each operation names — the token the platform root
     issues them for its `/mcp` (`cbox login` at the root, or an agent signed in there). **No management key is accepted
-    here** — not an environment key (`cbid_env_…`), not an organization key (`cbid_org_…`):
+    here** — not an environment key (`cbid_env_…`), not an organization key (`cbid_ws_…`):
     those speak for a customer, and this API is the deployment above every customer. A
     token whose person is not an active operator is refused with `403`; anything else
     without a valid operator token gets `401`.
@@ -119,6 +119,8 @@ paths:
       x-scope: 'operator:environments:write'
       x-scope-aliases: []
       x-danger: critical
+      x-action-aliases:
+        - platform.environments.create
       parameters:
         -
           $ref: '#/components/parameters/IdempotencyKey'
@@ -177,6 +179,8 @@ paths:
       x-scope: 'operator:organizations:write'
       x-scope-aliases: []
       x-danger: critical
+      x-action-aliases:
+        - platform.organizations.create
       parameters:
         -
           name: environment_id
@@ -248,6 +252,8 @@ paths:
       x-scope: 'operator:organizations:write'
       x-scope-aliases: []
       x-danger: critical
+      x-action-aliases:
+        - platform.organizations.move
       parameters:
         -
           name: environment_id
@@ -314,6 +320,8 @@ paths:
       x-scope: 'operator:organizations:write'
       x-scope-aliases: []
       x-danger: critical
+      x-action-aliases:
+        - platform.organizations.set_status
       parameters:
         -
           name: environment_id
@@ -382,6 +390,8 @@ paths:
       x-scope: 'operator:environments:write'
       x-scope-aliases: []
       x-danger: critical
+      x-action-aliases:
+        - platform.environments.provision
       parameters:
         -
           name: environment_id
@@ -456,6 +466,8 @@ paths:
       x-scope: 'operator:operators:write'
       x-scope-aliases: []
       x-danger: critical
+      x-action-aliases:
+        - platform.operators.create
       parameters:
         -
           $ref: '#/components/parameters/IdempotencyKey'
@@ -519,6 +531,8 @@ paths:
       x-scope: 'operator:operators:write'
       x-scope-aliases: []
       x-danger: critical
+      x-action-aliases:
+        - platform.operators.set_status
       parameters:
         -
           name: operator_id
@@ -581,6 +595,8 @@ paths:
       x-scope: 'operator:workspaces:write'
       x-scope-aliases: []
       x-danger: critical
+      x-action-aliases:
+        - platform.workspaces.create
       parameters:
         -
           $ref: '#/components/parameters/IdempotencyKey'
@@ -652,6 +668,8 @@ paths:
       x-scope: 'operator:workspaces:write'
       x-scope-aliases: []
       x-danger: critical
+      x-action-aliases:
+        - platform.workspaces.set_status
       parameters:
         -
           name: workspace_id

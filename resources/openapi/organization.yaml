@@ -42,7 +42,7 @@ info:
     This is distinct from the per-environment API (OIDC, organizations, users, SCIM),
     which is served on each environment's own host and authenticated with
     environment-scoped credentials. Credentials never cross planes: an organization key
-    (`cbid_org_…`) cannot call the environment API, and vice versa.
+    (`cbid_ws_…`) cannot call the environment API, and vice versa.
 
     **Envelope.** Every success returns `{ "data": … }` (an object, or an array with
     a sibling `meta` on lists). Every error returns `{ "error": "<code>", "message":
@@ -134,6 +134,8 @@ paths:
       x-scope-aliases:
         - 'workspace:read'
       x-danger: read
+      x-action-aliases:
+        - workspace.get
     patch:
       tags:
         - Organization
@@ -145,6 +147,8 @@ paths:
       x-scope-aliases:
         - 'settings:write'
       x-danger: write
+      x-action-aliases:
+        - workspace.settings.update
       parameters:
         -
           $ref: '#/components/parameters/IdempotencyKey'
@@ -1355,6 +1359,8 @@ paths:
       x-scope-aliases:
         - 'keys:write'
       x-danger: critical
+      x-action-aliases:
+        - keys.workspace.create
       parameters:
         -
           $ref: '#/components/parameters/IdempotencyKey'
@@ -1461,6 +1467,8 @@ paths:
       x-scope-aliases:
         - 'workspace:read'
       x-danger: read
+      x-action-aliases:
+        - keys.workspace.list
       parameters:
         -
           name: limit
@@ -1531,6 +1539,8 @@ paths:
       x-scope-aliases:
         - 'keys:write'
       x-danger: destructive
+      x-action-aliases:
+        - keys.workspace.revoke
       parameters:
         -
           name: id
@@ -2371,7 +2381,7 @@ components:
     OrganizationApiKey:
       type: http
       scheme: bearer
-      description: 'An organization key, `cbid_org_…` — a role, optionally narrowed by scopes. Create and revoke keys in the console (Owner/Admin), or with `POST /workspace/keys`.'
+      description: 'An organization key, `cbid_ws_…` — a role, optionally narrowed by scopes. Create and revoke keys in the console (Owner/Admin), or with `POST /workspace/keys`.'
   parameters:
     CboxApproval:
       name: Cbox-Approval
@@ -2654,7 +2664,7 @@ components:
           description: "The key's value. Shown once."
     WorkspaceKey:
       type: object
-      description: 'An organization key (`cbid_org_…`). `token` is present only in the answer that minted it, and `null` on an idempotent replay.'
+      description: 'An organization key (`cbid_ws_…`). `token` is present only in the answer that minted it, and `null` on an idempotent replay.'
       required:
         - id
         - name

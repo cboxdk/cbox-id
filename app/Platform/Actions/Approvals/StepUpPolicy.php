@@ -6,6 +6,7 @@ namespace App\Platform\Actions\Approvals;
 
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\RenamedActions;
 
 /**
  * Which of a credential's actions need a person's approval before they run.
@@ -54,7 +55,10 @@ final readonly class StepUpPolicy
 
     public function requires(ActionDefinition $action): bool
     {
-        if (in_array($action->name, $this->actions, true)) {
+        // By any of the action's names: a policy written before v3 names
+        // `keys.workspace.revoke`, and it still holds `keys.organization.revoke`. The stored
+        // list is left as written, so the release before v3 reads it too.
+        if (array_intersect(RenamedActions::spellings($action->name), $this->actions) !== []) {
             return true;
         }
 
