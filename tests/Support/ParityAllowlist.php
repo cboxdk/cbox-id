@@ -148,6 +148,8 @@ final class ParityAllowlist
             // and the organization's name typed out, then landed somewhere they still belong.
             // The environment's authority archives one with `organizations.delete`.
             'settings.organization.destroy',
+            // …and its v2 address, a 308 to it while an old tab still has the form open.
+            'legacy.settings.organization.destroy',
             // Creating an account for yourself.
             'signup.register',
             // The product's signup ceremony: found/select your own team in this browser

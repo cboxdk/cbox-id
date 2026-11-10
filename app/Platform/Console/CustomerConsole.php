@@ -103,8 +103,12 @@ final class CustomerConsole
         'orgs.show',
     ];
 
-    /** Route-name prefixes withheld the same way: the v2 redirects into `/orgs/{org}`. */
-    private const WITHHELD_PREFIXES = ['legacy.orgs.'];
+    /**
+     * Route-name prefixes withheld the same way: the v2 redirects into `/orgs/{org}`, and
+     * the v2 writes of the organization-settings page, which a customer's console does not
+     * serve either.
+     */
+    private const WITHHELD_PREFIXES = ['legacy.orgs.', 'legacy.settings.'];
 
     /** Whether an area has any place in a customer's console. */
     public static function keepsArea(string $area): bool

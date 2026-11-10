@@ -492,8 +492,9 @@ it('keeps the v2 writes of a customer organization\'s own settings answering at 
         ->assertRedirect('/organization')
         ->assertHeader('Deprecation', 'true');
 
-    // `/settings` itself is the person's own page; away from a customer environment's host
-    // it carries no pointer to the organization's.
+    // `/settings` itself is the person's own page now; on the environment's host it shows
+    // an administrator where the organization's went, instead of silently being another page.
     $this->get('/settings')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-        ->where('organizationSettingsMoved', null));
+        ->where('organizationSettingsMoved', url('/organization')));
+    $this->get('/organization')->assertOk();
 });
