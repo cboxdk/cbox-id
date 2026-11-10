@@ -59,8 +59,8 @@ function pagesWithoutHelp(array $routes): array
 
     foreach ($routes as $route) {
         $response = test()->get(route($route));
-        if ($route === 'billing') {
-            $canonical = route('billing', ['organization' => app(CurrentUser::class)->organizationId()]);
+        if ($route === 'orgs.settings.billing') {
+            $canonical = route('orgs.settings.billing', ['organization' => app(CurrentUser::class)->organizationId()]);
             $response->assertRedirect($canonical);
             $response = test()->get($canonical);
         }
@@ -154,7 +154,7 @@ it('gives every organization page, and both Keys tabs, a help topic', function (
     expect($routes)->toHaveCount(6);
 
     // The Keys page's second tab is its own URL and not on the rail.
-    expect(pagesWithoutHelp([...$routes, 'keys.organization']))->toBe([]);
+    expect(pagesWithoutHelp([...$routes, 'orgs.settings.api-keys.organization']))->toBe([]);
 });
 
 it('gives every environment console page on the rail a help topic', function (): void {

@@ -41,7 +41,7 @@ beforeEach(function (): void {
 
 function signInMethods(): array
 {
-    $page = test()->get('https://'.ACCOUNT_HOST.'/account')->assertOk();
+    $page = test()->get('https://'.ACCOUNT_HOST.'/settings')->assertOk();
 
     expect($page->inertiaPage()['component'])->toBe('account/security');
 
@@ -125,7 +125,7 @@ it('will not connect a provider this person is not offered', function (): void {
         return $connection;
     });
 
-    $this->get('https://'.ACCOUNT_HOST.'/account/sign-in-methods/'.$enterprise->id.'/connect')->assertNotFound();
+    $this->get('https://'.ACCOUNT_HOST.'/settings/sign-in-methods/'.$enterprise->id.'/connect')->assertNotFound();
 })->group('security');
 
 it('disconnects a linked identity, and says so when it is the last way in', function (): void {
@@ -137,7 +137,7 @@ it('disconnects a linked identity, and says so when it is the last way in', func
 
     $identity = signInMethods()['identities'][0];
 
-    $this->from('https://'.ACCOUNT_HOST.'/account')->delete($identity['disconnectHref'])
+    $this->from('https://'.ACCOUNT_HOST.'/settings')->delete($identity['disconnectHref'])
         ->assertSessionHasNoErrors()
         ->assertSessionHas('status');
 
@@ -157,7 +157,7 @@ it('disconnects a linked identity, and says so when it is the last way in', func
     $only = signInMethods()['identities'][0];
 
     /** @var TestResponse $refused */
-    $refused = $this->from('https://'.ACCOUNT_HOST.'/account')->delete($only['disconnectHref']);
+    $refused = $this->from('https://'.ACCOUNT_HOST.'/settings')->delete($only['disconnectHref']);
     $refused->assertSessionHasErrors('signInMethods');
 
     expect(session('errors')->first('signInMethods'))->toContain('only way to sign in')
@@ -168,7 +168,7 @@ it('disconnects a linked identity, and says so when it is the last way in', func
         'user_id' => $googleOnly->id, 'credential_id' => 'cred', 'public_key' => 'pk', 'name' => 'Phone', 'sign_count' => 0,
     ]));
 
-    $this->from('https://'.ACCOUNT_HOST.'/account')->delete($only['disconnectHref'])->assertSessionHasNoErrors();
+    $this->from('https://'.ACCOUNT_HOST.'/settings')->delete($only['disconnectHref'])->assertSessionHasNoErrors();
     expect(linkedOn($googleOnly->id))->toBe([]);
 });
 
@@ -193,7 +193,7 @@ it('shows an organization\'s single sign-on, and does not offer to disconnect it
 it('says what else the account signs in with: its password and its passkeys', function (): void {
     signInAsSubject($this->ownerId);
 
-    $props = (array) $this->get('https://'.ACCOUNT_HOST.'/account')->assertOk()->inertiaProps();
+    $props = (array) $this->get('https://'.ACCOUNT_HOST.'/settings')->assertOk()->inertiaProps();
 
     expect($props['hasPassword'])->toBeTrue()
         ->and($props['passkeys'])->toBe([]);

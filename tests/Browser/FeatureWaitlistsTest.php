@@ -43,7 +43,7 @@ it('lets a customer follow a feature, withdraw, and apply for its beta', functio
 
         return Http::response(['data' => [['id' => 42, 'key' => 'studio', 'name' => 'New editor', 'description' => 'Try collaborative editing before the general release.', 'mode' => 'waitlist', 'kind' => 'feature', 'scope' => 'organization', 'service_name' => 'Studio', 'feature_key' => 'studio.editor', 'public_url' => null, 'questions' => []]], 'current_page' => 1, 'last_page' => 1]);
     });
-    $page = visit('/account/services?kind=feature&organization='.$team->id);
+    $page = visit('/settings/services?kind=feature&organization='.$team->id);
     $page->assertSee('New editor')->assertSee('Studio team')->assertSee('Notify me')->assertSee('Join the test group')
         ->assertNoJavaScriptErrors()->screenshot(filename: 'feature-waitlist-choices');
     $page->click('Join waitlist')->assertSee('Following updates')->click('Withdraw signup')

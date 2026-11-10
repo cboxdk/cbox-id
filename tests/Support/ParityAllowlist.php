@@ -39,12 +39,12 @@ final class ParityAllowlist
         return [
             // Payment-provider consent/3DS requires this browser's pending setup state.
             // Account and stored-card management remain Workspace actions.
-            'billing.setup',
-            'billing.complete',
+            'orgs.settings.billing.setup',
+            'orgs.settings.billing.complete',
             // Project checkout binds its short-lived economic quote and confirmation
             // to this authenticated browser, actor and explicitly named workspace.
-            'billing.preview',
-            'billing.confirm',
+            'orgs.settings.billing.preview',
+            'orgs.settings.billing.confirm',
             // Connecting a third-party account (Pipes): the person consents at the provider
             // in THIS browser, which carries the flow's state and PKCE verifier. A REST call
             // has no browser to send to GitHub.
@@ -215,7 +215,10 @@ final class ParityAllowlist
             'console.locale.update',
             'environment.locale.update',
             'platform.locale.update',
-            // Which organization the console is looking at.
+            // Which organization the console is looking at: a redirect to the same page in
+            // another `/orgs/{org}`. The API names its organization instead.
+            'orgs.switch',
+            // …and its v2 address, kept for a page an old tab still has open.
             'organization.switch',
             // Which environment the operator's console is pointed at — from the switcher, or
             // from a workspace's own page. The operator API names its environment instead.

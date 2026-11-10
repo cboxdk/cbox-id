@@ -164,7 +164,7 @@ it('has no accessibility issues on the ported console pages', function (string $
 })->with([
     'projects' => ['/projects', 'Projects'],
     'members' => ['/team', 'Team'],
-    'keys.organization' => ['/keys/workspace', 'API keys'],
+    'orgs.settings.api-keys.organization' => ['/keys/workspace', 'API keys'],
     'webhooks' => ['/webhooks', 'Webhooks'],
     'audit' => ['/audit', 'Audit log'],
     'settings' => ['/settings', 'Settings'],
@@ -367,7 +367,7 @@ function accountSecurityForAudit(): void
 it('has no accessibility issues on the security page', function (): void {
     accountSecurityForAudit();
 
-    visit('/account')
+    visit('/settings')
         ->assertSee('Profile')
         // The panels, asserted rather than assumed — see the fixture's docblock.
         ->assertSee('Audit laptop')
@@ -379,7 +379,7 @@ it('has no accessibility issues on the security page', function (): void {
 it('has no accessibility issues on the security page in the dark', function (): void {
     accountSecurityForAudit();
 
-    visit('/account')
+    visit('/settings')
         ->inDarkMode()
         ->assertSee('Audit laptop')
         ->assertNoAccessibilityIssues()
@@ -389,7 +389,7 @@ it('has no accessibility issues on the security page in the dark', function (): 
 it('keeps the security page usable at a phone width', function (): void {
     accountSecurityForAudit();
 
-    visit('/account')
+    visit('/settings')
         ->on()->mobile()
         ->assertSee('Audit laptop')
         ->assertScript('document.documentElement.scrollWidth <= document.documentElement.clientWidth', true)
@@ -400,7 +400,7 @@ it('keeps the security page usable at a phone width', function (): void {
 it('has no accessibility issues on sessions and activity', function (): void {
     accountActivityForAudit();
 
-    visit('/account/activity')
+    visit('/settings/activity')
         ->assertSee('Where you are signed in')
         // The rows, asserted rather than assumed — see the fixture's docblock.
         ->assertSee('Safari on iPhone')
@@ -417,7 +417,7 @@ it('has no accessibility issues on sessions and activity', function (): void {
 it('has no accessibility issues on sessions and activity in the dark', function (): void {
     accountActivityForAudit();
 
-    visit('/account/activity')
+    visit('/settings/activity')
         ->inDarkMode()
         ->assertSee('Acme CLI')
         ->assertNoAccessibilityIssues()
@@ -428,7 +428,7 @@ it('has no accessibility issues on sessions and activity in the dark', function 
 it('keeps sessions and activity usable at a phone width', function (): void {
     accountActivityForAudit();
 
-    visit('/account/activity')
+    visit('/settings/activity')
         ->on()->mobile()
         ->assertSee('Acme CLI')
         ->assertSee('Denmark')

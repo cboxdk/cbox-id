@@ -35,6 +35,7 @@ function impersonatingSubject(MembershipRole $role = MembershipRole::Owner): arr
     app(Memberships::class)->add($org->id, $subject->id, $role);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['impersonation']);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
+    useOrganizationInUrls($org->id);
 
     /*
      * AND THE SESSION KEY THE CONSOLE'S GUARD READS ON THE WAY IN. `CurrentUser` is
@@ -108,15 +109,15 @@ dataset('ported_console_writes', [
     'device.lookup (C2)' => ['post', 'device.lookup', []],
     'webhooks.store (C6)' => ['post', 'webhooks.store', []],
     'webhooks.destroy (C6)' => ['delete', 'webhooks.destroy', ['webhook' => 'no-such-endpoint']],
-    'members.invite (C7)' => ['post', 'members.invite', []],
-    'members.role (C7)' => ['patch', 'members.role', ['member' => 'no-such-membership']],
-    'members.remove (C7)' => ['delete', 'members.remove', ['member' => 'no-such-membership']],
-    'members.access (C7)' => ['put', 'members.access', ['member' => 'no-such-membership']],
-    'members.transfer-ownership (C7)' => ['post', 'members.transfer-ownership', ['member' => 'no-such-membership']],
-    'keys.organization.store' => ['post', 'keys.organization.store', []],
-    'keys.organization.destroy' => ['delete', 'keys.organization.destroy', ['key' => 'no-such-key']],
-    'projects.store' => ['post', 'projects.store', []],
-    'projects.environments.store' => ['post', 'projects.environments.store', ['project' => 'no-such-project']],
+    'members.invite (C7)' => ['post', 'orgs.settings.members.invite', []],
+    'members.role (C7)' => ['patch', 'orgs.settings.members.role', ['member' => 'no-such-membership']],
+    'members.remove (C7)' => ['delete', 'orgs.settings.members.remove', ['member' => 'no-such-membership']],
+    'members.access (C7)' => ['put', 'orgs.settings.members.access', ['member' => 'no-such-membership']],
+    'members.transfer-ownership (C7)' => ['post', 'orgs.settings.members.transfer-ownership', ['member' => 'no-such-membership']],
+    'orgs.settings.api-keys.organization.store' => ['post', 'orgs.settings.api-keys.organization.store', []],
+    'orgs.settings.api-keys.organization.destroy' => ['delete', 'orgs.settings.api-keys.organization.destroy', ['key' => 'no-such-key']],
+    'orgs.projects.store' => ['post', 'orgs.projects.store', []],
+    'orgs.projects.environments.store' => ['post', 'orgs.projects.environments.store', ['project' => 'no-such-project']],
     'settings.rename (L1)' => ['patch', 'settings.rename', []],
     'clients.store (C1)' => ['post', 'clients.store', []],
     'clients.update (C1)' => ['patch', 'clients.update', ['client' => 'no-such-app']],
@@ -167,6 +168,7 @@ it('refuses every ported console write while impersonating (403)', function (str
         'organization' => $org->id,
         'reason' => IMPERSONATION_REASON,
     ]);
+    useOrganizationInUrls($org->id);
 
     $response = $this->{$verb}(route($name, $parameters));
 

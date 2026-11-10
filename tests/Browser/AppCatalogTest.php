@@ -45,7 +45,7 @@ it('opens the personal picker from the signed-in header', function (): void {
 it('opens an existing picker bookmark in the account header', function (): void {
     actingAsRole(MembershipRole::Owner);
     visit('/switch-app')
-        ->assertPathIs('/account')
+        ->assertPathIs('/settings')
         ->assertVisible('cbox-app-switcher .panel')
         ->assertSee('No apps have been published for you yet.')
         ->assertNoJavaScriptErrors();

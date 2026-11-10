@@ -95,7 +95,7 @@ it('adds a passkey through the step-up dialog, without leaving the page, and nam
     app()->instance(WebAuthnVerifier::class, new FakeWebAuthnVerifier('browser-credential'));
     app()->forgetInstance(Passkeys::class);
 
-    $page = visit('/account');
+    $page = visit('/settings');
     $page->assertSee('Passkeys')->script(FAKE_AUTHENTICATOR);
 
     $page->click('button:has-text("Add passkey")');
@@ -103,7 +103,7 @@ it('adds a passkey through the step-up dialog, without leaving the page, and nam
     // Asked HERE, with the reason, rather than sent to /sudo.
     $page->assertSee("Confirm it's you")
         ->assertSee('Adding a passkey gives you a new way to sign in.')
-        ->assertPathIs('/account')
+        ->assertPathIs('/settings')
         ->assertNoAccessibilityIssues();
 
     $page->fill('.cbx-dialog input[name="password"]', 'supersecret123')
@@ -122,7 +122,7 @@ it('adds a passkey through the step-up dialog, without leaving the page, and nam
 
     $page->assertSee('Work laptop')
         ->assertSee('Passkey renamed.')
-        ->assertPathIs('/account')
+        ->assertPathIs('/settings')
         ->assertNoJavaScriptErrors();
 
     // The ceremony ran once, inside the person's click.
@@ -139,7 +139,7 @@ it('keeps the default name when the person skips naming', function (): void {
     app()->instance(WebAuthnVerifier::class, new FakeWebAuthnVerifier('browser-credential'));
     app()->forgetInstance(Passkeys::class);
 
-    $page = visit('/account');
+    $page = visit('/settings');
     $page->assertSee('Passkeys')->script(FAKE_AUTHENTICATOR);
 
     $page->click('button:has-text("Add passkey")')
@@ -148,7 +148,7 @@ it('keeps the default name when the person skips naming', function (): void {
         ->click('.cbx-dialog button:has-text("Continue: create passkey")')
         ->click('.cbx-dialog button:has-text("Keep this name")');
 
-    $page->assertSee('iCloud Keychain')->assertPathIs('/account');
+    $page->assertSee('iCloud Keychain')->assertPathIs('/settings');
 
     expect(app(PlatformRoot::class)->run(
         fn () => WebAuthnCredential::query()->where('user_id', $subjectId)->value('name'),
@@ -163,7 +163,7 @@ it('refuses a wrong password in the dialog and runs nothing', function (): void 
         fn () => app(Subjects::class)->link($subjectId, new FederatedPrincipal('social:google', 'google|step-up')),
     );
 
-    $page = visit('/account');
+    $page = visit('/settings');
 
     $page->click('button[aria-label^="Disconnect Google"]')
         ->click('.cbx-dialog button:has-text("Disconnect")');
@@ -186,7 +186,7 @@ it('replays a gated write once the password is in, and stays on the page', funct
         fn () => app(Subjects::class)->link($subjectId, new FederatedPrincipal('social:google', 'google|step-up')),
     );
 
-    $page = visit('/account');
+    $page = visit('/settings');
 
     $page->click('button[aria-label^="Disconnect Google"]')
         ->click('.cbx-dialog button:has-text("Disconnect")');
@@ -199,7 +199,7 @@ it('replays a gated write once the password is in, and stays on the page', funct
     // The disconnect the person asked for, done — not a password screen and a page to
     // find the button on again.
     $page->assertSee('Disconnected. You can no longer sign in with it.')
-        ->assertPathIs('/account')
+        ->assertPathIs('/settings')
         ->assertNoJavaScriptErrors();
 
     expect(app(PlatformRoot::class)->run(fn () => app(Subjects::class)->linkedIdentities($subjectId)))->toBeEmpty();

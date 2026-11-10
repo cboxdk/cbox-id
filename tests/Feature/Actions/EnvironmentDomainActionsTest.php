@@ -89,8 +89,8 @@ it('records the console\'s change the same way, as the organization member', fun
     $environment->update(['domain' => 'id.acme.com']);
     signInAsMember($owner);
 
-    test()->from(route('environment-domains', ['environment' => $environment->id]))
-        ->delete(route('environment-domains.destroy'), ['environment' => $environment->id])
+    test()->from(route('orgs.environment-domains', ['environment' => $environment->id]))
+        ->delete(route('orgs.environment-domains.destroy'), ['environment' => $environment->id])
         ->assertSessionHasNoErrors();
 
     $entry = domainLog($workspace->id, 'organization.custom_domain_removed');

@@ -68,7 +68,7 @@ it('holds every authenticated page until the temporary password is replaced', fu
 
     // Not just the sign-in that used it — any authenticated request.
     $this->get('/dashboard')->assertRedirect(route('password.change'));
-    $this->get('/account')->assertRedirect(route('password.change'));
+    $this->get('/settings')->assertRedirect(route('password.change'));
     $this->get('/team')->assertRedirect(route('password.change'));
 
     // The change page itself must not redirect to itself.
@@ -162,7 +162,7 @@ it('holds the Identity platform until an account member replaces a temporary pas
 
     signInAsMember($result->owner->id);
 
-    $this->get(route('projects'))->assertRedirect(route('password.change'));
+    $this->get(route('orgs.projects'))->assertRedirect(route('password.change'));
     $this->get(route('password.change'))->assertOk();
 
     test()->from(route('password.change'))->post(route('password.change.update'), ['password' => 'a-passphrase-only-they-know', 'password_confirmation' => 'a-passphrase-only-they-know'])
@@ -170,7 +170,7 @@ it('holds the Identity platform until an account member replaces a temporary pas
 
     expect($root->run(fn () => app(AdminPasswords::class)->requiresChange($subjectId)))->toBeFalse();
 
-    $this->get(route('projects'))->assertOk();
+    $this->get(route('orgs.projects'))->assertOk();
 });
 
 /**

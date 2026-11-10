@@ -84,10 +84,10 @@ it('shows an unconfirmed owner the banner, with a button that mails the link', f
     // Every console page carries it — the person learns before a form refuses them.
     $page = test()->get('https://cboxid.com/social-sign-in')->assertOk();
     expect($page->inertiaProps('auth.user.emailVerified'))->toBeFalse()
-        ->and($page->inertiaProps('auth.user.confirmUrl'))->toBe('/account/email/confirmation');
+        ->and($page->inertiaProps('auth.user.confirmUrl'))->toBe('/settings/email/confirmation');
 
     test()->from('https://cboxid.com/social-sign-in')
-        ->post('https://cboxid.com/account/email/confirmation')
+        ->post('https://cboxid.com/settings/email/confirmation')
         ->assertRedirect('https://cboxid.com/social-sign-in')
         ->assertSessionHas('status', fn (string $status): bool => str_contains($status, 'We sent a confirmation link'));
 
@@ -102,7 +102,7 @@ it('tells the API caller nothing was needed once the address is confirmed', func
     signInAsMember($subjectId);
 
     test()->from('https://cboxid.com/social-sign-in')
-        ->post('https://cboxid.com/account/email/confirmation')
+        ->post('https://cboxid.com/settings/email/confirmation')
         ->assertSessionHas('status', 'Your email address is already confirmed.');
 
     expect(test()->get('https://cboxid.com/social-sign-in')->inertiaProps('auth.user.confirmUrl'))->toBeNull();
@@ -114,7 +114,7 @@ it('says the mail server is unreachable instead of answering 500', function (): 
     Mail::shouldReceive('to')->andThrow(new RuntimeException('Could not resolve host: postal.example'));
 
     test()->from('https://cboxid.com/social-sign-in')
-        ->post('https://cboxid.com/account/email/confirmation')
+        ->post('https://cboxid.com/settings/email/confirmation')
         ->assertRedirect('https://cboxid.com/social-sign-in')
         ->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'cannot reach its mail server'));
 

@@ -39,8 +39,8 @@ it('names the native app and selected role when inviting a teammate', function (
     ['organization' => $organization, 'subjectId' => $ownerId] = provisionAccount('owner@acme.example');
     signInAsMember($ownerId);
 
-    test()->from(route('members'))
-        ->post(route('members.invite', ['organization' => $organization->id]), ['email' => 'new@acme.example', 'roles' => ['developer', 'billing']])
+    test()->from(route('orgs.settings.members'))
+        ->post(route('orgs.settings.members.invite', ['organization' => $organization->id]), ['email' => 'new@acme.example', 'roles' => ['developer', 'billing']])
         ->assertSessionHasNoErrors();
 
     Mail::assertSent(InvitationMail::class, function (InvitationMail $mail) use ($ownerId): bool {

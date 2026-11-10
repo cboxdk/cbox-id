@@ -31,7 +31,7 @@ it('serves billing when the deployment bills', function (): void {
 
     signInAsMember($ownerSubjectId);
 
-    $this->get(route('billing', ['organization' => $organization->id]))->assertOk();
+    $this->get(route('orgs.settings.billing', ['organization' => $organization->id]))->assertOk();
 });
 
 it('has no billing route at all when the module is switched off', function (): void {
@@ -44,7 +44,7 @@ it('has no billing route at all when the module is switched off', function (): v
     // ABSENT, not forbidden — 404 for the OWNER, who is the one person on the account who
     // certainly may read billing. A 403 here would mean the surface still exists and the
     // deployment merely declines to show it, which is the state this extraction removed.
-    $this->get('/billing')->assertNotFound();
+    $this->get(orgPath('/settings/billing'))->assertNotFound();
 });
 
 it('drops the billing nav entry when the module is switched off', function (): void {
@@ -57,7 +57,7 @@ it('drops the billing nav entry when the module is switched off', function (): v
     // The rail must not offer a link to a route that no longer exists. Asserted on the
     // rendered console rather than on the registry: the page is declared either way, and
     // whether it is DRAWN is the question.
-    $html = (string) $this->get(route('projects'))->assertOk()->getContent();
+    $html = (string) $this->get(route('orgs.projects'))->assertOk()->getContent();
 
     expect($html)->not->toContain('>Billing<');
 });
@@ -75,7 +75,7 @@ it('keeps billing out of a developer\'s rail while leaving the page reachable', 
         ->and(Console::featureActive('billing'))->toBeTrue();
 
     signInAsMember($devSubjectId);
-    $this->get(route('billing', ['organization' => $organization->id]))->assertForbidden();
+    $this->get(route('orgs.settings.billing', ['organization' => $organization->id]))->assertForbidden();
 });
 
 it('registers billing without the host naming it', function (): void {
@@ -85,7 +85,7 @@ it('registers billing without the host naming it', function (): void {
     $host = file_get_contents(base_path('app/Providers/ConsoleServiceProvider.php'));
     $routes = file_get_contents(base_path('routes/web.php'));
 
-    expect($host)->not->toContain("->page('billing'")
+    expect($host)->not->toContain("->page('orgs.settings.billing'")
         ->and($routes)->not->toContain("Volt::route('/billing'")
-        ->and(Route::has('billing'))->toBeTrue();
+        ->and(Route::has('orgs.settings.billing'))->toBeTrue();
 });

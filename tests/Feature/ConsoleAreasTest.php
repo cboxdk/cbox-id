@@ -84,6 +84,7 @@ it('lands every nav entry on a page titled the way the entry is labelled', funct
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
+    useOrganizationInUrls($org->id);
 
     // Behind the sudo step-up gate: it redirects, so there is no title to read.
     $behindStepUp = ['vault'];
@@ -257,8 +258,8 @@ it('lands every Identity platform nav entry on a page titled the way the entry i
 
     foreach ($area?->pages() ?? [] as $page) {
         $response = $this->get(route($page->route));
-        if ($page->route === 'billing') {
-            $canonical = route('billing', ['organization' => $result->organization->id]);
+        if ($page->route === 'orgs.settings.billing') {
+            $canonical = route('orgs.settings.billing', ['organization' => $result->organization->id]);
             $response->assertRedirect($canonical);
             $response = $this->get($canonical);
         }
