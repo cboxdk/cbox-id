@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\Navigation\ConsoleNavigation;
 use Carbon\CarbonInterface;
 use Cbox\Id\Compliance\Models\AuditExportRun;
@@ -261,7 +262,7 @@ it('refuses every module page to a browser holding no admin session at all', fun
         'environment.branding',
         'environment.devices.index',
     ] as $route) {
-        expect($this->get(route($route))->status())
+        expect($this->get(route($route, [EnvironmentConsolePath::PARAMETER => EnvironmentConsolePath::ROOT]))->status())
             ->not->toBe(200, "[{$route}] rendered for a request with no session");
     }
 })->group('security');

@@ -22,10 +22,10 @@ it('draws the key tabs on the Agents page and on API keys, organization keys on 
     $host = app(PlaneResolver::class)->consoleHost();
     expect($host)->not->toBeNull();
 
-    foreach (['/admin/agents' => 'management', '/admin/keys/frontend' => 'frontend'] as $path => $current) {
+    foreach ([envConsole('/agents') => 'management', envConsole('/keys/frontend') => 'frontend'] as $path => $current) {
         $this->get($path)->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
             ->where('tabs.0.key', 'management')
-            ->where('tabs.0.href', fn (string $href): bool => str_ends_with($href, '/admin/agents'))
+            ->where('tabs.0.href', fn (string $href): bool => str_ends_with($href, envConsole('/agents')))
             ->where('tabs.1.key', 'frontend')
             ->where('tabs.2.key', 'organization')
             ->where('tabs.2.href', 'https://'.$host.'/keys/workspace')
@@ -39,6 +39,6 @@ it('links Keys › Organization keys on Connect to the organization host', funct
 
     $host = app(PlaneResolver::class)->consoleHost();
 
-    $this->get('/admin/agents/connect')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+    $this->get(envConsole('/agents/connect'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
         ->where('organization.organizationKeysHref', 'https://'.$host.'/keys/workspace'));
 });

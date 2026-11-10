@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Mail\MagicLinkMail;
-use App\Platform\EnvironmentSudo;
 use App\Platform\Impersonation;
 use Cbox\Id\AccessControl\Contracts\AccessChecker;
 use Cbox\Id\AccessControl\Contracts\Roles;
@@ -160,7 +159,7 @@ it('runs every role detail mutation over its own route', function (): void {
  */
 it('runs every webhook detail mutation over its own route', function (): void {
     crudSetup();
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $endpoint = app(WebhookRegistry::class)
         ->registerForEnvironment('https://example.com/wh', ['user.created'])->endpoint;
@@ -634,7 +633,7 @@ it('impersonates a user who belongs to no organization', function (): void {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('memberships', []));
 
-    $this->post(route('environment.impersonate', $subjectId), ['reason' => 'Cannot open reports'])
+    followImpersonationLaunch($this->post(route('environment.impersonate', $subjectId), ['reason' => 'Cannot open reports']))
         ->assertRedirect();
 
     expect(session()->get(Impersonation::SESSION_KEY))->not->toBeNull();

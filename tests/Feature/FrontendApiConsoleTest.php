@@ -107,16 +107,14 @@ it('refuses a member who may not administer', function (): void {
     actingAsRole(MembershipRole::Member);
 
     /*
-     * BOUNCED, not shown. The plane middleware answers first: somebody holding an
-     * organization session at an environment-plane URL is sent through the open-environment
-     * handoff, which is where a person in that state belongs — and which refuses in turn if
-     * the environment is not theirs. The scope's own `assertMayAdministerEnvironment()` is
+     * REFUSED, not shown. The path middleware answers first: the environment console lets
+     * in only somebody who administers this environment, and sends anybody else to sign in
+     * or answers 404. The scope's own `assertMayAdministerEnvironment()` is
      * the second layer behind it, and is what the write below meets.
      */
-    test()->get(route('environment.keys.frontend'))
-        ->assertRedirectContains('/open/');
+    assertRefusedByEnvironmentConsole(test()->get(route('environment.keys.frontend')));
 
-    issueFrontendKey(['name' => 'Sneaky'])->assertRedirectContains('/open/');
+    assertRefusedByEnvironmentConsole(issueFrontendKey(['name' => 'Sneaky']));
 
     expect(PublishableKey::query()->count())->toBe(0);
 });
@@ -226,9 +224,8 @@ it('refuses an organization administrator who types the environment URL', functi
     actAsEnvironmentAdminOfATenant();
     actingAsRole(MembershipRole::Owner);
 
-    test()->get(route('environment.keys.frontend'))->assertRedirectContains('/open/');
-    issueFrontendKey(['name' => 'Theirs', 'origins' => 'https://theirs.test'])
-        ->assertRedirectContains('/open/');
+    assertRefusedByEnvironmentConsole(test()->get(route('environment.keys.frontend')));
+    assertRefusedByEnvironmentConsole(issueFrontendKey(['name' => 'Theirs', 'origins' => 'https://theirs.test']));
 
     expect(PublishableKey::query()->count())->toBe(0);
 });

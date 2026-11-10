@@ -39,7 +39,7 @@ it('serves every platform page and every link they offer to an operator', functi
         starts: [
             'https://'.ConsoleCrawl::ROOT.'/',
             'https://'.ConsoleCrawl::ROOT.'/dashboard',
-            'https://'.ConsoleCrawl::ROOT.'/admin',
+            'https://'.ConsoleCrawl::ROOT.'/admin/environment',
             'https://'.ConsoleCrawl::ROOT.'/admin/platform',
         ],
     );

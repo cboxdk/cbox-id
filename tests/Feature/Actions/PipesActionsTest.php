@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\EnvironmentSudo;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -171,13 +170,13 @@ it('answers 404 to another environment\'s pipe and connection', function (): voi
 
 it('runs the same actions from the environment console, as the person', function (): void {
     ['subjectId' => $subjectId] = crudSetup();
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
     config(['cbox-id.pipes.verify_url' => false]);
 
-    $this->get('/admin/pipes')->assertOk();
-    $this->get('/admin/pipes/new?provider=slack')->assertOk();
+    $this->get(envConsole('/pipes'))->assertOk();
+    $this->get(envConsole('/pipes/new?provider=slack'))->assertOk();
 
-    $this->post('/admin/pipes', [
+    $this->post(envConsole('/pipes'), [
         'provider' => 'slack',
         'client_id' => '123.456',
         'client_secret' => 'slack-secret',
@@ -187,23 +186,23 @@ it('runs the same actions from the environment console, as the person', function
     $pipe = Pipe::query()->sole();
     expect($pipe->scopes)->toBe(['users:read', 'channels:history']);
 
-    $this->get("/admin/pipes/{$pipe->id}")->assertOk()->assertDontSee('slack-secret');
-    $this->patch("/admin/pipes/{$pipe->id}", ['enabled' => '0', 'scopes' => 'users:read'])->assertRedirect();
+    $this->get(envConsole("/pipes/{$pipe->id}"))->assertOk()->assertDontSee('slack-secret');
+    $this->patch(envConsole("/pipes/{$pipe->id}"), ['enabled' => '0', 'scopes' => 'users:read'])->assertRedirect();
     expect($pipe->fresh()?->enabled)->toBeFalse()->and($pipe->fresh()?->scopes)->toBe(['users:read']);
 
     $entry = AuditEntry::query()->where('action', 'pipe.configured')->sole();
     expect($entry->actor_id)->toBe($subjectId)
         ->and($entry->actor_type)->not->toBe(ActorType::Service);
 
-    $this->delete("/admin/pipes/{$pipe->id}")->assertRedirect(route('environment.pipes'));
+    $this->delete(envConsole("/pipes/{$pipe->id}"))->assertRedirect(route('environment.pipes'));
     expect(Pipe::query()->count())->toBe(0);
 });
 
 it('keeps the pipes pages behind the environment step-up', function (): void {
     crudSetup();
 
-    $this->get('/admin/pipes')->assertRedirect(route('environment.sudo'));
-    $this->post('/admin/pipes', ['provider' => 'github', 'client_id' => 'a', 'client_secret' => 'b'])->assertRedirect(route('environment.sudo'));
+    $this->get(envConsole('/pipes'))->assertRedirect(route('environment.sudo'));
+    $this->post(envConsole('/pipes'), ['provider' => 'github', 'client_id' => 'a', 'client_secret' => 'b'])->assertRedirect(route('environment.sudo'));
 
     expect(Pipe::query()->count())->toBe(0);
 })->group('security');

@@ -1,6 +1,8 @@
 <?php
 
 declare(strict_types=1);
+
+use App\Platform\Console\EnvironmentConsolePath;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Support\Facades\Route;
@@ -21,8 +23,13 @@ beforeEach(function (): void {
 it('404s the admin console on a single-tenant deployment', function (): void {
     config()->set('cbox-id.tenancy.multi_tenant', false);
 
+    // Neither the old address on this host…
     $this->get('/admin/login')->assertNotFound();
     $this->get('/admin/single-sign-on')->assertNotFound();
+
+    // …nor the console's own address on the app host.
+    $this->get('/admin/environment/single-sign-on')->assertNotFound();
+    $this->get('/orgs/acme/projects/acme/environments/acme/single-sign-on')->assertNotFound();
 })->group('security');
 
 it('serves the admin console when the deployment is multi-tenant', function (): void {
@@ -49,13 +56,12 @@ it('serves the admin console when the deployment is multi-tenant', function (): 
 
     $env->forceFill(['domain' => 'tenant.cboxid.com'])->save();
 
-    // Reachable means it hands off, not that it renders a form. `/admin/login` no longer
-    // has a form of its own: sign-in was unified onto the account plane, so a tenant host
-    // sends the browser to the account host's door with the environment named. Asserting
-    // the destination proves both halves — the bulkhead let the request through, AND the
-    // door it opens is the unified one rather than a second credential store.
+    // Reachable means it sends the browser to the console's one address on the app host,
+    // not that the tenant's host renders anything. Asserting the destination proves both
+    // halves — the bulkhead let the request through, AND it names this environment.
     $this->get('https://tenant.cboxid.com/admin/login')
-        ->assertRedirect('https://cboxid.com/open/'.$env->id);
+        ->assertStatus(301)
+        ->assertRedirect('https://cboxid.com/'.app(EnvironmentConsolePath::class)->for($env->id).'/login');
 })->group('security');
 
 it('leaves organization creation reachable on a single-tenant deployment', function (): void {

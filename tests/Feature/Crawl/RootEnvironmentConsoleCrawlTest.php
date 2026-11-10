@@ -26,7 +26,7 @@ it('serves every environment-console page of the root environment, and every lin
     $crawl = (new ConsoleCrawl($this))->crawl(
         host: ConsoleCrawl::ROOT,
         select: static fn (Route $route): bool => str_starts_with((string) $route->getName(), 'environment.')
-            && str_starts_with($route->uri(), 'admin'),
+            && str_starts_with($route->uri(), '{environmentPath}'),
         parameters: ConsoleCrawl::parameters($world, $root),
     );
 

@@ -225,14 +225,14 @@ it('confirms tenant admin in the root realm and never opens the organization sud
             'platform' => 'ios', 'name' => 'Admin phone', 'status' => 'active', 'dpop_jkt' => $this->jkt]);
     });
     $this->withCookie(config('session.cookie'), session()->getId());
-    $this->postJson('/admin/sudo/mobile', ['operation' => 'start'])->assertOk()->assertJsonPath('available', true);
+    $this->postJson(envConsole('/sudo/mobile'), ['operation' => 'start'])->assertOk()->assertJsonPath('available', true);
     $id = session('cbox.browser_approval.environment.id');
     app(PlatformRoot::class)->run(function () use ($id, $subject): void {
         app(BackchannelAuthentication::class)->approve($id, $subject);
         app(DeviceApprovalEvidence::class)->record($id,
             Introspection::active($subject, $this->client->client_id, ['approvals.write'], ['cnf' => ['jkt' => $this->jkt]]));
     });
-    $this->postJson('/admin/sudo/mobile', ['operation' => 'complete'])->assertOk();
+    $this->postJson(envConsole('/sudo/mobile'), ['operation' => 'complete'])->assertOk();
     expect(app(EnvironmentSudo::class)->confirmed())->toBeTrue()
         ->and(app(Sudo::class)->confirmed())->toBeFalse();
 });

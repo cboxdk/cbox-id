@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Models\AdminPortalLink;
-use App\Platform\EnvironmentSudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
@@ -14,13 +13,13 @@ function polishConsole(): void
     // A beforeEach fixture would claim the developer's or CI's .env host instead.
     installedDeployment();
     actAsEnvironmentAdminOfATenant();
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 }
 
 it('edits a user in context and keeps the query, focus and deep link', function (): void {
     polishConsole();
     $user = app(Subjects::class)->create('dana@polish.test', 'Dana Example');
-    $page = visit('/admin/users?q=dana');
+    $page = visit(envConsole('/users?q=dana'));
     $row = '[data-user-id="'.$user->id.'"]';
     $page->click($row)->assertVisible('[role="dialog"][data-state="open"]')
         ->assertScript('new URL(location.href).searchParams.get("selected")', $user->id)
@@ -57,7 +56,7 @@ it('edits a user in context and keeps the query, focus and deep link', function 
 it('fits the user panel on a phone and restores the URL selection on reload', function (bool $dark): void {
     polishConsole();
     $user = app(Subjects::class)->create('mobile@polish.test', 'Mobile Example');
-    $page = visit('/admin/users?selected='.$user->id);
+    $page = visit(envConsole('/users?selected=').$user->id);
     if ($dark) {
         $page = $page->inDarkMode();
     }
@@ -85,7 +84,7 @@ it('reviews the portal task before creating a link and uses a sheet on a phone',
     $org = app(Organizations::class)->create(new NewOrganization('Polish Company', 'polish-company'));
     grantFeature($org->id, 'cbox-id-sso');
     grantFeature($org->id, 'cbox-id-scim');
-    $page = visit('/admin/organizations/'.$org->id);
+    $page = visit(envConsole('/organizations/').$org->id);
     $page->assertSee('No connection yet.')->screenshot(filename: 'polish-organization');
     $page->resize(390, 844);
     $page->click('Invite IT administrator')->assertVisible('[role="dialog"][data-state="open"]')
@@ -102,7 +101,7 @@ it('reviews the portal task before creating a link and uses a sheet on a phone',
 
 it('reveals an invalid advanced app setting instead of leaving its error hidden', function (): void {
     polishConsole();
-    $page = visit('/admin/apps/new');
+    $page = visit(envConsole('/apps/new'));
     $page->fill('name', 'Polished App')->fill('redirectUris', 'https://app.example/callback')
         ->click('summary:has-text("Sign-out URIs")')->fill('postLogoutRedirectUris', 'http://insecure.example/signed-out')
         ->click('summary:has-text("Sign-out URIs")')->click('button:has-text("Create app")')

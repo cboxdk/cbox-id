@@ -364,7 +364,7 @@ it('refuses the environment baseline an attempt to inherit from itself', functio
 
     // …and the environment-wide address answers no DELETE.
     test()->from(route('environment.auth-policy'))
-        ->delete('/admin/sign-in-rules')
+        ->delete(envConsole('/sign-in-rules'))
         ->assertStatus(405);
 })->group('security');
 

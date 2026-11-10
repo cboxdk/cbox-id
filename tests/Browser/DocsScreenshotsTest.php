@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Platform\AdminPortal;
 use App\Platform\Enums\PortalIntent;
 use App\Platform\Enums\PortalScope;
-use App\Platform\EnvironmentSudo;
 use App\Platform\Sudo;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
@@ -257,7 +256,7 @@ function signInAsDemoOwner(DemoEnvironmentSeeder $demo): void
     assert($environment !== null);
 
     actAsEnvironmentAdmin($demo->ownerId, $environment->id);
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
     app(Sudo::class)->confirm();
 }
 
@@ -283,27 +282,27 @@ it('pictures the environment console', function (): void {
     $globex = $demo->organizations['globex']->id;
 
     $pages = [
-        'environment-overview' => ['/admin', 'Overview'],
-        'get-started' => ['/admin/get-started', 'Ledger'],
-        'applications' => ['/admin/apps', 'Ledger Web'],
-        'application-detail' => ['/admin/apps/'.$demo->apps['Ledger Web'], 'Ledger Web'],
-        'api-keys' => ['/admin/keys/frontend', 'Local development'],
-        'organizations' => ['/admin/organizations', 'Acme Corp'],
-        'organization-overview' => ['/admin/organizations/'.$acme, 'Acme Corp'],
-        'organization-members' => ['/admin/organizations/'.$acme.'/members', 'Wile E. Coyote'],
-        'organization-enterprise-sso' => ['/admin/organizations/'.$acme.'/single-sign-on', 'Okta'],
-        'organization-domains' => ['/admin/organizations/'.$acme.'/domains', 'acme.example'],
-        'organization-directory-sync' => ['/admin/organizations/'.$globex.'/directory-sync', 'Okta SCIM'],
-        'directory-detail' => ['/admin/sync-in/'.$demo->directoryId, 'Engineering'],
-        'agents' => ['/admin/agents', 'Claude Code'],
-        'approvals' => ['/admin/approvals', 'Claude Code'],
-        'audit-log' => ['/admin/audit', 'Audit log'],
-        'app-audit-logs' => ['/admin/audit-logs', 'invoice.voided'],
-        'webhooks' => ['/admin/webhooks', 'hooks.ledger.example'],
-        'log-streams' => ['/admin/log-streaming', 'Splunk (security team)'],
-        'users' => ['/admin/users', 'Wile E. Coyote'],
-        'roles' => ['/admin/roles', 'Accountant'],
-        'environment-settings' => ['/admin/settings', 'Settings'],
+        'environment-overview' => [envConsole(), 'Overview'],
+        'get-started' => [envConsole('/get-started'), 'Ledger'],
+        'applications' => [envConsole('/apps'), 'Ledger Web'],
+        'application-detail' => [envConsole('/apps/').$demo->apps['Ledger Web'], 'Ledger Web'],
+        'api-keys' => [envConsole('/keys/frontend'), 'Local development'],
+        'organizations' => [envConsole('/organizations'), 'Acme Corp'],
+        'organization-overview' => [envConsole('/organizations/').$acme, 'Acme Corp'],
+        'organization-members' => [envConsole('/organizations/').$acme.'/members', 'Wile E. Coyote'],
+        'organization-enterprise-sso' => [envConsole('/organizations/').$acme.'/single-sign-on', 'Okta'],
+        'organization-domains' => [envConsole('/organizations/').$acme.'/domains', 'acme.example'],
+        'organization-directory-sync' => [envConsole('/organizations/').$globex.'/directory-sync', 'Okta SCIM'],
+        'directory-detail' => [envConsole('/sync-in/').$demo->directoryId, 'Engineering'],
+        'agents' => [envConsole('/agents'), 'Claude Code'],
+        'approvals' => [envConsole('/approvals'), 'Claude Code'],
+        'audit-log' => [envConsole('/audit'), 'Audit log'],
+        'app-audit-logs' => [envConsole('/audit-logs'), 'invoice.voided'],
+        'webhooks' => [envConsole('/webhooks'), 'hooks.ledger.example'],
+        'log-streams' => [envConsole('/log-streaming'), 'Splunk (security team)'],
+        'users' => [envConsole('/users'), 'Wile E. Coyote'],
+        'roles' => [envConsole('/roles'), 'Accountant'],
+        'environment-settings' => [envConsole('/settings'), 'Settings'],
     ];
 
     foreach ($pages as $name => [$path, $expect]) {
@@ -314,7 +313,7 @@ it('pictures the environment console', function (): void {
 
     // The context switcher, open on the environment: a popover drawn by the client, so the
     // click navigates nowhere and is safe on the demo host.
-    $page = docsPage('/admin')
+    $page = docsPage(envConsole())
         ->assertSee('Overview')
         ->click('nav.cbx-ctx .cbx-ctx-trigger >> nth=-1')
         ->assertSee('Ledger Sandbox')
@@ -324,7 +323,7 @@ it('pictures the environment console', function (): void {
 
     // A phone. `resize()` rather than the device preset, which emulates touch — see
     // ConsoleMobileTest for why that matters to this harness.
-    $page = docsPage('/admin')
+    $page = docsPage(envConsole())
         ->assertSee('Overview')
         ->resize(375, 812)
         ->wait(0.5);

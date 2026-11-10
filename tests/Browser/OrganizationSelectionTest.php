@@ -153,7 +153,7 @@ it('tells somebody signing up from an app which app it is for', function (): voi
 it('draws the environment\'s sign-up switch and asks before opening it', function (): void {
     actAsEnvironmentAdminOfATenant();
 
-    $page = visit('/admin/sign-in-rules')
+    $page = visit(envConsole('/sign-in-rules'))
         ->assertSee('Self-service sign-up')
         ->assertSee('by invitation only')
         ->assertNoAccessibilityIssues()
@@ -166,13 +166,13 @@ it('draws the environment\'s sign-up switch and asks before opening it', functio
         ->assertSee('Anyone can create an account')
         ->assertNoJavascriptErrors();
 
-    visit('/admin/sign-in-rules')
+    visit(envConsole('/sign-in-rules'))
         ->inDarkMode()
         ->assertSee('Anyone can create an account')
         ->assertNoAccessibilityIssues()
         ->screenshot(filename: 'sign-in-rules-self-service-dark');
 
-    $phone = visit('/admin/sign-in-rules')
+    $phone = visit(envConsole('/sign-in-rules'))
         ->resize(375, 812)
         ->assertVisible('[aria-label="Self-service sign-up"]')
         ->assertScript('document.documentElement.scrollWidth <= document.documentElement.clientWidth', true);

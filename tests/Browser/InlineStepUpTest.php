@@ -215,18 +215,18 @@ it('asks for the environment plane in place before a gated page, then opens it',
     $operator = actAsOperator('step-up-ops@platform.test');
     app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified((string) $operator->subject_id, 'step-up-ops@platform.test'));
 
-    $page = visit('/admin/connectors');
+    $page = visit(envConsole('/connectors'));
 
     $page->click('role=link[name="Set up Directory Sync"]');
 
     // Still on the page the link was on, asked for THIS plane's password: the platform-root
     // subject's, checked by /admin/sudo.
     $page->assertSee("Confirm it's you")
-        ->assertPathIs('/admin/connectors')
+        ->assertPathIs(envConsole('/connectors'))
         ->fill('.cbx-dialog input[name="password"]', 'a-strong-operator-pass')
         ->click('.cbx-dialog button:has-text("Confirm")');
 
-    $page->assertPathIs('/admin/sync-in/new')
+    $page->assertPathIs(envConsole('/sync-in/new'))
         ->assertDontSee("Confirm it's you")
         ->assertNoJavaScriptErrors();
 });

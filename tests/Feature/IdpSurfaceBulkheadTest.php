@@ -85,7 +85,7 @@ it('404s the whole IdP surface on the platform-root host', function (): void {
     // …while the ENVIRONMENT CONSOLE is no part of the IdP surface, and is served on the
     // root's own host for the root environment: its operators administer it there. A
     // visitor with no session is sent to sign in, never shown the page.
-    $this->get('http://cboxid.com/admin/single-sign-on')->assertRedirect(route('login'));
+    $this->get('http://cboxid.com/admin/environment/single-sign-on')->assertRedirect('http://cboxid.com/login');
 });
 
 /**

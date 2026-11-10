@@ -24,7 +24,7 @@ it('lands an environment console\'s sign-out on a page that says so and enters n
     actAsEnvironmentAdminOfATenant();
     config()->set('cbox-id.tenancy.account_host', 'account.cbox-id.invalid');
 
-    $page = visit('/admin');
+    $page = visit(envConsole());
 
     $page->click('button.cbx-avatar-btn');
     $page->click('[role="menuitem"]:has-text("Sign out")');
@@ -33,7 +33,7 @@ it('lands an environment console\'s sign-out on a page that says so and enters n
         ->assertPathIs('/signed-out')
         // Sign in goes back through the console's own gate, on this host — when the person
         // means it, not by itself.
-        ->assertScript('new URL(document.querySelector("a.btn-primary").href).pathname', '/admin')
+        ->assertScript('new URL(document.querySelector("a.btn-primary").href).pathname', envConsole())
         ->assertNoJavaScriptErrors()
         ->assertNoAccessibilityIssues();
 

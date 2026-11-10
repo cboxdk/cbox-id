@@ -113,8 +113,9 @@ it('redirects a moved page to a path on this host and never elsewhere', function
 });
 
 it('serves each shared page at the same slug on both consoles', function (string $organization, string $environment): void {
-    // The environment console's path is the organization console's under `/admin`.
-    expect(route($organization, [], false))->toBe(substr(route($environment, [], false), strlen('/admin')));
+    // The environment console's path is the organization console's under the environment's
+    // own path — here the platform root's, `/admin/environment`.
+    expect(route($organization, [], false))->toBe(substr(route($environment, ['environmentPath' => 'admin/environment'], false), strlen('/admin/environment')));
 })->with([
     ['clients', 'environment.clients'],
     ['connections', 'environment.connections'],

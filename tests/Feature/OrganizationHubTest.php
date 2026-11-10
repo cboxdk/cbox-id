@@ -264,7 +264,8 @@ it('looks organizations up a page at a time, and only for an environment adminis
         ->assertOk()
         ->assertJsonPath('results.0.name', 'Tenant 3');
 
-    // The old address of the lookup answers with the new one.
+    // The old address of the lookup, on the environment's own host, answers with the new
+    // one — which that host then sends on to the console's address on the app host.
     $this->get('/admin/acting-organization?q=Tenant')
         ->assertStatus(301)
         ->assertRedirect('/admin/lookup/organizations?q=Tenant');
@@ -283,6 +284,7 @@ it('never answers the lookup without an environment-admin session', function ():
 
     serveOnTestHost($provisioned->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($provisioned->environment->id));
+    useEnvironmentConsole($provisioned->environment->id);
 
     app(Organizations::class)->create(new NewOrganization('Secret Tenant', 'secret-tenant'));
 

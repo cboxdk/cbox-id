@@ -113,12 +113,11 @@ it('gives every module environment route the host environment stack', function (
      * the routes, which is how the first version of this test disabled itself.
      */
     $required = [
-        // The plane bulkhead. Without it these pages answer wherever the router reaches
-        // them, on hosts this deployment does not claim.
-        'the environment plane' => ['plane:environment', 'EnforcePlane:environment'],
-        // 404 rather than 403 on a single-tenant deployment, so a caller cannot learn the
-        // shape from a status code.
-        'the multi-tenant gate' => ['multi.tenant', 'RequireMultiTenant'],
+        // The path door: the environment the path names, the person's access to it, the app
+        // host only, and a 404 on a single-tenant deployment (so a caller cannot learn the
+        // shape from a status code). Without it these pages answer wherever the router
+        // reaches them, for whichever environment the request happens to be in.
+        'the environment path' => ['env.path', 'ResolveEnvironmentFromPath'],
         // The env-admin session. A subject session grants nothing here.
         'the environment-admin session' => ['env.admin', 'AuthenticateEnvironmentAdmin'],
     ];

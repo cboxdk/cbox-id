@@ -82,7 +82,7 @@ it('draws platform admin as the Platform area of the platform environment\'s con
         ->and($shell)->not->toHaveKey('platformMode');
 
     // …and every environment page of that console carries the same Platform area, unlit.
-    $environment = (array) $this->get('https://cboxid.com/admin/social-sign-in')->assertOk()->inertiaProps('shell');
+    $environment = (array) $this->get('https://cboxid.com/admin/environment/social-sign-in')->assertOk()->inertiaProps('shell');
 
     expect(collect($environment['areas'])->pluck('key')->first())->toBe('platform')
         ->and($environment['activeArea'])->toBe('Authentication')
@@ -118,7 +118,7 @@ it('leaves platform admin off the root host\'s organization console, and links i
 
     expect($routes->filter(static fn (string $route): bool => str_starts_with($route, 'platform.'))->all())->toBe([])
         ->and($shell['platformHref'])->toBe('https://cboxid.com/admin/platform/workspaces')
-        ->and($shell['platformEnvironmentHref'])->toBe('https://cboxid.com/admin');
+        ->and($shell['platformEnvironmentHref'])->toBe('https://cboxid.com/admin/environment');
 });
 
 it('answers every platform-admin route with a 404 for a signed-in person who does not run the deployment', function (): void {
@@ -207,7 +207,7 @@ it('runs a support session from the organization tree end to end, on the root ho
 
     // While it lasts, nothing of platform admin or the platform environment answers.
     $this->get('https://cboxid.com/admin/platform/environments/root/organizations')->assertNotFound();
-    $this->get('https://cboxid.com/admin')->assertNotFound();
+    $this->get('https://cboxid.com/admin/environment')->assertNotFound();
 
     // Exit returns the operator to where they started — inside the one console.
     $this->post('https://cboxid.com/impersonation/exit')->assertRedirect(route('platform.organizations'));
@@ -266,8 +266,8 @@ it('runs a support session from the platform environment\'s own Users page, land
     // The same console's other way in — a user of the platform environment, from its own
     // Users page. It used to land on the environment console's home, which answers the
     // member's session with a 404: no chrome, no banner, no Exit.
-    $this->post('https://cboxid.com/admin/impersonate/'.$member->id, ['organization' => $organization->id, 'reason' => IMPERSONATION_REASON])
-        ->assertRedirect(route('dashboard'));
+    $this->post('https://cboxid.com/admin/environment/impersonate/'.$member->id, ['organization' => $organization->id, 'reason' => IMPERSONATION_REASON])
+        ->assertRedirect('https://cboxid.com/dashboard');
     nextRequest();
 
     $this->get('https://cboxid.com/dashboard')->assertRedirect(route('account'));
@@ -278,5 +278,5 @@ it('runs a support session from the platform environment\'s own Users page, land
 
     // Back in the console they started from — signed in as themselves, not at the door: an
     // operator holds no workspace membership, and Exit used to restore only those who did.
-    $this->get('https://cboxid.com/admin')->assertOk();
+    $this->get('https://cboxid.com/admin/environment')->assertOk();
 })->group('security');

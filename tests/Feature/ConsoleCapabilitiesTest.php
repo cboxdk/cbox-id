@@ -2758,7 +2758,7 @@ it('renames no organization from the environment\'s own Settings page', function
 
     expect(Route::has('environment.settings.rename'))->toBeFalse();
 
-    $this->patch('/admin/settings', ['name' => 'Nobody In Particular'])->assertStatus(405);
+    $this->patch(envConsole('/settings'), ['name' => 'Nobody In Particular'])->assertStatus(405);
 
     expect(AuditEntry::query()->where('action', 'organization.renamed')->exists())->toBeFalse();
 })->group('security');

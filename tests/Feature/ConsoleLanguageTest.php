@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\EnvironmentAdminAuth;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\UserProperties\Contracts\UserPreferences;
 use Cbox\Id\UserProperties\Models\PropertyDocument;
 use Cbox\Id\UserProperties\ValueObjects\PropertyPatch;
@@ -51,16 +52,25 @@ it('does not accept a preference write from an unauthenticated visitor', functio
     expect(PropertyDocument::query()->count())->toBe(0);
 });
 
-it('keeps subject and environment-administrator preferences separate in the same browser', function (): void {
+it('keeps one preference per person: the environment console offers the signed-in administrator\'s own', function (): void {
     multiTenantDeployment();
     actAsEnvironmentAdminOfATenant();
-    $adminContext = EnvironmentAdminAuth::snapshot();
-    [$subject] = actingAsRole(MembershipRole::Owner);
-    session($adminContext);
-    $this->post('/interface-language', ['subject_id' => $subject, 'version' => 0, 'language' => 'fi'])->assertStatus(303);
-    expect(app(UserPreferences::class)->read($subject)->data->language)->toBe('fi');
+    $admin = (string) app(EnvironmentAdminAuth::class)->subjectId();
+
+    // One session on the app host now serves both consoles, so the preference the
+    // environment console writes is the same person's the organization console reads —
+    // and never a tenant subject's of the environment being administered.
     $response = $this->get(route('environment.home'))->assertOk();
-    expect($response->inertiaProps()['i18n']['preference']['subjectId'])->not->toBe($subject);
+    $preference = $response->inertiaProps()['i18n']['preference'];
+
+    expect($admin)->not->toBe('')
+        ->and($preference['subjectId'])->toBe($admin);
+
+    $this->post($preference['updateUrl'], ['subject_id' => $admin, 'version' => $preference['version'], 'language' => 'fi'])->assertStatus(303);
+    expect(app(PlatformRoot::class)->run(fn () => app(UserPreferences::class)->read($admin)->data->language))->toBe('fi');
+
+    // Somebody else's id is not a preference this session may write.
+    $this->post($preference['updateUrl'], ['subject_id' => 'another-person', 'version' => 1, 'language' => 'da'])->assertSessionHasErrors('language');
 });
 
 it('localizes radar list filter labels while preserving stable filter values', function (): void {

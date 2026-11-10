@@ -25,7 +25,7 @@ use Illuminate\Routing\Router;
  *     request object built afterwards, synthetic ones included. Laravel's `TrustHosts` is
  *     inert under `runningUnitTests()`, so in a test nothing is ever untrusted.
  *
- * Together: code that built `Request::create('/admin/users')` to ask the router a question
+ * Together: code that built `Request::create(envConsole('/users'))` to ask the router a question
  * got a request for `http://localhost/…`, the compiled matcher asked it for its host, and
  * Symfony refused `localhost` with a `SuspiciousOperationException` — a bare "400 Bad
  * Request" on cboxid.com, and a 200 in every test.

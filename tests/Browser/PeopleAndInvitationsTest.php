@@ -186,14 +186,14 @@ it('draws the same invite form on the environment console, with "Make owner" on 
     app(Memberships::class)->add($org->id, $erin->id, MembershipRole::Member);
 
     // The organization's Invitations tab carries the invite form…
-    visit('/admin/organizations/'.$org->id.'/invitations')
+    visit(envConsole('/organizations/').$org->id.'/invitations')
         ->assertSee('Invite someone')
         ->assertSee('Send invitation')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'environment-organization');
 
     // …and its Members tab the roster, with "Make owner" on a row.
-    visit('/admin/organizations/'.$org->id.'/members')
+    visit(envConsole('/organizations/').$org->id.'/members')
         ->click('[aria-label="More actions for Erin"]')
         ->assertSee('Make owner')
         ->assertNoJavaScriptErrors();
@@ -206,7 +206,7 @@ it('draws no staff-only role on the environment console\'s invite form, and does
     app(Roles::class)->define(null, 'Approver');
     app(Roles::class)->define(null, 'Vendor support', tenantAssignable: false);
 
-    $invitations = visit('/admin/organizations/'.$org->id.'/invitations')
+    $invitations = visit(envConsole('/organizations/').$org->id.'/invitations')
         ->assertSee('Send invitation')
         ->assertNoJavaScriptErrors();
 
@@ -218,7 +218,7 @@ it('draws no staff-only role on the environment console\'s invite form, and does
         ->and($invite)->not->toContain('Vendor support');
 
     // Offered on the add-member form, and marked for what it is — in the Staff page's words.
-    $page = visit('/admin/organizations/'.$org->id.'/members');
+    $page = visit(envConsole('/organizations/').$org->id.'/members');
 
     $page->assertSee('Vendor support')
         ->assertSee('Admins & support only')
@@ -230,11 +230,11 @@ it('draws no staff-only role on the environment console\'s invite form, and does
 
     expect($approver)->not->toContain('Admins & support only');
 
-    visit('/admin/organizations/'.$org->id.'/members')->inDarkMode()
+    visit(envConsole('/organizations/').$org->id.'/members')->inDarkMode()
         ->assertSee('Admins & support only')
         ->screenshot(filename: 'environment-organization-staff-roles-dark');
 
-    visit('/admin/organizations/'.$org->id.'/members')->resize(375, 812)
+    visit(envConsole('/organizations/').$org->id.'/members')->resize(375, 812)
         ->assertSee('Admins & support only')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
         ->screenshot(filename: 'environment-organization-staff-roles-mobile');
@@ -258,7 +258,7 @@ it('names an owner on the environment console\'s user page without offering Owne
     $erin = app(Subjects::class)->create('erin@tenant.test', 'Erin');
     app(Memberships::class)->add($org->id, $erin->id, MembershipRole::Owner);
 
-    $page = visit('/admin/users/'.$erin->id.'?section=access');
+    $page = visit(envConsole('/users/').$erin->id.'?section=access');
 
     $page->assertSee('Tenant Co')
         // The row's picker SHOWS the role it holds…

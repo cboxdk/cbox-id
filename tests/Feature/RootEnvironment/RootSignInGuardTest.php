@@ -77,14 +77,14 @@ function guardSsoConnection(string $organizationId, bool $active): Connection
 /** The current policy's fields as the console's form submits them, with $changes. */
 function rootPolicyForm(array $changes): array
 {
-    $current = (array) test()->get('https://'.GUARD_ROOT.'/admin/sign-in-rules')->assertOk()->inertiaProps('policy');
+    $current = (array) test()->get('https://'.GUARD_ROOT.'/admin/environment/sign-in-rules')->assertOk()->inertiaProps('policy');
 
     return [...$current, ...$changes];
 }
 
 it('refuses to require SSO of everybody on the platform environment while an operator has no connection to use', function (): void {
-    $this->from('https://'.GUARD_ROOT.'/admin/sign-in-rules')
-        ->put('https://'.GUARD_ROOT.'/admin/sign-in-rules', rootPolicyForm(['sso' => 'required']))
+    $this->from('https://'.GUARD_ROOT.'/admin/environment/sign-in-rules')
+        ->put('https://'.GUARD_ROOT.'/admin/environment/sign-in-rules', rootPolicyForm(['sso' => 'required']))
         ->assertSessionHasErrors('sso');
 
     expect(inTheRoot(fn () => app(AuthPolicies::class)->forEnvironment()->sso))->toBe(SsoEnforcement::Off);
@@ -97,8 +97,8 @@ it('refuses to require SSO of everybody on the platform environment while an ope
 it('allows it once every operator has an active connection to sign in with', function (): void {
     guardSsoConnection($this->staff->id, active: true);
 
-    $this->from('https://'.GUARD_ROOT.'/admin/sign-in-rules')
-        ->put('https://'.GUARD_ROOT.'/admin/sign-in-rules', rootPolicyForm(['sso' => 'required']))
+    $this->from('https://'.GUARD_ROOT.'/admin/environment/sign-in-rules')
+        ->put('https://'.GUARD_ROOT.'/admin/environment/sign-in-rules', rootPolicyForm(['sso' => 'required']))
         ->assertSessionHasNoErrors();
 
     expect(inTheRoot(fn () => app(AuthPolicies::class)->forEnvironment()->sso))->toBe(SsoEnforcement::Required);
@@ -108,7 +108,7 @@ it('refuses to require SSO for the operators\' organization on a connection that
     $draft = guardSsoConnection($this->staff->id, active: false);
     grantFeature($this->staff->id, 'cbox-id-sso');
 
-    $this->post('https://'.GUARD_ROOT.'/admin/single-sign-on/'.$draft->id.'/require-sso')
+    $this->post('https://'.GUARD_ROOT.'/admin/environment/single-sign-on/'.$draft->id.'/require-sso')
         ->assertSessionHasErrors();
 
     expect(implode(' ', session('errors')?->all() ?? []))->toContain('no way to sign in');

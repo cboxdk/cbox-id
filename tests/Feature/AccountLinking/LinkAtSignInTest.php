@@ -6,6 +6,7 @@ use App\Platform\AccountLinking\AccountLinking;
 use App\Platform\AccountLinking\FederationFailure;
 use App\Platform\AccountLinking\LinkHold;
 use App\Platform\AccountLinking\PendingLink;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\Mfa;
@@ -179,11 +180,12 @@ it('links on the account\'s password, and the next Google sign-in goes straight 
     }
 });
 
-it('lands where the person was going: a tenant\'s /admin, through the root and its hand-off', function (): void {
-    // The tenant's console, signed out: to the root's door, carrying the page.
-    $open = (string) $this->get('https://'.$this->tenantHost.'/admin/users')->headers->get('Location');
-    expect($open)->toContain('/open/'.$this->account['environment']->id);
-    $this->get($open)->assertRedirect('https://'.LINK_HOST.'/login');
+it('lands where the person was going: a tenant\'s console, through the root\'s sign-in', function (): void {
+    // The tenant's console's old address, signed out: to the console on the root, and from
+    // there to the root's sign-in.
+    $console = 'https://'.LINK_HOST.'/'.app(EnvironmentConsolePath::class)->for($this->account['environment']->id).'/users';
+    $this->get('https://'.$this->tenantHost.'/admin/users')->assertRedirect($console);
+    $this->get($console)->assertRedirect('https://'.LINK_HOST.'/login');
 
     RootGoogle::signIn('owner@acme.example');
     $hold = (string) linkStep()->inertiaProps('hold');
@@ -191,14 +193,10 @@ it('lands where the person was going: a tenant\'s /admin, through the root and i
     $landed = $this->from('https://'.LINK_HOST.'/login/link')
         ->post('https://'.LINK_HOST.'/login/link', ['hold' => $hold, 'method' => 'password', 'answer' => 'a-strong-unbreached-passphrase']);
 
-    // Back to the door they came through, with the page still on it…
-    expect((string) $landed->headers->get('Location'))->toBe($open);
+    // Back to the page they asked for, in the session that just signed in.
+    expect((string) $landed->headers->get('Location'))->toBe($console);
 
-    // …and through the signed hand-off to the page they asked for.
-    $handed = RootGoogle::handOff($open, $this->tenantHost);
-    expect((string) $handed->headers->get('Location'))->toEndWith('/admin/users');
-
-    $this->get('https://'.$this->tenantHost.'/admin/users')->assertOk();
+    $this->get($console)->assertOk();
     expect(app(EnvironmentAdminAuth::class)->subjectId())->toBe($this->ownerId);
 });
 

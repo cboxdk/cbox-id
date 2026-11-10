@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -100,10 +101,10 @@ it('lists the organization, its project and the environments its owner may open 
         ->and(array_column($environments, 'type'))->toBe(['production', 'sandbox'])
         ->and(array_column($environments, 'id'))->not->toContain($estate['foreign']->id);
 
-    // Each one through the door that checks access and mints the handoff — and from
-    // Projects, which no environment console has, with no page to land on.
+    // Each one straight to its console's address on this host, which checks access itself
+    // — and from Projects, which no environment console has, on its home page.
     foreach ($environments as $environment) {
-        expect($environment['href'])->toBe('https://cboxid.com/open/'.$environment['id']);
+        expect($environment['href'])->toBe('https://cboxid.com/'.app(EnvironmentConsolePath::class)->for($environment['id']));
     }
 });
 
@@ -137,7 +138,7 @@ it('carries the page being read into the environment it opens', function (): voi
     // opening production from here opens production's API keys.
     $environments = contextEnvironments(organizationContext('keys'));
 
-    expect($environments[0]['href'])->toBe('https://cboxid.com/open/'.$estate['production']->id.'?to=%2Fadmin%2Fkeys');
+    expect($environments[0]['href'])->toBe('https://cboxid.com/'.app(EnvironmentConsolePath::class)->for($estate['production']->id).'/keys');
 });
 
 it('lists only the environments a scoped member was granted', function (): void {
@@ -200,10 +201,12 @@ it('gives the environment console every environment it may switch to, landing on
     expect($environments->keys()->all())->toBe([$estate['production']->id, $estate['sandbox']->id])
         ->and($environments[$estate['production']->id]['current'])->toBeTrue()
         ->and($environments[$estate['sandbox']->id]['current'])->toBeFalse()
-        // Back through the WORKSPACE host's door — this host has no session that could
-        // mint a handoff — carrying the page being read.
+        // The same page in the other environment, on the same host and the same session.
         ->and($environments[$estate['sandbox']->id]['href'])
-        ->toBe('https://cboxid.com/open/'.$estate['sandbox']->id.'?to=%2Fadmin%2Fusers');
+        ->toBe('http://cboxid.com/'.app(EnvironmentConsolePath::class)->for($estate['sandbox']->id).'/users');
+
+    // …and it opens, without a sign-in or a handoff in between.
+    $this->get($environments[$estate['sandbox']->id]['href'])->assertOk();
 });
 
 it('lands a detail page on its list, and the home page on the home page', function (): void {
@@ -222,12 +225,12 @@ it('lands a detail page on its list, and the home page on the home page', functi
         ->inertiaProps('shell.context'));
 
     expect(collect($detail)->firstWhere('id', $estate['sandbox']->id)['href'])
-        ->toEndWith('?to=%2Fadmin%2Forganizations');
+        ->toBe('http://cboxid.com/'.app(EnvironmentConsolePath::class)->for($estate['sandbox']->id).'/organizations');
 
     $home = contextEnvironments((array) $this->get(route('environment.home'))->assertOk()->inertiaProps('shell.context'));
 
     expect(collect($home)->firstWhere('id', $estate['sandbox']->id)['href'])
-        ->toBe('https://cboxid.com/open/'.$estate['sandbox']->id);
+        ->toBe('http://cboxid.com/'.app(EnvironmentConsolePath::class)->for($estate['sandbox']->id));
 });
 
 it('calls an organization that owns no projects an organization, with nothing below it', function (): void {

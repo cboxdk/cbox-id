@@ -119,14 +119,10 @@ it('lands every moved page on a page that exists, on an environment\'s host', fu
     config()->set('cbox-id.environments.base_domains', ['cboxid.com']);
     platformRootEnvironment();
 
-    Environment::query()->create([
-        'name' => 'Acme',
-        'slug' => 'acme',
-        'type' => EnvironmentType::Production,
-        'status' => EnvironmentStatus::Active,
-        'is_default' => false,
-        'settings' => [],
-    ]);
+    // An environment of an organization's project: its console has a path on the app host,
+    // which is where the old addresses on its own host end up.
+    $acme = provisionAccount()['environment'];
+    $acme->forceFill(['slug' => 'acme'])->save();
 
     expect(deadMovedPages('acme.cboxid.com'))->toBe([]);
 

@@ -137,6 +137,7 @@ it('refuses somebody who does not administer the environment', function (): void
     multiTenantDeployment();
     $account = provisionAccount('nobody-here@acme.example');
     serveOnTestHost($account['environment']);
+    useEnvironmentConsole($account['environment']->id);
 
     foreach (['environment.agents', 'environment.agent-connect', 'environment.approvals'] as $route) {
         $response = $this->get(route($route));
@@ -152,7 +153,7 @@ it('puts the create flow behind the step-up, and offers every scope with its ris
 
     $this->get(route('environment.agents.create'))->assertRedirect(route('environment.sudo'));
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $props = $this->get(route('environment.agents.create', ['preset' => 'support', 'name' => 'Claude Code']))
         ->assertOk()
@@ -185,7 +186,7 @@ it('puts the create flow behind the step-up, and offers every scope with its ris
 
 it('mints an agent key with its purpose and approval policy through keys.create, and shows the value once', function (): void {
     ['environment' => $environment, 'organization' => $workspace, 'subjectId' => $owner] = agentsAdmin();
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->from(route('environment.agents.create'))
         ->post(route('environment.keys.store'), [
@@ -216,7 +217,7 @@ it('mints an agent key with its purpose and approval policy through keys.create,
 
 it('refuses an action name the registry does not know as one to hold', function (): void {
     ['environment' => $environment] = agentsAdmin();
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->from(route('environment.agents.create'))
         ->post(route('environment.keys.store'), [
@@ -241,7 +242,7 @@ it('rotates an agent through keys.rotate: a successor shown once, the old key on
     $this->from(route('environment.agents'))->post(route('environment.keys.rotate', $old->id))
         ->assertRedirect(route('environment.sudo'));
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->from(route('environment.agents'))->post(route('environment.keys.rotate', $old->id))
         ->assertRedirect(route('environment.agents'));
@@ -256,7 +257,7 @@ it('rotates an agent through keys.rotate: a successor shown once, the old key on
 
 it('404s a rotate aimed at another environment\'s key', function (): void {
     agentsAdmin();
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $theirs = app(EnvironmentApiKeys::class)->issue('env_somebody_else', 'Theirs', ['users:read']);
 
@@ -269,7 +270,7 @@ it('revokes an agent and every key it minted', function (): void {
     ['environment' => $environment, 'subjectId' => $owner] = agentsAdmin();
     [, $parent] = agentKey($environment->id, $owner, 'Claude Code');
     [, $child] = agentKey($environment->id, null, 'Sub-agent', ['keys:read'], null, $parent->id);
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->from(route('environment.agents'))
         ->delete(route('environment.keys.destroy', $parent->id), ['environment' => $environment->id])
@@ -319,7 +320,7 @@ it('finishes an agent\'s held request from the console: 202, approve with sudo, 
     ['environment' => $environment, 'subjectId' => $owner] = agentsAdmin();
 
     // Minted in the console by this person, with critical actions held for them.
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
     $this->from(route('environment.agents.create'))->post(route('environment.keys.store'), [
         'environment' => $environment->id,
         'name' => 'Claude Code',
@@ -355,7 +356,7 @@ it('finishes an agent\'s held request from the console: 202, approve with sudo, 
     // A critical action: the password first.
     $this->post(route('environment.approvals.actions.approve', $held['id']))->assertRedirect(route('environment.sudo'));
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
     $this->post(route('environment.approvals.actions.approve', $held['id']))
         ->assertRedirect(route('environment.approvals'))
         ->assertSessionHas('status');
@@ -407,7 +408,7 @@ it('lets only the person an action waits for approve it, and any administrator d
         ->and($row['approveHref'])->toBeNull()
         ->and($row['denyHref'])->not->toBeNull();
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
     $this->post(route('environment.approvals.actions.approve', $held['id']))->assertForbidden();
 
     $this->post(route('environment.approvals.actions.deny', $held['id']))->assertRedirect(route('environment.approvals'));
@@ -433,7 +434,7 @@ it('404s an approval raised in another environment', function (): void {
         'binding_code' => 'ABCD',
     ]);
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->post(route('environment.approvals.actions.approve', '01JZZZZZZZZZZZZZZZZZZZZZZZ'))->assertNotFound();
     $this->post(route('environment.approvals.actions.deny', '01JZZZZZZZZZZZZZZZZZZZZZZZ'))->assertNotFound();

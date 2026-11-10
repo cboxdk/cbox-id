@@ -25,7 +25,7 @@ it('keeps the key list outside the create form', function (): void {
 
     app(PublishableKeys::class)->issue('Site', KeyMode::Test, ['https://acme.test']);
 
-    $page = visit('/admin/keys/frontend');
+    $page = visit(envConsole('/keys/frontend'));
 
     $page->assertSee('Publishable keys')
         ->assertSee('Site')

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\InstallationOrganization;
+use App\Platform\IssuerUrl;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\SignInProviders;
 use Cbox\Id\Federation\Enums\ConnectionType;
@@ -74,7 +75,8 @@ it('turns GitHub on for the whole environment from the setup form, under the red
     expect($first['view'])->toBe('environment')
         ->and($first['organization']['allowsEnvironment'])->toBeTrue()
         ->and($first['organization']['selected'])->toBeNull()
-        ->and($first['template']['redirectUri'])->toBe(url('/sso/oauth2/'.$reserved.'/callback'))
+        // On the environment's own host, where the provider sends the browser back.
+        ->and($first['template']['redirectUri'])->toBe(IssuerUrl::to('/sso/oauth2/'.$reserved.'/callback'))
         ->and($again['template']['reservedId'])->toBe($reserved);
 
     $this->from(route('environment.social-providers', ['provider' => 'github']))
@@ -100,7 +102,7 @@ it('turns GitHub on for the whole environment from the setup form, under the red
     $after = smcProps(route('environment.social-providers'));
 
     expect(array_column($after['environmentProviders'], 'id'))->toBe([$reserved])
-        ->and($after['environmentProviders'][0]['callbackUri'])->toBe(url('/sso/oauth2/'.$reserved.'/callback'))
+        ->and($after['environmentProviders'][0]['callbackUri'])->toBe(IssuerUrl::to('/sso/oauth2/'.$reserved.'/callback'))
         // GitHub is no longer offered as something to add for the environment.
         ->and(array_column($after['available'], 'key'))->not->toContain('github');
 

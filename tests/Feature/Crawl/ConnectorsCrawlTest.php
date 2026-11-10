@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\HandleInertiaRequests;
-use App\Platform\EnvironmentSudo;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\ConsoleCrawl;
 use Tests\Support\ProductionShape;
@@ -34,13 +33,13 @@ it('offers no link on any Connectors page that answers anything but the page', f
     DB::table('webhook_endpoints')->where('environment_id', $environment->id)
         ->update(['consecutive_failures' => 2, 'last_error' => 'HTTP 500 from the endpoint']);
 
-    actAsEnvironmentAdmin($world->ownerId, $environment->id);
+    actAsEnvironmentAdmin($world->ownerId, $environment->id, consoleHost: ConsoleCrawl::ROOT);
     // Past the step-up the setup forms sit behind, so each shortcut lands on its FORM
     // rather than on the password prompt in front of it.
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
     ConsoleCrawl::productionShape();
 
-    $origin = 'https://'.$environment->slug.'.'.ConsoleCrawl::ROOT.'/admin';
+    $origin = 'https://'.ConsoleCrawl::ROOT.envConsolePath();
     $acme = $world->organizations['acme']->id;
 
     $crawl = new ConsoleCrawl($this);
@@ -78,11 +77,11 @@ it('gives every catalog card a setup link, a manage link and a live count', func
     $environment = $world->environment;
     expect($environment)->not->toBeNull();
 
-    actAsEnvironmentAdmin($world->ownerId, $environment->id);
+    actAsEnvironmentAdmin($world->ownerId, $environment->id, consoleHost: ConsoleCrawl::ROOT);
 
     $version = (string) app(HandleInertiaRequests::class)->version(request());
     $response = $this->withHeaders(['X-Inertia' => 'true', 'X-Inertia-Version' => $version])
-        ->get('https://'.$environment->slug.'.'.ConsoleCrawl::ROOT.'/admin/connectors');
+        ->get('https://'.ConsoleCrawl::ROOT.envConsolePath('/connectors'));
 
     $response->assertOk();
 
@@ -107,6 +106,6 @@ it('gives every catalog card a setup link, a manage link and a live count', func
         ->and($byKey['enterprise-sso']['count'])->toBeGreaterThan(0)
         ->and($byKey['webhook']['count'])->toBeGreaterThan(0)
         ->and($byKey['log-streams']['count'])->toBeGreaterThan(0)
-        ->and(collect($byKey['hr-systems']['options'])->pluck('href')->first())->toEndWith('/admin/sync-in/new?provider=workday')
+        ->and(collect($byKey['hr-systems']['options'])->pluck('href')->first())->toEndWith(envConsolePath('/sync-in/new?provider=workday'))
         ->and((string) $response->getContent())->not->toContain('Managed in module');
 });
