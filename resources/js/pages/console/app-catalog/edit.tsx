@@ -1,7 +1,7 @@
 import { useTranslator } from '@/i18n';
 import { Link, useForm } from '@inertiajs/react';
 import { useState } from 'react';
-import { CatalogAppIcon } from '@/chrome/AppSwitcher';
+import { CatalogAppIcon } from '@/chrome/CatalogAppIcon';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
 import {

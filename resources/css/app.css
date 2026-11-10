@@ -450,19 +450,6 @@
     background:
         radial-gradient(ellipse at 30% 0, var(--accent-soft), transparent 48%), var(--canvas);
 }
-.cbx-service-mark {
-    width: 24px;
-    height: 24px;
-    color: var(--mark-light);
-}
-:root[data-theme='dark'] .cbx-service-mark {
-    color: var(--mark-dark);
-}
-@media (prefers-color-scheme: dark) {
-    :root:not([data-theme='light']) .cbx-service-mark {
-        color: var(--mark-dark);
-    }
-}
 .cbx-app-icon-dark {
     display: none;
 }
@@ -488,9 +475,8 @@
     margin: 0;
     color: var(--foreground);
 }
-.cbx-rail .cbx-rail-brand .cbx-service-mark {
-    width: 22px;
-    height: 22px;
+.cbx-rail .cbx-rail-brand cbox-service-mark {
+    --cbox-service-mark-size: 22px;
 }
 .cbx-rail-wordmark,
 .cbx-service-name {
@@ -516,63 +502,6 @@
         background: var(--foreground);
     }
 }
-.cbx-launch-trigger {
-    display: inline-grid;
-    place-items: center;
-    width: 32px;
-    height: 32px;
-    flex: none;
-    border-radius: 8px;
-    color: var(--foreground);
-    cursor: pointer;
-}
-.cbx-launch-trigger:hover,
-.cbx-launch-trigger[data-state='open'],
-.cbx-launch-grid a:hover {
-    background: var(--secondary);
-}
-.cbx-popover.cbx-launch-panel {
-    width: min(292px, calc(100vw - 16px));
-    max-height: var(--radix-popover-content-available-height);
-    overflow-y: auto;
-    padding: 12px;
-    border-radius: 12px;
-}
-.cbx-launch-panel h2 {
-    font-size: 14px;
-    font-weight: 600;
-    margin: 0 4px 8px;
-}
-.cbx-launch-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 4px;
-}
-.cbx-launch-grid a {
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 5px;
-    min-height: 60px;
-    border-radius: 8px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--foreground);
-    text-align: center;
-    text-decoration: none;
-    overflow-wrap: anywhere;
-}
-.cbx-launch-check {
-    position: absolute;
-    top: 5px;
-    right: 8px;
-    width: 12px;
-    height: 12px;
-    color: var(--accent-strong);
-}
-
 @layer components {
     /* ── Buttons */
     .btn {

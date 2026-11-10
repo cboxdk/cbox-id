@@ -1,6 +1,6 @@
 import { useTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
-import { CatalogAppIcon } from '@/chrome/AppSwitcher';
+import { CatalogAppIcon } from '@/chrome/CatalogAppIcon';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { CatalogApp, HelpContent, PageProps } from '@/types';
 import { Button, PageHeader, Panel } from '@/ui';

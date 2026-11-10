@@ -9,9 +9,11 @@ use App\Platform\CspNonce;
 use App\Platform\PlaneResolver;
 use App\Platform\Turnstile;
 use Cbox\AiAssistant\Connector\Support\SupportSession;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 /**
  * Baseline security headers for an identity console. The app bundle is same-origin.
@@ -189,8 +191,34 @@ final class SecurityHeaders
     private function imageOrigins(): string
     {
         $origins = app(BrandImages::class)->origins();
+        $catalog = $this->catalogIconOrigin();
+
+        if ($catalog !== null && ! in_array($catalog, $origins, true)) {
+            $origins[] = $catalog;
+        }
 
         return $origins === [] ? '' : ' '.implode(' ', $origins);
+    }
+
+    /**
+     * Where this environment's app catalog serves its icons: the issuer's `/app-icons/…`,
+     * which the console's app switcher draws. On the console's own host that is often
+     * another origin (the console at app.cboxid.com, the issuer elsewhere). HTTPS only;
+     * nothing when there is no issuer to name.
+     */
+    private function catalogIconOrigin(): ?string
+    {
+        try {
+            $parts = parse_url(app(IssuerResolver::class)->issuer());
+        } catch (Throwable) {
+            return null;
+        }
+
+        if (! is_array($parts) || ($parts['scheme'] ?? null) !== 'https' || ! isset($parts['host'])) {
+            return null;
+        }
+
+        return 'https://'.$parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
     }
 
     /**

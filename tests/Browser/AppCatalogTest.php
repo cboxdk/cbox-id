@@ -25,7 +25,7 @@ it('opens the same app selector directly in the mobile header', function (): voi
     visit(route('environment.app-catalog'))
         ->resize(375, 812)
         ->click('header button[aria-label="Switch app"]')
-        ->assertVisible('.cbx-launch-panel')
+        ->assertVisible('cbox-app-switcher .panel')
         ->assertSee('No apps have been published for you yet.')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'app-switcher-mobile');
@@ -46,7 +46,7 @@ it('opens an existing picker bookmark in the account header', function (): void 
     actingAsRole(MembershipRole::Owner);
     visit('/switch-app')
         ->assertPathIs('/account')
-        ->assertVisible('.cbx-launch-panel')
+        ->assertVisible('cbox-app-switcher .panel')
         ->assertSee('No apps have been published for you yet.')
         ->assertNoJavaScriptErrors();
 });
