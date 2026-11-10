@@ -19,6 +19,7 @@ use App\Platform\MailLinks;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
 use App\Platform\SamlSsoHandoff;
+use App\Platform\SignInThrough;
 use App\Platform\SignupPolicy;
 use App\Platform\SsoMandate;
 use App\Platform\SsoMandates;
@@ -39,6 +40,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
 use Inertia\Response;
 
 /**
@@ -60,8 +62,59 @@ final readonly class LoginController extends PageController
         Organizations $organizations,
         SignupPolicy $signup,
         BrandContext $brand,
+        SignInThrough $through,
         ?string $slug = null,
+    ): Response|RedirectResponse {
+        return $this->render($request, $organizations, $signup, $brand, $through, $slug, direct: false);
+    }
+
+    /**
+     * `GET /login/direct` — THE ENVIRONMENT'S OWN SIGN-IN PAGE, ALWAYS.
+     *
+     * An environment that signs in through another identity provider ({@see SignInThrough})
+     * sends `/login` straight there. This address never does: it is the same page with every
+     * method the environment has — passkeys, password, magic link — so the operators of a
+     * platform whose identity provider is down can still reach the platform that fixes it.
+     */
+    public function direct(
+        Request $request,
+        Organizations $organizations,
+        SignupPolicy $signup,
+        BrandContext $brand,
+        SignInThrough $through,
     ): Response {
+        $page = $this->render($request, $organizations, $signup, $brand, $through, null, direct: true);
+
+        assert($page instanceof Response);
+
+        return $page;
+    }
+
+    private function render(
+        Request $request,
+        Organizations $organizations,
+        SignupPolicy $signup,
+        BrandContext $brand,
+        SignInThrough $through,
+        ?string $slug,
+        bool $direct,
+    ): Response|RedirectResponse {
+        $upstream = $through->connection();
+
+        /*
+         * STRAIGHT TO THE IDENTITY PROVIDER this environment signs in through — no page, no
+         * button. Somebody with a session there comes back signed in without seeing
+         * anything; `/login/direct` is the way past it.
+         *
+         * Only when this page has nothing to say. A refusal, a provider that did not answer,
+         * an identifier step being filled in — each of those lands HERE and must be read, and
+         * redirecting it away would loop the person between the two doors with the sentence
+         * lost on the way.
+         */
+        if ($upstream !== null && ! $direct && $slug === null && ! $this->hasSomethingToSay($request)) {
+            return redirect()->away(SsoStart::url($upstream));
+        }
+
         /*
          * A refusal from a door that could not explain itself. Those doors are
          * controllers and JSON endpoints: they redirect here holding only WHO was refused
@@ -90,7 +143,7 @@ final readonly class LoginController extends PageController
             // page cannot read it, so the server states it.
             'email' => is_string($old = $request->old('email')) ? $old : '',
             'signupOpen' => $signup->isOpen(),
-            'providers' => SocialProviderProps::forOrganization($organization?->id),
+            'providers' => $this->providers($organization?->id, $upstream),
             // The environment's own switches under the deployment's: a button for a method
             // that is off would lead to a refusal, so it is not drawn.
             'methods' => [
@@ -105,6 +158,44 @@ final readonly class LoginController extends PageController
              */
             'lastUsed' => LastSignInMethod::read($request),
         ]);
+    }
+
+    /**
+     * The buttons — with the identity provider this environment signs in through first, when
+     * it has one: the page is only drawn when that redirect did not happen, and it is still
+     * the way most people mean to go.
+     *
+     * @return list<SocialProviderProps>
+     */
+    private function providers(?string $organizationId, ?Connection $upstream): array
+    {
+        $providers = SocialProviderProps::forOrganization($organizationId);
+
+        if ($upstream === null) {
+            return $providers;
+        }
+
+        $key = Str::slug($upstream->name);
+
+        return [
+            new SocialProviderProps(provider: $key === '' ? 'sso' : $key, label: $upstream->name, url: SsoStart::url($upstream)),
+            ...array_values(array_filter($providers, static fn (SocialProviderProps $provider): bool => $provider->url !== SsoStart::url($upstream))),
+        ];
+    }
+
+    /**
+     * Whether this render carries something the person must read or is in the middle of:
+     * a flashed message, a validation error, the identifier step's answer, a refusal.
+     */
+    private function hasSomethingToSay(Request $request): bool
+    {
+        $session = $request->session();
+
+        return Inertia::getFlashed($request) !== []
+            || $session->has('errors')
+            || $session->has('status')
+            || $session->hasOldInput()
+            || SsoRefusal::held();
     }
 
     /**

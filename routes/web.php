@@ -408,6 +408,10 @@ Route::middleware(['plane:signup', 'platform.guest', 'locale'])->group(function 
  */
 Route::middleware(['plane:console', 'platform.guest', 'locale'])->group(function (): void {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
+    // The environment's own sign-in page, always — even when `/login` goes straight to the
+    // identity provider the environment signs in through ({@see SignInThrough}). The way in
+    // for the platform's operators when that provider is down.
+    Route::get('/login/direct', [LoginController::class, 'direct'])->name('login.direct');
     // Identifier-first: the address alone, so its home realm can be discovered before a
     // password form is drawn. A server step, because the domain map is the server's.
     Route::post('/login/identify', [LoginController::class, 'identify'])->name('login.identify');
@@ -1954,8 +1958,8 @@ Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group
  * to a public sign-in does not. `/operator` itself is in the moved-pages table below, with
  * the gate of the pages it points at.
  */
-Route::redirect('/operator/login', '/login');
-Route::redirect('/operator/login/mfa', '/login');
+Route::redirect('/operator/login', '/login/direct');
+Route::redirect('/operator/login/mfa', '/login/direct');
 
 Route::prefix('admin/platform')->middleware('plane:operator')->group(function (): void {
     // `platform.auth:optional` RESOLVES the one session without requiring one, then

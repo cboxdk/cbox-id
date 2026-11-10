@@ -56,8 +56,8 @@ it('keeps the old operator URLs working, pointed at where those pages went', fun
     // platform admin is now — not through `/platform`, which moved too.
     $this->get('/operator')->assertStatus(301)->assertRedirect('/admin/platform');
     $this->get('/platform')->assertStatus(301)->assertRedirect('/admin/platform/environments');
-    $this->get('/operator/login')->assertRedirect('/login');
-    $this->get('/operator/login/mfa')->assertRedirect('/login');
+    $this->get('/operator/login')->assertRedirect('/login/direct');
+    $this->get('/operator/login/mfa')->assertRedirect('/login/direct');
 });
 
 it('lets a signed-in operator in', function (): void {

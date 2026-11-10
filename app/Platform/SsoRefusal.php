@@ -45,6 +45,12 @@ final class SsoRefusal
         session()->put(self::KEY, ['subject' => $subjectId, 'factor' => $factor->value]);
     }
 
+    /** Whether a refusal is waiting for the sign-in screen, without taking it. */
+    public static function held(): bool
+    {
+        return session()->has(self::KEY);
+    }
+
     /**
      * Take the held refusal, or null when the visitor simply arrived at the sign-in page.
      *

@@ -4772,4 +4772,5 @@ https://staging.example.com',
     'value0_value1_none_failing_a5d264cb' => ':value0 :value1, všechna připojení fungují.',
     'plan_fa8ed0bd' => 'Tarif',
     'an_upper_bound_the_file_itself_is_exact_and__1fc09fe1' => 'Horní mez — samotný soubor je přesný a neobsahuje duplicity.',
+    'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Vyberte aktivní připojení OpenID Connect, které patří celému prostředí.',
 ];

@@ -4772,4 +4772,5 @@ https://staging.example.com',
     'whole_environment_fc5a0810' => 'Hele miljøet',
     'no_activity_recorded_fcfa3087' => 'Ingen aktivitet registrert',
     'last_activity_0c278ed1' => 'Siste aktivitet ',
+    'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Velg en aktiv OpenID Connect-tilkobling som tilhører hele miljøet.',
 ];

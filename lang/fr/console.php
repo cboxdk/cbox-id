@@ -4772,4 +4772,5 @@ https://staging.example.com',
     'whole_environment_fc5a0810' => 'Environnement entier',
     'no_activity_recorded_fcfa3087' => 'Aucune activité enregistrée',
     'last_activity_0c278ed1' => 'Dernière activité ',
+    'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Choisissez une connexion OpenID Connect active qui appartient à tout l’environnement.',
 ];

@@ -4772,4 +4772,5 @@ https://staging.example.com',
     'connections_1e5fac86' => 'Kapcsolatok',
     'more_226ba18b' => 'Továbbiak',
     'opens_in_a_new_tab_1d183356' => 'Új lapon nyílik meg',
+    'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Válasszon egy aktív OpenID Connect-kapcsolatot, amely a teljes környezethez tartozik.',
 ];
