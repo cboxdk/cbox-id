@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'description' => 'Gira os dados de faturação, os cartões de pagamento e as faturas deste espaço de trabalho.',
+    'description' => 'Gira os dados de faturação, os cartões de pagamento e as faturas desta organização.',
     'account' => 'Dados de faturação',
     'invoice_name' => 'Nome nas faturas',
     'billing_email' => 'E-mail de faturação',
@@ -39,7 +39,7 @@ return [
     'subtotal' => 'Subtotal',
     'tax' => 'Impostos',
     'tax_pending' => 'Os impostos ainda não foram calculados.',
-    'no_subscription' => 'Não há nenhuma subscrição atribuída a este espaço de trabalho.',
+    'no_subscription' => 'Não há nenhuma subscrição atribuída a esta organização.',
     'allowance' => 'Número de ambientes permitido',
     'allowance_description' => 'O acesso e os limites são atribuídos por um administrador.',
     'period' => 'Período de faturação',
@@ -73,8 +73,8 @@ return [
     'credits_granted' => 'Créditos incluídos adicionados',
     'credits_carried' => 'Créditos incluídos transitados',
     'address_required' => 'Preencha e guarde a morada de faturação antes de escolher um plano pago.',
-    'organization_changed' => 'O espaço de trabalho foi alterado noutro separador. Recarregue esta página antes de editar a faturação.',
-    'explanation' => 'As subscrições são por projeto. Compare os planos para consultar os preços e os limites de ambientes. Os dados de faturação, os cartões e as faturas são partilhados pelo espaço de trabalho. Os dados de utilização mostram a atividade; os valores cobrados dependem do plano selecionado.',
+    'organization_changed' => 'A organização foi alterado noutro separador. Recarregue esta página antes de editar a faturação.',
+    'explanation' => 'As subscrições são por projeto. Compare os planos para consultar os preços e os limites de ambientes. Os dados de faturação, os cartões e as faturas são partilhados pela organização. Os dados de utilização mostram a atividade; os valores cobrados dependem do plano selecionado.',
     'connections' => 'Ligações SSO',
     'environments' => 'Ambientes',
     'replace_default' => 'Escolha outro cartão predefinido antes de remover este.',

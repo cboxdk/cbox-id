@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'description' => 'Kezelje a munkaterület számlázási adatait, bankkártyáit és számláit.',
+    'description' => 'Kezelje a szervezet számlázási adatait, bankkártyáit és számláit.',
     'account' => 'Számlázási adatok',
     'invoice_name' => 'Név a számlákon',
     'billing_email' => 'Számlázási e-mail',
@@ -39,7 +39,7 @@ return [
     'subtotal' => 'Részösszeg',
     'tax' => 'Adó',
     'tax_pending' => 'Az adót még nem számították ki.',
-    'no_subscription' => 'Ehhez a munkaterülethez nincs előfizetés hozzárendelve.',
+    'no_subscription' => 'Ehhez a szervezethez nincs előfizetés hozzárendelve.',
     'allowance' => 'Engedélyezett környezetek száma',
     'allowance_description' => 'A hozzáférést és a kereteket rendszergazda osztja ki.',
     'period' => 'Számlázási időszak',
@@ -73,8 +73,8 @@ return [
     'credits_granted' => 'Hozzáadott, csomagban foglalt kreditek',
     'credits_carried' => 'Átvitt, csomagban foglalt kreditek',
     'address_required' => 'Fizetős csomag választása előtt töltse ki és mentse a számlázási címét.',
-    'organization_changed' => 'A munkaterület egy másik lapon megváltozott. A számlázási adatok szerkesztése előtt töltse újra ezt az oldalt.',
-    'explanation' => 'Az előfizetések projektenként érvényesek. Hasonlítsa össze a csomagokat az árak és a környezetekre vonatkozó keretek megtekintéséhez. A számlázási adatok, kártyák és számlák a munkaterület egészére vonatkoznak. A használati adatok a tevékenységet mutatják; a díjakat a választott csomag határozza meg.',
+    'organization_changed' => 'A szervezet egy másik lapon megváltozott. A számlázási adatok szerkesztése előtt töltse újra ezt az oldalt.',
+    'explanation' => 'Az előfizetések projektenként érvényesek. Hasonlítsa össze a csomagokat az árak és a környezetekre vonatkozó keretek megtekintéséhez. A számlázási adatok, kártyák és számlák a szervezet egészére vonatkoznak. A használati adatok a tevékenységet mutatják; a díjakat a választott csomag határozza meg.',
     'connections' => 'SSO-kapcsolatok',
     'environments' => 'Környezetek',
     'replace_default' => 'A kártya eltávolítása előtt válasszon másik alapértelmezett kártyát.',

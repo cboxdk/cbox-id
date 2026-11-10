@@ -46,7 +46,7 @@ return [
         'stale' => 'Dit autorisatieverzoek kan niet meer worden voltooid. Begin opnieuw.',
         'account_attention' => 'Je account vereist aandacht voordat je verder kunt. Log opnieuw in.',
         'step_up' => 'Deze applicatie vereist een recentere aanmelding of sterkere authenticatie. Begin opnieuw.',
-        'no_organization' => 'Deze aanmelding verbindt een agent met een werkruimte op Cbox ID, maar je account behoort niet tot een team van een werkruimte. Vraag de eigenaar van een werkruimte om je uit te nodigen of verbind de agent via het eigen adres van je omgeving.',
+        'no_organization' => 'Deze aanmelding verbindt een agent met een organisatie op Cbox ID, maar je account behoort niet tot een team van een organisatie. Vraag de eigenaar van een organisatie om je uit te nodigen of verbind de agent via het eigen adres van je omgeving.',
     ],
     'organization' => [
         'title' => 'Kies een organisatie',

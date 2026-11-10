@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'description' => 'Gestiona los datos de facturación, las tarjetas de pago y las facturas de este espacio de trabajo.',
+    'description' => 'Gestiona los datos de facturación, las tarjetas de pago y las facturas de esta organización.',
     'account' => 'Datos de facturación',
     'invoice_name' => 'Nombre en las facturas',
     'billing_email' => 'Correo de facturación',
@@ -37,7 +37,7 @@ return [
     'subtotal' => 'Subtotal',
     'tax' => 'Impuestos',
     'tax_pending' => 'Los impuestos aún no se han calculado.',
-    'no_subscription' => 'Este espacio de trabajo no tiene ninguna suscripción asignada.',
+    'no_subscription' => 'Esta organización no tiene ninguna suscripción asignada.',
     'allowance' => 'Límite de entornos',
     'allowance_description' => 'Un administrador asigna el acceso y los límites.',
     'period' => 'Periodo de facturación',
@@ -69,8 +69,8 @@ return [
     'credits_granted' => 'Créditos incluidos añadidos',
     'credits_carried' => 'Créditos incluidos conservados',
     'address_required' => 'Completa y guarda tu dirección de facturación antes de elegir un plan de pago.',
-    'organization_changed' => 'El espacio de trabajo cambió en otra pestaña. Recarga esta página antes de editar la facturación.',
-    'explanation' => 'Las suscripciones son por proyecto. Compara precios y límites de entornos. Los datos de facturación, tarjetas y facturas se comparten en el espacio de trabajo. Las cifras de uso muestran actividad; los cargos siguen el plan elegido.',
+    'organization_changed' => 'La organización cambió en otra pestaña. Recarga esta página antes de editar la facturación.',
+    'explanation' => 'Las suscripciones son por proyecto. Compara precios y límites de entornos. Los datos de facturación, tarjetas y facturas se comparten en la organización. Las cifras de uso muestran actividad; los cargos siguen el plan elegido.',
     'connections' => 'Conexiones SSO',
     'environments' => 'Entornos',
     'replace_default' => 'Elige otra tarjeta predeterminada antes de eliminar esta.',

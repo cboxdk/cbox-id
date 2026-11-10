@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Empezar',
         'heading' => [
-            'creates_idp' => 'Crea tu espacio de trabajo',
+            'creates_idp' => 'Crea tu organización',
             'for_app' => 'Crea tu cuenta',
             'default' => 'Crea tu organización',
         ],
         'lead' => [
-            'creates_idp' => 'Un espacio de trabajo para tu empresa y tu propio proveedor de identidad alojado. Controla el SSO, los usuarios y el inicio de sesión, listo en un minuto.',
+            'creates_idp' => 'Una organización para tu empresa y tu propio proveedor de identidad alojado. Controla el SSO, los usuarios y el inicio de sesión, listo en un minuto.',
             'join' => 'Regístrate en :name. Serás el propietario de tu equipo y podrás invitar a personas una vez que hayas iniciado sesión.',
             'default' => 'Configura Cbox ID para tu equipo en menos de un minuto.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Nombre del espacio de trabajo',
+            'creates_idp' => 'Nombre de la organización',
             'for_app' => 'Nombre del equipo o empresa',
             'default' => 'Nombre de la organización',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'Dirección de correo electrónico de trabajo',
         'breach_note' => 'Se comprueba si aparece en filtraciones de datos conocidas.',
         'submit' => [
-            'creates_idp' => 'Crear espacio de trabajo',
+            'creates_idp' => 'Crear organización',
             'for_app' => 'Crear cuenta y continuar',
             'default' => 'Crear organización',
         ],
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'Cada entorno está completamente aislado y tiene sus propios usuarios, claves y emisor.',
         'environment_default' => 'Producción',
         'organization_label' => 'Nombre de la organización',
-        'organization_hint' => 'Esta instalación está configurada para varias organizaciones, por lo que también se crea el primer espacio de trabajo: la organización a la que pertenecen los entornos y la facturación.',
+        'organization_hint' => 'Esta instalación está configurada para varias organizaciones, por lo que también se crea el primer organización: la organización a la que pertenecen los entornos y la facturación.',
         'organization_placeholder' => 'Tu empresa',
         'submit' => 'Instalar',
         'token_mismatch' => 'Este token de configuración no corresponde a esta instalación o ha caducado. Genera uno nuevo con php artisan cbox-id:setup-token.',

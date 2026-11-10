@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Kom igång',
         'heading' => [
-            'creates_idp' => 'Skapa din arbetsyta',
+            'creates_idp' => 'Skapa din organisation',
             'for_app' => 'Skapa ditt konto',
             'default' => 'Skapa din organisation',
         ],
         'lead' => [
-            'creates_idp' => 'En arbetsyta för ditt företag och din egen hostade identitetsleverantör — SSO, användare och inloggning som du har full kontroll över, igång på en minut.',
+            'creates_idp' => 'En organisation för ditt företag och din egen hostade identitetsleverantör — SSO, användare och inloggning som du har full kontroll över, igång på en minut.',
             'join' => 'Registrera dig för :name. Du blir ägare av ditt team och kan bjuda in andra när du är inne.',
             'default' => 'Konfigurera Cbox ID för ditt team på under en minut.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Arbetsytans namn',
+            'creates_idp' => 'Organisationens namn',
             'for_app' => 'Team- eller företagsnamn',
             'default' => 'Organisationens namn',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'E-postadress på jobbet',
         'breach_note' => 'Kontrolleras mot kända dataläckor.',
         'submit' => [
-            'creates_idp' => 'Skapa arbetsyta',
+            'creates_idp' => 'Skapa organisation',
             'for_app' => 'Skapa konto och fortsätt',
             'default' => 'Skapa organisation',
         ],
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'En miljö är den strikta isoleringsgränsen — med egna användare, nycklar och egen utfärdare (issuer).',
         'environment_default' => 'Produktion',
         'organization_label' => 'Organisationens namn',
-        'organization_hint' => 'Den här installationen är konfigurerad som multi-tenant, så installationen skapar också den första arbetsytan — organisationen som äger miljöer och fakturering.',
+        'organization_hint' => 'Den här installationen är konfigurerad som multi-tenant, så installationen skapar också den första organisationen — organisationen som äger miljöer och fakturering.',
         'organization_placeholder' => 'Ditt företag',
         'submit' => 'Installera',
         'token_mismatch' => 'Installationstoken matchar inte den här installationens, eller så har den gått ut. Skriv ut en ny med php artisan cbox-id:setup-token.',

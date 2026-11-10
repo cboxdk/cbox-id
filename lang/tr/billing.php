@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'description' => 'Bu çalışma alanının fatura bilgilerini, ödeme kartlarını ve faturalarını yönetin.',
+    'description' => 'Bu kuruluşun fatura bilgilerini, ödeme kartlarını ve faturalarını yönetin.',
     'account' => 'Fatura bilgileri',
     'invoice_name' => 'Faturalardaki ad',
     'billing_email' => 'Faturalandırma e-postası',
@@ -39,7 +39,7 @@ return [
     'subtotal' => 'Ara toplam',
     'tax' => 'Vergi',
     'tax_pending' => 'Vergi henüz hesaplanmadı.',
-    'no_subscription' => 'Bu çalışma alanına atanmış abonelik yok.',
+    'no_subscription' => 'Bu kuruluşa atanmış abonelik yok.',
     'allowance' => 'İzin verilen ortam sayısı',
     'allowance_description' => 'Erişim ve kotalar bir yönetici tarafından atanır.',
     'period' => 'Fatura dönemi',
@@ -73,8 +73,8 @@ return [
     'credits_granted' => 'Plana dahil krediler eklendi',
     'credits_carried' => 'Plana dahil krediler devredildi',
     'address_required' => 'Ücretli bir plan seçmeden önce fatura adresinizi doldurup kaydedin.',
-    'organization_changed' => 'Çalışma alanı başka bir sekmede değiştirildi. Faturalandırmayı düzenlemeden önce bu sayfayı yeniden yükleyin.',
-    'explanation' => 'Abonelikler proje bazındadır. Fiyatları ve ortam kotalarını görmek için planları karşılaştırın. Fatura bilgileri, kartlar ve faturalar çalışma alanının tamamında paylaşılır. Kullanım verileri etkinliği gösterir; ücretler seçtiğiniz plana göre belirlenir.',
+    'organization_changed' => 'Kuruluş başka bir sekmede değiştirildi. Faturalandırmayı düzenlemeden önce bu sayfayı yeniden yükleyin.',
+    'explanation' => 'Abonelikler proje bazındadır. Fiyatları ve ortam kotalarını görmek için planları karşılaştırın. Fatura bilgileri, kartlar ve faturalar kuruluşun tamamında paylaşılır. Kullanım verileri etkinliği gösterir; ücretler seçtiğiniz plana göre belirlenir.',
     'connections' => 'SSO bağlantıları',
     'environments' => 'Ortamlar',
     'replace_default' => 'Bu kartı kaldırmadan önce başka bir varsayılan kart seçin.',

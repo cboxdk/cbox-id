@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Počnite',
         'heading' => [
-            'creates_idp' => 'Stvorite svoj radni prostor',
+            'creates_idp' => 'Stvorite svoju organizaciju',
             'for_app' => 'Stvorite svoj račun',
             'default' => 'Stvorite svoju organizaciju',
         ],
         'lead' => [
-            'creates_idp' => 'Radni prostor za vašu tvrtku i vlastiti hostirani pružatelj identiteta. Potpuna kontrola nad SSO-om, korisnicima i prijavom, sve spremno za minutu.',
+            'creates_idp' => 'Organizacija za vašu tvrtku i vlastiti hostirani pružatelj identiteta. Potpuna kontrola nad SSO-om, korisnicima i prijavom, sve spremno za minutu.',
             'join' => 'Registrirajte se za :name. Bit ćete vlasnik svog tima i moći ćete pozivati druge nakon prijave.',
             'default' => 'Postavite Cbox ID za vaš tim u manje od jedne minute.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Naziv radnog prostora',
+            'creates_idp' => 'Naziv organizacije',
             'for_app' => 'Naziv tima ili tvrtke',
             'default' => 'Naziv organizacije',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'Poslovna adresa e-pošte',
         'breach_note' => 'Provjerava se je li lozinka otkrivena u poznatim povredama podataka.',
         'submit' => [
-            'creates_idp' => 'Stvori radni prostor',
+            'creates_idp' => 'Stvori organizaciju',
             'for_app' => 'Stvori račun i nastavi',
             'default' => 'Stvori organizaciju',
         ],
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'Okruženje je strogo izolirano: ima vlastite korisnike, ključeve i izdavatelja.',
         'environment_default' => 'Produkcija',
         'organization_label' => 'Naziv organizacije',
-        'organization_hint' => 'Ova je instalacija konfigurirana za više organizacija pa se pri postavljanju stvara i prvi radni prostor: organizacija kojoj pripadaju okruženja i naplata.',
+        'organization_hint' => 'Ova je instalacija konfigurirana za više organizacija pa se pri postavljanju stvara i prva organizacija: ona kojoj pripadaju okruženja i naplata.',
         'organization_placeholder' => 'Vaša tvrtka',
         'submit' => 'Postavi ovu instalaciju',
         'token_mismatch' => 'Token za postavljanje ne pripada ovoj instalaciji ili je istekao. Generirajte novi naredbom php artisan cbox-id:setup-token.',

@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'description' => 'Spravujte fakturační údaje, platební karty a faktury tohoto pracovního prostoru.',
+    'description' => 'Spravujte fakturační údaje, platební karty a faktury této organizace.',
     'account' => 'Fakturační údaje',
     'invoice_name' => 'Jméno na fakturách',
     'billing_email' => 'Fakturační e-mail',
@@ -37,7 +37,7 @@ return [
     'subtotal' => 'Mezisoučet',
     'tax' => 'Daň',
     'tax_pending' => 'Daň zatím nebyla vypočtena.',
-    'no_subscription' => 'Tomuto pracovnímu prostoru není přiřazeno žádné předplatné.',
+    'no_subscription' => 'Této organizaci není přiřazeno žádné předplatné.',
     'allowance' => 'Povolený počet prostředí',
     'allowance_description' => 'Přístup a limity přiděluje správce.',
     'period' => 'Fakturační období',
@@ -71,8 +71,8 @@ return [
     'credits_granted' => 'Přidané zahrnuté kredity',
     'credits_carried' => 'Převedené zahrnuté kredity',
     'address_required' => 'Před výběrem placeného tarifu vyplňte a uložte fakturační adresu.',
-    'organization_changed' => 'Pracovní prostor se změnil v jiné kartě. Před úpravou fakturace tuto stránku znovu načtěte.',
-    'explanation' => 'Předplatné se vztahuje na jednotlivé projekty. Porovnejte tarify a zjistěte ceny a limity prostředí. Fakturační údaje, karty a faktury jsou společné pro celý pracovní prostor. Údaje o využití ukazují aktivitu; poplatky se řídí zvoleným tarifem.',
+    'organization_changed' => 'Organizace se změnila v jiné kartě. Před úpravou fakturace tuto stránku znovu načtěte.',
+    'explanation' => 'Předplatné se vztahuje na jednotlivé projekty. Porovnejte tarify a zjistěte ceny a limity prostředí. Fakturační údaje, karty a faktury jsou společné pro celou organizaci. Údaje o využití ukazují aktivitu; poplatky se řídí zvoleným tarifem.',
     'connections' => 'Připojení SSO',
     'environments' => 'Prostředí',
     'replace_default' => 'Před odebráním této karty vyberte jinou výchozí kartu.',

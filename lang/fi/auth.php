@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Aloita',
         'heading' => [
-            'creates_idp' => 'Luo työtila',
+            'creates_idp' => 'Luo organisaatio',
             'for_app' => 'Luo tilisi',
             'default' => 'Luo organisaatiosi',
         ],
         'lead' => [
-            'creates_idp' => 'Työtila yrityksellesi ja oma ylläpidetty tunnistuspalvelu. Hallitset kertakirjautumista, käyttäjiä ja kirjautumistapoja itse. Käyttövalmis minuutissa.',
+            'creates_idp' => 'Organisaatio yrityksellesi ja oma ylläpidetty tunnistuspalvelu. Hallitset kertakirjautumista, käyttäjiä ja kirjautumistapoja itse. Käyttövalmis minuutissa.',
             'join' => 'Rekisteröidy palveluun :name. Sinusta tulee tiimisi omistaja, ja voit kutsua muita kirjautumisen jälkeen.',
             'default' => 'Ota Cbox ID käyttöön tiimillesi alle minuutissa.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Työtilan nimi',
+            'creates_idp' => 'Organisaation nimi',
             'for_app' => 'Tiimin tai yrityksen nimi',
             'default' => 'Organisaation nimi',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'Työsähköpostiosoite',
         'breach_note' => 'Verrataan tunnettuihin tietovuotoihin.',
         'submit' => [
-            'creates_idp' => 'Luo työtila',
+            'creates_idp' => 'Luo organisaatio',
             'for_app' => 'Luo tili ja jatka',
             'default' => 'Luo organisaatio',
         ],
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'Ympäristö on tiukka eristysraja – omat käyttäjät, avaimet ja myöntäjä.',
         'environment_default' => 'Tuotanto',
         'organization_label' => 'Organisaation nimi',
-        'organization_hint' => 'Tämä asennus on määritetty moniasiakastilaan, joten asennus luo myös ensimmäisen työtilan eli organisaation, jolle ympäristöt ja laskutus kuuluvat.',
+        'organization_hint' => 'Tämä asennus on määritetty moniasiakastilaan, joten asennus luo myös ensimmäisen organisaation eli organisaation, jolle ympäristöt ja laskutus kuuluvat.',
         'organization_placeholder' => 'Yrityksesi',
         'submit' => 'Ota asennus käyttöön',
         'token_mismatch' => 'Tämä käyttöönottotunniste ei vastaa asennuksen tunnistetta tai on vanhentunut. Tulosta uusi tunniste komennolla php artisan cbox-id:setup-token.',

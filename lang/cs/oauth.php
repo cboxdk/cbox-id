@@ -46,7 +46,7 @@ return [
         'stale' => 'Tento požadavek na povolení přístupu již nelze dokončit. Začněte znovu.',
         'account_attention' => 'Než budete moci pokračovat, je třeba vyřešit problém s vaším účtem. Přihlaste se znovu.',
         'step_up' => 'Tato aplikace vyžaduje novější nebo silnější přihlášení. Začněte znovu.',
-        'no_organization' => 'Toto přihlášení propojuje agenta s pracovním prostorem v Cbox ID, ale váš účet není členem týmu žádného pracovního prostoru. Požádejte vlastníka pracovního prostoru o pozvánku nebo připojte agenta na vlastní adrese svého prostředí.',
+        'no_organization' => 'Toto přihlášení propojuje agenta s organizací v Cbox ID, ale váš účet není členem týmu žádné organizace. Požádejte vlastníka organizace o pozvánku nebo připojte agenta na vlastní adrese svého prostředí.',
     ],
     'organization' => [
         'title' => 'Vyberte organizaci',

@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Începeți',
         'heading' => [
-            'creates_idp' => 'Creați-vă spațiul de lucru',
+            'creates_idp' => 'Creați-vă organizația',
             'for_app' => 'Creați-vă contul',
             'default' => 'Creați-vă organizația',
         ],
         'lead' => [
-            'creates_idp' => 'Un spațiu de lucru pentru compania dumneavoastră și propriul furnizor de identitate găzduit. Controlați SSO, utilizatorii și autentificarea, cu totul gata într-un minut.',
+            'creates_idp' => 'O organizație pentru compania dumneavoastră și propriul furnizor de identitate găzduit. Controlați SSO, utilizatorii și autentificarea, cu totul gata într-un minut.',
             'join' => 'Înregistrați-vă în :name. Veți fi proprietarul echipei și veți putea invita alte persoane după autentificare.',
             'default' => 'Configurați Cbox ID pentru echipa dumneavoastră în mai puțin de un minut.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Numele spațiului de lucru',
+            'creates_idp' => 'Numele organizației',
             'for_app' => 'Numele echipei sau al companiei',
             'default' => 'Numele organizației',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'Adresa de email profesională',
         'breach_note' => 'Verificată în raport cu scurgerile de date cunoscute.',
         'submit' => [
-            'creates_idp' => 'Creați spațiu de lucru',
+            'creates_idp' => 'Creați organizație',
             'for_app' => 'Creați cont și continuați',
             'default' => 'Creare organizație',
         ],
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'Un mediu este limita de izolare strictă – utilizatorii săi, cheile și emițătorul său.',
         'environment_default' => 'Producție',
         'organization_label' => 'Numele organizației',
-        'organization_hint' => 'Această implementare este configurată ca multi-tenant, deci instalarea creează și primul spațiu de lucru – organizația care deține mediile și facturarea.',
+        'organization_hint' => 'Această implementare este configurată ca multi-tenant, deci instalarea creează și primul organizație – organizația care deține mediile și facturarea.',
         'organization_placeholder' => 'Compania dumneavoastră',
         'submit' => 'Instalați',
         'token_mismatch' => 'Acest token de configurare nu corespunde cu cel al acestei implementări, sau a expirat. Tipăriți unul nou folosind php artisan cbox-id:setup-token.',

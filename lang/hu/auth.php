@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Kezdés',
         'heading' => [
-            'creates_idp' => 'Hozd létre a munkaterületed',
+            'creates_idp' => 'Hozd létre a szervezeted',
             'for_app' => 'Hozd létre a fiókodat',
             'default' => 'Hozd létre a szervezetedet',
         ],
         'lead' => [
-            'creates_idp' => 'Munkaterület a cégednek és saját, üzemeltetett azonosításszolgáltató: teljesen kézben tarthatod az egyszeri bejelentkezést, a felhasználókat és a belépést. Egy perc alatt használatra kész.',
+            'creates_idp' => 'Szervezet a cégednek és saját, üzemeltetett azonosításszolgáltató: teljesen kézben tarthatod az egyszeri bejelentkezést, a felhasználókat és a belépést. Egy perc alatt használatra kész.',
             'join' => 'Regisztrálj ide: :name. Te leszel a csapat tulajdonosa, és belépés után másokat is meghívhatsz.',
             'default' => 'Állítsd be a Cbox ID-t a csapatod számára, alig egy perc alatt.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Munkaterület neve',
+            'creates_idp' => 'Szervezet neve',
             'for_app' => 'Csapat vagy cég neve',
             'default' => 'Szervezet neve',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'Munkahelyi e-mail-cím',
         'breach_note' => 'Ellenőrizzük, hogy szerepel-e ismert adatszivárgásokban.',
         'submit' => [
-            'creates_idp' => 'Munkaterület létrehozása',
+            'creates_idp' => 'Szervezet létrehozása',
             'for_app' => 'Fiók létrehozása és folytatás',
             'default' => 'Szervezet létrehozása',
         ],
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'A környezet szigorúan elkülönített egység, saját felhasználókkal, kulcsokkal és kibocsátóval.',
         'environment_default' => 'Éles környezet',
         'organization_label' => 'Szervezet neve',
-        'organization_hint' => 'A telepítés több bérlős működésre van beállítva, ezért a telepítő az első munkaterületet is létrehozza: azt a szervezetet, amelyhez a környezetek és a számlázás tartoznak.',
+        'organization_hint' => 'A telepítés több bérlős működésre van beállítva, ezért a telepítő az első szervezetet is létrehozza: azt a szervezetet, amelyhez a környezetek és a számlázás tartoznak.',
         'organization_placeholder' => 'Vállalatod',
         'submit' => 'Telepítés',
         'token_mismatch' => 'Ez a beállítási token nem ehhez a telepítéshez tartozik, vagy lejárt. Kérj újat a php artisan cbox-id:setup-token paranccsal.',

@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Inizia',
         'heading' => [
-            'creates_idp' => 'Crea il tuo spazio di lavoro',
+            'creates_idp' => 'Crea la tua organizzazione',
             'for_app' => 'Crea il tuo account',
             'default' => 'Crea la tua organizzazione',
         ],
         'lead' => [
-            'creates_idp' => 'Uno spazio di lavoro per la tua azienda e un provider di identità dedicato e ospitato. Hai il pieno controllo su SSO, utenti e accesso, con tutto pronto in un minuto.',
+            'creates_idp' => 'Un\'organizzazione per la tua azienda e un provider di identità dedicato e ospitato. Hai il pieno controllo su SSO, utenti e accesso, con tutto pronto in un minuto.',
             'join' => 'Iscriviti a :name. Diventerai il proprietario del tuo team e potrai invitare persone una volta che sarai registrato.',
             'default' => 'Configura Cbox ID per il tuo team in meno di un minuto.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Nome dello spazio di lavoro',
+            'creates_idp' => 'Nome dell\'organizzazione',
             'for_app' => 'Nome del team o dell\'azienda',
             'default' => 'Nome dell\'organizzazione',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'Indirizzo email di lavoro',
         'breach_note' => 'Verificata rispetto alle fughe di dati note.',
         'submit' => [
-            'creates_idp' => 'Crea uno spazio di lavoro',
+            'creates_idp' => 'Crea un\'organizzazione',
             'for_app' => 'Crea account e continua',
             'default' => 'Crea l\'organizzazione',
         ],
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'Ogni ambiente è completamente isolato e ha utenti, chiavi ed emittente propri.',
         'environment_default' => 'Produzione',
         'organization_label' => 'Nome dell\'organizzazione',
-        'organization_hint' => 'Questo deployment è configurato come multi-tenant, quindi l\'installazione crea anche lo spazio di lavoro iniziale – l\'organizzazione che possiede gli ambienti e la fatturazione.',
+        'organization_hint' => 'Questo deployment è configurato come multi-tenant, quindi l\'installazione crea anche l\'organizzazione iniziale – l\'organizzazione che possiede gli ambienti e la fatturazione.',
         'organization_placeholder' => 'La tua azienda',
         'submit' => 'Installa',
         'token_mismatch' => 'Questo token di configurazione non corrisponde a quello di questa implementazione, oppure è scaduto. Genera un nuovo token con php artisan cbox-id:setup-token.',

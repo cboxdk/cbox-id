@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Kom i gang',
         'heading' => [
-            'creates_idp' => 'Opret dit arbejdsområde',
+            'creates_idp' => 'Opret din organisation',
             'for_app' => 'Opret din konto',
             'default' => 'Opret din organisation',
         ],
         'lead' => [
-            'creates_idp' => 'Et arbejdsområde til din virksomhed og jeres egen hostede identitetsudbyder: SSO, brugere og login som I selv har fuld kontrol over – klar på et minut.',
+            'creates_idp' => 'En organisation til din virksomhed og jeres egen hostede identitetsudbyder: SSO, brugere og login som I selv har fuld kontrol over – klar på et minut.',
             'join' => 'Tilmeld dig :name. Du bliver ejer af dit team og kan invitere andre når du er kommet ind.',
             'default' => 'Sæt Cbox ID op til dit team på under et minut.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Arbejdsområdets navn',
+            'creates_idp' => 'Organisationens navn',
             'for_app' => 'Teamets eller virksomhedens navn',
             'default' => 'Organisationens navn',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'Arbejdsmail',
         'breach_note' => 'Tjekkes mod kendte datalæk.',
         'submit' => [
-            'creates_idp' => 'Opret arbejdsområde',
+            'creates_idp' => 'Opret organisation',
             'for_app' => 'Opret konto og fortsæt',
             'default' => 'Opret organisation',
         ],
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'Et miljø er fuldstændig isoleret, med egne brugere, nøgler og udsteder.',
         'environment_default' => 'Produktion',
         'organization_label' => 'Organisationens navn',
-        'organization_hint' => 'Installationen er konfigureret som multi-tenant, så den opretter også det første arbejdsområde: den organisation der ejer miljøer og fakturering.',
+        'organization_hint' => 'Installationen er konfigureret som multi-tenant, så den opretter også den første organisation: den organisation der ejer miljøer og fakturering.',
         'organization_placeholder' => 'Din virksomhed',
         'submit' => 'Start installationen',
         'token_mismatch' => 'Opsætningstokenet passer ikke til denne installation, eller det er udløbet. Generer et nyt med php artisan cbox-id:setup-token.',

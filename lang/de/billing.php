@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'description' => 'Verwalten Sie Rechnungsdaten, Zahlungskarten und Rechnungen für diesen Arbeitsbereich.',
+    'description' => 'Verwalten Sie Rechnungsdaten, Zahlungskarten und Rechnungen für diese Organisation.',
     'account' => 'Rechnungsdaten',
     'invoice_name' => 'Name auf Rechnungen',
     'billing_email' => 'E-Mail für Rechnungen',
@@ -39,7 +39,7 @@ return [
     'subtotal' => 'Zwischensumme',
     'tax' => 'Steuern',
     'tax_pending' => 'Die Steuern wurden noch nicht berechnet.',
-    'no_subscription' => 'Diesem Arbeitsbereich ist kein Abonnement zugewiesen.',
+    'no_subscription' => 'Dieser Organisation ist kein Abonnement zugewiesen.',
     'allowance' => 'Zulässige Anzahl an Umgebungen',
     'allowance_description' => 'Zugriff und Kontingente werden von einem Administrator zugewiesen.',
     'period' => 'Abrechnungszeitraum',
@@ -71,8 +71,8 @@ return [
     'credits_granted' => 'Zusätzliches enthaltenes Guthaben',
     'credits_carried' => 'Übertragenes enthaltenes Guthaben',
     'address_required' => 'Vervollständigen und speichern Sie Ihre Rechnungsadresse, bevor Sie einen kostenpflichtigen Tarif wählen.',
-    'organization_changed' => 'Der Arbeitsbereich wurde in einem anderen Tab gewechselt. Laden Sie diese Seite neu, bevor Sie die Abrechnung bearbeiten.',
-    'explanation' => 'Abonnements gelten pro Projekt. Vergleichen Sie Preise und Umgebungskontingente. Rechnungsdaten, Karten und Rechnungen gelten für den gesamten Arbeitsbereich. Nutzungswerte zeigen Aktivitäten; Gebühren richten sich nach Ihrem Tarif.',
+    'organization_changed' => 'Die Organisation wurde in einem anderen Tab gewechselt. Laden Sie diese Seite neu, bevor Sie die Abrechnung bearbeiten.',
+    'explanation' => 'Abonnements gelten pro Projekt. Vergleichen Sie Preise und Umgebungskontingente. Rechnungsdaten, Karten und Rechnungen gelten für die gesamte Organisation. Nutzungswerte zeigen Aktivitäten; Gebühren richten sich nach Ihrem Tarif.',
     'connections' => 'SSO-Verbindungen',
     'environments' => 'Umgebungen',
     'replace_default' => 'Wählen Sie eine andere Standardkarte, bevor Sie diese entfernen.',
