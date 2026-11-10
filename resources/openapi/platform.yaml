@@ -113,12 +113,11 @@ paths:
       tags:
         - Environments
       summary: 'Create an environment on the deployment, with its own signing key. A domain is verified separately, by DNS.'
-      description: 'Requires scope `id:admin-environments:write` (until v3.1 also accepted as `operator:environments:write`) on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `operator:environments:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: admin_environments_create
       x-action: admin.environments.create
-      x-scope: 'id:admin-environments:write'
-      x-scope-aliases:
-        - 'operator:environments:write'
+      x-scope: 'operator:environments:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -172,12 +171,11 @@ paths:
       tags:
         - Organizations
       summary: 'Create an organization inside an environment, optionally under a parent organization of the same environment.'
-      description: 'Requires scope `id:admin-tenant-organizations:write` (until v3.1 also accepted as `operator:organizations:write`) on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `operator:organizations:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: admin_tenant_organizations_create
       x-action: admin.tenant_organizations.create
-      x-scope: 'id:admin-tenant-organizations:write'
-      x-scope-aliases:
-        - 'operator:organizations:write'
+      x-scope: 'operator:organizations:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -244,12 +242,11 @@ paths:
       tags:
         - Organizations
       summary: 'Move an organization under another organization of the same environment, or to the top of its hierarchy.'
-      description: 'Requires scope `id:admin-tenant-organizations:write` (until v3.1 also accepted as `operator:organizations:write`) on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `operator:organizations:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: admin_tenant_organizations_move
       x-action: admin.tenant_organizations.move
-      x-scope: 'id:admin-tenant-organizations:write'
-      x-scope-aliases:
-        - 'operator:organizations:write'
+      x-scope: 'operator:organizations:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -311,12 +308,11 @@ paths:
       tags:
         - Organizations
       summary: 'Suspend an organization inside an environment (its members can no longer sign in to it) or reactivate it.'
-      description: 'Requires scope `id:admin-tenant-organizations:write` (until v3.1 also accepted as `operator:organizations:write`) on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `operator:organizations:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: admin_tenant_organizations_set_status
       x-action: admin.tenant_organizations.set_status
-      x-scope: 'id:admin-tenant-organizations:write'
-      x-scope-aliases:
-        - 'operator:organizations:write'
+      x-scope: 'operator:organizations:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -380,12 +376,11 @@ paths:
       tags:
         - Environments
       summary: 'Bootstrap an environment with its first organization and an owner administrator, so people can sign in to it.'
-      description: 'Requires scope `id:admin-environments:write` (until v3.1 also accepted as `operator:environments:write`) on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `operator:environments:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: admin_environments_provision
       x-action: admin.environments.provision
-      x-scope: 'id:admin-environments:write'
-      x-scope-aliases:
-        - 'operator:environments:write'
+      x-scope: 'operator:environments:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -455,12 +450,11 @@ paths:
       tags:
         - Operators
       summary: 'Add a platform operator: a person with authority over the whole deployment.'
-      description: 'Requires scope `id:admin-operators:write` (until v3.1 also accepted as `operator:operators:write`) on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `operator:operators:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: admin_operators_create
       x-action: admin.operators.create
-      x-scope: 'id:admin-operators:write'
-      x-scope-aliases:
-        - 'operator:operators:write'
+      x-scope: 'operator:operators:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -519,12 +513,11 @@ paths:
       tags:
         - Operators
       summary: 'Suspend a platform operator, or reactivate one. Never yourself, and never the last active operator.'
-      description: 'Requires scope `id:admin-operators:write` (until v3.1 also accepted as `operator:operators:write`) on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `operator:operators:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: admin_operators_set_status
       x-action: admin.operators.set_status
-      x-scope: 'id:admin-operators:write'
-      x-scope-aliases:
-        - 'operator:operators:write'
+      x-scope: 'operator:operators:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -582,12 +575,11 @@ paths:
       tags:
         - Organizations
       summary: 'Create an organization with its owner, first project and first environment; the owner is emailed a link to set their password.'
-      description: 'Requires scope `id:admin-organizations:write` (until v3.1 also accepted as `operator:workspaces:write`) on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `operator:workspaces:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: admin_organizations_create
       x-action: admin.organizations.create
-      x-scope: 'id:admin-organizations:write'
-      x-scope-aliases:
-        - 'operator:workspaces:write'
+      x-scope: 'operator:workspaces:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -
@@ -654,12 +646,11 @@ paths:
       tags:
         - Organizations
       summary: 'Suspend an organization (its people can no longer sign in, its environments stop serving) or reactivate it.'
-      description: 'Requires scope `id:admin-organizations:write` (until v3.1 also accepted as `operator:workspaces:write`) on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
+      description: 'Requires scope `operator:workspaces:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: admin_organizations_set_status
       x-action: admin.organizations.set_status
-      x-scope: 'id:admin-organizations:write'
-      x-scope-aliases:
-        - 'operator:workspaces:write'
+      x-scope: 'operator:workspaces:write'
+      x-scope-aliases: []
       x-danger: critical
       parameters:
         -

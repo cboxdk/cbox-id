@@ -202,9 +202,13 @@ final class ScopeRegistry
         // An old name is satisfied by itself and its new name — never by a SIBLING old name
         // that collapses into the same new one (`vault.manage` is not `token_vault:write`
         // today; merging what they grant is a decision of its own, not a rename). A new
-        // name is satisfied by itself and every old name that stands for it.
+        // name is satisfied by itself and every old name that stands for it. An old name that
+        // SPLIT (`keys:write` → environment keys and organization keys) is satisfied only by
+        // the new name of what it guards where it is still declared: its first, canonical
+        // one. Otherwise a key holding only `id:organization-keys:write` would pass the
+        // environment plane's `keys:write` check.
         $names = isset(self::RENAMED[$scope])
-            ? [$scope, ...self::RENAMED[$scope]]
+            ? [$scope, self::canonical($scope)]
             : [$scope, ...(self::legacyMap()[$scope] ?? [])];
 
         return array_values(array_unique($names));

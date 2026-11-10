@@ -42,7 +42,7 @@ Update the organization billing contact and invoice address.
 | | |
 |---|---|
 | REST | `PATCH /api/v1/workspace/billing/account` → `204` |
-| Scope | `id:billing:write` (until v3.1 also `billing:write`) — (until v3.1 also accepted as `billing:write`) and a role that may `manage-billing`. |
+| Scope | `id:billing:write` (until v3.1 also accepted as `billing:write`) and a role that may `manage-billing`. |
 | Danger | `write` |
 | MCP tool | `billing_account_update` |
 | CLI | `cbox id billing account update` |
@@ -65,7 +65,7 @@ Choose the organization default payment card.
 | | |
 |---|---|
 | REST | `PATCH /api/v1/workspace/billing/payment-methods/{id}/default` → `204` |
-| Scope | `id:billing:write` (until v3.1 also `billing:write`) — (until v3.1 also accepted as `billing:write`) and a role that may `manage-billing`. |
+| Scope | `id:billing:write` (until v3.1 also accepted as `billing:write`) and a role that may `manage-billing`. |
 | Danger | `write` |
 | MCP tool | `billing_payment_method_default` |
 | CLI | `cbox id billing payment_method default <id>` |
@@ -81,7 +81,7 @@ Remove an unneeded payment card from this organization.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/workspace/billing/payment-methods/{id}` → `204` |
-| Scope | `id:billing:write` (until v3.1 also `billing:write`) — (until v3.1 also accepted as `billing:write`) and a role that may `manage-billing`. |
+| Scope | `id:billing:write` (until v3.1 also accepted as `billing:write`) and a role that may `manage-billing`. |
 | Danger | `write` |
 | MCP tool | `billing_payment_method_remove` |
 | CLI | `cbox id billing payment_method remove <id>` |
@@ -99,7 +99,7 @@ Create an environment under one of the organization's projects; with `initial_ke
 | | |
 |---|---|
 | REST | `POST /api/v1/workspace/environments` → `201` |
-| Scope | `id:environments:write` (until v3.1 also `environments:write`) — (until v3.1 also accepted as `environments:write`) and a role that may `manage-environments`. |
+| Scope | `id:environments:write` (until v3.1 also accepted as `environments:write`) and a role that may `manage-environments`. |
 | Danger | `critical` |
 | MCP tool | `environments_create` |
 | CLI | `cbox id environments create` |
@@ -122,7 +122,7 @@ Stop serving one of the organization's environments on its custom domain. Anythi
 | | |
 |---|---|
 | REST | `DELETE /api/v1/workspace/environments/{environment_id}/domain` → `204` |
-| Scope | `id:environments:write` (until v3.1 also `environments:write`) — (until v3.1 also accepted as `environments:write`) and a role that may `manage-environments`. |
+| Scope | `id:environments:write` (until v3.1 also accepted as `environments:write`) and a role that may `manage-environments`. |
 | Danger | `destructive` |
 | MCP tool | `environments_domain_remove` |
 | CLI | `cbox id environments domain remove <environment_id>` |
@@ -138,7 +138,7 @@ Start serving one of the organization's environments on a custom domain: returns
 | | |
 |---|---|
 | REST | `POST /api/v1/workspace/environments/{environment_id}/domain` → `200` |
-| Scope | `id:environments:write` (until v3.1 also `environments:write`) — (until v3.1 also accepted as `environments:write`) and a role that may `manage-environments`. |
+| Scope | `id:environments:write` (until v3.1 also accepted as `environments:write`) and a role that may `manage-environments`. |
 | Danger | `write` |
 | MCP tool | `environments_domain_request` |
 | CLI | `cbox id environments domain request <environment_id>` |
@@ -155,7 +155,7 @@ Look for the pending domain's DNS TXT record and, once it is visible, serve the 
 | | |
 |---|---|
 | REST | `POST /api/v1/workspace/environments/{environment_id}/domain/verify` → `200` |
-| Scope | `id:environments:write` (until v3.1 also `environments:write`) — (until v3.1 also accepted as `environments:write`) and a role that may `manage-environments`. |
+| Scope | `id:environments:write` (until v3.1 also accepted as `environments:write`) and a role that may `manage-environments`. |
 | Danger | `write` |
 | MCP tool | `environments_domain_verify` |
 | CLI | `cbox id environments domain verify <environment_id>` |
@@ -171,7 +171,7 @@ List every environment the organization owns, across its projects, with each one
 | | |
 |---|---|
 | REST | `GET /api/v1/workspace/environments` → `200` |
-| Scope | `id:organization:read` (until v3.1 also `workspace:read`) — (until v3.1 also accepted as `workspace:read`) and a role that may `read-environments`. |
+| Scope | `id:organization:read` (until v3.1 also accepted as `workspace:read`) and a role that may `read-environments`. |
 | Danger | `read` |
 | MCP tool | `environments_list` |
 | CLI | `cbox id environments list` |
@@ -190,7 +190,7 @@ Mint a management key for one of the organization's environments, with the scope
 | | |
 |---|---|
 | REST | `POST /api/v1/workspace/environments/{environment_id}/keys` → `201` |
-| Scope | `id:environment-keys:write` (until v3.1 also `keys:write`) — (until v3.1 also accepted as `keys:write`) and a role that may `manage-environments`. |
+| Scope | `id:environment-keys:write` (until v3.1 also accepted as `keys:write`) and a role that may `manage-environments`. |
 | Danger | `critical` |
 | MCP tool | `keys_environment_create` |
 | CLI | `cbox id keys environment create <environment_id>` |
@@ -210,7 +210,7 @@ Revoke one of an environment's management keys; whatever uses it stops immediate
 | | |
 |---|---|
 | REST | `DELETE /api/v1/workspace/environments/{environment_id}/keys/{id}` → `204` |
-| Scope | `id:environment-keys:write` (until v3.1 also `keys:write`) — (until v3.1 also accepted as `keys:write`) and a role that may `manage-environments`. |
+| Scope | `id:environment-keys:write` (until v3.1 also accepted as `keys:write`) and a role that may `manage-environments`. |
 | Danger | `destructive` |
 | MCP tool | `keys_environment_revoke` |
 | CLI | `cbox id keys environment revoke <environment_id> <id>` |
@@ -227,7 +227,7 @@ Mint an organization key with a role and optional scopes, never wider than the c
 | | |
 |---|---|
 | REST | `POST /api/v1/workspace/keys` → `201` |
-| Scope | `id:organization-keys:write` (until v3.1 also `keys:write`) — (until v3.1 also accepted as `keys:write`) and a role that may `manage-environments` and `manage-members`. |
+| Scope | `id:organization-keys:write` (until v3.1 also accepted as `keys:write`) and a role that may `manage-environments` and `manage-members`. |
 | Danger | `critical` |
 | MCP tool | `keys_organization_create` |
 | CLI | `cbox id keys organization create` |
@@ -247,7 +247,7 @@ List the organization's keys, newest first, revoked ones included — names, rol
 | | |
 |---|---|
 | REST | `GET /api/v1/workspace/keys` → `200` |
-| Scope | `id:organization:read` (until v3.1 also `workspace:read`) — (until v3.1 also accepted as `workspace:read`) and a role that may `manage-members`. |
+| Scope | `id:organization:read` (until v3.1 also accepted as `workspace:read`) and a role that may `manage-members`. |
 | Danger | `read` |
 | MCP tool | `keys_organization_list` |
 | CLI | `cbox id keys organization list` |
@@ -264,7 +264,7 @@ Revoke an organization key, and every key it minted on either plane (organizatio
 | | |
 |---|---|
 | REST | `DELETE /api/v1/workspace/keys/{id}` → `204` |
-| Scope | `id:organization-keys:write` (until v3.1 also `keys:write`) — (until v3.1 also accepted as `keys:write`) and a role that may `manage-environments` and `manage-members`. |
+| Scope | `id:organization-keys:write` (until v3.1 also accepted as `keys:write`) and a role that may `manage-environments` and `manage-members`. |
 | Danger | `destructive` |
 | MCP tool | `keys_organization_revoke` |
 | CLI | `cbox id keys organization revoke <id>` |
@@ -282,7 +282,7 @@ Get the current organization identity: its id, name and status. No operational o
 | | |
 |---|---|
 | REST | `GET /api/v1/workspace` → `200` |
-| Scope | `id:organization:read` (until v3.1 also `workspace:read`) — (until v3.1 also accepted as `workspace:read`) (any role). |
+| Scope | `id:organization:read` (until v3.1 also accepted as `workspace:read`) (any role). |
 | Danger | `read` |
 | MCP tool | `organization_get` |
 | CLI | `cbox id organization get` |
@@ -296,7 +296,7 @@ Rename the organization.
 | | |
 |---|---|
 | REST | `PATCH /api/v1/workspace` → `200` |
-| Scope | `id:organization:write` (until v3.1 also `settings:write`) — (until v3.1 also accepted as `settings:write`) and a role that may `own-organization` and `manage-members`. |
+| Scope | `id:organization:write` (until v3.1 also accepted as `settings:write`) and a role that may `own-organization` and `manage-members`. |
 | Danger | `write` |
 | MCP tool | `organization_settings_update` |
 | CLI | `cbox id organization settings update` |
@@ -314,7 +314,7 @@ Create a project: another independently-billed IdP product, with its own environ
 | | |
 |---|---|
 | REST | `POST /api/v1/workspace/projects` → `201` |
-| Scope | `id:projects:write` (until v3.1 also `projects:write`) — (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. |
+| Scope | `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. |
 | Danger | `write` |
 | MCP tool | `projects_create` |
 | CLI | `cbox id projects create` |
@@ -331,7 +331,7 @@ List the organization's projects (IdP products), each with its environment allow
 | | |
 |---|---|
 | REST | `GET /api/v1/workspace/projects` → `200` |
-| Scope | `id:organization:read` (until v3.1 also `workspace:read`) — (until v3.1 also accepted as `workspace:read`) and a role that may `read-environments`. |
+| Scope | `id:organization:read` (until v3.1 also accepted as `workspace:read`) and a role that may `read-environments`. |
 | Danger | `read` |
 | MCP tool | `projects_list` |
 | CLI | `cbox id projects list` |
@@ -345,7 +345,7 @@ Reactivate a suspended project, so environments can be added to it again.
 | | |
 |---|---|
 | REST | `POST /api/v1/workspace/projects/{id}/reactivate` → `200` |
-| Scope | `id:projects:write` (until v3.1 also `projects:write`) — (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. |
+| Scope | `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. |
 | Danger | `write` |
 | MCP tool | `projects_reactivate` |
 | CLI | `cbox id projects reactivate <id>` |
@@ -361,7 +361,7 @@ Rename a project.
 | | |
 |---|---|
 | REST | `PATCH /api/v1/workspace/projects/{id}` → `200` |
-| Scope | `id:projects:write` (until v3.1 also `projects:write`) — (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. |
+| Scope | `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. |
 | Danger | `write` |
 | MCP tool | `projects_rename` |
 | CLI | `cbox id projects rename <id>` |
@@ -378,7 +378,7 @@ Suspend a project: its environments stay live, but no new ones can be added unti
 | | |
 |---|---|
 | REST | `POST /api/v1/workspace/projects/{id}/suspend` → `200` |
-| Scope | `id:projects:write` (until v3.1 also `projects:write`) — (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. |
+| Scope | `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. |
 | Danger | `write` |
 | MCP tool | `projects_suspend` |
 | CLI | `cbox id projects suspend <id>` |
@@ -394,7 +394,7 @@ Re-send the signup confirmation the organization's first environment is waiting 
 | | |
 |---|---|
 | REST | `POST /api/v1/workspace/projects/verification/resend` → `200` |
-| Scope | `id:projects:write` (until v3.1 also `projects:write`) — (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. |
+| Scope | `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. |
 | Danger | `write` |
 | MCP tool | `projects_verification_resend` |
 | CLI | `cbox id projects verification resend` |
@@ -410,7 +410,7 @@ Set which of the organization's environments a team member reaches: all of them,
 | | |
 |---|---|
 | REST | `PUT /api/v1/workspace/members/{id}/access` → `200` |
-| Scope | `id:members:write` (until v3.1 also `team:write`) — (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
+| Scope | `id:members:write` (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
 | Danger | `write` |
 | MCP tool | `team_environment_access` |
 | CLI | `cbox id team environment_access <id>` |
@@ -429,7 +429,7 @@ List the team's pending invitations, newest first.
 | | |
 |---|---|
 | REST | `GET /api/v1/workspace/invitations` → `200` |
-| Scope | `id:members:read` (until v3.1 also `team:read`) — (until v3.1 also accepted as `team:read`) and a role that may `read-members`. |
+| Scope | `id:members:read` (until v3.1 also accepted as `team:read`) and a role that may `read-members`. |
 | Danger | `read` |
 | MCP tool | `team_invitations_list` |
 | CLI | `cbox id team invitations list` |
@@ -443,7 +443,7 @@ Re-send a pending team invitation with a fresh link; the earlier link stops work
 | | |
 |---|---|
 | REST | `POST /api/v1/workspace/invitations/{id}/resend` → `200` |
-| Scope | `id:members:write` (until v3.1 also `team:write`) — (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
+| Scope | `id:members:write` (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
 | Danger | `write` |
 | MCP tool | `team_invitations_resend` |
 | CLI | `cbox id team invitations resend <id>` |
@@ -459,7 +459,7 @@ Withdraw a pending team invitation; its link stops working.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/workspace/invitations/{id}` → `204` |
-| Scope | `id:members:write` (until v3.1 also `team:write`) — (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
+| Scope | `id:members:write` (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
 | Danger | `destructive` |
 | MCP tool | `team_invitations_revoke` |
 | CLI | `cbox id team invitations revoke <id>` |
@@ -475,7 +475,7 @@ Invite somebody onto the organization's team with a role; they get a mail with a
 | | |
 |---|---|
 | REST | `POST /api/v1/workspace/members` → `201` |
-| Scope | `id:members:write` (until v3.1 also `team:write`) — (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
+| Scope | `id:members:write` (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
 | Danger | `write` |
 | MCP tool | `team_invite` |
 | CLI | `cbox id team invite` |
@@ -493,7 +493,7 @@ List the organization's team: each member's name, address, role and whether they
 | | |
 |---|---|
 | REST | `GET /api/v1/workspace/members` → `200` |
-| Scope | `id:members:read` (until v3.1 also `team:read`) — (until v3.1 also accepted as `team:read`) and a role that may `read-members`. |
+| Scope | `id:members:read` (until v3.1 also accepted as `team:read`) and a role that may `read-members`. |
 | Danger | `read` |
 | MCP tool | `team_list` |
 | CLI | `cbox id team list` |
@@ -510,7 +510,7 @@ Remove native ID app roles while preserving shared organization membership and o
 | | |
 |---|---|
 | REST | `DELETE /api/v1/workspace/members/{id}` → `204` |
-| Scope | `id:members:write` (until v3.1 also `team:write`) — (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
+| Scope | `id:members:write` (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
 | Danger | `destructive` |
 | MCP tool | `team_remove` |
 | CLI | `cbox id team remove <id>` |
@@ -527,7 +527,7 @@ Replace native ID app roles atomically. Shared organization membership is preser
 | | |
 |---|---|
 | REST | `PATCH /api/v1/workspace/members/{id}/role` → `200` |
-| Scope | `id:members:write` (until v3.1 also `team:write`) — (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
+| Scope | `id:members:write` (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
 | Danger | `write` |
 | MCP tool | `team_role` |
 | CLI | `cbox id team role <id>` |
@@ -545,7 +545,7 @@ Transfer shared organization ownership. Existing app roles are preserved; the pr
 | | |
 |---|---|
 | REST | `POST /api/v1/workspace/members/{id}/transfer-ownership` → `204` |
-| Scope | `id:members:write` (until v3.1 also `team:write`) — (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
+| Scope | `id:members:write` (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
 | Danger | `critical` |
 | MCP tool | `team_transfer_ownership` |
 | CLI | `cbox id team transfer_ownership <id>` |

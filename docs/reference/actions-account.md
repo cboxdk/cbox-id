@@ -46,7 +46,7 @@ Create an API key of your own for one of this environment's apps, in an organiza
 | | |
 |---|---|
 | REST | `POST /api/v1/me/organizations/{organization_id}/api-keys` → `201` |
-| Scope | `id:my-api-keys:write` (until v3.1 also `account:api_keys:write`) — (until v3.1 also accepted as `account:api_keys:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:api_keys:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `account_api_keys_create` |
 | CLI | `cbox id account api_keys create <organization_id>` |
@@ -67,7 +67,7 @@ Revoke one of your own API keys.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/me/organizations/{organization_id}/api-keys/{key_id}` → `204` |
-| Scope | `id:my-api-keys:write` (until v3.1 also `account:api_keys:write`) — (until v3.1 also accepted as `account:api_keys:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:api_keys:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `destructive` |
 | MCP tool | `account_api_keys_revoke` |
 | CLI | `cbox id account api_keys revoke <organization_id> <key_id>` |
@@ -86,7 +86,7 @@ List the published apps visible to you in this environment. Optional organizatio
 | | |
 |---|---|
 | REST | `GET /api/v1/me/apps` → `200` |
-| Scope | `id:my-apps:read` (until v3.1 also `account:apps:read`) — (until v3.1 also accepted as `account:apps:read`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:apps:read` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `read` |
 | MCP tool | `account_apps_list` |
 | CLI | `cbox id account apps list` |
@@ -104,7 +104,7 @@ Withdraw an application's access to your account; it must ask you again to act a
 | | |
 |---|---|
 | REST | `DELETE /api/v1/me/applications/{client_id}` → `204` |
-| Scope | `id:my-apps:write` (until v3.1 also `account:applications:write`) — (until v3.1 also accepted as `account:applications:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:applications:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `destructive` |
 | MCP tool | `account_applications_revoke` |
 | CLI | `cbox id account applications revoke <client_id>` |
@@ -122,7 +122,7 @@ Disconnect one of your connected services, revoking the access you gave it.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/me/pipes/{provider}` → `204` |
-| Scope | `id:my-pipes:write` (until v3.1 also `account:pipes:write`) — (until v3.1 also accepted as `account:pipes:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:pipes:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `destructive` |
 | MCP tool | `account_pipes_disconnect` |
 | CLI | `cbox id account pipes disconnect <provider>` |
@@ -140,7 +140,7 @@ Remove one of your trusted devices; it is no longer asked to approve anything.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/me/devices/{device_id}` → `204` |
-| Scope | `id:my-devices:write` (until v3.1 also `account:devices:write`) — (until v3.1 also accepted as `account:devices:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:devices:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `destructive` |
 | MCP tool | `account_devices_remove` |
 | CLI | `cbox id account devices remove <device_id>` |
@@ -158,7 +158,7 @@ Leave one of your own organizations. The last owner cannot leave — transfer ow
 | | |
 |---|---|
 | REST | `POST /api/v1/me/organizations/{organization_id}/leave` → `204` |
-| Scope | `id:my-organizations:write` (until v3.1 also `account:organizations:write`) — (until v3.1 also accepted as `account:organizations:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:organizations:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `destructive` |
 | MCP tool | `account_organizations_leave` |
 | CLI | `cbox id account organizations leave <organization_id>` |
@@ -176,7 +176,7 @@ Mail yourself a link that confirms your email address.
 | | |
 |---|---|
 | REST | `POST /api/v1/me/email/confirmation` → `200` |
-| Scope | `id:my-profile:write` (until v3.1 also `account:profile:write`) — (until v3.1 also accepted as `account:profile:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:profile:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `write` |
 | MCP tool | `account_email_confirmation_send` |
 | CLI | `cbox id account email confirmation send` |
@@ -190,7 +190,7 @@ Change the display name on your own account.
 | | |
 |---|---|
 | REST | `PATCH /api/v1/me/profile` → `200` |
-| Scope | `id:my-profile:write` (until v3.1 also `account:profile:write`) — (until v3.1 also accepted as `account:profile:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:profile:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `write` |
 | MCP tool | `account_profile_update` |
 | CLI | `cbox id account profile update` |
@@ -208,7 +208,7 @@ Join a published service waitlist with your verified email. Does not buy a plan 
 | | |
 |---|---|
 | REST | `POST /api/v1/me/services/{program}/waitlist` → `200` |
-| Scope | `id:my-waitlists:write` (until v3.1 also `account:waitlists:write`) — (until v3.1 also accepted as `account:waitlists:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:waitlists:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `write` |
 | MCP tool | `account_waitlists_join` |
 | CLI | `cbox id account waitlists join <program>` |
@@ -229,7 +229,7 @@ Withdraw your own feature interest or beta application for a team. Active grants
 | | |
 |---|---|
 | REST | `POST /api/v1/me/services/{program}/waitlist/leave` → `200` |
-| Scope | `id:my-waitlists:write` (until v3.1 also `account:waitlists:write`) — (until v3.1 also accepted as `account:waitlists:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:waitlists:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `write` |
 | MCP tool | `account_waitlists_leave` |
 | CLI | `cbox id account waitlists leave <program>` |
@@ -249,7 +249,7 @@ Sign out one of your own sessions.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/me/sessions/{session_id}` → `204` |
-| Scope | `id:my-sessions:write` (until v3.1 also `account:sessions:write`) — (until v3.1 also accepted as `account:sessions:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:sessions:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `destructive` |
 | MCP tool | `account_sessions_revoke` |
 | CLI | `cbox id account sessions revoke <session_id>` |
@@ -265,7 +265,7 @@ Sign out every one of your sessions except the one you are using.
 | | |
 |---|---|
 | REST | `POST /api/v1/me/sessions/revoke-others` → `200` |
-| Scope | `id:my-sessions:write` (until v3.1 also `account:sessions:write`) — (until v3.1 also accepted as `account:sessions:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:sessions:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `account_sessions_revoke_others` |
 | CLI | `cbox id account sessions revoke_others` |
@@ -281,7 +281,7 @@ Remove your phone number for text-message sign-in codes.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/me/mfa/sms` → `204` |
-| Scope | `id:my-sign-in:write` (until v3.1 also `account:sign_in:write`) — (until v3.1 also accepted as `account:sign_in:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:sign_in:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `account_mfa_sms_remove` |
 | CLI | `cbox id account mfa sms remove` |
@@ -295,7 +295,7 @@ Remove one of your passkeys.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/me/passkeys/{passkey_id}` → `204` |
-| Scope | `id:my-sign-in:write` (until v3.1 also `account:sign_in:write`) — (until v3.1 also accepted as `account:sign_in:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:sign_in:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `account_passkeys_remove` |
 | CLI | `cbox id account passkeys remove <passkey_id>` |
@@ -311,7 +311,7 @@ Rename one of your passkeys.
 | | |
 |---|---|
 | REST | `PATCH /api/v1/me/passkeys/{passkey_id}` → `200` |
-| Scope | `id:my-sign-in:write` (until v3.1 also `account:sign_in:write`) — (until v3.1 also accepted as `account:sign_in:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:sign_in:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `write` |
 | MCP tool | `account_passkeys_rename` |
 | CLI | `cbox id account passkeys rename <passkey_id>` |
@@ -328,7 +328,7 @@ Disconnect one linked sign-in identity (Google, GitHub, …) from your account �
 | | |
 |---|---|
 | REST | `DELETE /api/v1/me/sign-in-methods/{identity_id}` → `204` |
-| Scope | `id:my-sign-in:write` (until v3.1 also `account:sign_in:write`) — (until v3.1 also accepted as `account:sign_in:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:sign_in:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `account_sign_in_methods_disconnect` |
 | CLI | `cbox id account sign_in_methods disconnect <identity_id>` |
@@ -344,7 +344,7 @@ Disconnect a social account from yours — never the last way you can sign in.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/me/social/{provider}` → `204` |
-| Scope | `id:my-sign-in:write` (until v3.1 also `account:sign_in:write`) — (until v3.1 also accepted as `account:sign_in:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:sign_in:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `account_social_unlink` |
 | CLI | `cbox id account social unlink <provider>` |
@@ -360,7 +360,7 @@ Remove one of your authenticator apps.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/me/two-factor/apps/{factor_id}` → `204` |
-| Scope | `id:my-sign-in:write` (until v3.1 also `account:sign_in:write`) — (until v3.1 also accepted as `account:sign_in:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:sign_in:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `account_totp_remove` |
 | CLI | `cbox id account totp remove <factor_id>` |
@@ -376,7 +376,7 @@ Rename one of your authenticator apps.
 | | |
 |---|---|
 | REST | `PATCH /api/v1/me/two-factor/apps/{factor_id}` → `204` |
-| Scope | `id:my-sign-in:write` (until v3.1 also `account:sign_in:write`) — (until v3.1 also accepted as `account:sign_in:write`) on an access token you delegated; it acts on your own account only. No management key is accepted. |
+| Scope | `account:sign_in:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `write` |
 | MCP tool | `account_totp_rename` |
 | CLI | `cbox id account totp rename <factor_id>` |

@@ -72,7 +72,7 @@ Create a one-time Admin Portal link an organization's IT administrator uses to s
 | | |
 |---|---|
 | REST | `POST /api/v1/organizations/{organization_id}/portal-links` → `201` |
-| Scope | `id:portal-links:write` (until v3.1 also `portal_links:write`) — (until v3.1 also accepted as `portal_links:write`). |
+| Scope | `portal_links:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `organizations_portal_links_create` |
 | CLI | `cbox id organizations portal_links create <organization_id>` |
@@ -93,7 +93,7 @@ List an organization's Admin Portal links from the last 30 days, newest first: w
 | | |
 |---|---|
 | REST | `GET /api/v1/organizations/{organization_id}/portal-links` → `200` |
-| Scope | `id:portal-links:read` (until v3.1 also `portal_links:read`) — (until v3.1 also accepted as `portal_links:read`). |
+| Scope | `portal_links:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `organizations_portal_links_list` |
 | CLI | `cbox id organizations portal_links list <organization_id>` |
@@ -109,7 +109,7 @@ Withdraw an Admin Portal link: it can no longer be opened, and a setup session i
 | | |
 |---|---|
 | REST | `DELETE /api/v1/organizations/{organization_id}/portal-links/{id}` → `204` |
-| Scope | `id:portal-links:write` (until v3.1 also `portal_links:write`) — (until v3.1 also accepted as `portal_links:write`). |
+| Scope | `portal_links:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `organizations_portal_links_revoke` |
 | CLI | `cbox id organizations portal_links revoke <organization_id> <id>` |
@@ -128,7 +128,7 @@ List the API keys an organization's members created for your apps, a page at a t
 | | |
 |---|---|
 | REST | `GET /api/v1/organizations/{organization_id}/api-keys` → `200` |
-| Scope | `id:api-keys:read` (until v3.1 also `api_keys:read`) — (until v3.1 also accepted as `api_keys:read`). |
+| Scope | `api_keys:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `api_keys_list` |
 | CLI | `cbox id api_keys list <organization_id>` |
@@ -147,7 +147,7 @@ Revoke an API key an organization's member created for your app. Whatever uses i
 | | |
 |---|---|
 | REST | `DELETE /api/v1/api-keys/{id}` → `204` |
-| Scope | `id:api-keys:write` (until v3.1 also `api_keys:write`) — (until v3.1 also accepted as `api_keys:write`). |
+| Scope | `api_keys:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `api_keys_revoke` |
 | CLI | `cbox id api_keys revoke <id>` |
@@ -166,7 +166,7 @@ Register an API (resource server): its identifier becomes the access token audie
 | | |
 |---|---|
 | REST | `POST /api/v1/apis` → `201` |
-| Scope | `id:apis:write` (until v3.1 also `apis:write`) — (until v3.1 also accepted as `apis:write`). |
+| Scope | `apis:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apis_create` |
 | CLI | `cbox id apis create` |
@@ -189,7 +189,7 @@ Delete an API and its scopes. Existing tokens keep their audience until they exp
 | | |
 |---|---|
 | REST | `DELETE /api/v1/apis/{id}` → `204` |
-| Scope | `id:apis:write` (until v3.1 also `apis:write`) — (until v3.1 also accepted as `apis:write`). |
+| Scope | `apis:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `apis_delete` |
 | CLI | `cbox id apis delete <id>` |
@@ -205,7 +205,7 @@ Get one registered API and its scopes.
 | | |
 |---|---|
 | REST | `GET /api/v1/apis/{id}` → `200` |
-| Scope | `id:apis:read` (until v3.1 also `apis:read`) — (until v3.1 also accepted as `apis:read`). |
+| Scope | `apis:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `apis_get` |
 | CLI | `cbox id apis get <id>` |
@@ -221,7 +221,7 @@ List the APIs (resource servers) registered in this environment, with their scop
 | | |
 |---|---|
 | REST | `GET /api/v1/apis` → `200` |
-| Scope | `id:apis:read` (until v3.1 also `apis:read`) — (until v3.1 also accepted as `apis:read`). |
+| Scope | `apis:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `apis_list` |
 | CLI | `cbox id apis list` |
@@ -238,7 +238,7 @@ Add a scope to an API, or change the description or tenant access of one it owns
 | | |
 |---|---|
 | REST | `PUT /api/v1/apis/{id}/scopes/{key}` → `200` |
-| Scope | `id:apis:write` (until v3.1 also `apis:write`) — (until v3.1 also accepted as `apis:write`). |
+| Scope | `apis:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apis_scopes_define` |
 | CLI | `cbox id apis scopes define <id> <key>` |
@@ -257,7 +257,7 @@ Remove a scope from an API. Apps holding it keep it as a plain scope that no lon
 | | |
 |---|---|
 | REST | `DELETE /api/v1/apis/{id}/scopes/{key}` → `204` |
-| Scope | `id:apis:write` (until v3.1 also `apis:write`) — (until v3.1 also accepted as `apis:write`). |
+| Scope | `apis:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `apis_scopes_remove` |
 | CLI | `cbox id apis scopes remove <id> <key>` |
@@ -274,7 +274,7 @@ Rename an API, link or unlink its app, and optionally replace its complete scope
 | | |
 |---|---|
 | REST | `PATCH /api/v1/apis/{id}` → `200` |
-| Scope | `id:apis:write` (until v3.1 also `apis:write`) — (until v3.1 also accepted as `apis:write`). |
+| Scope | `apis:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apis_update` |
 | CLI | `cbox id apis update <id>` |
@@ -298,7 +298,7 @@ Record 1–100 audit events your app's users caused, each for one of your organi
 | | |
 |---|---|
 | REST | `POST /api/v1/audit-logs/events` → `201` |
-| Scope | `id:audit-logs:write` (until v3.1 also `audit_logs:write`) — (until v3.1 also accepted as `audit_logs:write`). |
+| Scope | `audit_logs:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `audit_logs_events_create` |
 | CLI | `cbox id audit_logs events create` |
@@ -331,7 +331,7 @@ Read audit events newest first, for one organization or the whole environment, f
 | | |
 |---|---|
 | REST | `GET /api/v1/audit-logs/events` → `200` |
-| Scope | `id:audit-logs:read` (until v3.1 also `audit_logs:read`) — (until v3.1 also accepted as `audit_logs:read`). |
+| Scope | `audit_logs:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `audit_logs_events_list` |
 | CLI | `cbox id audit_logs events list` |
@@ -355,7 +355,7 @@ Start a CSV export of audit events (same filters as the list). It is written on 
 | | |
 |---|---|
 | REST | `POST /api/v1/audit-logs/exports` → `201` |
-| Scope | `id:audit-log-exports:write` (until v3.1 also `audit_logs:export`) — (until v3.1 also accepted as `audit_logs:export`). |
+| Scope | `audit_logs:export` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `audit_logs_exports_create` |
 | CLI | `cbox id audit_logs exports create` |
@@ -377,7 +377,7 @@ Read an audit-log export's state; once ready it carries a signed download url va
 | | |
 |---|---|
 | REST | `GET /api/v1/audit-logs/exports/{id}` → `200` |
-| Scope | `id:audit-logs:read` (until v3.1 also `audit_logs:read`) — (until v3.1 also accepted as `audit_logs:read`). |
+| Scope | `audit_logs:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `audit_logs_exports_get` |
 | CLI | `cbox id audit_logs exports get <id>` |
@@ -393,7 +393,7 @@ Define the schema one audit-log action's events must match — allowed target ty
 | | |
 |---|---|
 | REST | `POST /api/v1/audit-logs/schemas` → `201` |
-| Scope | `id:audit-log-schemas:write` (until v3.1 also `audit_logs:manage`) — (until v3.1 also accepted as `audit_logs:manage`). |
+| Scope | `audit_logs:manage` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `audit_logs_schemas_create` |
 | CLI | `cbox id audit_logs schemas create` |
@@ -414,7 +414,7 @@ Delete an audit-log action's schema. Its events are then accepted unchecked — 
 | | |
 |---|---|
 | REST | `DELETE /api/v1/audit-logs/schemas/{action}` → `204` |
-| Scope | `id:audit-log-schemas:write` (until v3.1 also `audit_logs:manage`) — (until v3.1 also accepted as `audit_logs:manage`). |
+| Scope | `audit_logs:manage` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `audit_logs_schemas_delete` |
 | CLI | `cbox id audit_logs schemas delete <action>` |
@@ -430,7 +430,7 @@ Read the schema one audit-log action's events are validated against.
 | | |
 |---|---|
 | REST | `GET /api/v1/audit-logs/schemas/{action}` → `200` |
-| Scope | `id:audit-logs:read` (until v3.1 also `audit_logs:read`) — (until v3.1 also accepted as `audit_logs:read`). |
+| Scope | `audit_logs:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `audit_logs_schemas_get` |
 | CLI | `cbox id audit_logs schemas get <action>` |
@@ -446,7 +446,7 @@ List the audit-log schemas this environment validates events against, one per ac
 | | |
 |---|---|
 | REST | `GET /api/v1/audit-logs/schemas` → `200` |
-| Scope | `id:audit-logs:read` (until v3.1 also `audit_logs:read`) — (until v3.1 also accepted as `audit_logs:read`). |
+| Scope | `audit_logs:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `audit_logs_schemas_list` |
 | CLI | `cbox id audit_logs schemas list` |
@@ -463,7 +463,7 @@ Replace an audit-log action's schema with a new version (omitted parts are remov
 | | |
 |---|---|
 | REST | `PUT /api/v1/audit-logs/schemas/{action}` → `200` |
-| Scope | `id:audit-log-schemas:write` (until v3.1 also `audit_logs:manage`) — (until v3.1 also accepted as `audit_logs:manage`). |
+| Scope | `audit_logs:manage` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `audit_logs_schemas_update` |
 | CLI | `cbox id audit_logs schemas update <action>` |
@@ -484,7 +484,7 @@ Read this environment's audit-log settings: retention in days and whether strict
 | | |
 |---|---|
 | REST | `GET /api/v1/audit-logs/settings` → `200` |
-| Scope | `id:audit-logs:read` (until v3.1 also `audit_logs:read`) — (until v3.1 also accepted as `audit_logs:read`). |
+| Scope | `audit_logs:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `audit_logs_settings_get` |
 | CLI | `cbox id audit_logs settings get` |
@@ -498,7 +498,7 @@ Change this environment's audit-log retention (days, 1–3650) and strict mode. 
 | | |
 |---|---|
 | REST | `PATCH /api/v1/audit-logs/settings` → `200` |
-| Scope | `id:audit-log-schemas:write` (until v3.1 also `audit_logs:manage`) — (until v3.1 also accepted as `audit_logs:manage`). |
+| Scope | `audit_logs:manage` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `audit_logs_settings_update` |
 | CLI | `cbox id audit_logs settings update` |
@@ -515,7 +515,7 @@ Re-hash one organization's audit-event chain (from the oldest event retention ke
 | | |
 |---|---|
 | REST | `GET /api/v1/audit-logs/verify` → `200` |
-| Scope | `id:audit-logs:read` (until v3.1 also `audit_logs:read`) — (until v3.1 also accepted as `audit_logs:read`). |
+| Scope | `audit_logs:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `audit_logs_verify` |
 | CLI | `cbox id audit_logs verify` |
@@ -535,7 +535,7 @@ Remove a catalog app without deleting its OAuth clients or user data.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/app-catalog/{key}` → `204` |
-| Scope | `id:app-catalog:write` (until v3.1 also `app_catalog:write`) — (until v3.1 also accepted as `app_catalog:write`). |
+| Scope | `app_catalog:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `app_catalog_delete` |
 | CLI | `cbox id app_catalog delete <key>` |
@@ -552,7 +552,7 @@ List the published apps one person sees in one of their organizations, in catalo
 | | |
 |---|---|
 | REST | `GET /api/v1/app-catalog/for-user` → `200` |
-| Scope | `id:app-catalog-for-user:read` (until v3.1 also `app_catalog:resolve`) — (until v3.1 also accepted as `app_catalog:resolve`). |
+| Scope | `app_catalog:resolve` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `app_catalog_for_user` |
 | CLI | `cbox id app_catalog for_user` |
@@ -569,7 +569,7 @@ List catalog apps, including drafts and visibility settings.
 | | |
 |---|---|
 | REST | `GET /api/v1/app-catalog` → `200` |
-| Scope | `id:app-catalog:read` (until v3.1 also `app_catalog:read`) — (until v3.1 also accepted as `app_catalog:read`). |
+| Scope | `app_catalog:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `app_catalog_list` |
 | CLI | `cbox id app_catalog list` |
@@ -583,7 +583,7 @@ Create or replace a catalog app, its light and dark icons and visibility. Versio
 | | |
 |---|---|
 | REST | `PUT /api/v1/app-catalog/{key}` → `200` |
-| Scope | `id:app-catalog:write` (until v3.1 also `app_catalog:write`) — (until v3.1 also accepted as `app_catalog:write`). |
+| Scope | `app_catalog:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `app_catalog_save` |
 | CLI | `cbox id app_catalog save <key>` |
@@ -612,7 +612,7 @@ Read a catalog app and its publication settings.
 | | |
 |---|---|
 | REST | `GET /api/v1/app-catalog/{key}` → `200` |
-| Scope | `id:app-catalog:read` (until v3.1 also `app_catalog:read`) — (until v3.1 also accepted as `app_catalog:read`). |
+| Scope | `app_catalog:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `app_catalog_show` |
 | CLI | `cbox id app_catalog show <key>` |
@@ -630,7 +630,7 @@ Export an app's configuration as a blueprint — no client id, secret, key set o
 | | |
 |---|---|
 | REST | `GET /api/v1/apps/{id}/blueprint` → `200` |
-| Scope | `id:apps:read` (until v3.1 also `apps:read`) — (until v3.1 also accepted as `apps:read`). |
+| Scope | `apps:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `apps_blueprint` |
 | CLI | `cbox id apps blueprint <id>` |
@@ -646,7 +646,7 @@ Copy an app into another environment of this project, with a new client id and s
 | | |
 |---|---|
 | REST | `POST /api/v1/apps/{id}/copy` → `201` |
-| Scope | `id:apps:write` (until v3.1 also `apps:write`) — (until v3.1 also accepted as `apps:write`). |
+| Scope | `apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `apps_copy` |
 | CLI | `cbox id apps copy <id>` |
@@ -666,7 +666,7 @@ Register an app (OAuth client) from a short form (name and type) or from another
 | | |
 |---|---|
 | REST | `POST /api/v1/apps` → `201` |
-| Scope | `id:apps:write` (until v3.1 also `apps:write`) — (until v3.1 also accepted as `apps:write`). |
+| Scope | `apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `apps_create` |
 | CLI | `cbox id apps create` |
@@ -694,7 +694,7 @@ Delete an app and every secret it holds. Anything signing in as it stops working
 | | |
 |---|---|
 | REST | `DELETE /api/v1/apps/{id}` → `204` |
-| Scope | `id:apps:write` (until v3.1 also `apps:write`) — (until v3.1 also accepted as `apps:write`). |
+| Scope | `apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `apps_delete` |
 | CLI | `cbox id apps delete <id>` |
@@ -710,7 +710,7 @@ Get one app (OAuth client) by its id or its client_id: its kind, grants, redirec
 | | |
 |---|---|
 | REST | `GET /api/v1/apps/{id}` → `200` |
-| Scope | `id:apps:read` (until v3.1 also `apps:read`) — (until v3.1 also accepted as `apps:read`). |
+| Scope | `apps:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `apps_get` |
 | CLI | `cbox id apps get <id>` |
@@ -726,7 +726,7 @@ List the apps (OAuth clients) registered in this environment. Never a secret.
 | | |
 |---|---|
 | REST | `GET /api/v1/apps` → `200` |
-| Scope | `id:apps:read` (until v3.1 also `apps:read`) — (until v3.1 also accepted as `apps:read`). |
+| Scope | `apps:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `apps_list` |
 | CLI | `cbox id apps list` |
@@ -743,7 +743,7 @@ Set or clear the URL an app publishes its roles-and-permissions manifest at. Doe
 | | |
 |---|---|
 | REST | `PUT /api/v1/apps/{id}/manifest` → `200` |
-| Scope | `id:apps:write` (until v3.1 also `apps:write`) — (until v3.1 also accepted as `apps:write`). |
+| Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_manifest_set` |
 | CLI | `cbox id apps manifest set <id>` |
@@ -760,7 +760,7 @@ Fetch an app's published manifest now and sync the roles and permissions it decl
 | | |
 |---|---|
 | REST | `POST /api/v1/apps/{id}/manifest/sync` → `200` |
-| Scope | `id:apps:write` (until v3.1 also `apps:write`) — (until v3.1 also accepted as `apps:write`). |
+| Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_manifest_sync` |
 | CLI | `cbox id apps manifest sync <id>` |
@@ -776,7 +776,7 @@ Replace an app's complete scope set — the ceiling of what it may request, appl
 | | |
 |---|---|
 | REST | `PUT /api/v1/apps/{id}/scopes` → `200` |
-| Scope | `id:apps:write` (until v3.1 also `apps:write`) — (until v3.1 also accepted as `apps:write`). |
+| Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_scopes_set` |
 | CLI | `cbox id apps scopes set <id>` |
@@ -793,7 +793,7 @@ List an app's live client secrets — ids, last characters and dates, never the 
 | | |
 |---|---|
 | REST | `GET /api/v1/apps/{id}/secrets` → `200` |
-| Scope | `id:apps:read` (until v3.1 also `apps:read`) — (until v3.1 also accepted as `apps:read`). |
+| Scope | `apps:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `apps_secrets_list` |
 | CLI | `cbox id apps secrets list <id>` |
@@ -809,7 +809,7 @@ Revoke one of an app's client secrets immediately. Never its last live secret �
 | | |
 |---|---|
 | REST | `DELETE /api/v1/apps/{id}/secrets/{secret_id}` → `204` |
-| Scope | `id:apps:write` (until v3.1 also `apps:write`) — (until v3.1 also accepted as `apps:write`). |
+| Scope | `apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `apps_secrets_revoke` |
 | CLI | `cbox id apps secrets revoke <id> <secret_id>` |
@@ -826,7 +826,7 @@ Mint a new client secret for an app and retire the current ones after grace_seco
 | | |
 |---|---|
 | REST | `POST /api/v1/apps/{id}/secrets` → `201` |
-| Scope | `id:apps:write` (until v3.1 also `apps:write`) — (until v3.1 also accepted as `apps:write`). |
+| Scope | `apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `apps_secrets_rotate` |
 | CLI | `cbox id apps secrets rotate <id>` |
@@ -844,7 +844,7 @@ Set the prefix of an app's customer API keys (acme_live), which lets its users c
 | | |
 |---|---|
 | REST | `PUT /api/v1/apps/{id}/settings/api-key-prefix` → `200` |
-| Scope | `id:apps:write` (until v3.1 also `apps:write`) — (until v3.1 also accepted as `apps:write`). |
+| Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_settings_api_key_prefix` |
 | CLI | `cbox id apps settings api_key_prefix <id>` |
@@ -861,7 +861,7 @@ Set or clear the URI an app is sent a logout token at when somebody signs out (O
 | | |
 |---|---|
 | REST | `PUT /api/v1/apps/{id}/settings/backchannel-logout` → `200` |
-| Scope | `id:apps:write` (until v3.1 also `apps:write`) — (until v3.1 also accepted as `apps:write`). |
+| Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_settings_backchannel_logout` |
 | CLI | `cbox id apps settings backchannel_logout <id>` |
@@ -879,7 +879,7 @@ Turn client-credentials authentication on or off for a confidential app; other g
 | | |
 |---|---|
 | REST | `PUT /api/v1/apps/{id}/settings/client-credentials` → `200` |
-| Scope | `id:apps:write` (until v3.1 also `apps:write`) — (until v3.1 also accepted as `apps:write`). |
+| Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_settings_client_credentials` |
 | CLI | `cbox id apps settings client_credentials <id>` |
@@ -896,7 +896,7 @@ Turn token exchange (RFC 8693) on or off for a confidential app.
 | | |
 |---|---|
 | REST | `PUT /api/v1/apps/{id}/settings/token-exchange` → `200` |
-| Scope | `id:apps:write` (until v3.1 also `apps:write`) — (until v3.1 also accepted as `apps:write`). |
+| Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_settings_token_exchange` |
 | CLI | `cbox id apps settings token_exchange <id>` |
@@ -913,7 +913,7 @@ Set how long an app's access tokens live, in seconds, or null for the install's 
 | | |
 |---|---|
 | REST | `PUT /api/v1/apps/{id}/settings/token-lifetime` → `200` |
-| Scope | `id:apps:write` (until v3.1 also `apps:write`) — (until v3.1 also accepted as `apps:write`). |
+| Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_settings_token_lifetime` |
 | CLI | `cbox id apps settings token_lifetime <id>` |
@@ -930,7 +930,7 @@ Rename an app and replace its redirect URIs or sign-out redirect URIs. Fields le
 | | |
 |---|---|
 | REST | `PATCH /api/v1/apps/{id}` → `200` |
-| Scope | `id:apps:write` (until v3.1 also `apps:write`) — (until v3.1 also accepted as `apps:write`). |
+| Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_update` |
 | CLI | `cbox id apps update <id>` |
@@ -951,7 +951,7 @@ Deny a pending approval request (CIBA) for the person it was raised for: the age
 | | |
 |---|---|
 | REST | `POST /api/v1/agent-requests/{request_id}/deny` → `204` |
-| Scope | `id:approvals:write` (until v3.1 also `approvals:write`) — (until v3.1 also accepted as `approvals:write`). |
+| Scope | `approvals:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `approvals_deny` |
 | CLI | `cbox id approvals deny <request_id>` |
@@ -967,7 +967,7 @@ List the pending requests from agents to act as one of this environment's people
 | | |
 |---|---|
 | REST | `GET /api/v1/agent-requests` → `200` |
-| Scope | `id:approvals:read` (until v3.1 also `approvals:read`) — (until v3.1 also accepted as `approvals:read`). |
+| Scope | `approvals:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `approvals_list` |
 | CLI | `cbox id approvals list` |
@@ -986,7 +986,7 @@ Read this environment's audit trail oldest first, optionally narrowed by action,
 | | |
 |---|---|
 | REST | `GET /api/v1/audit-log` → `200` |
-| Scope | `id:audit-events:read` (until v3.1 also `audit:read`) — (until v3.1 also accepted as `audit:read`). |
+| Scope | `audit:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `audit_list` |
 | CLI | `cbox id audit list` |
@@ -1008,7 +1008,7 @@ Read the hosted sign-in theme: the environment default, or one organization's ow
 | | |
 |---|---|
 | REST | `GET /api/v1/branding/appearance` → `200` |
-| Scope | `id:branding:read` (until v3.1 also `branding:read`) — (until v3.1 also accepted as `branding:read`). |
+| Scope | `branding:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `branding_appearance_get` |
 | CLI | `cbox id branding appearance get` |
@@ -1024,7 +1024,7 @@ Set the hosted sign-in theme (preset, colours, corners, type, uploaded logo and 
 | | |
 |---|---|
 | REST | `PUT /api/v1/branding/appearance` → `200` |
-| Scope | `id:branding:write` (until v3.1 also `branding:write`) — (until v3.1 also accepted as `branding:write`). |
+| Scope | `branding:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `branding_appearance_set` |
 | CLI | `cbox id branding appearance set` |
@@ -1056,7 +1056,7 @@ Read the white-label branding (palette, app name, email sender, logo) of the env
 | | |
 |---|---|
 | REST | `GET /api/v1/branding/whitelabel` → `200` |
-| Scope | `id:branding:read` (until v3.1 also `branding:read`) — (until v3.1 also accepted as `branding:read`). |
+| Scope | `branding:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `branding_whitelabel_get` |
 | CLI | `cbox id branding whitelabel get` |
@@ -1072,7 +1072,7 @@ Save the white-label branding (palette, app name, email sender, welcome email) o
 | | |
 |---|---|
 | REST | `PUT /api/v1/branding/whitelabel` → `200` |
-| Scope | `id:branding:write` (until v3.1 also `branding:write`) — (until v3.1 also accepted as `branding:write`). |
+| Scope | `branding:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `branding_whitelabel_set` |
 | CLI | `cbox id branding whitelabel set` |
@@ -1099,7 +1099,7 @@ Connect a Google Workspace or Microsoft Entra directory to sync an organization'
 | | |
 |---|---|
 | REST | `POST /api/v1/directories/connect` → `201` |
-| Scope | `id:directories:write` (until v3.1 also `directory_sync:write`) — (until v3.1 also accepted as `directory_sync:write`). |
+| Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `directories_connect` |
 | CLI | `cbox id directories connect` |
@@ -1122,7 +1122,7 @@ Register a SCIM directory for an organization. Answers the SCIM base URL and a b
 | | |
 |---|---|
 | REST | `POST /api/v1/directories` → `201` |
-| Scope | `id:directories:write` (until v3.1 also `directory_sync:write`) — (until v3.1 also accepted as `directory_sync:write`). |
+| Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `directories_create` |
 | CLI | `cbox id directories create` |
@@ -1140,7 +1140,7 @@ Replace a pull directory's provider credentials, verifying the new ones first. W
 | | |
 |---|---|
 | REST | `PUT /api/v1/directories/{id}/credentials` → `200` |
-| Scope | `id:directories:write` (until v3.1 also `directory_sync:write`) — (until v3.1 also accepted as `directory_sync:write`). |
+| Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `directories_credentials_replace` |
 | CLI | `cbox id directories credentials replace <id>` |
@@ -1172,7 +1172,7 @@ Delete an inbound directory. Its token stops working; the people it provisioned 
 | | |
 |---|---|
 | REST | `DELETE /api/v1/directories/{id}` → `204` |
-| Scope | `id:directories:write` (until v3.1 also `directory_sync:write`) — (until v3.1 also accepted as `directory_sync:write`). |
+| Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `directories_delete` |
 | CLI | `cbox id directories delete <id>` |
@@ -1189,7 +1189,7 @@ Read one inbound directory: its provider, status, SCIM base URL and last sync er
 | | |
 |---|---|
 | REST | `GET /api/v1/directories/{id}` → `200` |
-| Scope | `id:directories:read` (until v3.1 also `directory_sync:read`) — (until v3.1 also accepted as `directory_sync:read`). |
+| Scope | `directory_sync:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `directories_get` |
 | CLI | `cbox id directories get <id>` |
@@ -1206,7 +1206,7 @@ List the groups a directory has synced, with the role ids each group is mapped o
 | | |
 |---|---|
 | REST | `GET /api/v1/directories/{id}/groups` → `200` |
-| Scope | `id:directories:read` (until v3.1 also `directory_sync:read`) — (until v3.1 also accepted as `directory_sync:read`). |
+| Scope | `directory_sync:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `directories_groups_list` |
 | CLI | `cbox id directories groups list <id>` |
@@ -1225,7 +1225,7 @@ Map a directory group onto a role (everyone in the group holds it as membership 
 | | |
 |---|---|
 | REST | `POST /api/v1/directories/{id}/group-roles` → `200` |
-| Scope | `id:directories:write` (until v3.1 also `directory_sync:write`) — (until v3.1 also accepted as `directory_sync:write`). |
+| Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `directories_groups_map` |
 | CLI | `cbox id directories groups map <id>` |
@@ -1245,7 +1245,7 @@ Connect an HR system (Workday, BambooHR, Rippling, HiBob or Personio) to sync an
 | | |
 |---|---|
 | REST | `POST /api/v1/directories/hris` → `201` |
-| Scope | `id:directories:write` (until v3.1 also `directory_sync:write`) — (until v3.1 also accepted as `directory_sync:write`). |
+| Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `directories_hris_connect` |
 | CLI | `cbox id directories hris connect` |
@@ -1277,7 +1277,7 @@ List the directories (SCIM, Google Workspace, Microsoft Entra) syncing people in
 | | |
 |---|---|
 | REST | `GET /api/v1/directories` → `200` |
-| Scope | `id:directories:read` (until v3.1 also `directory_sync:read`) — (until v3.1 also accepted as `directory_sync:read`). |
+| Scope | `directory_sync:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `directories_list` |
 | CLI | `cbox id directories list` |
@@ -1295,7 +1295,7 @@ Pause or resume an inbound directory's provisioning.
 | | |
 |---|---|
 | REST | `POST /api/v1/directories/{id}/status` → `200` |
-| Scope | `id:directories:write` (until v3.1 also `directory_sync:write`) — (until v3.1 also accepted as `directory_sync:write`). |
+| Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `directories_status_set` |
 | CLI | `cbox id directories status set <id>` |
@@ -1313,7 +1313,7 @@ Pull a Google Workspace, Microsoft Entra or HR-system directory now, on a worker
 | | |
 |---|---|
 | REST | `POST /api/v1/directories/{id}/sync` → `202` |
-| Scope | `id:directories:write` (until v3.1 also `directory_sync:write`) — (until v3.1 also accepted as `directory_sync:write`). |
+| Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `directories_sync` |
 | CLI | `cbox id directories sync <id>` |
@@ -1331,7 +1331,7 @@ Set how often a pull directory syncs, and for an HR system which of its fields p
 | | |
 |---|---|
 | REST | `PATCH /api/v1/directories/{id}/sync-settings` → `200` |
-| Scope | `id:directories:write` (until v3.1 also `directory_sync:write`) — (until v3.1 also accepted as `directory_sync:write`). |
+| Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `directories_sync_settings_update` |
 | CLI | `cbox id directories sync_settings update <id>` |
@@ -1364,7 +1364,7 @@ Issue a new bearer token for a SCIM directory, returned once. The old token stop
 | | |
 |---|---|
 | REST | `POST /api/v1/directories/{id}/rotate` → `200` |
-| Scope | `id:directories:write` (until v3.1 also `directory_sync:write`) — (until v3.1 also accepted as `directory_sync:write`). |
+| Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `directories_token_rotate` |
 | CLI | `cbox id directories token rotate <id>` |
@@ -1382,7 +1382,7 @@ Rename an inbound directory.
 | | |
 |---|---|
 | REST | `PATCH /api/v1/directories/{id}` → `200` |
-| Scope | `id:directories:write` (until v3.1 also `directory_sync:write`) — (until v3.1 also accepted as `directory_sync:write`). |
+| Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `directories_update` |
 | CLI | `cbox id directories update <id>` |
@@ -1402,7 +1402,7 @@ Start serving this environment on a custom domain: returns the DNS TXT record th
 | | |
 |---|---|
 | REST | `POST /api/v1/domains` → `200` |
-| Scope | `id:domains:write` (until v3.1 also `domains:write`) — (until v3.1 also accepted as `domains:write`). |
+| Scope | `domains:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `domains_add` |
 | CLI | `cbox id domains add` |
@@ -1418,7 +1418,7 @@ Read this environment's custom domain, and the DNS TXT record that proves a pend
 | | |
 |---|---|
 | REST | `GET /api/v1/domains` → `200` |
-| Scope | `id:domains:read` (until v3.1 also `domains:read`) — (until v3.1 also accepted as `domains:read`). |
+| Scope | `domains:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `domains_get` |
 | CLI | `cbox id domains get` |
@@ -1432,7 +1432,7 @@ Stop serving this environment on its custom domain. Anything using that domain s
 | | |
 |---|---|
 | REST | `DELETE /api/v1/domains` → `204` |
-| Scope | `id:domains:write` (until v3.1 also `domains:write`) — (until v3.1 also accepted as `domains:write`). |
+| Scope | `domains:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `domains_remove` |
 | CLI | `cbox id domains remove` |
@@ -1446,7 +1446,7 @@ Look for the pending domain's DNS TXT record and, once it is visible, serve this
 | | |
 |---|---|
 | REST | `POST /api/v1/domains/verify` → `200` |
-| Scope | `id:domains:write` (until v3.1 also `domains:write`) — (until v3.1 also accepted as `domains:write`). |
+| Scope | `domains:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `domains_verify` |
 | CLI | `cbox id domains verify` |
@@ -1462,7 +1462,7 @@ Activate an SSO connection: people whose email domain routes to it start signing
 | | |
 |---|---|
 | REST | `POST /api/v1/sso/connections/{id}/activate` → `200` |
-| Scope | `id:sso-connections:write` (until v3.1 also `sso:write`) — (until v3.1 also accepted as `sso:write`). |
+| Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_connections_activate` |
 | CLI | `cbox id sso connections activate <id>` |
@@ -1479,7 +1479,7 @@ Make a staged SAML signing certificate the connection's primary. The certificate
 | | |
 |---|---|
 | REST | `POST /api/v1/sso/connections/{id}/certificates/activate` → `200` |
-| Scope | `id:sso-connections:write` (until v3.1 also `sso:write`) — (until v3.1 also accepted as `sso:write`). |
+| Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_connections_certificates_activate` |
 | CLI | `cbox id sso connections certificates activate <id>` |
@@ -1497,7 +1497,7 @@ List a SAML connection's signing certificates — primary and staged — with ea
 | | |
 |---|---|
 | REST | `GET /api/v1/sso/connections/{id}/certificates` → `200` |
-| Scope | `id:sso-connections:read` (until v3.1 also `sso:read`) — (until v3.1 also accepted as `sso:read`). |
+| Scope | `sso:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `sso_connections_certificates_list` |
 | CLI | `cbox id sso connections certificates list <id>` |
@@ -1514,7 +1514,7 @@ Stage a SAML connection's new IdP signing certificate (PEM or IdP metadata) besi
 | | |
 |---|---|
 | REST | `POST /api/v1/sso/connections/{id}/certificates` → `200` |
-| Scope | `id:sso-connections:write` (until v3.1 also `sso:write`) — (until v3.1 also accepted as `sso:write`). |
+| Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_connections_certificates_stage` |
 | CLI | `cbox id sso connections certificates stage <id>` |
@@ -1533,7 +1533,7 @@ Connect an organization's SAML or OIDC identity provider as a draft. Activate it
 | | |
 |---|---|
 | REST | `POST /api/v1/sso/connections` → `201` |
-| Scope | `id:sso-connections:write` (until v3.1 also `sso:write`) — (until v3.1 also accepted as `sso:write`). |
+| Scope | `sso:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `sso_connections_create` |
 | CLI | `cbox id sso connections create` |
@@ -1562,7 +1562,7 @@ Delete an SSO connection and its settings. Where SSO is required, its people can
 | | |
 |---|---|
 | REST | `DELETE /api/v1/sso/connections/{id}` → `204` |
-| Scope | `id:sso-connections:write` (until v3.1 also `sso:write`) — (until v3.1 also accepted as `sso:write`). |
+| Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_connections_delete` |
 | CLI | `cbox id sso connections delete <id>` |
@@ -1579,7 +1579,7 @@ Disable an SSO connection without deleting it. Where SSO is required, its people
 | | |
 |---|---|
 | REST | `POST /api/v1/sso/connections/{id}/disable` → `200` |
-| Scope | `id:sso-connections:write` (until v3.1 also `sso:write`) — (until v3.1 also accepted as `sso:write`). |
+| Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_connections_disable` |
 | CLI | `cbox id sso connections disable <id>` |
@@ -1596,7 +1596,7 @@ Read one SSO connection: its type, status, entity ids, URLs, issuer and client i
 | | |
 |---|---|
 | REST | `GET /api/v1/sso/connections/{id}` → `200` |
-| Scope | `id:sso-connections:read` (until v3.1 also `sso:read`) — (until v3.1 also accepted as `sso:read`). |
+| Scope | `sso:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `sso_connections_get` |
 | CLI | `cbox id sso connections get <id>` |
@@ -1613,7 +1613,7 @@ List the SAML and OIDC connections organizations sign in through, optionally for
 | | |
 |---|---|
 | REST | `GET /api/v1/sso/connections` → `200` |
-| Scope | `id:sso-connections:read` (until v3.1 also `sso:read`) — (until v3.1 also accepted as `sso:read`). |
+| Scope | `sso:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `sso_connections_list` |
 | CLI | `cbox id sso connections list` |
@@ -1631,7 +1631,7 @@ Require single sign-on for the organization an SSO connection belongs to. Ends e
 | | |
 |---|---|
 | REST | `POST /api/v1/sso/connections/{id}/require-sso` → `200` |
-| Scope | `id:sso-connections:write` (until v3.1 also `sso:write`) — (until v3.1 also accepted as `sso:write`). |
+| Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_connections_require_sso` |
 | CLI | `cbox id sso connections require_sso <id>` |
@@ -1648,7 +1648,7 @@ Change an SSO connection's name or identity-provider settings. Secrets left out 
 | | |
 |---|---|
 | REST | `PATCH /api/v1/sso/connections/{id}` → `200` |
-| Scope | `id:sso-connections:write` (until v3.1 also `sso:write`) — (until v3.1 also accepted as `sso:write`). |
+| Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_connections_update` |
 | CLI | `cbox id sso connections update <id>` |
@@ -1675,7 +1675,7 @@ Turn capture on or off for a verified domain: captured, everyone with an address
 | | |
 |---|---|
 | REST | `POST /api/v1/sso/domains/{id}/capture` → `200` |
-| Scope | `id:sso-connections:write` (until v3.1 also `sso:write`) — (until v3.1 also accepted as `sso:write`). |
+| Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_domains_capture` |
 | CLI | `cbox id sso domains capture <id>` |
@@ -1693,7 +1693,7 @@ Claim an email domain for an organization's single sign-on, and get the DNS TXT 
 | | |
 |---|---|
 | REST | `POST /api/v1/sso/domains` → `201` |
-| Scope | `id:sso-connections:write` (until v3.1 also `sso:write`) — (until v3.1 also accepted as `sso:write`). |
+| Scope | `sso:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `sso_domains_create` |
 | CLI | `cbox id sso domains create` |
@@ -1710,7 +1710,7 @@ Remove a claimed email domain. Its people stop being routed to the organization'
 | | |
 |---|---|
 | REST | `DELETE /api/v1/sso/domains/{id}` → `204` |
-| Scope | `id:sso-connections:write` (until v3.1 also `sso:write`) — (until v3.1 also accepted as `sso:write`). |
+| Scope | `sso:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `sso_domains_delete` |
 | CLI | `cbox id sso domains delete <id>` |
@@ -1727,7 +1727,7 @@ List the email domains organizations claimed for single sign-on, whether each is
 | | |
 |---|---|
 | REST | `GET /api/v1/sso/domains` → `200` |
-| Scope | `id:sso-connections:read` (until v3.1 also `sso:read`) — (until v3.1 also accepted as `sso:read`). |
+| Scope | `sso:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `sso_domains_list` |
 | CLI | `cbox id sso domains list` |
@@ -1745,7 +1745,7 @@ Check a claimed domain's DNS TXT record now. Answers the domain, with verified t
 | | |
 |---|---|
 | REST | `POST /api/v1/sso/domains/{id}/verify` → `200` |
-| Scope | `id:sso-connections:write` (until v3.1 also `sso:write`) — (until v3.1 also accepted as `sso:write`). |
+| Scope | `sso:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `sso_domains_verify` |
 | CLI | `cbox id sso domains verify <id>` |
@@ -1762,7 +1762,7 @@ Parse an identity provider's SAML metadata (XML or a metadata URL) into the enti
 | | |
 |---|---|
 | REST | `POST /api/v1/sso/saml-metadata` → `200` |
-| Scope | `id:sso-connections:write` (until v3.1 also `sso:write`) — (until v3.1 also accepted as `sso:write`). |
+| Scope | `sso:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `sso_saml_metadata_import` |
 | CLI | `cbox id sso saml_metadata import` |
@@ -1780,7 +1780,7 @@ Read this environment's domain events (the facts webhooks deliver) oldest first;
 | | |
 |---|---|
 | REST | `GET /api/v1/events` → `200` |
-| Scope | `id:events:read` (until v3.1 also `events:read`) — (until v3.1 also accepted as `events:read`). |
+| Scope | `events:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `events_list` |
 | CLI | `cbox id events list` |
@@ -1801,7 +1801,7 @@ Define a feature flag: a key apps ask about, its default, and who it is on for �
 | | |
 |---|---|
 | REST | `POST /api/v1/feature-flags` → `201` |
-| Scope | `id:feature-flags:write` (until v3.1 also `feature_flags:write`) — (until v3.1 also accepted as `feature_flags:write`). |
+| Scope | `feature_flags:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `feature_flags_create` |
 | CLI | `cbox id feature_flags create` |
@@ -1827,7 +1827,7 @@ Delete a feature flag and its rules. Its key evaluates to off from now on; token
 | | |
 |---|---|
 | REST | `DELETE /api/v1/feature-flags/{id}` → `204` |
-| Scope | `id:feature-flags:write` (until v3.1 also `feature_flags:write`) — (until v3.1 also accepted as `feature_flags:write`). |
+| Scope | `feature_flags:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `feature_flags_delete` |
 | CLI | `cbox id feature_flags delete <id>` |
@@ -1843,7 +1843,7 @@ Evaluate every feature flag for a user in an organization: whether each is on, a
 | | |
 |---|---|
 | REST | `GET /api/v1/feature-flags/evaluate` → `200` |
-| Scope | `id:feature-flags:read` (until v3.1 also `feature_flags:read`) — (until v3.1 also accepted as `feature_flags:read`). |
+| Scope | `feature_flags:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `feature_flags_evaluate` |
 | CLI | `cbox id feature_flags evaluate` |
@@ -1860,7 +1860,7 @@ Read one feature flag: its default, whether it is switched on, and every user, o
 | | |
 |---|---|
 | REST | `GET /api/v1/feature-flags/{id}` → `200` |
-| Scope | `id:feature-flags:read` (until v3.1 also `feature_flags:read`) — (until v3.1 also accepted as `feature_flags:read`). |
+| Scope | `feature_flags:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `feature_flags_get` |
 | CLI | `cbox id feature_flags get <id>` |
@@ -1876,7 +1876,7 @@ List this environment's feature flags with their default, kill switch and target
 | | |
 |---|---|
 | REST | `GET /api/v1/feature-flags` → `200` |
-| Scope | `id:feature-flags:read` (until v3.1 also `feature_flags:read`) — (until v3.1 also accepted as `feature_flags:read`). |
+| Scope | `feature_flags:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `feature_flags_list` |
 | CLI | `cbox id feature_flags list` |
@@ -1893,7 +1893,7 @@ Change a feature flag: switch it on or off for everyone, change its default, or 
 | | |
 |---|---|
 | REST | `PATCH /api/v1/feature-flags/{id}` → `200` |
-| Scope | `id:feature-flags:write` (until v3.1 also `feature_flags:write`) — (until v3.1 also accepted as `feature_flags:write`). |
+| Scope | `feature_flags:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `feature_flags_update` |
 | CLI | `cbox id feature_flags update <id>` |
@@ -1921,7 +1921,7 @@ Check whether a subject has a relation on a resource — directly, through compu
 | | |
 |---|---|
 | REST | `GET /api/v1/fga/check` → `200` |
-| Scope | `id:fga:read` (until v3.1 also `fga:read`) — (until v3.1 also accepted as `fga:read`). |
+| Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_check` |
 | CLI | `cbox id fga check` |
@@ -1943,7 +1943,7 @@ Run 1–100 checks in one round trip, each written resource#relation@subject (do
 | | |
 |---|---|
 | REST | `GET /api/v1/fga/check/batch` → `200` |
-| Scope | `id:fga:read` (until v3.1 also `fga:read`) — (until v3.1 also accepted as `fga:read`). |
+| Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_check_batch` |
 | CLI | `cbox id fga check_batch` |
@@ -1960,7 +1960,7 @@ List the resources of one type a subject has a relation on (e.g. every document 
 | | |
 |---|---|
 | REST | `GET /api/v1/fga/resources` → `200` |
-| Scope | `id:fga:read` (until v3.1 also `fga:read`) — (until v3.1 also accepted as `fga:read`). |
+| Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_resources_list` |
 | CLI | `cbox id fga resources list` |
@@ -1983,7 +1983,7 @@ Read this environment's fine-grained authorization schema: the source text, its 
 | | |
 |---|---|
 | REST | `GET /api/v1/fga/schema` → `200` |
-| Scope | `id:fga:read` (until v3.1 also `fga:read`) — (until v3.1 also accepted as `fga:read`). |
+| Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_schema_get` |
 | CLI | `cbox id fga schema get` |
@@ -1997,7 +1997,7 @@ Replace this environment's fine-grained authorization schema (types, relations a
 | | |
 |---|---|
 | REST | `PUT /api/v1/fga/schema` → `200` |
-| Scope | `id:fga-schema:write` (until v3.1 also `fga:schema`) — (until v3.1 also accepted as `fga:schema`). |
+| Scope | `fga:schema` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `fga_schema_update` |
 | CLI | `cbox id fga schema update` |
@@ -2013,7 +2013,7 @@ Check a fine-grained authorization schema without saving it: every error by line
 | | |
 |---|---|
 | REST | `GET /api/v1/fga/schema/validate` → `200` |
-| Scope | `id:fga:read` (until v3.1 also `fga:read`) — (until v3.1 also accepted as `fga:read`). |
+| Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_schema_validate` |
 | CLI | `cbox id fga schema validate` |
@@ -2029,7 +2029,7 @@ List the subjects of one type that have a relation on a resource (e.g. every use
 | | |
 |---|---|
 | REST | `GET /api/v1/fga/subjects` → `200` |
-| Scope | `id:fga:read` (until v3.1 also `fga:read`) — (until v3.1 also accepted as `fga:read`). |
+| Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_subjects_list` |
 | CLI | `cbox id fga subjects list` |
@@ -2051,7 +2051,7 @@ Delete 1–100 relationship tuples in one atomic batch. Revokes the access they 
 | | |
 |---|---|
 | REST | `POST /api/v1/fga/tuples/delete` → `200` |
-| Scope | `id:fga:write` (until v3.1 also `fga:write`) — (until v3.1 also accepted as `fga:write`). |
+| Scope | `fga:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `fga_tuples_delete` |
 | CLI | `cbox id fga tuples delete` |
@@ -2074,7 +2074,7 @@ List stored relationship tuples oldest first, filtered by resource type and id, 
 | | |
 |---|---|
 | REST | `GET /api/v1/fga/tuples` → `200` |
-| Scope | `id:fga:read` (until v3.1 also `fga:read`) — (until v3.1 also accepted as `fga:read`). |
+| Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_tuples_list` |
 | CLI | `cbox id fga tuples list` |
@@ -2097,7 +2097,7 @@ Write 1–100 relationship tuples (resource#relation@subject) in one atomic batc
 | | |
 |---|---|
 | REST | `POST /api/v1/fga/tuples` → `200` |
-| Scope | `id:fga:write` (until v3.1 also `fga:write`) — (until v3.1 also accepted as `fga:write`). |
+| Scope | `fga:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `fga_tuples_write` |
 | CLI | `cbox id fga tuples write` |
@@ -2122,7 +2122,7 @@ Close an access review and apply it: every revoke is carried out, and undecided 
 | | |
 |---|---|
 | REST | `POST /api/v1/access-reviews/{id}/close` → `200` |
-| Scope | `id:governance:write` (until v3.1 also `governance:write`) — (until v3.1 also accepted as `governance:write`). |
+| Scope | `governance:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `access_reviews_close` |
 | CLI | `cbox id access_reviews close <id>` |
@@ -2139,7 +2139,7 @@ Open an access review of one organization's roles and memberships — or of staf
 | | |
 |---|---|
 | REST | `POST /api/v1/access-reviews` → `201` |
-| Scope | `id:governance:write` (until v3.1 also `governance:write`) — (until v3.1 also accepted as `governance:write`). |
+| Scope | `governance:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `access_reviews_create` |
 | CLI | `cbox id access_reviews create` |
@@ -2158,7 +2158,7 @@ Read one access review: its status, due date, pending-item policy and item count
 | | |
 |---|---|
 | REST | `GET /api/v1/access-reviews/{id}` → `200` |
-| Scope | `id:governance:read` (until v3.1 also `governance:read`) — (until v3.1 also accepted as `governance:read`). |
+| Scope | `governance:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `access_reviews_get` |
 | CLI | `cbox id access_reviews get <id>` |
@@ -2175,7 +2175,7 @@ Certify or revoke one item of an open access review. Revokes are applied when th
 | | |
 |---|---|
 | REST | `POST /api/v1/access-reviews/{id}/items/{item_id}` → `200` |
-| Scope | `id:governance:write` (until v3.1 also `governance:write`) — (until v3.1 also accepted as `governance:write`). |
+| Scope | `governance:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `access_reviews_items_decide` |
 | CLI | `cbox id access_reviews items decide <id> <item_id>` |
@@ -2195,7 +2195,7 @@ List the items an access review asks someone to certify or revoke: who holds wha
 | | |
 |---|---|
 | REST | `GET /api/v1/access-reviews/{id}/items` → `200` |
-| Scope | `id:governance:read` (until v3.1 also `governance:read`) — (until v3.1 also accepted as `governance:read`). |
+| Scope | `governance:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `access_reviews_items_list` |
 | CLI | `cbox id access_reviews items list <id>` |
@@ -2214,7 +2214,7 @@ List access reviews (certification campaigns), open and closed, optionally those
 | | |
 |---|---|
 | REST | `GET /api/v1/access-reviews` → `200` |
-| Scope | `id:governance:read` (until v3.1 also `governance:read`) — (until v3.1 also accepted as `governance:read`). |
+| Scope | `governance:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `access_reviews_list` |
 | CLI | `cbox id access_reviews list` |
@@ -2232,7 +2232,7 @@ Define a role-conflict rule: two or more roles no one person may hold together. 
 | | |
 |---|---|
 | REST | `POST /api/v1/sod-policies` → `201` |
-| Scope | `id:governance:write` (until v3.1 also `governance:write`) — (until v3.1 also accepted as `governance:write`). |
+| Scope | `governance:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `sod_policies_create` |
 | CLI | `cbox id sod_policies create` |
@@ -2252,7 +2252,7 @@ Remove a role-conflict rule. Grants it refused are allowed from then on.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/sod-policies/{id}` → `204` |
-| Scope | `id:governance:write` (until v3.1 also `governance:write`) — (until v3.1 also accepted as `governance:write`). |
+| Scope | `governance:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sod_policies_delete` |
 | CLI | `cbox id sod_policies delete <id>` |
@@ -2269,7 +2269,7 @@ Read one role-conflict rule: the roles no one person may hold together, and whet
 | | |
 |---|---|
 | REST | `GET /api/v1/sod-policies/{id}` → `200` |
-| Scope | `id:governance:read` (until v3.1 also `governance:read`) — (until v3.1 also accepted as `governance:read`). |
+| Scope | `governance:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `sod_policies_get` |
 | CLI | `cbox id sod_policies get <id>` |
@@ -2286,7 +2286,7 @@ List role-conflict (segregation of duties) rules: sets of roles no one person ma
 | | |
 |---|---|
 | REST | `GET /api/v1/sod-policies` → `200` |
-| Scope | `id:governance:read` (until v3.1 also `governance:read`) — (until v3.1 also accepted as `governance:read`). |
+| Scope | `governance:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `sod_policies_list` |
 | CLI | `cbox id sod_policies list` |
@@ -2304,7 +2304,7 @@ Enforce a role-conflict rule, or stop enforcing it — switched off, grants that
 | | |
 |---|---|
 | REST | `POST /api/v1/sod-policies/{id}/status` → `200` |
-| Scope | `id:governance:write` (until v3.1 also `governance:write`) — (until v3.1 also accepted as `governance:write`). |
+| Scope | `governance:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sod_policies_status_set` |
 | CLI | `cbox id sod_policies status set <id>` |
@@ -2324,7 +2324,7 @@ Register a hook at a hook point (token minting, login, registration, password ch
 | | |
 |---|---|
 | REST | `POST /api/v1/hooks` → `201` |
-| Scope | `id:hooks:write` (until v3.1 also `hooks:write`) — (until v3.1 also accepted as `hooks:write`). |
+| Scope | `hooks:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `hooks_create` |
 | CLI | `cbox id hooks create` |
@@ -2344,7 +2344,7 @@ Remove a hook. It is no longer called at its hook point.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/hooks/{id}` → `204` |
-| Scope | `id:hooks:write` (until v3.1 also `hooks:write`) — (until v3.1 also accepted as `hooks:write`). |
+| Scope | `hooks:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `hooks_delete` |
 | CLI | `cbox id hooks delete <id>` |
@@ -2360,7 +2360,7 @@ Get one hook: its URL, hook point, owner and whether it is active. Never its sig
 | | |
 |---|---|
 | REST | `GET /api/v1/hooks/{id}` → `200` |
-| Scope | `id:hooks:read` (until v3.1 also `hooks:read`) — (until v3.1 also accepted as `hooks:read`). |
+| Scope | `hooks:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `hooks_get` |
 | CLI | `cbox id hooks get <id>` |
@@ -2376,7 +2376,7 @@ List the hooks — endpoints called during sign-in and token issuance — with t
 | | |
 |---|---|
 | REST | `GET /api/v1/hooks` → `200` |
-| Scope | `id:hooks:read` (until v3.1 also `hooks:read`) — (until v3.1 also accepted as `hooks:read`). |
+| Scope | `hooks:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `hooks_list` |
 | CLI | `cbox id hooks list` |
@@ -2393,7 +2393,7 @@ Pause (active: false) or activate (active: true) a hook.
 | | |
 |---|---|
 | REST | `PATCH /api/v1/hooks/{id}` → `200` |
-| Scope | `id:hooks:write` (until v3.1 also `hooks:write`) — (until v3.1 also accepted as `hooks:write`). |
+| Scope | `hooks:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `hooks_update` |
 | CLI | `cbox id hooks update <id>` |
@@ -2412,7 +2412,7 @@ Get an invitation and its acceptance receipt, confined to its organization.
 | | |
 |---|---|
 | REST | `GET /api/v1/organizations/{organization_id}/invitations/{invitation_id}` → `200` |
-| Scope | `id:invitations:read` (until v3.1 also `invitations:read`) — (until v3.1 also accepted as `invitations:read`). |
+| Scope | `invitations:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `invitations_get` |
 | CLI | `cbox id invitations get <organization_id> <invitation_id>` |
@@ -2429,7 +2429,7 @@ List an organization's pending invitations, a page at a time, with the roles eac
 | | |
 |---|---|
 | REST | `GET /api/v1/organizations/{organization_id}/invitations` → `200` |
-| Scope | `id:invitations:read` (until v3.1 also `invitations:read`) — (until v3.1 also accepted as `invitations:read`). |
+| Scope | `invitations:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `invitations_list` |
 | CLI | `cbox id invitations list <organization_id>` |
@@ -2447,7 +2447,7 @@ Re-send a pending invitation on a fresh link. The answer is the new invitation; 
 | | |
 |---|---|
 | REST | `POST /api/v1/organizations/{organization_id}/invitations/{invitation_id}/resend` → `200` |
-| Scope | `id:invitations:write` (until v3.1 also `invitations:write`) — (until v3.1 also accepted as `invitations:write`). |
+| Scope | `invitations:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `invitations_resend` |
 | CLI | `cbox id invitations resend <organization_id> <invitation_id>` |
@@ -2464,7 +2464,7 @@ Withdraw a pending invitation: its link stops working and the roles parked for i
 | | |
 |---|---|
 | REST | `DELETE /api/v1/organizations/{organization_id}/invitations/{invitation_id}` → `204` |
-| Scope | `id:invitations:write` (until v3.1 also `invitations:write`) — (until v3.1 also accepted as `invitations:write`). |
+| Scope | `invitations:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `invitations_revoke` |
 | CLI | `cbox id invitations revoke <organization_id> <invitation_id>` |
@@ -2481,7 +2481,7 @@ Invite someone into an organization by email, on a tier and with access roles (b
 | | |
 |---|---|
 | REST | `POST /api/v1/organizations/{organization_id}/invitations` → `201` |
-| Scope | `id:invitations:write` (until v3.1 also `invitations:write`) — (until v3.1 also accepted as `invitations:write`). |
+| Scope | `invitations:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `invitations_send` |
 | CLI | `cbox id invitations send <organization_id>` |
@@ -2505,7 +2505,7 @@ Approve the declared legacy login endpoint: sign-ins for people not yet migrated
 | | |
 |---|---|
 | REST | `POST /api/v1/legacy-login/approve` → `200` |
-| Scope | `id:sign-in:write` (until v3.1 also `signin:write`) — (until v3.1 also accepted as `signin:write`). |
+| Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `legacy_login_approve` |
 | CLI | `cbox id legacy_login approve` |
@@ -2519,7 +2519,7 @@ Read the legacy login endpoint an app declared for migration, and whether it is 
 | | |
 |---|---|
 | REST | `GET /api/v1/legacy-login` → `200` |
-| Scope | `id:sign-in:read` (until v3.1 also `signin:read`) — (until v3.1 also accepted as `signin:read`). |
+| Scope | `signin:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `legacy_login_get` |
 | CLI | `cbox id legacy_login get` |
@@ -2533,7 +2533,7 @@ Ask the declared legacy login endpoint whether it knows an address — your own 
 | | |
 |---|---|
 | REST | `POST /api/v1/legacy-login/probe` → `200` |
-| Scope | `id:sign-in:write` (until v3.1 also `signin:write`) — (until v3.1 also accepted as `signin:write`). |
+| Scope | `signin:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `legacy_login_probe` |
 | CLI | `cbox id legacy_login probe` |
@@ -2549,7 +2549,7 @@ Withdraw the legacy login approval. People not yet migrated can no longer sign i
 | | |
 |---|---|
 | REST | `POST /api/v1/legacy-login/revoke` → `200` |
-| Scope | `id:sign-in:write` (until v3.1 also `signin:write`) — (until v3.1 also accepted as `signin:write`). |
+| Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `legacy_login_revoke` |
 | CLI | `cbox id legacy_login revoke` |
@@ -2565,7 +2565,7 @@ Stream the audit trail to a SIEM (Splunk, Elastic, Graylog, CEF, JSON), Datadog,
 | | |
 |---|---|
 | REST | `POST /api/v1/log-streams` → `201` |
-| Scope | `id:log-streams:write` (until v3.1 also `log_streams:write`) — (until v3.1 also accepted as `log_streams:write`). |
+| Scope | `log_streams:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `log_streams_create` |
 | CLI | `cbox id log_streams create` |
@@ -2603,7 +2603,7 @@ Delete an audit log stream. Nothing more is delivered to its endpoint.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/log-streams/{id}` → `204` |
-| Scope | `id:log-streams:write` (until v3.1 also `log_streams:write`) — (until v3.1 also accepted as `log_streams:write`). |
+| Scope | `log_streams:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `log_streams_delete` |
 | CLI | `cbox id log_streams delete <id>` |
@@ -2619,7 +2619,7 @@ Get one audit log stream: destination, endpoint, auth scheme, owner and health. 
 | | |
 |---|---|
 | REST | `GET /api/v1/log-streams/{id}` → `200` |
-| Scope | `id:log-streams:read` (until v3.1 also `log_streams:read`) — (until v3.1 also accepted as `log_streams:read`). |
+| Scope | `log_streams:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `log_streams_get` |
 | CLI | `cbox id log_streams get <id>` |
@@ -2635,7 +2635,7 @@ List the SIEM destinations this environment's audit trail is streamed to, and wh
 | | |
 |---|---|
 | REST | `GET /api/v1/log-streams` → `200` |
-| Scope | `id:log-streams:read` (until v3.1 also `log_streams:read`) — (until v3.1 also accepted as `log_streams:read`). |
+| Scope | `log_streams:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `log_streams_list` |
 | CLI | `cbox id log_streams list` |
@@ -2652,7 +2652,7 @@ Send one test event to a log stream now and report whether the destination accep
 | | |
 |---|---|
 | REST | `POST /api/v1/log-streams/{id}/test` → `200` |
-| Scope | `id:log-streams:write` (until v3.1 also `log_streams:write`) — (until v3.1 also accepted as `log_streams:write`). |
+| Scope | `log_streams:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `log_streams_test` |
 | CLI | `cbox id log_streams test <id>` |
@@ -2668,7 +2668,7 @@ Change an audit log stream's name, destination, endpoint, options or credential 
 | | |
 |---|---|
 | REST | `PATCH /api/v1/log-streams/{id}` → `200` |
-| Scope | `id:log-streams:write` (until v3.1 also `log_streams:write`) — (until v3.1 also accepted as `log_streams:write`). |
+| Scope | `log_streams:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `log_streams_update` |
 | CLI | `cbox id log_streams update <id>` |
@@ -2708,7 +2708,7 @@ Add an existing user to an organization on a tier (`admin` or `member`), optiona
 | | |
 |---|---|
 | REST | `POST /api/v1/organizations/{organization_id}/members` → `201` |
-| Scope | `id:organization-memberships:write` (until v3.1 also `members:write`) — (until v3.1 also accepted as `members:write`). |
+| Scope | `members:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `members_add` |
 | CLI | `cbox id members add <organization_id>` |
@@ -2729,7 +2729,7 @@ List an organization's members, a page at a time, with each one's tier, status, 
 | | |
 |---|---|
 | REST | `GET /api/v1/organizations/{organization_id}/members` → `200` |
-| Scope | `id:organization-memberships:read` (until v3.1 also `members:read`) — (until v3.1 also accepted as `members:read`). |
+| Scope | `members:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `members_list` |
 | CLI | `cbox id members list <organization_id>` |
@@ -2747,7 +2747,7 @@ Remove a member from an organization, with every role they held there. The last 
 | | |
 |---|---|
 | REST | `DELETE /api/v1/organizations/{organization_id}/members/{user_id}` → `204` |
-| Scope | `id:organization-memberships:write` (until v3.1 also `members:write`) — (until v3.1 also accepted as `members:write`). |
+| Scope | `members:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `members_remove` |
 | CLI | `cbox id members remove <organization_id> <user_id>` |
@@ -2764,7 +2764,7 @@ Change a member's tier to `admin` or `member`. Ownership moves with transfer-own
 | | |
 |---|---|
 | REST | `PATCH /api/v1/organizations/{organization_id}/members/{user_id}` → `200` |
-| Scope | `id:organization-memberships:write` (until v3.1 also `members:write`) — (until v3.1 also accepted as `members:write`). |
+| Scope | `members:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `members_update` |
 | CLI | `cbox id members update <organization_id> <user_id>` |
@@ -2784,7 +2784,7 @@ Read current environment onboarding evidence. Does not certify application secur
 | | |
 |---|---|
 | REST | `GET /api/v1/onboarding` → `200` |
-| Scope | `id:sign-in:read` (until v3.1 also `signin:read`) — (until v3.1 also accepted as `signin:read`). |
+| Scope | `signin:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `onboarding_get` |
 | CLI | `cbox id onboarding get` |
@@ -2800,7 +2800,7 @@ Create an organization in this environment, optionally with an existing user as 
 | | |
 |---|---|
 | REST | `POST /api/v1/organizations` → `201` |
-| Scope | `id:organizations:write` (until v3.1 also `organizations:write`) — (until v3.1 also accepted as `organizations:write`). |
+| Scope | `organizations:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `organizations_create` |
 | CLI | `cbox id organizations create` |
@@ -2821,7 +2821,7 @@ Archive an organization: everyone in it loses access at once. The records are ke
 | | |
 |---|---|
 | REST | `DELETE /api/v1/organizations/{id}` → `200` |
-| Scope | `id:organizations:write` (until v3.1 also `organizations:write`) — (until v3.1 also accepted as `organizations:write`). |
+| Scope | `organizations:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `organizations_delete` |
 | CLI | `cbox id organizations delete <id>` |
@@ -2837,7 +2837,7 @@ Claim an email domain (acme.com) for an organization. Returns the DNS TXT record
 | | |
 |---|---|
 | REST | `POST /api/v1/organizations/{organization_id}/domains` → `201` |
-| Scope | `id:organizations:write` (until v3.1 also `organizations:write`) — (until v3.1 also accepted as `organizations:write`). |
+| Scope | `organizations:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `organizations_domains_add` |
 | CLI | `cbox id organizations domains add <organization_id>` |
@@ -2854,7 +2854,7 @@ Turn capture on or off for a verified domain: with it on, everyone with an addre
 | | |
 |---|---|
 | REST | `PUT /api/v1/organizations/{organization_id}/domains/{domain_id}/capture` → `200` |
-| Scope | `id:organizations:write` (until v3.1 also `organizations:write`) — (until v3.1 also accepted as `organizations:write`). |
+| Scope | `organizations:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `organizations_domains_capture` |
 | CLI | `cbox id organizations domains capture <organization_id> <domain_id>` |
@@ -2872,7 +2872,7 @@ List the email domains an organization claims, whether each is verified and capt
 | | |
 |---|---|
 | REST | `GET /api/v1/organizations/{organization_id}/domains` → `200` |
-| Scope | `id:organizations:read` (until v3.1 also `organizations:read`) — (until v3.1 also accepted as `organizations:read`). |
+| Scope | `organizations:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `organizations_domains_list` |
 | CLI | `cbox id organizations domains list <organization_id>` |
@@ -2888,7 +2888,7 @@ Remove a claimed email domain from an organization. Capture on it ends.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/organizations/{organization_id}/domains/{domain_id}` → `204` |
-| Scope | `id:organizations:write` (until v3.1 also `organizations:write`) — (until v3.1 also accepted as `organizations:write`). |
+| Scope | `organizations:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `organizations_domains_remove` |
 | CLI | `cbox id organizations domains remove <organization_id> <domain_id>` |
@@ -2905,7 +2905,7 @@ Check a claimed domain's DNS TXT record and mark the domain verified if it is pu
 | | |
 |---|---|
 | REST | `POST /api/v1/organizations/{organization_id}/domains/{domain_id}/verify` → `200` |
-| Scope | `id:organizations:write` (until v3.1 also `organizations:write`) — (until v3.1 also accepted as `organizations:write`). |
+| Scope | `organizations:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `organizations_domains_verify` |
 | CLI | `cbox id organizations domains verify <organization_id> <domain_id>` |
@@ -2922,7 +2922,7 @@ Get one organization of this environment by id.
 | | |
 |---|---|
 | REST | `GET /api/v1/organizations/{id}` → `200` |
-| Scope | `id:organizations:read` (until v3.1 also `organizations:read`) — (until v3.1 also accepted as `organizations:read`). |
+| Scope | `organizations:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `organizations_get` |
 | CLI | `cbox id organizations get <id>` |
@@ -2938,7 +2938,7 @@ List the organizations in this environment, a page at a time. Narrow by a `q` fr
 | | |
 |---|---|
 | REST | `GET /api/v1/organizations` → `200` |
-| Scope | `id:organizations:read` (until v3.1 also `organizations:read`) — (until v3.1 also accepted as `organizations:read`). |
+| Scope | `organizations:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `organizations_list` |
 | CLI | `cbox id organizations list` |
@@ -2957,7 +2957,7 @@ Lift an organization's suspension so its members can sign in again.
 | | |
 |---|---|
 | REST | `POST /api/v1/organizations/{id}/reactivate` → `200` |
-| Scope | `id:organizations:write` (until v3.1 also `organizations:write`) — (until v3.1 also accepted as `organizations:write`). |
+| Scope | `organizations:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `organizations_reactivate` |
 | CLI | `cbox id organizations reactivate <id>` |
@@ -2973,7 +2973,7 @@ Suspend an organization: its members cannot sign in to it until it is reactivate
 | | |
 |---|---|
 | REST | `POST /api/v1/organizations/{id}/suspend` → `200` |
-| Scope | `id:organizations:write` (until v3.1 also `organizations:write`) — (until v3.1 also accepted as `organizations:write`). |
+| Scope | `organizations:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `organizations_suspend` |
 | CLI | `cbox id organizations suspend <id>` |
@@ -2989,7 +2989,7 @@ Make a member the owner of an organization. Every current owner stays on as an a
 | | |
 |---|---|
 | REST | `POST /api/v1/organizations/{id}/transfer-ownership` → `200` |
-| Scope | `id:organizations:write` (until v3.1 also `organizations:write`) — (until v3.1 also accepted as `organizations:write`). |
+| Scope | `organizations:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `organizations_transfer_ownership` |
 | CLI | `cbox id organizations transfer_ownership <id>` |
@@ -3006,7 +3006,7 @@ Rename an organization, change its slug, or replace its metadata. Only what is s
 | | |
 |---|---|
 | REST | `PATCH /api/v1/organizations/{id}` → `200` |
-| Scope | `id:organizations:write` (until v3.1 also `organizations:write`) — (until v3.1 also accepted as `organizations:write`). |
+| Scope | `organizations:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `organizations_update` |
 | CLI | `cbox id organizations update <id>` |
@@ -3027,7 +3027,7 @@ Register a downstream app this platform pushes an organization's people to over 
 | | |
 |---|---|
 | REST | `POST /api/v1/provisioning-targets` → `201` |
-| Scope | `id:provisioning-targets:write` (until v3.1 also `provisioning:write`) — (until v3.1 also accepted as `provisioning:write`). |
+| Scope | `provisioning:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `provisioning_targets_create` |
 | CLI | `cbox id provisioning targets create` |
@@ -3051,7 +3051,7 @@ Delete a downstream SCIM target. Nothing more is pushed to it.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/provisioning-targets/{id}` → `204` |
-| Scope | `id:provisioning-targets:write` (until v3.1 also `provisioning:write`) — (until v3.1 also accepted as `provisioning:write`). |
+| Scope | `provisioning:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `provisioning_targets_delete` |
 | CLI | `cbox id provisioning targets delete <id>` |
@@ -3068,7 +3068,7 @@ Read one downstream SCIM target: its URL, auth scheme, status and last error. Ne
 | | |
 |---|---|
 | REST | `GET /api/v1/provisioning-targets/{id}` → `200` |
-| Scope | `id:provisioning-targets:read` (until v3.1 also `provisioning:read`) — (until v3.1 also accepted as `provisioning:read`). |
+| Scope | `provisioning:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `provisioning_targets_get` |
 | CLI | `cbox id provisioning targets get <id>` |
@@ -3085,7 +3085,7 @@ List the downstream SCIM targets people are provisioned to, optionally for one o
 | | |
 |---|---|
 | REST | `GET /api/v1/provisioning-targets` → `200` |
-| Scope | `id:provisioning-targets:read` (until v3.1 also `provisioning:read`) — (until v3.1 also accepted as `provisioning:read`). |
+| Scope | `provisioning:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `provisioning_targets_list` |
 | CLI | `cbox id provisioning targets list` |
@@ -3103,7 +3103,7 @@ Pause or resume pushing people to a downstream SCIM target.
 | | |
 |---|---|
 | REST | `POST /api/v1/provisioning-targets/{id}/status` → `200` |
-| Scope | `id:provisioning-targets:write` (until v3.1 also `provisioning:write`) — (until v3.1 also accepted as `provisioning:write`). |
+| Scope | `provisioning:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `provisioning_targets_status_set` |
 | CLI | `cbox id provisioning targets status set <id>` |
@@ -3123,7 +3123,7 @@ Disconnect a person's connected account: revoke it at the provider where support
 | | |
 |---|---|
 | REST | `DELETE /api/v1/pipes/{id}/connections/{connection_id}` → `204` |
-| Scope | `id:pipes:write` (until v3.1 also `pipes:write`) — (until v3.1 also accepted as `pipes:write`). |
+| Scope | `pipes:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `pipes_connections_delete` |
 | CLI | `cbox id pipes connections delete <id> <connection_id>` |
@@ -3140,7 +3140,7 @@ List the accounts people connected through a pipe: who, which account, granted s
 | | |
 |---|---|
 | REST | `GET /api/v1/pipes/{id}/connections` → `200` |
-| Scope | `id:pipes:read` (until v3.1 also `pipes:read`) — (until v3.1 also accepted as `pipes:read`). |
+| Scope | `pipes:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `pipes_connections_list` |
 | CLI | `cbox id pipes connections list <id>` |
@@ -3159,7 +3159,7 @@ Configure a pipe: the environment's OAuth app at a third-party provider (GitHub,
 | | |
 |---|---|
 | REST | `POST /api/v1/pipes` → `201` |
-| Scope | `id:pipes:write` (until v3.1 also `pipes:write`) — (until v3.1 also accepted as `pipes:write`). |
+| Scope | `pipes:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `pipes_create` |
 | CLI | `cbox id pipes create` |
@@ -3181,7 +3181,7 @@ Remove a pipe and every connection through it. Their tokens are revoked here, no
 | | |
 |---|---|
 | REST | `DELETE /api/v1/pipes/{id}` → `204` |
-| Scope | `id:pipes:write` (until v3.1 also `pipes:write`) — (until v3.1 also accepted as `pipes:write`). |
+| Scope | `pipes:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `pipes_delete` |
 | CLI | `cbox id pipes delete <id>` |
@@ -3197,7 +3197,7 @@ Show one pipe: its provider, OAuth client id, scopes, the redirect URI to regist
 | | |
 |---|---|
 | REST | `GET /api/v1/pipes/{id}` → `200` |
-| Scope | `id:pipes:read` (until v3.1 also `pipes:read`) — (until v3.1 also accepted as `pipes:read`). |
+| Scope | `pipes:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `pipes_get` |
 | CLI | `cbox id pipes get <id>` |
@@ -3213,7 +3213,7 @@ Grant an app (by OAuth client id) the right to lease fresh access tokens for the
 | | |
 |---|---|
 | REST | `POST /api/v1/pipes/{id}/grants` → `200` |
-| Scope | `id:pipes:write` (until v3.1 also `pipes:write`) — (until v3.1 also accepted as `pipes:write`). |
+| Scope | `pipes:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `pipes_grants_create` |
 | CLI | `cbox id pipes grants create <id>` |
@@ -3230,7 +3230,7 @@ Withdraw an app's right to lease the tokens people connected through this pipe.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/pipes/{id}/grants/{client_id}` → `204` |
-| Scope | `id:pipes:write` (until v3.1 also `pipes:write`) — (until v3.1 also accepted as `pipes:write`). |
+| Scope | `pipes:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `pipes_grants_delete` |
 | CLI | `cbox id pipes grants delete <id> <client_id>` |
@@ -3247,7 +3247,7 @@ List the pipes — the third-party providers people can connect their accounts t
 | | |
 |---|---|
 | REST | `GET /api/v1/pipes` → `200` |
-| Scope | `id:pipes:read` (until v3.1 also `pipes:read`) — (until v3.1 also accepted as `pipes:read`). |
+| Scope | `pipes:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `pipes_list` |
 | CLI | `cbox id pipes list` |
@@ -3264,7 +3264,7 @@ Change a pipe — client id, client secret (sealed), scopes, parameters, or whet
 | | |
 |---|---|
 | REST | `PATCH /api/v1/pipes/{id}` → `200` |
-| Scope | `id:pipes:write` (until v3.1 also `pipes:write`) — (until v3.1 also accepted as `pipes:write`). |
+| Scope | `pipes:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `pipes_update` |
 | CLI | `cbox id pipes update <id>` |
@@ -3289,7 +3289,7 @@ Create a publishable frontend key for a browser app, usable only from the origin
 | | |
 |---|---|
 | REST | `POST /api/v1/frontend-keys` → `201` |
-| Scope | `id:frontend-keys:write` (until v3.1 also `frontend_keys:write`) — (until v3.1 also accepted as `frontend_keys:write`). |
+| Scope | `frontend_keys:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `frontend_keys_create` |
 | CLI | `cbox id frontend_keys create` |
@@ -3307,7 +3307,7 @@ List the publishable frontend keys browser apps present to the Frontend API, in 
 | | |
 |---|---|
 | REST | `GET /api/v1/frontend-keys` → `200` |
-| Scope | `id:frontend-keys:read` (until v3.1 also `frontend_keys:read`) — (until v3.1 also accepted as `frontend_keys:read`). |
+| Scope | `frontend_keys:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `frontend_keys_list` |
 | CLI | `cbox id frontend_keys list` |
@@ -3324,7 +3324,7 @@ Revoke a publishable frontend key. Pages still holding it stop working immediate
 | | |
 |---|---|
 | REST | `DELETE /api/v1/frontend-keys/{id}` → `204` |
-| Scope | `id:frontend-keys:write` (until v3.1 also `frontend_keys:write`) — (until v3.1 also accepted as `frontend_keys:write`). |
+| Scope | `frontend_keys:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `frontend_keys_revoke` |
 | CLI | `cbox id frontend_keys revoke <id>` |
@@ -3340,7 +3340,7 @@ Replace the exact list of origins allowed to present a publishable frontend key.
 | | |
 |---|---|
 | REST | `PUT /api/v1/frontend-keys/{id}/origins` → `200` |
-| Scope | `id:frontend-keys:write` (until v3.1 also `frontend_keys:write`) — (until v3.1 also accepted as `frontend_keys:write`). |
+| Scope | `frontend_keys:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `frontend_keys_set_origins` |
 | CLI | `cbox id frontend_keys set_origins <id>` |
@@ -3359,7 +3359,7 @@ Read one Radar decision: the verdict, whether it was enforced, the deciding rule
 | | |
 |---|---|
 | REST | `GET /api/v1/radar/decisions/{id}` → `200` |
-| Scope | `id:radar:read` (until v3.1 also `radar:read`) — (until v3.1 also accepted as `radar:read`). |
+| Scope | `radar:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `radar_decisions_get` |
 | CLI | `cbox id radar decisions get <id>` |
@@ -3375,7 +3375,7 @@ List this environment's Radar decisions newest first — verdict, deciding rule,
 | | |
 |---|---|
 | REST | `GET /api/v1/radar/decisions` → `200` |
-| Scope | `id:radar:read` (until v3.1 also `radar:read`) — (until v3.1 also accepted as `radar:read`). |
+| Scope | `radar:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `radar_decisions_list` |
 | CLI | `cbox id radar decisions list` |
@@ -3402,7 +3402,7 @@ Add an entry to this environment's Radar allow or deny list: an IP or CIDR range
 | | |
 |---|---|
 | REST | `POST /api/v1/radar/lists` → `201` |
-| Scope | `id:radar:write` (until v3.1 also `radar:write`) — (until v3.1 also accepted as `radar:write`). |
+| Scope | `radar:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `radar_lists_add` |
 | CLI | `cbox id radar lists add` |
@@ -3422,7 +3422,7 @@ List this environment's Radar allow and deny entries — IPs and CIDR ranges, ad
 | | |
 |---|---|
 | REST | `GET /api/v1/radar/lists` → `200` |
-| Scope | `id:radar:read` (until v3.1 also `radar:read`) — (until v3.1 also accepted as `radar:read`). |
+| Scope | `radar:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `radar_lists_list` |
 | CLI | `cbox id radar lists list` |
@@ -3441,7 +3441,7 @@ Remove an entry from this environment's Radar allow or deny list.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/radar/lists/{id}` → `204` |
-| Scope | `id:radar:write` (until v3.1 also `radar:write`) — (until v3.1 also accepted as `radar:write`). |
+| Scope | `radar:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `radar_lists_remove` |
 | CLI | `cbox id radar lists remove <id>` |
@@ -3457,7 +3457,7 @@ Switch this environment's Radar between `monitor` (verdicts recorded, never acte
 | | |
 |---|---|
 | REST | `PUT /api/v1/radar/mode` → `200` |
-| Scope | `id:radar-settings:write` (until v3.1 also `radar:manage`) — (until v3.1 also accepted as `radar:manage`). |
+| Scope | `radar:manage` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `radar_mode_set` |
 | CLI | `cbox id radar mode set` |
@@ -3473,7 +3473,7 @@ Add a Radar rule: when EVERY condition (field, operator, value) holds, allow, ch
 | | |
 |---|---|
 | REST | `POST /api/v1/radar/rules` → `201` |
-| Scope | `id:radar:write` (until v3.1 also `radar:write`) — (until v3.1 also accepted as `radar:write`). |
+| Scope | `radar:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `radar_rules_create` |
 | CLI | `cbox id radar rules create` |
@@ -3499,7 +3499,7 @@ Delete a Radar rule. Attempts it decided are decided by the next matching rule, 
 | | |
 |---|---|
 | REST | `DELETE /api/v1/radar/rules/{id}` → `204` |
-| Scope | `id:radar:write` (until v3.1 also `radar:write`) — (until v3.1 also accepted as `radar:write`). |
+| Scope | `radar:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `radar_rules_delete` |
 | CLI | `cbox id radar rules delete <id>` |
@@ -3515,7 +3515,7 @@ Read one Radar rule: its action, the flows it applies to, its position and its c
 | | |
 |---|---|
 | REST | `GET /api/v1/radar/rules/{id}` → `200` |
-| Scope | `id:radar:read` (until v3.1 also `radar:read`) — (until v3.1 also accepted as `radar:read`). |
+| Scope | `radar:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `radar_rules_get` |
 | CLI | `cbox id radar rules get <id>` |
@@ -3531,7 +3531,7 @@ List this environment's own Radar rules in evaluation order (the first whose con
 | | |
 |---|---|
 | REST | `GET /api/v1/radar/rules` → `200` |
-| Scope | `id:radar:read` (until v3.1 also `radar:read`) — (until v3.1 also accepted as `radar:read`). |
+| Scope | `radar:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `radar_rules_list` |
 | CLI | `cbox id radar rules list` |
@@ -3548,7 +3548,7 @@ Set the order Radar rules are evaluated in: `rule_ids` lists every rule of the e
 | | |
 |---|---|
 | REST | `PUT /api/v1/radar/rules/order` → `204` |
-| Scope | `id:radar:write` (until v3.1 also `radar:write`) — (until v3.1 also accepted as `radar:write`). |
+| Scope | `radar:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `radar_rules_reorder` |
 | CLI | `cbox id radar rules reorder` |
@@ -3564,7 +3564,7 @@ Change a Radar rule: its name, description, action, flows, enabled state, positi
 | | |
 |---|---|
 | REST | `PATCH /api/v1/radar/rules/{id}` → `200` |
-| Scope | `id:radar:write` (until v3.1 also `radar:write`) — (until v3.1 also accepted as `radar:write`). |
+| Scope | `radar:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `radar_rules_update` |
 | CLI | `cbox id radar rules update <id>` |
@@ -3591,7 +3591,7 @@ Read this environment's Radar settings: the mode (monitor or enforce, and whethe
 | | |
 |---|---|
 | REST | `GET /api/v1/radar/settings` → `200` |
-| Scope | `id:radar:read` (until v3.1 also `radar:read`) — (until v3.1 also accepted as `radar:read`). |
+| Scope | `radar:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `radar_settings_get` |
 | CLI | `cbox id radar settings get` |
@@ -3605,7 +3605,7 @@ Tune this environment's built-in Radar rules: `builtin_rules` maps a rule key (c
 | | |
 |---|---|
 | REST | `PATCH /api/v1/radar/settings` → `200` |
-| Scope | `id:radar:write` (until v3.1 also `radar:write`) — (until v3.1 also accepted as `radar:write`). |
+| Scope | `radar:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `radar_settings_update` |
 | CLI | `cbox id radar settings update` |
@@ -3623,7 +3623,7 @@ Replace one app's member roles atomically. Other apps and the organization membe
 | | |
 |---|---|
 | REST | `PUT /api/v1/organizations/{organization_id}/members/{user_id}/apps/{client_id}/roles` → `200` |
-| Scope | `id:roles:write` (until v3.1 also `roles:write`) — (until v3.1 also accepted as `roles:write`). |
+| Scope | `roles:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `members_apps_roles_replace` |
 | CLI | `cbox id members apps roles replace <organization_id> <user_id> <client_id>` |
@@ -3643,7 +3643,7 @@ Grant a member an access role inside one organization, with the environment's au
 | | |
 |---|---|
 | REST | `PUT /api/v1/organizations/{organization_id}/members/{user_id}/roles/{role_id}` → `200` |
-| Scope | `id:roles:write` (until v3.1 also `roles:write`) — (until v3.1 also accepted as `roles:write`). |
+| Scope | `roles:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `members_roles_grant` |
 | CLI | `cbox id members roles grant <organization_id> <user_id> <role_id>` |
@@ -3662,7 +3662,7 @@ List the access roles a member holds inside one organization (staff roles held e
 | | |
 |---|---|
 | REST | `GET /api/v1/organizations/{organization_id}/members/{user_id}/roles` → `200` |
-| Scope | `id:roles:read` (until v3.1 also `roles:read`) — (until v3.1 also accepted as `roles:read`). |
+| Scope | `roles:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `members_roles_list` |
 | CLI | `cbox id members roles list <organization_id> <user_id>` |
@@ -3679,7 +3679,7 @@ Take an access role back from a member inside one organization. Name the role by
 | | |
 |---|---|
 | REST | `DELETE /api/v1/organizations/{organization_id}/members/{user_id}/roles/{role_id}` → `204` |
-| Scope | `id:roles:write` (until v3.1 also `roles:write`) — (until v3.1 also accepted as `roles:write`). |
+| Scope | `roles:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `members_roles_revoke` |
 | CLI | `cbox id members roles revoke <organization_id> <user_id> <role_id>` |
@@ -3698,7 +3698,7 @@ Author a manual `feature:action` permission, shared with the environment (organi
 | | |
 |---|---|
 | REST | `POST /api/v1/permissions` → `201` |
-| Scope | `id:role-definitions:write` (until v3.1 also `role_definitions:write`) — (until v3.1 also accepted as `role_definitions:write`). |
+| Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `permissions_create` |
 | CLI | `cbox id permissions create` |
@@ -3717,7 +3717,7 @@ Delete a manual permission: every role carrying it loses it first.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/permissions/{id}` → `204` |
-| Scope | `id:role-definitions:write` (until v3.1 also `role_definitions:write`) — (until v3.1 also accepted as `role_definitions:write`). |
+| Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `permissions_delete` |
 | CLI | `cbox id permissions delete <id>` |
@@ -3733,7 +3733,7 @@ List the permission catalogue roles are composed from, a page at a time. Narrow 
 | | |
 |---|---|
 | REST | `GET /api/v1/permissions` → `200` |
-| Scope | `id:roles:read` (until v3.1 also `roles:read`) — (until v3.1 also accepted as `roles:read`). |
+| Scope | `roles:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `permissions_list` |
 | CLI | `cbox id permissions list` |
@@ -3753,7 +3753,7 @@ Change a manual permission's description, and on the shared tier whether organiz
 | | |
 |---|---|
 | REST | `PATCH /api/v1/permissions/{id}` → `200` |
-| Scope | `id:role-definitions:write` (until v3.1 also `role_definitions:write`) — (until v3.1 also accepted as `role_definitions:write`). |
+| Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `permissions_update` |
 | CLI | `cbox id permissions update <id>` |
@@ -3771,7 +3771,7 @@ Define a role for one organization, or (organization_id null) for the whole envi
 | | |
 |---|---|
 | REST | `POST /api/v1/roles` → `201` |
-| Scope | `id:role-definitions:write` (until v3.1 also `role_definitions:write`) — (until v3.1 also accepted as `role_definitions:write`). |
+| Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `roles_create` |
 | CLI | `cbox id roles create` |
@@ -3791,7 +3791,7 @@ Activate a reviewed application role definition for its existing holders.
 | | |
 |---|---|
 | REST | `POST /api/v1/roles/{id}/definition/activate` → `200` |
-| Scope | `id:role-definitions:write` (until v3.1 also `role_definitions:write`) — (until v3.1 also accepted as `role_definitions:write`). |
+| Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `roles_definition_activate` |
 | CLI | `cbox id roles definition activate <id>` |
@@ -3808,7 +3808,7 @@ Delete a role: everyone who holds it loses it. An app-declared role is removed f
 | | |
 |---|---|
 | REST | `DELETE /api/v1/roles/{id}` → `204` |
-| Scope | `id:role-definitions:write` (until v3.1 also `role_definitions:write`) — (until v3.1 also accepted as `role_definitions:write`). |
+| Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `roles_delete` |
 | CLI | `cbox id roles delete <id>` |
@@ -3824,7 +3824,7 @@ Get one role and the permissions it carries. Name it by id, or by manifest `key`
 | | |
 |---|---|
 | REST | `GET /api/v1/roles/{id}` → `200` |
-| Scope | `id:roles:read` (until v3.1 also `roles:read`) — (until v3.1 also accepted as `roles:read`). |
+| Scope | `roles:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `roles_get` |
 | CLI | `cbox id roles get <id>` |
@@ -3841,7 +3841,7 @@ List the roles that can be granted in this environment, with their permissions. 
 | | |
 |---|---|
 | REST | `GET /api/v1/roles` → `200` |
-| Scope | `id:roles:read` (until v3.1 also `roles:read`) — (until v3.1 also accepted as `roles:read`). |
+| Scope | `roles:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `roles_list` |
 | CLI | `cbox id roles list` |
@@ -3858,7 +3858,7 @@ Add a permission to a role: everyone holding the role gains it. The permission m
 | | |
 |---|---|
 | REST | `PUT /api/v1/roles/{id}/permissions/{permission_id}` → `200` |
-| Scope | `id:role-definitions:write` (until v3.1 also `role_definitions:write`) — (until v3.1 also accepted as `role_definitions:write`). |
+| Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `roles_permissions_grant` |
 | CLI | `cbox id roles permissions grant <id> <permission_id>` |
@@ -3875,7 +3875,7 @@ Remove a permission from a role: everyone holding the role loses it.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/roles/{id}/permissions/{permission_id}` → `200` |
-| Scope | `id:role-definitions:write` (until v3.1 also `role_definitions:write`) — (until v3.1 also accepted as `role_definitions:write`). |
+| Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `roles_permissions_revoke` |
 | CLI | `cbox id roles permissions revoke <id> <permission_id>` |
@@ -3892,7 +3892,7 @@ Rename a role or change its description. An app-declared role is changed in the 
 | | |
 |---|---|
 | REST | `PATCH /api/v1/roles/{id}` → `200` |
-| Scope | `id:role-definitions:write` (until v3.1 also `role_definitions:write`) — (until v3.1 also accepted as `role_definitions:write`). |
+| Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `roles_update` |
 | CLI | `cbox id roles update <id>` |
@@ -3910,7 +3910,7 @@ Whether a user holds a role everywhere in this environment: the grant, or 404. N
 | | |
 |---|---|
 | REST | `GET /api/v1/users/{id}/environment-roles/{role_id}` → `200` |
-| Scope | `id:roles:read` (until v3.1 also `roles:read`) — (until v3.1 also accepted as `roles:read`). |
+| Scope | `roles:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `users_environment_roles_get` |
 | CLI | `cbox id users environment_roles get <id> <role_id>` |
@@ -3928,7 +3928,7 @@ Grant a user a staff role: held everywhere in this environment, in every organiz
 | | |
 |---|---|
 | REST | `PUT /api/v1/users/{id}/environment-roles/{role_id}` → `200` |
-| Scope | `id:roles:write` (until v3.1 also `roles:write`) — (until v3.1 also accepted as `roles:write`). |
+| Scope | `roles:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `users_environment_roles_grant` |
 | CLI | `cbox id users environment_roles grant <id> <role_id>` |
@@ -3946,7 +3946,7 @@ List the staff roles a user holds everywhere in this environment (not those held
 | | |
 |---|---|
 | REST | `GET /api/v1/users/{id}/environment-roles` → `200` |
-| Scope | `id:roles:read` (until v3.1 also `roles:read`) — (until v3.1 also accepted as `roles:read`). |
+| Scope | `roles:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `users_environment_roles_list` |
 | CLI | `cbox id users environment_roles list <id>` |
@@ -3962,7 +3962,7 @@ Take a staff role (held everywhere in this environment) back from a user.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/users/{id}/environment-roles/{role_id}` → `204` |
-| Scope | `id:roles:write` (until v3.1 also `roles:write`) — (until v3.1 also accepted as `roles:write`). |
+| Scope | `roles:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `users_environment_roles_revoke` |
 | CLI | `cbox id users environment_roles revoke <id> <role_id>` |
@@ -3982,7 +3982,7 @@ Register a SAML app that signs people in with their account here. Decides where 
 | | |
 |---|---|
 | REST | `POST /api/v1/saml-apps` → `201` |
-| Scope | `id:saml-apps:write` (until v3.1 also `saml_apps:write`) — (until v3.1 also accepted as `saml_apps:write`). |
+| Scope | `saml_apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `saml_apps_create` |
 | CLI | `cbox id saml_apps create` |
@@ -4007,7 +4007,7 @@ Remove a SAML app. People can no longer sign in to it with their account here.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/saml-apps/{id}` → `204` |
-| Scope | `id:saml-apps:write` (until v3.1 also `saml_apps:write`) — (until v3.1 also accepted as `saml_apps:write`). |
+| Scope | `saml_apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `saml_apps_delete` |
 | CLI | `cbox id saml_apps delete <id>` |
@@ -4023,7 +4023,7 @@ Read one SAML app: its entity id, ACS URL, NameID and attribute mappings. Never 
 | | |
 |---|---|
 | REST | `GET /api/v1/saml-apps/{id}` → `200` |
-| Scope | `id:saml-apps:read` (until v3.1 also `saml_apps:read`) — (until v3.1 also accepted as `saml_apps:read`). |
+| Scope | `saml_apps:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `saml_apps_get` |
 | CLI | `cbox id saml_apps get <id>` |
@@ -4039,7 +4039,7 @@ List the SAML apps that trust this environment as their identity provider.
 | | |
 |---|---|
 | REST | `GET /api/v1/saml-apps` → `200` |
-| Scope | `id:saml-apps:read` (until v3.1 also `saml_apps:read`) — (until v3.1 also accepted as `saml_apps:read`). |
+| Scope | `saml_apps:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `saml_apps_list` |
 | CLI | `cbox id saml_apps list` |
@@ -4056,7 +4056,7 @@ Change a SAML app's entity id, ACS URL, NameID, attribute mappings, signing cert
 | | |
 |---|---|
 | REST | `PATCH /api/v1/saml-apps/{id}` → `200` |
-| Scope | `id:saml-apps:write` (until v3.1 also `saml_apps:write`) — (until v3.1 also accepted as `saml_apps:write`). |
+| Scope | `saml_apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `saml_apps_update` |
 | CLI | `cbox id saml_apps update <id>` |
@@ -4084,7 +4084,7 @@ Mint a management key for this environment, at most as wide as the caller. The v
 | | |
 |---|---|
 | REST | `POST /api/v1/keys` → `201` |
-| Scope | `id:environment-keys:write` (until v3.1 also `keys:write`, `id:organization-keys:write`) — (until v3.1 also accepted as `keys:write`, `id:organization-keys:write`). |
+| Scope | `keys:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `keys_create` |
 | CLI | `cbox id keys create` |
@@ -4107,7 +4107,7 @@ List this environment's management keys (names, scopes, parents, expiry, last us
 | | |
 |---|---|
 | REST | `GET /api/v1/keys` → `200` |
-| Scope | `id:environment-keys:read` (until v3.1 also `keys:read`) — (until v3.1 also accepted as `keys:read`). |
+| Scope | `keys:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `keys_list` |
 | CLI | `cbox id keys list` |
@@ -4124,7 +4124,7 @@ Revoke a management key and every key it minted, immediately.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/keys/{id}` → `204` |
-| Scope | `id:environment-keys:write` (until v3.1 also `keys:write`, `id:organization-keys:write`) — (until v3.1 also accepted as `keys:write`, `id:organization-keys:write`). |
+| Scope | `keys:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `keys_revoke` |
 | CLI | `cbox id keys revoke <id>` |
@@ -4140,7 +4140,7 @@ Rotate a management key: mint a successor with the same scopes and retire the ol
 | | |
 |---|---|
 | REST | `POST /api/v1/keys/{id}/rotate` → `201` |
-| Scope | `id:environment-keys:write` (until v3.1 also `keys:write`, `id:organization-keys:write`) — (until v3.1 also accepted as `keys:write`, `id:organization-keys:write`). |
+| Scope | `keys:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `keys_rotate` |
 | CLI | `cbox id keys rotate <id>` |
@@ -4160,7 +4160,7 @@ Read the authentication policy (password, MFA, SSO, lockout): the environment ba
 | | |
 |---|---|
 | REST | `GET /api/v1/sign-in/policy` → `200` |
-| Scope | `id:sign-in:read` (until v3.1 also `signin:read`) — (until v3.1 also accepted as `signin:read`). |
+| Scope | `signin:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `signin_policy_get` |
 | CLI | `cbox id signin policy get` |
@@ -4176,7 +4176,7 @@ Drop one organization's authentication policy override, so it inherits the envir
 | | |
 |---|---|
 | REST | `DELETE /api/v1/sign-in/policy/organizations/{organization_id}` → `204` |
-| Scope | `id:sign-in:write` (until v3.1 also `signin:write`) — (until v3.1 also accepted as `signin:write`). |
+| Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_policy_inherit` |
 | CLI | `cbox id signin policy inherit <organization_id>` |
@@ -4192,7 +4192,7 @@ Change the authentication policy of the environment baseline — including wheth
 | | |
 |---|---|
 | REST | `PATCH /api/v1/sign-in/policy` → `200` |
-| Scope | `id:sign-in:write` (until v3.1 also `signin:write`) — (until v3.1 also accepted as `signin:write`). |
+| Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_policy_update` |
 | CLI | `cbox id signin policy update` |
@@ -4220,7 +4220,7 @@ Switch self-service sign-up on or off: whether people can create an account and 
 | | |
 |---|---|
 | REST | `PUT /api/v1/sign-in/self-service-signup` → `200` |
-| Scope | `id:sign-in:write` (until v3.1 also `signin:write`) — (until v3.1 also accepted as `signin:write`). |
+| Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_self_service_signup_set` |
 | CLI | `cbox id signin self_service_signup set` |
@@ -4236,7 +4236,7 @@ Read the SMS second-factor policy: whether text-message codes are accepted, for 
 | | |
 |---|---|
 | REST | `GET /api/v1/sign-in/sms` → `200` |
-| Scope | `id:sign-in:read` (until v3.1 also `signin:read`) — (until v3.1 also accepted as `signin:read`). |
+| Scope | `signin:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `signin_sms_get` |
 | CLI | `cbox id signin sms get` |
@@ -4250,7 +4250,7 @@ Change the SMS second-factor policy: accept text-message codes or not, the count
 | | |
 |---|---|
 | REST | `PATCH /api/v1/sign-in/sms` → `200` |
-| Scope | `id:sign-in:write` (until v3.1 also `signin:write`) — (until v3.1 also accepted as `signin:write`). |
+| Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_sms_update` |
 | CLI | `cbox id signin sms update` |
@@ -4268,7 +4268,7 @@ Stop offering a social login provider. People who used it keep their accounts.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/sign-in/social-providers/{id}` → `204` |
-| Scope | `id:sign-in:write` (until v3.1 also `signin:write`) — (until v3.1 also accepted as `signin:write`). |
+| Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_social_delete` |
 | CLI | `cbox id signin social delete <id>` |
@@ -4285,7 +4285,7 @@ Turn a social login provider off without removing it. People who used it keep th
 | | |
 |---|---|
 | REST | `POST /api/v1/sign-in/social-providers/{id}/disable` → `200` |
-| Scope | `id:sign-in:write` (until v3.1 also `signin:write`) — (until v3.1 also accepted as `signin:write`). |
+| Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_social_disable` |
 | CLI | `cbox id signin social disable <id>` |
@@ -4302,7 +4302,7 @@ Turn a social login provider that was turned off back on, with the credentials i
 | | |
 |---|---|
 | REST | `POST /api/v1/sign-in/social-providers/{id}/enable` → `200` |
-| Scope | `id:sign-in:write` (until v3.1 also `signin:write`) — (until v3.1 also accepted as `signin:write`). |
+| Scope | `signin:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `signin_social_enable` |
 | CLI | `cbox id signin social enable <id>` |
@@ -4319,7 +4319,7 @@ Turn one of the environment's social login providers off (or back on) for one or
 | | |
 |---|---|
 | REST | `PUT /api/v1/sign-in/social-providers/inherited/{provider}` → `200` |
-| Scope | `id:sign-in:write` (until v3.1 also `signin:write`) — (until v3.1 also accepted as `signin:write`). |
+| Scope | `signin:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `signin_social_inherit` |
 | CLI | `cbox id signin social inherit <provider>` |
@@ -4337,7 +4337,7 @@ List the social login providers (Google, GitHub, Apple…) set up in this enviro
 | | |
 |---|---|
 | REST | `GET /api/v1/sign-in/social-providers` → `200` |
-| Scope | `id:sign-in:read` (until v3.1 also `signin:read`) — (until v3.1 also accepted as `signin:read`). |
+| Scope | `signin:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `signin_social_list` |
 | CLI | `cbox id signin social list` |
@@ -4356,7 +4356,7 @@ The social login buttons one organization's sign-in page shows (or the plain sig
 | | |
 |---|---|
 | REST | `GET /api/v1/sign-in/social-providers/offered` → `200` |
-| Scope | `id:sign-in:read` (until v3.1 also `signin:read`) — (until v3.1 also accepted as `signin:read`). |
+| Scope | `signin:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `signin_social_offered` |
 | CLI | `cbox id signin social offered` |
@@ -4372,7 +4372,7 @@ Enable a social login provider (Google, GitHub, Apple…) for the whole environm
 | | |
 |---|---|
 | REST | `POST /api/v1/sign-in/social-providers` → `201` |
-| Scope | `id:sign-in:write` (until v3.1 also `signin:write`) — (until v3.1 also accepted as `signin:write`). |
+| Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_social_set` |
 | CLI | `cbox id signin social set` |
@@ -4402,7 +4402,7 @@ Change a social login provider's client credentials, provider values or extra sc
 | | |
 |---|---|
 | REST | `PATCH /api/v1/sign-in/social-providers/{id}` → `200` |
-| Scope | `id:sign-in:write` (until v3.1 also `signin:write`) — (until v3.1 also accepted as `signin:write`). |
+| Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_social_update` |
 | CLI | `cbox id signin social update <id>` |
@@ -4430,7 +4430,7 @@ Send this environment's sign-in page straight to one of its own OpenID Connect c
 | | |
 |---|---|
 | REST | `PUT /api/v1/sign-in/through` → `200` |
-| Scope | `id:sign-in:write` (until v3.1 also `signin:write`) — (until v3.1 also accepted as `signin:write`). |
+| Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_through_set` |
 | CLI | `cbox id signin through set` |
@@ -4448,7 +4448,7 @@ End a support session now: every token it issued is revoked.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/support-sessions/{id}` → `204` |
-| Scope | `id:support-sessions:write` (until v3.1 also `support:write`) — (until v3.1 also accepted as `support:write`). |
+| Scope | `support:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `support_sessions_end` |
 | CLI | `cbox id support_sessions end <id>` |
@@ -4464,7 +4464,7 @@ Start a support session: a staff member holding the app's support:impersonate ac
 | | |
 |---|---|
 | REST | `POST /api/v1/support-sessions` → `201` |
-| Scope | `id:support-sessions:write` (until v3.1 also `support:write`) — (until v3.1 also accepted as `support:write`). |
+| Scope | `support:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `support_sessions_start` |
 | CLI | `cbox id support_sessions start` |
@@ -4492,7 +4492,7 @@ Grant an app (by OAuth client id) the right to lease a stored credential.
 | | |
 |---|---|
 | REST | `POST /api/v1/token-vault/secrets/{id}/grants` → `200` |
-| Scope | `id:vault-secrets:write` (until v3.1 also `token_vault:write`) — (until v3.1 also accepted as `token_vault:write`). |
+| Scope | `token_vault:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `token_vault_grants_create` |
 | CLI | `cbox id token_vault grants create <id>` |
@@ -4510,7 +4510,7 @@ Withdraw an app's right to lease a stored credential.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/token-vault/secrets/{id}/grants/{client_id}` → `204` |
-| Scope | `id:vault-secrets:write` (until v3.1 also `token_vault:write`) — (until v3.1 also accepted as `token_vault:write`). |
+| Scope | `token_vault:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `token_vault_grants_delete` |
 | CLI | `cbox id token_vault grants delete <id> <client_id>` |
@@ -4528,7 +4528,7 @@ Store a downstream credential (a third-party API key) in an organization's token
 | | |
 |---|---|
 | REST | `POST /api/v1/token-vault/secrets` → `201` |
-| Scope | `id:vault-secrets:write` (until v3.1 also `token_vault:write`) — (until v3.1 also accepted as `token_vault:write`). |
+| Scope | `token_vault:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `token_vault_secrets_create` |
 | CLI | `cbox id token_vault secrets create` |
@@ -4547,7 +4547,7 @@ Read one stored credential and the client ids granted to lease it. Never its val
 | | |
 |---|---|
 | REST | `GET /api/v1/token-vault/secrets/{id}` → `200` |
-| Scope | `id:vault-secrets:read` (until v3.1 also `token_vault:read`) — (until v3.1 also accepted as `token_vault:read`). |
+| Scope | `token_vault:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `token_vault_secrets_get` |
 | CLI | `cbox id token_vault secrets get <id>` |
@@ -4564,7 +4564,7 @@ List the downstream credentials stored in an organization's token vault (or the 
 | | |
 |---|---|
 | REST | `GET /api/v1/token-vault/secrets` → `200` |
-| Scope | `id:vault-secrets:read` (until v3.1 also `token_vault:read`) — (until v3.1 also accepted as `token_vault:read`). |
+| Scope | `token_vault:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `token_vault_secrets_list` |
 | CLI | `cbox id token_vault secrets list` |
@@ -4582,7 +4582,7 @@ Revoke a stored credential permanently. No app can lease it again.
 | | |
 |---|---|
 | REST | `POST /api/v1/token-vault/secrets/{id}/revoke` → `200` |
-| Scope | `id:vault-secrets:write` (until v3.1 also `token_vault:write`) — (until v3.1 also accepted as `token_vault:write`). |
+| Scope | `token_vault:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `token_vault_secrets_revoke` |
 | CLI | `cbox id token_vault secrets revoke <id>` |
@@ -4599,7 +4599,7 @@ Replace a stored credential's value. Every later lease hands out the new one. Th
 | | |
 |---|---|
 | REST | `POST /api/v1/token-vault/secrets/{id}/rotate` → `200` |
-| Scope | `id:vault-secrets:write` (until v3.1 also `token_vault:write`) — (until v3.1 also accepted as `token_vault:write`). |
+| Scope | `token_vault:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `token_vault_secrets_rotate` |
 | CLI | `cbox id token_vault secrets rotate <id>` |
@@ -4619,7 +4619,7 @@ Create or replace the app and webhook grants for a user-property namespace. Empt
 | | |
 |---|---|
 | REST | `PUT /api/v1/user-property-namespaces/{name}` → `200` |
-| Scope | `id:user-property-namespaces:write` (until v3.1 also `user_property_namespaces:write`) — (until v3.1 also accepted as `user_property_namespaces:write`). |
+| Scope | `user_property_namespaces:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `user_property_namespaces_configure` |
 | CLI | `cbox id user_property_namespaces configure <name>` |
@@ -4638,7 +4638,7 @@ Read the app and webhook grants for a user-property namespace.
 | | |
 |---|---|
 | REST | `GET /api/v1/user-property-namespaces/{name}` → `200` |
-| Scope | `id:user-property-namespaces:read` (until v3.1 also `user_property_namespaces:read`) — (until v3.1 also accepted as `user_property_namespaces:read`). |
+| Scope | `user_property_namespaces:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `user_property_namespaces_show` |
 | CLI | `cbox id user_property_namespaces show <name>` |
@@ -4656,7 +4656,7 @@ Create a user in this environment, optionally with a password, and optionally ma
 | | |
 |---|---|
 | REST | `POST /api/v1/users` → `201` |
-| Scope | `id:users:write` (until v3.1 also `users:write`) — (until v3.1 also accepted as `users:write`). |
+| Scope | `users:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `users_create` |
 | CLI | `cbox id users create` |
@@ -4675,7 +4675,7 @@ Deactivate a user: they can no longer sign in, and every OAuth grant they hold i
 | | |
 |---|---|
 | REST | `DELETE /api/v1/users/{id}` → `200` |
-| Scope | `id:users:write` (until v3.1 also `users:write`) — (until v3.1 also accepted as `users:write`). |
+| Scope | `users:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `users_deactivate` |
 | CLI | `cbox id users deactivate <id>` |
@@ -4691,7 +4691,7 @@ Erase a person (GDPR Art. 17): revoke their sessions and tokens, delete their cr
 | | |
 |---|---|
 | REST | `POST /api/v1/users/{id}/erase` → `200` |
-| Scope | `id:user-erasures:write` (until v3.1 also `users:erase`) — (until v3.1 also accepted as `users:erase`). |
+| Scope | `users:erase` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `users_erase` |
 | CLI | `cbox id users erase <id>` |
@@ -4707,7 +4707,7 @@ Get one user of this environment by id.
 | | |
 |---|---|
 | REST | `GET /api/v1/users/{id}` → `200` |
-| Scope | `id:users:read` (until v3.1 also `users:read`) — (until v3.1 also accepted as `users:read`). |
+| Scope | `users:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `users_get` |
 | CLI | `cbox id users get <id>` |
@@ -4723,7 +4723,7 @@ List the users in this environment, a page at a time. Narrow by exact `email`, a
 | | |
 |---|---|
 | REST | `GET /api/v1/users` → `200` |
-| Scope | `id:users:read` (until v3.1 also `users:read`) — (until v3.1 also accepted as `users:read`). |
+| Scope | `users:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `users_list` |
 | CLI | `cbox id users list` |
@@ -4743,7 +4743,7 @@ Reset a user's two-factor authentication: their authenticator and recovery codes
 | | |
 |---|---|
 | REST | `DELETE /api/v1/users/{id}/mfa` → `204` |
-| Scope | `id:users:write` (until v3.1 also `users:write`) — (until v3.1 also accepted as `users:write`). |
+| Scope | `users:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `users_mfa_reset` |
 | CLI | `cbox id users mfa reset <id>` |
@@ -4759,7 +4759,7 @@ Remove a user's phone number for text-message sign-in codes. Their other factors
 | | |
 |---|---|
 | REST | `DELETE /api/v1/users/{id}/mfa/sms` → `204` |
-| Scope | `id:users:write` (until v3.1 also `users:write`) — (until v3.1 also accepted as `users:write`). |
+| Scope | `users:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `users_mfa_sms_remove` |
 | CLI | `cbox id users mfa sms remove <id>` |
@@ -4775,7 +4775,7 @@ Set a user's password, temporary by default, and mail it to them unless told not
 | | |
 |---|---|
 | REST | `POST /api/v1/users/{id}/password` → `200` |
-| Scope | `id:users:write` (until v3.1 also `users:write`) — (until v3.1 also accepted as `users:write`). |
+| Scope | `users:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `users_password_set` |
 | CLI | `cbox id users password set <id>` |
@@ -4797,7 +4797,7 @@ Mail a user a password-reset link at their own address.
 | | |
 |---|---|
 | REST | `POST /api/v1/users/{id}/password-reset` → `204` |
-| Scope | `id:users:write` (until v3.1 also `users:write`) — (until v3.1 also accepted as `users:write`). |
+| Scope | `users:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `users_password_reset_send` |
 | CLI | `cbox id users password_reset send <id>` |
@@ -4813,7 +4813,7 @@ Reactivate a deactivated user so they can sign in again. Grants revoked on deact
 | | |
 |---|---|
 | REST | `POST /api/v1/users/{id}/reactivate` → `200` |
-| Scope | `id:users:write` (until v3.1 also `users:write`) — (until v3.1 also accepted as `users:write`). |
+| Scope | `users:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `users_reactivate` |
 | CLI | `cbox id users reactivate <id>` |
@@ -4829,7 +4829,7 @@ List a user's live sign-in sessions, most recently active first: device, IP and 
 | | |
 |---|---|
 | REST | `GET /api/v1/users/{id}/sessions` → `200` |
-| Scope | `id:users:read` (until v3.1 also `users:read`) — (until v3.1 also accepted as `users:read`). |
+| Scope | `users:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `users_sessions_list` |
 | CLI | `cbox id users sessions list <id>` |
@@ -4845,7 +4845,7 @@ End one of a user's sign-in sessions.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/users/{id}/sessions/{session_id}` → `204` |
-| Scope | `id:users:write` (until v3.1 also `users:write`) — (until v3.1 also accepted as `users:write`). |
+| Scope | `users:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `users_sessions_revoke` |
 | CLI | `cbox id users sessions revoke <id> <session_id>` |
@@ -4862,7 +4862,7 @@ Sign a user out everywhere: end every session and revoke every OAuth grant they 
 | | |
 |---|---|
 | REST | `DELETE /api/v1/users/{id}/sessions` → `204` |
-| Scope | `id:users:write` (until v3.1 also `users:write`) — (until v3.1 also accepted as `users:write`). |
+| Scope | `users:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `users_sessions_revoke_all` |
 | CLI | `cbox id users sessions revoke_all <id>` |
@@ -4878,7 +4878,7 @@ Change a user's name and/or email address. A changed address must be verified ag
 | | |
 |---|---|
 | REST | `PATCH /api/v1/users/{id}` → `200` |
-| Scope | `id:users:write` (until v3.1 also `users:write`) — (until v3.1 also accepted as `users:write`). |
+| Scope | `users:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `users_update` |
 | CLI | `cbox id users update <id>` |
@@ -4896,7 +4896,7 @@ Mail a user the link that verifies their email address. Does nothing for an addr
 | | |
 |---|---|
 | REST | `POST /api/v1/users/{id}/verification` → `204` |
-| Scope | `id:users:write` (until v3.1 also `users:write`) — (until v3.1 also accepted as `users:write`). |
+| Scope | `users:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `users_verification_send` |
 | CLI | `cbox id users verification send <id>` |
@@ -4912,7 +4912,7 @@ Mark a user's email address verified without the emailed link. It can then be us
 | | |
 |---|---|
 | REST | `POST /api/v1/users/{id}/verify` → `200` |
-| Scope | `id:users:write` (until v3.1 also `users:write`) — (until v3.1 also accepted as `users:write`). |
+| Scope | `users:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `users_verify` |
 | CLI | `cbox id users verify <id>` |
@@ -4930,7 +4930,7 @@ Register a webhook endpoint for one organization or the whole environment. Retur
 | | |
 |---|---|
 | REST | `POST /api/v1/webhooks` → `201` |
-| Scope | `id:webhooks:write` (until v3.1 also `webhooks:write`) — (until v3.1 also accepted as `webhooks:write`). |
+| Scope | `webhooks:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `webhooks_create` |
 | CLI | `cbox id webhooks create` |
@@ -4951,7 +4951,7 @@ Delete a webhook endpoint. It stops receiving events at once.
 | | |
 |---|---|
 | REST | `DELETE /api/v1/webhooks/{id}` → `204` |
-| Scope | `id:webhooks:write` (until v3.1 also `webhooks:write`) — (until v3.1 also accepted as `webhooks:write`). |
+| Scope | `webhooks:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `webhooks_delete` |
 | CLI | `cbox id webhooks delete <id>` |
@@ -4967,7 +4967,7 @@ Get one webhook endpoint: URL, owner, subscribed events, health. Never its signi
 | | |
 |---|---|
 | REST | `GET /api/v1/webhooks/{id}` → `200` |
-| Scope | `id:webhooks:read` (until v3.1 also `webhooks:read`) — (until v3.1 also accepted as `webhooks:read`). |
+| Scope | `webhooks:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `webhooks_get` |
 | CLI | `cbox id webhooks get <id>` |
@@ -4983,7 +4983,7 @@ List the webhook endpoints registered in this environment: URL, owner, subscribe
 | | |
 |---|---|
 | REST | `GET /api/v1/webhooks` → `200` |
-| Scope | `id:webhooks:read` (until v3.1 also `webhooks:read`) — (until v3.1 also accepted as `webhooks:read`). |
+| Scope | `webhooks:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `webhooks_list` |
 | CLI | `cbox id webhooks list` |
@@ -5000,7 +5000,7 @@ Pause a webhook endpoint: it stops receiving events until resumed.
 | | |
 |---|---|
 | REST | `POST /api/v1/webhooks/{id}/pause` → `200` |
-| Scope | `id:webhooks:write` (until v3.1 also `webhooks:write`) — (until v3.1 also accepted as `webhooks:write`). |
+| Scope | `webhooks:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `webhooks_pause` |
 | CLI | `cbox id webhooks pause <id>` |
@@ -5016,7 +5016,7 @@ Resume a paused webhook endpoint: it receives events again.
 | | |
 |---|---|
 | REST | `POST /api/v1/webhooks/{id}/resume` → `200` |
-| Scope | `id:webhooks:write` (until v3.1 also `webhooks:write`) — (until v3.1 also accepted as `webhooks:write`). |
+| Scope | `webhooks:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `webhooks_resume` |
 | CLI | `cbox id webhooks resume <id>` |
@@ -5032,7 +5032,7 @@ Issue a new signing secret for a webhook endpoint, returned once. The old secret
 | | |
 |---|---|
 | REST | `POST /api/v1/webhooks/{id}/rotate` → `200` |
-| Scope | `id:webhooks:write` (until v3.1 also `webhooks:write`) — (until v3.1 also accepted as `webhooks:write`). |
+| Scope | `webhooks:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `webhooks_secret_rotate` |
 | CLI | `cbox id webhooks secret rotate <id>` |
@@ -5049,7 +5049,7 @@ Change how a webhook endpoint's deliveries are signed (cbox or standard_webhooks
 | | |
 |---|---|
 | REST | `POST /api/v1/webhooks/{id}/signature-scheme` → `200` |
-| Scope | `id:webhooks:write` (until v3.1 also `webhooks:write`) — (until v3.1 also accepted as `webhooks:write`). |
+| Scope | `webhooks:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `webhooks_signature_scheme_change` |
 | CLI | `cbox id webhooks signature_scheme change <id>` |
@@ -5066,7 +5066,7 @@ Change a webhook endpoint's URL and/or the events it subscribes to.
 | | |
 |---|---|
 | REST | `PATCH /api/v1/webhooks/{id}` → `200` |
-| Scope | `id:webhooks:write` (until v3.1 also `webhooks:write`) — (until v3.1 also accepted as `webhooks:write`). |
+| Scope | `webhooks:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `webhooks_update` |
 | CLI | `cbox id webhooks update <id>` |

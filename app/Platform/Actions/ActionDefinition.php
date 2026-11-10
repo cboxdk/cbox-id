@@ -81,22 +81,27 @@ final readonly class ActionDefinition
     }
 
     /**
-     * The scope as the standard names it (`id:<resource>:<read|write>`), whatever name the
-     * action's vocabulary still files it under ({@see ScopeRegistry}).
+     * The scope as a credential of this action's plane holds it today. Organization-plane
+     * actions declare the v3 names (`id:<resource>:<read|write>`); the other planes keep
+     * v2's until laravel-id's key and token vocabulary learns the new ones, since a key
+     * minted with a name its vocabulary does not know is refused ({@see ScopeRegistry}).
      */
     public function documentedScope(): string
     {
-        return ScopeRegistry::canonical($this->scope);
+        return $this->scope;
     }
 
     /**
-     * The other names a credential may hold this scope by until v3.1.
+     * The v2 names a credential may still hold this scope by, until v3.1.
      *
      * @return list<string>
      */
     public function scopeAliases(): array
     {
-        return array_values(array_diff(ScopeRegistry::equivalents($this->scope), [$this->documentedScope()]));
+        return array_values(array_filter(
+            ScopeRegistry::equivalents($this->scope),
+            fn (string $name): bool => $name !== $this->scope && ScopeRegistry::isLegacy($name),
+        ));
     }
 
     /** The MCP tool name: the action name with dots as underscores. */
