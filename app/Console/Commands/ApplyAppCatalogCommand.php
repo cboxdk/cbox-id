@@ -10,6 +10,7 @@ use App\Platform\AppCatalog\CatalogEntryData;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Illuminate\Console\Command;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
 use JsonException;
 
@@ -35,7 +36,8 @@ final class ApplyAppCatalogCommand extends Command
 
     public function handle(EnvironmentContext $context, AppCatalog $catalog): int
     {
-        $path = (string) $this->argument('file');
+        $path = $this->argument('file');
+        $path = is_string($path) ? $path : '';
         $raw = is_file($path) ? file_get_contents($path) : false;
         try {
             $file = $raw === false ? null : json_decode($raw, true, 32, JSON_THROW_ON_ERROR);
@@ -90,7 +92,7 @@ final class ApplyAppCatalogCommand extends Command
                 $saved = $catalog->save($key, CatalogEntryData::fromArray($input));
             } catch (ValidationException $e) {
                 $failed = true;
-                $this->error("  {$key}: ".implode(' ', array_map(static fn (array $messages): string => implode(' ', $messages), $e->errors())));
+                $this->error("  {$key}: ".implode(' ', array_filter(Arr::flatten($e->errors()), is_string(...))));
 
                 continue;
             }

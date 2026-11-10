@@ -4,9 +4,9 @@ namespace App\Providers;
 
 use App\Http\ApiRateLimiters;
 use App\Http\Controllers\Api\DecisionController;
-use App\Http\Controllers\Api\UserInfoController;
 use App\Http\Controllers\Api\Discovery\AuthorizationServerMetadataController as AppAuthorizationServerMetadataController;
 use App\Http\Controllers\Api\Discovery\OpenIdConfigurationController;
+use App\Http\Controllers\Api\UserInfoController;
 use App\Http\WebRateLimiters;
 use App\Listeners\SuppressSandboxMail;
 use App\Mcp\McpCaller;
