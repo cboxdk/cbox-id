@@ -86,7 +86,8 @@ it('lets one organization key bootstrap an environment end to end, and the envir
         ->whereKey($created->json('data.initial_key.id'))
         ->first());
 
-    expect($minted?->created_by_type)->toBe('organization_key')
+    // Stored in v2's spelling through v3.0, so the release still running reads it.
+    expect($minted?->created_by_type)->toBe('workspace_key')
         ->and($minted?->created_by_id)->toBe($agentId);
 
     // 3. On the environment's OWN host, that key registers an API — the workspace key is

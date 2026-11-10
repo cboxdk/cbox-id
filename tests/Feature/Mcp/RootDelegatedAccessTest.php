@@ -238,7 +238,8 @@ it('takes an organization member\'s root token at the root\'s /mcp and says who 
         'operator' => false,
         'client' => ['id' => rootCliClient()->client_id, 'name' => CliClient::NAME],
     ])->and(collect($me['environments'])->pluck('id')->all())->toBe([$this->account['environment']->id])
-        ->and($me['scopes'])->toContain('team:write', 'apis:write', 'account:profile:write');
+        // Each scope under the name its action declares: v3's on the organization plane.
+        ->and($me['scopes'])->toContain('id:members:write', 'apis:write', 'account:profile:write')->not->toContain('team:write');
 });
 
 it('refuses a token from an environment\'s issuer at the root, and the root\'s token on an environment\'s host', function (): void {
@@ -644,7 +645,10 @@ it('signs the cbox CLI in at the root with the device grant, for the whole organ
 
     expect($bootstrap->json('resource'))->toBe(rootMcpResource())
         ->and($bootstrap->json('client_id'))->toBe($client->client_id)
-        ->and($bootstrap->json('scopes'))->toContain('offline_access', 'team:write', 'apis:write', 'account:profile:write', 'operator:workspaces:write')
+        ->and($bootstrap->json('scopes'))->toContain('offline_access', 'id:members:write', 'apis:write', 'account:profile:write', 'operator:workspaces:write')
+        ->not->toContain('team:write')
+        // The client itself still holds the v2 names, so a released CLI asking for them signs in.
+        ->and($client->scopes)->toContain('team:write', 'id:members:write')
         ->and($bootstrap->json('device_authorization_endpoint'))->toEndWith('/oauth/device_authorization');
 
     $started = $this->post('/oauth/device_authorization', [

@@ -12,7 +12,6 @@ use App\Platform\Actions\ActionRunner;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\EnvironmentKeyAuditLog;
-use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Api\Support\ServerMetadata;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
@@ -110,11 +109,10 @@ it('reports the application\'s own version, not a number of its own', function (
 
 it('serves RFC 9728 metadata for /mcp naming the environment\'s issuer', function (): void {
     // The environment's plane, and the person's own account on the same host.
-    // Both names of each while v3.0 accepts both: the old one every client holds today and
-    // the `id:<resource>:<read|write>` one it moves to.
-    $scopes = collect(ScopeRegistry::withLegacy(collect(app(ActionRegistry::class)->forPlane(ActionPlane::Environment))->pluck('scope')
-        ->merge(AccountScopes::all())->unique()->values()->all()))
-        ->unique()->sort()->values()->all();
+    // Each once, under the name its action declares; the other spelling is accepted when a
+    // client asks for it, never advertised beside it.
+    $scopes = collect(app(ActionRegistry::class)->forPlane(ActionPlane::Environment))->pluck('scope')
+        ->merge(AccountScopes::all())->unique()->sort()->values()->all();
 
     $this->getJson('/.well-known/oauth-protected-resource/mcp')
         ->assertOk()
@@ -517,7 +515,8 @@ it('takes an organization key too, and runs the organization plane\'s tools as t
 
     expect($me['structuredContent']['kind'])->toBe('organization_key')
         ->and($me['structuredContent']['workspace'])->toBe($account['organization']->id)
-        ->and($me['structuredContent']['scopes'])->toBe(['workspace:read', 'projects:write']);
+        // Read in v3's names, whatever spelling the key was minted with.
+        ->and($me['structuredContent']['scopes'])->toBe(['id:organization:read', 'id:projects:write']);
 
     $tools = mcpTools($key->plaintext);
 

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\CliBootstrapController;
 use App\Mcp\McpProtectedResources;
 use App\Platform\OAuth\DelegatedAccess;
 use App\Platform\OAuth\RootDelegatedAccess;
+use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Enums\ClientType;
@@ -105,6 +106,18 @@ final class CliClient
     }
 
     /**
+     * What the client is REGISTERED for: {@see scopes()} under both spellings while v3.0
+     * accepts both ({@see ScopeRegistry}), so a released CLI that still asks for `team:write`
+     * signs in as before. What it is told to ask for ({@see signIn()}) is one name each.
+     *
+     * @return list<string>
+     */
+    public static function ceiling(): array
+    {
+        return array_values(array_unique([...self::SCOPES, ...ScopeRegistry::withLegacy(self::resource()->scopes ?? [])]));
+    }
+
+    /**
      * Provision this environment's CLI client, or bring an existing one up to
      * {@see scopes()}. Call inside the environment it belongs to.
      *
@@ -128,7 +141,7 @@ final class CliClient
                 // None. The device grant has no redirect — that is the point of it.
                 redirectUris: [],
                 grantTypes: self::GRANTS,
-                scopes: self::scopes(),
+                scopes: self::ceiling(),
                 // First-party: signing in to our own CLI should not ask a Cbox user to
                 // approve Cbox.
                 firstParty: true,
@@ -136,7 +149,7 @@ final class CliClient
             ))->client, true];
         }
 
-        $missing = array_values(array_diff(self::scopes(), $existing->scopes));
+        $missing = array_values(array_diff(self::ceiling(), $existing->scopes));
 
         if ($missing === []) {
             return [$existing, false];
