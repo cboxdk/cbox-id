@@ -205,7 +205,44 @@ it('sends a signed-out visitor straight from the console to the cbox environment
 
     expect($authorize)->toStartWith(RSC_ISSUER.'/oauth/authorize?')
         ->and($query['client_id'])->toBe('cid_app_cboxid_com')
-        ->and($query['redirect_uri'])->toBe('https://'.RSC_HOST.'/sso/oidc/'.$connection->id.'/callback');
+        ->and($query['redirect_uri'])->toBe('https://'.RSC_HOST.'/sso/oidc/'.$connection->id.'/callback')
+        // Cbox ID requires PKCE of every client, so the root sends a challenge…
+        ->and($query['code_challenge_method'] ?? null)->toBe('S256')
+        ->and(strlen((string) ($query['code_challenge'] ?? '')))->toBe(43);
+});
+
+it('proves the PKCE challenge with its verifier at the cbox environment\'s token endpoint', function (): void {
+    rscConnectCbox();
+    RootGoogle::signedOutBrowser();
+
+    $location = (string) $this->get('https://'.RSC_HOST.'/login')->headers->get('Location');
+    $start = $this->get($location);
+
+    foreach ($start->headers->getCookies() as $cookie) {
+        if (str_starts_with($cookie->getName(), '__Host-cbox_fed_')) {
+            $this->withUnencryptedCookie($cookie->getName(), (string) $cookie->getValue());
+        }
+    }
+
+    parse_str((string) parse_url((string) $start->headers->get('Location'), PHP_URL_QUERY), $query);
+
+    // The token endpoint keeps what it was sent (registered first: the first stub wins).
+    $sent = null;
+    Http::fake(['cbox.cboxid.com/oauth/token' => function ($request) use (&$sent) {
+        $sent = $request->data();
+
+        return Http::response(['id_token' => $GLOBALS['rsc_id_token']]);
+    }]);
+    rscFakeTokenEndpoint('usr_cbox_pkce', 'pkce@example.com', (string) $query['nonce']);
+
+    $this->get((string) $query['redirect_uri'].'?'.http_build_query(['code' => 'the-code', 'state' => (string) $query['state']]));
+
+    // …and the verifier whose S256 hash it was, on the token request.
+    $verifier = (string) ($sent['code_verifier'] ?? '');
+
+    expect($verifier)->not->toBe('')
+        ->and(rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '='))->toBe((string) $query['code_challenge']);
+    expect(rscSignedInSubject())->not->toBeNull();
 });
 
 it('is one action, recorded, that refuses a connection which cannot sign anybody in', function (): void {

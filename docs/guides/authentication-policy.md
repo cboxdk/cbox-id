@@ -146,6 +146,8 @@ Send `"connection_id": null` to get the environment's own page back.
   passkey or a second factor (`amr`), the session here is at that level too, so anybody
   who must use two factors is not asked again. This applies only to the connection the
   sign-in goes through, never to an organization's own identity provider.
+- The sign-in uses PKCE (an S256 code challenge) as well as `state` and `nonce`, so the
+  provider can be another Cbox ID environment, which requires it of every app.
 - Turning the connection off or deleting it brings the plain sign-in page back on its own.
 - Only a connection that belongs to the whole environment and is active can be named.
   Anything else is refused with `connection_not_eligible`.

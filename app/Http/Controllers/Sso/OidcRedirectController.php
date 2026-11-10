@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Sso;
 use App\Http\Controllers\Controller;
 use App\Platform\AccountLinking\FederationFailure;
 use App\Platform\FederatedLanding;
+use App\Platform\Sso\OidcPkce;
 use Cbox\Id\Api\Http\Controllers\Sso\OidcRedirectController as FrameworkOidcRedirect;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
@@ -35,6 +36,7 @@ final class OidcRedirectController extends Controller
         private readonly Connections $connections,
         private readonly FrameworkOidcRedirect $redirect,
         private readonly FederatedLanding $landing,
+        private readonly OidcPkce $pkce,
     ) {}
 
     public function __invoke(Request $request, string $connection): RedirectResponse
@@ -60,6 +62,12 @@ final class OidcRedirectController extends Controller
         }
 
         if ($response instanceof RedirectResponse) {
+            // A hand-configured provider gets a PKCE challenge too — Cbox ID itself, as
+            // another environment's identity provider, refuses a request without one.
+            if ($this->pkce->applies($model)) {
+                $response->setTargetUrl($this->pkce->withChallenge($model, $response->getTargetUrl()));
+            }
+
             return $response;
         }
 
