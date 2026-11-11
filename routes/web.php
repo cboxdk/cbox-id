@@ -139,6 +139,7 @@ use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\RedirectOldEnvironmentConsolePage;
 use App\Http\Middleware\RedirectOutsideInertia;
+use App\Http\Middleware\RefuseReadOfOperatorWrite;
 use App\Http\Middleware\RequireSignInMethod;
 use App\Http\Middleware\TargetEnvironment;
 use App\Http\WebRateLimiters;
@@ -1352,7 +1353,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
 | what their end users see now; its old `/admin` addresses answer with a redirect here
 | (below), until they have seen no traffic for a week.
 */
-Route::middleware(['plane:environment', 'multi.tenant'])->prefix('admin')->group(function (): void {
+Route::middleware([RefuseReadOfOperatorWrite::class, 'plane:environment', 'multi.tenant'])->prefix('admin')->group(function (): void {
     Route::get('/{path?}', EnvironmentConsoleRedirectController::class)
         ->where('path', '(?!platform(?:/|$)|environment(?:/|$)).*')
         // Matched LAST, after every route that still answers under `/admin` (platform
