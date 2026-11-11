@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Http\Controllers\Sso\OidcCallbackController;
+use App\Platform\Surfaces\Surfaces;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Platform\PlatformRoot;
 
 /**
  * "PEOPLE SIGN IN HERE THROUGH THAT IDENTITY PROVIDER": an environment whose sign-in page is
@@ -52,7 +55,7 @@ final readonly class SignInThrough
     {
         $key = $this->environments->current()?->environmentKey();
 
-        if ($key === null) {
+        if ($key === null || $this->isTheRealm($key)) {
             return null;
         }
 
@@ -65,6 +68,21 @@ final readonly class SignInThrough
         $connection = $this->connections->byId($id);
 
         return $connection !== null && self::usable($connection) ? $connection : null;
+    }
+
+    /**
+     * Whether $environmentKey is the default environment in login-host mode: the realm the
+     * login host issues, which the console and every one of the platform's own apps sign
+     * in through. It signs in through nobody. A connection named there (a row carried over
+     * from before the split) is ignored, because `/login` would otherwise send the browser
+     * to an identity provider that is this very host, and because that connection's `amr`
+     * is taken on trust ({@see OidcCallbackController}), which the realm must not do for
+     * its operators.
+     */
+    public function isTheRealm(string $environmentKey): bool
+    {
+        return app(Surfaces::class)->split()
+            && $environmentKey === app(PlatformRoot::class)->environment()?->environmentKey();
     }
 
     /** The connection id named on $environment, whether or not it still works. */

@@ -100,6 +100,25 @@ final class PlaneResolver
     }
 
     /**
+     * Whether the platform root signs MCP clients in FOR ITS OWN `/mcp` AND NOTHING ELSE:
+     * the narrowed RFC 8414 document, registration in the `mcp` profile only, no `openid`,
+     * no audience but the root's `/mcp`, and nobody without standing there
+     * ({@see RootMcpOAuth}).
+     *
+     * Those walls exist because the root of a multi-tenant deployment is nobody's identity
+     * provider. In login-host mode it is one: the default environment is the realm every
+     * one of the platform's own apps signs in through, issued from the login host. A client
+     * that registers itself there (an MCP client of any of those apps, a CLI) is then held
+     * to what a tenant's host holds it to, the framework's own rules: a resource server
+     * admits self-registered clients or it does not. Left on, these walls would refuse
+     * every such client any audience but this deployment's own `/mcp`.
+     */
+    public function rootIssuesForMcpOnly(): bool
+    {
+        return $this->onAccountPlane() && ! $this->surfaces()->split();
+    }
+
+    /**
      * Whether the CONSOLE is served here — the sign-in door, and every subject-facing page
      * behind it.
      *
