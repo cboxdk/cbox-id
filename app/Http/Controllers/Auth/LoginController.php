@@ -22,6 +22,7 @@ use App\Platform\OAuth\AppSignIns;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
 use App\Platform\SamlSsoHandoff;
+use App\Platform\SigningInAgain;
 use App\Platform\SignInThrough;
 use App\Platform\SignupPolicy;
 use App\Platform\SsoMandate;
@@ -102,6 +103,13 @@ final readonly class LoginController extends PageController
         ?string $slug,
         bool $direct,
     ): Response|RedirectResponse {
+        // The same page for somebody already signed in (`/settings/accounts/add`): its
+        // buttons post to the guest doors, which let a signed-in browser through only
+        // while this is under way.
+        if ($request->routeIs('accounts.add')) {
+            SigningInAgain::begin($request);
+        }
+
         $upstream = $through->connection();
 
         /*
@@ -376,7 +384,9 @@ final readonly class LoginController extends PageController
         $devUrl = null;
 
         if ($signup->isOpen() || $subjects->findByEmail($request->email()) !== null) {
-            $url = $mailLinks->route('magic.redeem', $links->request($request->email()));
+            // Naming the app this sign-in is for, so a link opened in another browser can
+            // still send the person on to it ({@see AppSignIns::carry()}).
+            $url = app(AppSignIns::class)->carry($request, $mailLinks->route('magic.redeem', $links->request($request->email())));
 
             Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->queue(new MagicLinkMail($url));
 

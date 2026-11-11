@@ -538,11 +538,14 @@ final readonly class OAuthConsentController extends PageController
          * Before the `organization` parameter is judged, so an invitation accepted there
          * can be the organization the app asked for. Silent requests cannot show a screen.
          */
-        if ($required->appliesTo($me)) {
+        if ($required->appliesToApp($me, $client)) {
             if ($silent) {
                 return $this->redirectError($redirectUri, 'interaction_required', $state,
                     'The user must choose an organization before continuing.');
             }
+
+            // So the screen answers for this browser whatever the switch says.
+            $required->holdForApp();
 
             return $this->interrupt($request, $authorization, $required->url());
         }

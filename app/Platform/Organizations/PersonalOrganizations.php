@@ -45,7 +45,13 @@ final readonly class PersonalOrganizations
     /** Whether this request stands in the realm and the switch is on. */
     public function enabled(): bool
     {
-        return config('cbox-id.signup.personal_organization') === true && $this->planes->onAccountPlane();
+        return config('cbox-id.signup.personal_organization') === true && $this->inRealm();
+    }
+
+    /** Whether this request stands in the realm: the platform root of a multi-tenant deployment. */
+    public function inRealm(): bool
+    {
+        return $this->planes->onAccountPlane();
     }
 
     public static function isPersonal(Organization $organization): bool

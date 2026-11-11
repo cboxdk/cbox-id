@@ -8,12 +8,15 @@ use App\Http\Controllers\PageController;
 use App\Http\Requests\Auth\ResetPasswordRequest;
 use App\Http\Requests\Auth\SendPasswordResetRequest;
 use App\Mail\PasswordResetMail;
+use App\Platform\IntendedUrl;
 use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
+use App\Platform\OAuth\AppSignIns;
 use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Exceptions\InvalidPasswordReset;
 use Cbox\Id\Identity\Exceptions\PolicyViolation;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Inertia\Response;
@@ -60,7 +63,9 @@ final readonly class PasswordResetController extends PageController
         $devUrl = null;
 
         if ($token !== null) {
-            $url = $links->route('password.reset', $token);
+            // Naming the app this sign-in is for, so a link opened in another browser can
+            // still send the person on to it ({@see AppSignIns::carry()}).
+            $url = app(AppSignIns::class)->carry($request, $links->route('password.reset', $token));
             Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->queue(new PasswordResetMail($url));
 
             // Surfaced only on a local install, so a developer with no mail transport can
@@ -77,10 +82,15 @@ final readonly class PasswordResetController extends PageController
         return back();
     }
 
-    public function edit(string $token): Response
+    public function edit(Request $request, string $token): Response
     {
+        $forApp = $request->query(AppSignIns::PARAMETER);
+
         return $this->page('auth/reset-password', __('auth.reset_password.title'), [
             'token' => $token,
+            // The app the reset was asked for from, as the link names it: posted back
+            // with the form and looked up only then ({@see self::update()}).
+            'forApp' => is_string($forApp) && $forApp !== '' ? $forApp : null,
         ]);
     }
 
@@ -103,6 +113,20 @@ final readonly class PasswordResetController extends PageController
              * "you have used this password before" is something the person can act on.
              */
             return back()->withErrors(['password' => $violation->getMessage()]);
+        }
+
+        /*
+         * IN THE BROWSER THAT ASKED, the app's authorization is still waiting in the
+         * session and the sign-in that follows resumes it. In ANOTHER browser there is
+         * none: the link named the app, so the sign-in that follows goes on to it
+         * instead of to a console the person was never headed for.
+         */
+        if (! $request->session()->has(IntendedUrl::KEY)) {
+            $continue = app(AppSignIns::class)->continueTo($request, $request->input(AppSignIns::PARAMETER));
+
+            if ($continue !== null) {
+                $request->session()->put(IntendedUrl::KEY, $continue);
+            }
         }
 
         return to_route('login')
