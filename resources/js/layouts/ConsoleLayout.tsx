@@ -2,13 +2,16 @@ import {
     applyTheme,
     CboxShell,
     type PaletteAction,
+    parseShellCatalog,
+    readKnownAppCatalog,
+    rememberAppCatalog,
     type ShellIcon,
     type ShellLinkComponent,
     type ShellNavigate,
     type ShellPreferenceChange,
 } from '@cboxdk/cbox-ui';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { type ComponentProps, type ReactNode, useMemo } from 'react';
+import { type ComponentProps, type ReactNode, useEffect, useMemo } from 'react';
 import { EmailConfirmationBanner } from '@/chrome/Banners';
 import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { StepUpDialog } from '@/chrome/StepUpDialog';
@@ -235,6 +238,55 @@ function navigator(shell: ConsoleShell, i18n: I18n | null | undefined): ShellNav
     };
 }
 
+/**
+ * The rail draws this app's mark from the catalog the browser already knows, which until
+ * now was only filled once the app switcher had been opened: a first visit showed the
+ * initials. Read once per browser, the way the switcher reads it, and only while the mark
+ * is missing.
+ */
+function useAppMark(appKey: string | undefined, catalogUrl: string | undefined): void {
+    useEffect(() => {
+        if (appKey === undefined || catalogUrl === undefined || catalogUrl === '') {
+            return;
+        }
+
+        if (readKnownAppCatalog().some((app) => app.key === appKey && app.icon_url !== null)) {
+            return;
+        }
+
+        const controller = new AbortController();
+
+        fetch(catalogUrl, {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+            signal: controller.signal,
+        })
+            .then(async (response) => {
+                const state = parseShellCatalog(
+                    response.ok,
+                    await response.json().catch(() => null),
+                    window.location,
+                );
+
+                if (state.status === 'ready') {
+                    rememberAppCatalog(
+                        state.apps.map((app) => ({
+                            key: app.key,
+                            name: app.name,
+                            launch_url: app.url,
+                            icon_url: app.iconUrl,
+                            icon_dark_url: app.iconDarkUrl,
+                        })),
+                    );
+                }
+            })
+            // The initials stay: the switcher reads the catalog again when it opens.
+            .catch(() => undefined);
+
+        return () => controller.abort();
+    }, [appKey, catalogUrl]);
+}
+
 function writeCookie(name: string, value: string): void {
     const secure = location.protocol === 'https:' ? '; secure' : '';
 
@@ -257,6 +309,8 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
     useDocumentLanguage(i18n?.locale ?? 'en');
 
     const { t } = useTranslator();
+
+    useAppMark(shell?.app.key, shell?.apps.catalogUrl);
 
     const onPreferenceChange = useMemo<ShellPreferenceChange>(
         () => (key, value) => {
