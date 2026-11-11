@@ -167,6 +167,8 @@ it('shows one page of requests and pays a flat number of queries for it', functi
     expect($single)->toHaveCount(1)
         ->and($fullPageQueries)->toBe($queries)
         // The flat part: the console's path names its environment by organization, project
-        // and environment slug, three reads every console request pays before the page's own.
-        ->and($fullPageQueries)->toBeLessThan(40);
+        // and environment slug, five reads every console request pays before the page's own
+        // — the organization's address is read the way `/orgs/{org}` reads it (the root
+        // environment, a linked `cbox` slug, else its own), then the project and environment.
+        ->and($fullPageQueries)->toBeLessThan(42);
 });
