@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Operators\OperatorAssurance;
+use App\Platform\Operators\OperatorGate;
 use App\Platform\Operators\OperatorStanding;
 use App\Platform\Passkeys\PasskeyMethods;
 use App\Platform\RootSignInGuard;
 use App\Platform\StepUpPrompt;
+use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\Passkeys;
@@ -316,6 +320,50 @@ it('guards the root environment\'s own console the same way', function (): void 
         ->assertForbidden()
         ->assertJsonPath('step_up.plane', 'operator')
         ->assertJsonPath('step_up.passkey.options', 'https://cboxid.com/admin/confirm/options');
+});
+
+it('asks for a fresh passkey before a new SSO connection or a re-enabled social provider in the root', function (): void {
+    multiTenantDeployment();
+    config()->set('cbox-id.environments.base_domains', ['cboxid.com']);
+    operatorRuleOn();
+    $operator = bareOperator();
+    operatorTotp($operator);
+    operatorPasskey($operator);
+    app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified((string) $operator->subject_id, $operator->email));
+    signInAsSubject((string) $operator->subject_id, ['pwd', 'otp', 'mfa']);
+
+    fakePasskeys((string) $operator->subject_id);
+    $this->postJson('https://cboxid.com/admin/confirm/options')->assertOk();
+    $this->postJson('https://cboxid.com/admin/confirm', ['id' => 'cred-op', 'response' => []])->assertOk();
+
+    // A social provider that was turned off, in the root.
+    $provider = app(PlatformRoot::class)->run(function () {
+        $connection = app(Connections::class)->create(null, ConnectionType::Oidc, 'Google', [
+            'issuer' => 'https://accounts.google.com', 'client_id' => 'x', 'provider' => 'google',
+        ]);
+
+        return $connection->id;
+    });
+
+    $this->travel(6)->minutes();
+    nextRequest();
+
+    $before = app(PlatformRoot::class)->run(fn () => Connection::query()->count());
+
+    $this->postJson('https://cboxid.com/admin/environment/social-sign-in/'.$provider.'/enable')
+        ->assertForbidden()
+        ->assertJsonPath('step_up.plane', 'operator');
+
+    $this->postJson('https://cboxid.com/admin/environment/single-sign-on', ['name' => 'Okta', 'type' => 'oidc', 'issuer' => 'https://idp.example.test', 'client_id' => 'x', 'client_secret' => 'y', 'environmentWide' => true])
+        ->assertForbidden()
+        ->assertJsonPath('step_up.plane', 'operator');
+
+    expect(app(PlatformRoot::class)->run(fn () => Connection::query()->count()))->toBe($before);
+
+    // The same two are ordinary writes where the rule does not govern.
+    expect(OperatorGate::guards('sso.connections.create', false))->toBeTrue()
+        ->and(OperatorGate::guards('signin.social.enable', false))->toBeTrue()
+        ->and(OperatorGate::guards('sso.domains.add', false))->toBeFalse();
 });
 
 it('does not offer the passkey prompt on the console when passkeys live on a login host', function (): void {
