@@ -59,6 +59,8 @@ use App\Http\Controllers\Console\FrontendKeyController;
 use App\Http\Controllers\Console\GetStartedController;
 use App\Http\Controllers\Console\HookController;
 use App\Http\Controllers\Console\LegacyLoginController;
+use App\Http\Controllers\Console\LegacyOrganizationPathController;
+use App\Http\Controllers\Console\LegacyPlatformOrganizationController;
 use App\Http\Controllers\Console\LogStreamController;
 use App\Http\Controllers\Console\MemberApiKeyController;
 use App\Http\Controllers\Console\MemberController;
@@ -73,6 +75,7 @@ use App\Http\Controllers\Console\Organization\OrganizationPortalLinkController;
 use App\Http\Controllers\Console\Organization\OrganizationSettingsController;
 use App\Http\Controllers\Console\Organization\OrganizationSupportController;
 use App\Http\Controllers\Console\OrganizationLookupController;
+use App\Http\Controllers\Console\OrganizationPickerController;
 use App\Http\Controllers\Console\OutboundSyncController;
 use App\Http\Controllers\Console\PermissionController;
 use App\Http\Controllers\Console\PipeController;
@@ -109,8 +112,10 @@ use App\Http\Controllers\FrontendApi\SignInController;
 use App\Http\Controllers\FrontendApi\SmsChallengeController;
 use App\Http\Controllers\ImpersonationController;
 use App\Http\Controllers\InvitationController;
+use App\Http\Controllers\LegacySettingsPathController;
 use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\MagicLinkController;
+use App\Http\Controllers\MovedOrganizationSettingsController;
 use App\Http\Controllers\OAuthConsentController;
 use App\Http\Controllers\OperatorController;
 use App\Http\Controllers\PasskeyController;
@@ -268,6 +273,8 @@ Route::post('/locale', LocaleController::class)->middleware('throttle:30,1')->na
 Route::get('/', fn () => redirect()->route(
     session()->has(PlatformAuth::SESSION_KEY) ? 'dashboard' : 'login'
 ))->name('home');
+// …and `/dashboard` sends a person on the app host to `/orgs/{org}` for the organization
+// this browser last used ({@see OrganizationPickerController::home()}), so `/` lands there.
 
 // The configured marketing host supplies its own crawl policy before web middleware.
 Route::get('/robots.txt', fn () => response("User-agent: *\nDisallow:\n", 200,
@@ -766,10 +773,10 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // Multi-account: choose/switch among accounts signed in on this browser, or add
     // another. /accounts/add reuses the login screen but for an already-authenticated
     // user, so a new sign-in is ADDED (a switchable account) rather than replacing.
-    Route::get('/accounts', [AccountsController::class, 'index'])->middleware('locale')->name('accounts');
+    Route::get('/settings/accounts', [AccountsController::class, 'index'])->middleware('locale')->name('accounts');
     // A POST, because it moves the session. A GET that changes who you are is a GET any
     // image tag on any page can make.
-    Route::post('/accounts', [AccountsController::class, 'switchTo'])->middleware('locale')->name('accounts.switch');
+    Route::post('/settings/accounts', [AccountsController::class, 'switchTo'])->middleware('locale')->name('accounts.switch');
     /*
      * The SAME sign-in page, for somebody already signed in.
      *
@@ -777,7 +784,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * IS a sign-in — the only difference is what the session does with the result, which
      * is a decision the sign-in POST makes rather than one the form has to know.
      */
-    Route::get('/accounts/add', [LoginController::class, 'show'])->middleware('locale')->name('accounts.add');
+    Route::get('/settings/accounts/add', [LoginController::class, 'show'])->middleware('locale')->name('accounts.add');
 
     // The forced password change. Inside the authenticated group on purpose: the hold
     // that sends people here (see {@see \App\Http\Middleware\Authenticate}) exempts this
@@ -787,10 +794,10 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
 
     // My account — every user's self-service security center (password, 2FA,
     // passkeys, sessions). Available to members and admins alike.
-    Route::get('/account', [AccountController::class, 'show'])->name('account');
-    Route::get('/account/services', [ServiceAccessController::class, 'index'])->name('account.services');
-    Route::post('/account/services/{program}/waitlist/leave', [ServiceAccessController::class, 'leave'])->whereNumber('program')->middleware('throttle:10,1')->name('account.services.leave');
-    Route::post('/account/services/{program}/waitlist', [ServiceAccessController::class, 'join'])->whereNumber('program')->middleware('throttle:10,1')->name('account.services.join');
+    Route::get('/settings', [AccountController::class, 'show'])->name('account');
+    Route::get('/settings/services', [ServiceAccessController::class, 'index'])->name('account.services');
+    Route::post('/settings/services/{program}/waitlist/leave', [ServiceAccessController::class, 'leave'])->whereNumber('program')->middleware('throttle:10,1')->name('account.services.leave');
+    Route::post('/settings/services/{program}/waitlist', [ServiceAccessController::class, 'join'])->whereNumber('program')->middleware('throttle:10,1')->name('account.services.join');
 
     /*
      * EVERY WRITE ON THAT PAGE EXCEPT THE NAME IS BEHIND `sudo`, ON THE ROUTE.
@@ -804,37 +811,37 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * it grants nothing, so making somebody re-enter their password to fix a typo would be
      * charging for nothing.
      */
-    Route::patch('/account/profile', [AccountController::class, 'updateProfile'])->name('account.profile.update');
+    Route::patch('/settings/profile', [AccountController::class, 'updateProfile'])->name('account.profile.update');
     // Renaming a passkey is outside the step-up for the same reason the name above is: a
     // label is not a credential, and changing it grants nothing. Adding and removing one
     // are behind it.
-    Route::patch('/account/two-factor/apps/{factor}', [AccountController::class, 'renameTotpDevice'])->name('account.mfa.totp.update');
-    Route::patch('/account/passkeys/{passkey}', [AccountController::class, 'renamePasskey'])->name('account.passkeys.update');
+    Route::patch('/settings/two-factor/apps/{factor}', [AccountController::class, 'renameTotpDevice'])->name('account.mfa.totp.update');
+    Route::patch('/settings/passkeys/{passkey}', [AccountController::class, 'renamePasskey'])->name('account.passkeys.update');
     // The console's "Send confirmation link" — the button the unconfirmed-email refusal
     // points at. Limited per person inside the action as well.
-    Route::post('/account/email/confirmation', [AccountController::class, 'sendEmailConfirmation'])
+    Route::post('/settings/email/confirmation', [AccountController::class, 'sendEmailConfirmation'])
         ->middleware('throttle:verification-resend')
         ->name('account.email.confirmation');
 
     Route::middleware('sudo')->group(function (): void {
-        Route::post('/account/password', [AccountController::class, 'updatePassword'])->name('account.password.update');
-        Route::delete('/account/two-factor/apps/{factor}', [AccountController::class, 'removeTotpDevice'])->name('account.mfa.totp.destroy');
-        Route::post('/account/two-factor/enrol', [AccountController::class, 'enrolMfa'])->name('account.mfa.enrol');
-        Route::post('/account/two-factor/confirm', [AccountController::class, 'confirmMfa'])->name('account.mfa.confirm');
-        Route::post('/account/two-factor/recovery-codes', [AccountController::class, 'regenerateRecoveryCodes'])->name('account.mfa.recovery-codes');
+        Route::post('/settings/password', [AccountController::class, 'updatePassword'])->name('account.password.update');
+        Route::delete('/settings/two-factor/apps/{factor}', [AccountController::class, 'removeTotpDevice'])->name('account.mfa.totp.destroy');
+        Route::post('/settings/two-factor/enrol', [AccountController::class, 'enrolMfa'])->name('account.mfa.enrol');
+        Route::post('/settings/two-factor/confirm', [AccountController::class, 'confirmMfa'])->name('account.mfa.confirm');
+        Route::post('/settings/two-factor/recovery-codes', [AccountController::class, 'regenerateRecoveryCodes'])->name('account.mfa.recovery-codes');
         // A phone number as a second factor: enrol (text a code), confirm, remove.
-        Route::post('/account/two-factor/sms', [AccountController::class, 'enrolSms'])->name('account.mfa.sms.enrol');
-        Route::post('/account/two-factor/sms/confirm', [AccountController::class, 'confirmSms'])->name('account.mfa.sms.confirm');
-        Route::delete('/account/two-factor/sms', [AccountController::class, 'removeSms'])->name('account.mfa.sms.destroy');
-        Route::delete('/account/passkeys/{passkey}', [AccountController::class, 'removePasskey'])->name('account.passkeys.destroy');
-        Route::delete('/account/social/{provider}', [AccountController::class, 'unlinkProvider'])->name('account.social.destroy');
+        Route::post('/settings/two-factor/sms', [AccountController::class, 'enrolSms'])->name('account.mfa.sms.enrol');
+        Route::post('/settings/two-factor/sms/confirm', [AccountController::class, 'confirmSms'])->name('account.mfa.sms.confirm');
+        Route::delete('/settings/two-factor/sms', [AccountController::class, 'removeSms'])->name('account.mfa.sms.destroy');
+        Route::delete('/settings/passkeys/{passkey}', [AccountController::class, 'removePasskey'])->name('account.passkeys.destroy');
+        Route::delete('/settings/social/{provider}', [AccountController::class, 'unlinkProvider'])->name('account.social.destroy');
         // MY ACCOUNT › SIGN-IN METHODS. Disconnecting is an action (REST and MCP too);
         // connecting sends this browser to the provider through the environment's own
         // connection and links on the way back — a ceremony, so a GET that leaves.
-        Route::delete('/account/sign-in-methods/{identity}', [AccountController::class, 'disconnectSignInMethod'])
+        Route::delete('/settings/sign-in-methods/{identity}', [AccountController::class, 'disconnectSignInMethod'])
             ->middleware(BlockDuringImpersonation::class)
             ->name('account.sign-in-methods.destroy');
-        Route::get('/account/sign-in-methods/{connection}/connect', [AccountController::class, 'connectSignInMethod'])
+        Route::get('/settings/sign-in-methods/{connection}/connect', [AccountController::class, 'connectSignInMethod'])
             ->middleware(BlockDuringImpersonation::class)
             ->name('account.sign-in-methods.connect');
     });
@@ -843,14 +850,14 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // section on `/account`: that page is about the credentials you hold — password,
     // passkeys, 2FA — and this is about what is currently holding YOU. A person arrives
     // here with a different question ("is any of this not me?") and usually in a hurry.
-    Route::get('/account/activity', [AccountActivityController::class, 'index'])->name('account.activity');
+    Route::get('/settings/activity', [AccountActivityController::class, 'index'])->name('account.activity');
 
     // The three levers on that page, each its own route. Under Volt they shared
     // `/livewire/update` with every other action in the console, which is why each had to
     // re-derive the acting subject and re-check the target by hand; they still resolve
     // their target against the signed-in subject, because a route parameter is the
     // client's too.
-    Route::post('/account/sessions/{session}/revoke', [AccountActivityController::class, 'revokeSession'])
+    Route::post('/settings/sessions/{session}/revoke', [AccountActivityController::class, 'revokeSession'])
         ->name('account.sessions.revoke');
     /*
      * BEHIND `sudo`, unlike its two neighbours, and the difference is the blast radius.
@@ -863,10 +870,10 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * The account page has always gated its copy of this button; the two pages share one
      * route now, so they share one answer, and it is the stricter one.
      */
-    Route::post('/account/sessions/revoke-others', [AccountActivityController::class, 'revokeOtherSessions'])
+    Route::post('/settings/sessions/revoke-others', [AccountActivityController::class, 'revokeOtherSessions'])
         ->middleware('sudo')
         ->name('account.sessions.revoke-others');
-    Route::delete('/account/applications/{client}', [AccountActivityController::class, 'revokeApplication'])
+    Route::delete('/settings/applications/{client}', [AccountActivityController::class, 'revokeApplication'])
         ->name('account.applications.destroy');
 
     /*
@@ -877,9 +884,9 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * No `sudo` on creating one, deliberately — see AccountApiKeyController. The console is
      * read-only during a support session, so nobody acting as somebody else mints one.
      */
-    Route::get('/account/api-keys', [AccountApiKeyController::class, 'index'])->name('account.api-keys');
-    Route::post('/account/api-keys', [AccountApiKeyController::class, 'store'])->name('account.api-keys.store');
-    Route::delete('/account/api-keys/{key}', [AccountApiKeyController::class, 'destroy'])->name('account.api-keys.revoke');
+    Route::get('/settings/api-keys', [AccountApiKeyController::class, 'index'])->name('account.api-keys');
+    Route::post('/settings/api-keys', [AccountApiKeyController::class, 'store'])->name('account.api-keys.store');
+    Route::delete('/settings/api-keys/{key}', [AccountApiKeyController::class, 'destroy'])->name('account.api-keys.revoke');
 
     /*
      * CONNECTED SERVICES (Pipes) — the third-party accounts a person connected so an app
@@ -892,15 +899,17 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * the provider's own consent screen is the confirmation.
      */
     Route::middleware('locale')->group(function (): void {
-        Route::get('/account/connected-services', [ConnectedServiceController::class, 'index'])->name('account.pipes');
-        Route::get('/account/connected-services/{provider}/connect', [ConnectedServiceController::class, 'consent'])->name('account.pipes.connect');
-        Route::post('/account/connected-services/{provider}/connect', [ConnectedServiceController::class, 'authorize'])
+        Route::get('/settings/connected-services', [ConnectedServiceController::class, 'index'])->name('account.pipes');
+        Route::get('/settings/connected-services/{provider}/connect', [ConnectedServiceController::class, 'consent'])->name('account.pipes.connect');
+        Route::post('/settings/connected-services/{provider}/connect', [ConnectedServiceController::class, 'authorize'])
             ->middleware([BlockDuringImpersonation::class, 'throttle:30,1'])
             ->name('account.pipes.authorize');
+        // The provider's registered redirect URI, so it keeps its v2 path: moving it would
+        // break every provider app that lists it until somebody re-registers it there.
         Route::get('/account/connected-services/{provider}/callback', [ConnectedServiceController::class, 'callback'])
             ->middleware([BlockDuringImpersonation::class, NoStore::class])
             ->name('account.pipes.callback');
-        Route::delete('/account/connected-services/{provider}', [ConnectedServiceController::class, 'destroy'])
+        Route::delete('/settings/connected-services/{provider}', [ConnectedServiceController::class, 'destroy'])
             ->middleware(BlockDuringImpersonation::class)
             ->name('account.pipes.destroy');
     });
@@ -947,19 +956,88 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * and it is what the rail reads, so on `acme.cboxid.com` the area is simply absent
      * rather than gated: the same mechanism that already drops an area with no pages.
      */
-    Route::get('/projects', [ProjectController::class, 'index'])->name('projects');
-    Route::get('/projects/new', [ProjectController::class, 'create'])->name('projects.create');
-    Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
-    // Before `/projects/{project}`, so the literal segment is never read as an id.
-    Route::post('/projects/verification/resend', [ProjectController::class, 'resendVerification'])
-        ->middleware('throttle:verification-resend')
-        ->name('projects.verification.resend');
-    Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
-    Route::patch('/projects/{project}', [ProjectController::class, 'rename'])->name('projects.rename');
-    Route::post('/projects/{project}/environments', [ProjectController::class, 'storeEnvironment'])
-        ->name('projects.environments.store');
-    Route::post('/projects/{project}/suspend', [ProjectController::class, 'suspend'])->name('projects.suspend');
-    Route::post('/projects/{project}/reactivate', [ProjectController::class, 'reactivate'])->name('projects.reactivate');
+
+    /*
+     * THE ORGANIZATION CONSOLE, at `/orgs/{org}` — the same address every Cbox app uses.
+     *
+     * `{org}` is the organization's slug (the linked `cbox` organization's, see
+     * {@see \App\Platform\Organizations\OrganizationLinks}), and `orgs.bind` resolves it
+     * against the signed-in person's own memberships: somebody else's organization is a
+     * 404, and the session never decides which organization a page acts on.
+     *
+     * The v2 paths (`/projects`, `/team`, `/keys`, `/workspace-settings`, `/billing`,
+     * `/environment-domains`) answer with a redirect into the last-used organization
+     * ({@see LegacyOrganizationPathController}), because ID is live and those URLs are in
+     * bookmarks, docs and e-mails.
+     */
+    Route::get('/orgs', [OrganizationPickerController::class, 'index'])->name('orgs.index');
+    // Switching is a URL change; this answers "the same page in the other organization, or
+    // its list". Blocked while impersonating: a support session is pinned to one organization.
+    Route::post('/orgs/switch', [OrganizationPickerController::class, 'switch'])
+        ->middleware(BlockDuringImpersonation::class)
+        ->name('orgs.switch');
+    // The v2 address of the switch, for a page an old tab still has open.
+    Route::post('/organization/switch', [OrganizationPickerController::class, 'switch'])
+        ->middleware(BlockDuringImpersonation::class)
+        ->name('organization.switch');
+
+    Route::middleware('orgs.bind')->prefix('/orgs/{org}')->name('orgs.')->group(function (): void {
+        Route::get('/', [OrganizationPickerController::class, 'show'])->name('show');
+
+        Route::get('/projects', [ProjectController::class, 'index'])->name('projects');
+        Route::get('/projects/new', [ProjectController::class, 'create'])->name('projects.create');
+        Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
+        // Before `/projects/{project}`, so the literal segment is never read as an id.
+        Route::post('/projects/verification/resend', [ProjectController::class, 'resendVerification'])
+            ->middleware('throttle:verification-resend')
+            ->name('projects.verification.resend');
+        Route::get('/projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
+        Route::patch('/projects/{project}', [ProjectController::class, 'rename'])->name('projects.rename');
+        Route::post('/projects/{project}/environments', [ProjectController::class, 'storeEnvironment'])
+            ->name('projects.environments.store');
+        Route::post('/projects/{project}/suspend', [ProjectController::class, 'suspend'])->name('projects.suspend');
+        Route::post('/projects/{project}/reactivate', [ProjectController::class, 'reactivate'])->name('projects.reactivate');
+
+        Route::get('/settings', [AccountSettingsController::class, 'edit'])->name('settings');
+        Route::patch('/settings', [AccountSettingsController::class, 'update'])->name('settings.update');
+
+        // The team: who may administer this organization in Cbox ID.
+        Route::get('/settings/members', [MemberController::class, 'index'])->name('settings.members');
+        Route::post('/settings/members/invitations', [MemberController::class, 'invite'])->name('settings.members.invite');
+        Route::post('/settings/members/invitations/{invitation}/resend', [MemberController::class, 'resendInvite'])
+            ->name('settings.members.invitations.resend');
+        Route::delete('/settings/members/invitations/{invitation}', [MemberController::class, 'revokeInvite'])
+            ->name('settings.members.invitations.revoke');
+        Route::patch('/settings/members/{member}/role', [MemberController::class, 'changeRole'])->name('settings.members.role');
+        Route::put('/settings/members/{member}/access', [MemberController::class, 'saveAccess'])->name('settings.members.access');
+        Route::post('/settings/members/{member}/transfer-ownership', [MemberController::class, 'makeOwner'])
+            ->name('settings.members.transfer-ownership');
+        Route::delete('/settings/members/{member}', [MemberController::class, 'removeMember'])->name('settings.members.remove');
+
+        /*
+         * KEYS — one page, the type as a tab, the tab in the URL: environment keys first,
+         * because they are what a developer reaches for, and the organization's own keys
+         * second. Before `/settings/api-keys/{key}`, so `organization` is never read as a key.
+         */
+        Route::get('/settings/api-keys', [EnvironmentKeyController::class, 'index'])->name('settings.api-keys');
+        Route::post('/settings/api-keys', [EnvironmentKeyController::class, 'store'])->name('settings.api-keys.store');
+        Route::get('/settings/api-keys/organization', [ApiKeyController::class, 'index'])->name('settings.api-keys.organization');
+        Route::post('/settings/api-keys/organization', [ApiKeyController::class, 'store'])->name('settings.api-keys.organization.store');
+        Route::delete('/settings/api-keys/organization/{key}', [ApiKeyController::class, 'destroy'])->name('settings.api-keys.organization.destroy');
+        Route::delete('/settings/api-keys/{key}', [EnvironmentKeyController::class, 'destroy'])->name('settings.api-keys.destroy');
+
+        Route::get('/environment-domains', [EnvironmentDomainController::class, 'index'])->name('environment-domains');
+        Route::post('/environment-domains', [EnvironmentDomainController::class, 'store'])->name('environment-domains.store');
+        Route::post('/environment-domains/verify', [EnvironmentDomainController::class, 'verify'])->name('environment-domains.verify');
+        Route::delete('/environment-domains', [EnvironmentDomainController::class, 'destroy'])->name('environment-domains.destroy');
+    });
+
+    // The v2 addresses of the pages above. See LegacyOrganizationPathController.
+    foreach (LegacyOrganizationPathController::PREFIXES as $legacy => $_) {
+        $name = 'legacy.orgs.'.trim($legacy, '/');
+        Route::any($legacy, LegacyOrganizationPathController::class)->name($name);
+        Route::any($legacy.'/{rest}', LegacyOrganizationPathController::class)->where('rest', '.*')->name($name.'.rest');
+    }
 
     // Open an environment: its console's path on this host. Kept for old links; the
     // project pages link to the path directly.
@@ -967,17 +1045,6 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
         ->defaults(RedirectOutsideInertia::LEAVES, true)
         ->name('environment.open');
 
-    Route::get('/team', [MemberController::class, 'index'])->name('members');
-    Route::post('/team/invitations', [MemberController::class, 'invite'])->name('members.invite');
-    Route::post('/team/invitations/{invitation}/resend', [MemberController::class, 'resendInvite'])
-        ->name('members.invitations.resend');
-    Route::delete('/team/invitations/{invitation}', [MemberController::class, 'revokeInvite'])
-        ->name('members.invitations.revoke');
-    Route::patch('/team/{member}/role', [MemberController::class, 'changeRole'])->name('members.role');
-    Route::put('/team/{member}/access', [MemberController::class, 'saveAccess'])->name('members.access');
-    Route::post('/team/{member}/transfer-ownership', [MemberController::class, 'makeOwner'])
-        ->name('members.transfer-ownership');
-    Route::delete('/team/{member}', [MemberController::class, 'removeMember'])->name('members.remove');
     /*
      * KEYS — one page, the type as a tab, the tab in the URL.
      *
@@ -987,16 +1054,6 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * because they are what a developer reaches for; the workspace's own keys are the
      * second tab. The environment console's Keys page is the same shape with its own tabs.
      */
-    Route::get('/keys', [EnvironmentKeyController::class, 'index'])->name('keys');
-    Route::post('/keys', [EnvironmentKeyController::class, 'store'])->name('keys.store');
-    Route::get('/keys/workspace', [ApiKeyController::class, 'index'])->name('keys.organization');
-    Route::post('/keys/workspace', [ApiKeyController::class, 'store'])->name('keys.organization.store');
-    Route::delete('/keys/workspace/{key}', [ApiKeyController::class, 'destroy'])->name('keys.organization.destroy');
-    Route::delete('/keys/{key}', [EnvironmentKeyController::class, 'destroy'])->name('keys.destroy');
-    Route::get('/environment-domains', [EnvironmentDomainController::class, 'index'])->name('environment-domains');
-    Route::post('/environment-domains', [EnvironmentDomainController::class, 'store'])->name('environment-domains.store');
-    Route::post('/environment-domains/verify', [EnvironmentDomainController::class, 'verify'])->name('environment-domains.verify');
-    Route::delete('/environment-domains', [EnvironmentDomainController::class, 'destroy'])->name('environment-domains.destroy');
     // Retired into Logs › Activity log, which reads the SAME hash-chained entries scoped
     // to the same organization — and reads them better: two filters and a search against
     // this page's one, plus a help topic, and it already served both console planes. Two
@@ -1012,8 +1069,6 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // socket a third-party plugin would use — so a deployment that does not bill, or an
     // operator who turns the module off, has no route rather than a route that 404s
     // somewhere deeper. See modules/billing.
-    Route::get('/workspace-settings', [AccountSettingsController::class, 'edit'])->name('organization-settings');
-    Route::patch('/workspace-settings', [AccountSettingsController::class, 'update'])->name('organization-settings.update');
     // Single sign-on: the SAME components the environment plane serves. The routable
     // index/new/show shape wins over the organization plane's single page — a connection
     // URL is something you send to whoever runs the identity provider — and this plane
@@ -1181,13 +1236,17 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // Settings: the SAME component the environment plane serves. The organization's own
     // record is on both planes, bounded by whichever organization the scope resolves; the
     // environment's identity is on the environment plane alone.
-    Route::get('/settings', [SettingsController::class, 'show'])->name('settings');
-    Route::patch('/settings', [SettingsController::class, 'rename'])->name('settings.rename');
+    Route::get('/organization', [SettingsController::class, 'show'])->name('settings');
+    Route::patch('/organization', [SettingsController::class, 'rename'])->name('settings.rename');
     // The owner closes their own organization — typed-name confirmation on the page, a
     // fresh password on the route.
-    Route::delete('/settings/organization', [SettingsController::class, 'destroyOrganization'])
+    Route::delete('/organization', [SettingsController::class, 'destroyOrganization'])
         ->middleware('sudo')
         ->name('settings.organization.destroy');
+    // The v2 writes of this page, while an old tab still has them open
+    // ({@see \App\Http\Controllers\MovedOrganizationSettingsController}).
+    Route::patch('/settings', MovedOrganizationSettingsController::class)->name('legacy.settings.rename');
+    Route::delete('/settings/organization', MovedOrganizationSettingsController::class)->name('legacy.settings.organization.destroy');
     // Branding: the SAME component the environment plane serves — the sign-in theme, the
     // logo and favicon, and (with the white-label module) the name, sender and palette.
     // What is being branded is the page's address: this organization's own here.
@@ -1314,7 +1373,6 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // Blocked while impersonating: the subject session is pinned to the one org the
     // operator was authorized to enter. Pivoting to another of the subject's orgs
     // would escape that scope, so it is an unambiguous 403 (not a silent no-op).
-    Route::post('/organization/switch', [SessionController::class, 'switchOrganization'])->middleware(BlockDuringImpersonation::class)->name('organization.switch');
 
     // Passkey enrolment (adds a credential to the signed-in subject). Adding a
     // credential is persistence — gate it behind a fresh step-up, symmetric with
@@ -1334,6 +1392,19 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::get('/settings/connect/{provider}/callback', [SocialController::class, 'connectCallback'])
         ->middleware([BlockDuringImpersonation::class, 'sudo'])
         ->name('social.connect.callback');
+});
+
+/*
+ * A person's own settings moved from `/account` and `/accounts` to `/settings`. Registered
+ * after the console, so the one v2 path that stays real (the connected-services callback,
+ * which providers hold as a redirect URI) is matched first. No sign-in gate: the redirect
+ * discloses nothing, and the page it lands on asks for one.
+ */
+Route::middleware('plane:console')->group(function (): void {
+    foreach (LegacySettingsPathController::PREFIXES as $legacy => $_) {
+        Route::any($legacy, LegacySettingsPathController::class);
+        Route::any($legacy.'/{rest}', LegacySettingsPathController::class)->where('rest', '.*');
+    }
 });
 
 /*

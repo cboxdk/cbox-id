@@ -29,7 +29,7 @@ use App\Platform\NativeProduct\NativeTeamInvitations as TeamInvitations;
     plane: ActionPlane::Organization,
     rest: ['DELETE', '/invitations/{id}'],
     status: 204,
-    consoleRoutes: ['members.invitations.revoke'],
+    consoleRoutes: ['orgs.settings.members.invitations.revoke'],
     consoleGate: ConsoleGate::ManageMembers,
     tag: 'Team',
 )]

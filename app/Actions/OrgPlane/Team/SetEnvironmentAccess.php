@@ -39,7 +39,7 @@ use Cbox\Id\Platform\PlatformRoot;
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['PUT', '/members/{id}/access'],
-    consoleRoutes: ['members.access'],
+    consoleRoutes: ['orgs.settings.members.access'],
     consoleGate: ConsoleGate::ManageMembers,
     schema: 'Member',
     tag: 'Team',

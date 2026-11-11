@@ -103,7 +103,7 @@ describe('ContextSwitcher', () => {
             <ContextSwitcher
                 context={environmentConsole({
                     organizations,
-                    switchUrl: '/organization/switch',
+                    switchUrl: '/orgs/switch',
                     projects: [],
                 })}
                 onNavigate={vi.fn<(href: string) => void>()}
@@ -113,7 +113,11 @@ describe('ContextSwitcher', () => {
         await userEvent.click(screen.getByRole('button', { name: /Workspace: Acme/ }));
         await userEvent.click(screen.getByRole('option', { name: /Globex/ }));
 
-        expect(post).toHaveBeenCalledWith('/organization/switch', { organization: 'w2' });
+        // The page it was on goes with it, so the switch keeps it (or lands on its list).
+        expect(post).toHaveBeenCalledWith('/orgs/switch', {
+            organization: 'w2',
+            path: window.location.pathname,
+        });
         post.mockRestore();
     });
 
@@ -131,7 +135,7 @@ describe('ContextSwitcher', () => {
                             openHref: null,
                         },
                     ],
-                    switchUrl: '/organization/switch',
+                    switchUrl: '/orgs/switch',
                     projects: [],
                 }}
                 onNavigate={vi.fn<(href: string) => void>()}
@@ -172,7 +176,7 @@ describe('ContextSwitcher', () => {
             <ContextSwitcher
                 context={environmentConsole({
                     organizations: many,
-                    switchUrl: '/organization/switch',
+                    switchUrl: '/orgs/switch',
                     projects: [],
                 })}
                 onNavigate={vi.fn<(href: string) => void>()}

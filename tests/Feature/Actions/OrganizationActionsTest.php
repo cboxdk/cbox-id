@@ -323,11 +323,11 @@ it('runs the same actions from the organization console, recorded as the person'
     signInAsMember($account['subjectId']);
 
     // Projects › new environment: the action, the console's own wording on a refusal.
-    $this->from(route('projects.show', $account['project']->id))
-        ->post(route('projects.environments.store', $account['project']->id), ['name' => 'Staging', 'type' => 'sandbox'])
+    $this->from(route('orgs.projects.show', $account['project']->id))
+        ->post(route('orgs.projects.environments.store', $account['project']->id), ['name' => 'Staging', 'type' => 'sandbox'])
         ->assertSessionHasNoErrors();
-    $this->from(route('projects.show', $account['project']->id))
-        ->post(route('projects.environments.store', $account['project']->id), ['name' => 'Third', 'type' => 'sandbox'])
+    $this->from(route('orgs.projects.show', $account['project']->id))
+        ->post(route('orgs.projects.environments.store', $account['project']->id), ['name' => 'Third', 'type' => 'sandbox'])
         ->assertSessionHasErrors(['name' => 'This project is at its environment limit. Upgrade its plan to add more.']);
 
     $entry = workspaceLog($workspace->id, 'organization.environment_created')[0] ?? null;
@@ -340,8 +340,8 @@ it('runs the same actions from the organization console, recorded as the person'
     // A key the console mints records the person who did it.
     app(Sudo::class)->confirm();
 
-    $this->from(route('keys.organization'))
-        ->post(route('keys.organization.store'), ['name' => 'From the console', 'role' => 'developer'])
+    $this->from(route('orgs.settings.api-keys.organization'))
+        ->post(route('orgs.settings.api-keys.organization.store'), ['name' => 'From the console', 'role' => 'developer'])
         ->assertSessionHasNoErrors();
 
     $key = OrganizationApiKey::query()->where('name', 'From the console')->sole();

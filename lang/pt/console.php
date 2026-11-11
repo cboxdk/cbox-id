@@ -4771,4 +4771,5 @@ https://staging.example.com',
     'sign_ins_and_requests_the_platform_scored_as_091fe5e6' => 'Inícios de sessão e pedidos que a plataforma considerou suficientemente suspeitos para assinalar:value0. Do mais recente para o mais antigo.',
     'value0_value1_none_failing_a5d264cb' => ':value0 :value1, nenhuma com falha.',
     'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Escolha uma ligação OpenID Connect ativa que pertença a todo o ambiente.',
+    'organization_settings_moved_here_7b3e91c4' => 'Procura as definições da sua organização? Passaram para uma página própria.',
 ];

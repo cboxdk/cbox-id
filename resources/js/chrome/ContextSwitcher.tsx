@@ -166,7 +166,11 @@ function OrganizationCrumb({
                             }
 
                             if (switchUrl !== null && !option.current) {
-                                router.post(switchUrl, { organization: option.id });
+                                // The page you are on, so the switch keeps it (or lands on its list).
+                                router.post(switchUrl, {
+                                    organization: option.id,
+                                    path: window.location.pathname,
+                                });
 
                                 return;
                             }

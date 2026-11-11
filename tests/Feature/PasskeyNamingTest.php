@@ -108,7 +108,7 @@ it('names a new passkey after the password manager that made it', function (stri
     enrolPasskey(registrationJson($aaguid))
         ->assertOk()
         ->assertJsonPath('passkey.name', $provider)
-        ->assertJsonPath('passkey.renameHref', fn (string $href): bool => str_contains($href, '/account/passkeys/'));
+        ->assertJsonPath('passkey.renameHref', fn (string $href): bool => str_contains($href, '/settings/passkeys/'));
 })->with([
     'iCloud Keychain' => ['fbfc3007-154e-4ecc-8c0b-6e020557d7bd', 'iCloud Keychain'],
     'Google Password Manager' => ['ea9b8d66-4d01-1d21-3ce4-b6b48cb575d4', 'Google Password Manager'],

@@ -47,7 +47,7 @@ it('lists published services and the current person status without requiring a t
         'https://billing.example.test/api/v1/access/directory?*' => Http::response(['data' => [waitlistService()], 'current_page' => 1, 'last_page' => 2]),
         'https://billing.example.test/api/v1/access/directory/registrations' => Http::response(['data' => [['program_id' => 12, 'registration' => ['status' => 'waiting', 'joined_at' => '2026-11-06T10:00:00Z']]]]),
     ]);
-    $response = $this->get('/account/services')->assertOk();
+    $response = $this->get('/settings/services')->assertOk();
     $props = $response->inertiaProps();
     expect($response->inertiaPage()['component'])->toBe('account/services')
         ->and($props['services'][0]['name'])->toBe('Telemetry')
@@ -63,7 +63,7 @@ it('derives identity and verified email from the session, never the submitted bo
     $subject = waitlistPerson();
     Http::fake(['https://billing.example.test/api/v1/access/directory/12/join' => Http::response(['registration' => ['status' => 'waiting']])]);
     $reference = (string) Str::uuid();
-    $this->post('/account/services/12/waitlist', ['subject' => 'somebody-else', 'email' => 'other@example.test', 'country' => 'dk', 'answers' => ['use_case' => 'A project'], 'reference' => $reference])
+    $this->post('/settings/services/12/waitlist', ['subject' => 'somebody-else', 'email' => 'other@example.test', 'country' => 'dk', 'answers' => ['use_case' => 'A project'], 'reference' => $reference])
         ->assertRedirect(route('account.services'))->assertSessionHas('status', __('service_access.joined'));
     Http::assertSent(fn (Request $request): bool => $request['subject'] === $subject && $request['email'] === 'ada@example.test' && $request['country'] === 'DK'
         && $request['answers'] === ['use_case' => 'A project'] && $request->hasHeader('Idempotency-Key', $reference)
@@ -73,26 +73,26 @@ it('derives identity and verified email from the session, never the submitted bo
 it('does not enrol or reveal registration state for an unverified address', function (): void {
     waitlistPerson(false);
     Http::fake(['https://billing.example.test/api/v1/access/directory?*' => Http::response(['data' => [waitlistService()], 'current_page' => 1, 'last_page' => 1])]);
-    $props = $this->get('/account/services')->assertOk()->inertiaProps();
+    $props = $this->get('/settings/services')->assertOk()->inertiaProps();
     expect($props['emailVerified'])->toBeFalse()->and($props['services'][0]['status'])->toBeNull();
-    $this->from('/account/services')->post('/account/services/12/waitlist', ['reference' => (string) Str::uuid()])->assertRedirect('/account/services')->assertSessionHasErrors('waitlist');
+    $this->from('/settings/services')->post('/settings/services/12/waitlist', ['reference' => (string) Str::uuid()])->assertRedirect('/settings/services')->assertSessionHasErrors('waitlist');
     Http::assertSentCount(1);
 });
 
 it('makes an unavailable directory a recoverable page and never reports a failed signup as joined', function (): void {
     waitlistPerson();
     Http::fake(['https://billing.example.test/*' => Http::response([], 503)]);
-    $props = $this->get('/account/services')->assertOk()->inertiaProps();
+    $props = $this->get('/settings/services')->assertOk()->inertiaProps();
     expect($props['unavailable'])->toBeTrue()->and($props['services'])->toBe([]);
-    $this->from('/account/services')->post('/account/services/12/waitlist', ['reference' => (string) Str::uuid()])->assertRedirect('/account/services')->assertSessionHasErrors('waitlist')->assertSessionMissing('status');
+    $this->from('/settings/services')->post('/settings/services/12/waitlist', ['reference' => (string) Str::uuid()])->assertRedirect('/settings/services')->assertSessionHasErrors('waitlist')->assertSessionMissing('status');
 });
 
 it('refuses malformed success responses and does not follow a backend redirect', function (): void {
     waitlistPerson();
     Http::fake(['https://billing.example.test/*' => Http::response(['registration' => null])]);
-    $this->from('/account/services')->post('/account/services/12/waitlist', ['reference' => (string) Str::uuid()])->assertSessionHasErrors('waitlist')->assertSessionMissing('status');
+    $this->from('/settings/services')->post('/settings/services/12/waitlist', ['reference' => (string) Str::uuid()])->assertSessionHasErrors('waitlist')->assertSessionMissing('status');
     Http::fake(['https://billing.example.test/*' => Http::response([], 302, ['Location' => 'https://unrelated.example/collect'])]);
-    $props = $this->get('/account/services')->assertOk()->inertiaProps();
+    $props = $this->get('/settings/services')->assertOk()->inertiaProps();
     expect($props['unavailable'])->toBeTrue();
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'unrelated.example'));
 });
@@ -100,17 +100,17 @@ it('refuses malformed success responses and does not follow a backend redirect',
 it('returns question validation errors to the form without saving a local registration', function (): void {
     waitlistPerson();
     Http::fake(['https://billing.example.test/*' => Http::response(['errors' => ['answers.use_case' => ['Please answer this question.']]], 422)]);
-    $this->from('/account/services')->post('/account/services/12/waitlist', ['reference' => (string) Str::uuid()])->assertSessionHasErrors('answers.use_case')->assertSessionMissing('status');
+    $this->from('/settings/services')->post('/settings/services/12/waitlist', ['reference' => (string) Str::uuid()])->assertSessionHasErrors('answers.use_case')->assertSessionMissing('status');
 });
 
 it('is optional and confined to the configured identity environment', function (): void {
     waitlistPerson();
     Http::fake();
     config(['service-access.enabled' => false]);
-    $this->get('/account/services')->assertNotFound();
-    $this->post('/account/services/12/waitlist', [])->assertNotFound();
+    $this->get('/settings/services')->assertNotFound();
+    $this->post('/settings/services/12/waitlist', [])->assertNotFound();
     config(['service-access.enabled' => true, 'service-access.identity_environment' => 'customer-env']);
-    $this->get('/account/services')->assertNotFound();
+    $this->get('/settings/services')->assertNotFound();
     Http::assertNothingSent();
 });
 
@@ -120,15 +120,15 @@ it('supports a direct link from any service and preserves the filter in paginati
         'https://billing.example.test/api/v1/access/directory?*' => Http::response(['data' => [waitlistService()], 'current_page' => 1, 'last_page' => 2]),
         'https://billing.example.test/api/v1/access/directory/registrations' => Http::response(['data' => [['program_id' => 12, 'registration' => null]]]),
     ]);
-    $props = $this->get('/account/services?service=telemetry')->assertOk()->inertiaProps();
+    $props = $this->get('/settings/services?service=telemetry')->assertOk()->inertiaProps();
     expect($props['allHref'])->toBe(route('account.services'))->and($props['nextHref'])->toContain('service=telemetry');
     Http::assertSent(fn (Request $request): bool => $request->method() === 'GET' && $request['service'] === 'telemetry');
 });
 
 it('requires a signed-in person and keeps the intended service link', function (): void {
     Http::fake();
-    $this->get('/account/services?service=telemetry')->assertRedirect();
-    $this->post('/account/services/12/waitlist', [])->assertRedirect();
+    $this->get('/settings/services?service=telemetry')->assertRedirect();
+    $this->post('/settings/services/12/waitlist', [])->assertRedirect();
     Http::assertNothingSent();
 });
 
@@ -172,7 +172,7 @@ it('shows feature interests for the selected active team and preserves direct se
         'https://billing.example.test/api/v1/access/directory?*' => Http::response(['data' => [$feature], 'current_page' => 1, 'last_page' => 2]),
         'https://billing.example.test/api/v1/access/directory/registrations' => Http::response(['data' => [['program_id' => 12, 'registration' => ['status' => 'following']]]]),
     ]);
-    $props = $this->get('/account/services?kind=feature&service=telemetry&organization='.$team)->assertOk()->inertiaProps();
+    $props = $this->get('/settings/services?kind=feature&service=telemetry&organization='.$team)->assertOk()->inertiaProps();
     expect($props['organization'])->toBe($team)->and($props['teams'])->toHaveCount(1)
         ->and($props['services'][0]['status'])->toBe('following')->and($props['services'][0]['publicUrl'])->toBeNull()
         ->and($props['services'][0]['scope'])->toBe('person')->and($props['nextHref'])->toContain('kind=feature', 'organization='.$team, 'service=telemetry');
@@ -183,7 +183,7 @@ it('accepts notification and testing preferences only for a current membership a
     $subject = waitlistPerson();
     $team = featureWaitlistTeam($subject);
     Http::fake(['https://billing.example.test/api/v1/access/directory/12/join' => Http::response(['registration' => ['status' => 'following']])]);
-    $this->post('/account/services/12/waitlist?kind=feature', ['organization' => $team, 'interest' => 'notify', 'reference' => (string) Str::uuid(), 'subject' => 'forged', 'email' => 'forged@example.test'])
+    $this->post('/settings/services/12/waitlist?kind=feature', ['organization' => $team, 'interest' => 'notify', 'reference' => (string) Str::uuid(), 'subject' => 'forged', 'email' => 'forged@example.test'])
         ->assertRedirect(route('account.services', ['kind' => 'feature', 'organization' => $team]))->assertSessionHas('status', __('service_access.feature_joined'));
     Http::assertSent(fn (Request $request): bool => $request['organization'] === $team && $request['interest'] === 'notify' && $request['subject'] === $subject && $request['email'] === 'ada@example.test');
 });
@@ -191,9 +191,9 @@ it('accepts notification and testing preferences only for a current membership a
 it('refuses another team before sending any registration data to Billing', function (): void {
     waitlistPerson();
     Http::fake();
-    $this->get('/account/services?kind=feature&organization=foreign-team')->assertNotFound();
-    $this->post('/account/services/12/waitlist', ['organization' => 'foreign-team', 'interest' => 'test', 'reference' => (string) Str::uuid()])->assertNotFound();
-    $this->post('/account/services/12/waitlist/leave', ['organization' => 'foreign-team', 'reference' => (string) Str::uuid()])->assertNotFound();
+    $this->get('/settings/services?kind=feature&organization=foreign-team')->assertNotFound();
+    $this->post('/settings/services/12/waitlist', ['organization' => 'foreign-team', 'interest' => 'test', 'reference' => (string) Str::uuid()])->assertNotFound();
+    $this->post('/settings/services/12/waitlist/leave', ['organization' => 'foreign-team', 'reference' => (string) Str::uuid()])->assertNotFound();
     Http::assertNothingSent();
 });
 
@@ -202,7 +202,7 @@ it('withdraws only the signed-in person interest with durable idempotency', func
     $team = featureWaitlistTeam($subject);
     $reference = (string) Str::uuid();
     Http::fake(['https://billing.example.test/api/v1/access/directory/12/leave' => Http::response(['status' => 'withdrawn'])]);
-    $this->post('/account/services/12/waitlist/leave', ['organization' => $team, 'reference' => $reference, 'subject' => 'somebody-else'])
+    $this->post('/settings/services/12/waitlist/leave', ['organization' => $team, 'reference' => $reference, 'subject' => 'somebody-else'])
         ->assertSessionHas('status', __('service_access.withdrawn'));
     Http::assertSent(fn (Request $request): bool => $request['subject'] === $subject && $request['organization'] === $team && $request->hasHeader('Idempotency-Key', $reference));
 });
@@ -212,14 +212,14 @@ it('refuses suspended members even when their old session still exists', functio
     $team = featureWaitlistTeam($subject);
     app(Memberships::class)->of($team, $subject)->update(['status' => 'suspended']);
     Http::fake();
-    $this->post('/account/services/12/waitlist', ['organization' => $team, 'interest' => 'test', 'reference' => (string) Str::uuid()])->assertNotFound();
+    $this->post('/settings/services/12/waitlist', ['organization' => $team, 'interest' => 'test', 'reference' => (string) Str::uuid()])->assertNotFound();
     Http::assertNothingSent();
 });
 
 it('does not present service programmes as features during a staggered Billing rollout', function (): void {
     waitlistPerson();
     Http::fake(['https://billing.example.test/api/v1/access/directory?*' => Http::response(['data' => [waitlistService()], 'current_page' => 1, 'last_page' => 1])]);
-    $props = $this->get('/account/services?kind=feature')->assertOk()->inertiaProps();
+    $props = $this->get('/settings/services?kind=feature')->assertOk()->inertiaProps();
     expect($props['unavailable'])->toBeTrue()->and($props['services'])->toBe([]);
     Http::assertSentCount(1);
 });

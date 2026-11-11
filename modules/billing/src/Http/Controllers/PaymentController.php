@@ -109,7 +109,7 @@ final readonly class PaymentController extends ConsoleController
                     abort_unless($this->economics($preview) === $this->economics($fresh), 409, __('billing.expired'));
                 }
                 if ($operation === 'checkout') {
-                    $payload += ['return_url' => route('billing', ['organization' => $org])];
+                    $payload += ['return_url' => route('orgs.settings.billing', ['organization' => $org])];
                 }
                 app(OrganizationActivity::class)->record($org, 'billing.'.$operation.'.requested', $this->scope->actorId(), 'project', $model->id, ['confirmation' => $quoteId, 'plan' => $payload['plan'] ?? null], request());
                 $remote = $payments->perform($operation, $org, $model->id, $payload, $quoteId);

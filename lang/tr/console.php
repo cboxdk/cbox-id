@@ -4771,4 +4771,5 @@ https://staging.example.com',
     'value0_value1_none_failing_a5d264cb' => ':value0 :value1, hiçbirinde hata yok.',
     'retention_3b1f58d9' => 'Saklama süresi',
     'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Tüm ortama ait etkin bir OpenID Connect bağlantısı seçin.',
+    'organization_settings_moved_here_7b3e91c4' => 'Kuruluşunuzun ayarlarını mı arıyorsunuz? Artık kendi sayfaları var.',
 ];

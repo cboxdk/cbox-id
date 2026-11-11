@@ -4771,4 +4771,5 @@ https://staging.example.com',
     'no_activity_recorded_fcfa3087' => 'No se registró ninguna actividad',
     'last_activity_0c278ed1' => 'Última actividad ',
     'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Elige una conexión OpenID Connect activa que pertenezca a todo el entorno.',
+    'organization_settings_moved_here_7b3e91c4' => '¿Buscas la configuración de tu organización? Ahora tiene su propia página.',
 ];

@@ -16,7 +16,7 @@ use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Billing\PaymentAccount;
 
-#[AsAction(name: 'billing.payment_method.remove', summary: 'Remove an unneeded payment card from this organization.', scope: 'id:billing:write', danger: Danger::Write, plane: ActionPlane::Organization, rest: ['DELETE', '/billing/payment-methods/{id}'], status: 204, consoleRoutes: ['billing.payment-method.remove'], consoleGate: ConsoleGate::ManageBilling, tag: 'Billing')]
+#[AsAction(name: 'billing.payment_method.remove', summary: 'Remove an unneeded payment card from this organization.', scope: 'id:billing:write', danger: Danger::Write, plane: ActionPlane::Organization, rest: ['DELETE', '/billing/payment-methods/{id}'], status: 204, consoleRoutes: ['orgs.settings.billing.payment-method.remove'], consoleGate: ConsoleGate::ManageBilling, tag: 'Billing')]
 final readonly class RemovePaymentMethod implements Action
 {
     public function __construct(private PaymentAccount $payments) {}

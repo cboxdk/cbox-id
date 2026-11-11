@@ -7,6 +7,7 @@ use App\Platform\NativeProduct\NativeProductMembers;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\PlatformRoot;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Inertia\Testing\AssertableInertia;
 
@@ -17,16 +18,28 @@ it('keeps an old invitation form bound to its displayed organization after anoth
     $membership = app(PlatformRoot::class)->run(fn () => app(Memberships::class)->add($second['organization']->id, $first['subjectId'], MembershipRole::Member));
     grantNativeProductRoles($membership, ['admin']);
     signInAsMember($first['subjectId']);
-    $this->get(route('members', ['organization' => $first['organization']->id]))->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('organization', $first['organization']->id));
-    $this->post(route('organization.switch'), ['organization' => $second['organization']->id])->assertRedirect();
+    $firstSlug = orgSlug($first['organization']->id);
+    $secondSlug = orgSlug($second['organization']->id);
 
-    $this->post(route('members.invite'), ['organization' => $first['organization']->id, 'email' => 'old-tab@example.test', 'roles' => ['viewer']])->assertForbidden();
-    $this->post(route('members.invite'), ['email' => 'no-workspace@example.test', 'roles' => ['viewer']])->assertForbidden();
-    $this->get(route('members', ['organization' => $first['organization']->id]))->assertForbidden();
+    $this->get(route('orgs.settings.members', ['org' => $firstSlug, 'organization' => $first['organization']->id]))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('organization', $first['organization']->id));
+    $this->post(route('orgs.switch'), ['organization' => $second['organization']->id])->assertRedirect();
+
+    // The old tab's form names its organization in its ADDRESS, so it still invites into
+    // the organization it showed, whatever another tab did to the session since. The
+    // organization in the body still has to match the one in the address.
+    $this->post(route('orgs.settings.members.invite', ['org' => $firstSlug]), ['organization' => $second['organization']->id, 'email' => 'mixed-tab@example.test', 'roles' => ['viewer']])->assertForbidden();
+    $this->post(route('orgs.settings.members.invite', ['org' => $firstSlug]), ['email' => 'no-workspace@example.test', 'roles' => ['viewer']])->assertForbidden();
     Mail::assertNothingSent();
 
-    $this->from(route('members', ['organization' => $second['organization']->id]))->post(route('members.invite'), [
+    $this->from(route('orgs.settings.members', ['org' => $firstSlug]))->post(route('orgs.settings.members.invite', ['org' => $firstSlug]), [
+        'organization' => $first['organization']->id, 'email' => 'old-tab@example.test', 'roles' => ['viewer'],
+    ])->assertSessionHasNoErrors();
+    Mail::assertSent(InvitationMail::class, fn (InvitationMail $mail): bool => $mail->hasTo('old-tab@example.test'));
+    expect(app(PlatformRoot::class)->run(fn () => DB::table('invitations')->where('email', 'old-tab@example.test')->value('organization_id')))
+        ->toBe($first['organization']->id);
+
+    $this->from(route('orgs.settings.members', ['org' => $secondSlug]))->post(route('orgs.settings.members.invite', ['org' => $secondSlug]), [
         'organization' => $second['organization']->id, 'email' => 'right-tab@example.test', 'roles' => ['viewer'],
     ])->assertSessionHasNoErrors();
     Mail::assertSent(InvitationMail::class, fn (InvitationMail $mail): bool => $mail->hasTo('right-tab@example.test'));
@@ -40,8 +53,8 @@ it('refuses member role writes without the displayed organization or with a fore
     $roles = app(NativeProductMembers::class);
     $before = $roles->access($member);
     foreach ([[], ['organization' => 'foreign-workspace']] as $scope) {
-        $this->patchJson(route('members.role', $member->id), $scope + ['roles' => ['admin'], 'roles_version' => $before['roles_version']])->assertForbidden();
-        $this->deleteJson(route('members.remove', $member->id), $scope + ['roles_version' => $before['roles_version']])->assertForbidden();
+        $this->patchJson(route('orgs.settings.members.role', $member->id), $scope + ['roles' => ['admin'], 'roles_version' => $before['roles_version']])->assertForbidden();
+        $this->deleteJson(route('orgs.settings.members.remove', $member->id), $scope + ['roles_version' => $before['roles_version']])->assertForbidden();
     }
     expect($roles->access($member))->toBe($before);
 });

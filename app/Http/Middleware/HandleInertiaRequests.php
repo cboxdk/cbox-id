@@ -22,6 +22,7 @@ use App\Platform\Locale\HostedTranslations;
 use App\Platform\Theme;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 use Inertia\Inertia;
 use Inertia\Middleware;
 
@@ -113,6 +114,17 @@ final class HandleInertiaRequests extends Middleware
              * unearned certification badge in the default configuration would put words
              * in the mouth of everybody who installs this.
              */
+            /*
+             * The organization `/orgs/{org}/…` links are built for: the one in the path, or
+             * the one this session is in. The client sets it as the `org` URL default, so a
+             * route helper called without one stays in this organization, as `route()` does.
+             */
+            'org' => static function (): ?array {
+                $slug = URL::getDefaultParameters()['org'] ?? null;
+
+                return is_string($slug) && $slug !== '' ? ['slug' => $slug] : null;
+            },
+
             'app' => fn (): array => [
                 'name' => config('cbox-id.branding.name', 'Cbox ID'),
                 // Translate the shipped headline; a deployment's own wording stays authored.

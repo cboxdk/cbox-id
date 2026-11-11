@@ -8,6 +8,16 @@ import { billingMoney, billingRequest } from '@/lib/billing';
 import { useUnsavedChangesGuard } from '@/lib/unsavedChanges';
 import type { HelpContent, PageProps } from '@/types';
 import { Button, Combobox, Dialog, Field, Input, PageHeader, Panel } from '@/ui';
+import { billing as billingPage } from '@routes/orgs/settings';
+import {
+    account as accountRoute,
+    complete as completeRoute,
+    setup as setupRoute,
+} from '@routes/orgs/settings/billing';
+import {
+    defaultMethod,
+    remove as removeMethod,
+} from '@routes/orgs/settings/billing/payment-method';
 
 interface Account {
     name: string;
@@ -139,13 +149,9 @@ export default function Billing({
         setReturning(true);
         setNotice(null);
         try {
-            await billingRequest('/billing/payment-methods/complete', organization);
+            await billingRequest(completeRoute.url(), organization);
             setNotice('billing.payment_saved');
-            history.replaceState(
-                null,
-                '',
-                `/billing?organization=${encodeURIComponent(organization)}`,
-            );
+            history.replaceState(null, '', billingPage.url({}, { query: { organization } }));
             reload();
         } catch (error) {
             setNotice(
@@ -330,7 +336,7 @@ export default function Billing({
                                 noValidate
                                 onSubmit={(event) => {
                                     event.preventDefault();
-                                    form.patch('/billing/account', {
+                                    form.patch(accountRoute.url(), {
                                         preserveScroll: true,
                                         only: ['account', 'sectionErrors', 'errors', 'flash'],
                                         onSuccess: () => {
@@ -460,7 +466,9 @@ export default function Billing({
                                                         disabled={mutation.processing}
                                                         onClick={() =>
                                                             mutation.patch(
-                                                                `/billing/payment-methods/${encodeURIComponent(card.id)}/default`,
+                                                                defaultMethod.url({
+                                                                    method: card.id,
+                                                                }),
                                                                 {
                                                                     preserveScroll: true,
                                                                     only: [
@@ -590,19 +598,11 @@ export default function Billing({
                             disabled={mutation.processing}
                             onClick={() =>
                                 remove &&
-                                mutation.delete(
-                                    `/billing/payment-methods/${encodeURIComponent(remove.id)}`,
-                                    {
-                                        preserveScroll: true,
-                                        only: [
-                                            'paymentMethods',
-                                            'sectionErrors',
-                                            'errors',
-                                            'flash',
-                                        ],
-                                        onSuccess: () => setRemove(null),
-                                    },
-                                )
+                                mutation.delete(removeMethod.url({ method: remove.id }), {
+                                    preserveScroll: true,
+                                    only: ['paymentMethods', 'sectionErrors', 'errors', 'flash'],
+                                    onSuccess: () => setRemove(null),
+                                })
                             }
                         >
                             {t('console.remove_c3812fc4')}
@@ -669,7 +669,7 @@ function PaymentForm({
                     gateway: string;
                     publishableKey: string;
                     clientSecret: string;
-                }>('/billing/payment-methods/setup', organization);
+                }>(setupRoute.url(), organization);
                 if (canceled) return;
                 if (intent.gateway !== 'stripe' || !intent.publishableKey || !intent.clientSecret)
                     throw new Error('unsupported');
@@ -721,7 +721,7 @@ function PaymentForm({
                 const result = await stripe.confirmSetup({
                     elements,
                     confirmParams: {
-                        return_url: `${location.origin}/billing?organization=${encodeURIComponent(organization)}&setup_return=1`,
+                        return_url: `${location.origin}${billingPage.url({}, { query: { organization, setup_return: 1 } })}`,
                     },
                     redirect: 'if_required',
                 });
@@ -733,7 +733,7 @@ function PaymentForm({
                 savedMethod.current = typeof method === 'string' ? method : (method?.id ?? null);
                 if (!savedMethod.current) throw new Error('missing_method');
             }
-            await billingRequest('/billing/payment-methods/complete', organization, {
+            await billingRequest(completeRoute.url(), organization, {
                 payment_method: savedMethod.current,
             });
             onSaved();

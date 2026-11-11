@@ -65,7 +65,7 @@ final readonly class ApiKeyController extends ConsoleController
             'keys' => $organizationId === null ? [] : $keys->forOrganization($organizationId)
                 ->map(fn (OrganizationApiKey $key): ApiKeyRowProps => ApiKeyRowProps::from(
                     $key,
-                    route('keys.organization.destroy', $key->id),
+                    route('orgs.settings.api-keys.organization.destroy', $key->id),
                     $now,
                 ))
                 ->values()
@@ -183,6 +183,6 @@ final readonly class ApiKeyController extends ConsoleController
 
         // In place for a click (thrown, and replayed by the page once confirmed); the full
         // page, coming back to the keys, for anything else.
-        return StepUpPrompt::demand(request(), StepUpPlane::Organization, route('keys.organization'), $reason);
+        return StepUpPrompt::demand(request(), StepUpPlane::Organization, route('orgs.settings.api-keys.organization'), $reason);
     }
 }

@@ -40,7 +40,7 @@ use Cbox\Id\Platform\Models\Project;
     plane: ActionPlane::Organization,
     rest: ['DELETE', '/keys/{id}'],
     status: 204,
-    consoleRoutes: ['keys.organization.destroy'],
+    consoleRoutes: ['orgs.settings.api-keys.organization.destroy'],
     consoleGate: ConsoleGate::ManageMembers,
     tag: 'Keys',
 )]

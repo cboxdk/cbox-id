@@ -31,7 +31,7 @@ use App\Platform\NativeProduct\NativeTeamInvitations as TeamInvitations;
     plane: ActionPlane::Organization,
     rest: ['POST', '/members'],
     status: 201,
-    consoleRoutes: ['members.invite'],
+    consoleRoutes: ['orgs.settings.members.invite'],
     consoleGate: ConsoleGate::ManageMembers,
     schema: 'TeamInvitationReceipt',
     tag: 'Team',

@@ -4771,4 +4771,5 @@ https://staging.example.com',
     'retention_3b1f58d9' => 'Срок на съхранение',
     'an_upper_bound_the_file_itself_is_exact_and__1fc09fe1' => 'Горна граница — самият файл е точен и не съдържа дубликати.',
     'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Изберете активна OpenID Connect връзка, която принадлежи на цялата среда.',
+    'organization_settings_moved_here_7b3e91c4' => 'Търсите настройките на организацията си? Вече са на отделна страница.',
 ];

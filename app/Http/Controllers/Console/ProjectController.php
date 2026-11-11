@@ -129,7 +129,7 @@ final readonly class ProjectController extends ConsoleController
                     'limit' => app(ProductBilling::class)->projectLimit($project),
                     'used' => $visible->count(),
                     'atLimit' => $visible->count() >= app(ProductBilling::class)->projectLimit($project),
-                    'settingsHref' => route('projects.show', $project->id),
+                    'settingsHref' => route('orgs.projects.show', $project->id),
                     'environments' => $visible->map(static fn (Environment $e): array => [
                         'id' => $e->id,
                         'name' => $e->name,
@@ -145,8 +145,8 @@ final readonly class ProjectController extends ConsoleController
             'help' => HelpProps::for(HelpTopic::Projects),
             'projects' => $rows,
             'canManage' => $this->mayManage($members),
-            'createHref' => route('projects.create'),
-            'billingHref' => config('billing.enabled') && $this->scope->capabilities()->canReadBilling() ? route('billing') : null,
+            'createHref' => route('orgs.projects.create'),
+            'billingHref' => config('billing.enabled') && $this->scope->capabilities()->canReadBilling() ? route('orgs.settings.billing') : null,
             'manageBillingLabel' => __('billing.manage'),
             // The first environment is held back until the owner confirms their address,
             // so the page has to say so — otherwise it shows a project with no
@@ -165,7 +165,7 @@ final readonly class ProjectController extends ConsoleController
         app(ProductAdmission::class)->assertWebGranted($this->scope->actorId(), $this->scope->organizationId() ?? '');
 
         return $this->page('console/projects/create', __('console.new_project_a41eb2bf'), [
-            'indexHref' => route('projects'),
+            'indexHref' => route('orgs.projects'),
         ]);
     }
 
@@ -190,7 +190,7 @@ final readonly class ProjectController extends ConsoleController
         /** @var Project $project */
         $project = $result->value;
 
-        return to_route('projects.show', $project->id)
+        return to_route('orgs.projects.show', $project->id)
             ->with('status', __('console.project_created_add_its_first_environment_935fc40e'));
     }
 
@@ -250,10 +250,10 @@ final readonly class ProjectController extends ConsoleController
             'canManage' => ! $scoped && $this->mayManage($members),
             'scoped' => $scoped,
             'billingHref' => config('billing.enabled') === true && $this->scope->capabilities()->canReadBilling()
-                ? route('billing', ['organization' => $model->organization_id])
+                ? route('orgs.settings.billing', ['organization' => $model->organization_id])
                 : null,
             'remaining' => $scoped ? 0 : $projects->remainingEnvironments($model),
-            'indexHref' => route('projects'),
+            'indexHref' => route('orgs.projects'),
             'manageBillingLabel' => __('billing.manage'),
         ]);
     }

@@ -25,7 +25,7 @@ it('adds, corrects, renames and cancels independent apps on a phone-sized screen
     app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->active(session(PlatformAuth::SESSION_KEY))->forceFill(['amr' => ['pwd', 'otp', 'mfa']])->save());
     app(Sudo::class)->confirm();
     $panel = 'section:has(h2:has-text("Authenticator apps"))';
-    $page = visit('/account')->resize(390, 844);
+    $page = visit('/settings')->resize(390, 844);
     $page->assertSee('Existing app')
         ->click('button:has-text("Add authenticator app")')
         ->fill($panel.' input[name="name"]', 'Cbox ID on my iPhone')

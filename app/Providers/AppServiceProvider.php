@@ -33,6 +33,7 @@ use App\Platform\Keys\TransitionalOrganizationApiKeys;
 use App\Platform\OAuth\RootMcpAudiences;
 use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
 use App\Platform\OrganizationApiContext;
+use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\SignalsData\Bundled\IdMachineCredential;
 use App\SignalsData\Bundled\IdManagedSources;
@@ -49,6 +50,8 @@ use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Support\SelfRegisteredScopes;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Signals\Contracts\ManagedCredential;
@@ -127,6 +130,9 @@ class AppServiceProvider extends ServiceProvider
         // The authenticated account API key for the request — shared between the
         // auth middleware that sets it and the controllers that read it.
         $this->app->scoped(OrganizationApiContext::class);
+        // Per request: it memoises addresses, and a link written by one request must be
+        // read by the next.
+        $this->app->scoped(OrganizationLinks::class);
 
         // Its environment-plane counterpart: the authenticated environment API key
         // for the request (the environment itself is host-resolved separately).
@@ -197,6 +203,16 @@ class AppServiceProvider extends ServiceProvider
         // organization and environment consoles offered different pages. They do now, on
         // purpose: a customer's organization console is an admin portal and the product's
         // administration is the environment console's (see CustomerConsole).
+        // One organization everywhere: a platform-root organization gets its `cbox`
+        // organization the moment its first owner joins it, inside the same transaction,
+        // whichever door created it (signup, product signup, inline "New organization",
+        // the operator). See OrganizationLinks::ensureForNewOrganization().
+        Membership::created(static function (Membership $membership): void {
+            if ($membership->role === MembershipRole::Owner) {
+                app(OrganizationLinks::class)->ensureForNewOrganization($membership->organization_id);
+            }
+        });
+
         $checks = $this->app->make(HealthChecks::class);
         $checks->add($this->app->make(TenancyHealthCheck::class));
         $checks->add($this->app->make(SchedulerDoctorCheck::class));

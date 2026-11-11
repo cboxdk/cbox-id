@@ -25,7 +25,7 @@ use Cbox\Id\Platform\Contracts\Projects;
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['POST', '/projects/{id}/reactivate'],
-    consoleRoutes: ['projects.reactivate'],
+    consoleRoutes: ['orgs.projects.reactivate'],
     consoleGate: ConsoleGate::ManageEnvironments,
     schema: 'Project',
     tag: 'Projects',

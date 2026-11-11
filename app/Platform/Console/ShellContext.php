@@ -15,6 +15,7 @@ use App\Platform\Locale\ConsoleLabels;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\NativeProduct\NativeProductAccess;
 use App\Platform\OrganizationCapabilities;
+use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\PlaneResolver;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -25,8 +26,10 @@ use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
+use Closure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 
 /**
  * WHERE THE PERSON IS, AND WHERE ELSE THEY CAN GO — the topbar's
@@ -117,7 +120,7 @@ final readonly class ShellContext
         return new ShellContextProps(
             noun: $workspace ? __('console.organization_d764d425') : __('console.organization_d764d425'),
             organizations: $this->organizationOptions($memberships, $currentId, fallbackName: $this->user->organization()?->name),
-            switchUrl: Route::has('organization.switch') ? route('organization.switch') : null,
+            switchUrl: Route::has('orgs.switch') ? route('orgs.switch') : null,
             projects: $projects,
         );
     }
@@ -144,7 +147,11 @@ final readonly class ShellContext
             $memberships,
             $workspaceId,
             fallbackName: null,
-            openHref: $this->onOrganizationHost('projects'),
+            openHref: function (string $organizationId): ?string {
+                $slug = app(OrganizationLinks::class)->addressOf($organizationId)['slug'] ?? null;
+
+                return $slug === null ? null : $this->onOrganizationHost('orgs.projects', ['org' => $slug]);
+            },
         )) ?? [];
 
         $projects = $membership === null ? [] : $this->root->run(fn (): array => $this->projectsOf(
@@ -226,6 +233,21 @@ final readonly class ShellContext
     {
         $host = $this->planes->consoleHost();
 
+        // A page under `/orgs/{org}` names the organization this console belongs to:
+        // the one the request is in, or, on an environment's console, the one whose
+        // membership opened it. Neither known, it is the organization picker.
+        if (str_starts_with($route, 'orgs.') && ! isset($parameters['org']) && ! isset(URL::getDefaultParameters()['org'])) {
+            $organizationId = $this->user->organizationId() ?? app(EnvironmentAdminAuth::class)->membership()?->organization_id;
+            $slug = is_string($organizationId) ? app(OrganizationLinks::class)->addressOf($organizationId)['slug'] ?? null : null;
+
+            if ($slug === null) {
+                $route = 'orgs.index';
+                $parameters = [];
+            } else {
+                $parameters['org'] = $slug;
+            }
+        }
+
         return $host === null
             ? route($route, $parameters)
             : 'https://'.$host.route($route, $parameters, false);
@@ -250,7 +272,7 @@ final readonly class ShellContext
                 continue;
             }
 
-            $candidate = $onEnvironmentPlane ? $name : 'environment.'.$name;
+            $candidate = $onEnvironmentPlane ? $name : ConsoleScope::environmentTwin($name);
             $route = Route::getRoutes()->getByName($candidate);
 
             if ($route !== null
@@ -299,23 +321,28 @@ final readonly class ShellContext
      * organization read at all: its name is already on the signed-in session.
      *
      * @param  Collection<int, Membership>  $memberships
+     * @param  (Closure(string): ?string)|null  $openHref  where a row opens, by organization id
      * @return list<SwitchOptionProps>
      */
     private function organizationOptions(
         Collection $memberships,
         ?string $currentId,
         ?string $fallbackName,
-        ?string $openHref = null,
+        ?Closure $openHref = null,
     ): array {
+        // The organization's address and name as every Cbox app shows them: the linked
+        // `cbox` organization's, where there is one.
+        $addresses = app(OrganizationLinks::class);
+
         if ($memberships->count() <= 1 && $fallbackName !== null && $currentId !== null) {
             $membership = $memberships->first();
 
             return [new SwitchOptionProps(
                 id: $currentId,
-                label: $fallbackName,
+                label: $addresses->addressOf($currentId)['name'] ?? $fallbackName,
                 caption: $membership === null ? null : ConsoleLabels::navigation($membership->role->label()),
                 current: true,
-                openHref: $openHref,
+                openHref: $openHref === null ? null : $openHref($currentId),
             )];
         }
 
@@ -327,6 +354,8 @@ final readonly class ShellContext
         }
 
         $organizations = $ids === [] ? [] : $this->organizations->findMany($ids);
+        // Every row's address in one read, so nine organizations cost what one does.
+        $addresses->addressesOf($ids);
 
         $options = [];
 
@@ -341,10 +370,10 @@ final readonly class ShellContext
 
             $options[] = new SwitchOptionProps(
                 id: $membership->organization_id,
-                label: $organization->name,
+                label: $addresses->addressOf($membership->organization_id)['name'] ?? $organization->name,
                 caption: ConsoleLabels::navigation($membership->role->label()),
                 current: $membership->organization_id === $currentId,
-                openHref: $openHref,
+                openHref: $openHref === null ? null : $openHref($membership->organization_id),
             );
         }
 

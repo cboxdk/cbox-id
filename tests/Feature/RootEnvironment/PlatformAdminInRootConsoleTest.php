@@ -113,7 +113,7 @@ it('keeps the Platform area lit on every page of it, detail pages included', fun
 it('leaves platform admin off the root host\'s organization console, and links it from the account menu', function (): void {
     rootPlatformWorld();
 
-    $shell = (array) $this->get('https://cboxid.com/account')->assertOk()->inertiaProps('shell');
+    $shell = (array) $this->get('https://cboxid.com/settings')->assertOk()->inertiaProps('shell');
     $routes = collect($shell['areas'])->flatMap(static fn (array $area): array => array_column($area['pages'], 'route'));
 
     expect($routes->filter(static fn (string $route): bool => str_starts_with($route, 'platform.'))->all())->toBe([])
@@ -146,7 +146,7 @@ it('answers every platform-admin route with a 404 for a signed-in person who doe
         ->and($served)->toBe([], implode("\n", $served));
 
     // …and the rail of the console they do have says nothing about it.
-    $shell = (array) $this->get('https://cboxid.com/account')->assertOk()->inertiaProps('shell');
+    $shell = (array) $this->get('https://cboxid.com/settings')->assertOk()->inertiaProps('shell');
 
     expect($shell['platformHref'])->toBeNull()
         ->and(json_encode($shell))->not->toContain('/admin');
@@ -229,13 +229,14 @@ it('lands a support session on the targets current native access and honors revo
         'organization' => $organization->id, 'reason' => IMPERSONATION_REASON,
     ])->assertRedirect(route('dashboard'));
     nextRequest();
-    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('projects'));
-    expect($this->get(route('projects'))->assertOk()->inertiaProps('impersonation.email'))->toBe($subject->email);
+    useOrganizationInUrls($organization->id);
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('orgs.projects'));
+    expect($this->get(route('orgs.projects'))->assertOk()->inertiaProps('impersonation.email'))->toBe($subject->email);
 
     $roles = app(NativeProductMembers::class);
     $roles->replace($member, [], $roles->access($member)['roles_version'], AuditActor::system());
     nextRequest();
-    $this->get(route('projects'))->assertForbidden();
+    $this->get(route('orgs.projects'))->assertForbidden();
     $this->get('https://cboxid.com/dashboard')->assertRedirect(route('account'));
     expect($this->get(route('account'))->assertOk()->inertiaProps('impersonation.email'))->toBe($subject->email);
 })->group('security');

@@ -92,7 +92,7 @@ it('lets a person without a team resend confirmation from their account page', f
     signUpForOrganization();
     config(['cbox-id.tenancy.account_host' => 'localhost']);
     $this->get(route('account'))->assertOk()->assertInertia(fn ($page) => $page
-        ->where('auth.user.confirmUrl', '/account/email/confirmation'));
+        ->where('auth.user.confirmUrl', '/settings/email/confirmation'));
     $this->from(route('account'))->post(route('account.email.confirmation'), ['email' => 'someone-else@example.test'])
         ->assertRedirect(route('account'))->assertSessionHasNoErrors()->assertSessionHas('status');
     Mail::assertQueued(EmailVerificationMail::class, 2);

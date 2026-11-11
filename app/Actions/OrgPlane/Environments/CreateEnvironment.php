@@ -56,7 +56,7 @@ use Illuminate\Support\Facades\DB;
     plane: ActionPlane::Organization,
     rest: ['POST', '/environments'],
     status: 201,
-    consoleRoutes: ['projects.environments.store'],
+    consoleRoutes: ['orgs.projects.environments.store'],
     consoleGate: ConsoleGate::ManageEnvironments,
     schema: 'CreatedEnvironment',
     tag: 'Environments',

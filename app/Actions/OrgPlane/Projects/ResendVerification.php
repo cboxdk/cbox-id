@@ -43,7 +43,7 @@ use Illuminate\Support\Facades\RateLimiter;
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['POST', '/projects/verification/resend'],
-    consoleRoutes: ['projects.verification.resend'],
+    consoleRoutes: ['orgs.projects.verification.resend'],
     consoleGate: ConsoleGate::OrganizationMember,
     tag: 'Projects',
     schema: 'VerificationResend',

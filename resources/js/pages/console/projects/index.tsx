@@ -5,8 +5,8 @@ import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import { Badge, Button, Field, Icon, Input, PageHeader, Select } from '@/ui';
-import { resend as resendVerification } from '@routes/projects/verification';
-import { store as storeEnvironment } from '@routes/projects/environments';
+import { resend as resendVerification } from '@routes/orgs/projects/verification';
+import { store as storeEnvironment } from '@routes/orgs/projects/environments';
 
 interface EnvironmentRow {
     id: string;
