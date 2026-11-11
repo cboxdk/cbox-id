@@ -114,6 +114,36 @@ final class Surfaces
 
     public function __construct(private readonly EnvironmentResolver $resolver) {}
 
+    /**
+     * In login-host mode a pinned passkey origin (`cbox-id.webauthn.origin`) is the login
+     * host's origin and no other. Called once at boot.
+     *
+     * A pinned relying-party id may be a parent domain (`example.com`), which every host
+     * under it satisfies; the ORIGIN is what keeps a passkey ceremony on one host. Left
+     * naming the old root or the app host, a passkey could be asserted from the console's
+     * origin, which is the origin the split exists to keep credentials away from.
+     */
+    public static function pinPasskeyOrigin(): void
+    {
+        $login = config('cbox-id.hosts.login');
+        $origin = config('cbox-id.webauthn.origin');
+
+        if (! is_string($login) || trim($login) === '' || ! is_string($origin) || $origin === '') {
+            return;
+        }
+
+        $login = mb_strtolower(trim($login));
+
+        if (parse_url($origin, PHP_URL_HOST) === $login) {
+            return;
+        }
+
+        $scheme = parse_url($origin, PHP_URL_SCHEME);
+        $port = parse_url($origin, PHP_URL_PORT);
+
+        config(['cbox-id.webauthn.origin' => (is_string($scheme) && $scheme !== '' ? $scheme : 'https').'://'.$login.(is_int($port) ? ':'.$port : '')]);
+    }
+
     /** Whether login-host mode is on. */
     public function split(): bool
     {

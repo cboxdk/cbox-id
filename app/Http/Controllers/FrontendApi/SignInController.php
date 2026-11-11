@@ -161,6 +161,14 @@ class SignInController
             return $this->refuse();
         }
 
+        // A platform operator signs in on the login host only (LoginTickets::refuses()).
+        if ($this->tickets->refuses($session->user_id)) {
+            $this->sessions->revoke($session->id);
+            $request->session()->forget(PlatformAuth::SESSION_KEY);
+
+            return $this->hostedSignInRequired();
+        }
+
         /** @var list<string> $amr */
         $amr = array_values(array_filter($session->amr, is_string(...)));
 
@@ -191,6 +199,14 @@ class SignInController
         ]);
     }
 
+    private function hostedSignInRequired(): JsonResponse
+    {
+        return new JsonResponse([
+            'status' => 'hosted_sign_in_required',
+            'message' => 'Continue through hosted sign-in.',
+        ]);
+    }
+
     /**
      * Mint the token that carries a half-finished sign-in to the next request.
      */
@@ -202,6 +218,12 @@ class SignInController
 
         if (! is_string($subjectId)) {
             return $this->refuse();
+        }
+
+        // A platform operator signs in on the login host only (LoginTickets::refuses()).
+        // Said after the password was right, like every other answer on this branch.
+        if ($this->tickets->refuses($subjectId)) {
+            return $this->hostedSignInRequired();
         }
 
         // Phone approval is bound to a hosted browser session. A cross-origin SDK

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform\FrontendApi;
 
+use App\Platform\OperatorMfa;
+use App\Platform\Surfaces\Surfaces;
 use Cbox\Id\FrontendApi\Models\PublishableKey;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -43,6 +45,31 @@ final class LoginTickets
     private const ENTROPY = 32;
 
     /**
+     * Whether no ticket may be minted for this person: a PLATFORM OPERATOR, in login-host
+     * mode.
+     *
+     * A ticket is a sign-in that began with a password or a passkey typed into somebody
+     * else's page. An operator's session reaches the operator plane, so theirs begins on
+     * the login host and nowhere else. A caller asks this first and answers
+     * `hosted_sign_in_required`; {@see mint()}, {@see mintPending()} and {@see promote()}
+     * refuse regardless.
+     *
+     * Only with a login host configured: without one the hosted pages and the console
+     * share a host, and an install's own operator signs in to its apps as before.
+     */
+    public function refuses(string $subjectId): bool
+    {
+        return app(Surfaces::class)->split() && app(OperatorMfa::class)->isOperator($subjectId);
+    }
+
+    private function refuseOperator(string $subjectId): void
+    {
+        if ($this->refuses($subjectId)) {
+            throw new LoginTicketRefused('No login ticket is minted for a platform operator.');
+        }
+    }
+
+    /**
      * Mint a ticket for a completed credential check.
      *
      * Returns the plaintext, which is the only time it exists in that form; the row keeps
@@ -55,6 +82,8 @@ final class LoginTickets
      */
     public function mint(PublishableKey $key, string $subjectId, array $amr): string
     {
+        $this->refuseOperator($subjectId);
+
         return $this->issue($key, $subjectId, $amr, 'ready', self::TTL_SECONDS);
     }
 
@@ -68,6 +97,8 @@ final class LoginTickets
      */
     public function mintPending(PublishableKey $key, string $subjectId, array $amr, string $stage): string
     {
+        $this->refuseOperator($subjectId);
+
         return $this->issue($key, $subjectId, $amr, $stage, self::PENDING_TTL_SECONDS);
     }
 
@@ -120,6 +151,8 @@ final class LoginTickets
      */
     public function promote(LoginTicket $ticket, array $amr): string
     {
+        $this->refuseOperator($ticket->subject_id);
+
         $token = Str::random(self::ENTROPY);
 
         $ticket->update([

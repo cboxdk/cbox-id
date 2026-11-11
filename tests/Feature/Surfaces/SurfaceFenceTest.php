@@ -5,11 +5,14 @@ declare(strict_types=1);
 use App\Platform\Health\LoginHostHealthCheck;
 use App\Platform\IssuerUrl;
 use App\Platform\PlaneResolver;
+use App\Platform\Surfaces\PathKind;
 use App\Platform\Surfaces\Surface;
 use App\Platform\Surfaces\Surfaces;
 use App\Platform\TrustedHosts;
 use Cbox\Id\Console\ValueObjects\HealthResult;
+use Cbox\Id\Identity\Contracts\RelyingParties;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Illuminate\Http\Request;
 
 /**
  * LOGIN-HOST MODE: each host serves its own surface and nothing else.
@@ -225,8 +228,13 @@ it('has the doctor name a login host the rest of the configuration disagrees wit
     );
 
     loginHostMode();
+    config(['cbox-id.webauthn.rp_id' => 'cboxid.test']);
 
     expect(implode("\n", $labels()))->not->toContain('fail:');
+
+    config(['cbox-id.webauthn.rp_id' => 'elsewhere.example']);
+    expect($labels())->toContain('fail: The pinned passkey relying party does not cover the login host');
+    config(['cbox-id.webauthn.rp_id' => 'cboxid.test']);
 
     config(['cbox-id.issuer' => 'https://'.APP_HOST]);
     expect($labels())->toContain('fail: The issuer is not the login host');
@@ -235,9 +243,65 @@ it('has the doctor name a login host the rest of the configuration disagrees wit
     expect($labels())->toContain('fail: The login host and the app host are the same host');
 
     config(['cbox-id.tenancy.account_host' => APP_HOST, 'cbox-id.hosts.login' => 'acme.cboxauth.test']);
-    config(['cbox-id.issuer' => 'https://acme.cboxauth.test']);
+    config(['cbox-id.issuer' => 'https://acme.cboxauth.test', 'cbox-id.webauthn.rp_id' => null]);
     expect($labels())->toContain("fail: An environment answers on the login host's name");
 
     config(['cbox-id.hosts.login' => null]);
     expect($labels())->toBe(['ok: Sign-in host']);
 });
+
+/**
+ * Four framework endpoints build what they answer from the REQUEST host rather than from
+ * the issuer: the frontend API's `/config` (issuer and endpoints), the SCIM resource
+ * locations, and the `redirect_uri` of an inbound OpenID Connect sign-in. Each is
+ * therefore only ever reachable on a host that is an issuer.
+ */
+it('keeps the endpoints that follow the request host off every host that is not an issuer', function (string $path): void {
+    loginHostMode();
+
+    expect(served(APP_HOST, $path))->toBeFalse()
+        ->and(served(API_HOST, $path))->toBeFalse()
+        ->and(served('evil.example', $path))->toBeFalse()
+        ->and(served('nobody.cboxauth.test', $path))->toBeFalse()
+        ->and(app(Surfaces::class)->kindOf(Request::create('https://'.LOGIN_HOST.$path)))->toBe(PathKind::Issuer);
+})->with([
+    'the frontend API configuration' => '/frontend/v1/config',
+    'SCIM users' => '/scim/v2/Users',
+    'SCIM groups' => '/scim/v2/Groups',
+    'the OpenID Connect redirect' => '/sso/oidc/01hzzzzzzzzzzzzzzzzzzzzzzz/redirect',
+    'the OpenID Connect callback' => '/sso/oidc/01hzzzzzzzzzzzzzzzzzzzzzzz/callback',
+])->group('security');
+
+it('never lets the default environment answer on a name under the tenant domain', function (): void {
+    loginHostMode();
+
+    // The default environment's own slug, under the domain tenants are served on.
+    $root = platformRootEnvironment();
+    $root->forceFill(['slug' => 'cbox'])->save();
+    $host = 'cbox.cboxauth.test';
+
+    expect(app(Surfaces::class)->of($host))->toBe(Surface::Unmapped)
+        ->and(served($host, '/login'))->toBeFalse()
+        ->and(served($host, '/dashboard'))->toBeFalse()
+        ->and(served($host, '/admin/operators'))->toBeFalse()
+        ->and(served($host, '/.well-known/openid-configuration'))->toBeFalse()
+        ->and(served($host, '/oauth/authorize'))->toBeFalse()
+        ->and(served($host, '/frontend/v1/config'))->toBeFalse();
+})->group('security');
+
+it('pins the passkey origin to the login host', function (): void {
+    loginHostMode();
+    config(['cbox-id.webauthn.rp_id' => 'cboxid.test', 'cbox-id.webauthn.origin' => 'https://cboxid.test']);
+
+    Surfaces::pinPasskeyOrigin();
+
+    expect(config('cbox-id.webauthn.origin'))->toBe('https://'.LOGIN_HOST)
+        ->and(app(RelyingParties::class)->current()->origin)->toBe('https://'.LOGIN_HOST)
+        ->and(app(RelyingParties::class)->current()->id)->toBe('cboxid.test');
+
+    // No login host: the pin is whatever the deployment set.
+    config(['cbox-id.hosts.login' => null, 'cbox-id.webauthn.origin' => 'https://cboxid.test']);
+    Surfaces::pinPasskeyOrigin();
+
+    expect(config('cbox-id.webauthn.origin'))->toBe('https://cboxid.test');
+})->group('security');
