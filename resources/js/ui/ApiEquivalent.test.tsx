@@ -74,6 +74,21 @@ describe('ApiEquivalent', () => {
         expect(document.body).toHaveTextContent('/api/v1/apps');
     });
 
+    it('shows the API host path for an action served on /v1', async () => {
+        const onApiHost: ApiAction = {
+            ...CREATE,
+            base: '/v1',
+            url: 'https://api.cboxid.com/v1/apps',
+        };
+        setPageProps({ apiEquivalents: { 'apps.create': onApiHost } });
+        render(<PageApiEquivalents />);
+
+        await userEvent.click(screen.getByRole('button', { name: /^API/ }));
+
+        expect(document.body).toHaveTextContent('/v1/apps');
+        expect(document.body).not.toHaveTextContent('/api/v1/apps');
+    });
+
     it('draws no API button on a page that hosts no action', () => {
         render(<PageApiEquivalents />);
 

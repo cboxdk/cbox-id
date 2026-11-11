@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Api\ApiHost;
 use App\ServiceConnections\ConnectionEvents;
 use App\ServiceConnections\Contracts\ReadsConnectionEvents;
 use App\ServiceConnections\ServiceConnection;
@@ -32,6 +33,8 @@ beforeEach(function (): void {
         'admin' => Introspection::active('user_admin', $this->consumer, ['service_connections.manage'], ['org' => $this->organization->id]),
         'member' => Introspection::active('user_member', $this->consumer, ['service_connections.manage'], ['org' => $this->organization->id]),
         'machine' => Introspection::active($this->consumer, $this->consumer, ['service_connections.lease', 'service_connections.manage'], []),
+        'lease-only' => Introspection::active($this->consumer, $this->consumer, ['service_connections.lease'], []),
+        'manage-only-machine' => Introspection::active($this->consumer, $this->consumer, ['service_connections.manage'], []),
         'unscoped' => Introspection::active('user_admin', $this->consumer, [], ['org' => $this->organization->id]),
         'wrong-audience' => Introspection::active('user_admin', $this->consumer, ['service_connections.manage'], ['org' => $this->organization->id, 'aud' => 'https://other.test']),
         'other-org' => Introspection::active('user_admin', $this->consumer, ['service_connections.manage'], ['org' => 'org_other']),
@@ -129,4 +132,18 @@ it('preserves long client and service identifiers while enforcing the tenant own
 
 it('reads connection events through a bound reader, so the events API never fails to resolve it', function (): void {
     expect(app(ReadsConnectionEvents::class))->toBeInstanceOf(ConnectionEvents::class);
+});
+
+it('inspects a grant on the API host with either an inspect-only or a lease-only token, and with neither refuses', function (): void {
+    $id = $this->withToken('admin')->postJson('/api/v1/service-connections/cbox_billing')->assertOk()->json('id');
+    $inspect = 'http://'.ApiHost::name().'/v1/service-connections/'.$id.'/inspect';
+
+    // `/status` (lease) folded into `/inspect` on /v1: the consumer's lease-only machine
+    // token, which laravel-id-client uses today, keeps its answer there.
+    $this->withToken('provider')->postJson($inspect)->assertOk()->assertJsonPath('active', true)->assertJsonPath('organization_id', $this->organization->id);
+    $this->withToken('lease-only')->postJson($inspect)->assertOk()->assertJsonPath('active', true);
+
+    $this->withToken('manage-only-machine')->postJson($inspect)
+        ->assertForbidden()
+        ->assertHeader('Content-Type', 'application/problem+json');
 });

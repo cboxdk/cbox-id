@@ -7,6 +7,7 @@ use App\Mcp\ActionTool;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ActionApprovalRequest;
+use App\Platform\Api\ManagementAudience;
 use App\Platform\AppMemberRoles;
 use App\Platform\EnvironmentOrigin;
 use App\Platform\GrantAccessRole;
@@ -643,7 +644,9 @@ it('signs the cbox CLI in at the root with the device grant, for the whole organ
 
     $bootstrap = $this->getJson('/.well-known/cbox-cli')->assertOk();
 
-    expect($bootstrap->json('resource'))->toBe(rootMcpResource())
+    // The API host's resource (plan §2.5); the root's own `/mcp` takes the token it buys.
+    expect($bootstrap->json('resource'))->toBe(ManagementAudience::api())
+        ->and($bootstrap->json('mcp_url'))->toBe(ManagementAudience::appMcp())
         ->and($bootstrap->json('client_id'))->toBe($client->client_id)
         ->and($bootstrap->json('scopes'))->toContain('offline_access', 'id:members:write', 'apis:write', 'account:profile:write', 'operator:workspaces:write')
         ->not->toContain('team:write')

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Platform\Api\ApiHost;
+use App\Platform\Api\ManagementAudience;
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
 use App\Support\CliClient;
@@ -419,7 +421,10 @@ it('signs the cbox CLI in with the device grant to a token /mcp and REST both ta
 
     $bootstrap = $this->getJson('/.well-known/cbox-cli')->assertOk();
 
-    expect($bootstrap->json('resource'))->toBe(mcpResourceId())
+    // The API host's resource (plan §2.5): the token it buys is taken at this host's `/mcp`
+    // and its REST plane as before, and on the API host and the application host's `/mcp`.
+    expect($bootstrap->json('resource'))->toBe(ManagementAudience::api())
+        ->and($bootstrap->json('api_base'))->toBe('https://'.ApiHost::name().'/v1')
         ->and($bootstrap->json('scopes'))->toContain('offline_access', 'webhooks:read', 'webhooks:write');
 
     $started = $this->post('/oauth/device_authorization', [

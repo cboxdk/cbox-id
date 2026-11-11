@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\OpenApi\ActionOpenApi;
+use App\Platform\Api\V1\V1OpenApi;
 use Illuminate\Console\Command;
 use Symfony\Component\Yaml\Yaml;
 
@@ -50,6 +51,20 @@ final class BuildOpenApiCommand extends Command
 
             file_put_contents($outPath, $document);
             $this->components->info("Wrote {$outPath}.");
+        }
+
+        // The one contract for the API host, built from the plane documents as committed
+        // (just written, or — with --check — already reported above when they are stale).
+        $v1 = V1OpenApi::encode(app(V1OpenApi::class)->build());
+        $v1Path = V1OpenApi::path();
+
+        if ((is_file($v1Path) ? (string) file_get_contents($v1Path) : '') !== $v1) {
+            if ($this->option('check')) {
+                $stale[] = $v1Path;
+            } else {
+                file_put_contents($v1Path, $v1);
+                $this->components->info("Wrote {$v1Path}.");
+            }
         }
 
         if ($stale !== []) {
