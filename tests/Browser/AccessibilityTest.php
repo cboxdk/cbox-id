@@ -762,10 +762,10 @@ it('draws the mobile navigation on both console planes', function (string $plane
     visit($path)
         ->on()->mobile()
         ->assertSee($heading)
-        ->assertPresent('[data-cbox-mobile-nav]')
+        ->assertPresent('header.cbx-header')
         // The trigger is named for a screen reader rather than in visible text, so it is
         // the LABEL that is asserted — which is also the thing that matters.
-        ->assertPresent('[data-cbox-mobile-nav] [aria-label="Open menu"]')
+        ->assertPresent('header.cbx-header button[aria-label="Open navigation"]')
         ->assertNoJavaScriptErrors();
 })->with([
     'organization plane' => ['organization', '/dashboard', 'Recent activity'],
@@ -796,7 +796,7 @@ it('offers a sign-out and a security page to somebody who belongs to nowhere', f
         ->assertNoJavaScriptErrors()
         // And the way out, behind the account menu — opened, because a control that is
         // present but unreachable is the failure this is about. The trigger is the avatar
-        // top right, named for the person it belongs to.
-        ->click('button.cbx-avatar-btn')
+        // at the foot of the rail, named for what it opens.
+        ->click('button.cbx-rail-account')
         ->assertSee('Sign out');
 })->group('a11y');

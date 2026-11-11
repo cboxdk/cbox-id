@@ -332,14 +332,14 @@ it('files every tab of an organization\'s page under Users & orgs › Organizati
     // including the environment-wide pages drawn there — keeps the reader in the same place.
     $orgId = anEnvironmentAdminWithOrganizations();
 
-    $list = (array) $this->get(route('environment.organizations'))->assertOk()->inertiaProps('shell');
+    $list = consoleRail($this->get(route('environment.organizations'))->assertOk());
 
     $this->get(route('environment.organizations'))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('organizations', fn (Collection $rows): bool => $rows->firstWhere('id', $orgId)['href'] === route('environment.organizations.show', $orgId)));
 
     foreach ([OrganizationTabs::OVERVIEW, OrganizationTabs::SSO, OrganizationTabs::AUDIT, OrganizationTabs::POLICY] as $tab) {
-        $shell = (array) $this->get(route(OrganizationTabs::route($tab), $orgId))->assertOk()->inertiaProps('shell');
+        $shell = consoleRail($this->get(route(OrganizationTabs::route($tab), $orgId))->assertOk());
 
         expect($shell['activeArea'])->toBe($list['activeArea'], "the {$tab} tab lit another area of the rail");
     }
@@ -348,7 +348,7 @@ it('files every tab of an organization\'s page under Users & orgs › Organizati
 it('carries no acting organization in the console chrome any more', function (): void {
     anEnvironmentAdminWithOrganizations();
 
-    $shell = (array) $this->get(route('environment.home'))->assertOk()->inertiaProps('shell');
+    $shell = consoleRail($this->get(route('environment.home'))->assertOk());
 
     expect($shell)->not->toHaveKey('actingOrganization');
 });

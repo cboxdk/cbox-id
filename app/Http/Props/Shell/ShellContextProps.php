@@ -6,6 +6,7 @@ namespace App\Http\Props\Shell;
 
 use App\Http\Props\Prop;
 use App\Platform\Console\ShellContext;
+use App\Platform\Shell\IdShell;
 
 /**
  * WHERE YOU ARE, as the topbar draws it: `Workspace ▾ / Project ▾ / Environment ▾`.
@@ -37,6 +38,15 @@ final readonly class ShellContextProps implements Prop
         public ?string $switchUrl,
         public array $projects,
     ) {}
+
+    /**
+     * No switcher: where the shared shell draws the context ({@see IdShell}),
+     * this console's own is not built at all.
+     */
+    public static function none(): self
+    {
+        return new self('', [], null, []);
+    }
 
     /**
      * @return array{noun: string, organizations: list<SwitchOptionProps>, switchUrl: string|null, projects: list<ContextProjectProps>}

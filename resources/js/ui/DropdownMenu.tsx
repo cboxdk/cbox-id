@@ -17,7 +17,7 @@ export function DropdownMenuContent({
             <Primitive.Content
                 align={align}
                 sideOffset={sideOffset}
-                className={cn('cbx-menu', className)}
+                className={cn('idc-menu', className)}
                 {...props}
             >
                 {children}

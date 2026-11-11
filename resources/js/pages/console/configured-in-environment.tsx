@@ -1,8 +1,7 @@
 import { useTranslator as useConsoleTranslator } from '@/i18n';
-import { usePage } from '@inertiajs/react';
 import { EnvBadge } from '@/chrome/EnvBadge';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps, SharedProps } from '@/types';
+import type { ContextProject, PageProps } from '@/types';
 import { Icon, PageHeader, Panel } from '@/ui';
 
 type Props = PageProps<{
@@ -14,6 +13,8 @@ type Props = PageProps<{
     consoleHref: string;
     /** The platform's own environment console, for an operator. */
     platformHref: string | null;
+    /** Every environment this person may open, grouped by project; each link opens this page there. */
+    projects: ContextProject[];
 }>;
 
 /**
@@ -32,13 +33,12 @@ export default function ConfiguredInEnvironment({
     projectsHref,
     consoleHref,
     platformHref,
+    projects,
 }: Props) {
     const { t: consoleFinalText } = useConsoleTranslator();
 
     const { rich: consoleRich } = useConsoleTranslator();
     const { t: consoleT } = useConsoleTranslator();
-    const { shell } = usePage<SharedProps>().props;
-    const projects = (shell?.context.projects ?? []).filter((project) => project.id !== 'platform');
 
     return (
         <div style={{ maxWidth: '40rem' }}>

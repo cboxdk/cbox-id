@@ -151,6 +151,9 @@ it('gates every subject-plane create action', function (): void {
         'app/Http/Controllers/Console/ProjectController.php::store()',
         'app/Http/Controllers/Console/RadarController.php::store()',
         'app/Http/Controllers/Console/RoleConflictController.php::store()',
+        // The header's "New organization / project / environment": a name only, like a
+        // project from the Projects page, landing on its details to finish there.
+        'vendor/cboxdk/laravel-console-kit/src/Http/Controllers/ShellContextController.php::store()',
     ];
 
     sort($ungated);

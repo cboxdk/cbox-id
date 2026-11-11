@@ -24,9 +24,10 @@ it('opens the same app selector directly in the mobile header', function (): voi
     crudSetup();
     visit(route('environment.app-catalog'))
         ->resize(375, 812)
-        ->click('header button[aria-label="Switch app"]')
-        ->assertVisible('cbox-app-switcher .panel')
-        ->assertSee('No apps have been published for you yet.')
+        ->click('header.cbx-header button[aria-label="Open navigation"]')
+        ->click('.cbx-sheet button:has-text("Switch app")')
+        ->assertVisible('.cbx-menu-apps')
+        ->assertSee('No apps available')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'app-switcher-mobile');
 });
@@ -36,17 +37,18 @@ it('opens the personal picker from the signed-in header', function (): void {
     visit('/dashboard')
         ->click('header button[aria-label="Switch app"]')
         ->assertPathIs('/dashboard')
-        ->assertSee('Switch app')
-        ->assertSee('No apps have been published for you yet.')
+        ->assertVisible('.cbx-menu-apps')
+        ->assertSee('No apps available')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'app-switcher-empty');
 });
 
-it('opens an existing picker bookmark in the account header', function (): void {
+it('lands an old picker bookmark on the account page, with the picker in its header', function (): void {
     actingAsRole(MembershipRole::Owner);
     visit('/switch-app')
         ->assertPathIs('/settings')
-        ->assertVisible('cbox-app-switcher .panel')
-        ->assertSee('No apps have been published for you yet.')
+        ->click('header button[aria-label="Switch app"]')
+        ->assertVisible('.cbx-menu-apps')
+        ->assertSee('No apps available')
         ->assertNoJavaScriptErrors();
 });

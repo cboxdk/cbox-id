@@ -59,35 +59,33 @@ function platformAdminRoutes(): array
 it('draws platform admin as the Platform area of the platform environment\'s console', function (): void {
     rootPlatformWorld();
 
-    $shell = (array) $this->get('https://cboxid.com/admin/organizations')->assertOk()->inertiaProps('shell');
+    $response = $this->get('https://cboxid.com/admin/organizations')->assertOk();
+    $shell = consoleRail($response);
+    $header = (array) $response->inertiaProps('shell');
     $keys = collect($shell['areas'])->pluck('key');
 
-    // The environment console's own shell — its altitude, its areas, its context switcher —
-    // with the Platform area first and lit.
-    expect($shell['altitude'])->toBe('environment')
-        ->and($keys->first())->toBe('platform')
+    // The environment console's own rail, with the Platform area first and lit.
+    expect($keys->first())->toBe('platform')
         ->and($keys)->toContain('Home', 'Authentication', 'Users & orgs', 'Settings')
         ->and($shell['activeArea'])->toBe('platform')
         ->and(collect($shell['areas'][0]['pages'])->pluck('label')->all())
         ->toBe(['Organizations', 'Environments', 'Organization tree', 'Operators', 'Usage', 'Queues', 'Search'])
-        ->and($shell['brandHref'])->toBe('https://cboxid.com/admin/organizations')
-        ->and($shell['context']['organizations'][0]['label'])->toBe('Platform admin')
-        ->and($shell['context']['projects'][0]['environments'][0]['current'])->toBeTrue()
-        // In the rail, so not in the account menu as well.
-        ->and($shell['platformHref'])->toBeNull()
-        ->and($shell['platformEnvironmentHref'])->toBeNull()
+        // Platform admin acts on no one organization: the header names none.
+        ->and($header['context']['levels'])->toBe([])
+        // In the rail, so not in the palette as well.
+        ->and(collect($header['palette']['actions'])->pluck('id'))->not->toContain('platform.admin')
         ->and($shell['section'])->toBe('Platform')
-        // The amber strip's message, as the page-scope line every page carries.
-        ->and($shell['actsOn'])->toMatchArray(['kind' => 'platform', 'label' => 'The whole deployment', 'critical' => true])
-        ->and($shell)->not->toHaveKey('platformMode');
+        // The amber strip's message, over the page.
+        ->and($header['banner']['kind'])->toBe('notice')
+        ->and($header['banner']['text'])->toContain('The whole deployment');
 
     // …and every environment page of that console carries the same Platform area, unlit.
-    $environment = (array) $this->get('https://cboxid.com/admin/environment/social-sign-in')->assertOk()->inertiaProps('shell');
+    $response = $this->get('https://cboxid.com/admin/environment/social-sign-in')->assertOk();
+    $environment = consoleRail($response);
 
     expect(collect($environment['areas'])->pluck('key')->first())->toBe('platform')
         ->and($environment['activeArea'])->toBe('Authentication')
-        ->and($environment['platformHref'])->toBeNull()
-        ->and($environment['actsOn']['kind'])->toBe('environment');
+        ->and((string) $response->inertiaProps('shell.banner.text'))->toContain('every organization owner and every operator');
 });
 
 it('keeps the Platform area lit on every page of it, detail pages included', function (): void {
@@ -102,7 +100,7 @@ it('keeps the Platform area lit on every page of it, detail pages included', fun
         '/admin/queues' => 'Queues',
         '/admin/search?q=acme' => 'Search',
     ] as $path => $label) {
-        $shell = (array) $this->get('https://cboxid.com'.$path)->assertOk()->inertiaProps('shell');
+        $shell = consoleRail($this->get('https://cboxid.com'.$path)->assertOk());
         $lit = collect($shell['areas'][0]['pages'])->firstWhere('active', true);
 
         expect($shell['activeArea'])->toBe('platform', $path)
@@ -110,15 +108,16 @@ it('keeps the Platform area lit on every page of it, detail pages included', fun
     }
 });
 
-it('leaves platform admin off the root host\'s organization console, and links it from the account menu', function (): void {
+it('leaves platform admin off the root host\'s organization console, and offers it in the palette', function (): void {
     rootPlatformWorld();
 
-    $shell = (array) $this->get('https://cboxid.com/settings')->assertOk()->inertiaProps('shell');
-    $routes = collect($shell['areas'])->flatMap(static fn (array $area): array => array_column($area['pages'], 'route'));
+    $response = $this->get('https://cboxid.com/settings')->assertOk();
+    $routes = collect(consoleRail($response)['areas'])->flatMap(static fn (array $area): array => array_column($area['pages'], 'route'));
+    $actions = collect($response->inertiaProps('shell.palette.actions'))->pluck('url', 'id');
 
     expect($routes->filter(static fn (string $route): bool => str_starts_with($route, 'platform.'))->all())->toBe([])
-        ->and($shell['platformHref'])->toBe('https://cboxid.com/admin/organizations')
-        ->and($shell['platformEnvironmentHref'])->toBe('https://cboxid.com/admin/environment');
+        ->and($actions['platform.admin'] ?? null)->toBe('https://cboxid.com/admin/organizations')
+        ->and($actions['platform.environment'] ?? null)->toBe('https://cboxid.com/admin/environment');
 });
 
 it('answers every platform-admin route with a 404 for a signed-in person who does not run the deployment', function (): void {
@@ -148,8 +147,7 @@ it('answers every platform-admin route with a 404 for a signed-in person who doe
     // …and the rail of the console they do have says nothing about it.
     $shell = (array) $this->get('https://cboxid.com/settings')->assertOk()->inertiaProps('shell');
 
-    expect($shell['platformHref'])->toBeNull()
-        ->and(json_encode($shell))->not->toContain('/admin');
+    expect(json_encode($shell))->not->toContain('/admin');
 })->group('security');
 
 it('sends a signed-out visitor to the root\'s sign-in, and answers nothing on any other host', function (): void {
@@ -213,10 +211,9 @@ it('runs a support session from the organization tree end to end, on the root ho
     $this->post('https://cboxid.com/impersonation/exit')->assertRedirect(route('platform.organizations'));
     nextRequest();
 
-    $shell = (array) $this->get('https://cboxid.com/admin/environments/root/organizations')->assertOk()->inertiaProps('shell');
+    $shell = consoleRail($this->get('https://cboxid.com/admin/environments/root/organizations')->assertOk());
 
     expect(session(Impersonation::SESSION_KEY))->toBeNull()
-        ->and($shell['altitude'])->toBe('environment')
         ->and($shell['activeArea'])->toBe('platform');
 })->group('security');
 

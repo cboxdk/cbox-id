@@ -349,7 +349,7 @@ it('finishes an agent\'s held request from the console: 202, approve with sudo, 
         ->toMatchArray(['name' => 'Sub-agent', 'scopes' => 'keys:read']);
 
     // …and the rail counts it for the person it waits for.
-    $shell = (array) $this->get(route('environment.agents'))->inertiaProps('shell');
+    $shell = consoleRail($this->get(route('environment.agents')));
     $page = collect($shell['areas'])->flatMap(fn (array $area): array => $area['pages'])->firstWhere('route', 'environment.approvals');
     expect($page['count'] ?? null)->toBe(1);
 

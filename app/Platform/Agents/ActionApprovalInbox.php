@@ -34,6 +34,8 @@ final readonly class ActionApprovalInbox
     /** The framework's ceiling on an action approval's life ({@see FrameworkApprovalRequest}). */
     private const int MAX_PENDING_MINUTES = 15;
 
+    private const string MEMO = 'cbox.approvals.waiting';
+
     public function __construct(
         private PlatformRoot $platformRoot,
         private BackchannelAuthentication $backchannel,
@@ -44,6 +46,23 @@ final readonly class ActionApprovalInbox
      * the count beside Approvals in the rail.
      */
     public function waitingFor(string $subjectId, string $environmentId): int
+    {
+        // The rail and the header's bell both ask on every page: one answer per request.
+        $memo = request()->attributes->get(self::MEMO);
+        $memo = is_array($memo) ? $memo : [];
+        $key = $subjectId.'|'.$environmentId;
+
+        if (is_int($memo[$key] ?? null)) {
+            return $memo[$key];
+        }
+
+        $memo[$key] = $this->count($subjectId, $environmentId);
+        request()->attributes->set(self::MEMO, $memo);
+
+        return $memo[$key];
+    }
+
+    private function count(string $subjectId, string $environmentId): int
     {
         $ids = $this->recentIds($environmentId);
 

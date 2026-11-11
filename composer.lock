@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "0875914cafb6cd20c88cbc4163e6b42f",
+    "content-hash": "f20ead05b161be71c928a216f4ef3e17",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -434,16 +434,16 @@
         },
         {
             "name": "cboxdk/laravel-assistant-client",
-            "version": "v0.2.0",
+            "version": "v0.2.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-assistant-client.git",
-                "reference": "7c3e4f43dfe0871c9c516b757738f6b2f18baf07"
+                "reference": "b24a6a8642cb0ca2f9db9f3a0e5b19cc8e809e6f"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-assistant-client/zipball/7c3e4f43dfe0871c9c516b757738f6b2f18baf07",
-                "reference": "7c3e4f43dfe0871c9c516b757738f6b2f18baf07",
+                "url": "https://api.github.com/repos/cboxdk/laravel-assistant-client/zipball/b24a6a8642cb0ca2f9db9f3a0e5b19cc8e809e6f",
+                "reference": "b24a6a8642cb0ca2f9db9f3a0e5b19cc8e809e6f",
                 "shasum": ""
             },
             "require": {
@@ -487,9 +487,9 @@
             "description": "Cbox Assistant client for Laravel: signed tools, product support and curated knowledge.",
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-assistant-client/issues",
-                "source": "https://github.com/cboxdk/laravel-assistant-client/tree/v0.2.0"
+                "source": "https://github.com/cboxdk/laravel-assistant-client/tree/v0.2.1"
             },
-            "time": "2026-11-09T19:32:13+00:00"
+            "time": "2026-11-10T17:47:05+00:00"
         },
         {
             "name": "cboxdk/laravel-audit-chain",
@@ -621,16 +621,16 @@
         },
         {
             "name": "cboxdk/laravel-console-kit",
-            "version": "v0.2.1",
+            "version": "v0.2.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-console-kit.git",
-                "reference": "2bcc5b3bb8a446726f8692929d2c858072fab98e"
+                "reference": "d9b73fb9ab486f6b157f3f31688025cb93bef00a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-console-kit/zipball/2bcc5b3bb8a446726f8692929d2c858072fab98e",
-                "reference": "2bcc5b3bb8a446726f8692929d2c858072fab98e",
+                "url": "https://api.github.com/repos/cboxdk/laravel-console-kit/zipball/d9b73fb9ab486f6b157f3f31688025cb93bef00a",
+                "reference": "d9b73fb9ab486f6b157f3f31688025cb93bef00a",
                 "shasum": ""
             },
             "require": {
@@ -640,10 +640,14 @@
                 "php": "^8.4"
             },
             "require-dev": {
+                "inertiajs/inertia-laravel": "^2.0 || ^3.0",
                 "larastan/larastan": "^3.0",
                 "laravel/pint": "^1.18",
                 "orchestra/testbench": "^10.0 || ^11.0",
                 "pestphp/pest": "^3.5 || ^4.0"
+            },
+            "suggest": {
+                "inertiajs/inertia-laravel": "Shares the `shell` prop lazily with every Inertia page (without it, HandleShell shares it with Blade views)."
             },
             "type": "library",
             "extra": {
@@ -676,9 +680,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-console-kit/issues",
-                "source": "https://github.com/cboxdk/laravel-console-kit/tree/v0.2.1"
+                "source": "https://github.com/cboxdk/laravel-console-kit/tree/v0.2.3"
             },
-            "time": "2026-07-16T14:18:42+00:00"
+            "time": "2026-11-10T23:35:28+00:00"
         },
         {
             "name": "cboxdk/laravel-dns",

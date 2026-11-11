@@ -62,7 +62,7 @@ it('fits the user panel on a phone and restores the URL selection on reload', fu
     }
     $page->resize(390, 844)->assertVisible('[role="dialog"][data-state="open"]')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
-        ->assertScript('Math.round(document.querySelector("[role=dialog]").getBoundingClientRect().width)', 390)
+        ->assertScript('Math.round(document.querySelector("[role=dialog][data-state=open]").getBoundingClientRect().width)', 390)
         ->assertNoAccessibilityIssues()->assertNoJavaScriptErrors()
         ->screenshot(filename: $dark ? 'polish-user-mobile-dark' : 'polish-user-mobile');
     $page->script('location.reload()');

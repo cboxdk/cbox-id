@@ -15,7 +15,7 @@ export function NavCount({ count }: { count: number | null | undefined }) {
     }
 
     return (
-        <span className="cbx-nav-count">
+        <span className="idc-nav-count">
             <span aria-hidden="true">{count > 99 ? '99+' : count}</span>
             <span className="sr-only">
                 {consoleRich('console._part1_waiting_for_you_d2821019', { part1: count })}

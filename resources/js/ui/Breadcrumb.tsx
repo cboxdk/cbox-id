@@ -1,6 +1,7 @@
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
+import { rail } from '@/lib/rail';
 import type { SharedProps } from '@/types';
 
 export interface BreadcrumbProps {
@@ -29,8 +30,7 @@ export interface BreadcrumbProps {
  */
 export function Breadcrumb({ href, label }: BreadcrumbProps) {
     const { t: consoleT } = useConsoleTranslator();
-    const { shell } = usePage<SharedProps>().props;
-    const area = shell?.areas.find((candidate) => candidate.key === shell.activeArea);
+    const area = rail(usePage<SharedProps>().props).active;
     const showArea = area !== undefined && area.label !== label && area.href !== href;
 
     return (

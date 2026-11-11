@@ -190,7 +190,7 @@ export default function WebhooksIndex({
                         <Link
                             key={endpoint.id}
                             href={endpoint.href}
-                            className="cbx-row"
+                            className="idc-row"
                             style={
                                 index < endpoints.length - 1
                                     ? { borderBottom: '1px solid var(--border)' }

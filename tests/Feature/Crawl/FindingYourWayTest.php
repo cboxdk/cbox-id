@@ -397,20 +397,22 @@ function findingYourWayClicks(array $page, string $base): array
     $props = is_array($page['props'] ?? null) ? $page['props'] : [];
     $links = [];
 
-    /** @var array{areas?: list<array{href: string, active: bool, pages: list<array{href: string}>}>} $shell */
-    $shell = is_array($props['shell'] ?? null) ? $props['shell'] : [];
+    // The rail: the shared shell's `nav` on the app host, the white-labelled chrome's own
+    // on a customer environment's host.
+    /** @var array{areas?: list<array{key: string, href: string, active?: bool, pages: list<array{href: string}>}>, activeArea?: string|null} $rail */
+    $rail = is_array($props['shell']['nav'] ?? null) ? $props['shell']['nav'] : (is_array($props['tenantShell'] ?? null) ? $props['tenantShell'] : []);
 
-    foreach ($shell['areas'] ?? [] as $area) {
+    foreach ($rail['areas'] ?? [] as $area) {
         $links[] = $area['href'];
 
-        if ($area['active']) {
+        if (($area['active'] ?? false) === true || $area['key'] === ($rail['activeArea'] ?? null)) {
             foreach ($area['pages'] as $navPage) {
                 $links[] = $navPage['href'];
             }
         }
     }
 
-    unset($props['shell'], $props['i18n'], $props['errors'], $props['flash'], $props['apiEquivalents'], $props['help']);
+    unset($props['shell'], $props['tenantShell'], $props['i18n'], $props['errors'], $props['flash'], $props['apiEquivalents'], $props['help']);
 
     array_walk_recursive($props, function (mixed $value) use (&$links): void {
         if (is_string($value) && preg_match('#^(https?://|/)[^\s]*$#', $value) === 1 && ! str_starts_with($value, '//')) {

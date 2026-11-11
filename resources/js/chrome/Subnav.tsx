@@ -30,7 +30,7 @@ export function Subnav({ label, pages, collapsed, onToggle }: SubnavProps) {
 
     const { t: consoleT } = useConsoleTranslator();
     return (
-        <aside className={cn('cbx-subnav', 'hidden lg:flex', collapsed && 'collapsed')}>
+        <aside className={cn('idc-subnav', 'hidden lg:flex', collapsed && 'collapsed')}>
             <button
                 type="button"
                 className="cbx-strip"

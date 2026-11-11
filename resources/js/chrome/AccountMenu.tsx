@@ -69,7 +69,7 @@ export function AccountMenu({
 
             <DropdownMenuContent side="bottom" align="end" style={{ minWidth: '240px' }}>
                 <div className="cbx-account-hd">
-                    <p className="cbx-account-name">{user.name}</p>
+                    <p className="idc-account-name">{user.name}</p>
                     {user.email !== null && <p className="cbx-account-email">{user.email}</p>}
                 </div>
 

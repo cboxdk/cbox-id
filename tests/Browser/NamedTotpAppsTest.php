@@ -75,24 +75,12 @@ it('adds, corrects, renames and cancels independent apps on a phone-sized screen
         ->assertDontSee('Complete setup within');
     expect(app(PlatformRoot::class)->run(fn (): int => MfaFactor::query()->where('user_id', $subjectId)->count()))->toBe(1);
     $page->assertNoJavaScriptErrors();
-    $currentLocale = 'en';
     foreach (['da' => 'Dansk', 'de' => 'Deutsch', 'sv' => 'Svenska', 'nb' => 'Norsk bokmål', 'fr' => 'Français', 'fi' => 'Suomi', 'es' => 'Español', 'it' => 'Italiano', 'nl' => 'Nederlands'] as $locale => $language) {
-        $picker = 'button[aria-label="'.__('hosted.language.label', [], $currentLocale).'"]';
-        $nextPicker = 'button[aria-label="'.__('hosted.language.label', [], $locale).'"]';
-        $option = '[role="menuitemradio"]:has-text("'.$language.'")';
-        // Finish each preference write and menu close before toggling the next language.
-        $page->assertAttribute($picker, 'aria-busy', 'false')
-            ->assertAttribute($picker, 'aria-expanded', 'false')
-            ->click($picker)
-            ->assertAttribute($picker, 'aria-expanded', 'true')
-            ->assertVisible($option)
-            ->click($option)
+        // Each preference write lands (the page re-renders in it) before the next is picked.
+        pickConsoleLanguage($page, $language, phone: true)
             ->assertScript('document.documentElement.lang', $locale)
             ->assertSee(__('console.totp_apps', [], $locale))
-            ->assertAttribute($nextPicker, 'aria-busy', 'false')
-            ->assertAttribute($nextPicker, 'aria-expanded', 'false')
             ->assertNoJavaScriptErrors();
-        $currentLocale = $locale;
         expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
         if (in_array($locale, ['da', 'de', 'fi'], true)) {
             $page->screenshotElement('section:has(h2:has-text("'.__('console.totp_apps', [], $locale).'"))', 'named-authenticator-apps-'.$locale);

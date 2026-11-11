@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Platform\AppCatalog\AppCatalog;
+use App\Platform\AppCatalog\CatalogEntryData;
 use App\Platform\Sudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -79,6 +81,14 @@ function anOwnerForPictures(): void
         // The visual checklist covers all six cards; enterprise features are explicit grants.
         grantFeature($org->id, 'cbox-id-sso');
         grantFeature($org->id, 'cbox-id-scim');
+
+        // ID's own entry in the app catalog, published with its icon: the rail's mark is
+        // drawn from it, and without it the picture would hold the initials fallback.
+        app(AppCatalog::class)->save('id', CatalogEntryData::fromArray([
+            'version' => 0, 'name' => 'Cbox ID', 'launch_url' => 'https://cboxid.com/', 'enabled' => true,
+            'position' => 0, 'audience' => 'everyone',
+            'icon' => 'data:image/png;base64,'.base64_encode((string) file_get_contents(public_path('apple-touch-icon.png'))),
+        ]));
 
         return $subject;
     });

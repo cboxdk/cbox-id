@@ -73,8 +73,9 @@ function consoleAnswer(): TestResponse
 it('signs the console out with the app host\'s own Log out', function (): void {
     signInAndOpenConsole();
 
-    $shell = $this->get($this->console)->assertOk()->inertiaProps('shell');
-    expect($shell['logoutHref'])->toBe($this->root.'/logout');
+    // The account menu's Sign out, on the app host the console is served from.
+    expect($this->get($this->console)->assertOk()->inertiaProps('shell.account.signOutUrl'))->toBe('/logout')
+        ->and(parse_url((string) $this->console, PHP_URL_HOST))->toBe(parse_url((string) $this->root, PHP_URL_HOST));
 
     $this->post($this->root.'/logout')->assertRedirect($this->root.'/signed-out');
 

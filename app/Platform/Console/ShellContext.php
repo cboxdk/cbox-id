@@ -13,7 +13,6 @@ use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
-use App\Platform\NativeProduct\NativeProductAccess;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\PlaneResolver;
@@ -126,67 +125,6 @@ final readonly class ShellContext
     }
 
     /**
-     * The environment console's context: the administrator's workspaces, the workspace this
-     * environment belongs to, its projects, and the environments in them they may open.
-     *
-     * Every environment link is that environment's console path on this same host, at the
-     * same page where it has one: the path middleware asks the access question on arrival.
-     */
-    public function forEnvironmentPlane(?Membership $membership, string $subjectId, ?string $activeRoute): ShellContextProps
-    {
-        // The workspace whose membership opened this console — none on the platform root's,
-        // which its operators administer and no workspace owns.
-        $workspaceId = $membership?->organization_id;
-        $onRoot = $membership === null;
-        $currentEnvironmentId = $this->environments->current()?->environmentKey();
-        $to = $this->landingRoute($activeRoute, onEnvironmentPlane: true);
-
-        $memberships = $this->root->run(fn (): Collection => $this->memberships->forUser($subjectId)) ?? new Collection;
-
-        $workspaces = $this->root->run(fn (): array => $this->organizationOptions(
-            $memberships,
-            $workspaceId,
-            fallbackName: null,
-            openHref: function (string $organizationId): ?string {
-                $slug = app(OrganizationLinks::class)->addressOf($organizationId)['slug'] ?? null;
-
-                return $slug === null ? null : $this->onOrganizationHost('orgs.projects', ['org' => $slug]);
-            },
-        )) ?? [];
-
-        $projects = $membership === null ? [] : $this->root->run(fn (): array => $this->projectsOf(
-            organizationId: $membership->organization_id,
-            subjectId: $subjectId,
-            capabilities: app(NativeProductAccess::class)->forWebSubject($subjectId, $membership->organization_id),
-            currentEnvironmentId: $currentEnvironmentId,
-            href: fn (string $path, Environment $environment): string => route($this->servedIn($to, $environment), [EnvironmentConsolePath::PARAMETER => $path]),
-        )) ?? [];
-
-        if ($onRoot || $this->isOperator($subjectId)) {
-            $projects[] = $this->platformProject(current: $onRoot, to: $to);
-        }
-
-        if ($onRoot) {
-            // The first crumb names what this console belongs to: the platform, which the
-            // operator runs — with their own workspaces one click away beside it.
-            array_unshift($workspaces, new SwitchOptionProps(
-                id: 'platform',
-                label: __('console.platform_admin_69652f55'),
-                caption: __('console.operator_291101a0'),
-                current: true,
-                openHref: Route::has('platform.orgs') ? $this->onOrganizationHost('platform.orgs') : null,
-            ));
-        }
-
-        return new ShellContextProps(
-            noun: $onRoot ? __('console.platform_c78ffe19') : __('console.organization_d764d425'),
-            organizations: $workspaces,
-            switchUrl: null,
-            projects: $projects,
-        );
-    }
-
-    /**
      * The PLATFORM ROOT's environment as a row of the switcher — under a "Platform" project
      * of its own, opening its console (`/admin/environment/…`) at the same page where there
      * is one.
@@ -209,12 +147,6 @@ final readonly class ShellContext
                 href: $href,
             )],
         );
-    }
-
-    /** Whether a platform-root subject runs this deployment — asked once per request ({@see ConsoleScope::subjectIsOperator()}). */
-    private function isOperator(string $subjectId): bool
-    {
-        return $this->scope->subjectIsOperator($subjectId);
     }
 
     /**

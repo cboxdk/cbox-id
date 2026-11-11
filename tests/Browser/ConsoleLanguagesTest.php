@@ -10,8 +10,7 @@ it('switches the environment console to Danish and keeps the choice on navigatio
     actAsEnvironmentAdminOfATenant();
 
     $page = visit(envConsole());
-    $page->click('button[aria-label="'.__('hosted.language.label', [], 'en').'"]')
-        ->click('[role="menuitemradio"]:has-text("Dansk")')
+    pickConsoleLanguage($page, 'Dansk')
         ->assertSee('Brugere og organisationer')
         ->assertNoJavaScriptErrors();
     expect($page->script('document.documentElement.lang'))->toBe('da');
@@ -21,8 +20,7 @@ it('switches the environment console to Danish and keeps the choice on navigatio
     $page->screenshot(false, 'console-languages-danish-users');
     expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
 
-    $page->click('button[aria-label="'.__('hosted.language.label', [], 'da').'"]')
-        ->click('[role="menuitemradio"]:has-text("English")')
+    pickConsoleLanguage($page, 'English')
         ->assertSee('New user')
         ->assertNoJavaScriptErrors();
     expect($page->script('document.documentElement.lang'))->toBe('en');
@@ -31,8 +29,7 @@ it('switches the environment console to Danish and keeps the choice on navigatio
 it('renders platform administration in Danish at a phone width', function (): void {
     actAsOperator();
     $page = visit('/admin/organizations')->on()->mobile()->assertSee('Organizations');
-    $page->click('button[aria-label="'.__('hosted.language.label', [], 'en').'"]')
-        ->click('[role="menuitemradio"]:has-text("Dansk")');
+    pickConsoleLanguage($page, 'Dansk', phone: true);
     $page->assertSee('Organisationer')->assertNoJavaScriptErrors();
     expect($page->script('document.documentElement.lang'))->toBe('da')
         ->and($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
@@ -42,7 +39,6 @@ it('renders platform administration in Danish at a phone width', function (): vo
 it('switches through every additional language from the mobile topbar', function (): void {
     actAsEnvironmentAdminOfATenant();
     $page = visit(envConsole('/users'))->on()->mobile()->assertSee('Users');
-    $currentLocale = 'en';
     foreach ([
         ['de', 'Deutsch', 'Benutzer'],
         ['sv', 'Svenska', 'Användare'],
@@ -53,11 +49,9 @@ it('switches through every additional language from the mobile topbar', function
         ['it', 'Italiano', 'Utenti'],
         ['nl', 'Nederlands', 'Gebruikers'],
     ] as [$locale, $name, $title]) {
-        $page->click('button[aria-label="'.__('hosted.language.label', [], $currentLocale).'"]')
-            ->click('[role="menuitemradio"]:has-text("'.$name.'")')
+        pickConsoleLanguage($page, $name, phone: true)
             ->assertSee($title)
             ->assertNoJavaScriptErrors();
-        $currentLocale = $locale;
         expect($page->script('document.documentElement.lang'))->toBe($locale)
             ->and($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
         if (in_array($locale, ['de', 'fi', 'nl'], true)) {

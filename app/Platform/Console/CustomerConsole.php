@@ -101,14 +101,17 @@ final class CustomerConsole
         // has organizations of its own, which these never name.
         'orgs.index',
         'orgs.show',
+        // ⌘K's records in a Cbox organization: the white-labelled console keeps its own.
+        'orgs.search',
     ];
 
     /**
-     * Route-name prefixes withheld the same way: the v2 redirects into `/orgs/{org}`, and
-     * the v2 writes of the organization-settings page, which a customer's console does not
-     * serve either.
+     * Route-name prefixes withheld the same way: the v2 redirects into `/orgs/{org}`, the
+     * v2 writes of the organization-settings page, and the shared shell's endpoints (a
+     * customer's console is white-labelled and keeps its own chrome), which a customer's
+     * console does not serve either.
      */
-    private const WITHHELD_PREFIXES = ['legacy.orgs.', 'legacy.settings.'];
+    private const WITHHELD_PREFIXES = ['legacy.orgs.', 'legacy.settings.', 'console.shell.'];
 
     /** Whether an area has any place in a customer's console. */
     public static function keepsArea(string $area): bool

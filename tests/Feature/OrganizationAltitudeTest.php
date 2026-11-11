@@ -36,7 +36,7 @@ function aWorkspace(): array
 /** The rail a request was drawn with, as area key => that area's page routes. */
 function railOf(string $url): array
 {
-    $shell = (array) test()->get($url)->assertOk()->inertiaProps('shell');
+    $shell = consoleRail(test()->get($url)->assertOk());
 
     return collect($shell['areas'])
         ->mapWithKeys(fn (array $area): array => [$area['key'] => array_column($area['pages'], 'route')])
@@ -100,13 +100,17 @@ it('shrinks an organization console to the organization, its team\'s sign-in, it
         ->and($rail['audit'])->toBe(['audit'])
         ->and($rail['identity-platform'])->toContain('orgs.projects', 'orgs.settings.members', 'orgs.settings.api-keys', 'orgs.settings');
 
-    $shell = (array) $this->get('https://cboxid.com'.orgPath('/projects'))->inertiaProps('shell');
+    $response = $this->get('https://cboxid.com'.orgPath('/projects'));
+    $shell = consoleRail($response);
     $labels = array_column($shell['areas'], 'label');
+    $header = (array) $response->inertiaProps('shell');
 
+    // The header stands in the organization alone: no project or environment under it, and
+    // no notice over the page.
     expect($labels)->toBe(['Organization', 'Team sign-in', 'Audit log', 'Account'])
-        ->and($shell['altitude'])->toBe('org-plane')
-        ->and($shell['brandHref'])->toBe(route('orgs.projects'))
-        ->and($shell['notice'])->toBeNull();
+        ->and(array_column($header['context']['levels'], 'current', 'key'))->toHaveKey('organization')
+        ->and($header['context']['levels'][1]['current'] ?? null)->toBeNull()
+        ->and($header)->not->toHaveKey('banner');
 });
 
 it('answers a page an environment owns, reached by URL on the root, with where it is set', function (): void {
@@ -122,7 +126,7 @@ it('answers a page an environment owns, reached by URL on the root, with where i
         ->and($page->inertiaProps('label'))->toBe('Roles')
         ->and($page->inertiaProps('samePage'))->toBeTrue()
         // …and the switcher's rows carry that page along, so one click lands on it.
-        ->and(json_encode($page->inertiaProps('shell.context.projects'), JSON_UNESCAPED_SLASHES))
+        ->and(json_encode($page->inertiaProps('projects'), JSON_UNESCAPED_SLASHES))
         ->toContain('https://cboxid.com/'.app(EnvironmentConsolePath::class)->for($environment->id).'/roles"');
 
     // The same for Social login, Branding and Sign-in methods — the pages that looked most
@@ -183,20 +187,22 @@ it('gives the environment console a way back to its organization, on every page'
     actAsEnvironmentAdmin($subjectId, $environment->id);
 
     $shell = (array) $this->get(route('environment.home'))->assertOk()->inertiaProps('shell');
+    $organization = $shell['context']['levels'][0];
 
-    // The context switcher's first crumb names the workspace and goes to its Projects —
-    // not to the landing, which would hand them straight back here.
-    expect($shell['context']['noun'])->toBe('Organization')
-        ->and($shell['context']['organizations'])->toHaveCount(1)
-        ->and($shell['context']['organizations'][0])->toMatchArray([
-            'id' => $workspace->id,
-            'label' => $workspace->name,
-            'current' => true,
-            'openHref' => 'https://cboxid.com/orgs/'.orgSlug($workspace->id).'/projects',
-        ])
-        // There is no POST from here: the session that holds a workspace is on that host.
-        ->and($shell['context']['switchUrl'])->toBeNull()
-        ->and($shell['altitude'])->toBe('environment');
+    // The header's first level names the workspace, and its organizations are one click
+    // away; choosing it lands on its page, not on the landing that would hand them back.
+    expect($organization['key'])->toBe('organization')
+        ->and($organization['label'])->toBe('Organization')
+        ->and($organization['current'])->toMatchArray(['id' => $workspace->id, 'name' => $workspace->name])
+        ->and($organization['allUrl'])->toBe('/orgs');
+
+    $listed = $this->getJson('https://cboxid.com'.$organization['listUrl'])->assertOk()->json('data');
+
+    expect(array_column($listed, 'id'))->toBe([$workspace->id]);
+
+    // Its gear opens the organization's own settings, on the app host.
+    $this->get('https://cboxid.com'.str_replace('{id}', $workspace->id, $organization['settingsUrl']))
+        ->assertRedirect('/orgs/'.orgSlug($workspace->id).'/settings');
 });
 
 it('sends the environment console\'s account links to the app host\'s own account pages', function (): void {
@@ -206,12 +212,12 @@ it('sends the environment console\'s account links to the app host\'s own accoun
     app(EnvironmentContext::class)->set(GenericEnvironment::of($environment->id));
     actAsEnvironmentAdmin($subjectId, $environment->id);
 
-    $shell = (array) $this->get(route('environment.home'))->assertOk()->inertiaProps('shell');
+    $account = $this->get(route('environment.home'))->assertOk()->inertiaProps('shell.account');
 
     // The console is on the app host now, in the session that holds the account, so its
     // account links are that host's own pages — and they open.
-    expect($shell['accountHref'])->toBe('https://cboxid.com/settings')
-        ->and($shell['switchUserHref'])->toBe('https://cboxid.com/settings/accounts');
+    expect($account['profileUrl'])->toBe('/settings')
+        ->and($account['switchAccountUrl'])->toBe('/settings/accounts');
 
-    $this->get($shell['accountHref'])->assertOk();
+    $this->get('https://cboxid.com'.$account['profileUrl'])->assertOk();
 });

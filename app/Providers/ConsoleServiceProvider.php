@@ -348,12 +348,26 @@ final class ConsoleServiceProvider extends ServiceProvider
         $features->register('account.pipes', static function (): bool {
             $me = app(CurrentUser::class);
 
-            return $me->check() && Pipe::query()
+            if (! $me->check()) {
+                return false;
+            }
+
+            // Asked twice per page (the rail and the shell's nav): one answer per request.
+            $memo = request()->attributes->get('cbox.feature.account.pipes');
+
+            if (is_bool($memo)) {
+                return $memo;
+            }
+
+            $offered = Pipe::query()
                 ->where('enabled', true)
                 ->select('id')
                 ->toBase()
                 ->unionAll(PipeConnection::query()->where('user_id', $me->id())->select('id')->toBase())
                 ->exists();
+            request()->attributes->set('cbox.feature.account.pipes', $offered);
+
+            return $offered;
         });
         $features->register('account.services', static fn (): bool => app(CurrentUser::class)->check() && app(ServiceAccessSettings::class)->enabled());
         $features->register('organization.api-keys', static function (): bool {

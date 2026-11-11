@@ -95,7 +95,7 @@ it('hands every page its words in the shell, on the environment console', functi
     serveOnTestHost($environment);
     actAsEnvironmentAdmin($world->ownerId, $environment->id);
 
-    $shell = (array) $this->get(route('environment.home'))->assertOk()->inertiaProps('shell');
+    $shell = consoleRail($this->get(route('environment.home'))->assertOk());
 
     $pages = collect($shell['areas'])->flatMap(fn (array $area): array => $area['pages'])->keyBy('route');
 

@@ -105,7 +105,7 @@ export default function ClientScopes({
                         <div className="space-y-4">
                             {Object.entries(scopeGroups).map(([group, scopes]) => (
                                 <div key={group}>
-                                    <p className="cbx-nav-group mb-2">{group}</p>
+                                    <p className="idc-nav-group mb-2">{group}</p>
                                     <div className="grid gap-2 sm:grid-cols-2">
                                         {scopes.map((scope) => (
                                             <ScopeBox key={scope.key}>
