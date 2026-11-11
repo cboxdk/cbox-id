@@ -166,7 +166,8 @@ export function preferenceActions(
         label: `${labels.theme}: ${labels.themes[theme]}`,
         url: `${PREFERENCE_ACTION}theme:${theme}`,
         method: 'post',
-        icon: theme === 'dark' ? 'moon' : theme === 'light' ? 'sun' : 'sliders',
+        // The palette draws only cbox-ui's own icon set.
+        icon: 'settings',
         keywords: ['theme', 'appearance', 'dark mode', 'light mode', theme],
     }));
 
