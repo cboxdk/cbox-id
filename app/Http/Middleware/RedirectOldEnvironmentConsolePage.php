@@ -29,6 +29,7 @@ final class RedirectOldEnvironmentConsolePage
         private readonly EnvironmentContext $environments,
     ) {}
 
+    /** @param  Closure(Request): Response  $next */
     public function handle(Request $request, Closure $next): Response
     {
         $host = $request->getHost();
