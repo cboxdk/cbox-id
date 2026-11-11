@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\Surfaces\Surfaces;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\Platform\PlatformRoot;
@@ -28,7 +29,12 @@ final class IssuerUrl
     {
         // The platform root's own environment is served on the host its console is on.
         if (self::onPlatformRoot()) {
-            return url($path === '' ? '/' : '/'.ltrim($path, '/'));
+            // …unless the deployment has a login host: the root is then issued from there.
+            $surfaces = app(Surfaces::class);
+
+            return $surfaces->split()
+                ? rtrim($surfaces->loginUrl($path), '/')
+                : url($path === '' ? '/' : '/'.ltrim($path, '/'));
         }
 
         $issuer = rtrim(app(IssuerResolver::class)->issuer(), '/');

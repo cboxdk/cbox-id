@@ -28,6 +28,7 @@ use App\Platform\EnvironmentApiContext;
 use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\Environments\ReservedEnvironmentSlugs;
 use App\Platform\Erasure\AppErasureSteps;
+use App\Platform\Health\LoginHostHealthCheck;
 use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
@@ -247,6 +248,7 @@ class AppServiceProvider extends ServiceProvider
 
         $checks = $this->app->make(HealthChecks::class);
         $checks->add($this->app->make(TenancyHealthCheck::class));
+        $checks->add($this->app->make(LoginHostHealthCheck::class));
         $checks->add($this->app->make(SchedulerDoctorCheck::class));
         $checks->add($this->app->make(ProductionConfigDoctorCheck::class));
 
