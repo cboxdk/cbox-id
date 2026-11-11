@@ -41,7 +41,7 @@ final readonly class ServiceAccessController extends PageController
             $lastPage = $catalogue['lastPage'];
             $email = $me->email();
             $registrations = $me->emailVerified() && $email !== null
-                ? $billing->registrations(array_map(static fn ($service): int => $service->id, $catalogue['services']), $me->id(), $email, $organization)
+                ? $billing->registrations(array_map(static fn ($service): string => $service->id, $catalogue['services']), $me->id(), $email, $organization)
                 : [];
             foreach ($catalogue['services'] as $service) {
                 $services[] = [
@@ -72,7 +72,7 @@ final readonly class ServiceAccessController extends PageController
         ]);
     }
 
-    public function join(Request $request, int $program, ServiceAccessSettings $settings): RedirectResponse
+    public function join(Request $request, string $program, ServiceAccessSettings $settings): RedirectResponse
     {
         abort_unless($settings->enabled(), 404);
         try {
@@ -90,7 +90,7 @@ final readonly class ServiceAccessController extends PageController
         return to_route('account.services', $request->string('kind')->toString() === 'feature' ? ['kind' => 'feature', 'organization' => $request->input('organization'), 'service' => $request->input('service')] : ['service' => $request->input('service')])->with('status', __($request->string('kind')->toString() === 'feature' ? 'service_access.feature_joined' : 'service_access.joined'));
     }
 
-    public function leave(Request $request, int $program, ServiceAccessSettings $settings): RedirectResponse
+    public function leave(Request $request, string $program, ServiceAccessSettings $settings): RedirectResponse
     {
         abort_unless($settings->enabled(), 404);
         try {

@@ -9,7 +9,7 @@ type Service = {
     kind: 'service' | 'feature';
     scope: 'organization' | 'person';
     serviceName: string | null;
-    id: number;
+    id: string;
     key: string;
     name: string;
     description: string | null;

@@ -37,7 +37,7 @@ final readonly class LeaveFeatureWaitlist implements Action
     public static function input(): InputSchema
     {
         return InputSchema::of([
-            Field::integer('program')->inPath()->min(1),
+            Field::string('program')->inPath()->max(64)->describe('The waitlist program\'s id at Billing (`acp_…`).'),
             Field::string('organization')->required()->max(64),
             Field::string('reference')->required()->format('uuid')->max(36),
         ]);
@@ -52,7 +52,7 @@ final readonly class LeaveFeatureWaitlist implements Action
         $organization = $context->string('organization');
         $this->teams->assertMember($subject, $organization);
         try {
-            $this->billing->leave((int) $context->string('program'), $subject, $organization, $context->string('reference'));
+            $this->billing->leave($context->string('program'), $subject, $organization, $context->string('reference'));
         } catch (ServiceAccessUnavailable) {
             throw new ActionRefused('waitlist_unavailable', __('service_access.unavailable'), 503, 'waitlist');
         }

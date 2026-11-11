@@ -31,7 +31,7 @@ function waitlistPerson(bool $verified = true): string
     return $subject->id;
 }
 
-function waitlistService(int $id = 12, string $key = 'telemetry'): array
+function waitlistService(int|string $id = 12, string $key = 'telemetry'): array
 {
     return ['id' => $id, 'key' => $key, 'name' => ucfirst($key), 'description' => 'A service to try.', 'mode' => 'waitlist', 'questions' => [['key' => 'use_case', 'label' => 'What will you build?', 'required' => true]], 'public_url' => 'https://billing.example.test/billing/waitlists/'.Str::uuid()];
 }
@@ -44,19 +44,20 @@ beforeEach(function (): void {
 it('lists published services and the current person status without requiring a team', function (): void {
     $subject = waitlistPerson();
     Http::fake([
-        'https://billing.example.test/api/v1/access/directory?*' => Http::response(['data' => [waitlistService()], 'current_page' => 1, 'last_page' => 2]),
-        'https://billing.example.test/api/v1/access/directory/registrations' => Http::response(['data' => [['program_id' => 12, 'registration' => ['status' => 'waiting', 'joined_at' => '2026-11-06T10:00:00Z']]]]),
+        'https://billing.example.test/api/v1/access/directory?*' => Http::response(['data' => [waitlistService('acp_4bGq9vR2kLm8NpX1sT3wYz')], 'current_page' => 1, 'last_page' => 2]),
+        'https://billing.example.test/api/v1/access/directory/registrations' => Http::response(['data' => [['program_id' => 'acp_4bGq9vR2kLm8NpX1sT3wYz', 'registration' => ['status' => 'waiting', 'joined_at' => '2026-11-06T10:00:00Z']]]]),
     ]);
     $response = $this->get('/settings/services')->assertOk();
     $props = $response->inertiaProps();
     expect($response->inertiaPage()['component'])->toBe('account/services')
         ->and($props['services'][0]['name'])->toBe('Telemetry')
         ->and($props['services'][0]['status'])->toBe('waiting')
+        ->and($props['services'][0]['joinHref'])->toContain('/settings/services/acp_4bGq9vR2kLm8NpX1sT3wYz/waitlist')
         ->and($props['emailVerified'])->toBeTrue()
         ->and($props['nextHref'])->toContain('page=2')
         ->and($props['unavailable'])->toBeFalse();
     $response->assertDontSee('directory-test-token');
-    Http::assertSent(fn (Request $request): bool => $request->method() === 'POST' && $request['subject'] === $subject && $request['email'] === 'ada@example.test' && $request['program_ids'] === [12]);
+    Http::assertSent(fn (Request $request): bool => $request->method() === 'POST' && $request['subject'] === $subject && $request['email'] === 'ada@example.test' && $request['program_ids'] === ['acp_4bGq9vR2kLm8NpX1sT3wYz']);
 });
 
 it('derives identity and verified email from the session, never the submitted body', function (): void {

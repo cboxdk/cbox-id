@@ -36,7 +36,7 @@ Native pages and both fallback entry points write to the same waitlist. Programm
 
 ## Personal API and MCP
 
-The same signup action is available as `account.waitlists.join` over MCP and `POST /api/v1/me/services/{program}/waitlist`. It requires a person’s delegated token with `account:waitlists:write`; management keys cannot act as a person. Supply a stable UUID `reference`, optional `country` and `answers`. Subject and verified email are always resolved from the token’s person. The feature switch and configured ID environment apply here too. The action delegates to Billing using the same durable reference as the console.
+The same signup action is available as `account.waitlists.join` over MCP and `POST /api/v1/me/services/{program}/waitlist`, where `{program}` is the programme's Billing id (`acp_…`). It requires a person’s delegated token with `account:waitlists:write`; management keys cannot act as a person. Supply a stable UUID `reference`, optional `country` and `answers`. Subject and verified email are always resolved from the token’s person. The feature switch and configured ID environment apply here too. The action delegates to Billing using the same durable reference as the console.
 
 ## Invitations and automation
 

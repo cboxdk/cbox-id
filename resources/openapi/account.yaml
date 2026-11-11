@@ -792,8 +792,9 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
-            minimum: 1
+            type: string
+            description: "The waitlist program's id at Billing (`acp_…`)."
+            maxLength: 64
         -
           $ref: '#/components/parameters/IdempotencyKey'
         -
@@ -880,8 +881,9 @@ paths:
           in: path
           required: true
           schema:
-            type: integer
-            minimum: 1
+            type: string
+            description: "The waitlist program's id at Billing (`acp_…`)."
+            maxLength: 64
         -
           $ref: '#/components/parameters/IdempotencyKey'
         -

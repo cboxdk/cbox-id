@@ -4,16 +4,21 @@ declare(strict_types=1);
 
 namespace App\Platform\ServiceAccess;
 
+use Cbox\Billing\Client\Http\WireId;
+
 final readonly class RegistrationPolicy
 {
-    /** @param list<Question> $questions
+    /**
+     * @param  string  $id  the program's id at Billing: `acp_…` from Billing v2, a decimal string before it
+     * @param  list<Question>  $questions
      * @param  array<string, string>  $countries
      */
-    public function __construct(public int $id, public string $mode, public bool $loginRequired, public string $countryCollection, public array $countries, public array $questions) {}
+    public function __construct(public string $id, public string $mode, public bool $loginRequired, public string $countryCollection, public array $countries, public array $questions) {}
 
     public static function from(mixed $value): self
     {
-        if (! is_array($value) || ! is_int($value['id'] ?? null)
+        $id = is_array($value) ? WireId::from($value['id'] ?? null) : null;
+        if (! is_array($value) || $id === null
             || ! in_array($value['mode'] ?? null, ['open', 'waitlist', 'invite_only', 'paused'], true)
             || ! is_bool($value['login_required'] ?? null)
             || ! in_array($value['country_collection'] ?? null, ['hidden', 'optional', 'required'], true)
@@ -28,6 +33,6 @@ final readonly class RegistrationPolicy
             $countries[$code] = $name;
         }
 
-        return new self($value['id'], $value['mode'], $value['login_required'], $value['country_collection'], $countries, array_values(array_map(Question::from(...), $value['questions'])));
+        return new self($id, $value['mode'], $value['login_required'], $value['country_collection'], $countries, array_values(array_map(Question::from(...), $value['questions'])));
     }
 }
