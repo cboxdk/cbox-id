@@ -27,7 +27,7 @@ it('uses the central scoped detach decision and translates only the stable requi
         ? Http::response(['payment_methods' => [['id' => 'pm_card', 'is_default' => true]]])
         : Http::response($body, $status));
     $billing = new BillingManagement(new HttpManagementTransport(
-        app(Factory::class), 'https://payments.test', 'project-bound-token',
+        app(Factory::class), 'https://payments.test/api/v1', 'project-bound-token',
     ));
     try {
         (new PaymentAccount($billing))->remove('workspace', 'pm_card');
@@ -51,7 +51,7 @@ it('accepts central permission to remove a card without duplicating subscription
         ? Http::response(['payment_methods' => [['id' => 'pm_card', 'is_default' => true]]])
         : Http::response('', 204));
     $billing = new BillingManagement(new HttpManagementTransport(
-        app(Factory::class), 'https://payments.test', 'project-bound-token',
+        app(Factory::class), 'https://payments.test/api/v1', 'project-bound-token',
     ));
     (new PaymentAccount($billing))->remove('workspace', 'pm_card');
     Http::assertSentCount(2);

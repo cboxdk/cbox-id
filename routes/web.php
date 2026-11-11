@@ -796,8 +796,8 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // passkeys, sessions). Available to members and admins alike.
     Route::get('/settings', [AccountController::class, 'show'])->name('account');
     Route::get('/settings/services', [ServiceAccessController::class, 'index'])->name('account.services');
-    Route::post('/settings/services/{program}/waitlist/leave', [ServiceAccessController::class, 'leave'])->whereNumber('program')->middleware('throttle:10,1')->name('account.services.leave');
-    Route::post('/settings/services/{program}/waitlist', [ServiceAccessController::class, 'join'])->whereNumber('program')->middleware('throttle:10,1')->name('account.services.join');
+    Route::post('/settings/services/{program}/waitlist/leave', [ServiceAccessController::class, 'leave'])->where('program', '[A-Za-z0-9_]{1,64}')->middleware('throttle:10,1')->name('account.services.leave');
+    Route::post('/settings/services/{program}/waitlist', [ServiceAccessController::class, 'join'])->where('program', '[A-Za-z0-9_]{1,64}')->middleware('throttle:10,1')->name('account.services.join');
 
     /*
      * EVERY WRITE ON THAT PAGE EXCEPT THE NAME IS BEHIND `sudo`, ON THE ROUTE.

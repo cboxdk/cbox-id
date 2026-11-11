@@ -47,7 +47,7 @@ Pulled in automatically by `composer install`:
 |---|---|---|
 | `cboxdk/laravel-engage-client` | `^0.1.1` | Asynchronous, scoped onboarding observations for Engage. |
 | `cboxdk/laravel-assistant-client` | `^0.2.1` | Product support, the shell's Help panel, signed tools and curated documentation sync. |
-| `cboxdk/laravel-billing-client` | `^0.4.14` | Billing catalog, account and subscription management. |
+| `cboxdk/laravel-billing-client` | `^0.6` | Billing catalog, account and subscription management. |
 | `symfony/intl` | `^8.0` | Country validation and localized country names for invoice addresses. |
 | `cboxdk/laravel-id` | `^2.5` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
 | `cboxdk/laravel-signals-client` | `dev-sd/signals-managed-integration` | Public Signals assessment client (feature disabled until configured). |
