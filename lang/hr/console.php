@@ -4787,4 +4787,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Pitajte Cbox',
     'environment_console_unresolved_question' => 'Okruženje :name nema adresu konzole. Kako otvoriti njegovu konzolu?',
     'regional_format' => 'Regionalni format',
+    'shell_project' => 'Projekt',
+    'shell_create_project' => 'Stvori projekt',
+    'shell_create_slug_hint' => 'Ostavite prazno da se stvori iz naziva.',
+    'shell_team_member' => 'Član tima',
 ];

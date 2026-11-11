@@ -13,6 +13,7 @@ use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
+use App\Platform\OrganizationAccess;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\PlaneResolver;
@@ -121,6 +122,28 @@ final readonly class ShellContext
             organizations: $this->organizationOptions($memberships, $currentId, fallbackName: $this->user->organization()?->name),
             switchUrl: Route::has('orgs.switch') ? route('orgs.switch') : null,
             projects: $projects,
+        );
+    }
+
+    /**
+     * The person's organizations in the environment this console stands in, the current
+     * one included: Cbox's own console (cbox.cboxid.com) switches between them in the
+     * session, as a customer's console always has.
+     *
+     * @return list<SwitchOptionProps>
+     */
+    public function organizationsHere(): array
+    {
+        $subjectId = $this->user->id();
+
+        if ($subjectId === '') {
+            return [];
+        }
+
+        return $this->organizationOptions(
+            $this->memberships->forUser($subjectId),
+            $this->user->organizationId(),
+            fallbackName: $this->user->organization()?->name,
         );
     }
 
@@ -295,8 +318,12 @@ final readonly class ShellContext
             $organization = $organizations[$membership->organization_id] ?? null;
 
             // A membership whose organization no longer resolves is not a row somebody
-            // can switch to. Skipped rather than rendered blank.
-            if ($organization === null) {
+            // can switch to. Skipped rather than rendered blank. Nor is one whose
+            // organization was archived or suspended: archiving keeps the memberships, and
+            // listing them drew a second "Cbox" in the switcher on cbox.cboxid.com (an
+            // organization created by mistake and archived four minutes later). The
+            // current one stays, so the crumb can still say where you are.
+            if ($organization === null || ($membership->organization_id !== $currentId && OrganizationAccess::isRevoked($organization->status))) {
                 continue;
             }
 

@@ -4787,4 +4787,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Zapytaj Cbox',
     'environment_console_unresolved_question' => 'Środowisko :name nie ma adresu konsoli. Jak otworzyć jego konsolę?',
     'regional_format' => 'Format regionalny',
+    'shell_project' => 'Projekt',
+    'shell_create_project' => 'Utwórz projekt',
+    'shell_create_slug_hint' => 'Pozostaw puste, aby utworzyć z nazwy.',
+    'shell_team_member' => 'Członek zespołu',
 ];

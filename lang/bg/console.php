@@ -4787,4 +4787,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Попитайте Cbox',
     'environment_console_unresolved_question' => 'Средата :name няма адрес на конзолата. Как да отворя конзолата ѝ?',
     'regional_format' => 'Регионален формат',
+    'shell_project' => 'Проект',
+    'shell_create_project' => 'Създаване на проект',
+    'shell_create_slug_hint' => 'Оставете празно, за да се създаде от името.',
+    'shell_team_member' => 'Член на екипа',
 ];

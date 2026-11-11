@@ -7,6 +7,7 @@ namespace App\Platform\Console;
 use App\Http\Middleware\EnforceCustomerConsole;
 use App\Http\Middleware\RequireMultiTenant;
 use App\Platform\Entitlements;
+use App\Platform\Shell\ShellRequest;
 use Cbox\Console\Kit\Facades\Console;
 
 /**
@@ -157,6 +158,12 @@ final class CustomerConsole
         }
 
         foreach (self::WITHHELD_PREFIXES as $prefix) {
+            // Cbox's own environment (cbox.cboxid.com) renders in the shared shell, so it
+            // serves the shell's endpoints; a white-labelled customer's console does not.
+            if ($prefix === 'console.shell.' && str_starts_with($route, $prefix) && ShellRequest::onCboxConsole()) {
+                continue;
+            }
+
             if (str_starts_with($route, $prefix)) {
                 return false;
             }

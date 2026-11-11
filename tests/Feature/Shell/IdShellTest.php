@@ -9,9 +9,13 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
@@ -323,3 +327,81 @@ it('keeps a time zone the browser names by its older alias', function (string $z
 it('drops a time zone that is not one', function (mixed $zone): void {
     expect(IdShell::timeZone($zone))->toBeNull();
 })->with(['Mars/Olympus', '', str_repeat('A', 65), null, 3])->group('shell');
+
+it('gives the phone four tabs and "+" the console\'s own create forms', function (): void {
+    actAsEnvironmentAdminOfATenant();
+
+    $shell = (array) $this->get(envConsole('/users'))->assertOk()->inertiaProps('shell');
+    $areas = array_column($shell['nav']['areas'], 'key');
+    $creatables = array_column($shell['create']['items'], 'key');
+
+    expect($shell['nav']['tabs'])->toHaveCount(4)
+        ->and(array_diff($shell['nav']['tabs'], $areas))->toBe([])
+        ->and($shell['nav']['tabs'][0])->toBe('Home')
+        ->and($creatables)->toContain('user', 'organization')
+        ->and($shell['create']['default'])->toBe('user')
+        ->and($shell['page']['create'])->toBe('user')
+        ->and($shell['page']['title'])->not->toBe('')
+        ->and(array_column($shell['page']['actions'], 'id'))->toContain('environment.sign-in-methods')
+        ->and($shell['createForms']['user']['url'])->toEndWith('/users')
+        ->and(array_column($shell['createForms']['user']['fields'], 'name'))->toBe(['email', 'name', 'sendLink']);
+
+    foreach ($shell['create']['items'] as $item) {
+        expect($areas)->toContain($item['area']);
+    }
+})->group('shell');
+
+it('offers a project on an organization\'s Projects page, and only to who may make one', function (): void {
+    $orgs = shellTwoOrganizations();
+    signInAsMember($orgs['subjectId']);
+
+    $shell = (array) $this->get(onAppHost('/orgs/'.$orgs['a'].'/projects'))->assertOk()->inertiaProps('shell');
+
+    expect(array_column($shell['create']['items'], 'key'))->toContain('project')
+        ->and($shell['page']['create'])->toBe('project')
+        ->and($shell['createForms']['project']['url'])->toBe('/orgs/'.$orgs['a'].'/projects');
+})->group('shell');
+
+it('renders Cbox\'s own environment console in the shared shell, with the organization in the session', function (): void {
+    multiTenantDeployment();
+    $cbox = provisionAccount('owner@cbox-console.example');
+    config(['cbox-id.cbox_environment' => $cbox['environment']->slug]);
+    serveOnTestHost($cbox['environment']);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($cbox['environment']->id));
+    actingAsRole(MembershipRole::Owner);
+
+    $response = $this->get(route('dashboard'))->assertOk();
+    $shell = (array) $response->inertiaProps('shell');
+
+    expect($response->inertiaProps('tenantShell'))->toBeNull()
+        ->and(array_column($shell['context']['levels'], 'key'))->toBe(['organization'])
+        ->and($shell['context']['levels'][0])->not->toHaveKey('settingsUrl')
+        ->and($shell['context']['switchUrl'])->toBe('/orgs/switch')
+        ->and($shell['context']['sessionSwitch'])->toBeTrue()
+        ->and($shell['nav']['areas'])->not->toBe([])
+        ->and($shell['nav']['tabs'])->not->toBe([]);
+})->group('shell');
+
+it('leaves an archived organization out of the switcher (cbox.cboxid.com listed "Cbox" twice)', function (): void {
+    multiTenantDeployment();
+    $cbox = provisionAccount('owner@cbox-archived.example');
+    config(['cbox-id.cbox_environment' => $cbox['environment']->slug]);
+    serveOnTestHost($cbox['environment']);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($cbox['environment']->id));
+    [$person] = actingAsRole(MembershipRole::Owner);
+
+    // The same name twice, as in production: one made by mistake and archived at once. The
+    // membership stays when an organization is archived.
+    $kept = app(Organizations::class)->create(new NewOrganization('Cbox', 'cbox-kept'));
+    $archived = app(Organizations::class)->create(new NewOrganization('Cbox', 'cbox-archived'));
+    app(Memberships::class)->add($kept->id, $person, MembershipRole::Owner);
+    app(Memberships::class)->add($archived->id, $person, MembershipRole::Owner);
+    Organization::query()->whereKey($archived->id)->update(['status' => OrganizationStatus::Deleted]);
+
+    $rows = $this->getJson('/shell/context/organization')->assertOk()->json('data');
+    $ids = array_column($rows, 'id');
+
+    expect($ids)->toContain($kept->id)
+        ->and($ids)->not->toContain($archived->id)
+        ->and(array_count_values(array_column($rows, 'name'))['Cbox'] ?? 0)->toBe(1);
+})->group('shell');

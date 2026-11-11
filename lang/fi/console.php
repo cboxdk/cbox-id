@@ -4787,4 +4787,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Kysy Cboxilta',
     'environment_console_unresolved_question' => 'Ympäristöllä :name ei ole konsolin osoitetta. Miten avaan sen konsolin?',
     'regional_format' => 'Alueellinen muoto',
+    'shell_project' => 'Projekti',
+    'shell_create_project' => 'Luo projekti',
+    'shell_create_slug_hint' => 'Jätä tyhjäksi, niin se muodostetaan nimestä.',
+    'shell_team_member' => 'Tiimin jäsen',
 ];

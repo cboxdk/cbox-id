@@ -27,6 +27,7 @@ import {
 } from '@/lib/formats';
 import { setNavPinned, setThemePreference } from '@/lib/theme';
 import { TenantConsoleLayout } from '@/layouts/TenantConsoleLayout';
+import { ShellCreateFormFields } from '@/chrome/ShellCreateForm';
 import { OrganizationFrame } from '@/pages/environment/organizations/frame';
 import type { ConsoleShell, I18n, SharedProps } from '@/types';
 import { Icon, PageApiEquivalents, TooltipProvider } from '@/ui';
@@ -77,20 +78,27 @@ const ShellLink: ShellLinkComponent = ({ href, children, ...rest }) =>
     );
 
 /**
- * cbox-ui 0.10 posts a switch as `{organization, project, environment, return_to}`, the levels
- * above the chosen one included; laravel-console-kit 0.2 reads `{select: {…}, from}` and keeps
- * the page only for the outermost level in `select`. So the levels that did not change are left
- * out: choosing Sandbox in the cascade switches the environment, not the organization.
+ * The switch the shell asked for, as laravel-console-kit reads it: `{select: {…}, from}`.
+ *
+ * cbox-ui 0.11 posts that shape, the levels above the chosen one included; 0.10 posted the
+ * flat `{organization, project, environment, return_to}`. Both are read. The levels that did
+ * not change are left out, so choosing Sandbox in the cascade switches the environment, not
+ * the organization, and choosing the item already open sends nothing.
  */
 export function switchRequest(
     data: Record<string, unknown> | undefined,
     levels: { key: string; current: { id: string } }[],
 ): { select: Record<string, string>; from: string | undefined } {
+    const nested = data?.select;
+    const chosenLevels: Record<string, unknown> =
+        nested !== null && typeof nested === 'object'
+            ? (nested as Record<string, unknown>)
+            : (data ?? {});
     const select: Record<string, string> = {};
     let changed = false;
 
     for (const level of levels) {
-        const chosen = data?.[level.key];
+        const chosen = chosenLevels[level.key];
 
         if (typeof chosen !== 'string') {
             continue;
@@ -103,7 +111,7 @@ export function switchRequest(
         }
     }
 
-    const from = data?.return_to;
+    const from = data?.from ?? data?.return_to;
 
     return { select, from: typeof from === 'string' ? from : undefined };
 }
@@ -228,9 +236,24 @@ function navigator(shell: ConsoleShell, i18n: I18n | null | undefined): ShellNav
             const request = switchRequest(options?.data, shell.context.levels);
 
             // The item already open was chosen: there is nowhere to go.
-            if (Object.keys(request.select).length > 0) {
-                router.post(url, request);
+            if (Object.keys(request.select).length === 0) {
+                return;
             }
+
+            // Cbox's own console keeps the organization in the session: its switch re-scopes
+            // the session and lands on the dashboard.
+            if (shell.context.sessionSwitch === true) {
+                if (request.select.organization !== undefined) {
+                    router.post(url, {
+                        organization: request.select.organization,
+                        path: request.from ?? window.location.pathname,
+                    });
+                }
+
+                return;
+            }
+
+            router.post(url, request);
 
             return;
         }
@@ -301,8 +324,9 @@ function writeCookie(name: string, value: string): void {
  *
  * A persistent Inertia layout, so the rail, Help and its chat survive page visits.
  *
- * A customer environment's own console is white-labelled and keeps its own chrome
- * ({@see TenantConsoleLayout}). A page with no chrome (mid-sign-in) renders bare.
+ * A white-labelled customer environment's own console keeps its own chrome
+ * ({@see TenantConsoleLayout}); Cbox's own environment (cbox.cboxid.com) renders here. A
+ * page with no chrome (mid-sign-in) renders bare.
  */
 export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
     const { shell, tenantShell, auth, title, organizationHub, i18n } = usePage<SharedProps>().props;
@@ -412,6 +436,13 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                 LinkComponent={ShellLink}
                 icons={ID_ICONS}
                 onPreferenceChange={onPreferenceChange}
+                renderCreate={(form) => {
+                    const spec = shell.createForms?.[form.creatable.key];
+
+                    return spec === undefined ? null : (
+                        <ShellCreateFormFields form={form} url={spec.url} fields={spec.fields} />
+                    );
+                }}
             >
                 <EmailConfirmationBanner />
                 <div

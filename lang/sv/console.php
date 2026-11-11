@@ -4787,4 +4787,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Fråga Cbox',
     'environment_console_unresolved_question' => 'Miljön :name har ingen konsoladress. Hur öppnar jag dess konsol?',
     'regional_format' => 'Regionalt format',
+    'shell_project' => 'Projekt',
+    'shell_create_project' => 'Skapa projekt',
+    'shell_create_slug_hint' => 'Lämna tomt för att skapa en av namnet.',
+    'shell_team_member' => 'Teammedlem',
 ];

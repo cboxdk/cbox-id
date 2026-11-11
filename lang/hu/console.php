@@ -4787,4 +4787,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Kérdezze a Cboxot',
     'environment_console_unresolved_question' => 'A(z) :name környezetnek nincs konzolcíme. Hogyan nyithatom meg a konzolját?',
     'regional_format' => 'Területi formátum',
+    'shell_project' => 'Projekt',
+    'shell_create_project' => 'Projekt létrehozása',
+    'shell_create_slug_hint' => 'Hagyja üresen, és a névből készül.',
+    'shell_team_member' => 'Csapattag',
 ];

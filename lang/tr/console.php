@@ -4787,4 +4787,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Cbox’a sorun',
     'environment_console_unresolved_question' => ':name ortamının konsol adresi yok. Konsolunu nasıl açarım?',
     'regional_format' => 'Bölgesel biçim',
+    'shell_project' => 'Proje',
+    'shell_create_project' => 'Proje oluştur',
+    'shell_create_slug_hint' => 'Addan oluşturmak için boş bırakın.',
+    'shell_team_member' => 'Ekip üyesi',
 ];

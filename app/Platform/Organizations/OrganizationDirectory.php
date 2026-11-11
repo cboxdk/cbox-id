@@ -50,7 +50,9 @@ final readonly class OrganizationDirectory
         foreach ($rows as $row) {
             $address = $addresses[self::str($row->organization_id)] ?? null;
 
-            if ($address !== null) {
+            // Only organizations that are still active: archiving an organization keeps its
+            // memberships, and an archived one is nowhere anybody can work.
+            if ($address !== null && $address['active']) {
                 $entries[] = new OrganizationEntry(
                     id: self::str($row->organization_id),
                     slug: $address['slug'],

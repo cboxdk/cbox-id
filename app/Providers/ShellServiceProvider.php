@@ -7,10 +7,13 @@ namespace App\Providers;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\Console\PaletteActions;
 use App\Platform\Console\ShellPayload;
+use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentUser;
 use App\Platform\Impersonation;
+use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Navigation\ConsoleNavigation;
 use App\Platform\Shell\ApprovalsNotificationSource;
+use App\Platform\Shell\IdCreatables;
 use App\Platform\Shell\IdHelpConfig;
 use App\Platform\Shell\IdSearchProvider;
 use App\Platform\Shell\IdShell;
@@ -40,7 +43,8 @@ use Illuminate\Support\ServiceProvider;
  *    Environment;
  *  - platform admin (`/admin/…`): no levels, and a notice that it acts on the whole
  *    deployment;
- *  - a customer environment's own host: its white-labelled console keeps its own chrome.
+ *  - a customer environment's own host: its white-labelled console keeps its own chrome,
+ *    except Cbox's own environment (cbox.cboxid.com), which renders in this shell.
  */
 final class ShellServiceProvider extends ServiceProvider
 {
@@ -151,6 +155,26 @@ final class ShellServiceProvider extends ServiceProvider
 
                 return null;
             })
+            // "+" and the palette's "New …": what this person's rail lets them create, each
+            // opening the page's own create form in the shell's create sheet.
+            ->creatables(static fn (): array => IdCreatables::items())
+            // Each page's own "+" target, and what is done next from there, for the palette's
+            // "On {page}" (the create itself is the shell's own first row).
+            ->page('environment.users*', create: 'user', actions: [
+                PaletteAction::route('environment.sign-in-methods', ConsoleLabels::navigation(Vocabulary::SIGN_IN_METHODS), icon: 'lock'),
+                PaletteAction::route('environment.audit', ConsoleLabels::navigation(Vocabulary::AUDIT_LOG), icon: 'file-text'),
+            ])
+            ->page('environment.organizations*', create: 'organization', actions: [
+                PaletteAction::route('environment.connections', ConsoleLabels::navigation(Vocabulary::ENTERPRISE_SSO), icon: 'shield-check'),
+                PaletteAction::route('environment.directories', ConsoleLabels::navigation(Vocabulary::DIRECTORY_SYNC), icon: 'users'),
+            ])
+            ->page('orgs.projects*', create: 'project', actions: [
+                PaletteAction::route('orgs.settings.api-keys', ConsoleLabels::navigation(Vocabulary::API_KEYS), icon: 'key'),
+                PaletteAction::route('orgs.environment-domains', ConsoleLabels::navigation('Environment domains'), icon: 'globe'),
+            ])
+            ->page('orgs.settings.members*', create: 'member', actions: [
+                PaletteAction::route('orgs.settings', ConsoleLabels::navigation('Organization settings'), icon: 'settings'),
+            ])
             ->appCatalogUrl('/switch-app/catalog?include=available')
             ->account(
                 profileUrl: 'account',

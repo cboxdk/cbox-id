@@ -17,7 +17,7 @@
         "cboxdk/dns": "^1.0",
         "cboxdk/laravel-assistant-client": "^0.2.1",
         "cboxdk/laravel-billing-client": "^0.6",
-        "cboxdk/laravel-console-kit": "^0.2.2",
+        "cboxdk/laravel-console-kit": "^0.2.6",
         "cboxdk/laravel-dns": "^1.0",
         "cboxdk/laravel-engage-client": "^0.1.1",
         "cboxdk/laravel-health": "^2.0",

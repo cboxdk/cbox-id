@@ -4787,4 +4787,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Preguntar a Cbox',
     'environment_console_unresolved_question' => 'El entorno :name no tiene dirección de consola. ¿Cómo abro su consola?',
     'regional_format' => 'Formato regional',
+    'shell_project' => 'Proyecto',
+    'shell_create_project' => 'Crear proyecto',
+    'shell_create_slug_hint' => 'Déjalo en blanco para crear uno a partir del nombre.',
+    'shell_team_member' => 'Miembro del equipo',
 ];

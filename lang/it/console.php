@@ -4788,4 +4788,8 @@ Le connessioni',
     'environment_console_unresolved_ask' => 'Chiedi a Cbox',
     'environment_console_unresolved_question' => 'L’ambiente :name non ha un indirizzo della console. Come apro la sua console?',
     'regional_format' => 'Formato regionale',
+    'shell_project' => 'Progetto',
+    'shell_create_project' => 'Crea progetto',
+    'shell_create_slug_hint' => 'Lascia vuoto per crearne uno dal nome.',
+    'shell_team_member' => 'Membro del team',
 ];

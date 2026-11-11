@@ -4787,4 +4787,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Zeptat se Cbox',
     'environment_console_unresolved_question' => 'Prostředí :name nemá adresu konzole. Jak otevřu jeho konzoli?',
     'regional_format' => 'Regionální formát',
+    'shell_project' => 'Projekt',
+    'shell_create_project' => 'Vytvořit projekt',
+    'shell_create_slug_hint' => 'Nechte prázdné a vytvoří se z názvu.',
+    'shell_team_member' => 'Člen týmu',
 ];

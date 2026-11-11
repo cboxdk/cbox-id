@@ -4787,4 +4787,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Ρωτήστε το Cbox',
     'environment_console_unresolved_question' => 'Το περιβάλλον :name δεν έχει διεύθυνση κονσόλας. Πώς ανοίγω την κονσόλα του;',
     'regional_format' => 'Τοπική μορφή',
+    'shell_project' => 'Έργο',
+    'shell_create_project' => 'Δημιουργία έργου',
+    'shell_create_slug_hint' => 'Αφήστε το κενό για να δημιουργηθεί από το όνομα.',
+    'shell_team_member' => 'Μέλος ομάδας',
 ];

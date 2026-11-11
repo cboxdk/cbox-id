@@ -9,7 +9,9 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\PlaneResolver;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
 
@@ -92,6 +94,34 @@ final class ShellRequest
     {
         return app(PlaneResolver::class)->onCustomerEnvironment()
             && app(ConsoleScope::class)->plane() === ConsolePlane::Organization;
+    }
+
+    /**
+     * The organization console on the `cbox` environment's own host (cbox.cboxid.com): the
+     * pages every person signed in to a Cbox app has, their account and their Cbox
+     * organization's. It is Cbox's own environment, so it is not white-labelled: it renders
+     * in the shared shell like every other Cbox app, with the Cbox app switcher and Help.
+     */
+    public static function onCboxConsole(): bool
+    {
+        if (! self::onTenantConsole()) {
+            return false;
+        }
+
+        $cbox = app(OrganizationLinks::class)->cboxEnvironmentId();
+        $here = app(EnvironmentContext::class)->current()?->environmentKey();
+
+        return $cbox !== null && $here === $cbox;
+    }
+
+    /**
+     * A customer environment's white-labelled console: a tenant console that is not
+     * Cbox's own. It keeps its own chrome, because `CboxShell` (cbox-ui 0.11) always draws
+     * the Cbox app switcher, Help and the Cbox wordmark.
+     */
+    public static function onWhiteLabelConsole(): bool
+    {
+        return self::onTenantConsole() && ! self::onCboxConsole();
     }
 
     /**
