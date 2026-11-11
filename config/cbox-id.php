@@ -565,7 +565,10 @@ return [
      * `/etc/hosts` line, and `/api/v1` keeps answering on every host until it is retired.
      */
     'hosts' => [
-        'api' => env('CBOX_ID_API_HOST', env('APP_ENV') === 'production' ? null : 'api.cboxid.test'),
+        // Blank counts as unset: `.env.example` ships `CBOX_ID_API_HOST=` and `env()` reads that as ''.
+        'api' => (is_string(env('CBOX_ID_API_HOST')) && trim((string) env('CBOX_ID_API_HOST')) !== '')
+            ? env('CBOX_ID_API_HOST')
+            : (env('APP_ENV') === 'production' ? null : 'api.cboxid.test'),
     ],
 
     /*
