@@ -867,6 +867,12 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * charging for nothing.
      */
     Route::patch('/settings/profile', [AccountController::class, 'updateProfile'])->name('account.profile.update');
+    // Leaving one of your own organizations, from your own page: on the login host and on a
+    // customer environment's host there is no People page to do it from. Not behind the
+    // step-up, as the People page's own "Leave organization" is not: it gives up access.
+    Route::post('/settings/organizations/{organization}/leave', [AccountController::class, 'leaveOrganization'])
+        ->where('organization', '[A-Za-z0-9_]{1,64}')
+        ->name('account.organizations.leave');
     // Renaming a passkey is outside the step-up for the same reason the name above is: a
     // label is not a credential, and changing it grants nothing. Adding and removing one
     // are behind it.
