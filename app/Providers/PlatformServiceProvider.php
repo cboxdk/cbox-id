@@ -31,6 +31,7 @@ use App\Platform\OAuth\AuthorizationOrganizationService;
 use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
 use App\Platform\OpenEntitlements;
 use App\Platform\OperatorMfa;
+use App\Platform\Operators\OperatorAssurance;
 use App\Platform\PlatformSignedInSession;
 use App\Platform\PlatformSignedInSubject;
 use App\Platform\RevokingAuthPolicies;
@@ -144,6 +145,7 @@ final class PlatformServiceProvider extends ServiceProvider
         // by the persistent middleware, the layout, and each component boot() — scoping
         // it lets current() memoise instead of re-running ~3 identity queries per call.
         $this->app->scoped(EnvironmentAdminAuth::class);
+        $this->app->scoped(OperatorAssurance::class);
 
         // …and its sibling for account membership, which was left out of that refactor. It
         // is asked by ConsoleScope, the rail's feature gates and every Identity platform

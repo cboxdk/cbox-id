@@ -9,6 +9,7 @@ use App\Actions\Sso\DeleteSsoConnection;
 use App\Actions\Sso\DisableSsoConnection;
 use App\Actions\Sso\RequireSso;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Operators\OperatorAssurance;
 use Cbox\Id\Federation\Enums\ConnectionStatus;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
@@ -47,6 +48,10 @@ use Cbox\Id\Platform\PlatformRoot;
  *  - otherwise any of: a password, a passkey (while passkeys are on), a magic link (while
  *    magic links are on), a linked social or federated identity with a provider still
  *    offered, or an active SSO connection.
+ *
+ * WITH `cbox-id.operators.phishing_resistant` ON, a passkey is the only thing that opens
+ * platform administration: an operator who holds one must also keep passkeys switched on
+ * after the change, whatever else they could still sign in with.
  *
  * Deliberately generous where it cannot be exact — a magic link counts for anybody with
  * an address — because a guard that refuses a safe change is worked around, and the cases
@@ -116,7 +121,9 @@ final readonly class RootSignInGuard
         throw ActionRefused::because(
             'would_lock_out_operators',
             'This is the platform\'s own environment, where every operator signs in, and this change would leave '.$who
-                .' with no way to sign in to Cbox ID. Give them a way in that survives it first — an active single sign-on connection for their organization, a password or a passkey — then try again.',
+                .' with no way to sign in to Cbox ID. '.(app(OperatorAssurance::class)->enabled()
+                    ? 'Operators reach platform administration with a passkey or security key only, so passkeys must stay on, and each operator needs a way to sign in that survives the change.'
+                    : 'Give them a way in that survives it first — an active single sign-on connection for their organization, a password or a passkey — then try again.'),
             $change['field'] ?? null,
         );
     }
@@ -141,6 +148,29 @@ final readonly class RootSignInGuard
      * @param  array{environment_sso?: SsoEnforcement, organization_sso?: array<string, SsoEnforcement>, passkeys?: bool, magic_link?: bool, connections_gone?: list<string>}  $change
      */
     private function hasWayIn(string $subjectId, array $change): bool
+    {
+        if (! $this->signsInSomehow($subjectId, $change)) {
+            return false;
+        }
+
+        // WITH THE OPERATOR RULE ON, ONLY A PASSKEY OPENS THE PLANE
+        // (`cbox-id.operators.phishing_resistant`). Signing in some other way reaches the
+        // account and nothing an operator is for, so for an operator who holds a passkey
+        // the change must also leave passkeys switched on. One who holds none is not on
+        // the plane yet, and this change does not take anything from them.
+        if (! app(OperatorAssurance::class)->enabled() || ! app(OperatorAssurance::class)->hasPasskey($subjectId)) {
+            return true;
+        }
+
+        return $this->root->run(
+            fn (): bool => ($change['passkeys'] ?? $this->methods->passkeysEnabled()) && $this->methods->deploymentAllowsPasskeys(),
+        ) === true;
+    }
+
+    /**
+     * @param  array{environment_sso?: SsoEnforcement, organization_sso?: array<string, SsoEnforcement>, passkeys?: bool, magic_link?: bool, connections_gone?: list<string>}  $change
+     */
+    private function signsInSomehow(string $subjectId, array $change): bool
     {
         return $this->root->run(function () use ($subjectId, $change): bool {
             $organizationIds = [];

@@ -6,6 +6,7 @@ namespace App\Http\Controllers\FrontendApi;
 
 use App\Platform\FrontendApi\LoginTickets;
 use App\Platform\FrontendApi\PasskeyChallenges;
+use App\Platform\Passkeys\PasskeyMethods;
 use App\Platform\PlatformAuth;
 use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
@@ -16,7 +17,6 @@ use Cbox\Id\Identity\Exceptions\ClonedAuthenticator;
 use Cbox\Id\Identity\Exceptions\InvalidAssertionResponse;
 use Cbox\Id\Identity\Exceptions\UnknownCredential;
 use Cbox\Id\Kernel\Crypto\Support\Base64Url;
-use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -161,7 +161,7 @@ class PasskeySignInController
         // credential differently.
         return new JsonResponse([
             'status' => 'ok',
-            'login_ticket' => $this->tickets->mint($key, $subjectId, AuthMethod::forPasskey()),
+            'login_ticket' => $this->tickets->mint($key, $subjectId, PasskeyMethods::used()),
             'expires_in' => 60,
         ]);
     }

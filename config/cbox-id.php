@@ -365,6 +365,36 @@ return [
     ],
 
     /*
+     * The operator plane (`/admin` and the platform root environment's own console).
+     *
+     * `phishing_resistant` (off by default) makes the plane demand a passkey or security
+     * key with user verification: an operator must hold one, the plane opens only after a
+     * passkey sign-in or a passkey confirmation, and a time-based code no longer counts.
+     * See docs/operations/operator-plane.md before turning it on: every operator needs a
+     * passkey first, and `php artisan cbox-id:operator:passkey-link` is the way back in.
+     *
+     * `session` caps how long a passkey proof opens the plane, whatever the deployment's
+     * session lifetime is: `absolute_minutes` since the passkey was used, `idle_minutes`
+     * since the last request on the plane. Past either, the operator confirms with the
+     * passkey again; the session itself is not ended.
+     *
+     * `reconfirm_seconds` is how fresh the passkey proof must be for a destructive or
+     * critical action on the plane, for anything behind a step-up there, and for starting
+     * an impersonation.
+     *
+     * `enrolment_link_minutes` is the default lifetime of a break-glass enrolment link.
+     */
+    'operators' => [
+        'phishing_resistant' => (bool) env('CBOX_ID_OPERATORS_PHISHING_RESISTANT', false),
+        'session' => [
+            'absolute_minutes' => (int) env('CBOX_ID_OPERATORS_SESSION_ABSOLUTE_MINUTES', 60),
+            'idle_minutes' => (int) env('CBOX_ID_OPERATORS_SESSION_IDLE_MINUTES', 15),
+        ],
+        'reconfirm_seconds' => (int) env('CBOX_ID_OPERATORS_RECONFIRM_SECONDS', 300),
+        'enrolment_link_minutes' => (int) env('CBOX_ID_OPERATORS_ENROLMENT_LINK_MINUTES', 15),
+    ],
+
+    /*
      * Entitlement keys that gate the enterprise self-serve surfaces (SSO & SCIM).
      * These are NAMESPACED so they never clash with the entitlements a tenant
      * product pushes through the same billing-fed projection.
