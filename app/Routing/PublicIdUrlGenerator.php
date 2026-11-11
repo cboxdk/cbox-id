@@ -97,6 +97,22 @@ final class PublicIdUrlGenerator extends UrlGenerator
             }
         }
 
+        // A parameter the URL defaults fill (the console's `{organization}` while a page of
+        // one organization renders) is a URL like any other: in its public form.
+        foreach ($names as $name) {
+            $default = $defaults[$name] ?? null;
+
+            if (! is_string($name) || array_key_exists($name, $parameters) || ! is_string($default)) {
+                continue;
+            }
+
+            $public = PublicId::encodeString(RouteIds::typeFor($route, $name), $default);
+
+            if ($public !== $default) {
+                $parameters[$name] = $public;
+            }
+        }
+
         return $parameters;
     }
 }

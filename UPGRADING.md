@@ -126,6 +126,28 @@ What changes for you:
   reserved. A new environment that asks for one gets `<slug>-env`. The migration
   stops if an existing environment already holds one.
 
+### Public ids: `usr_01j…` on `/v1`, in console URLs and in webhooks that ask
+
+A record's id at the boundary is `<prefix>_<ULID>` (`usr_`, `org_`, `env_`, `mbr_`, …; the
+registry is `App\Platform\PublicIds\PublicId::PREFIXES`). The database keeps the bare ULID.
+
+What changes for you:
+
+- **`/v1` answers with public ids**: every `id`, every `<kind>_id` and `<kind>_ids` field.
+  `/api/v1` keeps the bare ids it has always returned.
+- **Every id is read in both forms**, on `/v1`, `/api/v1` and in console URLs, so stored
+  bare ids and old bookmarks keep working. A prefix of the wrong kind (`org_…` where a user
+  belongs) is a 404. The bare form is accepted until the next minor.
+- **Console URLs carry public ids** (`…/users/usr_01j…`). SSO, SAML, OAuth and one-time-token
+  URLs keep their shape, because they are registered with other identity providers.
+- **Webhooks:** every existing endpoint keeps receiving bare ids. An endpoint made on `/v1`
+  starts with public ids. Move any endpoint with `id_format` (`raw` or `prefixed`) on
+  `PATCH /v1/webhooks/{id}`, or under *Ids in deliveries* on its page in the console. Move a
+  receiver only once it reads the new form.
+- **Token claims do not change.** `sub`, `org` and `org_id` stay bare ULIDs, because every
+  app's user mirror is joined on them.
+- Run the migrations (`webhook_endpoints.id_format`, default `raw`).
+
 ### The environment console moved to the app host
 
 Each environment's console is now on the app host, in the one session people sign in to

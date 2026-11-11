@@ -25079,6 +25079,12 @@ paths:
                   enum:
                     - cbox
                     - standard_webhooks
+                id_format:
+                  type: string
+                  description: 'The ids deliveries carry: `raw` (bare ids, as every endpoint so far) or `prefixed` (public ids, `usr_01j…`). Defaults to `prefixed` on `/v1` and `raw` elsewhere.'
+                  enum:
+                    - raw
+                    - prefixed
                 organization_id:
                   type:
                     - string
@@ -25343,7 +25349,7 @@ paths:
     patch:
       tags:
         - Webhooks
-      summary: "Change a webhook endpoint's URL and/or the events it subscribes to."
+      summary: "Change a webhook endpoint's URL, the events it subscribes to, or the form of the ids its deliveries carry."
       description: 'Requires scope `webhooks:write`. Danger: write.'
       operationId: webhooks_update
       x-action: webhooks.update
@@ -25397,6 +25403,12 @@ paths:
                   minItems: 1
                   items:
                     type: string
+                id_format:
+                  type: string
+                  description: 'The ids deliveries carry from now on: `raw` (bare ids) or `prefixed` (public ids, `usr_01j…`). Move a receiver only once it reads the new form. Left out, unchanged.'
+                  enum:
+                    - raw
+                    - prefixed
       responses:
         200:
           description: OK

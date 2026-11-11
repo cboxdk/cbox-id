@@ -105,7 +105,7 @@ it('still mints cbid_ws_ keys, resolves cbid_org_ ones too, and deprecates neith
         // prefix answers without a Deprecation header.
         $this->withToken($token)->getJson('http://'.ApiHost::name().'/v1/organization')
             ->assertOk()
-            ->assertJsonPath('id', $account['organization']->id)
+            ->assertJsonPath('id', 'org_'.$account['organization']->id)
             ->assertHeaderMissing('Deprecation');
 
         // The old path answers for every prefix too. From v3 it carries Deprecation, but for
