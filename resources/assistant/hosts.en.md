@@ -7,7 +7,7 @@ Most "it returns 404" questions are a request sent to the wrong one.
 
 | | The platform root | An environment's own host |
 |---|---|---|
-| Hosted address | `cboxid.com` | `<environment>.cboxid.com`, or a custom domain |
+| Hosted address | `cboxid.com` | `<environment>.cboxauth.com`, or a custom domain |
 | Self-hosted | the host you installed on | a host per environment, under your own domain |
 | Who signs in | your organization's team, and the operators who run the install | the environment's own users: your customers' people |
 | Is it an identity provider? | **No** on a multi-tenant install: discovery, JWKS and the token endpoint answer 404 | **Yes**: it is the `issuer` your apps use |
@@ -19,7 +19,7 @@ Most "it returns 404" questions are a request sent to the wrong one.
 discovery document, the authorize and token endpoints, SAML and SCIM, the hosted sign-in
 pages, and the Admin Portal your customers' IT admins open. Every app you build signs
 people in against that host, and the `issuer` in
-`https://<environment>.cboxid.com/.well-known/openid-configuration` is the value you pass
+`https://<environment>.cboxauth.com/.well-known/openid-configuration` is the value you pass
 to an SDK.
 
 **The root is not.** On a multi-tenant install the root refuses the protocol surface on

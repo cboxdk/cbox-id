@@ -40,11 +40,11 @@ Every quickstart needs the same three things.
    console, with the `cbox` CLI, or with the REST API. You come away with a client ID
    and, for a web app, a client secret that is shown once.
 3. **Its issuer.** Each environment is its own issuer, on its own host:
-   `https://<environment>.cboxid.com` on the hosted platform, or your own host if you run
+   `https://<environment>.cboxauth.com` on the hosted platform, or your own host if you run
    Cbox ID yourself. Confirm it with:
 
    ```bash
-   curl https://<environment>.cboxid.com/.well-known/openid-configuration
+   curl https://<environment>.cboxauth.com/.well-known/openid-configuration
    ```
 
    Use the `issuer` value from that response, character for character. The root host,

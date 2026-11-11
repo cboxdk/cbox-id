@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Platform\CurrentUser;
 use App\Platform\Enums\RefusedFactor;
 use App\Platform\IntendedUrl;
+use App\Platform\Passkeys\PasskeyMethods;
 use App\Platform\Passkeys\PasskeyProviders;
 use App\Platform\PlatformAuth;
 use App\Platform\Radar\Enums\RadarMethod;
@@ -21,7 +22,6 @@ use Cbox\Id\Identity\Exceptions\UnknownCredential;
 use Cbox\Id\Identity\Exceptions\UnsupportedCredential;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Kernel\Crypto\Support\Base64Url;
-use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -184,7 +184,7 @@ final class PasskeyController extends Controller
             return new JsonResponse(['redirect' => route('login')]);
         }
 
-        $auth->establish($request, $subjectId, AuthMethod::forPasskey());
+        $auth->establish($request, $subjectId, PasskeyMethods::used());
 
         // Back to where they were going — a device approval, an app's sign-in — as the
         // password door does; the dashboard only when they were going nowhere.

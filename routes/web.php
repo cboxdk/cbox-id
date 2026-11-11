@@ -18,6 +18,9 @@ use App\Http\Controllers\Auth\LinkAccountController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MfaController;
 use App\Http\Controllers\Auth\MobileApprovalController;
+use App\Http\Controllers\Auth\NoOrganizationController;
+use App\Http\Controllers\Auth\OperatorConfirmController;
+use App\Http\Controllers\Auth\OperatorPasskeyLinkController;
 use App\Http\Controllers\Auth\OtpStepUpController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\SignedOutController;
@@ -633,6 +636,26 @@ Route::middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpers
         Route::post('/oauth/authorize/{authorization}/organization/new', [OAuthConsentController::class, 'storeOrganization'])
             ->middleware('throttle:20,1')
             ->name('oauth.authorize.organization.store');
+    });
+
+/*
+ * THE "NO ORGANIZATION" SCREEN of the Cbox realm (App\Platform\Organizations\OrganizationRequired): a signed-in
+ * person with no organization accepts an invitation or continues with a personal
+ * organization, and is sent on to the authorization or console page that sent them here.
+ * No plane: it is reached from the issuer's authorize endpoint and from the console alike.
+ * Never during impersonation, which must not found or join anything for the person.
+ * Behind the customer console's door like every signed-in page: a customer's own
+ * environment has no such screen, and answers 404.
+ */
+Route::middleware([EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth', 'locale', 'console.customer'])
+    ->group(function (): void {
+        Route::get('/organization-required', [NoOrganizationController::class, 'show'])->name('organization.required');
+        Route::post('/organization-required/personal', [NoOrganizationController::class, 'personal'])
+            ->middleware('throttle:20,1')
+            ->name('organization.required.personal');
+        Route::post('/organization-required/invitations/{invitation}/accept', [NoOrganizationController::class, 'accept'])
+            ->middleware('throttle:20,1')
+            ->name('organization.required.accept');
     });
 
 /*
@@ -1984,6 +2007,8 @@ ConsoleRoutes::environment(function (): void {
     // The environment's self-service sign-up switch — environment plane only: it
     // decides who may create an account anywhere in the environment.
     Route::put('/sign-in-rules/self-service-signup', [AuthPolicyController::class, 'selfServiceSignup'])->name('environment.auth-policy.self-service-signup');
+    // Whether the sign-in page carries the link for administrators to this console.
+    Route::put('/sign-in-rules/admin-link', [AuthPolicyController::class, 'adminLink'])->name('environment.auth-policy.admin-link');
     // Text-message codes as a second factor — environment plane only, like sign-up: the
     // countries an environment texts are a cost and fraud decision for the environment.
     Route::put('/sign-in-rules/sms', [AuthPolicyController::class, 'sms'])->name('environment.auth-policy.sms');
@@ -2050,6 +2075,19 @@ ConsoleRoutes::environment(function (): void {
  * to a public sign-in does not. `/operator` itself is in the moved-pages table below, with
  * the gate of the pages it points at.
  */
+// BREAK-GLASS: a one-time link on which a named operator enrols a passkey, issued from the
+// command line (`php artisan cbox-id:operator:passkey-link`). Open to a visitor with no
+// session, because the operator it is for cannot get one; the link's token is the whole
+// authority and is re-read at every step ({@see \App\Platform\Operators\OperatorPasskeyLinks}).
+// Served where the root signs in (`login/*`: the login host in login-host mode), because
+// a passkey belongs to the host it is made on.
+Route::prefix('/login/direct/passkey/{token}')->where(['token' => '[a-f0-9]{64}'])
+    ->middleware(['plane:console', 'locale', 'throttle:20,1'])->group(function (): void {
+        Route::get('/', [OperatorPasskeyLinkController::class, 'show'])->name('login.direct.passkey');
+        Route::post('/register/options', [OperatorPasskeyLinkController::class, 'options'])->name('login.direct.passkey.options');
+        Route::post('/register', [OperatorPasskeyLinkController::class, 'register'])->name('login.direct.passkey.register');
+    });
+
 Route::redirect('/operator/login', '/login/direct');
 Route::redirect('/operator/login/mfa', '/login/direct');
 
@@ -2081,6 +2119,13 @@ Route::prefix('admin')->middleware([RedirectOldEnvironmentConsolePage::class, 'p
     // the operator's own (platform-root) session is being looked up.
     Route::middleware(['platform.auth:optional', AuthenticateOperator::class, 'locale.console'])->group(function (): void {
         Route::post('/interface-language', ConsoleLocaleController::class)->name('platform.locale.update');
+
+        // The operator plane's own step-up: a passkey, not a password. Inside the gate (only
+        // a signed-in operator reaches it) and exempt from the proof it grants
+        // ({@see \App\Platform\Operators\OperatorGate::admit()}).
+        Route::get('/confirm', [SudoController::class, 'showOperator'])->name('operator.sudo');
+        Route::post('/confirm/options', [OperatorConfirmController::class, 'options'])->middleware(['throttle:passkey', BlockDuringImpersonation::class])->name('operator.sudo.options');
+        Route::post('/confirm', [OperatorConfirmController::class, 'confirm'])->middleware(['throttle:passkey', BlockDuringImpersonation::class])->name('operator.sudo.confirm');
         // The area's own address lands on its first page, the way the rail's icon does.
         // Inside the gate, so a non-operator gets the same 404 here as on every page behind
         // it; a redirect controller rather than a closure, like every console route.

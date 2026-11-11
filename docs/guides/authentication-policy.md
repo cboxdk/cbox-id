@@ -44,11 +44,30 @@ it. **Authentication policy** is where you change them.
 | Session idle timeout and maximum length | The environment, up to the deployment's limits | Nothing |
 | Social login providers | The environment | Use its own credentials instead, or turn one off for its page — see [Social login](social-sign-in.md) |
 | Text-message codes, self-service sign-up | The environment (sign-up on a single-tenant install: the deployment's `CBOX_ID_SIGNUP_MODE`) | Nothing |
+| Administrator link on the sign-in page | The environment | Nothing |
 
 Passkeys, magic links, the bot challenge and session lengths apply to the whole environment.
 They are decided before anybody has said which organization they belong to — on the sign-in
 page, before an address is typed — so they cannot differ per organization. The management
 API refuses them on an organization's override (`environment_only`).
+
+## Administrator link on the sign-in page
+
+Your environment's own host is for the people who sign in to your product. You administer
+the environment in the console on the app host. So that an administrator who lands on the
+sign-in page finds the way, the page can show a small **I'm an administrator** link below the
+form. It opens the environment console.
+
+On **Authentication policy**, the **Administrator link on the sign-in page** switch decides
+it:
+
+- Until you choose, the link shows on your environment's address under the tenant base
+  domain (`<environment>.cboxauth.com`) and not on a custom domain.
+- On shows it on every host of the environment; off hides it everywhere.
+
+It is available on every plan. The API equivalent is `PUT /v1/sign-in/admin-link`
+(`signin.admin_link.set`). A single-tenant install has no separate console host, so it has
+no such link.
 
 ## Sign-in methods and sessions
 

@@ -9,6 +9,7 @@ use App\Http\Props\Auth\SocialProviderProps;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SendMagicLinkRequest;
 use App\Mail\MagicLinkMail;
+use App\Platform\AdminSignInLink;
 use App\Platform\Appearance\BrandContext;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\Enums\RefusedFactor;
@@ -157,6 +158,9 @@ final readonly class LoginController extends PageController
              * nothing in the browser reads cookies. See {@see LastSignInMethod}.
              */
             'lastUsed' => LastSignInMethod::read($request),
+            // The discreet link for whoever administers this environment: its console on
+            // the app host. Null where the environment hides it or there is no such console.
+            'adminUrl' => app(AdminSignInLink::class)->urlHere($request->getHost(), $request->getScheme()),
         ]);
     }
 
@@ -408,7 +412,13 @@ final readonly class LoginController extends PageController
 
         $sso = app(AuthPolicies::class)->resolve($connection->organization_id)->sso;
 
-        if (! $sso->allowsPasswordLogin()) {
+        /*
+         * WITH MANDATES PER ORGANIZATION the address is offered its organization's SSO,
+         * leading, and is not forced onto it: the organization's rule is about entering
+         * the organization, which is asked there, and the person's own account can still
+         * be signed in to another way.
+         */
+        if (! $sso->allowsPasswordLogin() && ! SsoMandates::perOrganization()) {
             // A full navigation away: the destination is the identity provider's own
             // redirect endpoint, which answers with a cross-origin 302.
             return redirect()->away(SsoStart::url($connection));
@@ -416,7 +426,7 @@ final readonly class LoginController extends PageController
 
         return [
             'url' => SsoStart::url($connection),
-            'leads' => $sso === SsoEnforcement::Preferred,
+            'leads' => $sso !== SsoEnforcement::Off,
         ];
     }
 

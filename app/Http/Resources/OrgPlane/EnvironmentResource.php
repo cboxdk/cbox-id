@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\OrgPlane;
 
+use App\Platform\Environments\TenantBaseDomain;
 use Cbox\Id\Organization\Models\Environment;
 
 /**
@@ -17,9 +18,7 @@ final class EnvironmentResource
      */
     public static function from(Environment $environment): array
     {
-        $base = config('cbox-id.environments.base_domains', []);
-        $first = is_array($base) && isset($base[0]) && is_string($base[0]) ? $base[0] : null;
-        $baseDomain = $first ?? request()->getHost();
+        $baseDomain = TenantBaseDomain::canonical() ?? request()->getHost();
 
         return [
             'id' => $environment->id,

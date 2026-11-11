@@ -20,12 +20,12 @@ that missing step. It takes about two minutes.
 Sign in to your organization. If it has exactly one environment you may administer, you
 land in that environment's console straight away; otherwise open **Projects** and choose
 **Open console** beside the environment. The environment console is `/admin` on the
-environment's own host, `https://<environment>.cboxid.com/admin`. If you have not created
+environment's own host, `https://<environment>.cboxauth.com/admin`. If you have not created
 an environment yet, sign up at cboxid.com (or, self-hosting, follow the [self-hosting quickstart](../self-hosting/quickstart.md)) first.
 
 Hosted environments live under `cboxid.com`, one subdomain per environment. If you run
 Cbox ID yourself, substitute your own host everywhere this page writes
-`<environment>.cboxid.com`; nothing else on the page changes.
+`<environment>.cboxauth.com`; nothing else on the page changes.
 
 The badge beside the environment name tells you which realm you are in. **Register test
 integrations in a sandbox environment**, not production: an environment is a hard
@@ -74,7 +74,7 @@ Your issuer is your environment's own base URL. Confirm it — and everything el
 needs — from the discovery document:
 
 ```bash
-curl https://<environment>.cboxid.com/.well-known/openid-configuration
+curl https://<environment>.cboxauth.com/.well-known/openid-configuration
 ```
 
 The `issuer` value in that response is exactly what you pass to the SDK. Use it verbatim:
@@ -105,7 +105,7 @@ that does it.
 import { createCboxId } from '@cboxdk/id-js/nextjs';
 
 export const cbox = createCboxId({
-  issuer: 'https://acme.cboxid.com',
+  issuer: 'https://acme.cboxauth.com',
   clientId: 'cid_...',
   redirectUri: 'https://app.example.com/callback',
 });
@@ -142,7 +142,7 @@ Then, in your frontend:
 import { CboxIdFrontend } from '@cboxdk/id-js'
 
 const frontend = new CboxIdFrontend({
-  issuer: 'https://acme.cboxid.com',
+  issuer: 'https://acme.cboxauth.com',
   publishableKey: 'pk_live_…',
 })
 

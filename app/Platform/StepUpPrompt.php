@@ -101,13 +101,20 @@ final class StepUpPrompt
      */
     public static function response(StepUpPlane $plane, ?string $reason): JsonResponse
     {
+        $passkey = $plane->passkeyOptionsUrl();
+
         return new JsonResponse([
-            'error' => 'Confirm it\'s you first — re-enter your password, then try again.',
+            'error' => $passkey === null
+                ? 'Confirm it\'s you first — re-enter your password, then try again.'
+                : 'Confirm with your passkey or security key first, then try again.',
             'sudo' => $plane->pageUrl(),
             'step_up' => [
                 'plane' => $plane->label(),
                 'confirm' => $plane->confirmUrl(),
                 'reason' => $reason,
+                // Present only where the proof is a passkey: the dialog runs a WebAuthn
+                // ceremony against these two endpoints instead of asking for a password.
+                ...($passkey === null ? [] : ['passkey' => ['options' => $passkey]]),
             ],
         ], 403, [
             self::HEADER => $plane->confirmUrl(),

@@ -1392,7 +1392,7 @@ final class RealmFlip
             $this->report->external[] = "Check {$variable} (config `{$key}`, now `{$shown}`): it names an environment by id or slug; the old root {$this->rootId} no longer exists and the platform root is {$this->realmId}.";
         }
 
-        $this->report->external[] = 'Host env vars: set the login host and the console host for the single realm (CBOX_ID_CONSOLE_HOST, the login-host variable of the release, CBOX_ID_ISSUER/APP_URL), CBOX_ID_WEBAUTHN_ORIGIN to the login origin (keep CBOX_ID_WEBAUTHN_RP_ID so existing passkeys stay valid), and CBOX_ID_CONNECTION_RESOURCE / SIGNALS_BUNDLED_TOKEN_URL, which name the realm\'s old host.';
+        $this->report->external[] = 'Host env vars: set the login host and the console host for the single realm (CBOX_ID_LOGIN_HOST, CBOX_ID_CONSOLE_HOST, CBOX_ID_ISSUER=https://{login host}), CBOX_ID_WEBAUTHN_ORIGIN to the login origin (keep CBOX_ID_WEBAUTHN_RP_ID so existing passkeys stay valid), and CBOX_ID_CONNECTION_RESOURCE / SIGNALS_BUNDLED_TOKEN_URL, which name the realm\'s old host.';
         $this->report->external[] = 'Every app: CBOX_ID_ISSUER (and management/API URLs, CSP connect-src and form-action) moves to the new issuer; every app session and token is invalid from that change.';
         $this->report->external[] = 'Social sign-in providers of the realm (Google, GitHub, …): add the new login host\'s callback URL at each provider before the issuer moves.';
         $this->report->external[] = 'Caches: run `php artisan cache:clear` (billing snapshots and environment resolution are keyed by ids and hosts that changed). If SESSION_DRIVER is not `database`, flush the session store as well.';

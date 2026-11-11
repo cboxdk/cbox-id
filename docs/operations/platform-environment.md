@@ -21,7 +21,7 @@ deployment itself: **platform admin** is its **Platform** area.
 
 | | A tenant's environment | The platform's own environment |
 |---|---|---|
-| Console | `https://<environment>.cboxid.com/admin/…` | `https://cboxid.com/admin/…`, the same paths |
+| Console | `https://<environment>.cboxauth.com/admin/…` | `https://cboxid.com/admin/…`, the same paths |
 | Who | the organization's owners, admins and developers | active platform operators |
 | REST | `/api/v1/…` on the root with `Cbox-Environment: <slug>` | `/api/v1/…` on the root with `Cbox-Environment: <root slug or id>` |
 | MCP | the root's `/mcp`, `environment` argument | the root's `/mcp`, `environment` argument |
@@ -122,22 +122,22 @@ Environment administrators are platform-root accounts. On the hosted service the
 sign-in goes through the `cbox` environment
 ([below](#cboxidcom-signs-in-through-the-cbox-environment)), so step 1 is a redirect there
 rather than a page. Somebody who opens
-`acme.cboxid.com/admin/users` signed out goes through these steps:
+`acme.cboxauth.com/admin/users` signed out goes through these steps:
 
 1. They are sent to the root's sign-in page, `cboxid.com/login`. It offers the platform
    environment's buttons and sign-in methods.
 2. They sign in. With Google, the provider calls back to the root's redirect URI. Radar,
    two-factor, step-up and the "last used" badge apply as for any sign-in.
-3. They are handed to `acme.cboxid.com` by the signed, single-use **POST** handoff. No
+3. They are handed to `acme.cboxauth.com` by the signed, single-use **POST** handoff. No
    token appears in a URL.
 4. They land on `/admin/users`, the page they asked for. That page is checked twice: it
    must be an environment-console page, and its signature must match the handoff. A
    foreign or tampered target is dropped, and the person lands on the console's home
    instead.
 
-Signing out of `acme.cboxid.com/admin` signs the person out of `cboxid.com` too, and out
+Signing out of `acme.cboxauth.com/admin` signs the person out of `cboxid.com` too, and out
 of every other console that sign-in opened. A handoff whose sign-in has ended is refused,
-even if it was never used. The tenant's own users signed in on `acme.cboxid.com` are a
+even if it was never used. The tenant's own users signed in on `acme.cboxauth.com` are a
 separate context: the console's sign-out leaves them signed in, and theirs leaves the
 console open.
 
@@ -193,7 +193,7 @@ sign-in there, the console asks for the operator's own second factor first.
 consoles it opened, as before. It does not sign the person out of `cbox.cboxid.com` or the
 other apps. The next time they open the console they are signed straight back in.
 
-**Tenant consoles.** `acme.cboxid.com/admin` still sends a signed-out administrator to the
+**Tenant consoles.** `acme.cboxauth.com/admin` still sends a signed-out administrator to the
 root's sign-in. That now goes through `cbox.cboxid.com` and back, then the signed POST
 handoff, as described above.
 

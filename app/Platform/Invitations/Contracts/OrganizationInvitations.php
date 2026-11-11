@@ -9,8 +9,10 @@ use App\Platform\Invitations\ValueObjects\AcceptedInvitation;
 use App\Platform\Invitations\ValueObjects\InvitationPreview;
 use App\Platform\Invitations\ValueObjects\Inviter;
 use App\Platform\Invitations\ValueObjects\NewInvitation;
+use App\Platform\Invitations\ValueObjects\OpenInvitation;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
 use App\Platform\Invitations\ValueObjects\SentInvitation;
+use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Organization\Exceptions\InvalidInvitation;
 
 /**
@@ -73,4 +75,27 @@ interface OrganizationInvitations
      * @throws InvalidInvitation when the token is unknown, spent, withdrawn or expired
      */
     public function accept(string $token): AcceptedInvitation;
+
+    /**
+     * The live invitations sent to this address in the current environment, newest first,
+     * one per organization, and only into organizations that are still live.
+     *
+     * For a signed-in person whose address is CONFIRMED: possession of the emailed link is
+     * what an invitation normally takes as proof, and a confirmed address is the same proof
+     * given another way. Callers must not list these for an unconfirmed address.
+     *
+     * @return list<OpenInvitation>
+     */
+    public function openFor(string $email, int $limit = 20): array;
+
+    /**
+     * Accept a live invitation as the signed-in person it was sent to, without the emailed
+     * link: the same membership, parked roles and audit trail as {@see accept()}.
+     *
+     * Refused unless the person's address is confirmed and is the invitation's address.
+     * The emailed link stops working.
+     *
+     * @throws InvalidInvitation
+     */
+    public function acceptAs(string $invitationId, Subject $subject): AcceptedInvitation;
 }

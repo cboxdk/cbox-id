@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
+use App\Http\Controllers\Console\DashboardController;
 use App\Http\Middleware\EnforceCustomerConsole;
 use App\Http\Middleware\RequireMultiTenant;
 use App\Platform\Entitlements;
@@ -20,6 +21,11 @@ use Cbox\Console\Kit\Facades\Console;
  * the PRODUCT's administration — the vendor who built on this environment runs it from
  * `/admin` — so a customer's IT admin was handed the vendor's control panel scoped to one
  * tenant, and the vendor had no way to hand them less.
+ *
+ * ON A MULTI-TENANT DEPLOYMENT IT IS NOW OFF BY DEFAULT ({@see persistent()}): a
+ * customer's environment host serves sign-in, the person's own pages and the setup link,
+ * and nothing of what follows. The rest of this describes the console a deployment gets
+ * by turning `cbox-id.realm.tenant_customer_console` on.
  *
  * So this console is an ADMIN PORTAL, PLUS: exactly the things a customer's IT department
  * owns — Members, Enterprise SSO, Domains, Directory Sync, Roles and the Audit log, and App
@@ -68,6 +74,29 @@ final class CustomerConsole
     ];
 
     /**
+     * What is left of it when the deployment does not serve a customer console on tenant
+     * hosts ({@see persistent()}): the person's own pages. Members, roles, single sign-on
+     * and the audit log are then the environment owner's, in the environment console on
+     * the app host, and a customer's IT admin sets up SSO, domains and directory sync
+     * through a setup link (`/setup/{token}`), which is not a console route at all.
+     *
+     * @var array<string, list<string>|null>
+     */
+    private const OWN_PAGES = [
+        'overview' => ['approvals'],
+        'account' => null,
+    ];
+
+    /**
+     * Routes served without a place on the rail in that shape. `dashboard` is where every
+     * sign-in lands; it answers with a redirect to the person's account
+     * ({@see DashboardController}).
+     *
+     * @var list<string>
+     */
+    private const OWN_PAGES_SERVED = ['dashboard'];
+
+    /**
      * Pages kept only where the organization's plan includes them, by the feature
      * {@see Entitlements} names. Withheld otherwise — off the rail and 404 at the door,
      * by the same list — rather than shown with an upsell: the plan is the vendor's
@@ -109,14 +138,35 @@ final class CustomerConsole
      * Route-name prefixes withheld the same way: the v2 redirects into `/orgs/{org}`, the
      * v2 writes of the organization-settings page, and the shared shell's endpoints (a
      * customer's console is white-labelled and keeps its own chrome), which a customer's
-     * console does not serve either.
+     * console does not serve either. And the Cbox realm's "no organization" screen: a
+     * customer's own environment has its own rules for who is in what.
      */
-    private const WITHHELD_PREFIXES = ['legacy.orgs.', 'legacy.settings.', 'console.shell.'];
+    private const WITHHELD_PREFIXES = ['legacy.orgs.', 'legacy.settings.', 'console.shell.', 'organization.required'];
+
+    /**
+     * Whether a customer's environment host serves the PERSISTENT console (the admin portal
+     * described above), or only the person's own pages.
+     *
+     * A deployment setting, `cbox-id.realm.tenant_customer_console`, off by default. Only
+     * ever asked at the customer altitude ({@see ConsoleScope::atCustomerAltitude()}), which
+     * is a multi-tenant deployment by definition, so a single-tenant install is untouched
+     * whatever this says.
+     */
+    public static function persistent(): bool
+    {
+        return config('cbox-id.realm.tenant_customer_console', false) === true;
+    }
+
+    /** @return array<string, list<string>|null> */
+    private static function areas(): array
+    {
+        return self::persistent() ? self::AREAS : self::OWN_PAGES;
+    }
 
     /** Whether an area has any place in a customer's console. */
     public static function keepsArea(string $area): bool
     {
-        return array_key_exists($area, self::AREAS);
+        return array_key_exists($area, self::areas());
     }
 
     /** Whether one page of an area does. */
@@ -126,7 +176,7 @@ final class CustomerConsole
             return false;
         }
 
-        $pages = self::AREAS[$area];
+        $pages = self::areas()[$area];
 
         if ($pages !== null && ! in_array($route, $pages, true)) {
             return false;
@@ -160,6 +210,10 @@ final class CustomerConsole
             if (str_starts_with($route, $prefix)) {
                 return false;
             }
+        }
+
+        if (! self::persistent() && in_array($route, self::OWN_PAGES_SERVED, true)) {
+            return true;
         }
 
         $owner = self::pageOf($route);

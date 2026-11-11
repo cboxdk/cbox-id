@@ -6,21 +6,26 @@ namespace App\Http\Controllers\Console;
 
 use App\Actions\SignIn\AuthPolicyFields;
 use App\Actions\SignIn\InheritSignInPolicy;
+use App\Actions\SignIn\SetAdminSignInLink;
 use App\Actions\SignIn\SetSelfServiceSignup;
 use App\Actions\SignIn\SmsFactorPolicyFields;
 use App\Actions\SignIn\UpdateSignInPolicy;
 use App\Actions\SignIn\UpdateSmsFactorPolicy;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
+use App\Http\Requests\Console\SaveAdminSignInLinkRequest;
 use App\Http\Requests\Console\SaveAuthPolicyRequest;
 use App\Http\Requests\Console\SaveSelfServiceSignupRequest;
 use App\Http\Requests\Console\SaveSignInMethodsRequest;
 use App\Http\Requests\Console\SaveSmsFactorPolicyRequest;
+use App\Platform\AdminSignInLink;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentEnvironment;
+use App\Platform\Environments\TenantBaseDomain;
 use App\Platform\Help\HelpTopic;
 use App\Platform\LockoutDefaults;
+use App\Platform\PlaneResolver;
 use App\Platform\SelfServiceSignup;
 use App\Platform\SignupPolicy;
 use App\Platform\Turnstile;
@@ -31,6 +36,7 @@ use Cbox\Id\Identity\Enums\MfaRequirement;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Otp\Sms\CallingCodes;
@@ -161,6 +167,7 @@ final readonly class AuthPolicyController extends ConsoleController
              */
             'environmentName' => $this->environmentName(),
             'selfServiceSignup' => $this->managesEnvironment() ? $this->selfServiceProps() : null,
+            'adminSignInLink' => $this->managesEnvironment() ? $this->adminSignInLinkProps() : null,
             'smsFactor' => $this->managesEnvironment() ? $this->smsFactorProps() : null,
             'signInMethods' => $this->managesEnvironment() ? $this->signInMethodsProps($baseline) : null,
         ]);
@@ -225,6 +232,26 @@ final readonly class AuthPolicyController extends ConsoleController
         }
 
         return back()->with('status', $enabled ? __('console.self_service_sign_up_is_on_people_can_create_an_account_af9f74f0') : __('console.self_service_sign_up_is_off_people_join_by_invitation_3a61a734'));
+    }
+
+    /**
+     * `PUT /admin/sign-in-rules/admin-link` — whether the environment's sign-in page carries
+     * the link for administrators ({@see AdminSignInLink}). Environment plane only, through
+     * the action the management API runs ({@see SetAdminSignInLink}).
+     */
+    public function adminLink(SaveAdminSignInLinkRequest $request): RedirectResponse
+    {
+        $this->scope->assertMayAdministerEnvironment();
+
+        $enabled = $request->enabled();
+
+        $result = $this->act(SetAdminSignInLink::class, ['enabled' => $enabled], [], 'enabled');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        return back()->with('status', $enabled ? __('console.the_administrator_link_is_shown_on_the_sign_in_page_72788d7a') : __('console.the_administrator_link_is_hidden_from_the_sign_in_page_08a5764f'));
     }
 
     /**
@@ -413,6 +440,33 @@ final readonly class AuthPolicyController extends ConsoleController
             'href' => $policy->decidedByEnvironment() && Route::has($this->routeName('auth-policy.self-service-signup'))
                 ? $this->url('auth-policy.self-service-signup')
                 : '',
+        ];
+    }
+
+    /**
+     * The link for administrators on the sign-in page, or null where there is no such link
+     * to switch: a single-tenant install has no console on another host to point at.
+     *
+     * `enabled` is what the environment's MAIN address shows right now: the choice when one
+     * was made, else the default for that address (on under a tenant base domain, off on a
+     * custom domain). `chosen` is false while the default still decides.
+     *
+     * @return array{enabled: bool, chosen: bool, baseDomain: ?string, href: string}|null
+     */
+    private function adminSignInLinkProps(): ?array
+    {
+        if (! app(PlaneResolver::class)->isMultiTenant() || ! Route::has($this->routeName('auth-policy.admin-link'))) {
+            return null;
+        }
+
+        $environment = $this->currentEnvironment();
+        $host = app(IssuerResolver::class)->canonicalHost() ?? '';
+
+        return [
+            'enabled' => AdminSignInLink::shownFor($environment, $host),
+            'chosen' => AdminSignInLink::chosenFor($environment) !== null,
+            'baseDomain' => TenantBaseDomain::canonical(),
+            'href' => $this->url('auth-policy.admin-link'),
         ];
     }
 

@@ -65,7 +65,7 @@ app that belongs to one organization is offered to that organization's people on
 Link to **Account › API keys** on your environment's host:
 
 ```
-https://<environment>.cboxid.com/account/api-keys?client_id=<your client id>&return_to=<a page in your app>
+https://<environment>.cboxauth.com/account/api-keys?client_id=<your client id>&return_to=<a page in your app>
 ```
 
 | Parameter | What it does |
@@ -89,7 +89,7 @@ Your API receives a request carrying a key, for example
 with the same client credentials you use at the token endpoint:
 
 ```bash
-curl -X POST https://<environment>.cboxid.com/oauth/api-keys/verify \
+curl -X POST https://<environment>.cboxauth.com/oauth/api-keys/verify \
   -u "$CLIENT_ID:$CLIENT_SECRET" \
   -H 'Content-Type: application/json' \
   -d '{"key": "acme_live_…"}'

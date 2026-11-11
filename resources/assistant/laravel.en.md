@@ -14,7 +14,7 @@ Register a **Web app**: Laravel runs on a server, so it can keep a client secret
 redirect URI `http://localhost:8000/auth/callback` and the sign-out URI
 `http://localhost:8000/`.
 
-**In the console.** Open the environment console (`https://<environment>.cboxid.com/admin`)
+**In the console.** Open the environment console (`https://<environment>.cboxauth.com/admin`)
 and choose one of:
 
 - **Home → Get started.** Pick **Laravel**, optionally name the app, and create it. The
@@ -50,7 +50,7 @@ the same code on your device or under **Approvals** in the console. The answer i
 environment's own host (see API keys):
 
 ```bash
-curl -X POST https://<environment>.cboxid.com/api/v1/apps \
+curl -X POST https://<environment>.cboxauth.com/api/v1/apps \
   -H "Authorization: Bearer cbid_env_…" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: $(uuidgen)" \
@@ -100,7 +100,7 @@ Add `cbox_id` to the `User` model's fillable attributes.
 
 ```dotenv
 # .env
-CBOX_ID_ISSUER=https://<environment>.cboxid.com
+CBOX_ID_ISSUER=https://<environment>.cboxauth.com
 CBOX_ID_CLIENT_ID=cid_…
 CBOX_ID_CLIENT_SECRET=csec_…
 CBOX_ID_REDIRECT=http://localhost:8000/auth/callback

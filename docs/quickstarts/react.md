@@ -34,7 +34,7 @@ no secret. Use the redirect URI `http://localhost:5173/callback` and the sign-ou
 Because a server now finishes the sign-in, you can register a **Web app** instead and set
 `CBOX_ID_CLIENT_SECRET` in step 3. Nothing else on this page changes.
 
-**In the console.** Open the environment console (`https://<environment>.cboxid.com/admin`)
+**In the console.** Open the environment console (`https://<environment>.cboxauth.com/admin`)
 and choose one of:
 
 - **Home → Get started.** Pick **React**, optionally name the app, and create it. The page
@@ -70,7 +70,7 @@ the same code on your device or under **Approvals** in the console. The answer i
 environment's own host (see [API keys](../guides/keys.md)):
 
 ```bash
-curl -X POST https://<environment>.cboxid.com/api/v1/apps \
+curl -X POST https://<environment>.cboxauth.com/api/v1/apps \
   -H "Authorization: Bearer cbid_env_…" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: $(uuidgen)" \
@@ -100,7 +100,7 @@ and sign-in and sign-out buttons in the browser; it never touches a token. `expr
 
 ```bash
 # .env — read by server.mjs only; nothing here reaches the browser bundle
-CBOX_ID_ISSUER=https://<environment>.cboxid.com
+CBOX_ID_ISSUER=https://<environment>.cboxauth.com
 CBOX_ID_CLIENT_ID=cid_…
 CBOX_ID_REDIRECT_URI=http://localhost:5173/callback
 CBOX_ID_POST_LOGOUT_REDIRECT_URI=http://localhost:5173/

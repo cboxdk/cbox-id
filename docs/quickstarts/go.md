@@ -18,7 +18,7 @@ You need Go 1.25 or later and the three things in
 Register a **Web app**: a Go server can keep a client secret. Use the redirect URI
 `http://localhost:8080/auth/callback` and the sign-out URI `http://localhost:8080/`.
 
-**In the console.** Open the environment console (`https://<environment>.cboxid.com/admin`)
+**In the console.** Open the environment console (`https://<environment>.cboxauth.com/admin`)
 and choose one of:
 
 - **Home → Get started.** Pick **Go**, optionally name the app, and create it. The page
@@ -54,7 +54,7 @@ the same code on your device or under **Approvals** in the console. The answer i
 environment's own host (see [API keys](../guides/keys.md)):
 
 ```bash
-curl -X POST https://<environment>.cboxid.com/api/v1/apps \
+curl -X POST https://<environment>.cboxauth.com/api/v1/apps \
   -H "Authorization: Bearer cbid_env_…" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: $(uuidgen)" \
@@ -85,7 +85,7 @@ in memory, which you replace with your own store.
 
 ```bash
 # .env
-CBOX_ID_ISSUER=https://<environment>.cboxid.com
+CBOX_ID_ISSUER=https://<environment>.cboxauth.com
 CBOX_ID_CLIENT_ID=cid_…
 CBOX_ID_CLIENT_SECRET=cbid_cs_…
 CBOX_ID_REDIRECT_URI=http://localhost:8080/auth/callback

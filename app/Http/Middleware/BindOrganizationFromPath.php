@@ -6,16 +6,19 @@ namespace App\Http\Middleware;
 
 use App\Platform\CurrentUser;
 use App\Platform\Impersonation;
+use App\Platform\IntendedUrl;
 use App\Platform\OrganizationAccess;
 use App\Platform\Organizations\LastUsedOrganization;
 use App\Platform\Organizations\OrganizationDirectory;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
+use App\Platform\SsoMandates;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
+use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -49,6 +52,7 @@ final class BindOrganizationFromPath
         private readonly PlaneResolver $planes,
         private readonly Impersonation $impersonation,
         private readonly Organizations $organizations,
+        private readonly SsoMandates $mandates,
     ) {}
 
     /**
@@ -79,6 +83,25 @@ final class BindOrganizationFromPath
 
         $subject = $this->user->subject();
         $session = $this->user->session();
+
+        /*
+         * AN ORGANIZATION THAT REQUIRES ITS OWN SSO is opened only on a session that came
+         * through its connection (mandates per organization, {@see SsoMandates}). Anybody
+         * else is a member who signed in another way: they are sent through the
+         * connection and land back on this address. A write is refused outright, since
+         * there is nothing to come back to, and so is an organization with a mandate and
+         * no connection, which has no way in until its administrator finishes setting up.
+         */
+        if (! $this->mandates->admits($session, $entry->id)) {
+            $mandate = $this->mandates->forOrganization($entry->id);
+
+            abort_if($mandate->startUrl === null, 403, __('auth.login.mandate.no_provider', ['organization' => $mandate->organizationName]));
+            abort_unless($request->isMethod('GET'), 403, __('auth.login.mandate.heading', ['organization' => $mandate->organizationName]));
+
+            $request->session()->put(IntendedUrl::KEY, $request->fullUrl());
+
+            return Inertia::location($mandate->startUrl);
+        }
 
         if ($subject !== null && $session !== null) {
             $this->user->set($subject, $session, $organization, MembershipRole::tryFrom($entry->role));

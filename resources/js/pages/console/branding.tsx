@@ -29,6 +29,8 @@ type Props = PageProps<{
     /** Each face's own name — `ThemeFont::labels()`. */
     fontLabels: Record<string, string>;
     radii: string[];
+    /** The tenant base domain, for the preview's address bar; null without subdomains. */
+    previewBaseDomain: string | null;
     /** A legacy remote logo URL is stored here and no longer drawn: ask for an upload. */
     remoteLogoIgnored: boolean;
     /** Whether this install can store images (the white-label module). */
@@ -113,6 +115,7 @@ export default function BrandingPage({
     fonts,
     fontLabels,
     radii,
+    previewBaseDomain,
     remoteLogoIgnored,
     imagesAccepted,
     mayThemeEnvironment,
@@ -243,6 +246,7 @@ export default function BrandingPage({
                     fonts={fonts}
                     fontLabels={fontLabels}
                     radii={radii}
+                    baseDomain={previewBaseDomain}
                     remoteLogoIgnored={remoteLogoIgnored}
                     imagesAccepted={imagesAccepted}
                     imageErrors={{ logo: message('logo'), favicon: message('favicon') }}

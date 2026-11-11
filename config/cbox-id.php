@@ -278,6 +278,20 @@ return [
     ],
 
     /*
+     * How an organization's "SSO required" policy is applied.
+     *
+     * Off (per person): any membership of an organization that requires SSO closes every
+     * local sign-in to that person in the whole environment. On (per organization): the
+     * person signs in however the environment allows, and an organization that requires
+     * SSO is entered (its console, an app authorized for it) only on a session established
+     * through that organization's own enterprise connection; a session that was not is
+     * sent through the connection first. The single-realm cutover turns it on.
+     */
+    'sso' => [
+        'mandate_per_organization' => (bool) env('CBOX_ID_SSO_MANDATE_PER_ORGANIZATION', false),
+    ],
+
+    /*
      * Self-service signup mode — who may create an account + organization at
      * /signup:
      *   - 'open'        anyone may sign up (the default).
@@ -289,6 +303,15 @@ return [
      */
     'signup' => [
         'mode' => env('CBOX_ID_SIGNUP_MODE', 'open'),
+
+        /*
+         * In the Cbox realm (the platform root of a multi-tenant deployment): whether a
+         * person who signs up without an invitation gets a personal organization, and
+         * whether a signed-in person with no organization is shown the "no organization"
+         * screen before an app or the console. Off until the single-realm cutover turns
+         * it on. Customer environments and single-tenant installs never read it.
+         */
+        'personal_organization' => (bool) env('CBOX_ID_SIGNUP_PERSONAL_ORGANIZATION', false),
     ],
 
     /*
@@ -339,6 +362,36 @@ return [
     'webauthn' => [
         'rp_id' => env('CBOX_ID_WEBAUTHN_RP_ID'),
         'origin' => env('CBOX_ID_WEBAUTHN_ORIGIN'),
+    ],
+
+    /*
+     * The operator plane (`/admin` and the platform root environment's own console).
+     *
+     * `phishing_resistant` (off by default) makes the plane demand a passkey or security
+     * key with user verification: an operator must hold one, the plane opens only after a
+     * passkey sign-in or a passkey confirmation, and a time-based code no longer counts.
+     * See docs/operations/operator-plane.md before turning it on: every operator needs a
+     * passkey first, and `php artisan cbox-id:operator:passkey-link` is the way back in.
+     *
+     * `session` caps how long a passkey proof opens the plane, whatever the deployment's
+     * session lifetime is: `absolute_minutes` since the passkey was used, `idle_minutes`
+     * since the last request on the plane. Past either, the operator confirms with the
+     * passkey again; the session itself is not ended.
+     *
+     * `reconfirm_seconds` is how fresh the passkey proof must be for a destructive or
+     * critical action on the plane, for anything behind a step-up there, and for starting
+     * an impersonation.
+     *
+     * `enrolment_link_minutes` is the default lifetime of a break-glass enrolment link.
+     */
+    'operators' => [
+        'phishing_resistant' => (bool) env('CBOX_ID_OPERATORS_PHISHING_RESISTANT', false),
+        'session' => [
+            'absolute_minutes' => (int) env('CBOX_ID_OPERATORS_SESSION_ABSOLUTE_MINUTES', 60),
+            'idle_minutes' => (int) env('CBOX_ID_OPERATORS_SESSION_IDLE_MINUTES', 15),
+        ],
+        'reconfirm_seconds' => (int) env('CBOX_ID_OPERATORS_RECONFIRM_SECONDS', 300),
+        'enrolment_link_minutes' => (int) env('CBOX_ID_OPERATORS_ENROLMENT_LINK_MINUTES', 15),
     ],
 
     /*
@@ -537,6 +590,22 @@ return [
          * Unset falls back to the first base domain, so the subdomain shape needs nothing.
          */
         'account_host' => env('CBOX_ID_CONSOLE_HOST'),
+
+        /*
+         * THE TENANT BASE DOMAIN is `environments.base_domains`
+         * (`CBOX_ID_ENVIRONMENT_BASE_DOMAINS`), an ordered comma list: the FIRST base is
+         * canonical (issuers and every printed address are `{slug}.{first}`), every later
+         * one is an older base that keeps resolving. See
+         * {@see \App\Platform\Environments\TenantBaseDomain}. With more than one base
+         * listed, set `CBOX_ID_CONSOLE_HOST` too: unset, the account host falls back to the
+         * first base.
+         *
+         * This decides what a BROWSER gets on `{slug}.{older base}`: true sends a
+         * navigation to the environment's canonical host, false serves the page on the old
+         * name as before. Metadata is redirected either way, and API calls, form posts,
+         * signed links and SAML endpoints are never redirected.
+         */
+        'redirect_legacy_base_domains' => (bool) env('CBOX_ID_REDIRECT_LEGACY_BASE_DOMAINS', true),
     ],
 
     /*
@@ -569,6 +638,25 @@ return [
         'api' => (is_string(env('CBOX_ID_API_HOST')) && trim((string) env('CBOX_ID_API_HOST')) !== '')
             ? env('CBOX_ID_API_HOST')
             : (env('APP_ENV') === 'production' ? null : 'api.cboxid.test'),
+
+        /*
+         * THE LOGIN HOST. Unset (the default), one host serves sign-in, the issuer and the
+         * console together, exactly as before: single-host mode.
+         *
+         * Set (`CBOX_ID_LOGIN_HOST=login.example.com`), the default environment is issued
+         * from this host and from no other: hosted sign-in, sign-up and consent,
+         * `/oauth/*`, discovery and JWKS, the frontend API and a person's own security
+         * pages live here, and the app host (`CBOX_ID_CONSOLE_HOST`) serves the console
+         * and the operator plane only. A host that is neither, nor the API host, nor a
+         * tenant environment's, serves the health probes and nothing else. Each host keeps
+         * its own session cookie. See App\Platform\Surfaces\Surfaces.
+         *
+         * Set `CBOX_ID_ISSUER` to `https://{login host}` and `CBOX_ID_CONSOLE_HOST` to the
+         * app host with it; `cbox-id:doctor` refuses the combination otherwise.
+         */
+        'login' => (is_string(env('CBOX_ID_LOGIN_HOST')) && trim((string) env('CBOX_ID_LOGIN_HOST')) !== '')
+            ? env('CBOX_ID_LOGIN_HOST')
+            : null,
     ],
 
     /*
@@ -590,15 +678,60 @@ return [
     ],
 
     /*
-     * SLUGS NO ENVIRONMENT MAY HAVE. An environment is served at `{slug}.cboxid.com`, so
-     * one called `api` or `app` would answer for the platform's own hosts. Only the hosts
-     * the platform serves today are listed: the migration that introduces the list refuses
-     * to run while an environment holds one, so adding a name here is a data check on live
-     * first. Every create path derives the slug from a name, and a derived one that lands
-     * here gets a suffix ({@see \App\Platform\Environments\ReservedEnvironmentSlugs});
+     * SLUGS NO ENVIRONMENT MAY HAVE. An environment is served at `{slug}.{tenant base
+     * domain}`, and every listed base domain resolves, so one called `api`, `app` or `login`
+     * would answer for the platform's own hosts, and `admin` or `www` would pass for them.
+     * A migration refuses to run while an environment holds a listed slug (the platform
+     * root is exempt: it is not served by its slug), so adding a name here is a data check
+     * on live first. Every create path derives the slug from a name, and a derived one that
+     * lands here gets a suffix ({@see \App\Platform\Environments\ReservedEnvironmentSlugs});
      * changing a slug to one is refused.
+     *
+     * `reserved_environment_slugs_extra` (`CBOX_ID_RESERVED_ENVIRONMENT_SLUGS`, a comma
+     * list) adds names per deployment without a release. It is how `cbox` gets reserved:
+     * an environment holds that slug until the single-realm cutover, so the cutover sets
+     * `CBOX_ID_RESERVED_ENVIRONMENT_SLUGS=cbox` once that environment is the platform root.
+     * The extra names are not checked by the migration; they only stop a new environment
+     * taking one and an existing one being renamed to it.
      */
-    'reserved_environment_slugs' => ['api', 'app'],
+    'reserved_environment_slugs' => ['api', 'app', 'login', 'admin', 'www'],
+
+    'reserved_environment_slugs_extra' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('CBOX_ID_RESERVED_ENVIRONMENT_SLUGS', '')),
+    ))),
+
+    /*
+     * THE SINGLE REALM: what a customer environment's own host serves, and what may exist
+     * in the platform's own environment.
+     */
+    'realm' => [
+        /*
+         * Whether a customer's environment host (`{slug}.{tenant base domain}` or a custom
+         * domain) of a MULTI-TENANT deployment still serves the persistent customer console:
+         * Members, Roles, Single sign-on, Domains, Directory sync and the Audit log for the
+         * customer's own administrator.
+         *
+         * Off (the default), such a host serves sign-in, the person's own pages (Account,
+         * their Approvals) and the time-limited setup link `/setup/{token}`. An
+         * organization is administered by the environment's owner in the environment
+         * console on the app host. A single-tenant install is not asked: its organization
+         * console is the only console and stays whole.
+         */
+        'tenant_customer_console' => (bool) env('CBOX_ID_TENANT_CUSTOMER_CONSOLE', false),
+
+        /*
+         * NO CUSTOMER-CREATED OAUTH CLIENTS IN THE PLATFORM'S OWN ENVIRONMENT.
+         *
+         * On, the default environment of a multi-tenant deployment holds only clients the
+         * environment itself owns: creating one for an organization is refused by the
+         * console, the API and MCP, and `/oauth/*` answers 404 for an organization's client
+         * that is already there. Customers' own environments are unaffected, and so is a
+         * single-tenant install. Off by default; the single-realm cutover turns it on.
+         * See {@see \App\Platform\OAuth\PlatformRealmClients}.
+         */
+        'platform_clients_only' => (bool) env('CBOX_ID_REALM_PLATFORM_CLIENTS_ONLY', false),
+    ],
 
     /*
      * THE SHAPE OF THIS DEPLOYMENT, as its manifest declares it — read by `cbox-id:doctor`.

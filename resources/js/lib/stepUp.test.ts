@@ -39,6 +39,36 @@ describe('challengeFrom', () => {
         ).toEqual({ plane: 'organization', confirm: organization.confirm, reason: 'Why.' });
     });
 
+    it('reads the operator plane only with a same-origin passkey endpoint', () => {
+        const confirm = '/admin/confirm';
+        const operator = (passkey: unknown): unknown => ({
+            step_up: { plane: 'operator', confirm, reason: 'Why.', passkey },
+        });
+
+        expect(
+            challengeFrom(
+                403,
+                { 'x-cbox-step-up': confirm },
+                operator({ options: '/admin/confirm/options' }),
+            ),
+        ).toEqual({
+            plane: 'operator',
+            confirm,
+            reason: 'Why.',
+            passkeyOptions: '/admin/confirm/options',
+        });
+
+        // Never a password prompt for this plane, and never a ceremony against another origin.
+        expect(challengeFrom(403, { 'x-cbox-step-up': confirm }, operator(undefined))).toBeNull();
+        expect(
+            challengeFrom(
+                403,
+                { 'x-cbox-step-up': confirm },
+                operator({ options: 'https://evil.example/options' }),
+            ),
+        ).toBeNull();
+    });
+
     it('reads one from a Headers object and a JSON string body', () => {
         const headers = new Headers({
             'X-Cbox-Step-Up': '/orgs/acme/projects/web/environments/production/sudo',

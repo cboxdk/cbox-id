@@ -19,7 +19,7 @@ Register a **Web app**: the module runs the sign-in on Nuxt's server, so it can 
 client secret. Use the redirect URI `http://localhost:3000/auth/callback` and the sign-out
 URI `http://localhost:3000/`.
 
-**In the console.** Open the environment console (`https://<environment>.cboxid.com/admin`)
+**In the console.** Open the environment console (`https://<environment>.cboxauth.com/admin`)
 and choose one of:
 
 - **Home → Get started.** Pick **Nuxt**, optionally name the app, and create it. The page
@@ -56,7 +56,7 @@ the same code on your device or under **Approvals** in the console. The answer i
 environment's own host (see [API keys](../guides/keys.md)):
 
 ```bash
-curl -X POST https://<environment>.cboxid.com/api/v1/apps \
+curl -X POST https://<environment>.cboxauth.com/api/v1/apps \
   -H "Authorization: Bearer cbid_env_…" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: $(uuidgen)" \
@@ -91,7 +91,7 @@ The module brings `@cboxdk/id-js` for the sign-in and the `@cboxdk/id-vue` widge
 
 ```dotenv
 # .env
-CBOX_ID_ISSUER=https://<environment>.cboxid.com
+CBOX_ID_ISSUER=https://<environment>.cboxauth.com
 CBOX_ID_CLIENT_ID=cid_…
 CBOX_ID_CLIENT_SECRET=cbid_cs_…
 CBOX_ID_REDIRECT_URI=http://localhost:3000/auth/callback

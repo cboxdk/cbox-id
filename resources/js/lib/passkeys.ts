@@ -295,6 +295,55 @@ export async function signInWithPasskey(base = '/passkeys'): Promise<string | nu
 }
 
 /**
+ * Confirm it's you with a passkey — the operator plane's step-up.
+ *
+ * The same assertion ceremony as a sign-in, against the plane's own two endpoints. It
+ * signs nobody in: the server checks that the passkey belongs to the person already
+ * signed in and opens their confirmation window. Returns where the full-page screen
+ * should go next (the in-place dialog ignores it and replays its own request).
+ */
+export async function confirmWithPasskey(
+    optionsUrl: string,
+    confirmUrl: string,
+): Promise<string | null> {
+    const options = (await post(optionsUrl)) as unknown as RequestOptions;
+
+    const publicKey: PublicKeyCredentialRequestOptions = {
+        ...options,
+        challenge: dec(options.challenge),
+        // Copied rather than mutated, for the reason given in registerPasskey().
+        // oxlint-disable-next-line no-map-spread
+        allowCredentials: (options.allowCredentials ?? []).map((entry) => ({
+            ...entry,
+            id: dec(entry.id),
+        })),
+    };
+
+    const credential = (await navigator.credentials.get({
+        publicKey,
+    })) as PublicKeyCredential | null;
+
+    if (credential === null) {
+        throw new PasskeyError('No passkey was offered.');
+    }
+
+    const response = credential.response as AuthenticatorAssertionResponse;
+
+    const result = await post(confirmUrl, {
+        id: credential.id,
+        type: credential.type,
+        response: {
+            clientDataJSON: enc(response.clientDataJSON),
+            authenticatorData: enc(response.authenticatorData),
+            signature: enc(response.signature),
+            userHandle: response.userHandle === null ? null : enc(response.userHandle),
+        },
+    });
+
+    return typeof result.redirect === 'string' ? result.redirect : null;
+}
+
+/**
  * A cancelled ceremony is not an error worth reporting.
  *
  * `NotAllowedError` is what the browser throws when somebody dismisses the system prompt,

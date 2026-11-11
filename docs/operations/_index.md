@@ -20,6 +20,9 @@ running it yourself on a VM, a PaaS or any Kubernetes cluster.
 - [Administering the platform's own environment](platform-environment.md) — the root
   environment's console at `/admin` on the root host, who administers it, the guards that
   keep operators able to sign in, and `cbox-id:operator:grant`.
+- [Passkeys for platform operators](operator-plane.md) — make `/admin` require a passkey or
+  security key, the settings, how to turn it on, and the one-time enrolment link for an
+  operator who is locked out.
 - [Live smoke test](live-smoke-test.md) — a reproducible end-to-end run with the real
   clients (cbox CLI, an MCP client, both SDKs) against a live deployment.
 - [Rehearsing an upgrade](upgrade-rehearsal.md) — prove a release migrates your

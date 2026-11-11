@@ -11,19 +11,24 @@ use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Http\Middleware\BindConsoleOrganization;
 use App\Http\Middleware\BindOrganizationFromPath;
+use App\Http\Middleware\BindSessionToSurface;
 use App\Http\Middleware\DeprecateLegacyApi;
 use App\Http\Middleware\EnforceCustomerConsole;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\EnforceRootHostConsole;
 use App\Http\Middleware\FenceApiHost;
+use App\Http\Middleware\FenceSurfaces;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\InClusterOnly;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\ReadOnlyWhileImpersonating;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RedirectLegacyTenantHost;
 use App\Http\Middleware\RedirectOutsideInertia;
+use App\Http\Middleware\RefuseCrossOriginWrites;
+use App\Http\Middleware\RefuseCustomerClientsInPlatformRealm;
 use App\Http\Middleware\RequireConsoleAdmin;
 use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireMultiTenant;
@@ -35,7 +40,9 @@ use App\Http\Middleware\ResolveLocale;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\ServeMarketingWebsite;
 use App\Http\Middleware\SetEnvironment;
+use App\Http\Middleware\StatelessFrontendApi;
 use App\Http\Middleware\TrustHostsExceptHealth;
+use App\Http\Middleware\UseSurfaceSessionCookie;
 use App\Platform\EmailNotVerified;
 use App\Platform\Locale\LocaleResolver;
 use App\Platform\PlatformAuth;
@@ -59,6 +66,7 @@ use Illuminate\Http\Middleware\TrustHosts;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -264,10 +272,38 @@ return Application::configure(basePath: dirname(__DIR__))
         // The API host answers the API and nothing else: global, so none of the application's
         // other routes (bound to no host) can start a session or render a page there.
         $middleware->append(FenceApiHost::class);
+        // In login-host mode every other host serves its own surface and nothing else: the
+        // issuer on the login host, the console on the app host, and only the health probes
+        // on a host that is neither. A no-op while no login host is configured.
+        $middleware->append(FenceSurfaces::class);
+        // …and the frontend API holds no session there: no cookie read, none set, no
+        // credentialed CORS. See the middleware for what that closes.
+        $middleware->append(StatelessFrontendApi::class);
         $middleware->append(ServeMarketingWebsite::class);
+
+        // An organization's OAuth client in the platform's own realm is not served, whatever
+        // the host gates decide (off unless `cbox-id.realm.platform_clients_only`).
+        $middleware->append(RefuseCustomerClientsInPlatformRealm::class);
+
+        // IN LOGIN-HOST MODE EACH SURFACE HAS ITS OWN SESSION (see SessionSurface). The
+        // cookie is named before `StartSession` reads it, a write to the login host that
+        // another origin made is refused before a session starts, and a session is bound
+        // to the surface that minted it straight after it starts. All three are no-ops
+        // while no login host is configured.
+        $middleware->prependToGroup('web', [UseSurfaceSessionCookie::class, RefuseCrossOriginWrites::class]);
+        $middleware->appendToGroup('web', BindSessionToSurface::class);
+        $middleware->prependToPriorityList(
+            before: ShareErrorsFromSession::class,
+            prepend: BindSessionToSurface::class,
+        );
 
         // Pin the current environment (session-selected) for the console + hosted UI.
         $middleware->appendToGroup('web', SetEnvironment::class);
+
+        // An environment's address under an older tenant base domain sends a navigating
+        // browser to its canonical host. After SetEnvironment: it asks which environment the
+        // host resolved to.
+        $middleware->appendToGroup('web', RedirectLegacyTenantHost::class);
 
         // An UNINSTALLED deployment has exactly one surface: the first-run screen. In
         // the web group rather than on individual routes because the property is about

@@ -434,3 +434,16 @@ it('carries the console\'s configuration to the surviving organization and perso
         ->and($row('support_sessions', $support))->actor_id->toBe($fixture['realmOwner'])->ended_at->not->toBeNull()
         ->and($row('product_billing_usage_outbox', $usage, 'event_id'))->workspace_id->toBe($fixture['realmOrganization']);
 });
+
+it('puts the new root on the login host when one is configured, or where it is told', function (?string $option, ?string $login, ?string $expected): void {
+    $fixture = RealmFlipFixture::build();
+    config(['cbox-id.hosts.login' => $login]);
+
+    expect(realmFlip('--execute', '--confirm='.$fixture['root'], ...($option === null ? [] : ['--domain='.$option]))[0])->toBe(0)
+        ->and(DB::table('environments')->where('id', $fixture['realm'])->value('domain'))->toBe($expected);
+})->with([
+    'the login host' => [null, 'login.cboxid.test', 'login.cboxid.test'],
+    'the old root\'s host, in single-host mode' => [null, null, RealmFlipFixture::CONSOLE_HOST],
+    'a host given by hand' => ['id.example.test', 'login.cboxid.test', 'id.example.test'],
+    'none' => ['none', 'login.cboxid.test', null],
+]);
