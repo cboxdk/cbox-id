@@ -13,6 +13,7 @@ use App\Platform\Theme;
 use Cbox\Console\Kit\Facades\Console;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 
 /**
  * THE `shell` PROP: the one contract every Cbox app renders with cbox-ui's `CboxShell`.
@@ -64,12 +65,20 @@ final readonly class IdShell
 
         $shell['apps'] = [...$built->apps->toArray(), 'productsUrl' => 'https://cbox.dk'];
 
-        // Records are searched in the console the page stands in: an environment console's
-        // own search runs behind that environment's door, in that environment.
-        if (ShellRequest::environmentPath($this->request) !== null && Route::has('environment.search')) {
+        // Records are searched in the console the page stands in, behind that console's own
+        // door: an environment console's in that environment, an organization page's in the
+        // organization its address names (`orgs.bind`, never the session's). Anywhere else
+        // the kit's `/shell/search` answers "Go to" and no records ({@see IdSearchProvider}).
+        $search = match (true) {
+            ShellRequest::environmentPath($this->request) !== null && Route::has('environment.search') => route('environment.search', [], false),
+            is_string(URL::getDefaultParameters()['org'] ?? null) && Route::has('orgs.search') => route('orgs.search', [], false),
+            default => null,
+        };
+
+        if ($search !== null) {
             $palette = $built->palette->toArray();
             $query = parse_url($palette['searchUrl'], PHP_URL_QUERY);
-            $shell['palette'] = [...$palette, 'searchUrl' => route('environment.search', [], false).(is_string($query) && $query !== '' ? '?'.$query : '')];
+            $shell['palette'] = [...$palette, 'searchUrl' => $search.(is_string($query) && $query !== '' ? '?'.$query : '')];
         }
 
         return $shell;

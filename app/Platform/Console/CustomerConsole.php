@@ -101,6 +101,8 @@ final class CustomerConsole
         // has organizations of its own, which these never name.
         'orgs.index',
         'orgs.show',
+        // ⌘K's records in a Cbox organization: the white-labelled console keeps its own.
+        'orgs.search',
     ];
 
     /**

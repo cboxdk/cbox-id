@@ -984,6 +984,10 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::middleware('orgs.bind')->prefix('/orgs/{org}')->name('orgs.')->group(function (): void {
         Route::get('/', [OrganizationPickerController::class, 'show'])->name('show');
 
+        // ⌘K's records on an organization page: in the organization the address names, for
+        // somebody who administers it. JSON for the shared shell's palette.
+        Route::get('/search', ConsoleSearchController::class)->name('search');
+
         Route::get('/projects', [ProjectController::class, 'index'])->name('projects');
         Route::get('/projects/new', [ProjectController::class, 'create'])->name('projects.create');
         Route::post('/projects', [ProjectController::class, 'store'])->name('projects.store');
