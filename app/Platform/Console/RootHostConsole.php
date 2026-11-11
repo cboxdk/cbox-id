@@ -29,7 +29,7 @@ use Illuminate\Support\Facades\Route;
  *    the landing pages are served as they were — except that an OPERATOR's every sign-in
  *    page is the platform environment's, the team's own included;
  *  - platform admin is not on this console's rail at all: it is the Platform area of the
- *    platform environment's console (`/admin/platform/…`), and the account menu's
+ *    platform environment's console (`/admin/…`), and the account menu's
  *    "Platform admin" is the way there. Its pages carry their own operator gate and never
  *    this console's door, so only the rail has to leave them out;
  *  - a page that sets something an ENVIRONMENT owns — social login, sign-in methods,

@@ -59,7 +59,6 @@ use App\Http\Controllers\Console\FrontendKeyController;
 use App\Http\Controllers\Console\GetStartedController;
 use App\Http\Controllers\Console\HookController;
 use App\Http\Controllers\Console\LegacyLoginController;
-use App\Http\Controllers\Console\LegacyPlatformOrganizationController;
 use App\Http\Controllers\Console\LogStreamController;
 use App\Http\Controllers\Console\MemberApiKeyController;
 use App\Http\Controllers\Console\MemberController;
@@ -77,6 +76,7 @@ use App\Http\Controllers\Console\OrganizationLookupController;
 use App\Http\Controllers\Console\OutboundSyncController;
 use App\Http\Controllers\Console\PermissionController;
 use App\Http\Controllers\Console\PipeController;
+use App\Http\Controllers\Console\PlatformAdminMovedController;
 use App\Http\Controllers\Console\PlatformCustomerController;
 use App\Http\Controllers\Console\PlatformEnvironmentController;
 use App\Http\Controllers\Console\PlatformOrganizationController;
@@ -137,6 +137,7 @@ use App\Http\Controllers\SupportLaunchController;
 use App\Http\Middleware\AuthenticateOperator;
 use App\Http\Middleware\BlockDuringImpersonation;
 use App\Http\Middleware\EnforceImpersonationWindow;
+use App\Http\Middleware\RedirectOldEnvironmentConsolePage;
 use App\Http\Middleware\RedirectOutsideInertia;
 use App\Http\Middleware\RequireSignInMethod;
 use App\Http\Middleware\TargetEnvironment;
@@ -1972,7 +1973,11 @@ ConsoleRoutes::environment(function (): void {
 Route::redirect('/operator/login', '/login/direct');
 Route::redirect('/operator/login/mfa', '/login/direct');
 
-Route::prefix('admin/platform')->middleware('plane:operator')->group(function (): void {
+// The old addresses: `/admin/platform/…` → `/admin/…`, counted, until a week without traffic.
+Route::get('/admin/platform/{path?}', PlatformAdminMovedController::class)
+    ->where('path', '.*')->middleware('plane:operator')->name('platform.moved');
+
+Route::prefix('admin')->middleware([RedirectOldEnvironmentConsolePage::class, 'plane:operator'])->group(function (): void {
     // `platform.auth:optional` RESOLVES the one session without requiring one, then
     // AuthenticateOperator asks whether the person it resolved runs this deployment.
     // Both are needed and in this order — the authority question is asked of CurrentUser,
@@ -1999,13 +2004,14 @@ Route::prefix('admin/platform')->middleware('plane:operator')->group(function ()
         // Inside the gate, so a non-operator gets the same 404 here as on every page behind
         // it; a redirect controller rather than a closure, like every console route.
         Route::get('/', RedirectController::class)
-            ->defaults('destination', '/admin/platform/workspaces')->defaults('status', 302)->name('platform.home');
+            ->defaults('destination', '/admin/organizations')->defaults('status', 302)->name('platform.home');
 
-        // WORKSPACES — the customers on the install. `/customers` until the console's own
-        // word for a customer became the URL's too; the old paths answer 301 (see the
-        // moved-pages table below), and the writes, which nothing bookmarks, simply moved.
-        Route::get('/workspaces', [PlatformCustomerController::class, 'index'])->name('platform.orgs');
-        Route::post('/workspaces', [PlatformCustomerController::class, 'store'])->name('platform.orgs.store');
+        // ORGANIZATIONS — the customers on the install, each an organization of the platform
+        // root. `/workspaces` and `/customers` before; the old paths redirect (see
+        // PlatformAdminMovedController and the moved-pages table below), and the writes,
+        // which nothing bookmarks, simply moved.
+        Route::get('/organizations', [PlatformCustomerController::class, 'index'])->name('platform.orgs');
+        Route::post('/organizations', [PlatformCustomerController::class, 'store'])->name('platform.orgs.store');
 
         // `platform.orgs.show`, not `platform.workspace`. The console derives both the
         // eyebrow above the page title and the lit rail entry from the route name by the
@@ -2013,10 +2019,10 @@ Route::prefix('admin/platform')->middleware('plane:operator')->group(function ()
         // page named as a CHILD of its list gets "Platform" over its heading and keeps
         // Workspaces lit in the rail without a single hand-written label. `platform.organization`
         // predates that rule and has to pass its own eyebrow; this one does not.
-        Route::get('/workspaces/{organization}', [PlatformCustomerController::class, 'show'])->name('platform.orgs.show');
-        Route::post('/workspaces/{organization}/status', [PlatformCustomerController::class, 'toggle'])->name('platform.orgs.toggle');
-        Route::post('/workspaces/{organization}/environments/{environment}/target', [PlatformCustomerController::class, 'target'])->name('platform.orgs.target');
-        Route::post('/workspaces/{organization}/environments/{environment}/open', [PlatformCustomerController::class, 'open'])->name('platform.orgs.open');
+        Route::get('/organizations/{organization}', [PlatformCustomerController::class, 'show'])->name('platform.orgs.show');
+        Route::post('/organizations/{organization}/status', [PlatformCustomerController::class, 'toggle'])->name('platform.orgs.toggle');
+        Route::post('/organizations/{organization}/environments/{environment}/target', [PlatformCustomerController::class, 'target'])->name('platform.orgs.target');
+        Route::post('/organizations/{organization}/environments/{environment}/open', [PlatformCustomerController::class, 'open'])->name('platform.orgs.open');
 
         // ENVIRONMENTS — every environment on the install. It was the section's front page
         // (`/platform`), which is why the old bare address lands here rather than on the
@@ -2024,7 +2030,7 @@ Route::prefix('admin/platform')->middleware('plane:operator')->group(function ()
         Route::get('/environments', [PlatformEnvironmentController::class, 'index'])->name('platform.environments');
         Route::post('/environments', [PlatformEnvironmentController::class, 'store'])->name('platform.environments.store');
         Route::post('/environments/{environment}/provision', [PlatformEnvironmentController::class, 'provision'])->name('platform.environments.provision');
-        Route::post('/environment/switch', [OperatorController::class, 'switchEnvironment'])->name('platform.environment.switch');
+        Route::post('/environments/switch', [OperatorController::class, 'switchEnvironment'])->name('platform.environment.switch');
 
         Route::prefix('/environments/{targetEnvironment}')->middleware(TargetEnvironment::class)->group(function (): void {
             Route::get('/organizations', [PlatformOrganizationController::class, 'index'])->name('platform.organizations');
@@ -2036,9 +2042,6 @@ Route::prefix('admin/platform')->middleware('plane:operator')->group(function ()
             Route::post('/impersonate/{user}', [ImpersonationController::class, 'start'])->name('platform.impersonate');
         });
 
-        Route::get('/organizations', LegacyPlatformOrganizationController::class);
-        Route::get('/organizations/{organization}', LegacyPlatformOrganizationController::class);
-
         Route::get('/operators', [OperatorRosterController::class, 'index'])->name('platform.operators');
         Route::post('/operators', [OperatorRosterController::class, 'store'])->name('platform.operators.store');
         Route::post('/operators/{operator}/status', [OperatorRosterController::class, 'toggle'])->name('platform.operators.toggle');
@@ -2048,7 +2051,7 @@ Route::prefix('admin/platform')->middleware('plane:operator')->group(function ()
 
         Route::get('/usage', PlatformUsageController::class)->name('platform.usage');
         // The queue workers' state. The job-by-job monitor it links to is registered by
-        // cboxdk/laravel-queue-monitor under `/admin/platform/queues/monitor`, behind the
+        // cboxdk/laravel-queue-monitor under `/admin/queues/monitor`, behind the
         // same operator gate plus the host bulkhead — see config/queue-monitor.php.
         Route::get('/queues', PlatformQueuesController::class)->name('platform.queues');
         Route::get('/search', PlatformSearchController::class)->name('platform.search');
@@ -2192,22 +2195,22 @@ foreach ([
     // detail page by its id, and the queue monitor's own pages. Each answers on the hosts
     // its destination does (`plane:operator`), keeps its query string, and lands on the
     // page itself — never on a second hop through another old address.
-    '/operator' => '/admin/platform',
-    '/platform' => '/admin/platform/environments',
-    '/platform/workspaces' => '/admin/platform/workspaces',
-    '/platform/workspaces/{organization}' => '/admin/platform/workspaces/{organization}',
-    '/platform/organizations' => '/admin/platform/environments/root/organizations',
-    '/platform/organizations/{organization}' => '/admin/platform/environments/root/organizations/{organization}',
-    '/platform/operators' => '/admin/platform/operators',
-    '/platform/usage' => '/admin/platform/usage',
-    '/platform/queues' => '/admin/platform/queues',
-    '/platform/queues/monitor' => '/admin/platform/queues/monitor',
-    '/platform/queues/monitor/job/{uuid}' => '/admin/platform/queues/monitor/job/{uuid}',
-    '/platform/search' => '/admin/platform/search',
-    '/platform/search/jump/{organization}' => '/admin/platform/search/jump/{organization}',
+    '/operator' => '/admin',
+    '/platform' => '/admin/environments',
+    '/platform/workspaces' => '/admin/organizations',
+    '/platform/workspaces/{organization}' => '/admin/organizations/{organization}',
+    '/platform/organizations' => '/admin/environments/root/organizations',
+    '/platform/organizations/{organization}' => '/admin/environments/root/organizations/{organization}',
+    '/platform/operators' => '/admin/operators',
+    '/platform/usage' => '/admin/usage',
+    '/platform/queues' => '/admin/queues',
+    '/platform/queues/monitor' => '/admin/queues/monitor',
+    '/platform/queues/monitor/job/{uuid}' => '/admin/queues/monitor/job/{uuid}',
+    '/platform/search' => '/admin/search',
+    '/platform/search/jump/{organization}' => '/admin/search/jump/{organization}',
     // …and the platform section's older word for a workspace, straight to where it is now.
-    '/platform/customers' => '/admin/platform/workspaces',
-    '/platform/customers/{organization}' => '/admin/platform/workspaces/{organization}',
+    '/platform/customers' => '/admin/organizations',
+    '/platform/customers/{organization}' => '/admin/organizations/{organization}',
 
     // The environment console.
     '/admin/applications' => '/admin/apps',
