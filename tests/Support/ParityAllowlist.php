@@ -215,6 +215,10 @@ final class ParityAllowlist
             'console.locale.update',
             'environment.locale.update',
             'platform.locale.update',
+            // The shared shell's own preferences (theme, pinned rail, Help open) and marking
+            // its bell read: the signed-in person's chrome, not a management write.
+            'console.shell.preferences',
+            'console.shell.notifications.read',
             // Which organization the console is looking at: a redirect to the same page in
             // another `/orgs/{org}`. The API names its organization instead.
             'orgs.switch',
@@ -239,6 +243,10 @@ final class ParityAllowlist
             'queue-monitor.dashboard.job.replay',
             'queue-monitor.dashboard.stuck-jobs.resolve',
             'queue-monitor.dashboard.stuck-jobs.resolve-all',
+            // cboxdk/laravel-console-kit's header "New …": the levels run the same actions the
+            // Projects page runs (CreateProject, CreateEnvironment) or the self-serve
+            // organization create, so the write is an action behind the vendor route.
+            'console.shell.context.create',
         ];
     }
 
