@@ -47,7 +47,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
     plane: ActionPlane::Account,
     rest: ['POST', '/organizations/{organization_id}/leave'],
     status: 204,
-    consoleRoutes: ['directory.members.leave'],
+    consoleRoutes: ['directory.members.leave', 'account.organizations.leave'],
     consoleGate: ConsoleGate::Person,
     tag: 'Organizations',
 )]

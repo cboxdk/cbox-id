@@ -432,6 +432,29 @@ final readonly class OAuthConsentController extends PageController
         }
 
         /*
+         * `login_hint` NAMES SOMEBODY ELSE. The app knows who it expects (an invitation, a
+         * link in a mail to that address) and the browser is signed in as another account.
+         * Continuing would hand the app the wrong person without a word, so the account
+         * chooser is shown: pick the account the app meant if this browser holds it, or
+         * add it (the sign-in form is filled in with the hint). The same address continues.
+         *
+         * Not after a completed interaction (`reauthed`): the person chose, and a hint is
+         * a hint. Silently, the answer is `login_required`: the session the app asked about
+         * is not there, and OIDC Core §3.1.2.6 gives that code to exactly this.
+         */
+        if (! $reauthed && ! $authorization->asks(AuthorizationPrompt::Login)
+            && ! (is_string($ticket) && $ticket !== '')
+            && $authorization->loginHint !== null
+            && mb_strtolower($authorization->loginHint) !== mb_strtolower(trim((string) $me->email()))) {
+            if ($silent) {
+                return $this->redirectError($redirectUri, 'login_required', $state,
+                    'The signed-in account is not the one login_hint names and prompt=none forbids interaction.');
+            }
+
+            return $this->interrupt($request, $authorization, route('accounts'));
+        }
+
+        /*
          * THE ORGANIZATION'S OWN SIGN-IN RULES. A forced password change and an MFA mandate
          * hold every console page; they must hold this one too, or the endpoint that mints
          * tokens becomes the way around the policy the console enforces.
@@ -541,7 +564,7 @@ final readonly class OAuthConsentController extends PageController
         if ($required->appliesToApp($me, $client)) {
             if ($silent) {
                 return $this->redirectError($redirectUri, 'interaction_required', $state,
-                    'The user must choose an organization before continuing.');
+                    'The user must pick an organization before continuing.');
             }
 
             // So the screen answers for this browser whatever the switch says.
@@ -580,7 +603,7 @@ final readonly class OAuthConsentController extends PageController
              */
             if ($silent) {
                 return $this->redirectError($redirectUri, 'interaction_required', $state,
-                    'The user must choose an organization and sign in through its identity provider.');
+                    'The user must pick an organization and sign in through its identity provider.');
             }
 
             return redirect()->route('oauth.authorize.organization', $pending->put($request, $authorization));

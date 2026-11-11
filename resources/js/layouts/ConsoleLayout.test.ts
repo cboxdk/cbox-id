@@ -34,6 +34,24 @@ describe('switchRequest', () => {
         });
     });
 
+    it("reads cbox-ui 0.11's {select, from} body the same way", () => {
+        expect(
+            switchRequest(
+                {
+                    select: { organization: 'org_1', project: 'prj_1', environment: 'env_2' },
+                    from: '/users',
+                },
+                levels,
+            ),
+        ).toEqual({ select: { environment: 'env_2' }, from: '/users' });
+    });
+
+    it('sends nothing when the item already open was chosen', () => {
+        expect(
+            switchRequest({ select: { organization: 'org_1' }, from: '/dashboard' }, levels),
+        ).toEqual({ select: {}, from: '/dashboard' });
+    });
+
     it('switches the organization when that is what was chosen', () => {
         expect(
             switchRequest({ organization: 'org_2', return_to: '/orgs/a/settings' }, levels),

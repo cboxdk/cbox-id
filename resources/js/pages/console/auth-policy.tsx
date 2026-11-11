@@ -3,6 +3,7 @@ import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
+import { flag } from '@/lib/countries';
 import type { HelpContent, PageProps, Pagination as PaginationState } from '@/types';
 import {
     Badge,
@@ -1139,9 +1140,13 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
             setting.deploymentCountries.length > 0 && !setting.deploymentCountries.includes(code),
     );
 
-    const options = setting.countries.filter(
-        (country) => !form.data.allowedCountries.includes(country.value),
-    );
+    // A flag before each name: a country is recognised, then picked by typing its name.
+    const options = setting.countries
+        .filter((country) => !form.data.allowedCountries.includes(country.value))
+        .map((country) => ({
+            value: country.value,
+            label: `${flag(country.value)} ${country.label}`,
+        }));
 
     return (
         <Panel
@@ -1228,7 +1233,7 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
                         {form.data.allowedCountries.map((code) => (
                             <li key={code}>
                                 <Badge>
-                                    {label(code)} <span className="mono">{code}</span>
+                                    {flag(code)} {label(code)}
                                     <button
                                         type="button"
                                         className="ml-1.5"

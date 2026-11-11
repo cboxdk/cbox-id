@@ -13,6 +13,7 @@ use App\Platform\PlatformAuth;
 use App\Platform\SessionMetadata;
 use App\Platform\SignedInPage;
 use App\Platform\SsoMandates;
+use App\Platform\Surfaces\ReturnUrl;
 use App\Platform\Surfaces\SessionSurface;
 use App\Platform\Surfaces\Surfaces;
 use App\SignalsData\IdentityCapture;
@@ -214,8 +215,10 @@ final class Authenticate
         if ($this->mustChangePassword($request, $subject->id)) {
             // A person's own security pages live with the SSO session: on the login host
             // in login-host mode, where the console does not serve them.
+            // The page they were opening goes along (`return_to`), so the change ends there
+            // and not on the console's front page.
             return app(ConsoleSignIn::class)->active($request)
-                ? redirect()->away(app(Surfaces::class)->loginUrl('/password/change'))
+                ? redirect()->away(app(Surfaces::class)->loginUrl('/password/change', $this->wayBack($request)))
                 : redirect()->route('password.change');
         }
 
@@ -232,7 +235,13 @@ final class Authenticate
         if (! $request->routeIs('account', 'account.mfa.*', 'sudo', 'sudo.*', 'passkeys.register', 'passkeys.register.*')
             && $requiresEnrolment
         ) {
-            return redirect()->route('account')
+            // In login-host mode the security page is on the login host, and the page they
+            // were opening goes along so "Back to …" there leads to it.
+            $account = app(ConsoleSignIn::class)->active($request)
+                ? redirect()->away(app(Surfaces::class)->loginUrl('/settings', $this->wayBack($request)))
+                : redirect()->route('account');
+
+            return $account
                 ->with('status', $this->mfaMandate instanceof OperatorMfa && $this->mfaMandate->requiresPasskey($subject->id)
                     ? 'Platform operators sign in with a passkey or security key. Add one under Security to continue.'
                     : 'Your organization requires two-factor authentication. Set it up to continue.');
@@ -241,6 +250,18 @@ final class Authenticate
         app(IdentityCapture::class)->activity($session, $request);
 
         return SignedInPage::serve($request, $next);
+    }
+
+    /**
+     * The console page a held request was opening, as the `return_to` the login host's
+     * pages take ({@see ReturnUrl}, which validates it there). Only a page: a write is not
+     * replayed by a link, so it names nothing and the person lands on the console's default.
+     *
+     * @return array<string, string>
+     */
+    private function wayBack(Request $request): array
+    {
+        return $request->isMethod('GET') ? [ReturnUrl::PARAMETER => $request->fullUrl()] : [];
     }
 
     /**

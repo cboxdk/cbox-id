@@ -136,10 +136,11 @@ trait RunsActions
         $scope = app(ConsoleScope::class);
 
         // On the operator plane a destructive or critical action needs a fresh passkey
-        // ({@see OperatorGate}); the action's own {@see Danger} decides, not a route list.
+        // ({@see OperatorGate}); the action's own {@see Danger} decides, not a route list,
+        // and the gate adds the few writes that open a way to sign in to the root.
         $definition = app(ActionRegistry::class)->forClass($action);
 
-        if ($definition->danger->destructive()) {
+        if (OperatorGate::guards($definition->name, $definition->danger->destructive())) {
             app(OperatorGate::class)->requireFresh(request(), $definition->summary);
         }
 

@@ -654,7 +654,7 @@ class ConsoleScope
      * otherwise be three places that could disagree about it.
      *
      * TWO conditions, not one. Holding an account role is not enough — the acting
-     * ORGANIZATION has to be the one that account owns. On `acme.cboxid.com` the acting
+     * ORGANIZATION has to be the one that account owns. On `acme.cboxauth.com` the acting
      * organization is a tenant of somebody else's IdP, so this answers null and the area is
      * simply absent; the same is true on the root the moment an operator switches to an
      * organization that is not their own. Without the second condition an account owner who
@@ -693,7 +693,7 @@ class ConsoleScope
      *
      * The two-condition rule survives the fold unchanged, and it is the important half:
      * holding a role is not enough — the acting ORGANIZATION has to be the one this person
-     * belongs to. On `acme.cboxid.com` the acting organization is a tenant of somebody
+     * belongs to. On `acme.cboxauth.com` the acting organization is a tenant of somebody
      * else's IdP, so this answers null and the area is simply absent; the same is true the
      * moment an operator switches to an organization that is not their own. Without it, an
      * owner who switched organizations would be offered their own projects and billing
@@ -710,7 +710,7 @@ class ConsoleScope
         }
 
         // …AND THE ORGANIZATION HAS TO BE A CUSTOMER. Holding a role in it is not enough:
-        // on `acme.cboxid.com` the acting organization is a tenant's own end-user
+        // on `acme.cboxauth.com` the acting organization is a tenant's own end-user
         // organization, and its owner owns no identity providers — the area has nothing in
         // it for them. The account plane expressed this as "the organization this person's
         // ACCOUNT owns"; with no account row, what makes an organization a customer is that

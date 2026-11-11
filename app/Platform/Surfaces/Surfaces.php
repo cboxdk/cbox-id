@@ -59,14 +59,17 @@ final class Surfaces
 
     /**
      * Answered on every named surface: assets, sign-out of the session that surface holds,
-     * the language picker, first run, the old `/api/v1` paths (which answer on every host
+     * the language picker (a visitor's cookie at `locale`, a signed-in person's saved
+     * preference at `interface-language`), first run, the old `/api/v1` paths (which answer on every host
      * until they are retired) and the resource metadata an MCP client reads.
      *
      * @var list<string>
      */
     public const array SHARED = [
         '/', 'robots.txt', 'favicon.ico', 'build/*', 'storage/*', 'brand-assets/*', 'app-icons/*',
-        'locale', 'logout', 'signed-out', 'first-run',
+        'locale', 'interface-language', 'logout', 'signed-out', 'first-run',
+        // The app picker's old address: each surface sends it on to the console's switcher.
+        'switch-app',
         'authenticator/privacy',
         'api/v1', 'api/v1/*',
         '.well-known/oauth-protected-resource', '.well-known/oauth-protected-resource/*',
@@ -120,6 +123,8 @@ final class Surfaces
         // The security page and each write on it.
         'settings',
         'settings/profile',
+        // Leaving one of your organizations: your own membership, your own act.
+        'settings/organizations/*',
         'settings/password',
         'settings/two-factor', 'settings/two-factor/*',
         'settings/passkeys/*', 'passkeys/register', 'passkeys/register/*',

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\Account\DisconnectSignInMethod;
+use App\Actions\Account\LeaveOrganization;
 use App\Actions\Account\RemovePasskey;
 use App\Actions\Account\RemoveSmsFactor;
 use App\Actions\Account\RemoveTotpDevice;
@@ -56,6 +57,10 @@ use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Identity\ValueObjects\TotpDevice;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Otp\Exceptions\OtpRateLimitExceeded;
 use Cbox\Id\Otp\Sms\Exceptions\SmsDeliveryFailed;
 use Cbox\Id\Otp\Sms\Exceptions\SmsSendRefused;
@@ -119,6 +124,7 @@ final readonly class AccountController extends PageController
                     'role' => ConsoleLabels::navigation($me->role()?->label() ?? 'Member'),
                 ],
             ],
+            'organizations' => $this->organizations($subjectId, $organization?->id),
             'hasPassword' => $this->hasPassword($subjectId),
             'twoFactor' => [
                 'enabled' => $mfa->hasConfirmedTotp($subjectId),
@@ -181,6 +187,91 @@ final readonly class AccountController extends PageController
                 'activity' => route('account.activity'),
             ],
         ]);
+    }
+
+    /**
+     * The organizations this person belongs to, each with the way out of it.
+     *
+     * On the page because it is the one place a person can leave from wherever they are: the
+     * login host has no console around these pages, and a customer environment's host has no
+     * People page. Open organizations only; a closed one has nothing left to leave.
+     *
+     * @return list<array{id: string, name: string, role: string, current: bool, isOwner: bool, leaveHref: string}>
+     */
+    private function organizations(string $subjectId, ?string $currentId): array
+    {
+        $organizations = app(Organizations::class);
+        $rows = [];
+
+        foreach (app(Memberships::class)->forUser($subjectId) as $membership) {
+            if ($membership->status !== MembershipStatus::Active) {
+                continue;
+            }
+
+            $organization = $organizations->find($membership->organization_id);
+
+            if ($organization === null || $organization->status->revokesAccess()) {
+                continue;
+            }
+
+            $rows[] = [
+                'id' => $organization->id,
+                'name' => $organization->name,
+                'role' => ConsoleLabels::navigation($membership->role->label()),
+                'current' => $organization->id === $currentId,
+                'isOwner' => $membership->role === MembershipRole::Owner,
+                'leaveHref' => route('account.organizations.leave', $organization->id),
+            ];
+        }
+
+        usort($rows, static fn (array $a, array $b): int => strcasecmp($a['name'], $b['name']));
+
+        return $rows;
+    }
+
+    /**
+     * Leave one of your organizations through {@see LeaveOrganization}, which keeps its own
+     * rules (the last owner cannot; a roster administered elsewhere is refused). One you are
+     * not a member of is a 404.
+     *
+     * The person stays on their own page, signed in. When the organization they left was
+     * the one this session acted in, the session moves to another of theirs; with none
+     * left the account is still theirs, and the next door that needs an organization
+     * (an app, the console) asks for one.
+     */
+    public function leaveOrganization(Request $request, string $organization, PlatformAuth $auth): RedirectResponse
+    {
+        $me = app(CurrentUser::class);
+
+        abort_unless($me->check(), 403);
+
+        $subjectId = $me->id();
+        $wasCurrent = $me->organizationId() === $organization;
+        $name = null;
+
+        foreach ($this->organizations($subjectId, null) as $row) {
+            if ($row['id'] === $organization) {
+                $name = $row['name'];
+            }
+        }
+
+        $result = $this->act(LeaveOrganization::class, ['organization_id' => $organization], ['organization_id' => 'organization'], 'organization');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        if ($wasCurrent) {
+            $next = $this->organizations($subjectId, null)[0]['id'] ?? null;
+
+            if ($next !== null) {
+                $auth->switchOrganization($request, $next);
+            }
+        }
+
+        return back()->with('status', $name !== null
+            ? __('console.organization_left_status', ['name' => $name])
+            : __('console.organization_left_status_unnamed'));
     }
 
     /** Change the display name through {@see UpdateProfile}, the account plane's action. */

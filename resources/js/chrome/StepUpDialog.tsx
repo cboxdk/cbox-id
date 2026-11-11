@@ -144,17 +144,30 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
     const [waiting, setWaiting] = useState(false);
     const [blocked, setBlocked] = useState(false);
 
+    // The wait for the window in progress, so a second click or closing the dialog ends it.
+    const waitingFor = useRef<AbortController | null>(null);
+
+    useEffect(() => () => waitingFor.current?.abort(), []);
+
     const leave = async (): Promise<void> => {
-        if (waiting) {
-            return;
-        }
+        // Asked again while waiting: the window was closed by hand or lost behind others.
+        // The same named window is opened (or brought back) and the wait starts over.
+        waitingFor.current?.abort();
+
+        const wait = new AbortController();
+        waitingFor.current = wait;
 
         setWaiting(true);
         setError(null);
 
         // Called inside the click, so the browser lets the window open.
-        const outcome = await confirmStepUpByRedirect(prompt.challenge);
+        const outcome = await confirmStepUpByRedirect(prompt.challenge, undefined, wait.signal);
 
+        if (waitingFor.current !== wait) {
+            return;
+        }
+
+        waitingFor.current = null;
         setWaiting(false);
 
         if (outcome === 'confirmed') {
@@ -264,7 +277,6 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
                         ) : (
                             <Button
                                 variant="primary"
-                                loading={waiting}
                                 data-step-up-redirect
                                 onClick={() => void leave()}
                             >
@@ -296,9 +308,11 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
                             {error}
                         </p>
                     )}
-                    {blocked && (
+                    {(blocked || waiting) && (
                         // A plain link: this tab leaves for the login host and comes back
-                        // to the page, where the action can be repeated.
+                        // to the page, where the action can be repeated. Offered while
+                        // waiting too: this page cannot tell a window that was closed by
+                        // hand from one that is still open (see confirmStepUpByRedirect).
                         <p className="mt-2">
                             <a href={redirect.page} className="underline">
                                 {consoleT('console.step_up_redirect_same_tab')}

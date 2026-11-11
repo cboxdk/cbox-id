@@ -41,7 +41,7 @@ final readonly class OperatorPasskeyLinkController extends PageController
     {
         $grant = $this->grant($token, $links);
 
-        return $this->page('auth/operator-passkey-link', 'Add a passkey', [
+        return $this->page('auth/operator-passkey-link', __('console.operator_passkey_link_title'), [
             'email' => $grant['email'],
             'base' => route('login.direct.passkey', ['token' => $token]),
             'signIn' => route('login.direct'),
@@ -102,7 +102,7 @@ final readonly class OperatorPasskeyLinkController extends PageController
         $challenge = $this->pullChallenge($request, $token);
 
         if ($challenge === null) {
-            return new JsonResponse(['error' => 'That attempt expired. Try again.'], 422);
+            return new JsonResponse(['error' => __('console.operator_attempt_expired')], 422);
         }
 
         // Spent BEFORE the passkey is stored: of two requests holding the same link, one
@@ -125,7 +125,7 @@ final readonly class OperatorPasskeyLinkController extends PageController
         } catch (Throwable) {
             $links->restore($token, $grant);
 
-            return new JsonResponse(['error' => 'That passkey could not be verified. Try again.'], 422);
+            return new JsonResponse(['error' => __('console.operator_passkey_not_verified')], 422);
         }
 
         $root->run(fn () => $audit->record(new AuditEvent(

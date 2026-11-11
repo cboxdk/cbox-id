@@ -74,7 +74,7 @@ final readonly class SetSignInThrough implements Action
         if ($id !== null && $this->through->isTheRealm($environment->environmentKey())) {
             throw ActionRefused::because(
                 'not_available_in_the_realm',
-                'Every app signs in through this environment, so it cannot sign in through another identity provider.',
+                new ActionMessage('console.realm_signs_in_through_nobody'),
                 'connection_id',
             );
         }

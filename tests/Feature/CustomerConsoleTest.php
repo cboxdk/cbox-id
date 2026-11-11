@@ -338,6 +338,9 @@ it('lets nothing through on a customer\'s console but the admin portal, the pers
         'activity',
         'device', 'device.lookup', 'device.approve', 'device.deny', 'device.verify',
         'apps',
+        // On to the app that was waiting, after a hold (a forced password change, a second
+        // factor to enrol) on a customer's own sign-in.
+        'app.continue',
         'environment.open',
         'orgs.switch', 'organization.switch',
         'passkeys.register', 'passkeys.register.options',

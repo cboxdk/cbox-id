@@ -13,7 +13,6 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\OAuthServer\Enums\AuthenticationContextClass;
-use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
 
@@ -82,26 +81,14 @@ final class OperatorAssurance
     }
 
     /**
-     * Whether these sign-in methods are a passkey with user verification.
-     *
-     * The framework's own predicate where it has one; the same rule spelled here for a
-     * framework release that predates it, so the plane never falls back to something weaker.
+     * Whether these sign-in methods are a passkey with user verification: the framework's
+     * phishing-resistant class, and nothing weaker.
      *
      * @param  list<string>  $amr
      */
     public function reached(array $amr): bool
     {
-        if (! $this->verifiesUsers()) {
-            return false;
-        }
-
-        // By name, because the case exists only from the framework release that adds it.
-        $case = AuthenticationContextClass::class.'::PhishingResistant';
-        $class = defined($case) ? constant($case) : null;
-
-        return $class instanceof AuthenticationContextClass
-            ? $class->isSatisfiedBy($amr)
-            : in_array(AuthMethod::Passkey->value, $amr, true) && in_array(AuthMethod::MultiFactor->value, $amr, true);
+        return $this->verifiesUsers() && AuthenticationContextClass::PhishingResistant->isSatisfiedBy($amr);
     }
 
     /**
@@ -130,7 +117,7 @@ final class OperatorAssurance
     /** What an operator is told where {@see self::confirms()} is false. */
     public function elsewhereMessage(): string
     {
-        return 'Platform administration requires a passkey or security key, and passkeys are confirmed on the sign-in host ('.$this->surfaces->loginHost().'). Sign out, then sign in again with your passkey.';
+        return __('console.operator_confirm_on_sign_in_host', ['host' => (string) $this->surfaces->loginHost()]);
     }
 
     /** Whether this deployment's passkey doors require the authenticator to verify the person. */

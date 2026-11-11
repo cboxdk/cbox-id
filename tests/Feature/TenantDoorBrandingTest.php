@@ -172,6 +172,8 @@ it('paints every door on a customer environment in its brand', function (): void
 
 it('leaves the console on that host in Cbox\'s own name', function (): void {
     brandedDoorEnvironment();
+    // The persistent customer console is a deployment's choice; the Members page is its.
+    withTenantCustomerConsole();
 
     $anna = app(Subjects::class)->create('anna@hansen.test', 'Anna Hansen', 'a-strong-unbreached-passphrase');
     $team = app(Organizations::class)->create(new NewOrganization('Hansen Revision', 'hansen-revision'));

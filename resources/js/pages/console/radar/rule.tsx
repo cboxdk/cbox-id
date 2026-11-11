@@ -1,4 +1,3 @@
-import { useTranslator as usePublicTranslator } from '@/i18n';
 import type { Translator } from '@/i18n';
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, useForm } from '@inertiajs/react';
@@ -6,8 +5,18 @@ import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import {
+    allCountryCodes,
+    countryName,
+    countryOptions,
+    flag,
+    formatCountryList,
+    parseCountryList,
+} from '@/lib/countries';
+import {
+    Badge,
     Breadcrumb,
     Button,
+    Combobox,
     Checkbox,
     ConfirmDelete,
     Field,
@@ -75,6 +84,71 @@ const SCOPE_LABEL = (t: Translator['t']): Record<Scope, string> => ({
 
 let nextKey = 0;
 
+/**
+ * A country condition's value: countries picked by flag and name from a type-ahead of every
+ * country, shown as removable chips. Stored as the codes the rule engine reads ("DK, SE"),
+ * which nobody types.
+ */
+function CountryListField({
+    value,
+    multiple,
+    onChange,
+}: {
+    value: string;
+    multiple: boolean;
+    onChange: (value: string) => void;
+}) {
+    const { t: consoleText, locale } = useConsoleTranslator();
+    const chosen = parseCountryList(value);
+    const options = countryOptions(allCountryCodes(), locale).filter(
+        (option) => !chosen.includes(option.value),
+    );
+
+    return (
+        <div className="space-y-2">
+            {(multiple || chosen.length === 0) && (
+                <Combobox
+                    aria-label={consoleText('console.add_a_country_3891b432')}
+                    value={undefined}
+                    placeholder={consoleText('console.add_a_country_fde01a47')}
+                    searchPlaceholder={consoleText('console.search_countries_1a765360')}
+                    options={options}
+                    onValueChange={(code) =>
+                        onChange(formatCountryList(multiple ? [...chosen, code] : [code]))
+                    }
+                />
+            )}
+            {chosen.length > 0 && (
+                <ul className="flex flex-wrap gap-2">
+                    {chosen.map((code) => (
+                        <li key={code}>
+                            <Badge>
+                                {flag(code)} {countryName(code, locale)}
+                                <button
+                                    type="button"
+                                    className="ml-1.5"
+                                    aria-label={consoleText('console.remove_part1_369983dd', {
+                                        part1: countryName(code, locale),
+                                    })}
+                                    onClick={() =>
+                                        onChange(
+                                            formatCountryList(
+                                                chosen.filter((other) => other !== code),
+                                            ),
+                                        )
+                                    }
+                                >
+                                    ×
+                                </button>
+                            </Badge>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
 function rowKey(): string {
     nextKey += 1;
 
@@ -103,7 +177,6 @@ export default function RadarRuleEditor({
     destroyHref,
     rulesHref,
 }: Props) {
-    const { t: tc } = usePublicTranslator();
     const { t: consoleStaticText } = useConsoleTranslator();
     const { t: consoleUiText } = useConsoleTranslator();
     const { t: consoleText } = useConsoleTranslator();
@@ -245,7 +318,7 @@ export default function RadarRuleEditor({
                                 </Field>
                                 <Field
                                     label={
-                                        operator?.list
+                                        operator?.list && field?.type !== 'country'
                                             ? consoleText('console.values_comma_separated_6face72e')
                                             : consoleText('console.value_8e37953d')
                                     }
@@ -269,16 +342,18 @@ export default function RadarRuleEditor({
                                                 },
                                             ]}
                                         />
+                                    ) : field?.type === 'country' ? (
+                                        <CountryListField
+                                            value={condition.value}
+                                            multiple={operator?.list === true}
+                                            onChange={(value) => setCondition(index, { value })}
+                                        />
                                     ) : (
                                         <Input
                                             className="mono"
                                             value={condition.value}
                                             placeholder={
-                                                field?.type === 'country'
-                                                    ? tc('console.dk_se_1e81070d')
-                                                    : field?.type === 'ip'
-                                                      ? '203.0.113.0/24'
-                                                      : ''
+                                                field?.type === 'ip' ? '203.0.113.0/24' : ''
                                             }
                                             onChange={(event) =>
                                                 setCondition(index, { value: event.target.value })

@@ -20,7 +20,8 @@ use Symfony\Component\HttpFoundation\Response;
  *
  *  - a resource is the object itself, with `object` naming what it is;
  *  - a list is `{"object":"list","data":[…],"has_more":…,"next_cursor":…}` — one cursor for
- *    every list, the lists that paged by number included (their cursor is `page:N`);
+ *    every list, the lists that paged by number included (their cursor is `page:N`); any
+ *    other `meta` field (the app catalog's `revision`, `refresh_after`) sits beside them;
  *  - a held action is the approval it waits for, `object: "approval"`;
  *  - every record id is its public id, `usr_01j…` (plan §3.2): `id` by the kind of record the
  *    object is, `<kind>_id` fields by their kind;
@@ -32,6 +33,9 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class V1Responses
 {
+    /** A list's paging fields in `/api/v1`'s `meta`, replaced by `has_more` and `next_cursor`. */
+    private const array PAGING = ['limit', 'has_more', 'next_cursor', 'next_page', 'page', 'per_page', 'total'];
+
     /**
      * @param  Closure(Request): Response  $next
      */
@@ -89,6 +93,9 @@ final class V1Responses
                 'data' => array_map(static fn (mixed $item): mixed => is_array($item) ? PublicIdTree::encode($item, $type) : $item, $data),
                 'has_more' => (bool) ($meta['has_more'] ?? false),
                 'next_cursor' => self::cursor($meta),
+                // What a list says about itself beyond paging (the app catalog's `revision`
+                // and `refresh_after`) stays on it; only the paging fields are reshaped.
+                ...array_diff_key($meta ?? [], array_flip([...self::PAGING, 'object', 'data'])),
             ]);
 
             return $response;

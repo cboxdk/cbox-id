@@ -18,7 +18,7 @@ use Symfony\Component\HttpFoundation\Response;
  * in but may not open the environment they asked for.
  *
  * It is the end of a real journey, which is why it is a page and not a status code:
- * somebody opened `acme.cboxid.com/admin/users`, was sent to the root to sign in, signed in
+ * somebody opened `acme.cboxauth.com/admin/users`, was sent to the root to sign in, signed in
  * — and the sign-in WORKED. A blank 403 at that point reads as "Google is broken". This says
  * the sign-in succeeded, whose console it is, who can let them in, and where they can go.
  *

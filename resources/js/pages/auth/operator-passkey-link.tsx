@@ -25,8 +25,8 @@ type Props = PageProps<{
  *
  * An operator who cannot open platform administration (no passkey, or the only one lost)
  * is sent this link by somebody who holds the deployment's shell. It adds one passkey to
- * their account and signs nobody in. Operator-only and English-only on purpose: it is
- * read by staff, from a link issued at a command line.
+ * their account and signs nobody in. Read by staff, from a link issued at a command line,
+ * in the language their browser asks for.
  */
 export default function OperatorPasskeyLink({ email, base, signIn }: Props) {
     const { t } = useTranslator();
@@ -45,7 +45,9 @@ export default function OperatorPasskeyLink({ email, base, signIn }: Props) {
         } catch (caught) {
             if (!isCancellation(caught)) {
                 setError(
-                    caught instanceof Error ? caught.message : 'That did not work. Try again.',
+                    caught instanceof Error
+                        ? caught.message
+                        : t('console.that_did_not_work_try_again_d38eba7d'),
                 );
             }
         } finally {
@@ -56,11 +58,10 @@ export default function OperatorPasskeyLink({ email, base, signIn }: Props) {
     return (
         <>
             <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                Add a passkey
+                {t('console.operator_passkey_link_title')}
             </h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                This one-time link adds a passkey or security key to the platform operator{' '}
-                <b>{email}</b>. It works once. Open it on the device you will sign in from.
+                {t('console.operator_passkey_link_intro', { email })}
             </p>
 
             {done ? (
@@ -72,8 +73,8 @@ export default function OperatorPasskeyLink({ email, base, signIn }: Props) {
                             color: 'var(--success-strong)',
                         }}
                     >
-                        <Icon name="check" className="w-4 h-4" /> Passkey added. Sign in with it
-                        now.
+                        <Icon name="check" className="w-4 h-4" />{' '}
+                        {t('console.operator_passkey_link_done')}
                     </output>
                     <a href={signIn} className="btn btn-primary btn-lg w-full mt-5">
                         {t('auth.login.title')}
@@ -89,11 +90,11 @@ export default function OperatorPasskeyLink({ email, base, signIn }: Props) {
                         disabled={!supported}
                         onClick={() => void add()}
                     >
-                        Add passkey
+                        {t('console.operator_passkey_link_add')}
                     </Button>
                     {!supported && (
                         <p className="field-error mt-4" role="alert">
-                            This browser cannot use passkeys. Open the link in one that can.
+                            {t('console.operator_passkey_link_unsupported')}
                         </p>
                     )}
                     {error !== null && (

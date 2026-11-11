@@ -49,7 +49,7 @@ Pulled in automatically by `composer install`:
 | `cboxdk/laravel-assistant-client` | `^0.2.1` | Product support, the shell's Help panel, signed tools and curated documentation sync. |
 | `cboxdk/laravel-billing-client` | `^0.6` | Billing catalog, account and subscription management. |
 | `symfony/intl` | `^8.0` | Country validation and localized country names for invoice addresses. |
-| `cboxdk/laravel-id` | `^2.5` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
+| `cboxdk/laravel-id` | `^2.6` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
 | `cboxdk/laravel-signals-client` | `dev-sd/signals-managed-integration` | Public Signals assessment client (feature disabled until configured). |
 | `cboxdk/laravel-postal` | `^0.1.1` | Transactional mail delivery via Postal. |
 | `cboxdk/laravel-ssrf` | `^1.1.1` | The outbound URL guard: DNS pinning and private-range refusal. |
@@ -57,7 +57,7 @@ Pulled in automatically by `composer install`:
 | `cboxdk/laravel-health` | `^2.0` | Health/readiness reporting. |
 | `cboxdk/laravel-risk` | `^1.1` | Bot/abuse risk scoring on signup/login (monitor mode by default). |
 | `cboxdk/laravel-telemetry` | `^3.9.3` | Tracing, metrics and scheduled OTLP export (trace IDs on error screens). |
-| `cboxdk/laravel-console-kit` | `^0.2.2` | Console plugin sockets (nav/areas/widgets) the app and its plugins extend, and the shared shell (`Console::shell()`) behind cbox-ui's `CboxShell`. |
+| `cboxdk/laravel-console-kit` | `^0.2.6` | Console plugin sockets (nav/areas/widgets) the app and its plugins extend, and the shared shell (`Console::shell()`) behind cbox-ui's `CboxShell`. |
 | `cboxdk/laravel-dns` | `^1.0` | DNS lookups for domain-verification (TXT) and MX checks. |
 | `cboxdk/dns` | `^0.1` | The framework-agnostic DNS resolver beneath laravel-dns. |
 | `bacon/bacon-qr-code` | `^3.1` | TOTP enrolment QR codes. |
@@ -120,4 +120,4 @@ production's major. `tests/Feature/DeploymentManifestTest.php` fails if that maj
 the local manifest (`cbox.yaml`) runs and the one named on this page drift apart. See
 [Deployment](operations/deployment.md).
 
-The identity engine uses the published `cboxdk/laravel-id` release `^2.5` (every secret minted as `cbid_<kind>_`), including independent named authenticator apps, bound CIBA tokens with ping mode and RFC 9396 authorization_details on token exchange. The optional Signals enforcement integration still uses the reviewed, unpublished `cboxdk/laravel-signals-client` source at `dev-sd/security-tenant-context`; that client is bundled from a reviewed immutable source and retains its development identity. See [Signals authentication](integrations/signals-authentication.md) for the explicit build contexts and activation requirements.
+The identity engine uses the published `cboxdk/laravel-id` release `^2.6` (every secret minted as `cbid_<kind>_`), including independent named authenticator apps, bound CIBA tokens with ping mode and RFC 9396 authorization_details on token exchange. The optional Signals enforcement integration still uses the reviewed, unpublished `cboxdk/laravel-signals-client` source at `dev-sd/security-tenant-context`; that client is bundled from a reviewed immutable source and retains its development identity. See [Signals authentication](integrations/signals-authentication.md) for the explicit build contexts and activation requirements.

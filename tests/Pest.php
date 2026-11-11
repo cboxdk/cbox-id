@@ -2712,16 +2712,29 @@ function consoleRail(TestResponse $response): array
 
 /**
  * The language lives in the shared shell's account menu: the rail's account button on a
- * desktop, the navigation sheet on a phone. Its first listbox row is the language; the
- * option is picked by its own name, which reads the same in every locale.
+ * desktop; on a phone (cbox-ui 0.11) More → the profile row → Language. The option is
+ * picked by its own name, which reads the same in every locale.
  */
 function pickConsoleLanguage(mixed $page, string $name, bool $phone = false): mixed
 {
     if ($phone) {
-        if ($page->script('document.querySelector(".cbx-sheet") === null')) {
-            $page->click('header.cbx-header button[aria-label="Open navigation"]');
+        // From a script rather than a pointer: on a long, scrolled page under the touch
+        // preset the sticky tab bar's button never reports itself stable to the click.
+        if ($page->script('document.querySelector("#cbx-more") === null')) {
+            $page->script('document.querySelector(\'nav.cbx-tabbar button[aria-controls="cbx-more"]\').click()');
         }
-        $page->click('.cbx-sheet .cbx-menu-account button[aria-haspopup="listbox"]:first-of-type');
+        // The profile is the last row of More; the account screen's first choice is the language.
+        $page->click('#cbx-more > .cbx-group:last-of-type button.is-tall, #cbx-more .cbx-group:last-of-type button.is-tall');
+        $page->click('#cbx-more .cbx-more-page .cbx-group button.cbx-grow >> nth=0');
+
+        $page->click('#cbx-more [role="option"]:has-text("'.$name.'")');
+
+        // More stays open on the account screen after a choice, over the page. Once the
+        // preference has been saved, load the page again: the test reads the page itself.
+        $page->wait(1.5);
+        $page->script('window.location.reload()');
+
+        return $page->wait(1);
     } else {
         $page->click('button.cbx-rail-account')
             ->click('.cbx-menu-account button[aria-haspopup="listbox"]:first-of-type');

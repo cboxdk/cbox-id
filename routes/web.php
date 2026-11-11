@@ -422,7 +422,7 @@ Route::middleware(['plane:signup', 'platform.guest', 'locale'])->group(function 
  * It used to be `plane:subject`, which meant "not the platform root", so `cboxid.com/login`
  * was a 404: the one host every account member already has an identity on was the one host
  * they could not sign in to as themselves. The root is a tenant like any other — what it
- * has that acme.cboxid.com does not is the operator area and the account plane standing
+ * has that acme.cboxauth.com does not is the operator area and the account plane standing
  * alongside this console, not the absence of one. The IdP protocol surface it must NOT
  * serve moved to `plane:issuer`, which is the question that was actually being asked here.
  */
@@ -684,9 +684,10 @@ Route::middleware([EnforceImpersonationWindow::class, BlockDuringImpersonation::
  * ON TO WHERE THIS BROWSER WAS GOING (App\Http\Controllers\Auth\ContinueController): the
  * authorization waiting in the session, else the app a mailed link named, else the console.
  * No plane, like the screen above: it is reached from the issuer's pages and from a person's
- * own. It reads nothing from its address.
+ * own. It reads nothing from its address. Through the customer console's door like every
+ * signed-in route, which serves it: it belongs to no page, as a ceremony does.
  */
-Route::middleware([EnforceImpersonationWindow::class, 'platform.auth', 'locale'])
+Route::middleware([EnforceImpersonationWindow::class, 'platform.auth', 'locale', 'console.customer'])
     ->get('/continue', ContinueController::class)
     ->name('app.continue');
 
@@ -867,6 +868,12 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * charging for nothing.
      */
     Route::patch('/settings/profile', [AccountController::class, 'updateProfile'])->name('account.profile.update');
+    // Leaving one of your own organizations, from your own page: on the login host and on a
+    // customer environment's host there is no People page to do it from. Not behind the
+    // step-up, as the People page's own "Leave organization" is not: it gives up access.
+    Route::post('/settings/organizations/{organization}/leave', [AccountController::class, 'leaveOrganization'])
+        ->where('organization', '[A-Za-z0-9_]{1,64}')
+        ->name('account.organizations.leave');
     // Renaming a passkey is outside the step-up for the same reason the name above is: a
     // label is not a credential, and changing it grants nothing. Adding and removing one
     // are behind it.
@@ -1008,7 +1015,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * SURFACES exist; whether an organization owns identity providers is a question about
      * the organization, and it has an answer on every host — no on all but the root's own
      * accounts. {@see \App\Platform\Console\ConsoleScope::accountRole()} is that answer,
-     * and it is what the rail reads, so on `acme.cboxid.com` the area is simply absent
+     * and it is what the rail reads, so on `acme.cboxauth.com` the area is simply absent
      * rather than gated: the same mechanism that already drops an area with no pages.
      */
 
@@ -2088,7 +2095,7 @@ ConsoleRoutes::environment(function (): void {
 |
 | `plane:operator` is the host bulkhead: the root's own host on a multi-tenant
 | deployment, any host on a single-tenant one — the same gate the queue monitor under
-| these pages carries. Without it `acme.cboxid.com/admin/platform` would reach the
+| these pages carries. Without it `acme.cboxauth.com/admin/platform` would reach the
 | operator gate on a tenant's host and answer it with a sign-in redirect; with it, the
 | address does not exist there, which is what a tenant's host should say about the
 | deployment's staff pages.

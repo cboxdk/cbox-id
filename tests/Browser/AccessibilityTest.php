@@ -762,10 +762,9 @@ it('draws the mobile navigation on both console planes', function (string $plane
     visit($path)
         ->on()->mobile()
         ->assertSee($heading)
-        ->assertPresent('header.cbx-header')
-        // The trigger is named for a screen reader rather than in visible text, so it is
-        // the LABEL that is asserted — which is also the thing that matters.
-        ->assertPresent('header.cbx-header button[aria-label="Open navigation"]')
+        // The phone's navigation (cbox-ui 0.11): the tab bar and its More.
+        ->assertPresent('nav.cbx-tabbar')
+        ->assertPresent('nav.cbx-tabbar button[aria-controls="cbx-more"]')
         ->assertNoJavaScriptErrors();
 })->with([
     'organization plane' => ['organization', '/dashboard', 'Recent activity'],

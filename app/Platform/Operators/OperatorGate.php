@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Operators;
 
+use App\Platform\Actions\Danger;
 use App\Platform\StepUpPlane;
 use App\Platform\StepUpPrompt;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -22,7 +23,24 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final readonly class OperatorGate
 {
+    /**
+     * Actions that need a fresh passkey on the plane although their {@see Danger}
+     * is only `Write`. Each one opens a way to sign in to the realm every first-party app
+     * trusts: a draft SSO connection is the first half of a new identity provider, and
+     * turning a social provider back on is a new door at once. For a customer's own
+     * environment they stay ordinary writes, which is why the class is not raised instead.
+     *
+     * @var list<string>
+     */
+    public const array SIGN_IN_SETTINGS = ['sso.connections.create', 'signin.social.enable'];
+
     public function __construct(private OperatorAssurance $assurance) {}
+
+    /** Whether an action with this name and danger needs a fresh proof on the plane. */
+    public static function guards(string $action, bool $destructive): bool
+    {
+        return $destructive || in_array($action, self::SIGN_IN_SETTINGS, true);
+    }
 
     /**
      * The standing check every request on the plane passes. Null when the request may go
