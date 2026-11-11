@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\Console\EnvironmentConsolePath;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
+use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -75,4 +76,42 @@ it('does not guess: an environment no single organization grants is left as it i
     Log::shouldHaveReceived('warning')->withArgs(
         fn (string $message, array $context): bool => ($context['environment'] ?? null) === $unclaimed->id,
     )->once();
+});
+
+it('does not guess between two organizations that both grant it', function (): void {
+    platformRootEnvironment();
+    $acme = provisionAccount();
+    $globex = provisionAccount('owner@globex.example');
+    $shared = projectlessEnvironment('shared-staging');
+
+    foreach ([$acme, $globex] as $account) {
+        DB::table('membership_environments')->insert(['membership_id' => $account['member']->id, 'environment_id' => $shared->id]);
+    }
+
+    Log::spy();
+
+    attachProjectlessEnvironments();
+
+    expect($shared->refresh()->project_id)->toBeNull();
+    Log::shouldHaveReceived('warning')->withArgs(
+        fn (string $message, array $context): bool => ($context['environment'] ?? null) === $shared->id && ($context['organizations'] ?? null) === 2,
+    )->once();
+});
+
+it('lets only an active membership speak for its organization', function (): void {
+    platformRootEnvironment();
+    $acme = provisionAccount();
+    $globex = provisionAccount('owner@globex.example');
+    $orphan = projectlessEnvironment('legacy-qa');
+
+    foreach ([$acme, $globex] as $account) {
+        DB::table('membership_environments')->insert(['membership_id' => $account['member']->id, 'environment_id' => $orphan->id]);
+    }
+
+    // Globex's grant hangs off a membership that is no longer in force: Acme owns it alone.
+    DB::table('memberships')->where('id', $globex['member']->id)->update(['status' => MembershipStatus::Suspended->value]);
+
+    attachProjectlessEnvironments();
+
+    expect($orphan->refresh()->project_id)->toBe($acme['project']->id);
 });

@@ -15,10 +15,13 @@ use Illuminate\Support\Facades\Log;
  * app host, and an environment with no project has no such address. `project_id` is
  * nullable ("owned by nobody"), so a row from before projects existed may still have none.
  *
- * Each one is attached to a project of the ONE organization that grants access to it
- * (`membership_environments`): that organization's oldest project, or a new one named after
- * it when it has none. An environment no organization grants, or more than one does, is not
- * guessed at — it is left as it is and logged, for a person to decide.
+ * Each one is attached to a project of the ONE organization whose ACTIVE memberships grant
+ * access to it (`membership_environments`): that organization's oldest project, or a new one
+ * named after it when it has none. An environment no organization grants, or more than one
+ * does, is not guessed at — it is left as it is and logged, for a person to decide. Run
+ * `SELECT id, slug FROM environments WHERE project_id IS NULL AND is_default = false` on
+ * production before this merges: the list of rows it would leave must be empty, or each
+ * one decided, first.
  *
  * Data only, and forward only: `down()` does not detach anything, because the console
  * addresses that would vanish are already in people's bookmarks.
@@ -36,6 +39,9 @@ return new class extends Migration
             $owners = DB::table('membership_environments')
                 ->join('memberships', 'memberships.id', '=', 'membership_environments.membership_id')
                 ->where('membership_environments.environment_id', $environment->id)
+                // Only a membership that is in force speaks for its organization: an
+                // invitation not yet accepted, or a suspended member, owns nothing.
+                ->where('memberships.status', 'active')
                 ->distinct()
                 ->pluck('memberships.organization_id')
                 ->all();
