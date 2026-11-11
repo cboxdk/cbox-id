@@ -408,7 +408,13 @@ final readonly class LoginController extends PageController
 
         $sso = app(AuthPolicies::class)->resolve($connection->organization_id)->sso;
 
-        if (! $sso->allowsPasswordLogin()) {
+        /*
+         * WITH MANDATES PER ORGANIZATION the address is offered its organization's SSO,
+         * leading, and is not forced onto it: the organization's rule is about entering
+         * the organization, which is asked there, and the person's own account can still
+         * be signed in to another way.
+         */
+        if (! $sso->allowsPasswordLogin() && ! SsoMandates::perOrganization()) {
             // A full navigation away: the destination is the identity provider's own
             // redirect endpoint, which answers with a cross-origin 302.
             return redirect()->away(SsoStart::url($connection));
@@ -416,7 +422,7 @@ final readonly class LoginController extends PageController
 
         return [
             'url' => SsoStart::url($connection),
-            'leads' => $sso === SsoEnforcement::Preferred,
+            'leads' => $sso !== SsoEnforcement::Off,
         ];
     }
 

@@ -389,6 +389,15 @@ final class PlatformAuth
      */
     public function localSignInAllowedFor(string $subjectId): bool
     {
+        // PER ORGANIZATION, a mandate is not a rule about the person at all: signing in to
+        // the environment follows the environment's own baseline, and the organization
+        // that requires SSO is asked when it is ENTERED ({@see SsoMandates::admits()}:
+        // the request's organization binding, the console's organization address, the
+        // authorize endpoint). Their other organizations never see it.
+        if (SsoMandates::perOrganization()) {
+            return $this->policies->resolve()->sso->allowsPasswordLogin();
+        }
+
         foreach ($this->memberships->forUser($subjectId) as $membership) {
             if (! $this->policies->resolve($membership->organization_id)->sso->allowsPasswordLogin()) {
                 return false;
@@ -683,7 +692,7 @@ final class PlatformAuth
         // Pin to the caller-supplied org when given (impersonation authorizes against
         // a SPECIFIC org — the session must land there, not in the subject's oldest
         // membership, or the role gate and the effective session would disagree).
-        $organizationId ??= $this->memberships->forUser($subjectId)->firstWhere('status', MembershipStatus::Active)?->organization_id;
+        $organizationId ??= $this->firstOrganizationForLocalSignIn($subjectId);
 
         // Record the request IP + user-agent on the session so adaptive-risk signals
         // (new device, geo-velocity) have a history to compare future logins against.
@@ -698,7 +707,7 @@ final class PlatformAuth
         // Add (or refresh) this account and make it active, keeping any other
         // signed-in accounts — so a second sign-in adds a switchable account
         // rather than replacing the first.
-        $this->addAccount($subjectId, $session->id, $organizationId);
+        $this->addAccount($subjectId, $session->id, $this->organizationToStartIn($session, $organizationId));
 
         // Rotate the id to defeat session fixation (preserves the accounts set).
         session()->regenerate();
@@ -708,6 +717,41 @@ final class PlatformAuth
         // "Last used" on this device's sign-in page — the method, never the person.
         app(IdentityCapture::class)->confirmed($session, $request);
         LastSignInMethod::remember($amr);
+    }
+
+    /**
+     * The organization a LOCAL sign-in starts in: the person's first active membership.
+     * With mandates per organization, the first one that does not require its own SSO: a
+     * session that did not come through an organization's connection never starts in it
+     * (an SSO sign-in is started by the framework, in the connection's organization, and
+     * reaches the browser through {@see adopt()}).
+     */
+    /**
+     * The organization the browser starts in for this session: the one it was started for
+     * when the session may enter it, otherwise the first one it may. An invitation into an
+     * organization that requires SSO, or a magic link for one of its members, therefore
+     * starts beside it rather than in it, and it is entered through its connection.
+     */
+    private function organizationToStartIn(Session $session, ?string $organizationId): ?string
+    {
+        return is_string($organizationId) && app(SsoMandates::class)->admits($session, $organizationId)
+            ? $organizationId
+            : $this->firstOrganizationForLocalSignIn($session->user_id);
+    }
+
+    private function firstOrganizationForLocalSignIn(string $subjectId): ?string
+    {
+        $perOrganization = SsoMandates::perOrganization();
+        $mandates = app(SsoMandates::class);
+
+        foreach ($this->memberships->forUser($subjectId) as $membership) {
+            if ($membership->status === MembershipStatus::Active
+                && (! $perOrganization || ! $mandates->mandates($membership->organization_id))) {
+                return $membership->organization_id;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -732,10 +776,7 @@ final class PlatformAuth
 
         session()->forget([self::MFA_PENDING_KEY, self::MFA_AMR_KEY, self::OTP_PENDING_KEY, Sudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
 
-        $organizationId = $session->organization_id
-            ?? $this->memberships->forUser($session->user_id)->firstWhere('status', MembershipStatus::Active)?->organization_id;
-
-        $this->addAccount($session->user_id, $session->id, is_string($organizationId) ? $organizationId : null);
+        $this->addAccount($session->user_id, $session->id, $this->organizationToStartIn($session, $session->organization_id));
 
         session()->regenerate();
 

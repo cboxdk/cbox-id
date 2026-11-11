@@ -7,10 +7,14 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Auth\SignedOutController;
 use App\Platform\CurrentUser;
 use App\Platform\Impersonation;
+use App\Platform\IntendedUrl;
 use App\Platform\PlatformAuth;
+use App\Platform\SsoMandates;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 final class SessionController extends Controller
 {
@@ -48,13 +52,28 @@ final class SessionController extends Controller
         return redirect()->route('login')->with('status', __('console.you_have_been_signed_out_02b52a32'));
     }
 
-    public function switchOrganization(Request $request, PlatformAuth $auth, Memberships $memberships, CurrentUser $me): RedirectResponse
+    public function switchOrganization(Request $request, PlatformAuth $auth, Memberships $memberships, CurrentUser $me, SsoMandates $mandates): SymfonyResponse
     {
         $organizationId = $request->string('organization')->toString();
 
         // Only switch into an org the signed-in subject actually belongs to —
         // never trust the posted id on its own.
         if ($organizationId !== '' && $memberships->of($organizationId, $me->id()) !== null) {
+            // …and, with SSO mandates per organization, only on a session that came through
+            // its connection. Otherwise through the connection first, and back here in it.
+            if (! $mandates->admits($me->session(), $organizationId)) {
+                $mandate = $mandates->forOrganization($organizationId);
+
+                if ($mandate->startUrl === null) {
+                    return redirect()->route('dashboard')
+                        ->with('error', __('auth.login.mandate.no_provider', ['organization' => $mandate->organizationName]));
+                }
+
+                $request->session()->put(IntendedUrl::KEY, route('dashboard'));
+
+                return Inertia::location($mandate->startUrl);
+            }
+
             $auth->switchOrganization($request, $organizationId);
         }
 

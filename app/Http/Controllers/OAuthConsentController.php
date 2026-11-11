@@ -21,6 +21,7 @@ use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use App\Platform\Organizations\OrganizationRequired;
 use App\Platform\PlatformAuth;
 use App\Platform\SignupPolicy;
+use App\Platform\SsoMandates;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\SupportAccess\Exceptions\SupportRequestRefused;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
@@ -70,6 +71,9 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
  */
 final readonly class OAuthConsentController extends PageController
 {
+    /** The organization whose connection this browser was just sent through, so a return that did not satisfy its mandate is refused instead of sent again. */
+    private const MANDATE_STEP_UP_KEY = 'cbox.sso_step_up';
+
     public function show(
         Request $request,
         ClientRegistry $clients,
@@ -537,9 +541,34 @@ final readonly class OAuthConsentController extends PageController
                 return $this->redirectError($redirectUri, 'access_denied', $state,
                     'The user is not an active member of the requested organization.');
             }
+
+            /*
+             * AN ORGANIZATION THAT REQUIRES ITS OWN SSO, on a session that did not come
+             * through its connection (mandates per organization): through the connection
+             * first, and this request resumes on the session that comes back.
+             */
+            $stepUp = $this->mandateStepUp($request, $authorization, $me, $authorization->organizationId, $silent);
+
+            if ($stepUp !== null) {
+                return $stepUp;
+            }
         } elseif ($authorization->asks(AuthorizationPrompt::CreateOrganization)) {
             return redirect()->route('oauth.authorize.organization.create', $pending->put($request, $authorization));
         } elseif ($authorization->asks(AuthorizationPrompt::SelectOrganization)) {
+            return redirect()->route('oauth.authorize.organization', $pending->put($request, $authorization));
+        } elseif (SsoMandates::perOrganization() && $me->organizationId() === null
+            && app(AuthorizationOrganizations::class)->choicesFor($me->id()) !== []) {
+            /*
+             * IN ORGANIZATIONS, BUT IN NONE OF THEM ON THIS SESSION: every one they could
+             * act in requires its own SSO. The grant would carry no organization at all,
+             * which is not what a member of one is; they choose which, and choosing sends
+             * them through that organization's connection.
+             */
+            if ($silent) {
+                return $this->redirectError($redirectUri, 'interaction_required', $state,
+                    'The user must choose an organization and sign in through its identity provider.');
+            }
+
             return redirect()->route('oauth.authorize.organization', $pending->put($request, $authorization));
         }
 
@@ -641,6 +670,25 @@ final readonly class OAuthConsentController extends PageController
 
         if ($choice === null) {
             return back()->withErrors(['organization' => __('oauth.organization.not_member')]);
+        }
+
+        // Chosen, and it requires its own SSO on a session that did not come through it:
+        // the choice is kept (bound into the resumed request) and the person goes through
+        // the organization's connection first.
+        $mandates = app(SsoMandates::class);
+
+        if (! $mandates->admits($me->session(), $choice->id)) {
+            $mandate = $mandates->forOrganization($choice->id);
+
+            if ($mandate->startUrl === null) {
+                return back()->withErrors(['organization' => __('auth.login.mandate.no_provider', ['organization' => $mandate->organizationName])]);
+            }
+
+            $pending->forget($request, $authorization);
+            $request->session()->put('url.intended', $this->resumeUrl($found->boundTo($choice->id)));
+            $request->session()->put(self::MANDATE_STEP_UP_KEY, $choice->id);
+
+            return $this->leave($mandate->startUrl);
         }
 
         return $this->continueBound($request, $authorization, $found->boundTo($choice->id), $clients, $codes, $pending);
@@ -1052,6 +1100,19 @@ final readonly class OAuthConsentController extends PageController
                 'The user is not an active member of the requested organization.');
         }
 
+        /*
+         * AND ITS SSO MANDATE, at the one place every path ends. The organization the code
+         * is about to carry, whether the request bound it or the session supplied it, must
+         * be one this session may enter. The steps before this send the person through the
+         * connection; this is what holds if one of them is ever bypassed.
+         */
+        $grantOrganizationId = $authorization->organizationId ?? $me->organizationId();
+
+        if ($grantOrganizationId !== null && ! app(SsoMandates::class)->admits($session, $grantOrganizationId)) {
+            return $this->redirectError($authorization->redirectUri, 'access_denied', $authorization->state,
+                'The organization requires signing in through its identity provider.');
+        }
+
         $code = $codes->issue(
             $authorization->clientId,
             $me->id(),
@@ -1140,6 +1201,47 @@ final readonly class OAuthConsentController extends PageController
         }
 
         return null;
+    }
+
+    /**
+     * Send the person through an organization's own connection when its SSO mandate is
+     * not satisfied by this session, or null when the session may enter it.
+     *
+     * Silent requests cannot be sent anywhere: `interaction_required`. An organization
+     * with a mandate and no active connection has no way in at all: `access_denied`. And
+     * coming BACK from the connection still unsatisfied (the provider signed in somebody
+     * else, or the sign-in did not complete) is answered `access_denied` rather than
+     * with a second trip, so this can never loop.
+     */
+    private function mandateStepUp(
+        Request $request,
+        PendingAuthorization $authorization,
+        CurrentUser $me,
+        string $organizationId,
+        bool $silent,
+    ): ?SymfonyResponse {
+        $mandates = app(SsoMandates::class);
+        $attempted = $request->session()->pull(self::MANDATE_STEP_UP_KEY);
+
+        if ($mandates->admits($me->session(), $organizationId)) {
+            return null;
+        }
+
+        if ($silent) {
+            return $this->redirectError($authorization->redirectUri, 'interaction_required', $authorization->state,
+                'The organization requires signing in through its identity provider.');
+        }
+
+        $mandate = $mandates->forOrganization($organizationId);
+
+        if ($mandate->startUrl === null || $attempted === $organizationId) {
+            return $this->redirectError($authorization->redirectUri, 'access_denied', $authorization->state,
+                'The organization requires signing in through its identity provider.');
+        }
+
+        $request->session()->put(self::MANDATE_STEP_UP_KEY, $organizationId);
+
+        return $this->interrupt($request, $authorization, $mandate->startUrl);
     }
 
     private function interrupt(Request $request, PendingAuthorization $authorization, string $to): RedirectResponse
