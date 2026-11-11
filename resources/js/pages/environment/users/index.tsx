@@ -213,14 +213,6 @@ export default function UsersIndex({
                                 <Pill tone={statusTone(user.status)}>{label(user.status)}</Pill>
                             </div>
 
-                            {!user.verified && (
-                                <Pill tone="warning">
-                                    {consoleT('console.unverified_33c8e8de')}
-                                </Pill>
-                            )}
-
-                            <Pill tone={statusTone(user.status)}>{user.status}</Pill>
-
                             <Icon
                                 name="chevron"
                                 className="cbx-user-row-chevron w-4 h-4 shrink-0 -rotate-90 text-[var(--faint)]"
