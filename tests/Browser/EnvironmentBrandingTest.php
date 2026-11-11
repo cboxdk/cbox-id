@@ -110,18 +110,18 @@ it('discards from the bar, and asks before a link elsewhere drops unsaved change
 
     // A change, then a link in the rail: the page asks, and staying keeps the draft.
     $page->click('[aria-label="Warm preset"]')
-        ->click('.cbx-rail a[href$=envConsole("/settings")]')
+        ->click('.cbx-rail a[href$="'.envConsolePath('/settings').'"]')
         ->assertSee('Leave without saving?')
         ->click('Keep editing')
-        ->assertPathIs(envConsole('/branding'))
+        ->assertPathIs(envConsolePath('/branding'))
         ->assertScript('document.querySelector("[aria-label=\'Warm preset\']")?.getAttribute("aria-pressed")', 'true')
         ->assertSeeIn(SAVE_BAR, 'Unsaved changes');
 
     // Leaving anyway goes where the link pointed.
-    $page->click('.cbx-rail a[href$=envConsole("/settings")]')
+    $page->click('.cbx-rail a[href$="'.envConsolePath('/settings').'"]')
         ->assertSee('Leave without saving?')
         ->click('Discard and leave')
-        ->assertPathIs(envConsole('/settings'))
+        ->assertPathIs(envConsolePath('/settings'))
         ->assertNoJavaScriptErrors();
 });
 

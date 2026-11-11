@@ -405,6 +405,30 @@ function serveConsoleOn(?string $consoleHost = null): string
     $configured = config('cbox-id.tenancy.account_host');
     $host = $consoleHost ?? (is_string($configured) && $configured !== '' ? $configured : 'cboxid.com');
 
+    // A real browser reaches only the test server, so there the app host is the server's
+    // other name for itself: `localhost`, beside the `127.0.0.1` a tenant may be served on
+    // ({@see serveOnTestHost()}). Its URLs keep the server's port, which is what the
+    // browser can reach.
+    if (inBrowserTest()) {
+        $host = 'localhost';
+
+        config()->set('cbox-id.tenancy.account_host', $host);
+
+        URL::formatHostUsing(static function (string $root, $route) use ($host): string {
+            $name = $route instanceof Route ? (string) $route->getName() : '';
+
+            if (! str_starts_with($name, 'environment.') && $name !== 'admin.login') {
+                return $root;
+            }
+
+            $port = parse_url($root, PHP_URL_PORT);
+
+            return (string) parse_url($root, PHP_URL_SCHEME).'://'.$host.(is_int($port) ? ':'.$port : '');
+        });
+
+        return $host;
+    }
+
     config()->set('cbox-id.tenancy.account_host', $host);
 
     URL::formatHostUsing(static function (string $root, $route) use ($host): string {
@@ -416,6 +440,15 @@ function serveConsoleOn(?string $consoleHost = null): string
     });
 
     return $host;
+}
+
+/** Whether the running test drives a real browser (tests/Browser). */
+function inBrowserTest(): bool
+{
+    $case = test();
+    $target = is_object($case) && property_exists($case, 'target') ? $case->target : $case;
+
+    return is_object($target) && str_starts_with($target::class, 'P\\Tests\\Browser\\');
 }
 
 /**
@@ -450,6 +483,16 @@ function useEnvironmentConsole(string $environmentId): string
         ? app(EnvironmentAdminAuth::class)->enterRootConsole()
         : app(EnvironmentAdminAuth::class)->enterEnvironmentConsole();
 
+    // A browser's requests reuse what the test resolved before them, and the subject this
+    // fixture signed in would then sit in every later request's CurrentUser, turning the
+    // environment console into the organization's. Each request resolves its own, as on
+    // a real server.
+    if (inBrowserTest()) {
+        foreach ([CurrentUser::class, ConsoleScope::class, EnvironmentAdminAuth::class] as $scoped) {
+            app()->forgetInstance($scoped);
+        }
+    }
+
     return (string) $path;
 }
 
@@ -474,8 +517,14 @@ function envConsole(string $page = ''): string
     expect($path)->toBeString('fixture: no environment console chosen — call actAsEnvironmentAdmin() first');
 
     $host = config('cbox-id.tenancy.account_host');
+    $host = is_string($host) && $host !== '' ? $host : 'localhost';
+    $appUrl = (string) config('app.url');
 
-    return 'http://'.(is_string($host) && $host !== '' ? $host : 'localhost').'/'.$path.($page === '' || $page === '/' ? '' : '/'.ltrim($page, '/'));
+    // In a browser test, on the test server's port: the only place the browser can reach.
+    $port = parse_url($appUrl, PHP_URL_PORT);
+    $origin = 'http://'.$host.(inBrowserTest() && is_int($port) ? ':'.$port : '');
+
+    return $origin.'/'.$path.($page === '' || $page === '/' ? '' : '/'.ltrim($page, '/'));
 }
 
 /**

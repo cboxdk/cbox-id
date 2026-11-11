@@ -21,8 +21,9 @@ beforeEach(function (): void {
 });
 
 it('lands an environment console\'s sign-out on a page that says so and enters nothing', function (): void {
+    // The console is on the app host — here the test server's own — so its sign-out and
+    // the way back in are on that host too.
     actAsEnvironmentAdminOfATenant();
-    config()->set('cbox-id.tenancy.account_host', 'account.cbox-id.invalid');
 
     $page = visit(envConsole());
 
@@ -31,9 +32,9 @@ it('lands an environment console\'s sign-out on a page that says so and enters n
 
     $page->assertSee('You\'re signed out')
         ->assertPathIs('/signed-out')
-        // Sign in goes back through the console's own gate, on this host — when the person
-        // means it, not by itself.
-        ->assertScript('new URL(document.querySelector("a.btn-primary").href).pathname', envConsole())
+        // Sign in is this host's own sign-in page — the app host's, where the console's
+        // session lives — when the person means it, not by itself.
+        ->assertScript('new URL(document.querySelector("a.btn-primary").href).pathname', '/login')
         ->assertNoJavaScriptErrors()
         ->assertNoAccessibilityIssues();
 

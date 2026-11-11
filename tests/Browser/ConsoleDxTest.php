@@ -32,7 +32,7 @@ it('opens the palette on ⌘K, finds a user by a pasted id and jumps to them', f
         ->type('[cmdk-input]', $user->id)
         ->assertSee('Open Grace Hopper')
         ->keys('[cmdk-input]', 'Enter')
-        ->assertPathIs(envConsole('/users/').$user->id)
+        ->assertPathIs(envConsolePath('/users/').$user->id)
         ->assertSee('Grace Hopper')
         ->assertNoJavaScriptErrors();
 })->group('a11y');
