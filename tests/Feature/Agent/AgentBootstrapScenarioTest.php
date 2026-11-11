@@ -349,7 +349,9 @@ it('sets up an enterprise customer: an app, an organization with SSO, a domain, 
 
     // Every write on the trail, in order, as the key, through this door — and nothing else.
     $writes = ['app.created', 'organization.created', 'sso_connection.created', 'sso_connection.updated', 'domain.added', 'domain.verified', 'portal_link.created', 'webhook.created'];
-    $trail = AuditEntry::query()->withoutGlobalScopes()->where('environment_id', $environment->id)->orderBy('sequence')->get();
+    // Sequence is numbered per scope (the environment's trail, then each organization's),
+    // so two scopes both start at 1; the time-ordered ULID is the write order across them.
+    $trail = AuditEntry::query()->withoutGlobalScopes()->where('environment_id', $environment->id)->orderBy('id')->get();
 
     expect($trail->pluck('action')->all())->toBe($writes);
 
