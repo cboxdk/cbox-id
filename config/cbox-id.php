@@ -278,6 +278,20 @@ return [
     ],
 
     /*
+     * How an organization's "SSO required" policy is applied.
+     *
+     * Off (per person): any membership of an organization that requires SSO closes every
+     * local sign-in to that person in the whole environment. On (per organization): the
+     * person signs in however the environment allows, and an organization that requires
+     * SSO is entered (its console, an app authorized for it) only on a session established
+     * through that organization's own enterprise connection; a session that was not is
+     * sent through the connection first. The single-realm cutover turns it on.
+     */
+    'sso' => [
+        'mandate_per_organization' => (bool) env('CBOX_ID_SSO_MANDATE_PER_ORGANIZATION', false),
+    ],
+
+    /*
      * Self-service signup mode — who may create an account + organization at
      * /signup:
      *   - 'open'        anyone may sign up (the default).
@@ -348,6 +362,36 @@ return [
     'webauthn' => [
         'rp_id' => env('CBOX_ID_WEBAUTHN_RP_ID'),
         'origin' => env('CBOX_ID_WEBAUTHN_ORIGIN'),
+    ],
+
+    /*
+     * The operator plane (`/admin` and the platform root environment's own console).
+     *
+     * `phishing_resistant` (off by default) makes the plane demand a passkey or security
+     * key with user verification: an operator must hold one, the plane opens only after a
+     * passkey sign-in or a passkey confirmation, and a time-based code no longer counts.
+     * See docs/operations/operator-plane.md before turning it on: every operator needs a
+     * passkey first, and `php artisan cbox-id:operator:passkey-link` is the way back in.
+     *
+     * `session` caps how long a passkey proof opens the plane, whatever the deployment's
+     * session lifetime is: `absolute_minutes` since the passkey was used, `idle_minutes`
+     * since the last request on the plane. Past either, the operator confirms with the
+     * passkey again; the session itself is not ended.
+     *
+     * `reconfirm_seconds` is how fresh the passkey proof must be for a destructive or
+     * critical action on the plane, for anything behind a step-up there, and for starting
+     * an impersonation.
+     *
+     * `enrolment_link_minutes` is the default lifetime of a break-glass enrolment link.
+     */
+    'operators' => [
+        'phishing_resistant' => (bool) env('CBOX_ID_OPERATORS_PHISHING_RESISTANT', false),
+        'session' => [
+            'absolute_minutes' => (int) env('CBOX_ID_OPERATORS_SESSION_ABSOLUTE_MINUTES', 60),
+            'idle_minutes' => (int) env('CBOX_ID_OPERATORS_SESSION_IDLE_MINUTES', 15),
+        ],
+        'reconfirm_seconds' => (int) env('CBOX_ID_OPERATORS_RECONFIRM_SECONDS', 300),
+        'enrolment_link_minutes' => (int) env('CBOX_ID_OPERATORS_ENROLMENT_LINK_MINUTES', 15),
     ],
 
     /*
@@ -695,6 +739,18 @@ return [
          * console is the only console and stays whole.
          */
         'tenant_customer_console' => (bool) env('CBOX_ID_TENANT_CUSTOMER_CONSOLE', false),
+
+        /*
+         * NO CUSTOMER-CREATED OAUTH CLIENTS IN THE PLATFORM'S OWN ENVIRONMENT.
+         *
+         * On, the default environment of a multi-tenant deployment holds only clients the
+         * environment itself owns: creating one for an organization is refused by the
+         * console, the API and MCP, and `/oauth/*` answers 404 for an organization's client
+         * that is already there. Customers' own environments are unaffected, and so is a
+         * single-tenant install. Off by default; the single-realm cutover turns it on.
+         * See {@see \App\Platform\OAuth\PlatformRealmClients}.
+         */
+        'platform_clients_only' => (bool) env('CBOX_ID_REALM_PLATFORM_CLIENTS_ONLY', false),
     ],
 
     /*

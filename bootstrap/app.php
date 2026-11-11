@@ -29,6 +29,7 @@ use App\Http\Middleware\RedirectLegacyLoginHost;
 use App\Http\Middleware\RedirectLegacyTenantHost;
 use App\Http\Middleware\RedirectOutsideInertia;
 use App\Http\Middleware\RefuseCrossOriginWrites;
+use App\Http\Middleware\RefuseCustomerClientsInPlatformRealm;
 use App\Http\Middleware\RequireConsoleAdmin;
 use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireMultiTenant;
@@ -284,6 +285,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // credentialed CORS. See the middleware for what that closes.
         $middleware->append(StatelessFrontendApi::class);
         $middleware->append(ServeMarketingWebsite::class);
+
+        // An organization's OAuth client in the platform's own realm is not served, whatever
+        // the host gates decide (off unless `cbox-id.realm.platform_clients_only`).
+        $middleware->append(RefuseCustomerClientsInPlatformRealm::class);
 
         // IN LOGIN-HOST MODE EACH SURFACE HAS ITS OWN SESSION (see SessionSurface). The
         // cookie is named before `StartSession` reads it, a write to the login host that

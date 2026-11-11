@@ -320,7 +320,19 @@ final class EnvironmentAdminAuth
             return null;
         }
 
-        return $this->membershipFor($subjectId, $hostEnv);
+        $membership = $this->membershipFor($subjectId, $hostEnv);
+
+        // AND THE OWNING ORGANIZATION'S SSO MANDATE. An environment's console is that
+        // organization's, opened by address rather than through the session's organization,
+        // so with mandates per organization ({@see SsoMandates}) it is asked here: only a
+        // session that came through the organization's own connection administers it.
+        if ($membership !== null && $this->platformRoot->run(
+            fn (): bool => app(SsoMandates::class)->admits($this->sessions->active($sessionId), $membership->organization_id),
+        ) !== true) {
+            return null;
+        }
+
+        return $membership;
     }
 
     /**
