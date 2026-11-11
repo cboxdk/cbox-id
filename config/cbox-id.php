@@ -689,6 +689,18 @@ return [
          * console is the only console and stays whole.
          */
         'tenant_customer_console' => (bool) env('CBOX_ID_TENANT_CUSTOMER_CONSOLE', false),
+
+        /*
+         * NO CUSTOMER-CREATED OAUTH CLIENTS IN THE PLATFORM'S OWN ENVIRONMENT.
+         *
+         * On, the default environment of a multi-tenant deployment holds only clients the
+         * environment itself owns: creating one for an organization is refused by the
+         * console, the API and MCP, and `/oauth/*` answers 404 for an organization's client
+         * that is already there. Customers' own environments are unaffected, and so is a
+         * single-tenant install. Off by default; the single-realm cutover turns it on.
+         * See {@see \App\Platform\OAuth\PlatformRealmClients}.
+         */
+        'platform_clients_only' => (bool) env('CBOX_ID_REALM_PLATFORM_CLIENTS_ONLY', false),
     ],
 
     /*
