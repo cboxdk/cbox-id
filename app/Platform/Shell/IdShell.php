@@ -9,6 +9,7 @@ use App\Http\Props\Shell\NavPageProps;
 use App\Http\Props\Shell\ShellProps;
 use App\Platform\Console\NavPin;
 use App\Platform\Console\ShellPayload;
+use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Theme;
 use Cbox\Console\Kit\Facades\Console;
 use Illuminate\Http\Request;
@@ -102,7 +103,8 @@ final readonly class IdShell
 
                 return array_filter([
                     'key' => $page->route,
-                    'label' => $page->label,
+                    // In the person's language, as the props' own toArray() would send it.
+                    'label' => ConsoleLabels::navigation($page->label),
                     'url' => $page->href,
                     'href' => $page->href,
                     // "Enterprise": the page is shown and marked, so a plan that does not
@@ -115,7 +117,7 @@ final readonly class IdShell
 
             return [
                 'key' => $area->key,
-                'label' => $area->label,
+                'label' => ConsoleLabels::navigation($area->label),
                 'url' => $area->href,
                 'href' => $area->href,
                 'icon' => $area->icon,
