@@ -5,12 +5,12 @@
 - `IntegrationProgress` reads the existing environment checklist. The console's
   `integrationProgress`, signed Assistant tool `id_onboarding_status` and authenticated
   `GET /api/v1/onboarding` consume that same evidence. Management API scope: `signin:read`.
-- The Assistant tool rechecks workspace membership, product admission and accessible
+- The Assistant tool rechecks organization membership, product admission and accessible
   environments on every call. It returns no credentials or customer profiles.
 - A curated onboarding guide is generated from maintained docs into the Assistant
   manifest. It explains Free/no-card start, scope, existing users, SSO, SCIM and detection.
 - `onboarding:sync` reconciles active project environments independently of page visits,
-  records workspace/company snapshots through `cboxdk/laravel-engage-client`, and never
+  records organization/company snapshots through `cboxdk/laravel-engage-client`, and never
   sends email. Tests and local defaults have collection disabled and no ingest credentials.
 - Events include project/environment identity, goal booleans and the platform-root
   namespace. No email, password, person name or end-user identity is included.
@@ -26,7 +26,7 @@ Before enabling `ID_ONBOARDING_ENGAGE_ENABLED=true`, configure `ENGAGE_INGEST_UR
 `ENGAGE_INGEST_KEY` and `ENGAGE_PRODUCT=cbox-id` in the deployment secret/config store.
 The ingest source must map **platform-root** Cbox ID organizations, not a consumer
 product issuer or the environments' customer organizations. Verify the source mapping
-with an authorized test workspace. Do not merge namespaces by email or organization name.
+with an authorized test organization. Do not merge namespaces by email or organization name.
 
 The scheduler runs reconciliation every minute. Events use stable IDs for the same
 scope, observation minute and goal values. A change within the same minute receives a
@@ -54,7 +54,7 @@ The dedicated `POST /api/v1/onboarding/eligibility` requires a service bearer ke
 least 32 characters (`ID_ONBOARDING_ELIGIBILITY_KEY`). It checks current membership and
 write access, product admission, ownership/status, dismissal and incomplete first login.
 It returns only eligibility and observation time, with `Cache-Control: no-store`.
-Engage must configure its workspace, event source, platform-root identity source, URL
+Engage must configure its organization, event source, platform-root identity source, URL
 and matching key; see Engage's `docs/onboarding-eligibility.md`. A failed check refuses
 that message rather than sending or indefinitely retrying it.
 
@@ -64,7 +64,7 @@ Remaining activation acceptance:
 2. Verify the Assistant support-activity endpoint in production. ID checks it on every
    eligible reminder and refuses on outage, missing configuration or open/snoozed cases.
    The pause is conservative: any active case for the same product, identity namespace
-   and workspace pauses reminders for the whole team until the case is closed.
+   and organization pauses reminders for the whole team until the case is closed.
 3. Configure brand/domain, consent, caps, quiet hours, templates and scoped next links.
 4. Run a controlled-recipient live test, including completion after enqueue and removed
    access. The local tests cover these guards but do not prove production wiring.
@@ -78,7 +78,7 @@ this change. No production credentials have been created or modified.
 ## Free account setup
 
 Hosted rollout should keep `CBOX_ID_REQUIRE_SUBSCRIPTION=false`: product admission and
-workspace verification remain enforced, but project/environment creation must not
+organization verification remain enforced, but project/environment creation must not
 require checkout. The Free allowance is currently two environments; identity-security
 features use inclusive entitlements. Signals limits remain separately metered. Preserve
 explicit operational suspensions and feature denials. A paid upgrade requires an
@@ -92,7 +92,7 @@ signup-to-first-login path. Early-access invitation policy is separate from paym
 
 On the candidate revision, confirm signup/admission and a Free project without payment
 details; synchronize the new Assistant manifest/knowledge; ask for the real onboarding
-status and follow its citation; verify a human reply. Observe the test workspace's
+status and follow its citation; verify a human reply. Observe the test organization's
 Engage event with the correct realm/project/environment. Publish only after the above
 Engage guards and a controlled authorized-recipient delivery test pass. Local feature
 tests do not establish live readiness and these additions do not implement the full

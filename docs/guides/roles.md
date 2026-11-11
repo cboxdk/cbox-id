@@ -124,7 +124,7 @@ environment administrator can do it from the console without one. See
 ## Things worth knowing
 
 - **Roles are not the built-in role.** Everyone in an organization holds exactly one
-  built-in role (Owner, Admin, Member, and on a workspace's team also Developer and
+  built-in role (Owner, Admin, Member, and on an organization's team also Developer and
   Viewer), and it governs the *console*. Roles govern *your apps*. The Members page
   shows both in one **Roles** control, but they do different jobs.
 - **Some role pairs should be impossible.** If two roles must never sit with the

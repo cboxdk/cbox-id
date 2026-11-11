@@ -128,7 +128,7 @@ it('draws the settings page', function (): void {
         ->assertSee('Token exchange')
         ->assertSee('Back-channel logout')
         ->assertSee('Key prefix')
-        ->assertSee('My account › API keys')
+        ->assertSee('Account › API keys')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'c7-settings-light');
 
@@ -181,7 +181,7 @@ it('draws the APIs list, an API and the new-API form on the environment console'
     anEnvironmentAdminWithAnApi();
     $tax = app(Apis::class)->identifiedBy('https://tax.example.com');
 
-    visit('/admin/apis')
+    visit(envConsole('/apis'))
         ->assertSee('Globex books')
         ->assertSee('https://tax.example.com')
         ->assertSee('This environment')
@@ -189,21 +189,21 @@ it('draws the APIs list, an API and the new-API form on the environment console'
         ->assertNoAccessibilityIssues()
         ->screenshot(filename: 'c7-apis-index');
 
-    visit('/admin/apis')->inDarkMode()->assertSee('Globex books')->screenshot(filename: 'c7-apis-index-dark');
+    visit(envConsole('/apis'))->inDarkMode()->assertSee('Globex books')->screenshot(filename: 'c7-apis-index-dark');
 
-    visit('/admin/apis/'.$tax?->id)
+    visit(envConsole('/apis/').$tax?->id)
         ->assertSee('Your apps only')
         ->assertSee('Organizations\' apps may request')
         ->assertSee('Add a scope')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'c7-apis-show');
 
-    visit('/admin/apis/'.$tax?->id)->resize(375, 812)
+    visit(envConsole('/apis/').$tax?->id)->resize(375, 812)
         ->assertSee('Add a scope')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
         ->screenshot(filename: 'c7-apis-show-mobile');
 
-    visit('/admin/apis/new')
+    visit(envConsole('/apis/new'))
         ->assertSee('Identifier')
         ->assertSee('To register an API for one organization')
         ->assertNoJavaScriptErrors()
@@ -221,7 +221,7 @@ it('draws the copy dialog on an environment app', function (): void {
         scopes: ['openid'],
     ))->client;
 
-    visit('/admin/apps/'.$client->id)
+    visit(envConsole('/apps/').$client->id)
         ->assertSee('Download blueprint')
         ->click('button:has-text("Copy to another environment")')
         ->assertSee('Registers this app again in another environment of this project')

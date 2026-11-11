@@ -140,7 +140,7 @@ it('refuses a crafted hook point instead of throwing', function (): void {
  * probe to ask: the only refusal left is "already a member HERE", which is a fact the
  * roster on the same page already shows them.
  */
-it('accepts an invitation to another workspace owner and protects this workspace owner', function (): void {
+it('accepts an invitation to another organization owner and protects this organization owner', function (): void {
     platformRootEnvironment();
     $mine = app(TenantProvisioner::class)->provision(new TenantBlueprint(
         organizationName: 'Acme',
@@ -162,14 +162,14 @@ it('accepts an invitation to another workspace owner and protects this workspace
 
     // Somebody else's owner: a legitimate invitation, accepted without comment. Refusing
     // it would BE the oracle — it would confirm that the address is known to the platform.
-    test()->from(route('members'))
-        ->post(route('members.invite', ['organization' => $mine->organization->id]), ['email' => 'owner@rival.example', 'roles' => ['admin']])
+    test()->from(route('orgs.settings.members'))
+        ->post(route('orgs.settings.members.invite', ['organization' => $mine->organization->id]), ['email' => 'owner@rival.example', 'roles' => ['admin']])
         ->assertSessionHasNoErrors();
 
     // This workspace owner is protected; the refusal discloses nothing the roster does
     // not already show. Other existing members may receive explicit app invitations.
-    $probeOwn = test()->from(route('members'))
-        ->post(route('members.invite', ['organization' => $mine->organization->id]), ['email' => 'owner@acme.example', 'roles' => ['admin']])
+    $probeOwn = test()->from(route('orgs.settings.members'))
+        ->post(route('orgs.settings.members.invite', ['organization' => $mine->organization->id]), ['email' => 'owner@acme.example', 'roles' => ['admin']])
         ->assertSessionHasErrors('email');
 
     expect(session('errors')?->getBag('default')->first('email'))->not->toContain('account');
@@ -186,8 +186,8 @@ it('accepts an invitation to another workspace owner and protects this workspace
      * `tryFrom() !== null` — and only a real case can tell the two apart.
      */
     foreach (['archduke', 'owner', ''] as $crafted) {
-        test()->from(route('members'))
-            ->post(route('members.invite', ['organization' => $mine->organization->id]), ['email' => 'joiner@acme.example', 'roles' => [$crafted]])
+        test()->from(route('orgs.settings.members'))
+            ->post(route('orgs.settings.members.invite', ['organization' => $mine->organization->id]), ['email' => 'joiner@acme.example', 'roles' => [$crafted]])
             ->assertSessionHasErrors('roles.0');
     }
 

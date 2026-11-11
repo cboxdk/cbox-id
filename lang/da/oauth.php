@@ -46,7 +46,7 @@ return [
         'stale' => 'Anmodningen om godkendelse kan ikke længere gennemføres. Start forfra.',
         'account_attention' => 'Der er noget på din konto du skal tage dig af, før du kan fortsætte. Log ind igen.',
         'step_up' => 'Appen kræver et nyere eller stærkere login. Start forfra.',
-        'no_workspace' => 'Dette login forbinder en agent med et arbejdsområde på Cbox ID, men din konto er ikke med i teamet for noget arbejdsområde. Bed en ejer af arbejdsområdet om at invitere dig, eller forbind i stedet agenten via dit miljøs egen adresse.',
+        'no_organization' => 'Dette login forbinder en agent med en organisation på Cbox ID, men din konto er ikke med i teamet for nogen organisation. Bed en ejer af organisationen om at invitere dig, eller forbind i stedet agenten via dit miljøs egen adresse.',
     ],
     'organization' => [
         'title' => 'Vælg en organisation',

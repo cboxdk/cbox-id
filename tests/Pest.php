@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\EnvironmentHandoffController;
+use App\Http\Middleware\BindOrganizationFromPath;
 use App\Http\Middleware\PointAtFirstRun;
+use App\Http\Middleware\ResolveEnvironmentFromPath;
 use App\Platform\Appearance\Appearance;
 use App\Platform\Appearance\BrandImageUpload;
 use App\Platform\Billing\ProductBilling;
@@ -11,6 +13,7 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\CustomerConsole;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\CurrentUser;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\EnvironmentAdminAuth;
@@ -19,6 +22,8 @@ use App\Platform\NativeProduct\NativeProductClient;
 use App\Platform\NativeProduct\NativeProductManifest;
 use App\Platform\NativeProduct\NativeProductMembers;
 use App\Platform\OperatorEnvironment;
+use App\Platform\Organizations\OrganizationDirectory;
+use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
 use App\Platform\SignInLineage;
@@ -85,6 +90,8 @@ use Cbox\Id\SamlIdp\ValueObjects\NewServiceProvider;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Inertia\Support\SessionKey;
@@ -343,29 +350,27 @@ function addMember(string $organizationId, MembershipRole $role, string $email, 
 }
 
 /**
- * Sign a member in as the ADMINISTRATOR of an environment.
+ * Sign a member in as the ADMINISTRATOR of an environment, on the app host.
  *
- * Through the real {@see EnvironmentAdminAuth::establish()}, because an admin session is
- * the person's ordinary PLATFORM-ROOT SUBJECT session plus an anchor naming the environment
- * — not a raw key a test could fabricate. A test that wrote the keys by hand would be
- * asserting against a session shape no door produces.
+ * The environment console lives on the app host now, under
+ * `/orgs/{org}/projects/{project}/environments/{environment}` ({@see EnvironmentConsolePath}),
+ * and its administrator is simply signed in there: their ordinary PLATFORM-ROOT session.
+ * So this signs the subject in through the real door and points the test at that console:
  *
- * TAKES THE SUBJECT ID. It used to take a member row and read `$member->user_id` off it;
- * a membership carries authority and not identity, so the subject is what the caller has
- * and what this needs. `ProvisionedTenant::$owner` is that subject.
+ * - the test host becomes the app host (`cbox-id.tenancy.account_host`), and an
+ *   environment that {@see serveOnTestHost()} had mapped to it lets go, so a request made
+ *   with a relative path lands on the console rather than on the tenant's own pages;
+ * - the console path becomes the URL default, so `route('environment.users')` and
+ *   {@see envConsole()} build that environment's URLs.
+ *
+ * TAKES THE SUBJECT ID. A membership carries authority and not identity.
  */
-function actAsEnvironmentAdmin(string $subjectId, string $environmentId, bool $emailVerified = true, array $amr = ['handoff']): void
+function actAsEnvironmentAdmin(string $subjectId, string $environmentId, bool $emailVerified = true, array $amr = ['pwd'], ?string $consoleHost = null): void
 {
     /*
      * VERIFIED BY DEFAULT, for the same reason {@see actingAsRole()} states: an established
-     * administrator of an established environment HAS confirmed their address. The
-     * alternative — every fixture unverified — means the moment a rule is written about
-     * unverified accounts, dozens of unrelated tests start exercising it by accident, and
-     * the fixture rather than the rule gets blamed. Pass false to test the rule on purpose.
-     *
-     * Marked in the platform root because the acting member is an ACCOUNT subject, and the
-     * environment context this helper runs under is the tenant's — which is not where that
-     * subject lives.
+     * administrator of an established environment HAS confirmed their address. Pass false
+     * to test the rule on purpose. Marked in the platform root, where the subject lives.
      */
     if ($emailVerified) {
         app(PlatformRoot::class)->run(function () use ($subjectId): void {
@@ -377,7 +382,149 @@ function actAsEnvironmentAdmin(string $subjectId, string $environmentId, bool $e
         });
     }
 
-    app(EnvironmentAdminAuth::class)->establish($subjectId, $environmentId, $amr);
+    serveConsoleOn($consoleHost);
+
+    signInAsSubject($subjectId, $amr);
+    // An environment console request never runs the organization console's sign-in gate,
+    // so nothing populates CurrentUser there; a test driving code directly must see the same.
+    app(CurrentUser::class)->clear();
+    useEnvironmentConsole($environmentId);
+}
+
+/**
+ * Serve the environment consoles on the APP HOST — `cbox-id.tenancy.account_host`, which
+ * {@see multiTenantDeployment()} sets — and build their URLs there.
+ *
+ * Only the environment console's URLs move: the test host stays whatever
+ * {@see serveOnTestHost()} made it (usually a tenant's own host), so a test can still drive
+ * that tenant's own pages with relative paths, and `route('environment.…')` and
+ * {@see envConsole()} name the app host absolutely.
+ */
+function serveConsoleOn(?string $consoleHost = null): string
+{
+    $configured = config('cbox-id.tenancy.account_host');
+    $host = $consoleHost ?? (is_string($configured) && $configured !== '' ? $configured : 'cboxid.com');
+
+    // A real browser reaches only the test server, so there the app host is the server's
+    // other name for itself: `localhost`, beside the `127.0.0.1` a tenant may be served on
+    // ({@see serveOnTestHost()}). Its URLs keep the server's port, which is what the
+    // browser can reach.
+    if (inBrowserTest()) {
+        $host = 'localhost';
+
+        config()->set('cbox-id.tenancy.account_host', $host);
+
+        URL::formatHostUsing(static function (string $root, $route) use ($host): string {
+            $name = $route instanceof Route ? (string) $route->getName() : '';
+
+            if (! str_starts_with($name, 'environment.') && $name !== 'admin.login') {
+                return $root;
+            }
+
+            $port = parse_url($root, PHP_URL_PORT);
+
+            return (string) parse_url($root, PHP_URL_SCHEME).'://'.$host.(is_int($port) ? ':'.$port : '');
+        });
+
+        return $host;
+    }
+
+    config()->set('cbox-id.tenancy.account_host', $host);
+
+    URL::formatHostUsing(static function (string $root, $route) use ($host): string {
+        $name = $route instanceof Route ? (string) $route->getName() : '';
+
+        return str_starts_with($name, 'environment.') || $name === 'admin.login'
+            ? (string) parse_url($root, PHP_URL_SCHEME).'://'.$host
+            : $root;
+    });
+
+    return $host;
+}
+
+/** Whether the running test drives a real browser (tests/Browser). */
+function inBrowserTest(): bool
+{
+    $case = test();
+    $target = is_object($case) && property_exists($case, 'target') ? $case->target : $case;
+
+    return is_object($target) && str_starts_with($target::class, 'P\\Tests\\Browser\\');
+}
+
+/**
+ * Build URLs on the test host again, after requests to the app host's environment console:
+ * the URL generator keeps the origin of the last request it served, so without this an
+ * organization-console `route()` that follows names the app host.
+ */
+function backOnTestHost(): void
+{
+    app('url')->setRequest(Request::create((string) config('app.url')));
+}
+
+/**
+ * Point `route('environment.…')` and {@see envConsole()} at an environment's console, as
+ * the path middleware does for a real request. Returns the console path.
+ */
+function useEnvironmentConsole(string $environmentId): string
+{
+    $path = app(EnvironmentConsolePath::class)->for($environmentId);
+
+    expect($path)->not->toBeNull('fixture: this environment has no console path (no project?)');
+
+    serveConsoleOn();
+
+    URL::defaults([EnvironmentConsolePath::PARAMETER => $path]);
+
+    // …and mark the test's own request the way the path middleware marks a console request,
+    // so code a test drives directly ({@see EnvironmentAdminAuth::subjectId()}) answers as
+    // it would inside one.
+    request()->attributes->set(ResolveEnvironmentFromPath::ATTRIBUTE, $environmentId);
+    $path === EnvironmentConsolePath::ROOT
+        ? app(EnvironmentAdminAuth::class)->enterRootConsole()
+        : app(EnvironmentAdminAuth::class)->enterEnvironmentConsole();
+
+    // A browser's requests reuse what the test resolved before them, and the subject this
+    // fixture signed in would then sit in every later request's CurrentUser, turning the
+    // environment console into the organization's. Each request resolves its own, as on
+    // a real server.
+    if (inBrowserTest()) {
+        foreach ([CurrentUser::class, ConsoleScope::class, EnvironmentAdminAuth::class] as $scoped) {
+            app()->forgetInstance($scoped);
+        }
+    }
+
+    return (string) $path;
+}
+
+/**
+ * A page of the environment console the test is pointed at ({@see useEnvironmentConsole()}),
+ * as a path: `envConsole('/users')` is `/orgs/acme/projects/default/environments/acme/users`.
+ */
+function envConsolePath(string $page = ''): string
+{
+    $path = URL::getDefaultParameters()[EnvironmentConsolePath::PARAMETER] ?? null;
+
+    expect($path)->toBeString('fixture: no environment console chosen — call actAsEnvironmentAdmin() first');
+
+    return '/'.$path.($page === '' || $page === '/' ? '' : '/'.ltrim($page, '/'));
+}
+
+/** {@see envConsolePath()} on the app host, as an absolute URL. */
+function envConsole(string $page = ''): string
+{
+    $path = URL::getDefaultParameters()[EnvironmentConsolePath::PARAMETER] ?? null;
+
+    expect($path)->toBeString('fixture: no environment console chosen — call actAsEnvironmentAdmin() first');
+
+    $host = config('cbox-id.tenancy.account_host');
+    $host = is_string($host) && $host !== '' ? $host : 'localhost';
+    $appUrl = (string) config('app.url');
+
+    // In a browser test, on the test server's port: the only place the browser can reach.
+    $port = parse_url($appUrl, PHP_URL_PORT);
+    $origin = 'http://'.$host.(inBrowserTest() && is_int($port) ? ':'.$port : '');
+
+    return $origin.'/'.$path.($page === '' || $page === '/' ? '' : '/'.ltrim($page, '/'));
 }
 
 /**
@@ -1146,7 +1293,7 @@ function targetPlatformEnvironment(string $environmentId): TestResponse
 function platformCustomers(array $query = []): array
 {
     /** @var array{customers: list<array<string, mixed>>, pagination: array<string, mixed>, search: string} $props */
-    $props = (array) test()->get(route('platform.workspaces', $query))->assertOk()->inertiaProps();
+    $props = (array) test()->get(route('platform.orgs', $query))->assertOk()->inertiaProps();
 
     return $props;
 }
@@ -1154,14 +1301,14 @@ function platformCustomers(array $query = []): array
 /** One customer's own page, as props. */
 function platformCustomer(string $organizationId): array
 {
-    return (array) test()->get(route('platform.workspaces.show', $organizationId))->assertOk()->inertiaProps();
+    return (array) test()->get(route('platform.orgs.show', $organizationId))->assertOk()->inertiaProps();
 }
 
 /** Onboard a customer the way the list's form does. */
 function createCustomer(array $changes = []): TestResponse
 {
-    return test()->from(route('platform.workspaces'))
-        ->post(route('platform.workspaces.store'), [
+    return test()->from(route('platform.orgs'))
+        ->post(route('platform.orgs.store'), [
             'name' => 'Northwind',
             'ownerName' => 'Ada Lovelace',
             'ownerEmail' => 'owner@northwind.example',
@@ -1173,22 +1320,22 @@ function createCustomer(array $changes = []): TestResponse
 /** Suspend or reactivate a customer, from either the list or its own page. */
 function toggleCustomer(string $organizationId): TestResponse
 {
-    return test()->from(route('platform.workspaces.show', $organizationId))
-        ->post(route('platform.workspaces.toggle', $organizationId));
+    return test()->from(route('platform.orgs.show', $organizationId))
+        ->post(route('platform.orgs.toggle', $organizationId));
 }
 
 /** Point the console at one of a customer's own environments, and stay on the customer. */
 function targetCustomerEnvironment(string $organizationId, string $environmentId): TestResponse
 {
-    return test()->from(route('platform.workspaces.show', $organizationId))
-        ->post(route('platform.workspaces.target', [$organizationId, $environmentId]));
+    return test()->from(route('platform.orgs.show', $organizationId))
+        ->post(route('platform.orgs.target', [$organizationId, $environmentId]));
 }
 
 /** Target one of a customer's environments AND open the tenants inside it. */
 function openCustomerEnvironment(string $organizationId, string $environmentId): TestResponse
 {
-    return test()->from(route('platform.workspaces.show', $organizationId))
-        ->post(route('platform.workspaces.open', [$organizationId, $environmentId]));
+    return test()->from(route('platform.orgs.show', $organizationId))
+        ->post(route('platform.orgs.open', [$organizationId, $environmentId]));
 }
 
 /** Bootstrap a plane with its first organization and an owner admin. */
@@ -1356,7 +1503,7 @@ function issueFrontendKey(array $changes = []): TestResponse
  */
 function reachableEnvironmentId(): string
 {
-    $environments = test()->get(route('keys'))->assertOk()->inertiaProps('environments');
+    $environments = test()->get(route('orgs.settings.api-keys'))->assertOk()->inertiaProps('environments');
 
     expect($environments)->toBeArray()->not->toBeEmpty(
         'the signed-in member reaches no environment, so this test cannot be about the step-up',
@@ -1372,7 +1519,7 @@ function reachableEnvironmentId(): string
  */
 function issueEnvironmentKey(string $environmentId, array $changes = []): TestResponse
 {
-    return test()->from(route('keys'))->post(route('keys.store'), [
+    return test()->from(route('orgs.settings.api-keys'))->post(route('orgs.settings.api-keys.store'), [
         'environment' => $environmentId,
         'name' => 'Provisioner',
         'scopes' => ['users:read'],
@@ -1657,6 +1804,44 @@ function actAsOperator(string $email = 'op@platform.test'): PlatformOperator
 }
 
 /**
+ * A path under the organization console of the organization `route('orgs.…')` currently
+ * names (`/orgs/{org}` + `$path`), for a test that spells a path out rather than a name.
+ */
+function orgPath(string $path = ''): string
+{
+    $slug = URL::getDefaultParameters()['org'] ?? null;
+
+    expect($slug)->toBeString('no organization is named in URLs yet: sign in first');
+
+    return '/orgs/'.$slug.$path;
+}
+
+/** The slug `/orgs/{org}` addresses a platform-root organization by. */
+function orgSlug(string $organizationId): string
+{
+    app(OrganizationLinks::class)->flush();
+    $slug = app(OrganizationDirectory::class)->slugOf($organizationId);
+
+    expect($slug)->toBeString("organization {$organizationId} has no address");
+
+    return (string) $slug;
+}
+
+/**
+ * Build `route('orgs.…')` for this organization: its address at `/orgs/{org}`, the slug a
+ * request into it would bind ({@see BindOrganizationFromPath}).
+ */
+function useOrganizationInUrls(string $organizationId): void
+{
+    app(OrganizationLinks::class)->flush();
+    $slug = app(OrganizationDirectory::class)->slugOf($organizationId);
+
+    if ($slug !== null) {
+        URL::defaults(['org' => $slug]);
+    }
+}
+
+/**
  * Establish the browser session for a PLATFORM-ROOT subject, through the same
  * {@see PlatformAuth::establish()} every real sign-in goes through — so the held-account
  * set, the active pointer and the framework session row all have the shape production
@@ -1693,6 +1878,9 @@ function signInAsSubject(string $subjectId, array $amr = ['pwd']): void
 
         if ($organization !== null) {
             session()->put(PlatformAuth::ORG_KEY, $organization->id);
+            // …and name it in `route('orgs.…')`, as the console does for the organization
+            // a request is in: a test builds the console's own links.
+            useOrganizationInUrls($organization->id);
         }
 
         app(CurrentUser::class)->set($subject, $session, $organization, $membership?->role);
@@ -1793,6 +1981,7 @@ function multiTenantDeployment(string $consoleHost = 'cboxid.com'): void
 function singleTenantDeployment(): void
 {
     config()->set('cbox-id.tenancy.multi_tenant', false);
+    backOnTestHost();
 }
 
 /**
@@ -1803,6 +1992,7 @@ function singleTenantDeployment(): void
  */
 function actingAsRole(MembershipRole $role, bool $emailVerified = true): array
 {
+    backOnTestHost();
     $subject = app(Subjects::class)->create($role->value.'@acme.test', $role->label(), 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.$role->value));
     app(Memberships::class)->add($org->id, $subject->id, $role);
@@ -1819,18 +2009,21 @@ function actingAsRole(MembershipRole $role, bool $emailVerified = true): array
 
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
+    useOrganizationInUrls($org->id);
 
     // AND THE SESSION KEY THE CONSOLE'S OWN GUARD READS, without which an HTTP request
     // made after this helper is anonymous: `CurrentUser` is resolved state for code inside
     // the process, and the guard on the way in reads the session. Tests that then asserted
     // `not 403` were asserting against a 302 to /login and passed whatever the page did —
     // including a 500, a 404, or the very cross-plane 403 they were written to catch.
+    // A fresh identity: whatever account set an earlier sign-in in this test left behind
+    // (an environment administrator's, say) is not this person's.
+    session()->forget([PlatformAuth::ORG_KEY, PlatformAuth::ACCOUNTS_KEY, PlatformAuth::ACTIVE_KEY]);
     session([PlatformAuth::SESSION_KEY => $session->id]);
 
-    // …AS THIS PERSON AND NOBODY ELSE. The environment console's administrator keeps a
-    // context of their own on a tenant's host ({@see EnvironmentAdminAuth::SESSION_KEY}),
-    // which a subject signing in no longer displaces; a test that means "the browser is
-    // now this role" has to put it aside, as it used to be put aside by accident.
+    // …AS THIS PERSON AND NOBODY ELSE. The environment console's own context (its
+    // step-up) is put aside too: a test that means "the browser is now this role" must not
+    // inherit an environment administrator's confirmation from an earlier sign-in.
     session()->forget(EnvironmentAdminAuth::CONTEXT_KEYS);
 
     return [$subject->id, $org];
@@ -1853,6 +2046,7 @@ function gateAdmin(string $slug = 'gate-acme', MembershipRole $role = Membership
 
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
+    useOrganizationInUrls($org->id);
 
     // AND THE SESSION KEY THE CONSOLE'S GUARD READS. `CurrentUser` is resolved state for
     // code already inside the process, which is all a Livewire component ever needed; a
@@ -1888,14 +2082,14 @@ function grantFeature(string $organizationId, string $key): void
 {
     $productKey = ['cbox-id-sso' => 'cbox-id.sso', 'cbox-id-scim' => 'cbox-id.scim', 'cbox-id-audit-logs' => 'cbox-id.audit_logs'][$key] ?? null;
     if ($productKey !== null) {
-        $workspace = app(ProductBilling::class)->owningWorkspace($organizationId);
+        $workspace = app(ProductBilling::class)->owningOrganization($organizationId);
         if ($workspace === null) {
             // Older enterprise fixtures pin env_test without persisting its root record.
             Environment::query()->firstOrCreate(['id' => 'env_test'], ['name' => 'Test root', 'slug' => 'test-root', 'type' => EnvironmentType::Production, 'status' => EnvironmentStatus::Active, 'is_default' => true, 'settings' => []]);
-            $workspace = app(ProductBilling::class)->owningWorkspace($organizationId);
+            $workspace = app(ProductBilling::class)->owningOrganization($organizationId);
         }
         if ($workspace === null) {
-            throw new LogicException('The feature fixture requires an owning workspace.');
+            throw new LogicException('The feature fixture requires an owning organization.');
         }
         centralBillingFixture()->feature($workspace, new FeatureEntitlement(key: $productKey, type: FeatureType::Boolean, enabled: true, source: FeatureSource::Override));
 
@@ -1987,6 +2181,17 @@ function confirmStepUp(): void
  */
 function confirmEnvironmentStepUp(): void
 {
+    // For the environment the test's console is pointed at: a confirmation is bound to the
+    // environment it was made in.
+    $path = URL::getDefaultParameters()[EnvironmentConsolePath::PARAMETER] ?? null;
+    $environment = is_string($path) ? app(EnvironmentConsolePath::class)->resolve($path) : null;
+
+    if ($environment !== null) {
+        app(EnvironmentContext::class)->runAs($environment, static fn () => app(EnvironmentSudo::class)->confirm());
+
+        return;
+    }
+
     app(EnvironmentSudo::class)->confirm();
 }
 
@@ -2116,7 +2321,7 @@ function impersonationMember(string $email = 'member@acme.test', MembershipRole 
 function confirmConsoleStepUp(): void
 {
     app(ConsoleScope::class)->plane() === ConsolePlane::Environment
-        ? app(EnvironmentSudo::class)->confirm()
+        ? confirmEnvironmentStepUp()
         : app(Sudo::class)->confirm();
 }
 
@@ -2232,6 +2437,7 @@ function signInKeyHolder(string $subjectId, Organization $org): void
 
     session([PlatformAuth::SESSION_KEY => $session->id, PlatformAuth::ORG_KEY => $org->id]);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
+    useOrganizationInUrls($org->id);
 }
 
 /**
@@ -2341,4 +2547,139 @@ function signInAsStrongOperator(string $subjectId): void
         }
     });
     signInAsSubject($subjectId, ['pwd', 'otp']);
+}
+
+/**
+ * Switch the test browser's session between the app host (`console`) and an environment's
+ * own host (`environment`). The session cookie is host-only, so a real browser keeps one
+ * per host; the test client has one jar for every host unless a test says otherwise.
+ */
+function hostJar(string $jar): void
+{
+    static $jars = [];
+    static $owner = null;
+    static $current = 'console';
+
+    $test = spl_object_id(app());
+
+    if ($owner !== $test) {
+        [$jars, $owner, $current] = [[], $test, 'console'];
+    }
+
+    if ($jar === $current) {
+        return;
+    }
+
+    $jars[$current] = session()->all();
+
+    app()->forgetScopedInstances();
+    session()->flush();
+    session()->put($jars[$jar] ?? []);
+    $current = $jar;
+
+    if ($jar === 'environment') {
+        backOnTestHost();
+    }
+}
+
+/**
+ * The environment console's answer to somebody who may not open it: a sign-in for a browser
+ * whose session is not one the app host can read (an organization console's on another
+ * environment, or none), a 404 for a signed-in person it does not let in. Never the page.
+ */
+function assertRefusedByEnvironmentConsole(TestResponse $response): TestResponse
+{
+    if ($response->status() === 404) {
+        return $response;
+    }
+
+    $response->assertRedirect();
+    expect(parse_url((string) $response->headers->get('Location'), PHP_URL_PATH))->toBe('/login');
+
+    return $response;
+}
+
+/**
+ * Follow an environment console's "act as" to where it really starts: the signed, single-use
+ * launch link on the environment's own host ({@see ImpersonationController::launch()}).
+ */
+function followImpersonationLaunch(TestResponse $start): TestResponse
+{
+    $launch = (string) $start->assertRedirect()->headers->get('Location');
+
+    expect(parse_url($launch, PHP_URL_PATH))->toBe('/impersonation/launch');
+
+    backOnTestHost();
+
+    return test()->get($launch);
+}
+
+/**
+ * THE CONSOLE'S RAIL, as a test reads it: each area's pages, which page and area are lit,
+ * and the section word in the tab title.
+ *
+ * On the app host the rail is the shared shell's `nav` (cbox-ui `CboxShell`, pages keyed
+ * by route, one `activePage`); on a customer environment's own host it is the
+ * white-labelled chrome's `tenantShell`. Both are read back into one shape, so a rule
+ * about which pages a person is offered is asserted the same way on either.
+ *
+ * @return array{areas: list<array<string, mixed>>, activeArea: string|null, section: string|null}
+ */
+function consoleRail(TestResponse $response): array
+{
+    $tenant = $response->inertiaProps('tenantShell');
+
+    if (is_array($tenant)) {
+        return ['areas' => $tenant['areas'], 'activeArea' => $tenant['activeArea'] ?? null, 'section' => $tenant['section'] ?? null];
+    }
+
+    $shell = $response->inertiaProps('shell');
+
+    if (! is_array($shell)) {
+        return ['areas' => [], 'activeArea' => null, 'section' => null];
+    }
+
+    $nav = $shell['nav'];
+    $activeArea = $nav['activeArea'] !== '' ? $nav['activeArea'] : null;
+
+    return [
+        'areas' => array_map(static fn (array $area): array => [
+            'key' => $area['key'],
+            'label' => $area['label'],
+            'icon' => $area['icon'] ?? null,
+            'href' => $area['href'],
+            'active' => $area['key'] === $activeArea,
+            'pages' => array_map(static fn (array $page): array => [
+                'route' => $page['key'],
+                'href' => $page['href'],
+                'label' => $page['label'],
+                'active' => $area['key'] === $activeArea && $page['key'] === ($nav['activePage'] ?? null),
+                'badge' => ($page['locked'] ?? false) === true ? 'Enterprise' : null,
+                'count' => $page['count'] ?? null,
+                'keywords' => $page['keywords'] ?? [],
+            ], $area['pages']),
+        ], $nav['areas']),
+        'activeArea' => $activeArea,
+        'section' => $shell['section'] ?? null,
+    ];
+}
+
+/**
+ * The language lives in the shared shell's account menu: the rail's account button on a
+ * desktop, the navigation sheet on a phone. Its first listbox row is the language; the
+ * option is picked by its own name, which reads the same in every locale.
+ */
+function pickConsoleLanguage(mixed $page, string $name, bool $phone = false): mixed
+{
+    if ($phone) {
+        if ($page->script('document.querySelector(".cbx-sheet") === null')) {
+            $page->click('header.cbx-header button[aria-label="Open navigation"]');
+        }
+        $page->click('.cbx-sheet .cbx-menu-account button[aria-haspopup="listbox"]:first-of-type');
+    } else {
+        $page->click('button.cbx-rail-account')
+            ->click('.cbx-menu-account button[aria-haspopup="listbox"]:first-of-type');
+    }
+
+    return $page->click('.cbx-menu-account [role="option"]:has-text("'.$name.'")');
 }

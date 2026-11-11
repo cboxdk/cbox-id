@@ -50,7 +50,7 @@ it('renders the permissions page with both sources distinguished', function (): 
     Permission::query()->create(['client_id' => null, 'environment_id' => $env, 'name' => 'reports:read', 'tenant_assignable' => true]);
     Permission::query()->create(['client_id' => 'client_app_1', 'environment_id' => $env, 'name' => 'app:action', 'tenant_assignable' => true]);
 
-    $this->get('/admin/permissions')
+    $this->get(envConsole('/permissions'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/permissions')

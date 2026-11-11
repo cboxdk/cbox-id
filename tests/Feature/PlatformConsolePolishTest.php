@@ -54,7 +54,7 @@ it('offers an account-less operator no area that needs an account', function ():
      * actually given — and a URL absent from the HTML could simply be a page the bundle
      * has not drawn yet.
      */
-    $shell = (array) $this->get(route('platform.environments'))->assertOk()->inertiaProps('shell');
+    $shell = consoleRail($this->get(route('platform.environments'))->assertOk());
 
     $routes = collect($shell['areas'])->pluck('pages')->flatten(1)->pluck('route');
 
@@ -64,17 +64,17 @@ it('offers an account-less operator no area that needs an account', function ():
     // on what the acting organization owns — an operator's organization owns no identity
     // provider, so the `identity-platform` feature gates empty the area and the layout
     // drops an area with no pages left.
-    expect($routes)->not->toContain('projects')
-        ->and($routes)->not->toContain('billing')
-        ->and($routes)->not->toContain('organization-settings')
+    expect($routes)->not->toContain('orgs.projects')
+        ->and($routes)->not->toContain('orgs.settings.billing')
+        ->and($routes)->not->toContain('orgs.settings')
         // …and the platform section IS there, or the assertions above pass on an empty rail.
-        ->and($routes)->toContain('platform.workspaces')
+        ->and($routes)->toContain('platform.orgs')
         ->and($routes)->toContain('platform.operators');
 
     // Their own security page survives, and should: it is the one thing that belongs to
     // every signed-in person rather than to an organization. Inside platform admin it is
     // the account menu's, not the rail's — the rail there is the platform's alone.
-    expect($shell['accountHref'])->toBe(route('account'));
+    expect($this->get(route('platform.environments'))->inertiaProps('shell.account.profileUrl'))->toBe(route('account', [], false));
 });
 
 it('lands an account-less operator on the platform rather than on an empty Projects page', function (): void {
@@ -83,7 +83,7 @@ it('lands an account-less operator on the platform rather than on an empty Proje
     // Projects is an Identity platform page and an operator's organization owns no IdP,
     // so the page is not theirs — and where they go instead is the platform section,
     // because that is where their work is, not because Projects refuses them.
-    $this->get(route('projects'))->assertRedirect(route('platform.environments'));
+    $this->get('/projects')->assertRedirect(route('platform.environments'));
 });
 
 it('gives an account-less operator their OWN security page, not a sign-in screen', function (): void {
@@ -107,12 +107,12 @@ it('names the section in the title of every platform page', function (): void {
         $html = (string) $this->get(route($route))->assertOk()->getContent();
 
         expect($html)->toContain(' · Platform · ')
-            ->and($html)->not->toContain(' · Workspace · ');
+            ->and($html)->not->toContain(' · Organization · ');
     }
 
     // …and a console page is not a platform page, whoever is reading it.
     polishOwner();
-    expect((string) $this->get(route('projects'))->assertOk()->getContent())
+    expect((string) $this->get(route('orgs.projects'))->assertOk()->getContent())
         ->not->toContain(' · Platform · ');
 });
 
@@ -124,7 +124,7 @@ it('gives every platform page the eyebrow its rail area actually uses', function
     // hand-written word would be right again — and it is still read off the rail.
     $expected = [
         'platform.environments' => 'Platform',
-        'platform.workspaces' => 'Platform',
+        'platform.orgs' => 'Platform',
         'platform.organizations' => 'Platform',
         'platform.usage' => 'Platform',
         'platform.queues' => 'Platform',
@@ -140,7 +140,7 @@ it('gives every platform page the eyebrow its rail area actually uses', function
      * tests/Browser, which is the only place that can see it.
      */
     foreach ($expected as $route => $area) {
-        $shell = (array) $this->get(route($route))->assertOk()->inertiaProps('shell');
+        $shell = consoleRail($this->get(route($route))->assertOk());
         $active = collect($shell['areas'])->firstWhere('key', $shell['activeArea']);
 
         expect($active)->not->toBeNull($route.' named an area the rail does not have')
@@ -186,7 +186,7 @@ it('will not suspend a live tenant or a fellow operator without a confirmed act'
     $lists = [
         'platform.organizations' => ['organizations', 'toggleHref'],
         'platform.operators' => ['operators', 'toggleHref'],
-        'platform.workspaces' => ['customers', 'toggleHref'],
+        'platform.orgs' => ['customers', 'toggleHref'],
     ];
 
     $checked = 0;
@@ -231,19 +231,20 @@ it('says who the operator is signed in as when there is no account to name', fun
         // No organization to name — which is the whole persona: an operator who runs the
         // deployment and buys nothing on it has no membership row.
         ->and($auth['organization'])->toBeNull()
-        // …so the console says what they ARE instead of leaving the space blank. Drawn from
-        // this flag and from nothing else; the pill itself is held in tests/Browser.
-        ->and($shell['isOperator'])->toBeTrue();
+        // …so the console says what they are acting on instead of leaving the space blank:
+        // the line over the page names the whole deployment.
+        ->and($shell['banner']['kind'])->toBe('notice')
+        ->and($shell['banner']['text'])->toContain('The whole deployment');
 });
 
 it('shows an account owner nothing platform-shaped', function (): void {
     polishOwner();
 
-    $response = $this->get(route('projects'))->assertOk();
-    $shell = (array) $response->inertiaProps('shell');
+    $response = $this->get(route('orgs.projects'))->assertOk();
+    $shell = consoleRail($response);
 
     expect(json_encode($shell, JSON_THROW_ON_ERROR))->not->toContain(route('platform.environments'))
-        ->and($shell['isOperator'])->toBeFalse();
+        ->and((array) $response->inertiaProps('shell'))->not->toHaveKey('banner');
 
     // And the pages themselves refuse, not merely hide.
     $this->get(route('platform.environments'))->assertNotFound();

@@ -43,7 +43,7 @@ function idSupportToken(mixed $test, array $principal, string $tool = 'id_enviro
         'cnt' => str_repeat('s', 48), 'tool' => $tool, 'principal' => $principal, 'arguments' => []], $test->signingKey, 'EdDSA', 'support');
 }
 
-it('binds the embedded support session to the signed-in workspace and root subject', function (): void {
+it('binds the embedded support session to the signed-in organization and root subject', function (): void {
     signInAsMember($this->workspace->owner->id);
     $response = $this->getJson('/support/session')->assertOk();
     $identity = JWT::decode($response->json('identity'), new Key(str_repeat('s', 48), 'HS256'));
@@ -99,7 +99,7 @@ it('reads onboarding through the signed bridge without exposing other environmen
         ->postJson('/ai-assistant/hook')->assertForbidden();
 });
 
-it('hydrates the signed workspace card using current membership and rejects forged scope and replays', function (): void {
+it('hydrates the signed organization card using current membership and rejects forged scope and replays', function (): void {
     $url = '/ai-assistant/inbox/id_workspace';
     $token = idSupportToken($this, $this->claims);
     $this->withToken($token)->getJson($url)->assertOk()

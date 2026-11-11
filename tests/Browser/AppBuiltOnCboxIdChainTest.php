@@ -216,7 +216,7 @@ it('walks sign-up, a second team and an invitation back to the app, page by page
     $bo->assertPathIs('/cboxtax/welcome');
 
     $bo->navigate(browserChainAuthorize($world, ['scope' => 'openid profile']));
-    $bo->assertPathIs('/accounts')
+    $bo->assertPathIs('/settings/accounts')
         ->click('button:has-text("bo@nordic-survey.test")');
     $bo->assertPathIs('/cboxtax/callback');
 

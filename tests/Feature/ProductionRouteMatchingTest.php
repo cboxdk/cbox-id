@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\Console\HandoffTarget;
 use App\Platform\RouteLookup;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Router;
@@ -14,12 +13,12 @@ use Tests\Support\ProductionShape;
  * ASKING THE ROUTER A QUESTION, THE WAY PRODUCTION ANSWERS IT.
  *
  * On cboxid.com every environment-console page except its home, and every workspace page
- * that offers an environment (Audit log, Keys, Enterprise SSO, Sign-in rules), answered a
- * bare "400 Bad Request". The environment switcher asks {@see HandoffTarget} whether the
- * page you are on exists in the other environment, and that asked the router with
- * `Request::create('/admin/users')` — a request for `http://localhost/admin/users`. With
- * routes cached and the host allow-list enforced, as production runs
- * ({@see ProductionShape}), the compiled matcher reads that host and Symfony refuses it.
+ * that offers an environment (Audit log, Keys, Enterprise SSO, Sign-in rules), once answered
+ * a bare "400 Bad Request". The environment switcher asked the router whether the page you
+ * were on existed in the other environment with `Request::create('/admin/users')` — a
+ * request for `http://localhost/admin/users`. With routes cached and the host allow-list
+ * enforced, as production runs ({@see ProductionShape}), the compiled matcher reads that
+ * host and Symfony refuses it. {@see RouteLookup} asks from the served request's origin.
  *
  * Green in every test before this, for the three reasons ProductionShape names. These run
  * in production's shape, so the failure is visible here.
@@ -38,7 +37,7 @@ it('is the trap: a path-only probe is a localhost request production refuses', f
     ProductionShape::cacheRoutes();
     ProductionShape::enforceTrustedHosts();
 
-    expect(fn () => app(Router::class)->getRoutes()->match(Request::create('/admin/users', 'GET')))
+    expect(fn () => app(Router::class)->getRoutes()->match(Request::create('/orgs/acme/projects/acme/environments/acme/users', 'GET')))
         ->toThrow(SuspiciousOperationException::class);
 })->group('security');
 
@@ -46,28 +45,28 @@ it('matches a path from the origin of the request being served', function (): vo
     ProductionShape::cacheRoutes();
     ProductionShape::enforceTrustedHosts();
 
-    app()->instance('request', Request::create('https://acme.cboxid.com/admin'));
+    app()->instance('request', Request::create('https://cboxid.com/orgs/acme/projects/acme/environments/acme'));
 
-    expect(app(RouteLookup::class)->get('/admin/users')?->getName())->toBe('environment.users')
-        ->and(app(HandoffTarget::class)->sanitize('/admin/users'))->toBe('/admin/users')
+    expect(app(RouteLookup::class)->get('/orgs/acme/projects/acme/environments/acme/users')?->getName())->toBe('environment.users')
+        ->and(app(RouteLookup::class)->get('/admin/environment/users')?->getName())->toBe('environment.users')
         // …and a path nothing serves is still "no route", not an exception.
-        ->and(app(RouteLookup::class)->get('/admin/no-such-page'))->toBeNull();
+        ->and(app(RouteLookup::class)->get('/orgs/acme/projects/acme/environments/acme/no-such-page'))->toBeNull();
 });
 
 it('renders the environment console pages that draw the environment switcher', function (): void {
     ['subjectId' => $subjectId, 'environment' => $environment] = provisionAccount();
     actAsEnvironmentAdmin($subjectId, $environment->id);
-    $host = $environment->slug.'.cboxid.com';
+    $host = 'cboxid.com';
 
     ProductionShape::cacheRoutes();
     ProductionShape::enforceTrustedHosts();
 
-    foreach (['/admin/users', '/admin/organizations', '/admin/apps', '/admin/settings'] as $path) {
+    foreach ([envConsolePath('/users'), envConsolePath('/organizations'), envConsolePath('/apps'), envConsolePath('/settings')] as $path) {
         $this->get("https://{$host}{$path}")->assertOk();
     }
 });
 
-it('renders the workspace pages that offer an environment', function (): void {
+it('renders the organization pages that offer an environment', function (): void {
     ['subjectId' => $subjectId] = provisionAccount();
     signInAsSubject($subjectId);
 

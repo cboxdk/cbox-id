@@ -14,7 +14,7 @@
 
 export type ApiDanger = 'read' | 'write' | 'destructive' | 'critical';
 
-export type ApiPlane = 'environment' | 'workspace' | 'platform' | 'account';
+export type ApiPlane = 'environment' | 'organization' | 'platform' | 'account';
 
 export interface ApiField {
     name: string;
@@ -33,7 +33,9 @@ export interface ApiAction {
     name: string;
     summary: string;
     method: string;
-    /** Below `/api/v1`, with the page's ids filled in where it knew them. */
+    /** The base `path` is below: `/v1` on the API host, `/api/v1` where it is not served there. */
+    base?: string;
+    /** Below `base`, with the page's ids filled in where it knew them. */
     path: string;
     url: string;
     scope: string;
@@ -58,8 +60,8 @@ export function tokenEnv(plane: ApiPlane): string {
     switch (plane) {
         case 'environment':
             return 'CBOX_ID_MANAGEMENT_KEY';
-        case 'workspace':
-            return 'CBOX_ID_WORKSPACE_KEY';
+        case 'organization':
+            return 'CBOX_ID_ORGANIZATION_KEY';
         default:
             return 'CBOX_ID_ACCESS_TOKEN';
     }
@@ -293,7 +295,7 @@ export function cli(action: ApiAction, values: SnippetValues = {}): string {
 
 const SDK_CLIENTS: Record<ApiPlane, { name: string; variable: string; credential: string }> = {
     environment: { name: 'EnvironmentClient', variable: 'env', credential: 'apiKey' },
-    workspace: { name: 'WorkspaceClient', variable: 'workspace', credential: 'apiKey' },
+    organization: { name: 'WorkspaceClient', variable: 'workspace', credential: 'apiKey' },
     platform: { name: 'PlatformClient', variable: 'platform', credential: 'accessToken' },
     account: { name: 'AccountClient', variable: 'account', credential: 'accessToken' },
 };

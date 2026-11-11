@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Http\Middleware\EnforceRootHostConsole;
+use App\Http\Props\Shell\ContextProjectProps;
+use App\Platform\Console\EnvironmentConsolePath;
+use App\Platform\Console\OrganizationLanding;
 use App\Platform\Console\RootHostConsole;
-use App\Platform\Console\ShellPayload;
-use App\Platform\Console\WorkspaceLanding;
+use App\Platform\Console\ShellContext;
 use Inertia\Response;
 
 /**
@@ -18,7 +20,7 @@ use Inertia\Response;
  * A page rather than a redirect, because the right destination depends on WHICH
  * environment they meant and only they know: the page names the thing they came for, says
  * where it lives, and offers the same page in each environment they may open — the
- * context switcher's own rows ({@see ShellPayload}), each carrying the page to land on.
+ * context switcher's own rows ({@see ShellContext}), each carrying the page to land on.
  *
  * Reached only through {@see EnforceRootHostConsole}, never routed on its own.
  */
@@ -33,9 +35,14 @@ final readonly class ConfiguredInEnvironmentController extends ConsoleController
             // Whether each environment's link opens this very page there, rather than its
             // front page — the switcher's rows carry it when there is one.
             'samePage' => $twin !== null,
-            'projectsHref' => $this->scope->capabilities()?->canReadEnvironments() === true ? route('projects') : null,
-            'consoleHref' => app(WorkspaceLanding::class)->url(),
-            'platformHref' => $this->scope->isPlatformOperator() ? route('environment.home') : null,
+            // Every environment this person may open, each linking to this page there.
+            'projects' => array_values(array_filter(
+                app(ShellContext::class)->forOrganizationPlane($route)->projects,
+                static fn (ContextProjectProps $project): bool => $project->id !== 'platform',
+            )),
+            'projectsHref' => $this->scope->capabilities()?->canReadEnvironments() === true ? route('orgs.projects') : null,
+            'consoleHref' => app(OrganizationLanding::class)->url(),
+            'platformHref' => $this->scope->isPlatformOperator() ? route('environment.home', [EnvironmentConsolePath::PARAMETER => EnvironmentConsolePath::ROOT]) : null,
         ]);
     }
 }

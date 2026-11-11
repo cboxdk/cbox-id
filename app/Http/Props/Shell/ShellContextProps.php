@@ -6,6 +6,7 @@ namespace App\Http\Props\Shell;
 
 use App\Http\Props\Prop;
 use App\Platform\Console\ShellContext;
+use App\Platform\Shell\IdShell;
 
 /**
  * WHERE YOU ARE, as the topbar draws it: `Workspace ▾ / Project ▾ / Environment ▾`.
@@ -18,7 +19,7 @@ use App\Platform\Console\ShellContext;
 final readonly class ShellContextProps implements Prop
 {
     /**
-     * @param  list<SwitchOptionProps>  $workspaces  always holds the current one, even alone
+     * @param  list<SwitchOptionProps>  $organizations  always holds the current one, even alone
      * @param  list<ContextProjectProps>  $projects  empty where the organization owns none
      */
     public function __construct(
@@ -28,7 +29,7 @@ final readonly class ShellContextProps implements Prop
          * there is no project or environment above it to switch between.
          */
         public string $noun,
-        public array $workspaces,
+        public array $organizations,
         /**
          * Where choosing another workspace POSTs, and null where it cannot be done from
          * here: on an environment's own host the session that holds a workspace is not
@@ -39,13 +40,22 @@ final readonly class ShellContextProps implements Prop
     ) {}
 
     /**
-     * @return array{noun: string, workspaces: list<SwitchOptionProps>, switchUrl: string|null, projects: list<ContextProjectProps>}
+     * No switcher: where the shared shell draws the context ({@see IdShell}),
+     * this console's own is not built at all.
+     */
+    public static function none(): self
+    {
+        return new self('', [], null, []);
+    }
+
+    /**
+     * @return array{noun: string, organizations: list<SwitchOptionProps>, switchUrl: string|null, projects: list<ContextProjectProps>}
      */
     public function toArray(): array
     {
         return [
             'noun' => $this->noun,
-            'workspaces' => $this->workspaces,
+            'organizations' => $this->organizations,
             'switchUrl' => $this->switchUrl,
             'projects' => $this->projects,
         ];

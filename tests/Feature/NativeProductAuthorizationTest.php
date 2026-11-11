@@ -1,8 +1,8 @@
 <?php
 
-use App\Actions\Workspace\Environments\ListEnvironments;
-use App\Actions\Workspace\Projects\ListProjects;
-use App\Actions\Workspace\ShowWorkspace;
+use App\Actions\OrgPlane\Environments\ListEnvironments;
+use App\Actions\OrgPlane\GetOrganization;
+use App\Actions\OrgPlane\Projects\ListProjects;
 use App\Mail\InvitationMail;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionRunner;
@@ -105,12 +105,12 @@ it('serves native roles and replaces them through the member page without removi
     [$member] = addMember($account['organization']->id, MembershipRole::Member, 'native-row@example.test');
     grantNativeProductRoles($member, ['viewer']);
     signInAsMember($account['subjectId']);
-    $this->get(route('members'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->has('members', 2));
+    $this->get(route('orgs.settings.members'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->has('members', 2));
     $roles = app(NativeProductMembers::class);
     $version = $roles->access($member)['roles_version'];
-    $this->from(route('members'))->patch(route('members.role', ['member' => $member->id, 'organization' => $account['organization']->id]), ['roles' => ['viewer', 'billing'], 'roles_version' => $version])->assertSessionHasNoErrors();
+    $this->from(route('orgs.settings.members'))->patch(route('orgs.settings.members.role', ['member' => $member->id, 'organization' => $account['organization']->id]), ['roles' => ['viewer', 'billing'], 'roles_version' => $version])->assertSessionHasNoErrors();
     expect($roles->access($member)['roles'])->toEqualCanonicalizing(['viewer', 'billing']);
-    $this->from(route('members'))->delete(route('members.remove', ['member' => $member->id, 'organization' => $account['organization']->id]), ['roles_version' => $roles->access($member)['roles_version']])->assertSessionHasNoErrors();
+    $this->from(route('orgs.settings.members'))->delete(route('orgs.settings.members.remove', ['member' => $member->id, 'organization' => $account['organization']->id]), ['roles_version' => $roles->access($member)['roles_version']])->assertSessionHasNoErrors();
     expect($roles->access($member)['roles'])->toBe([]);
     $liveMember = app(PlatformRoot::class)->run(fn () => app(Memberships::class)->forOrganization($account['organization']->id)->firstWhere('id', $member->id));
     expect($liveMember)->not->toBeNull();
@@ -141,18 +141,18 @@ it('uses independent optimistic versions for environment access and denies an em
     expect($rows->ids($account['organization']->id, $subject))->toBe([]);
     expect(fn () => $rows->replace($member, true, [], $version))->toThrow(ActionRefused::class);
     signInAsMember($account['subjectId']);
-    $this->putJson(route('members.access', ['member' => $member->id, 'organization' => $account['organization']->id]), ['all' => true, 'environmentIds' => [], 'environment_access_version' => $version])->assertStatus(409);
+    $this->putJson(route('orgs.settings.members.access', ['member' => $member->id, 'organization' => $account['organization']->id]), ['all' => true, 'environmentIds' => [], 'environment_access_version' => $version])->assertStatus(409);
     expect($rows->ids($account['organization']->id, $subject))->toBe([]);
 });
 
-it('lets a Billing-only native member read workspace identity but no operational lists', function () {
+it('lets a Billing-only native member read organization identity but no operational lists', function () {
     $account = provisionAccount();
     [$member, $subject] = addMember($account['organization']->id, MembershipRole::Member, 'native-billing-only@example.test');
     grantNativeProductRoles($member, ['billing']);
     signInAsMember($subject);
     $principal = new ConsoleSessionPrincipal(app(ConsoleScope::class));
     $runner = app(ActionRunner::class);
-    $result = $runner->run(ShowWorkspace::class, $principal, []);
+    $result = $runner->run(GetOrganization::class, $principal, []);
     expect($result->payload)->toMatchArray(['id' => $account['organization']->id, 'name' => 'Acme'])->not->toHaveKey('projects');
     expect(fn () => $runner->run(ListProjects::class, $principal, []))->toThrow(AuthorizationException::class);
     expect(fn () => $runner->run(ListEnvironments::class, $principal, []))->toThrow(AuthorizationException::class);
@@ -196,10 +196,10 @@ it('denies project pages and writes without native operational authority despite
     $rows = app(NativeEnvironmentAccess::class);
     $rows->replace($member, true, [], $rows->version($member));
     signInAsMember($subject);
-    $this->get(route('projects'))->assertForbidden();
-    $this->get(route('projects.show', $account['project']->id))->assertForbidden();
-    $this->get(route('projects.create'))->assertForbidden();
-    $this->post(route('projects.store'), ['name' => 'Forbidden'])->assertForbidden();
+    $this->get(route('orgs.projects'))->assertForbidden();
+    $this->get(route('orgs.projects.show', $account['project']->id))->assertForbidden();
+    $this->get(route('orgs.projects.create'))->assertForbidden();
+    $this->post(route('orgs.projects.store'), ['name' => 'Forbidden'])->assertForbidden();
 })->with(['billing only' => [['billing']], 'no app role' => [[]]]);
 
 it('keeps native Reader project pages within selected rows and rechecks revoked access', function (): void {
@@ -211,27 +211,27 @@ it('keeps native Reader project pages within selected rows and rechecks revoked 
     $rows = app(NativeEnvironmentAccess::class);
     $rows->replace($member, false, [$other->id], $rows->version($member));
     signInAsMember($subject);
-    $this->get(route('projects'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+    $this->get(route('orgs.projects'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
         ->has('projects', 1)->where('projects.0.used', 1)->has('projects.0.environments', 1)
         ->where('projects.0.environments.0.id', $other->id)->where('canManage', false));
-    $this->get(route('projects.show', $account['project']->id))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+    $this->get(route('orgs.projects.show', $account['project']->id))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
         ->has('environments', 1)->where('environments.0.id', $other->id)->where('canManage', false)->where('remaining', 0)->where('billingHref', null));
-    $this->get(route('projects.show', $foreign['project']->id))->assertNotFound();
-    $this->get(route('projects.create'))->assertForbidden();
+    $this->get(route('orgs.projects.show', $foreign['project']->id))->assertNotFound();
+    $this->get(route('orgs.projects.create'))->assertForbidden();
     $rows->replace($member, false, [], $rows->version($member));
     nextRequest();
-    $this->get(route('projects'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->has('projects', 0));
-    $this->get(route('projects.show', $account['project']->id))->assertForbidden();
+    $this->get(route('orgs.projects'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->has('projects', 0));
+    $this->get(route('orgs.projects.show', $account['project']->id))->assertForbidden();
     $roles = app(NativeProductMembers::class);
     $roles->replace($member, [], $roles->access($member)['roles_version'], AuditActor::system());
     nextRequest();
-    $this->get(route('projects'))->assertForbidden();
+    $this->get(route('orgs.projects'))->assertForbidden();
 });
 
 it('links project account access only for live native Billing authority in the exact organization', function (): void {
     config(['billing.enabled' => true]);
     $account = provisionAccount();
     signInAsMember($account['subjectId']);
-    $this->get(route('projects.show', $account['project']->id))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-        ->where('billingHref', route('billing', ['organization' => $account['organization']->id])));
+    $this->get(route('orgs.projects.show', $account['project']->id))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('billingHref', route('orgs.settings.billing', ['organization' => $account['organization']->id])));
 });

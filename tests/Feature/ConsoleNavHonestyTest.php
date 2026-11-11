@@ -55,7 +55,7 @@ function railLinksFor(MembershipRole $role): array
      * granularities and it is the pages that refuse: an area a person may see can contain a
      * page that answers 403, which is the whole class of bug this file exists to close.
      */
-    $shell = (array) test()->get(route('dashboard'))->assertOk()->inertiaProps('shell');
+    $shell = consoleRail(test()->get(route('dashboard'))->assertOk());
 
     $host = parse_url((string) config('app.url'), PHP_URL_HOST);
 

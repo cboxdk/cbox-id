@@ -80,6 +80,8 @@ type TotpSetup = { id: string; name: string; secret: string; qr: string; cancelH
 type Props = PageProps<{
     help: HelpContent;
     returnTo: { url: string; host: string } | null;
+    /** Where a tenant host's organization settings went (v2 `/settings`); null elsewhere. */
+    organizationSettingsMoved: string | null;
     profile: {
         name: string;
         email: string | null;
@@ -130,6 +132,7 @@ type Props = PageProps<{
 export default function Security({
     help,
     returnTo,
+    organizationSettingsMoved,
     profile,
     hasPassword,
     twoFactor,
@@ -170,6 +173,19 @@ export default function Security({
                 help={help}
                 description={tc('console.your_profile_how_you_sign_in_and_the_session_ab7a0592')}
             />
+
+            {organizationSettingsMoved !== null && (
+                <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                    {tc('console.organization_settings_moved_here_7b3e91c4')}{' '}
+                    <a
+                        href={organizationSettingsMoved}
+                        className="font-medium"
+                        style={{ color: 'var(--accent-strong)' }}
+                    >
+                        {tc('console.organization_settings_4fd62541')}
+                    </a>
+                </p>
+            )}
 
             <ProfilePanel profile={profile} href={urls.profile} />
 
@@ -212,7 +228,7 @@ function ProfilePanel({ profile, href }: { profile: Props['profile']; href: stri
                 }}
             >
                 <span
-                    className="cbx-avatar shrink-0"
+                    className="idc-avatar shrink-0"
                     aria-hidden="true"
                     style={{ width: '3rem', height: '3rem', fontSize: '1.1rem' }}
                 >

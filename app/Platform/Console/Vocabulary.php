@@ -29,15 +29,16 @@ use App\Providers\ConsoleServiceProvider;
  *
  * THE WORDS, and what each one means — the distinctions are the point:
  *
- *  - Workspace: the customer's own Cbox account. Never "account" or "customer" in copy.
- *  - Team: the colleagues who administer a workspace.
+ *  - Organization: the customer's own Cbox account, level 1 of the shell — and, inside an
+ *    environment, a team of THEIR customers. Never "workspace", "account" or "customer".
+ *  - Team: the colleagues who administer an organization.
  *  - Users: the end-users of an environment — everyone who can sign in to the product.
  *  - Members: the people in one organization.
  *  - Admins & support: an environment's own staff, holding roles across every
  *    organization in it.
  *  - Operators: the people who run this install — Cbox's own, on the hosted platform.
  *  - Platform: the area of the console holding what acts on the whole deployment —
- *    workspaces, environments, the organization tree, operators, usage, queues.
+ *    organizations, environments, the organization tree, operators, usage, queues.
  *  - Enterprise SSO: people arriving with a company account (inbound SAML/OIDC).
  *    SAML apps is the opposite direction: applications that trust this environment.
  *  - Directory Sync: a directory pushing people IN over SCIM. Outbound provisioning
@@ -45,7 +46,7 @@ use App\Providers\ConsoleServiceProvider;
  *  - Audit log: this platform's own hash-chained trail. App audit logs are the events an
  *    app built on an environment sends about its own customers.
  *  - Approvals: what an agent is waiting for a person to allow.
- *  - API keys: one page, the kind of key a tab — Secret, Publishable, Workspace.
+ *  - API keys: one page, the kind of key a tab — Secret, Publishable, Organization.
  *  - Radar: adaptive protection at sign-in and sign-up — the rules that allow, challenge or
  *    block an attempt, and the decisions they made. Not "Risk events": that is the
  *    risk-plus module's feed of elevated scores, a narrower thing.
@@ -63,7 +64,7 @@ use App\Providers\ConsoleServiceProvider;
 final class Vocabulary
 {
     // People.
-    public const string WORKSPACE = 'Workspace';
+    public const string ORGANIZATION = 'Organization';
 
     public const string TEAM = 'Team';
 
@@ -91,7 +92,6 @@ final class Vocabulary
     public const string PLATFORM = 'Platform';
 
     /** Every workspace on the install, as platform admin lists them. */
-    public const string WORKSPACES = 'Workspaces';
 
     /** Every environment on the install, as platform admin lists them. */
     public const string ENVIRONMENTS = 'Environments';
@@ -176,7 +176,7 @@ final class Vocabulary
     /** A frontend key — public by design, bounded by the origins it may be used from. */
     public const string PUBLISHABLE_KEYS = 'Publishable keys';
 
-    public const string WORKSPACE_KEYS = 'Workspace keys';
+    public const string ORGANIZATION_KEYS = 'Organization keys';
 
     // Agents.
     public const string AGENTS = 'Agents';
@@ -202,6 +202,11 @@ final class Vocabulary
      * @var array<string, string>
      */
     public const array RETIRED = [
+        // Google Workspace is a product name, not the word.
+        '/(?<!Google )(?<!\/)\bworkspaces?\b(?!\/)/i' => self::ORGANIZATION,
+        '/\bMy account\b/i' => 'Account',
+        '/\bSwitch user\b/i' => 'Switch account',
+        '/\bLog out\b/i' => 'Sign out',
         '/\bactivity log\b/i' => self::AUDIT_LOG.' (the trail\'s internal name stays in code, not in copy)',
         '/\bSync users (in|out)\b/i' => self::DIRECTORY_SYNC.' (in) or '.self::OUTBOUND_PROVISIONING.' (out)',
         '/^Single sign-on$/i' => self::ENTERPRISE_SSO.' — as a label; a sentence may still explain single sign-on',

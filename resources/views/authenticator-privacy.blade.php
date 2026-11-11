@@ -30,7 +30,7 @@
     <h2>Permissions</h2>
     <p>The camera scans Cbox connection codes and TOTP setup QR codes. Face ID and the iPhone passcode are handled by iOS; the app receives a success or failure result and never receives biometric data. Notifications are optional: you can open the app to check for requests without enabling them. The app does not include advertising or advertising tracking.</p>
     <h2>Removing data and access</h2>
-    <p>Use Settings in the app to remove an account from the phone. If a phone is lost, open My account → Trusted devices on your Cbox ID host and remove it there. Removal revokes the device's approval access. Security audit records and device revocation records may be retained by your host under its security and retention policy.</p>
+    <p>Use Settings in the app to remove an account from the phone. If a phone is lost, open Account → Trusted devices on your Cbox ID host and remove it there. Removal revokes the device's approval access. Security audit records and device revocation records may be retained by your host under its security and retention policy.</p>
     <p>To request deletion of your Cbox ID account and its server data, contact Cbox or the organization that operates your account. The authenticator connects existing accounts; it does not create Cbox ID accounts.</p>
     <h2>Support and privacy questions</h2>
     <p><a href="https://cbox.dk/contact">Contact Cbox</a>. For an organization-managed account, your administrator can also help with access, recovery and retention.</p>

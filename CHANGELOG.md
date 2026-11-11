@@ -10,6 +10,9 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **App catalog: purpose, hue and "More from Cbox".** Catalog apps gain `purpose` (one line, 60 characters), `hue` (a cbox-ui hue token), `admission_url` (a public HTTPS signup or waitlist page) and `promote_when_unavailable` (default on); migration `2026_11_11_090000_add_shell_fields_to_app_catalog_entries` is additive, and a save that omits them keeps them. `/api/v1/me/apps`, `/api/v1/app-catalog/for-user` and the console's own catalog feed add `purpose`, `hue` and `available`, and list the apps a person can ask for under `meta.unavailable` (the feed: `unavailable`) with their `admission_url`. A `users`-audience app is never listed to anyone it does not name. `php artisan app-catalog:apply resources/app-catalog/cbox.json` sets purpose and hue for the 14 Cbox products.
+- **UserInfo carries organization slugs.** `org_slug` beside `org`, and `slug` on each entry of the `organizations` claim, read live. `sub`, `org` and token claims are unchanged.
+
 - **Token exchange carries RFC 9396 `authorization_details`** (laravel-id 2.4.0). An RFC 8693 exchange may send 1–10 `authorization_details` objects; each type must be one the client is registered for (`oauth_clients.authorization_details_types`, migration `2026_11_10_160000_add_authorization_details_types_to_clients`, additive). Cbox Infra uses it for browser approvals of a change plan.
 - **CIBA tokens say which approval they are, and CIBA ping mode** (laravel-id 2.3.0). A token minted from an approved backchannel request carries `auth_req_id` (the client's own) and `binding_message` (what the person saw), on the access token and the ID Token, so an API that asked for one approval can check it got that one. An operator can register a client for ping mode with an https notification endpoint (`ClientRegistry::configureBackchannelTokenDelivery`); its requests then send `client_notification_token`, and on approve or deny the worker POSTs `{"auth_req_id": "…"}` to the endpoint with that bearer token. Discovery advertises `["poll", "ping"]`; poll stays the default. Migration `2026_11_10_120000_add_ciba_ping_mode` is additive.
 - **Cbox Assistant knows the customer's projects and environments.** Through `cboxdk/laravel-assistant-client` 0.2, ID serves the customer profile: pickable `id_projects` and `id_environments`, plus signals (customer since, seats, recent workspace changes from the audit log, member role, environment count, SSO enabled, two-factor enforced). A member sees what the console shows them.
@@ -24,6 +27,7 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Changed
 
+- **The workspace is the organization.** The console, the API and all 21 languages say *organization* for the Cbox customer. Organization-plane scopes take the `id:<resource>:<read|write>` names; action and MCP tool names move from `workspace.*`/`keys.workspace.*`/`platform.*` to `organization.*`/`keys.organization.*`/`admin.*`, and the old tool names still answer `tools/call` (unlisted, counted) until v3.1. URLs are unchanged. Expand-only: no migration, nothing stored is rewritten, v3 reads both spellings and still writes the v2 one where v2 reads it, and organization keys are still minted `cbid_ws_` until a cbox-cli release reads `cbid_org_`. See UPGRADING, *3.0.0*.
 - **The console's app switcher is the one every Cbox app draws.** The header renders `<cbox-app-switcher>` from `@cboxdk/cbox-ui` 0.9 (and the rail's mark is `<cbox-service-mark>`), the same element as Billing, Infra and the rest: icons from the catalog only, light and dark, with no Reconnect link. It reads the signed-in person's catalog from `GET /switch-app/catalog` (`apps.catalog`), same-origin JSON `{apps, revision, refresh_after}` straight from the catalog `GET /api/v1/me/apps` serves, with no OAuth round trip. The `appCatalog` page prop is replaced by `appCatalogUrl`; the console's own switcher, its local service marks and their CSS are gone. `img-src` admits the issuer, which serves the catalog's icons.
 - **The app switcher's catalog token lives 12 hours.** An access token whose scopes are exactly `account:apps:read` (token exchange at sign-in, or the `/apps/authorize` fallback at `{issuer}/mcp`) now lives 43200 s instead of 900 s, so app switchers no longer lose the catalog after 15 minutes. Tune with `CBOX_ID_APP_CATALOG_TOKEN_TTL` (0 turns it off); still capped by `CBOX_ID_MAX_ACCESS_TOKEN_TTL`. A token with any other scope keeps the normal lifetime (laravel-id 2.2.0, `oauth.scope_token_ttls`).
 
@@ -1030,7 +1034,7 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
   activity log, where the workspace console records them.
 - **A "?" help topic on every console page**, each linking to its guide where there is
   one. New guides: [Keys](docs/guides/keys.md), and
-  [Workspaces & organizations](docs/core-concepts/workspaces-and-organizations.md)
+  [Workspaces & organizations](docs/core-concepts/organizations-and-customers.md)
   (renamed from `accounts-and-organizations.md` and rewritten around the workspace, the
   organization and which console you are in).
 - **A vocabulary test fails the build if a retired UI word comes back.** The labels below

@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
-use App\Actions\Workspace\Team\ChangeMemberRole;
-use App\Actions\Workspace\Team\InviteMember;
-use App\Actions\Workspace\Team\RemoveMember;
-use App\Actions\Workspace\Team\ResendInvitation;
-use App\Actions\Workspace\Team\RevokeInvitation;
-use App\Actions\Workspace\Team\SetEnvironmentAccess;
-use App\Actions\Workspace\Team\TransferOwnership;
+use App\Actions\OrgPlane\Team\ChangeMemberRole;
+use App\Actions\OrgPlane\Team\InviteMember;
+use App\Actions\OrgPlane\Team\RemoveMember;
+use App\Actions\OrgPlane\Team\ResendInvitation;
+use App\Actions\OrgPlane\Team\RevokeInvitation;
+use App\Actions\OrgPlane\Team\SetEnvironmentAccess;
+use App\Actions\OrgPlane\Team\TransferOwnership;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Props\Shared\PaginationProps;
 use App\Http\Props\Shared\PendingInvitationProps;
 use App\Http\Props\Shared\RoleOptionProps;
 use App\Http\Requests\Console\SetEnvironmentAccessRequest;
 use App\Platform\Actions\ActionRefused;
-use App\Platform\Console\WorkspaceLanding;
+use App\Platform\Console\OrganizationLanding;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
 use App\Platform\Locale\ConsoleLabels;
@@ -57,7 +57,7 @@ use Inertia\Response;
  * refactor away from being dropped — which is the shape that once shipped a
  * cross-organization IDOR on `/governance/{campaign}`.
  *
- * EVERY WRITE IS AN ACTION (`app/Actions/Workspace/Team`), the one `/api/v1/workspace`
+ * EVERY WRITE IS AN ACTION (`app/Actions/OrgPlane/Team`), the one `/api/v1/workspace`
  * runs for a workspace key; the action fences the target again, so a door that skips this
  * page's guards does not skip the rule. What stays here is the console's own answer to a
  * row a person may see but not change — a quiet `back()` — and where they land after.
@@ -95,7 +95,7 @@ final readonly class MemberController extends ConsoleController
         // somewhere they can be rather than refused: that is the console's own answer,
         // and the one the navigation-honesty test holds.
         if ($this->scope->capabilities()?->canReadMembers() !== true) {
-            return redirect()->to(app(WorkspaceLanding::class)->url());
+            return redirect()->to(app(OrganizationLanding::class)->url());
         }
 
         $organizationId = $this->scope->organizationId();
@@ -263,7 +263,7 @@ final readonly class MemberController extends ConsoleController
         // Back to page one: withdrawing the last row on a later page leaves the paginator
         // asking for a page that no longer exists, and the empty state then claims there
         // is nothing outstanding.
-        return to_route('members', ['organization' => $this->scope->organizationId()])->with('status', __('console.invitation_withdrawn_that_link_no_longer_works_a991b23a'));
+        return to_route('orgs.settings.members', ['organization' => $this->scope->organizationId()])->with('status', __('console.invitation_withdrawn_that_link_no_longer_works_a991b23a'));
     }
 
     public function changeRole(Request $request, string $member): RedirectResponse
@@ -301,7 +301,7 @@ final readonly class MemberController extends ConsoleController
 
         // Same reason as withdrawing an invitation: removing the last row on a later page
         // leaves the paginator pointed at a page that no longer exists.
-        return to_route('members', ['organization' => $this->scope->organizationId()])->with('status', __('console.member_removed_d6fe67b5'));
+        return to_route('orgs.settings.members', ['organization' => $this->scope->organizationId()])->with('status', __('console.member_removed_d6fe67b5'));
     }
 
     /**
@@ -502,8 +502,8 @@ final readonly class MemberController extends ConsoleController
         return array_map(
             static fn (PendingInvitationSummary $invitation): PendingInvitationProps => PendingInvitationProps::from(
                 $invitation,
-                $canManage ? route('members.invitations.resend', ['invitation' => $invitation->id, 'organization' => $organizationId]) : null,
-                $canManage ? route('members.invitations.revoke', ['invitation' => $invitation->id, 'organization' => $organizationId]) : null,
+                $canManage ? route('orgs.settings.members.invitations.resend', ['invitation' => $invitation->id, 'organization' => $organizationId]) : null,
+                $canManage ? route('orgs.settings.members.invitations.revoke', ['invitation' => $invitation->id, 'organization' => $organizationId]) : null,
             ),
             $team->pending($organizationId, self::INVITATIONS_SHOWN),
         );

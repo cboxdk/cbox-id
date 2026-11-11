@@ -30,6 +30,8 @@ final readonly class MobileApprovalController
         }
         $operation = $request->isMethod('GET') ? 'status' : $request->input('operation');
 
+        $environment = null;
+
         if ($purpose === 'login') {
             $subject = $auth->pendingMfaSubject($request);
             abort_if($subject === null, 409);
@@ -38,8 +40,12 @@ final readonly class MobileApprovalController
             $admin = app(EnvironmentAdminAuth::class);
             abort_unless($admin->check(), 403);
             $subject = $admin->subjectId();
-            $anchor = $admin->sessionId();
-            abort_if($subject === null || $anchor === null, 403);
+            // The session AND the environment: one app-host session administers several, and
+            // an approval given for one must not confirm a step-up in another.
+            $session = $admin->sessionId();
+            $environment = $admin->environmentId();
+            abort_if($subject === null || $session === null || $environment === null, 403);
+            $anchor = $session.':'.$environment;
         } else {
             $me = app(CurrentUser::class);
             abort_unless($me->check(), 401);
@@ -47,7 +53,7 @@ final readonly class MobileApprovalController
             $anchor = ($me->session()->id ?? '').':'.($me->organizationId() ?? '');
         }
 
-        $run = function () use ($request, $approvals, $auth, $purpose, $subject, $anchor, $operation): JsonResponse {
+        $run = function () use ($request, $approvals, $auth, $purpose, $subject, $anchor, $operation, $environment): JsonResponse {
             if ($operation === 'cancel') {
                 $key = 'cbox.browser_approval.'.$purpose;
                 if (! $request->has('code') || $request->input('code') === $request->session()->get($key.'.code')) {
@@ -68,7 +74,8 @@ final readonly class MobileApprovalController
                 $redirect = app(SamlSsoHandoff::class)->resumeUrl() ?? IntendedUrl::pullForSubject() ?? route('dashboard');
             } else {
                 abort_unless($approvals->consume($request, $purpose, $subject, $anchor), 409);
-                $purpose === 'environment' ? app(EnvironmentSudo::class)->confirm() : app(Sudo::class)->confirm();
+                // For the environment the console is open on — this runs in the platform root.
+                $purpose === 'environment' ? app(EnvironmentSudo::class)->confirm($environment) : app(Sudo::class)->confirm();
                 $plane = $purpose === 'environment' ? 'environment.sudo' : 'sudo';
                 $redirect = $request->session()->pull($plane.'.intended');
                 StepUpReason::forget($plane);

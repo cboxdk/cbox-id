@@ -77,7 +77,7 @@ function everyConsoleModuleOn(): void
 /** The rail a request was drawn with, as area key => that area's page routes. */
 function customerRail(string $route): array
 {
-    $shell = (array) test()->get(route($route))->assertOk()->inertiaProps('shell');
+    $shell = consoleRail(test()->get(route($route))->assertOk());
 
     return collect($shell['areas'])
         ->mapWithKeys(fn (array $area): array => [$area['key'] => array_column($area['pages'], 'route')])
@@ -145,7 +145,7 @@ it('draws a customer\'s console as an admin portal and the person\'s own pages',
 it('names a customer\'s console in the console\'s own words', function (): void {
     aCustomerAdministrator();
 
-    $shell = (array) $this->get(route('dashboard'))->assertOk()->inertiaProps('shell');
+    $shell = consoleRail($this->get(route('dashboard'))->assertOk());
 
     $labels = collect($shell['areas'])
         ->mapWithKeys(fn (array $area): array => [$area['label'] => array_column($area['pages'], 'label')])
@@ -333,7 +333,7 @@ it('lets nothing through on a customer\'s console but the admin portal, the pers
         'device', 'device.lookup', 'device.approve', 'device.deny', 'device.verify',
         'apps',
         'environment.open',
-        'organization.switch',
+        'orgs.switch', 'organization.switch',
         'passkeys.register', 'passkeys.register.options',
         'password.change', 'password.change.update',
         'search',

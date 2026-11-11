@@ -1,11 +1,18 @@
-import { ServiceMark } from './AppSwitcher';
+import { defineCboxAppSwitcher } from '@cboxdk/cbox-ui/app-switcher';
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link } from '@inertiajs/react';
-import { useState } from 'react';
+import { createElement, useState } from 'react';
 import type { NavArea } from '@/types';
 import { Icon } from '@/ui';
 import { cn } from '@/lib/cn';
 import { areaCount } from './NavCount';
+
+defineCboxAppSwitcher();
+
+/** ID's own mark in the rail (`<cbox-service-mark>`). */
+function ServiceMark({ service }: { service: string }) {
+    return createElement('cbox-service-mark', { service, 'aria-hidden': true });
+}
 
 export interface RailProps {
     areas: NavArea[];
@@ -52,7 +59,7 @@ export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin }: Rail
             */}
             {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
             <aside
-                className={cn('cbx-rail', 'hidden lg:flex', (pinned || hover) && 'open')}
+                className={cn('idc-rail', 'hidden lg:flex', (pinned || hover) && 'open')}
                 onMouseEnter={() => setHover(true)}
                 onMouseLeave={() => setHover(false)}
                 onFocus={() => setHover(true)}
@@ -66,7 +73,7 @@ export function Rail({ areas, brandHref, brandLabel, pinned, onTogglePin }: Rail
                 <div className="cbx-rail-hd">
                     <Link
                         href={brandHref}
-                        className="cbx-rail-brand"
+                        className="idc-rail-brand"
                         aria-label={`Cbox ID · ${brandLabel}`}
                     >
                         <span className="cbx-rail-wordmark" aria-hidden="true" />

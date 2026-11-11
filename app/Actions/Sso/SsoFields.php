@@ -11,6 +11,7 @@ use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Enterprise\EnterpriseReach;
+use App\Platform\IssuerUrl;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Enums\ConnectionType;
@@ -108,11 +109,11 @@ final class SsoFields
     {
         return $connection->type === ConnectionType::Saml
             ? [
-                'sp_entity_id' => url('/sso/saml/'.$connection->id),
-                'sp_acs_url' => route('sso.saml.acs', $connection->id),
+                'sp_entity_id' => IssuerUrl::to('/sso/saml/'.$connection->id),
+                'sp_acs_url' => IssuerUrl::to(route('sso.saml.acs', $connection->id, false)),
                 'sp_metadata_url' => self::metadataUrl($connection),
             ]
-            : ['redirect_uri' => route('sso.oidc.callback', $connection->id)];
+            : ['redirect_uri' => IssuerUrl::to(route('sso.oidc.callback', $connection->id, false))];
     }
 
     /**
@@ -123,7 +124,7 @@ final class SsoFields
      */
     public static function metadataUrl(Connection $connection): string
     {
-        return route('sso.saml.metadata', $connection->id);
+        return IssuerUrl::to(route('sso.saml.metadata', $connection->id, false));
     }
 
     /**

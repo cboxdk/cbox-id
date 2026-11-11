@@ -84,9 +84,9 @@ it('hides what an account role may not see, and drops the area when it holds not
     expect($pages())->toBe([]);
 
     signInAsMember($result->owner->id);
-    expect($pages())->toContain('billing')
-        ->and($pages())->toContain('organization-settings')
-        ->and($pages())->toContain('keys');
+    expect($pages())->toContain('orgs.settings.billing')
+        ->and($pages())->toContain('orgs.settings')
+        ->and($pages())->toContain('orgs.settings.api-keys');
 
     // A Reader reads operational records; billing requires its separate app role.
     //
@@ -97,16 +97,16 @@ it('hides what an account role may not see, and drops the area when it holds not
     nextRequest();
     signInAsMember($viewerSubjectId);
 
-    expect($pages())->not->toContain('billing')
-        ->and($pages())->not->toContain('organization-settings')
-        ->and($pages())->not->toContain('keys');
+    expect($pages())->not->toContain('orgs.settings.billing')
+        ->and($pages())->not->toContain('orgs.settings')
+        ->and($pages())->not->toContain('orgs.settings.api-keys');
 
     grantNativeProductRoles($viewer, ['billing']);
     nextRequest();
     signInAsMember($viewerSubjectId);
-    expect($pages())->toContain('billing')->not->toContain('projects')
-        ->and($pages())->not->toContain('organization-settings')
-        ->and($pages())->not->toContain('keys');
+    expect($pages())->toContain('orgs.settings.billing')->not->toContain('orgs.projects')
+        ->and($pages())->not->toContain('orgs.settings')
+        ->and($pages())->not->toContain('orgs.settings.api-keys');
 });
 
 /**
@@ -140,15 +140,15 @@ it('claims a page detail route without claiming its prefix siblings', function (
 it('knows where every page in every plane sits', function (): void {
     $location = app(ConsoleLocation::class);
 
-    expect($location->areaLabel('billing'))->toBe('Workspace')
-        ->and($location->areaLabel('account'))->toBe('My account')
+    expect($location->areaLabel('orgs.settings.billing'))->toBe('Organization')
+        ->and($location->areaLabel('account'))->toBe('Account')
         ->and($location->areaLabel('environment.connections'))->toBe('Authentication')
         ->and($location->areaLabel('environment.users.show'))->toBe('Users & orgs')
         // Platform admin is ONE area now — "Insights" and "Administration" were two more
         // words beside the environment console's Monitoring and Advanced on one rail.
         ->and($location->areaLabel('platform.usage'))->toBe('Platform')
         ->and($location->areaLabel('platform.operators'))->toBe('Platform')
-        ->and($location->areaLabel('platform.workspaces.show'))->toBe('Platform');
+        ->and($location->areaLabel('platform.orgs.show'))->toBe('Platform');
 
     // A route belonging to no plane's navigation still answers null rather than
     // guessing — the eyebrow is omitted, not wrong.

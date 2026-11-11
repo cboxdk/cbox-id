@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Actions;
 
 use App\Platform\Actions\Principal\OperatorPrincipal;
+use App\Platform\Scopes\ScopeRegistry;
 
 /**
  * Every scope the platform plane ({@see ActionPlane::Platform}) asks for — the `operator:*`
@@ -25,8 +26,8 @@ final class PlatformScopes
      */
     public const array SCOPES = [
         'operator:workspaces:write' => [
-            'label' => 'Manage workspaces',
-            'description' => 'Create a workspace with its owner, first project and first environment; suspend and reactivate workspaces.',
+            'label' => 'Manage organizations',
+            'description' => 'Create an organization with its owner, first project and first environment; suspend and reactivate organizations.',
         ],
         'operator:environments:write' => [
             'label' => 'Manage environments',
@@ -50,11 +51,26 @@ final class PlatformScopes
 
     public static function knows(string $scope): bool
     {
-        return isset(self::SCOPES[$scope]);
+        return self::resolve($scope) !== null;
     }
 
     public static function label(string $scope): string
     {
-        return self::SCOPES[$scope]['label'] ?? $scope;
+        return self::SCOPES[self::resolve($scope) ?? $scope]['label'] ?? $scope;
+    }
+
+    /**
+     * The name this vocabulary files $scope under — itself, or the old name a new one stands
+     * for ({@see ScopeRegistry}) — or null when it is not one of these.
+     */
+    public static function resolve(string $scope): ?string
+    {
+        foreach (ScopeRegistry::equivalents($scope) as $name) {
+            if (isset(self::SCOPES[$name])) {
+                return $name;
+            }
+        }
+
+        return null;
     }
 }

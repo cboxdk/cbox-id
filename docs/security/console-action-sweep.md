@@ -26,7 +26,7 @@ Three fences, from the outside in. Each one alone answers a foreign id with noth
    itself, and the action answers `ActionRefused::notFound()`.
 2. **The organization, for a confined principal.** A principal says whether it acts with
    the environment's authority or inside one organization:
-   `Principal::confinedToOrganization()`. The organization console, a person's signed-in
+   `Principal::confinedToOrganization()`. The customer organization console, a person's signed-in
    token (`DelegatedTokenPrincipal`) and an Admin Portal session are confined; a management
    key and the environment console are not. Every action that reaches into organizations asks
    that one method — `OrganizationTarget`, `IntegrationReach`, `EnterpriseReach`,
@@ -70,9 +70,9 @@ The passes:
 | Pass | Caller | Stranger |
 |---|---|---|
 | Environment plane | an environment key holding every scope | the same world in another environment |
-| Environment plane, confined | the organization console, a signed-in token and an Admin Portal session, each confined to one organization | another organization in the same environment |
+| Environment plane, confined | the customer organization console, a signed-in token and an Admin Portal session, each confined to one organization | another organization in the same environment |
 | Environment plane, over REST | an environment key, every read | another environment — checks the wire renders the API's `not_found` envelope |
-| Workspace plane | a workspace key | another workspace's environments, projects, members, invitations and keys |
+| Organization plane | an organization key | another organization's environments, projects, members, invitations and keys |
 | Account plane | a person's token | another person's sessions, passkeys, devices and app keys, and an organization they do not belong to |
 | Platform plane | an operator | an organization named under an environment it is not in |
 
@@ -87,7 +87,7 @@ Listed in the test (`SWEEP_UNSWEPT`), checked for staleness, each with its reaso
   already fences, or is keyed to the person acting. The parent is swept; the name is never
   swapped (`CrossTenantSweep::NAMES`).
 - **The platform plane's single ids.** An operator administers every environment,
-  workspace and operator of the deployment; nothing there is somebody else's to them. What
+  organization and operator of the deployment; nothing there is somebody else's to them. What
   *can* be foreign is a pair — an organization named under an environment it is not in —
   and that is swept.
 - **Answers that are not a 404 on purpose** (`SWEEP_AS_UNKNOWN`). From inside an
@@ -99,7 +99,7 @@ Listed in the test (`SWEEP_UNSWEPT`), checked for staleness, each with its reaso
   403 or a 2xx. The property is "indistinguishable from no id"; 404 is how almost every
   action says it.
 - **A signed-in token's critical actions.** They wait for the person's approval before they
-  run, and so before any lookup; the organization console runs the same lookup unheld and is
+  run, and so before any lookup; the customer organization console runs the same lookup unheld and is
   swept.
 
 ## Findings
@@ -107,7 +107,7 @@ Listed in the test (`SWEEP_UNSWEPT`), checked for staleness, each with its reaso
 The first registry-driven run (October 2026) found, and this change fixed:
 
 1. **A person's signed-in token held the environment's authority over roles and
-   permissions.** `RoleAuthority::of()` asked "is this the organization console?" instead of
+   permissions.** `RoleAuthority::of()` asked "is this the customer organization console?" instead of
    `confinedToOrganization()`, so an organization owner's token could update, re-permission
    and delete every organization's roles and permissions in the environment. It now asks the
    principal. **Cross-tenant write — the one finding of that severity.**
@@ -121,7 +121,7 @@ The first registry-driven run (October 2026) found, and this change fixed:
    `apps.secrets.revoke`. The secret is now looked up among the app's own first: 404.
 5. **An organization the person is not a member of answered 422 `not_a_member`** on
    `account.api_keys.create`. Now 404.
-6. **A workspace key got 403 `owner_only` for another workspace's member** on
+6. **An organization key got 403 `owner_only` for another organization's member** on
    `team.transfer_ownership`: the refusal ran before the lookup. The member is resolved
    first now, so a foreign one is a 404 and the key's own member still gets the 403.
 
@@ -134,7 +134,7 @@ provider name, not a record by id.
 
 Before the action layer, this document was a hand-run inventory of console controller
 methods (and before that, of Volt component methods), graded scoped / weak / unscoped. Every
-finding from those runs was closed — `manageableTarget()` resolving a workspace member
+finding from those runs was closed — `manageableTarget()` resolving an organization member
 across every account, `Connections::byId()` settling ownership in PHP,
 `GroupRoleMappings::map()` committing a foreign role id, the environment approvals console
 approving as the wrong subject. They are in this file's history. What replaced the

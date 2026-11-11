@@ -10,7 +10,8 @@ use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Input\Field;
-use App\Platform\Actions\WorkspaceScopes;
+use App\Platform\Actions\OrganizationScopes;
+use App\Platform\Actions\RenamedActions;
 
 /**
  * A management API's OpenAPI document — one per plane — with every action's operation
@@ -111,11 +112,11 @@ final readonly class ActionOpenApi
      */
     private static function admissionFailure(array $operation, ActionDefinition $action): array
     {
-        if (in_array($action->plane, [ActionPlane::Workspace, ActionPlane::Environment], true)) {
+        if (in_array($action->plane, [ActionPlane::Organization, ActionPlane::Environment], true)) {
             $parameters = is_array($operation['parameters'] ?? null) ? array_values($operation['parameters']) : [];
             $selector = [
                 'name' => 'Cbox-Organization', 'in' => 'header', 'required' => false,
-                'description' => 'Select the exact workspace for a platform-root user token. Required when an unbound token can access multiple workspaces. Must match an organization-bound token or workspace key; never changes the credential authority.',
+                'description' => 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.',
                 'schema' => ['type' => 'string', 'minLength' => 1],
             ];
             if (! in_array($selector, $parameters, true)) {
@@ -125,7 +126,7 @@ final readonly class ActionOpenApi
         }
 
         if ($action->plane === ActionPlane::Environment
-            || ($action->plane === ActionPlane::Workspace && in_array($action->scope, ['workspace:read', 'projects:write', 'environments:write', 'keys:write'], true))) {
+            || ($action->plane === ActionPlane::Organization && OrganizationScopes::admitted($action->scope))) {
             $responses = is_array($operation['responses'] ?? null) ? $operation['responses'] : [];
             $operation['responses'] = self::withResponse($responses, 503, [
                 'description' => 'Product admission could not be verified. The request is refused; retry later.',
@@ -170,9 +171,16 @@ final readonly class ActionOpenApi
             'operationId' => $action->toolName(),
             'x-action' => $action->name,
             // Machine-readable twins of the sentence above, for generated clients.
-            'x-scope' => $action->scope,
+            'x-scope' => $action->documentedScope(),
+            'x-scope-aliases' => $action->scopeAliases(),
             'x-danger' => $action->danger->value,
         ];
+
+        // The names this action had before v3, which a generated client (cbox-cli builds its
+        // verbs from `x-action`) keeps as aliases until v3.1 ({@see RenamedActions}).
+        if (RenamedActions::retired($action->name) !== []) {
+            $operation['x-action-aliases'] = RenamedActions::retired($action->name);
+        }
 
         $operation['parameters'] = $parameters;
 
@@ -298,8 +306,13 @@ final readonly class ActionOpenApi
     private static function described(array $operation, ActionDefinition $action): array
     {
         $operation['x-action'] ??= $action->name;
-        $operation['x-scope'] ??= $action->scope;
+        $operation['x-scope'] ??= $action->documentedScope();
+        $operation['x-scope-aliases'] ??= $action->scopeAliases();
         $operation['x-danger'] ??= $action->danger->value;
+
+        if (RenamedActions::retired($action->name) !== []) {
+            $operation['x-action-aliases'] ??= RenamedActions::retired($action->name);
+        }
 
         return $operation;
     }
@@ -438,7 +451,7 @@ final readonly class ActionOpenApi
 
     /**
      * What a key needs to run it. On the workspace plane that is the scope AND a role that
-     * holds the capability the scope and the action ask for ({@see WorkspaceScopes}) — the
+     * holds the capability the scope and the action ask for ({@see OrganizationScopes}) — the
      * part a reader would otherwise find out from a 403.
      *
      * Public because the generated actions reference (`php artisan docs:actions`) prints
@@ -446,7 +459,8 @@ final readonly class ActionOpenApi
      */
     public function requirement(ActionDefinition $action): string
     {
-        $sentence = "Requires scope `{$action->scope}`";
+        $aliases = $action->scopeAliases();
+        $sentence = "Requires scope `{$action->documentedScope()}`".($aliases === [] ? '' : ' (until v3.1 also accepted as `'.implode('`, `', $aliases).'`)');
 
         if ($action->plane === ActionPlane::Platform) {
             return $sentence.' on an access token delegated by an active platform operator. No management key is accepted.';
@@ -456,12 +470,12 @@ final readonly class ActionOpenApi
             return $sentence.' on an access token you delegated; it acts on your own account only. No management key is accepted.';
         }
 
-        if ($action->plane !== ActionPlane::Workspace) {
+        if ($action->plane !== ActionPlane::Organization) {
             return $sentence.'.';
         }
 
         $capabilities = array_values(array_unique(array_filter(
-            [WorkspaceScopes::capability($action->scope), $action->consoleGate->capability()],
+            [OrganizationScopes::capability($action->scope), $action->consoleGate->capability()],
             'is_string',
         )));
 

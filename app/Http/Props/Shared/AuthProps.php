@@ -80,7 +80,7 @@ final readonly class AuthProps implements Prop
                 email: $subject->email,
                 emailVerified: $subject->emailVerified,
                 // Confirmed from the person's own account, which lives on the root host.
-                accountUrl: $subject->emailVerified ? null : rtrim(config()->string('app.url'), '/').'/account',
+                accountUrl: $subject->emailVerified ? null : rtrim(config()->string('app.url'), '/').'/settings',
             ),
             // No organization: this person is acting on the ENVIRONMENT. A page about one of
             // its tenants names it in its own URL (`/admin/organizations/{organization}/…`)

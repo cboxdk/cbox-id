@@ -15,10 +15,19 @@ it('refuses to switch into an organization the user does not belong to', functio
     $orgB = app(Organizations::class)->create(new NewOrganization('Rival Corp', 'rival-'.uniqid()));
     $sessionId = app(SessionManager::class)->start($subject->id, $orgA->id, ['pwd'])->id;
 
+    // The switch, and its v2 address: both answer with the picker, and B is opened by no one.
+    foreach ([route('orgs.switch'), '/organization/switch'] as $switch) {
+        $this->withSession([PlatformAuth::SESSION_KEY => $sessionId, PlatformAuth::ORG_KEY => $orgA->id])
+            ->post($switch, ['organization' => $orgB->id])
+            ->assertRedirect(route('orgs.index'))
+            ->assertSessionHas(PlatformAuth::ORG_KEY, $orgA->id); // unchanged — B was rejected
+    }
+
+    // …and B's own address is a 404 to them, not a switch.
     $this->withSession([PlatformAuth::SESSION_KEY => $sessionId, PlatformAuth::ORG_KEY => $orgA->id])
-        ->post('/organization/switch', ['organization' => $orgB->id])
-        ->assertRedirect(route('dashboard'))
-        ->assertSessionHas(PlatformAuth::ORG_KEY, $orgA->id); // unchanged — B was rejected
+        ->get('/orgs/'.$orgB->slug.'/projects')
+        ->assertNotFound()
+        ->assertSessionHas(PlatformAuth::ORG_KEY, $orgA->id);
 });
 
 it('ignores a tampered org id without silently selecting another organization', function () {

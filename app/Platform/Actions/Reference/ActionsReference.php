@@ -9,6 +9,7 @@ use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\OpenApi\ActionOpenApi;
+use App\Platform\Api\V1\V1Paths;
 
 /**
  * THE ACTIONS REFERENCE — one Markdown page per {@see ActionPlane}, written from the
@@ -151,8 +152,8 @@ final readonly class ActionsReference
             '',
             '| | |',
             '|---|---|',
-            '| REST | `'.$action->method.' /api/v1'.$action->documentedPath().'` → `'.$action->status.'` |',
-            '| Scope | `'.$action->scope.'` — '.$this->scopeSentence($action).' |',
+            '| REST | '.$this->rest($action).' |',
+            '| Scope | `'.$action->documentedScope().'`'.(str_starts_with($this->scopeSentence($action), '(') ? ' ' : ' — ').$this->scopeSentence($action).' |',
             '| Danger | `'.$action->danger->value.'` |',
             '| MCP tool | `'.$action->toolName().'` |',
             '| CLI | `'.$this->cli($action).'` |',
@@ -301,7 +302,7 @@ final readonly class ActionsReference
     {
         return match ($plane) {
             ActionPlane::Environment => 'Environment actions',
-            ActionPlane::Workspace => 'Workspace actions',
+            ActionPlane::Organization => 'Organization actions',
             ActionPlane::Account => 'Account actions',
             ActionPlane::Platform => 'Platform actions',
         };
@@ -311,7 +312,7 @@ final readonly class ActionsReference
     {
         return match ($plane) {
             ActionPlane::Environment => 20,
-            ActionPlane::Workspace => 30,
+            ActionPlane::Organization => 30,
             ActionPlane::Account => 40,
             ActionPlane::Platform => 50,
         };
@@ -321,7 +322,7 @@ final readonly class ActionsReference
     {
         return match ($plane) {
             ActionPlane::Environment => "All {$count} actions inside one environment — organizations, users, apps, APIs, keys, sign-in, governance — with their REST route, scope, danger, MCP tool and CLI command.",
-            ActionPlane::Workspace => "All {$count} workspace actions — projects, environments, the team and keys — with their REST route, scope, danger, MCP tool and CLI command.",
+            ActionPlane::Organization => "All {$count} organization actions — projects, environments, the team and keys — with their REST route, scope, danger, MCP tool and CLI command.",
             ActionPlane::Account => "All {$count} actions a person runs on their own account — sessions, app grants, personal keys, devices — with their REST route, scope, danger, MCP tool and CLI command.",
             ActionPlane::Platform => "All {$count} platform-operator actions on the deployment itself, with their REST route, scope, danger, MCP tool and CLI command.",
         };
@@ -338,8 +339,8 @@ final readonly class ActionsReference
                 '',
                 $common,
             ],
-            ActionPlane::Workspace => [
-                'The workspace plane is the customer\'s own Cbox account, above every environment it owns: projects, environments (and their custom domains), the team, workspace keys and the keys of each environment. It is served on the platform root and resolves no environment.',
+            ActionPlane::Organization => [
+                'The organization plane is the customer\'s own Cbox account, above every environment it owns: projects, environments (and their custom domains), the team, organization keys and the keys of each environment. It is served on the platform root and resolves no environment.',
                 '',
                 $common,
             ],
@@ -349,11 +350,38 @@ final readonly class ActionsReference
                 $common,
             ],
             ActionPlane::Platform => [
-                'The platform plane is **the deployment itself**, for the people who run the install: workspaces, environments, organizations inside any environment, and the operator roster. No key of any kind reaches it — only a platform operator, in the console or through a token they delegated, carrying the `operator:*` scope an action asks for.',
+                'The platform plane is **the deployment itself**, for the people who run the install: organizations, environments, the organizations inside each environment, and the operator roster. No key of any kind reaches it — only a platform operator, in the console or through a token they delegated, carrying the `operator:*` scope an action asks for.',
                 '',
                 $common,
             ],
         };
+    }
+
+    /**
+     * The operation on the API host, and the old path beside it while that still answers.
+     */
+    private function rest(ActionDefinition $action): string
+    {
+        $old = '`'.$action->method.' /api/v1'.$action->documentedPath().'`';
+        $target = V1Paths::target($action->method, $action->documentedPath());
+
+        if ($target === null) {
+            return $old.' → `'.$action->status.'`';
+        }
+
+        $notes = [];
+
+        if ($target['id'] !== null && $target['id'] !== 'id') {
+            $notes[] = '`{id}` is the `'.$target['id'].'`';
+        }
+
+        if ($target['inputs'] !== []) {
+            $notes[] = implode(', ', array_map(static fn (string $name): string => '`'.$name.'`', array_values($target['inputs']))).' in the query';
+        }
+
+        $moved = $notes === [] ? '' : ' ('.implode('; ', $notes).')';
+
+        return '`'.$target['method'].' /v1'.$target['path'].'`'.$moved.' → `'.$action->status.'`; was '.$old;
     }
 
     /**
@@ -365,31 +393,30 @@ final readonly class ActionsReference
     {
         // Served by every deployment without a key; the committed copy is linked by its
         // canonical URL, because a docs site renders docs/ and nothing beside it.
-        $served = $plane === ActionPlane::Account ? '/api/v1/me/openapi.yaml' : '/api/v1/'.$plane->value.'/openapi.yaml';
-        $openApi = '| OpenAPI | `'.$served.'` on the host above — public, no key needed ([source](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/'.$plane->value.'.yaml)); every operation carries `x-action`, `x-scope` and `x-danger` |';
+        $openApi = '| OpenAPI | `https://api.cboxid.com/openapi.json`, one document for every plane — public, no key needed ([source](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/openapi.json)); every operation carries `x-action`, `x-scope` and `x-danger`. Reference: `https://api.cboxid.com/docs` |';
 
         return match ($plane) {
             ActionPlane::Environment => [
-                '| REST | `https://<environment-host>/api/v1/…` with `Authorization: Bearer cbid_env_…` (a secret key of that environment), or a token a person delegated. At the platform root, a team member\'s token names the environment in a `Cbox-Environment` header |',
-                '| MCP | `/mcp` on the environment\'s host. At the platform root\'s `/mcp`, every environment tool takes an `environment` argument (an id or slug from `whoami`) |',
+                '| REST | `https://api.cboxid.com/v1/…` with `Authorization: Bearer cbid_env_…` (a secret key, which names its environment), or a token a person delegated (its issuer names the environment). A platform-root team member\'s token names the environment in a `Cbox-Environment` header. The old `https://<environment-host>/api/v1/…` answers until its callers have moved, marked `Deprecation` |',
+                '| MCP | `https://app.cboxid.com/mcp`, the one MCP server: a key or a token acts in its own environment, and a platform-root token names the environment per tool (`environment`, an id or slug from `whoami`). An environment\'s own `/mcp` answers too, during the transition |',
                 '| CLI | `cbox login`, `cbox id use <environment>`, then the command below — or `CBOX_ID_ENDPOINT` + `CBOX_ID_TOKEN=cbid_env_…` for CI |',
                 $openApi,
             ],
-            ActionPlane::Workspace => [
-                '| REST | `https://<root-host>/api/v1/workspace/…` with `Authorization: Bearer cbid_ws_…` (a workspace key, whose role must also allow the action), or a team member\'s token from the root |',
-                '| MCP | `/mcp` on the platform root, signed in as a member of the workspace\'s team, or with a workspace key |',
+            ActionPlane::Organization => [
+                '| REST | `https://api.cboxid.com/v1/organization`, `/v1/projects`, `/v1/environments`, `/v1/members`, … with `Authorization: Bearer cbid_org_…` (an organization key, whose role must also allow the action), or a team member\'s token from the platform root |',
+                '| MCP | `https://app.cboxid.com/mcp`, signed in as a member of the organization\'s team, or with an organization key |',
                 '| CLI | `cbox login` at the root, then the command below |',
                 $openApi,
             ],
             ActionPlane::Account => [
-                '| REST | `https://<host>/api/v1/me/…` with a token you delegated — on your environment\'s host, or on the platform root for a workspace team member or operator |',
-                '| MCP | `/mcp` on the same host, signed in as yourself |',
+                '| REST | `https://api.cboxid.com/v1/me/…` with a token you delegated: its issuer is the environment you belong to, or the platform root for an organization team member or operator |',
+                '| MCP | `https://app.cboxid.com/mcp`, signed in as yourself |',
                 '| CLI | `cbox login`, then the command below |',
                 $openApi,
             ],
             ActionPlane::Platform => [
-                '| REST | `https://<root-host>/api/v1/platform/…` with a token the platform root issued a platform operator. No key is accepted |',
-                '| MCP | `/mcp` on the platform root, signed in as a platform operator |',
+                '| REST | `https://api.cboxid.com/v1/admin/…` with a token the platform root issued a platform operator. No key is accepted |',
+                '| MCP | `https://app.cboxid.com/mcp`, signed in as a platform operator |',
                 '| CLI | `cbox login` at the root as an operator, then the command below |',
                 $openApi,
             ],

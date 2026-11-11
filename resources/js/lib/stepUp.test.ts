@@ -40,17 +40,27 @@ describe('challengeFrom', () => {
     });
 
     it('reads one from a Headers object and a JSON string body', () => {
-        const headers = new Headers({ 'X-Cbox-Step-Up': '/admin/sudo' });
+        const headers = new Headers({
+            'X-Cbox-Step-Up': '/orgs/acme/projects/web/environments/production/sudo',
+        });
 
         expect(
             challengeFrom(
                 403,
                 headers,
                 JSON.stringify(
-                    body({ plane: 'environment', confirm: '/admin/sudo', reason: null }),
+                    body({
+                        plane: 'environment',
+                        confirm: '/orgs/acme/projects/web/environments/production/sudo',
+                        reason: null,
+                    }),
                 ),
             ),
-        ).toEqual({ plane: 'environment', confirm: '/admin/sudo', reason: null });
+        ).toEqual({
+            plane: 'environment',
+            confirm: '/orgs/acme/projects/web/environments/production/sudo',
+            reason: null,
+        });
     });
 
     it('never treats another 403 as a password prompt', () => {
@@ -95,7 +105,11 @@ describe('the queue', () => {
 
     it('never lets one plane answer for the other', async () => {
         const org = requestStepUp(organization);
-        const env = requestStepUp({ plane: 'environment', confirm: '/admin/sudo', reason: null });
+        const env = requestStepUp({
+            plane: 'environment',
+            confirm: '/orgs/acme/projects/web/environments/production/sudo',
+            reason: null,
+        });
         let envSettled = false;
         void env.then(() => {
             envSettled = true;

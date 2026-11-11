@@ -11,6 +11,7 @@ use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
+use App\Platform\Actions\RenamedActions;
 use App\Platform\Agents\ApprovalMail;
 use App\Platform\EnvironmentOrigin;
 use App\Platform\PlaneResolver;
@@ -74,7 +75,7 @@ final readonly class ActionApprovalGate
         $digest = $this->digest($principal, $action, $input);
 
         if ($approvalId !== null && $approvalId !== '') {
-            $this->spend($principal, $approvalId, $digest);
+            $this->spend($principal, $approvalId, $digest, $action, $input);
 
             return $approvalId;
         }
@@ -112,8 +113,9 @@ final readonly class ActionApprovalGate
         // its secrets taken out. Reading only — the repeat is what runs, against the digest.
         ActionApprovalRequest::query()->create([
             'id' => $request->requestId,
-            'principal' => $principal->kind().':'.$principal->id(),
-            'action' => $action->name,
+            // v2's spellings while v2 may still serve this database ({@see RenamedActions}).
+            'principal' => RenamedActions::storedKind($principal->kind()).':'.$principal->id(),
+            'action' => RenamedActions::stored($action->name),
             'environment_id' => match (true) {
                 $principal instanceof EnvironmentKeyPrincipal => $principal->key()->environment_id,
                 $principal instanceof EnvironmentMemberPrincipal => $principal->environmentId(),
@@ -206,7 +208,10 @@ final readonly class ActionApprovalGate
     }
 
     /** @throws ActionRefused */
-    private function spend(Principal $principal, string $approvalId, string $digest): void
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private function spend(Principal $principal, string $approvalId, string $digest, ActionDefinition $action, array $input): void
     {
         if (! $this->owns($principal, $approvalId)) {
             throw new ActionRefused('approval_invalid', new ActionMessage('console.no_approval_with_that_id_belongs_to_this_credential_5e7c701c'), 403);
@@ -214,6 +219,14 @@ final readonly class ActionApprovalGate
 
         if ($this->inApproverRealm($principal, fn (): bool => $this->approvals->consume($approvalId, $digest)) === true) {
             return;
+        }
+
+        // The same request under the other spellings of the action and the key kind — an
+        // approval raised under the v3 names, or one a later release raises under them.
+        foreach ($this->otherDigests($principal, $action, $input, $digest) as $retired) {
+            if ($this->inApproverRealm($principal, fn (): bool => $this->approvals->consume($approvalId, $retired)) === true) {
+                return;
+            }
         }
 
         throw match ($this->inApproverRealm($principal, fn (): ?ActionApprovalStatus => $this->approvals->status($approvalId))) {
@@ -263,9 +276,41 @@ final readonly class ActionApprovalGate
             return false;
         }
 
-        return $principal instanceof RootPersonPrincipal
-            ? $principal->owns($owner)
-            : hash_equals($principal->kind().':'.$principal->id(), $owner);
+        if ($principal instanceof RootPersonPrincipal) {
+            return $principal->owns($owner);
+        }
+
+        foreach (RenamedActions::kindSpellings($principal->kind()) as $kind) {
+            if (hash_equals($kind.':'.$principal->id(), $owner)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The digests this request has under every other spelling of its action and its kind
+     * ({@see RenamedActions}): the one it is asked for is $digest.
+     *
+     * @param  array<string, mixed>  $input
+     * @return list<string>
+     */
+    private function otherDigests(Principal $principal, ActionDefinition $action, array $input, string $digest): array
+    {
+        $digests = [];
+
+        foreach (RenamedActions::kindSpellings($principal->kind()) as $kind) {
+            foreach (RenamedActions::spellings($action->name) as $name) {
+                $other = self::hashed($kind.':'.$principal->id(), $name, $input);
+
+                if ($other !== $digest) {
+                    $digests[] = $other;
+                }
+            }
+        }
+
+        return $digests;
     }
 
     /**
@@ -273,11 +318,17 @@ final readonly class ActionApprovalGate
      */
     private function digest(Principal $principal, ActionDefinition $action, array $input): string
     {
-        return hash('sha256', json_encode([
-            $principal->kind().':'.$principal->id(),
-            $action->name,
-            self::canonical($input),
-        ], JSON_THROW_ON_ERROR));
+        // Taken under the names v2 reads, so an approval v3 raises can still be spent by v2
+        // during the rollout ({@see RenamedActions::stored()}).
+        return self::hashed(RenamedActions::storedKind($principal->kind()).':'.$principal->id(), RenamedActions::stored($action->name), $input);
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     */
+    private static function hashed(string $owner, string $name, array $input): string
+    {
+        return hash('sha256', json_encode([$owner, $name, self::canonical($input)], JSON_THROW_ON_ERROR));
     }
 
     private static function canonical(mixed $value): mixed

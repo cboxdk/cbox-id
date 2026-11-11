@@ -57,7 +57,7 @@ it('asks for the step-up in place when a sensitive action was not recently confi
      * redirects to, so keeping only the path is what stops a crafted referer turning the
      * step-up into an open redirect.
      */
-    expect(session()->get('sudo.intended'))->toBe('/account');
+    expect(session()->get('sudo.intended'))->toBe('/settings');
 });
 
 it('performs the sensitive action once sudo is confirmed', function (): void {
@@ -228,7 +228,7 @@ it('never stores an off-site return-to from the referer', function (string $shap
         // The backslash variant browsers normalise to the same thing.
         'backslash' => $origin.'/\\evil.tld/x',
         'cross-host' => $scheme.'://evil.tld/x',
-        'cross-scheme' => ($scheme === 'https' ? 'http' : 'https').'://'.$host.'/account',
+        'cross-scheme' => ($scheme === 'https' ? 'http' : 'https').'://'.$host.'/settings',
         default => $shape,
     };
 
@@ -246,13 +246,13 @@ it('stores a same-origin referer as a root-relative path', function (): void {
 
     $origin = rtrim((string) config('app.url'), '/');
 
-    $this->withHeader('Referer', $origin.'/account?tab=security')
+    $this->withHeader('Referer', $origin.'/settings?tab=security')
         ->postJson(route('passkeys.register.options'))
         ->assertStatus(403);
 
     // The PATH, not the URL the caller sent — same-origin by construction, whatever
     // authority the header carried.
-    expect(session('sudo.intended'))->toBe('/account?tab=security');
+    expect(session('sudo.intended'))->toBe('/settings?tab=security');
 });
 
 /*
@@ -293,7 +293,7 @@ it('confirms an environment step-up against the administrator\'s platform-root p
 it('never lets an environment step-up satisfy the console', function (): void {
     crudSetup();
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     // Two keys, and the separation that survives the merge is the one that was always
     // about AUTHORITY rather than about which shell rendered: confirming you hold an

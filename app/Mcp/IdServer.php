@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp;
 
+use App\Mcp\Methods\CallTool;
 use App\Mcp\Tools\ApprovalStatus;
 use App\Mcp\Tools\ListActions;
 use App\Mcp\Tools\WhoAmI;
@@ -48,7 +49,7 @@ final class IdServer extends Server
     protected string $version = 'dev';
 
     protected string $instructions = <<<'MARKDOWN'
-        This is the management plane of Cbox ID (an identity provider). With an environment key it is one environment: its APIs, apps, organizations and users. With a workspace key it is the workspace above them: projects, environments, the team and keys. Signed in as a person, it is what that person may do in their organization here, within the scopes they granted you. Signed in at the platform root as one of a workspace's team, it is the workspace, every environment of it the person administers, their own account and — for a platform operator — the deployment; an environment tool then takes an `environment` argument (an id or slug from `whoami`) naming where to act. Each tool is one action, with the same rules, refusals and audit trail as the REST API and the console.
+        This is the management plane of Cbox ID (an identity provider). With an environment key it is one environment: its APIs, apps, organizations and users. With an organization key it is the organization above them: projects, environments, the team and keys. Signed in as a person, it is what that person may do in their organization here, within the scopes they granted you. Signed in at the platform root as one of an organization's team, it is the organization, every environment of it the person administers, their own account and — for a platform operator — the deployment; an environment tool then takes an `environment` argument (an id or slug from `whoami`) naming where to act. Each tool is one action, with the same rules, refusals and audit trail as the REST API and the console.
 
         - You act as the credential this connection was given. `whoami` says which, and the scopes it holds; a tool you do not see is one it may not run.
         - A call may come back `approval_pending`: a person must approve it on their device first. Tell them the code, poll `approval_status`, then repeat the call with `approval_id`. Signed in as a person, every critical action waits for this.
@@ -80,6 +81,9 @@ final class IdServer extends Server
         // so a client's logs say which Cbox ID it talked to. It said `1.0.0` whatever ran.
         $version = config('app.version');
         $this->version = is_string($version) && $version !== '' ? $version : 'dev';
+
+        // A tool name v3 retired still calls its action until v3.1, unlisted and counted.
+        $this->addMethod('tools/call', CallTool::class);
 
         $actions = array_values(array_map(
             static fn ($action): ActionTool => new ActionTool($action),

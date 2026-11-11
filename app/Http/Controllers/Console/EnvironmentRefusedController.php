@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
-use App\Http\Controllers\EnvironmentHandoffController;
+use App\Http\Controllers\EnvironmentConsoleRedirectController;
 use App\Platform\CurrentUser;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * "YOU DON'T ADMINISTER THIS ENVIRONMENT" — what the root's open-environment door
- * ({@see EnvironmentHandoffController::openEnvironment()}) answers a person who is signed
+ * ({@see EnvironmentConsoleRedirectController::open()}) answers a person who is signed
  * in but may not open the environment they asked for.
  *
  * It is the end of a real journey, which is why it is a page and not a status code:
@@ -39,7 +39,7 @@ final readonly class EnvironmentRefusedController extends ConsoleController
         return $this->page('console/environment-refused', __('console.you_don_t_administer_this_environment_f9046e00'), [
             'refusedEnvironment' => $model === null ? null : ['name' => $model->name, 'type' => $model->type->value],
             'email' => app(CurrentUser::class)->email(),
-            'projectsHref' => $canRead ? route('projects') : null,
+            'projectsHref' => $canRead ? route('orgs.projects') : null,
             'accountsHref' => route('accounts'),
         ])->toResponse($request)->setStatusCode(403);
     }

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\EnvironmentSudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Models\AccessToken;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -25,24 +24,25 @@ it('opens the palette on ⌘K, finds a user by a pasted id and jumps to them', f
 
     $user = app(Subjects::class)->create('grace@hopper.test', 'Grace Hopper', 'supersecret123');
 
-    $page = visit('/admin');
+    $page = visit(envConsole());
 
     $page->keys('.cbx-page-title', 'Meta+k')
-        ->assertVisible('[cmdk-input]')
-        ->assertSee('Applications')
-        ->type('[cmdk-input]', $user->id)
-        ->assertSee('Open Grace Hopper')
-        ->keys('[cmdk-input]', 'Enter')
-        ->assertPathIs('/admin/users/'.$user->id)
+        ->assertVisible('.cbx-palette-search input')
+        ->type('.cbx-palette-search input', $user->id)
+        ->assertSee('Grace Hopper')
+        // The record the id found, by its row: the shared palette keeps the row that was
+        // first while the search was in flight ("Ask Cbox") active when records arrive.
+        ->click('.cbx-palette [role="option"]:has-text("Grace Hopper")')
+        ->assertPathIs(envConsolePath('/users/').$user->id)
         ->assertSee('Grace Hopper')
         ->assertNoJavaScriptErrors();
 })->group('a11y');
 
 it('runs Get started from a framework to the first sign-in', function (): void {
     actAsEnvironmentAdminOfATenant();
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
-    $page = visit('/admin/get-started');
+    $page = visit(envConsole('/get-started'));
 
     $page->assertSee('What are you building?')
         ->assertSee('Create your first app')
@@ -77,16 +77,16 @@ it('runs Get started from a framework to the first sign-in', function (): void {
 
 it('shows the API twin of a form and fits Get started on a phone', function (): void {
     actAsEnvironmentAdminOfATenant();
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
-    visit('/admin/apps/new')
+    visit(envConsole('/apps/new'))
         ->fill('name', 'Billing')
         ->click('[data-api-equivalent="apps.create"] button')
         ->assertSee('"name": "Billing"')
         ->assertSee('apps:write')
         ->assertNoJavaScriptErrors();
 
-    visit('/admin/get-started')->resize(375, 812)
+    visit(envConsole('/get-started'))->resize(375, 812)
         ->assertSee('What are you building?')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
         ->assertNoJavaScriptErrors();

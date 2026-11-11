@@ -22,7 +22,7 @@ request see [Approvals](agent-approvals.md) and [Trusted devices](trusted-device
 | Credential | Held when | Who approves |
 |---|---|---|
 | A secret key (`cbid_env_…`) with an approval policy | The action is at or above the policy's danger, or is named in it | The person who created the key. For a key minted by another key, the person at the top of that chain. |
-| A workspace key (`cbid_ws_…`) minted by a key with a policy | The same, with the policy it inherited | The person at the top of the minting chain |
+| An organization key (`cbid_ws_…`) minted by a key with a policy | The same, with the policy it inherited | The person at the top of the minting chain |
 | A token a person signed in with (an MCP client, `cbox login`) | Every **critical** action, always | That person |
 | A console session | Never. The console asks for your password before dangerous changes instead. | — |
 | An [Admin Portal](admin-portal.md) session | Never. The link is the approval. | — |
@@ -72,8 +72,8 @@ Things to know:
 - **A key a key mints is at least as supervised as its parent.** It gets the lower
   threshold of the two and the named actions of both, and its approvals go to the
   parent's person.
-- **The workspace console's API keys page takes no policy**, for Secret or Workspace
-  keys alike. A workspace key gets a policy only by inheriting one from the key that
+- **The organization console's API keys page takes no policy**, for Secret or Organization
+  keys alike. An organization key gets a policy only by inheriting one from the key that
   minted it.
 - **Approvals cover actions only.** A few scopes are still served by endpoints that are
   not actions; the create page lists them, because calls to them run without asking.
@@ -187,7 +187,7 @@ refusals are the same codes as REST. See [Agents and MCP](agents-and-mcp.md#crit
 
 Every [Audit log](activity-log.md) entry the approved action writes carries the approval's
 id and **who approved it**, so the row names both the key and the person who said yes.
-An approval or denial given in the console is recorded on the workspace's Audit log as
+An approval or denial given in the console is recorded on the organization's Audit log as
 `organization.action_approval_approved` or `organization.action_approval_denied`; one
 given on the phone as `approval.approved` or `approval.denied`.
 

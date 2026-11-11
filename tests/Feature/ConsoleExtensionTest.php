@@ -30,7 +30,7 @@ function pluginAdmin(): void
 /** Whether the console's shell offers an area with this label. */
 function shellOffersArea(string $label): bool
 {
-    $shell = (array) test()->get(route('dashboard'))->assertOk()->inertiaProps('shell');
+    $shell = consoleRail(test()->get(route('dashboard'))->assertOk());
 
     return collect($shell['areas'])->pluck('label')->contains($label);
 }

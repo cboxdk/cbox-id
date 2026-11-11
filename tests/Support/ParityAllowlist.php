@@ -39,12 +39,12 @@ final class ParityAllowlist
         return [
             // Payment-provider consent/3DS requires this browser's pending setup state.
             // Account and stored-card management remain Workspace actions.
-            'billing.setup',
-            'billing.complete',
+            'orgs.settings.billing.setup',
+            'orgs.settings.billing.complete',
             // Project checkout binds its short-lived economic quote and confirmation
             // to this authenticated browser, actor and explicitly named workspace.
-            'billing.preview',
-            'billing.confirm',
+            'orgs.settings.billing.preview',
+            'orgs.settings.billing.confirm',
             // Connecting a third-party account (Pipes): the person consents at the provider
             // in THIS browser, which carries the flow's state and PKCE verifier. A REST call
             // has no browser to send to GitHub.
@@ -70,8 +70,6 @@ final class ParityAllowlist
             // clients already initiate real CIBA through the OAuth backchannel endpoint;
             // this browser exercise deliberately cannot obtain an access token.
             'account.authenticator.review.send',
-            // Signing out of the environment console: ends the browser's session.
-            'admin.logout',
             // The device-authorization flow (RFC 8628): the person types the code they were shown.
             'device.approve',
             'device.deny',
@@ -148,6 +146,8 @@ final class ParityAllowlist
             // and the organization's name typed out, then landed somewhere they still belong.
             // The environment's authority archives one with `organizations.delete`.
             'settings.organization.destroy',
+            // …and its v2 address, a 308 to it while an old tab still has the form open.
+            'legacy.settings.organization.destroy',
             // Creating an account for yourself.
             'signup.register',
             // The product's signup ceremony: found/select your own team in this browser
@@ -215,13 +215,20 @@ final class ParityAllowlist
             'console.locale.update',
             'environment.locale.update',
             'platform.locale.update',
-            // Which organization the console is looking at.
+            // The shared shell's own preferences (theme, pinned rail, Help open) and marking
+            // its bell read: the signed-in person's chrome, not a management write.
+            'console.shell.preferences',
+            'console.shell.notifications.read',
+            // Which organization the console is looking at: a redirect to the same page in
+            // another `/orgs/{org}`. The API names its organization instead.
+            'orgs.switch',
+            // …and its v2 address, kept for a page an old tab still has open.
             'organization.switch',
             // Which environment the operator's console is pointed at — from the switcher, or
             // from a workspace's own page. The operator API names its environment instead.
             'platform.environment.switch',
-            'platform.workspaces.open',
-            'platform.workspaces.target',
+            'platform.orgs.open',
+            'platform.orgs.target',
         ];
     }
 
@@ -236,6 +243,10 @@ final class ParityAllowlist
             'queue-monitor.dashboard.job.replay',
             'queue-monitor.dashboard.stuck-jobs.resolve',
             'queue-monitor.dashboard.stuck-jobs.resolve-all',
+            // cboxdk/laravel-console-kit's header "New …": the levels run the same actions the
+            // Projects page runs (CreateProject, CreateEnvironment) or the self-serve
+            // organization create, so the write is an action behind the vendor route.
+            'console.shell.context.create',
         ];
     }
 

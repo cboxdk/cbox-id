@@ -66,7 +66,7 @@ it('documents the approval answer and header on every action, hand-written or ge
  *    and the workspace console's `keys.destroy`) stopped that key and left the keys it had
  *    minted working.
  */
-it('stops every key an environment key minted when the workspace revokes it', function (): void {
+it('stops every key an environment key minted when the organization revokes it', function (): void {
     $account = provisionAccount();
     $environment = serveOnTestHost($account['environment']);
     $workspaceKey = app(OrganizationApiKeys::class)->issue($account['organization']->id, 'Ops', MembershipRole::Admin, null, ['workspace:read', 'keys:write'])->plaintext;
@@ -146,7 +146,7 @@ it('registers the step-up client as the platform, not as the key whose action fi
  * 4. Projects are the workspace's billing anchors, and creating, renaming, suspending or
  *    reactivating one recorded nothing at all — from the API or the console.
  */
-it('records every project write on the workspace\'s log, as whoever made it', function (): void {
+it('records every project write on the organization\'s log, as whoever made it', function (): void {
     $workspace = provisionAccount()['organization'];
     $issued = app(OrganizationApiKeys::class)->issue($workspace->id, 'Ops', MembershipRole::Admin, null, ['workspace:read', 'projects:write']);
     $key = $issued->plaintext;

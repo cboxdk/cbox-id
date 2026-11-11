@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Route;
 
 /**
- * EVERY PAGE UNDER `/admin` IS SERVED BY A CONTROLLER.
+ * EVERY PAGE OF THE ENVIRONMENT CONSOLE IS SERVED BY A CONTROLLER.
  *
  * The environment console was the last plane still on Volt, and this test was how it was
  * kept from sliding back one page at a time: it read each route's closure for a captured
@@ -28,9 +28,9 @@ it('serves every environment-plane page from a controller', function (): void {
     ]);
 
     /*
-     * The front door is a REDIRECT, not a page: `/admin/login` sends you to the platform
-     * root's sign-in, because signing in is unified and this host is not where it happens.
-     * A redirect has nothing to render and no controller to name.
+     * The front door is a REDIRECT, not a page: `…/login` sends you to the app host's
+     * sign-in, because signing in is unified. A redirect has nothing to render and no
+     * controller to name.
      */
     $ceremony = ['admin.login'];
 
@@ -38,7 +38,8 @@ it('serves every environment-plane page from a controller', function (): void {
     $pages = 0;
 
     foreach (Route::getRoutes() as $route) {
-        if (! str_starts_with((string) $route->uri(), 'admin') || ! in_array('GET', $route->methods(), true)) {
+        // The console's own routes, under its path on the app host.
+        if (! str_starts_with((string) $route->uri(), '{environmentPath}') || ! in_array('GET', $route->methods(), true)) {
             continue;
         }
 

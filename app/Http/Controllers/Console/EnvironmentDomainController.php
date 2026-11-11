@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
-use App\Actions\Workspace\Environments\RemoveEnvironmentDomain;
-use App\Actions\Workspace\Environments\RequestEnvironmentDomain;
-use App\Actions\Workspace\Environments\VerifyEnvironmentDomain;
+use App\Actions\OrgPlane\Environments\RemoveEnvironmentDomain;
+use App\Actions\OrgPlane\Environments\RequestEnvironmentDomain;
+use App\Actions\OrgPlane\Environments\VerifyEnvironmentDomain;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\RequestEnvironmentDomainRequest;
-use App\Platform\Console\WorkspaceLanding;
+use App\Platform\Console\OrganizationLanding;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Organization\Contracts\EnvironmentDomains;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -35,7 +35,7 @@ use Inertia\Response;
  * environments followed a link or typed a URL, and the console sends them where they can
  * be; a write that fails the same question has nowhere to be sent.
  *
- * EVERY WRITE IS AN ACTION (`app/Actions/Workspace/Environments/*Domain`), the same one a
+ * EVERY WRITE IS AN ACTION (`app/Actions/OrgPlane/Environments/*Domain`), the same one a
  * workspace key runs at `/api/v1/workspace/environments/{id}/domain` — and it resolves
  * the environment against the ones this person may reach before any service sees the
  * id, so somebody else's environment is not found rather than refused.
@@ -45,7 +45,7 @@ final readonly class EnvironmentDomainController extends ConsoleController
     public function index(Request $request, Memberships $members, EnvironmentDomains $domains): Response|RedirectResponse
     {
         if ($this->scope->capabilities()?->canManageEnvironments() !== true) {
-            return redirect()->to(app(WorkspaceLanding::class)->url());
+            return redirect()->to(app(OrganizationLanding::class)->url());
         }
 
         $reachable = $this->reachable($members);
@@ -81,9 +81,9 @@ final readonly class EnvironmentDomainController extends ConsoleController
                 'verified' => $challenge->verified,
             ],
             'urls' => [
-                'request' => $this->url('environment-domains.store'),
-                'verify' => $this->url('environment-domains.verify'),
-                'destroy' => $this->url('environment-domains.destroy'),
+                'request' => $this->url('orgs.environment-domains.store'),
+                'verify' => $this->url('orgs.environment-domains.verify'),
+                'destroy' => $this->url('orgs.environment-domains.destroy'),
             ],
         ]);
     }

@@ -9,6 +9,7 @@ use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\Approvals\StepUpPolicy;
+use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -43,7 +44,7 @@ final readonly class AppTokenPrincipal implements Principal
 
     public function authorize(ActionDefinition $action): void
     {
-        if ($action->plane !== ActionPlane::Environment || ! AppManagementScopes::machine($action->scope) || ! $this->token->hasScope($action->scope)) {
+        if ($action->plane !== ActionPlane::Environment || ! AppManagementScopes::machine($action->scope) || ! ScopeRegistry::satisfiedBy($action->scope, $this->token->hasScope(...))) {
             throw new AuthorizationException("This token is missing the required scope: {$action->scope}.");
         }
     }

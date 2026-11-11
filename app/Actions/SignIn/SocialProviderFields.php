@@ -11,6 +11,7 @@ use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Enterprise\EnterpriseReach;
+use App\Platform\IssuerUrl;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\SignInProviders;
 use Cbox\Id\Federation\Enums\ClientSecretKind;
@@ -276,13 +277,13 @@ final class SocialProviderFields
     /** The redirect URI a provider must be given — it contains the connection's id. */
     public static function callbackUri(Connection $connection): string
     {
-        return url(($connection->type === ConnectionType::OAuth2 ? '/sso/oauth2/' : '/sso/oidc/').$connection->id.'/callback');
+        return IssuerUrl::to(($connection->type === ConnectionType::OAuth2 ? '/sso/oauth2/' : '/sso/oidc/').$connection->id.'/callback');
     }
 
     /** The same URI for a connection that does not exist yet, under a reserved id. */
     public static function callbackUriFor(ProviderTemplate $template, string $id): string
     {
-        return url(($template->isOidc() ? '/sso/oidc/' : '/sso/oauth2/').$id.'/callback');
+        return IssuerUrl::to(($template->isOidc() ? '/sso/oidc/' : '/sso/oauth2/').$id.'/callback');
     }
 
     /**

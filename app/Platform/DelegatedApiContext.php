@@ -10,7 +10,7 @@ use App\Platform\Actions\Principal\PersonPrincipal;
 /**
  * The person a delegated token authenticated for this request, on the platform or the
  * account plane. Bound per request (scoped) and filled by {@see AuthenticateDelegatedApi}
- * — the counterpart of {@see WorkspaceApiContext} for the planes no key reaches.
+ * — the counterpart of {@see OrganizationApiContext} for the planes no key reaches.
  */
 final class DelegatedApiContext
 {

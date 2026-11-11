@@ -122,7 +122,7 @@ final class CrossTenantSweep
             'lists:id' => 'radar_list_entry',
             'decisions:id' => 'radar_decision',
         ],
-        'workspace' => [
+        'organization' => [
             'payment-methods:id' => 'payment_method',
             'environments:environment_id' => 'environment',
             'keys:id' => 'workspace_key',

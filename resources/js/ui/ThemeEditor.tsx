@@ -261,7 +261,7 @@ export function ThemeEditor({
             <div className="grid gap-6 lg:grid-cols-[minmax(0,360px)_1fr] items-start">
                 <div className="space-y-5 lg:sticky lg:top-6">
                     <section className="card p-4">
-                        <p className="cbx-nav-group mb-3">{consoleT('console.presets_954f93fe')}</p>
+                        <p className="idc-nav-group mb-3">{consoleT('console.presets_954f93fe')}</p>
                         <div className="grid grid-cols-2 gap-2">
                             {Object.entries(presets).map(([id, preset]) => (
                                 <button
@@ -313,7 +313,7 @@ export function ThemeEditor({
 
                     <section className="card p-4">
                         <div className="flex items-center justify-between mb-3">
-                            <p className="cbx-nav-group" style={{ margin: 0 }}>
+                            <p className="idc-nav-group" style={{ margin: 0 }}>
                                 {consoleT('console.colours_88f20221')}
                             </p>
                             <fieldset
@@ -381,7 +381,7 @@ export function ThemeEditor({
 
                     <section className="card p-4 space-y-4">
                         <div>
-                            <p className="cbx-nav-group mb-2">
+                            <p className="idc-nav-group mb-2">
                                 {consoleT('console.corners_1d3cc47e')}
                             </p>
                             <fieldset
@@ -420,7 +420,7 @@ export function ThemeEditor({
                         </div>
 
                         <div>
-                            <p className="cbx-nav-group mb-2">
+                            <p className="idc-nav-group mb-2">
                                 {consoleT('console.typeface_3a8c1076')}
                             </p>
                             {/*
@@ -474,7 +474,7 @@ export function ThemeEditor({
                         to somebody else's server would tell that server who they all are.
                     */}
                     <section className="card p-4 space-y-4" aria-labelledby="theme-images">
-                        <p id="theme-images" className="cbx-nav-group" style={{ margin: 0 }}>
+                        <p id="theme-images" className="idc-nav-group" style={{ margin: 0 }}>
                             {consoleT('console.logo_favicon_13a23ce8')}
                         </p>
                         {imagesAccepted ? (
@@ -510,7 +510,7 @@ export function ThemeEditor({
                     </section>
 
                     <section className="card p-4">
-                        <p className="cbx-nav-group mb-3">
+                        <p className="idc-nav-group mb-3">
                             {consoleT('console.export_reset_28cd7936')}
                         </p>
                         <div className="grid grid-cols-2 gap-2">
@@ -542,7 +542,7 @@ export function ThemeEditor({
                 {/* ═══ Live preview ═══ */}
                 <div className="lg:sticky lg:top-6">
                     <div className="flex items-center justify-between mb-2">
-                        <p className="cbx-nav-group" style={{ margin: 0 }}>
+                        <p className="idc-nav-group" style={{ margin: 0 }}>
                             {consoleT('console.live_preview_f65ddc1f')}
                         </p>
                         <span className="text-[11px]" style={{ color: 'var(--faint)' }}>

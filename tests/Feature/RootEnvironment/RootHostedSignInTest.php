@@ -32,8 +32,8 @@ it('paints the root\'s sign-in page in the theme, typeface and logo its environm
     $theme = Appearance::fromPreset('cbox')->toArray();
     $theme['font'] = 'serif';
 
-    $this->from('https://cboxid.com/admin/branding')
-        ->post('https://cboxid.com/admin/branding', ['theme' => $theme, 'images' => ['logo' => pngDataUri()], 'environmentDefault' => false])
+    $this->from('https://cboxid.com/admin/environment/branding')
+        ->post('https://cboxid.com/admin/environment/branding', ['theme' => $theme, 'images' => ['logo' => pngDataUri()], 'environmentDefault' => false])
         ->assertSessionHasNoErrors();
 
     app()->forgetScopedInstances();
@@ -49,8 +49,8 @@ it('paints the root\'s sign-in page in the theme, typeface and logo its environm
 });
 
 it('offers on the root\'s sign-in page exactly the methods its environment console leaves on', function (): void {
-    $this->from('https://cboxid.com/admin/sign-in-rules')
-        ->put('https://cboxid.com/admin/sign-in-rules/methods', [
+    $this->from('https://cboxid.com/admin/environment/sign-in-rules')
+        ->put('https://cboxid.com/admin/environment/sign-in-rules/methods', [
             'passkeys' => false, 'magicLink' => false, 'botChallenge' => true, 'sessionIdleMinutes' => '', 'sessionAbsoluteMinutes' => '',
         ])
         ->assertSessionHasNoErrors();

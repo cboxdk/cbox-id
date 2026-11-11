@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Kom i gang',
         'heading' => [
-            'creates_idp' => 'Opprett arbeidsområdet ditt',
+            'creates_idp' => 'Opprett organisasjonen din',
             'for_app' => 'Opprett kontoen din',
             'default' => 'Opprett organisasjonen din',
         ],
         'lead' => [
-            'creates_idp' => 'Et arbeidsområde for bedriften din, og din egen hostede identitetsleverandør – SSO, brukere og innlogging du har full kontroll over, klart på et minutt.',
+            'creates_idp' => 'En organisasjon for bedriften din, og din egen hostede identitetsleverandør – SSO, brukere og innlogging du har full kontroll over, klart på et minutt.',
             'join' => 'Registrer deg for :name. Du blir eier av teamet ditt og kan invitere andre når du er inne.',
             'default' => 'Sett opp Cbox ID for teamet ditt på under ett minutt.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Navn på arbeidsområdet',
+            'creates_idp' => 'Navn på organisasjonen',
             'for_app' => 'Team- eller bedriftsnavn',
             'default' => 'Organisasjonsnavn',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'Jobb-e-post',
         'breach_note' => 'Kontrollert mot kjente datalekkasjer.',
         'submit' => [
-            'creates_idp' => 'Opprett arbeidsområde',
+            'creates_idp' => 'Opprett organisasjon',
             'for_app' => 'Opprett konto og fortsett',
             'default' => 'Opprett organisasjon',
         ],
@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Du har bedt om for mange koder. Vent litt, og prøv igjen.',
     ],
     'accounts' => [
-        'title' => 'Bytt bruker',
+        'title' => 'Bytt konto',
         'lead' => 'Alle som er logget inn på denne enheten. Velg én, eller logg inn som en annen.',
         'active' => 'Aktiv',
         'add' => 'Logg inn som en annen',
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'Et miljø har egne brukere, nøkler og utsteder, og er fullstendig isolert fra andre miljøer.',
         'environment_default' => 'Produksjon',
         'organization_label' => 'Organisasjonsnavn',
-        'organization_hint' => 'Denne installasjonen er konfigurert for flere leietakere, så installasjonen oppretter også det første arbeidsområdet – organisasjonen som eier miljøer og fakturering.',
+        'organization_hint' => 'Denne installasjonen er konfigurert for flere leietakere, så installasjonen oppretter også det første organisasjonen – organisasjonen som eier miljøer og fakturering.',
         'organization_placeholder' => 'Bedriften din',
         'submit' => 'Fullfør installasjonen',
         'token_mismatch' => 'Oppsettstokenet samsvarer ikke med installasjonens, eller det har utløpt. Skriv ut et nytt med php artisan cbox-id:setup-token.',

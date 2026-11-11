@@ -36,9 +36,9 @@ describe('CatalogAppIcon', () => {
         expect([...images].map((image) => [image.getAttribute('src'), image.className])).toEqual([
             [
                 'https://id.example.com/app-icons/light',
-                expect.stringContaining('cbx-app-icon-light'),
+                expect.stringContaining('idc-app-icon-light'),
             ],
-            ['https://id.example.com/app-icons/dark', expect.stringContaining('cbx-app-icon-dark')],
+            ['https://id.example.com/app-icons/dark', expect.stringContaining('idc-app-icon-dark')],
         ]);
         fireEvent.error(images[1]!);
         expect(container.querySelector('img')).toBeNull();

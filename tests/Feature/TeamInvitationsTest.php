@@ -67,12 +67,12 @@ function teamActivity(string $organizationId, string $action): ?AuditEntry
         ->first());
 }
 
-it('sends the same invitation from the console and from the workspace API', function (): void {
+it('sends the same invitation from the console and from the organization API', function (): void {
     ['organization' => $organization, 'ownerId' => $ownerId, 'key' => $key, 'keyId' => $keyId] = teamWorkspace();
 
     signInAsMember($ownerId);
-    test()->from(route('members'))
-        ->post(route('members.invite', ['organization' => $organization->id]), ['email' => 'console@acme.example', 'roles' => ['developer']])
+    test()->from(route('orgs.settings.members'))
+        ->post(route('orgs.settings.members.invite', ['organization' => $organization->id]), ['email' => 'console@acme.example', 'roles' => ['developer']])
         ->assertSessionHasNoErrors();
 
     test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'roles' => ['developer']])
@@ -136,7 +136,7 @@ it('names the key that sent it on the page the invitee lands on', function (): v
 
 });
 
-it('lists, re-sends and withdraws a team invitation from the workspace API', function (): void {
+it('lists, re-sends and withdraws a team invitation from the organization API', function (): void {
     ['organization' => $organization, 'key' => $key, 'keyId' => $keyId] = teamWorkspace();
 
     $id = test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'roles' => ['viewer']])
@@ -171,7 +171,7 @@ it('lists, re-sends and withdraws a team invitation from the workspace API', fun
     test()->withToken($key)->deleteJson("/api/v1/workspace/invitations/{$id}")->assertNotFound();
 });
 
-it('never reaches another workspace\'s invitation from the API', function (): void {
+it('never reaches another organization\'s invitation from the API', function (): void {
     ['key' => $key] = teamWorkspace();
 
     $other = provisionAccount('owner@other.example');
@@ -202,8 +202,8 @@ it('answers a failed mail the same from both doors: nothing is left behind', fun
         ->assertJsonPath('message', InvitationRefused::mailFailed(invitationKept: false)->getMessage());
 
     signInAsMember($ownerId);
-    test()->from(route('members'))
-        ->post(route('members.invite', ['organization' => $organization->id]), ['email' => 'console@acme.example', 'roles' => ['viewer']])
+    test()->from(route('orgs.settings.members'))
+        ->post(route('orgs.settings.members.invite', ['organization' => $organization->id]), ['email' => 'console@acme.example', 'roles' => ['viewer']])
         ->assertSessionHasErrors(['email' => InvitationRefused::mailFailed(invitationKept: false)->getMessage()]);
 
     expect(teamPending($organization->id))->toBe([]);
@@ -218,8 +218,8 @@ it('refuses somebody already on the team with the same sentence from both doors'
         ->assertJsonPath('message', InvitationRefused::alreadyMember()->getMessage());
 
     signInAsMember($ownerId);
-    test()->from(route('members'))
-        ->post(route('members.invite', ['organization' => $organization->id]), ['email' => 'owner@acme.example', 'roles' => ['viewer']])
+    test()->from(route('orgs.settings.members'))
+        ->post(route('orgs.settings.members.invite', ['organization' => $organization->id]), ['email' => 'owner@acme.example', 'roles' => ['viewer']])
         ->assertSessionHasErrors(['email' => InvitationRefused::alreadyMember()->getMessage()]);
 
     Mail::assertNothingSent();

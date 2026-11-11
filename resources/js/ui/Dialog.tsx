@@ -103,7 +103,7 @@ export function Dialog({
     return (
         <Primitive.Root open={open} onOpenChange={onOpenChange}>
             <Primitive.Portal>
-                <Primitive.Overlay className="cbx-overlay" />
+                <Primitive.Overlay className="idc-overlay" />
                 <Primitive.Content
                     className={cn(
                         'cbx-dialog',

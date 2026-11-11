@@ -293,6 +293,8 @@ it('gives an organization owner no way to open the environment\'s sign-up', func
 
     expect(test()->put('/sign-in-rules/self-service-signup', ['enabled' => true])->status())->toBeIn([404, 405]);
 
+    // …and the environment's console, which belongs to another organization, is not theirs.
+    useEnvironmentConsole($environment->id);
     $refused = test()->put(route('environment.auth-policy.self-service-signup'), ['enabled' => true]);
 
     expect($refused->status())->not->toBe(200)

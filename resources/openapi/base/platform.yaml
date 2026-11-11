@@ -3,7 +3,7 @@ info:
   title: Cbox ID — Operator API
   version: "1.0.0"
   description: |
-    The **deployment itself**, for the staff who run it: stand up customer workspaces,
+    The **deployment itself**, for the staff who run it: stand up customer organizations,
     create and bootstrap environments, manage organizations inside any environment, and
     keep the operator roster. Everything the console's Platform pages do, as the same
     actions — the same rules, refusals and audit trail.
@@ -11,7 +11,7 @@ info:
     **Who may call it.** Only a platform OPERATOR, through an access token they delegated
     carrying the `operator:*` scope each operation names — the token the platform root
     issues them for its `/mcp` (`cbox login` at the root, or an agent signed in there). **No management key is accepted
-    here** — not an environment key (`cbid_env_…`), not a workspace key (`cbid_ws_…`):
+    here** — not an environment key (`cbid_env_…`), not an organization key (`cbid_ws_…`):
     those speak for a customer, and this API is the deployment above every customer. A
     token whose person is not an active operator is refused with `403`; anything else
     without a valid operator token gets `401`.
@@ -40,7 +40,7 @@ servers:
 security:
   - OperatorToken: []
 tags:
-  - name: Workspaces
+  - name: Organizations
     description: The customers on the deployment.
   - name: Environments
     description: Every environment on the deployment, whoever owns it.
@@ -124,7 +124,7 @@ components:
       description: The token's person is not an active platform operator, or the token lacks the required scope.
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     NotFound:
-      description: No such workspace, environment, organization or operator on this deployment.
+      description: No such organization, environment, organization or operator on this deployment.
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
     Conflict:
       description: A request with this `Idempotency-Key` is still being processed (`idempotency_in_progress`). Retry shortly.
@@ -155,7 +155,7 @@ components:
           properties:
             id: { type: string }
             email: { type: string, format: email }
-        project_id: { type: string, description: The workspace's first project. }
+        project_id: { type: string, description: The organization's first project. }
         environment_id: { type: string, description: That project's first environment. }
         owner_invited: { type: boolean, description: "Whether the owner was emailed a link to set their password." }
     PlatformOrganization:

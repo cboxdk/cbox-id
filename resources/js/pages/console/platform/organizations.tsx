@@ -74,13 +74,12 @@ export default function Organizations({
     const { choice: consoleChoice } = useConsoleTranslator();
     function plural(
         count: number,
-        noun: 'member' | 'project' | 'environment' | 'workspace' | 'organization',
+        noun: 'member' | 'project' | 'environment' | 'organization',
     ): string {
         const keys = {
             member: 'console.count_members',
             project: 'console.count_projects',
             environment: 'console.count_environments',
-            workspace: 'console.count_workspaces',
             organization: 'console.count_organizations',
         } as const;
         return consoleChoice(keys[noun], count);

@@ -8,6 +8,7 @@ use App\Platform\Appearance\BrandImage;
 use App\Platform\Appearance\BrandImageUpload;
 use App\Platform\Appearance\InvalidBrandImage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 final readonly class CatalogEntryData
@@ -16,6 +17,7 @@ final readonly class CatalogEntryData
      * @param  list<string>  $organizations
      * @param  list<string>  $users
      * @param  list<string>  $clients
+     * @param  array{purpose?: string|null, hue?: string|null, admission_url?: string|null, promote_when_unavailable?: bool}  $shell  Only the switcher fields the caller sent: an omitted one is kept, so a client that predates them never clears them.
      */
     private function __construct(
         public string $name,
@@ -33,6 +35,7 @@ final readonly class CatalogEntryData
         public bool $iconDarkProvided,
         public ?string $iconDark,
         public int $version,
+        public array $shell = [],
     ) {}
 
     /** @param array<string, mixed> $input */
@@ -56,18 +59,58 @@ final readonly class CatalogEntryData
             'icon' => ['nullable', 'string', 'max:180000'],
             'icon_dark' => ['nullable', 'string', 'max:180000'],
             'version' => ['required', 'integer', 'min:0'],
+            'purpose' => ['nullable', 'string', 'max:60'],
+            'hue' => ['nullable', 'string', Rule::in(CatalogHue::values())],
+            'admission_url' => ['nullable', 'string', 'max:2048', 'url:https'],
+            'promote_when_unavailable' => ['sometimes', 'boolean'],
         ])->validate();
         $url = self::string($input, 'launch_url');
         $parts = parse_url($url);
         if (! is_array($parts) || isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment'])) {
             throw ValidationException::withMessages(['launch_url' => __('console.catalog_invalid_launch_url')]);
         }
+        $shell = [];
+        if (array_key_exists('purpose', $input)) {
+            $shell['purpose'] = trim(self::string($input, 'purpose')) ?: null;
+        }
+        if (array_key_exists('hue', $input)) {
+            $shell['hue'] = self::string($input, 'hue') ?: null;
+        }
+        if (array_key_exists('admission_url', $input)) {
+            $shell['admission_url'] = self::admissionUrl(self::string($input, 'admission_url'));
+        }
+        if (array_key_exists('promote_when_unavailable', $input)) {
+            $shell['promote_when_unavailable'] = filter_var($input['promote_when_unavailable'], FILTER_VALIDATE_BOOLEAN);
+        }
 
         return new self(trim(self::string($input, 'name')), self::string($input, 'description'), $url,
             filter_var($input['enabled'], FILTER_VALIDATE_BOOLEAN), (int) self::string($input, 'position'), self::string($input, 'audience'),
             self::strings($input, 'organization_ids'), self::strings($input, 'user_ids'), self::strings($input, 'client_ids'),
             self::string($input, 'required_feature') ?: null, array_key_exists('icon', $input), self::icon($input, 'icon'),
-            array_key_exists('icon_dark', $input), self::icon($input, 'icon_dark'), (int) self::string($input, 'version'));
+            array_key_exists('icon_dark', $input), self::icon($input, 'icon_dark'), (int) self::string($input, 'version'), $shell);
+    }
+
+    /**
+     * Where a person asks for an app they do not have yet. The browser follows it, never
+     * ID's server, but it is still held to the public-web shape: HTTPS, a registrable host,
+     * no credentials or fragment, and never a loopback, private, link-local or reserved
+     * address that would point a person's browser into their own network.
+     */
+    private static function admissionUrl(string $url): ?string
+    {
+        if ($url === '') {
+            return null;
+        }
+        $parts = parse_url($url);
+        $host = is_array($parts) ? strtolower(trim((string) ($parts['host'] ?? ''), '[]')) : '';
+        $internal = filter_var($host, FILTER_VALIDATE_IP) !== false
+            ? filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false
+            : ! str_contains($host, '.') || preg_match('/(\A|\.)(localhost|local|internal)\z/', $host) === 1;
+        if (! is_array($parts) || $internal || isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment'])) {
+            throw ValidationException::withMessages(['admission_url' => __('console.catalog_invalid_admission_url')]);
+        }
+
+        return $url;
     }
 
     /**

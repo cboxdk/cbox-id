@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Http\Middleware\ResolveEnvironmentFromPath;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\NativeProduct\NativeProductAccess;
 use App\Platform\ServiceAccess\ProductAdmission;
@@ -22,71 +23,35 @@ use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
-use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
  * A CONTROL-PLANE identity administering a tenant ENVIRONMENT. The admin is a subject in
  * the PLATFORM-ROOT environment ("tenant 1") holding an account membership — never a
- * subject inside the environment being administered. The session is established only by
- * redeeming a platform-signed handoff (or by "sign in as admin", which authenticates the
- * same control-plane identity), never by a subject login on this environment.
+ * subject inside the environment being administered.
  *
- * THERE IS NO SEPARATE ADMIN IDENTITY. This used to hold the administering subject's id
- * under a key of its own, which was a second place claiming to answer "who is this" — the
- * same duplication the account plane had, and the same one that produced sign-in loops
- * there. An admin session is an ORDINARY platform-root session ROW, minted by
- * {@see PlatformAuth}, so revoking a person's sessions (a password reset does) ends their
- * admin console too, which a session assembled out of a raw id could never do.
+ * THE CONSOLE LIVES ON THE APP HOST, at
+ * `/orgs/{org}/projects/{project}/environments/{environment}/…` ({@see ResolveEnvironmentFromPath}).
+ * The administrator's session is their ordinary app-host session ({@see PlatformAuth::SESSION_KEY});
+ * the environment is the one the PATH names, which the path middleware puts on the request
+ * before anything here is asked. There is no second session, no handoff and no anchor in
+ * the cookie any more: the path is the selection, and the authority behind it is re-read
+ * on every request — the session row, the subject, the membership, the organization's
+ * standing, the native product's roles and the environment grant.
  *
- * TWO CONTEXTS, ONE COOKIE. On a tenant's host the browser session also carries the
- * tenant's own END-USER context: its hosted sign-in, its My account, its SSO session for
- * the tenant's apps — {@see PlatformAuth}'s held accounts and active key. The admin context
- * keeps its row under a key of its own ({@see SESSION_KEY}), so the two never overwrite
- * each other, and signing out of one leaves the other signed in: an administrator signing
- * out of the console does not sign the tenant's end user out, and an end user signing out
- * (My account, or an app's RP-initiated logout) does not close the console.
- *
- * WHAT IS LEFT IS AN ANCHOR, NOT AN IDENTITY. {@see ENV_KEY} names the ONE environment
- * this session administers, and it is re-checked against the request's host-resolved
- * environment on every resolve. That is not duplication and it is not a lookup that could
- * replace it: the session cookie is shared across `*.cboxid.com`, so without the anchor a
- * session minted on env A's host would answer on env B's. It is the same shape as the
- * organization picker in {@see Console\ConsoleScope} and the operator's target
- * environment — a SELECTION, which happens to carry a security property.
- *
- * Membership access is re-verified per request as well, so the anchor is defence in depth
- * rather than the access decision. Both hold: revoking a member's access to an environment
- * kills their admin session on the next request, AND a session anchored elsewhere is worth
- * nothing here whoever it belongs to.
- *
- * WHY THIS RESOLVES THE SESSION ITSELF rather than reading {@see CurrentUser}. The console
- * is served on a TENANT host, so the ambient environment is the tenant's — and
- * `auth_sessions` and `users` are both environment-owned. The Authenticate middleware
- * resolves them under the ambient scope, so on this host it finds nothing and CurrentUser
- * is structurally empty. The lookup has to cross into the platform root, which is exactly
- * what this class already had to do for the subject and the membership.
+ * Outside a console request every answer here is null: a page that is not an environment
+ * console must never be treated as one because of who is signed in.
  */
 final class EnvironmentAdminAuth
 {
     /**
-     * The environment this admin session is anchored to — the anti-bleed anchor, and the
-     * only thing about an admin session that is not simply "who is signed in".
+     * What the admin context holds in the browser session: its step-up, and nothing else.
+     * The identity is the app-host session's.
      */
-    public const ENV_KEY = 'cbox.env_admin_env';
+    public const CONTEXT_KEYS = [EnvironmentSudo::SESSION_KEY];
 
-    /**
-     * The platform-root session row behind an environment console on a tenant's host — the
-     * ADMIN context, kept apart from the end-user context's {@see PlatformAuth::SESSION_KEY}.
-     * (On the platform root's own console the admin context IS the root's session, and that
-     * key is the one read.)
-     */
-    public const SESSION_KEY = 'cbox.env_admin_session';
-
-    /**
-     * Everything the admin context holds in the browser session — what its sign-out ends,
-     * and what an end user's sign-out on the same host carries over untouched.
-     */
-    public const CONTEXT_KEYS = [self::SESSION_KEY, self::ENV_KEY, EnvironmentSudo::SESSION_KEY];
+    /** Whether this request is a customer environment's console on the app host. */
+    public const ENVIRONMENT_CONSOLE = 'cbox.env_admin_environment_console';
 
     public function __construct(
         private readonly Memberships $memberships,
@@ -95,14 +60,13 @@ final class EnvironmentAdminAuth
         private readonly Subjects $subjects,
         private readonly SessionManager $sessions,
         private readonly PlatformRoot $platformRoot,
-        private readonly PlatformAuth $platformAuth,
         private readonly PlatformOperators $operators,
     ) {}
 
     /**
-     * Whether this request is the PLATFORM ROOT's environment console — set by the console's
-     * own gate ({@see AuthenticateEnvironmentAdmin}) when `/admin/*` is asked for on the
-     * root's own host, and never anywhere else.
+     * Whether this request is the PLATFORM ROOT's environment console — set by the path
+     * middleware ({@see ResolveEnvironmentFromPath}) for `/admin/environment/…` on the app
+     * host, and never anywhere else.
      *
      * A per-request fact rather than something derived from the session, and that is the
      * safety of it: an operator's ordinary root session is the very same session on every
@@ -123,16 +87,23 @@ final class EnvironmentAdminAuth
     private ?PlatformOperator $operatorMemo = null;
 
     /**
-     * Mark this request as the platform root's environment console. Called by the gate,
-     * after the plane middleware has established that the host IS the root's own.
+     * Mark this request as the platform root's environment console. Called by the path
+     * middleware for `/admin/environment/…`, on the app host.
      */
     public function enterRootConsole(): void
     {
         request()->attributes->set(self::ROOT_CONSOLE, true);
-        $this->memoKey = null;
-        $this->memoMembership = null;
-        $this->operatorMemoKey = null;
-        $this->operatorMemo = null;
+        $this->forgetMemo();
+    }
+
+    /**
+     * Mark this request as a customer environment's console. Called by the path middleware
+     * once the environment in the path is the request's context.
+     */
+    public function enterEnvironmentConsole(): void
+    {
+        request()->attributes->set(self::ENVIRONMENT_CONSOLE, true);
+        $this->forgetMemo();
     }
 
     /** Whether this request is the platform root's environment console. */
@@ -141,137 +112,62 @@ final class EnvironmentAdminAuth
         return request()->attributes->get(self::ROOT_CONSOLE) === true;
     }
 
+    /** Whether this request is a customer environment's console. */
+    public function onEnvironmentConsole(): bool
+    {
+        return request()->attributes->get(self::ENVIRONMENT_CONSOLE) === true;
+    }
+
     /**
-     * Per-request memo, KEYED ON THE INPUTS it was computed from. current() is consulted
-     * on every request by the persistent middleware, the layout, and each component's
-     * boot() — three resolutions of ~4 identity queries each, for one answer.
-     *
-     * The key is deliberate rather than a plain "computed once" flag: the host-resolved
-     * environment can legitimately change within a request ({@see EnvironmentContext::runAs()}),
-     * and the anti-bleed guarantee below is a security invariant — a memo that outlived a
-     * context switch would answer for the PREVIOUS environment. Re-deriving the key each
-     * call keeps the invariant exact while still collapsing the repeat calls.
+     * Per-request memo, KEYED ON THE INPUTS it was computed from: the session, the
+     * environment the path opened, and the request's environment context. The context can
+     * change within a request ({@see EnvironmentContext::runAs()}), and the answer is a
+     * security decision — a memo that outlived a context switch would answer for the
+     * previous environment.
      */
     private ?string $memoKey = null;
 
     private ?Membership $memoMembership = null;
 
-    /**
-     * Establish an environment-admin session for a platform-root subject on a specific
-     * environment. The single place this session is created — the handoff and the
-     * admin-login paths can never diverge.
-     *
-     * It mints the ORDINARY subject session, through the same
-     * {@see PlatformAuth::establish()} every other door uses, and anchors it. Inside the
-     * platform root because that is where the subject and its session row belong; the
-     * ambient scope here is the tenant being administered.
-     *
-     * @param  list<string>  $amr  how the admin proved who they are — a redeemed handoff
-     *                             is possession of a platform signature, not a password
-     */
-    public function establish(string $subjectId, string $environmentId, array $amr = ['handoff']): void
+    private function forgetMemo(): void
     {
-        $session = $this->platformRoot->run(
-            fn (): Session => $this->platformAuth->startDetached(request(), $subjectId, $amr),
-        );
-
-        if (! $session instanceof Session) {
-            return;
-        }
-
-        $this->bind($session->id, $environmentId);
+        $this->memoKey = null;
+        $this->memoMembership = null;
+        $this->operatorMemoKey = null;
+        $this->operatorMemo = null;
     }
 
-    /**
-     * Put an admin session that already exists back in place — the administrator coming
-     * back from a support session ({@see Impersonation::exit()}). The caller has checked
-     * the row is live and theirs.
-     */
-    public function resume(string $sessionId, string $environmentId): void
-    {
-        $this->bind($sessionId, $environmentId);
-    }
-
-    /**
-     * What the admin context holds in the browser session right now, key by key — to carry
-     * it across something that resets the END-USER context on the same host.
-     *
-     * Read one key at a time: the keys are dotted, and the session stores them nested, so
-     * `session()->only()` would find none of them.
-     *
-     * @return array<string, mixed>
-     */
-    public static function snapshot(): array
-    {
-        $held = [];
-
-        foreach (self::CONTEXT_KEYS as $key) {
-            if (session()->has($key)) {
-                $held[$key] = session()->get($key);
-            }
-        }
-
-        return $held;
-    }
-
-    /** The admin context's session row on this request, or null. */
+    /** The administrator's session row on this request — the app host's own — or null. */
     public function sessionId(): ?string
     {
-        $id = session()->get($this->onRootConsole() ? PlatformAuth::SESSION_KEY : self::SESSION_KEY);
+        $id = session()->get(PlatformAuth::SESSION_KEY);
 
         return is_string($id) && $id !== '' ? $id : null;
     }
 
-    private function bind(string $sessionId, string $environmentId): void
-    {
-        // A step-up attests to the session it was confirmed in, and this is a new one.
-        // Only the ADMIN context's step-up: the end user's on this host is theirs.
-        session()->forget(EnvironmentSudo::SESSION_KEY);
-
-        // A privilege transition: a fresh id, so a session id planted beforehand is not the
-        // one that ends up administering the environment.
-        session()->regenerate();
-
-        // The identity first and the anchor after it: an anchor that briefly stood alone is
-        // the state this class exists to never be in.
-        session()->put(self::SESSION_KEY, $sessionId);
-        session()->put(self::ENV_KEY, $environmentId);
-
-        // The session just changed under us; drop any memoised resolution.
-        $this->memoKey = null;
-        $this->memoMembership = null;
-    }
-
     /**
-     * The account membership administering the CURRENT (host-resolved) environment, or
-     * null. Every guard consults this, never the session state directly. Memoised per
-     * request (see {@see $memoKey}).
+     * The account membership administering the environment this console request opened,
+     * or null. Every guard consults this. Null outside a customer environment's console.
      */
     public function membership(): ?Membership
     {
-        // The root environment belongs to no workspace: on its console a membership grants
-        // nothing, whoever holds it and whatever it reaches. Operators are its
-        // administrators ({@see rootOperator()}).
-        if ($this->onRootConsole()) {
+        // The root environment belongs to no organization: on its console a membership grants
+        // nothing, whoever holds it. Operators are its administrators ({@see rootOperator()}).
+        if (! $this->onEnvironmentConsole() || $this->onRootConsole()) {
             return null;
         }
 
-        $sessionId = session()->get(self::SESSION_KEY);
-        $boundEnv = session()->get(self::ENV_KEY);
-        $hostEnv = $this->environments->current()?->environmentKey();
+        $sessionId = $this->sessionId();
+        $pathEnv = request()->attributes->get(ResolveEnvironmentFromPath::ATTRIBUTE);
+        $contextEnv = $this->environments->current()?->environmentKey();
 
-        // Memo hit only when every input is identical to the one we resolved from.
-        $key = implode("\0", [
-            is_string($sessionId) ? $sessionId : '',
-            is_string($boundEnv) ? $boundEnv : '',
-            $hostEnv ?? '',
-        ]);
+        $key = implode("\0", [$sessionId ?? '', is_string($pathEnv) ? $pathEnv : '', $contextEnv ?? '']);
 
         if ($this->memoKey === $key) {
             return $this->memoMembership;
         }
 
-        $this->memoMembership = $this->resolve($sessionId, $boundEnv, $hostEnv);
+        $this->memoMembership = $this->resolve($sessionId, $pathEnv, $contextEnv);
         $this->memoKey = $key;
 
         return $this->memoMembership;
@@ -332,7 +228,7 @@ final class EnvironmentAdminAuth
      * environment's administrator acts for, where the workspace console records their acts.
      * Null on the root environment's console, which no workspace owns.
      */
-    public function workspaceId(): ?string
+    public function rootOrganizationId(): ?string
     {
         $organizationId = $this->membership()?->organization_id;
 
@@ -397,9 +293,9 @@ final class EnvironmentAdminAuth
 
     private function resolve(mixed $sessionId, mixed $boundEnv, ?string $hostEnv): ?Membership
     {
-        // Anti-bleed: the session's anchor must be the environment this host resolves to.
-        // FIRST, before any lookup: a session anchored to env A must be worth nothing on
-        // env B's host regardless of who it belongs to or what they may administer.
+        // Anti-bleed: the environment the path opened must be the request's context. FIRST,
+        // before any lookup: whatever runs in another environment's scope later in this
+        // request must find no administrator there.
         if (! is_string($sessionId) || $sessionId === ''
             || ! is_string($boundEnv) || $boundEnv === ''
             || $hostEnv === null || $boundEnv !== $hostEnv) {
@@ -424,7 +320,43 @@ final class EnvironmentAdminAuth
             return null;
         }
 
-        // …and it must still carry a MEMBERSHIP of a customer organization. That is the
+        return $this->membershipFor($subjectId, $hostEnv);
+    }
+
+    /**
+     * Whether $subjectId may administer $environmentId RIGHT NOW: an active platform operator
+     * for the platform root's environment, else {@see membershipFor()}. For a check made
+     * away from the console's own request — the support and impersonation launches on the
+     * environment's host, a support code minted later — so a decision taken in the console
+     * is re-asked, not trusted, by everything that acts on it afterwards.
+     */
+    public function administers(string $subjectId, string $environmentId): bool
+    {
+        $root = $this->platformRoot->environment()?->environmentKey();
+
+        if ($root !== null && $root === $environmentId) {
+            return $this->platformRoot->run(fn (): bool => $this->operators->findBySubject($subjectId) !== null) === true;
+        }
+
+        try {
+            return $this->membershipFor($subjectId, $environmentId) !== null;
+        } catch (HttpExceptionInterface) {
+            // The product admission refused: no authority, said as a no.
+            return false;
+        }
+    }
+
+    /**
+     * The membership through which $subjectId administers the customer environment
+     * $environmentId, or null — THE chain every environment-console request runs
+     * ({@see resolve()}), and the one a later check runs again ({@see administers()}), so
+     * the two cannot drift apart. The subject's session is the caller's to check.
+     */
+    public function membershipFor(string $subjectId, string $environmentId): ?Membership
+    {
+        $hostEnv = $environmentId;
+
+        // It must still carry a MEMBERSHIP of a customer organization. That is the
         // management-plane authority: the role, the organization's status and the
         // environment grants all hang off it, and it is re-read per request rather than
         // trusted from the session. It is also what keeps an ordinary TENANT subject out:
@@ -500,47 +432,15 @@ final class EnvironmentAdminAuth
     }
 
     /**
-     * The environment the current admin session administers, or null: the session's anchor
-     * on a tenant's host, the root environment itself on the root's console.
+     * The environment this console request administers, or null when nobody may: the one
+     * the path named, once its administrator has been resolved for it.
      */
     public function environmentId(): ?string
     {
-        if ($this->rootOperator() !== null) {
-            return $this->environments->current()?->environmentKey();
+        if ($this->rootOperator() === null && $this->membership() === null) {
+            return null;
         }
 
-        $env = session()->get(self::ENV_KEY);
-
-        return is_string($env) && $env !== '' ? $env : null;
-    }
-
-    /**
-     * Sign out of the ADMIN context on a tenant's host — and of everything that sign-in
-     * reached: the console's row, the account-host sessions it was handed off from, and
-     * every other console handed off from those ({@see SignInLineage}). Without the account
-     * host, the console's gate sent the person to the account host's open-environment door,
-     * which minted a handoff straight back in.
-     *
-     * The END-USER context on this host is left exactly as it was: the tenant's own people
-     * signed in here are another context, and their keys are not touched.
-     */
-    public function logout(Request $request): void
-    {
-        $sessionId = session()->get(self::SESSION_KEY);
-
-        if (is_string($sessionId) && $sessionId !== '') {
-            $lineage = app(SignInLineage::class);
-            $lineage->revoke($lineage->family([$sessionId]));
-        }
-
-        session()->forget(self::CONTEXT_KEYS);
-        $this->memoKey = null;
-        $this->memoMembership = null;
-        $this->operatorMemoKey = null;
-        $this->operatorMemo = null;
-
-        // A fresh id and token for what is left — the end-user context, if there is one.
-        session()->migrate(true);
-        session()->regenerateToken();
+        return $this->environments->current()?->environmentKey();
     }
 }

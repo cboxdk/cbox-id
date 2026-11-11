@@ -10,6 +10,9 @@ use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ApprovalInput;
 use App\Platform\Actions\Input\Field;
+use App\Platform\Api\ApiUrls;
+use App\Platform\Api\V1\V1Paths;
+use App\Platform\IssuerUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
@@ -153,7 +156,12 @@ final class ActionSnippets
     public function describe(ActionDefinition $action, array $parameters = []): ApiEquivalentProps
     {
         $pathFields = $action->input()->pathFields();
+        // Where the action lives on the API host: its path there, which old path parameter
+        // the `{id}` is, and which now travel in the query.
+        $target = V1Paths::target($action->method, $action->documentedPath());
+        $template = $target === null ? '/api/v1'.$action->documentedPath() : (string) str_replace('{id}', '{'.($target['id'] ?? 'id').'}', $target['path']);
         $filled = $this->fill($action->documentedPath(), $parameters);
+        $moved = $target['inputs'] ?? [];
         $fields = [];
 
         foreach ($action->input()->fields as $field) {
@@ -162,18 +170,19 @@ final class ActionSnippets
             $declared = $schema['type'];
             $type = is_array($declared) ? ($declared[0] ?? 'string') : $declared;
             $type = is_string($type) ? $type : 'string';
-            $inPath = in_array($field->name, $pathFields, true);
+            $inPath = in_array($field->name, $pathFields, true) && ! array_key_exists($field->name, $moved);
+            $inQuery = array_key_exists($field->name, $moved);
             $enum = $schema['enum'] ?? null;
 
             $fields[] = [
-                'name' => $field->name,
+                'name' => $inQuery ? $moved[$field->name] : $field->name,
                 'type' => $type,
                 'required' => $field->isRequired(),
-                'in' => $inPath ? 'path' : (in_array($action->method, ['GET', 'DELETE'], true) ? 'query' : 'body'),
+                'in' => $inPath ? 'path' : ($inQuery || in_array($target['method'] ?? $action->method, ['GET', 'DELETE'], true) ? 'query' : 'body'),
                 'secret' => self::secret($action, $field),
                 'description' => isset($schema['description']) && is_string($schema['description']) ? $schema['description'] : null,
                 'enum' => is_array($enum) ? array_values(array_filter($enum, 'is_scalar')) : null,
-                'value' => $inPath ? ($filled['values'][$field->name] ?? null) : null,
+                'value' => $inPath || $inQuery ? ($filled['values'][$field->name] ?? null) : null,
             ];
         }
 
@@ -181,12 +190,14 @@ final class ActionSnippets
             action: $action,
             // The TEMPLATE, placeholders and all: the browser fills it from the form, which may
             // name a different id than the page's own. The filled path is for reading.
-            url: url('/api/v1'.$action->documentedPath()),
-            path: $filled['path'],
+            url: $target === null ? IssuerUrl::to($template) : ApiUrls::to($template),
+            path: $target === null ? $filled['path'] : self::placed($template, $filled['values']),
+            base: $target === null ? '/api/v1' : '/v1',
             fields: $fields,
             cli: self::SHIPPED_CLI[$action->name] ?? 'cbox id '.str_replace('.', ':', $action->name),
             cliShipped: isset(self::SHIPPED_CLI[$action->name]),
             sdk: self::sdk($action),
+            method: $target['method'] ?? null,
         );
     }
 
@@ -233,6 +244,20 @@ final class ActionSnippets
         return ['path' => $path, 'values' => $values];
     }
 
+    /**
+     * $path with the ids the page named put in, by the old path's placeholder names.
+     *
+     * @param  array<string, string>  $values
+     */
+    private static function placed(string $path, array $values): string
+    {
+        foreach ($values as $name => $value) {
+            $path = str_replace('{'.$name.'}', rawurlencode($value), $path);
+        }
+
+        return $path;
+    }
+
     /** A field whose value is a secret — by name, or because the action says so. */
     private static function secret(ActionDefinition $action, Field $field): bool
     {
@@ -249,7 +274,7 @@ final class ActionSnippets
         $segments = array_map(static fn (string $segment): string => Str::camel(str_replace('-', '_', $segment)), explode('.', $action->name));
         $client = match ($action->plane) {
             ActionPlane::Environment => 'env',
-            ActionPlane::Workspace => 'workspace',
+            ActionPlane::Organization => 'workspace',
             ActionPlane::Platform => 'platform',
             ActionPlane::Account => 'account',
         };
@@ -281,7 +306,7 @@ final class ActionSnippets
         foreach ($routes->getRoutes() as $route) {
             $name = $route->getName();
 
-            if ($name === null || ! in_array('GET', $route->methods(), true) || str_starts_with($route->uri(), 'api/')) {
+            if ($name === null || ! in_array('GET', $route->methods(), true) || str_starts_with($route->uri(), 'api/') || $route->getDomain() !== null) {
                 continue;
             }
 

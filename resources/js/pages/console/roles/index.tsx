@@ -255,10 +255,7 @@ export default function RolesIndex({
 
             <Legend roles={roles} />
 
-            <Pagination
-                pagination={pagination}
-                href={(page) => listHref(search, page)}
-            />
+            <Pagination pagination={pagination} href={(page) => listHref(search, page)} />
             <div className="mt-8">
                 <AccessModelGuide current="roles" />
             </div>

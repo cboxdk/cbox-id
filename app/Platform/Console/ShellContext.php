@@ -13,9 +13,10 @@ use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
-use App\Platform\NativeProduct\NativeProductAccess;
 use App\Platform\OrganizationCapabilities;
+use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\PlaneResolver;
+use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -24,8 +25,10 @@ use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
+use Closure;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\URL;
 
 /**
  * WHERE THE PERSON IS, AND WHERE ELSE THEY CAN GO — the topbar's
@@ -76,7 +79,6 @@ final readonly class ShellContext
         private PlatformRoot $root,
         private EnvironmentContext $environments,
         private PlaneResolver $planes,
-        private HandoffTarget $targets,
     ) {}
 
     /**
@@ -95,108 +97,42 @@ final readonly class ShellContext
 
         $projects = [];
 
-        // Only on the ACCOUNT plane, where `/open/{environment}` is the door to an
-        // environment's own console. On a single-host install there is no second host to
-        // hand off to, and on a customer's environment host the organization is a tenant.
-        if ($workspace && $currentId !== null && $this->planes->onAccountPlane() && Route::has('environment.open')) {
-            $to = $this->landingPath($activeRoute, onEnvironmentPlane: false);
+        // Only on the ACCOUNT plane (the app host), where the environment consoles live. On a
+        // customer's environment host the organization is a tenant and has none.
+        if ($workspace && $currentId !== null && $this->planes->onAccountPlane()) {
+            $to = $this->landingRoute($activeRoute, onEnvironmentPlane: false);
 
             $projects = $this->projectsOf(
                 organizationId: $currentId,
                 subjectId: $subjectId,
                 capabilities: $this->scope->capabilities(),
                 currentEnvironmentId: null,
-                href: fn (string $id): string => $this->withTarget(route('environment.open', $id), $to),
+                href: fn (string $path, Environment $environment): string => route($this->servedIn($to, $environment), [EnvironmentConsolePath::PARAMETER => $path]),
             );
         }
 
         // The platform's own environment, for an operator at the root.
         if ($this->planes->onAccountPlane() && $this->scope->isPlatformOperator()) {
-            $projects[] = $this->platformProject(current: false, to: $this->landingPath($activeRoute, onEnvironmentPlane: false));
+            $projects[] = $this->platformProject(current: false, to: $this->landingRoute($activeRoute, onEnvironmentPlane: false));
         }
 
         return new ShellContextProps(
-            noun: $workspace ? __('console.workspace_87bb59ba') : __('console.organization_d764d425'),
-            workspaces: $this->workspaceOptions($memberships, $currentId, fallbackName: $this->user->organization()?->name),
-            switchUrl: Route::has('organization.switch') ? route('organization.switch') : null,
-            projects: $projects,
-        );
-    }
-
-    /**
-     * The environment console's context: the administrator's workspaces, the workspace this
-     * environment belongs to, its projects, and the environments in them they may open.
-     *
-     * Every environment link goes back through the WORKSPACE host's `/open/{environment}`,
-     * because that is where the person's session is — this host holds an environment
-     * binding and nothing else — and that door is what checks access and mints the token.
-     */
-    public function forEnvironmentPlane(?Membership $membership, string $subjectId, ?string $activeRoute): ShellContextProps
-    {
-        // The workspace whose membership opened this console — none on the platform root's,
-        // which its operators administer and no workspace owns.
-        $workspaceId = $membership?->organization_id;
-        $onRoot = $membership === null;
-        $currentEnvironmentId = $this->environments->current()?->environmentKey();
-        $to = $this->landingPath($activeRoute, onEnvironmentPlane: true);
-
-        $memberships = $this->root->run(fn (): Collection => $this->memberships->forUser($subjectId)) ?? new Collection;
-
-        $workspaces = $this->root->run(fn (): array => $this->workspaceOptions(
-            $memberships,
-            $workspaceId,
-            fallbackName: null,
-            openHref: $this->onWorkspaceHost('projects'),
-        )) ?? [];
-
-        $projects = $membership === null ? [] : $this->root->run(fn (): array => $this->projectsOf(
-            organizationId: $membership->organization_id,
-            subjectId: $subjectId,
-            capabilities: app(NativeProductAccess::class)->forWebSubject($subjectId, $membership->organization_id),
-            currentEnvironmentId: $currentEnvironmentId,
-            href: fn (string $id): string => $this->withTarget($this->onWorkspaceHost('environment.open', ['environment' => $id]), $to),
-        )) ?? [];
-
-        if ($onRoot || $this->isOperator($subjectId)) {
-            $projects[] = $this->platformProject(current: $onRoot, to: $to);
-        }
-
-        if ($onRoot) {
-            // The first crumb names what this console belongs to: the platform, which the
-            // operator runs — with their own workspaces one click away beside it.
-            array_unshift($workspaces, new SwitchOptionProps(
-                id: 'platform',
-                label: __('console.platform_admin_69652f55'),
-                caption: __('console.operator_291101a0'),
-                current: true,
-                openHref: Route::has('platform.workspaces') ? $this->onWorkspaceHost('platform.workspaces') : null,
-            ));
-        }
-
-        return new ShellContextProps(
-            noun: $onRoot ? __('console.platform_c78ffe19') : __('console.workspace_87bb59ba'),
-            workspaces: $workspaces,
-            switchUrl: null,
+            noun: $workspace ? __('console.organization_d764d425') : __('console.organization_d764d425'),
+            organizations: $this->organizationOptions($memberships, $currentId, fallbackName: $this->user->organization()?->name),
+            switchUrl: Route::has('orgs.switch') ? route('orgs.switch') : null,
             projects: $projects,
         );
     }
 
     /**
      * The PLATFORM ROOT's environment as a row of the switcher — under a "Platform" project
-     * of its own, opening its console on the root's host at the same page where there is one.
-     *
-     * No handoff: that console is on the host the operator signed in to, and an operator
-     * standing on a tenant's console is sent straight there, where their root session is.
+     * of its own, opening its console (`/admin/environment/…`) at the same page where there
+     * is one.
      */
-    private function platformProject(bool $current, ?string $to): ContextProjectProps
+    private function platformProject(bool $current, string $to): ContextProjectProps
     {
         $environment = $this->root->model();
-        $href = $this->onWorkspaceHost('environment.home');
-
-        if ($to !== null && $to !== '/admin') {
-            $host = $this->planes->consoleHost();
-            $href = $host === null ? url($to) : 'https://'.$host.$to;
-        }
+        $href = route($environment === null ? $to : $this->servedIn($to, $environment), [EnvironmentConsolePath::PARAMETER => EnvironmentConsolePath::ROOT]);
 
         return new ContextProjectProps(
             id: 'platform',
@@ -213,12 +149,6 @@ final readonly class ShellContext
         );
     }
 
-    /** Whether a platform-root subject runs this deployment — asked once per request ({@see ConsoleScope::subjectIsOperator()}). */
-    private function isOperator(string $subjectId): bool
-    {
-        return $this->scope->subjectIsOperator($subjectId);
-    }
-
     /**
      * A console page on the WORKSPACE's host, for a link drawn on an environment console.
      *
@@ -231,9 +161,24 @@ final readonly class ShellContext
      *
      * @param  array<string, string>  $parameters
      */
-    public function onWorkspaceHost(string $route, array $parameters = []): string
+    public function onOrganizationHost(string $route, array $parameters = []): string
     {
         $host = $this->planes->consoleHost();
+
+        // A page under `/orgs/{org}` names the organization this console belongs to:
+        // the one the request is in, or, on an environment's console, the one whose
+        // membership opened it. Neither known, it is the organization picker.
+        if (str_starts_with($route, 'orgs.') && ! isset($parameters['org']) && ! isset(URL::getDefaultParameters()['org'])) {
+            $organizationId = $this->user->organizationId() ?? app(EnvironmentAdminAuth::class)->membership()?->organization_id;
+            $slug = is_string($organizationId) ? app(OrganizationLinks::class)->addressOf($organizationId)['slug'] ?? null : null;
+
+            if ($slug === null) {
+                $route = 'orgs.index';
+                $parameters = [];
+            } else {
+                $parameters['org'] = $slug;
+            }
+        }
 
         return $host === null
             ? route($route, $parameters)
@@ -241,15 +186,16 @@ final readonly class ShellContext
     }
 
     /**
-     * The path to land on in another environment: this page, if the environment console
-     * has it without an entity in the URL; else the page of the area this request lights
-     * (a user's detail page lands on Users); else nothing, which lands on the home page.
+     * The page to land on in another environment, as an environment-console route name:
+     * this page, if the environment console has it without a record in the URL; else the
+     * page of the area this request lights (a user's detail page lands on Users); else the
+     * environment's home page.
      *
      * The organization console's pages map by the console's own naming rule — `webhooks`
      * here is `environment.webhooks` there ({@see ConsoleScope::routeName()}) — so opening
      * an environment from the workspace's Webhooks page opens that environment's Webhooks.
      */
-    private function landingPath(?string $activeRoute, bool $onEnvironmentPlane): ?string
+    private function landingRoute(?string $activeRoute, bool $onEnvironmentPlane): string
     {
         $current = request()->route()?->getName();
 
@@ -258,31 +204,45 @@ final readonly class ShellContext
                 continue;
             }
 
-            $candidate = $onEnvironmentPlane ? $name : 'environment.'.$name;
+            $candidate = $onEnvironmentPlane ? $name : ConsoleScope::environmentTwin($name);
             $route = Route::getRoutes()->getByName($candidate);
 
-            if ($route === null
-                || $candidate === 'environment.home'
-                || $route->parameterNames() !== []
-                || ! in_array('GET', $route->methods(), true)) {
-                continue;
-            }
-
-            // Through the same allow-list the redemption applies, so the switcher can never
-            // build a target the other end would discard.
-            $path = $this->targets->sanitize('/'.ltrim($route->uri(), '/'));
-
-            if ($path !== null) {
-                return $path;
+            if ($route !== null
+                && $route->parameterNames() === [EnvironmentConsolePath::PARAMETER]
+                && in_array('GET', $route->methods(), true)) {
+                return $candidate;
             }
         }
 
-        return null;
+        return 'environment.home';
     }
 
-    private function withTarget(string $href, ?string $to): string
+    /**
+     * The landing route, if that environment serves it — else its home page.
+     *
+     * A module page is there only where its feature is on, and a feature can be on for one
+     * environment and off for the next (a module's sink is configured per environment).
+     * Asked IN that environment, so the switcher never offers a link that answers 404.
+     */
+    private function servedIn(string $to, Environment $environment): string
     {
-        return $to === null ? $href : $href.'?'.http_build_query(['to' => $to], '', '&', PHP_QUERY_RFC3986);
+        if ($to === 'environment.home') {
+            return $to;
+        }
+
+        $features = collect(Route::getRoutes()->getByName($to)?->gatherMiddleware() ?? [])
+            ->filter(static fn (mixed $middleware): bool => is_string($middleware) && str_starts_with($middleware, 'console.feature:'))
+            ->map(static fn (string $middleware): string => substr($middleware, strlen('console.feature:')));
+
+        if ($features->isEmpty()) {
+            return $to;
+        }
+
+        $served = $this->environments->runAs($environment, static fn (): bool => $features->every(
+            static fn (string $feature): bool => Console::featureActive($feature),
+        ));
+
+        return $served ? $to : 'environment.home';
     }
 
     /**
@@ -293,23 +253,28 @@ final readonly class ShellContext
      * organization read at all: its name is already on the signed-in session.
      *
      * @param  Collection<int, Membership>  $memberships
+     * @param  (Closure(string): ?string)|null  $openHref  where a row opens, by organization id
      * @return list<SwitchOptionProps>
      */
-    private function workspaceOptions(
+    private function organizationOptions(
         Collection $memberships,
         ?string $currentId,
         ?string $fallbackName,
-        ?string $openHref = null,
+        ?Closure $openHref = null,
     ): array {
+        // The organization's address and name as every Cbox app shows them: the linked
+        // `cbox` organization's, where there is one.
+        $addresses = app(OrganizationLinks::class);
+
         if ($memberships->count() <= 1 && $fallbackName !== null && $currentId !== null) {
             $membership = $memberships->first();
 
             return [new SwitchOptionProps(
                 id: $currentId,
-                label: $fallbackName,
+                label: $addresses->addressOf($currentId)['name'] ?? $fallbackName,
                 caption: $membership === null ? null : ConsoleLabels::navigation($membership->role->label()),
                 current: true,
-                openHref: $openHref,
+                openHref: $openHref === null ? null : $openHref($currentId),
             )];
         }
 
@@ -321,6 +286,8 @@ final readonly class ShellContext
         }
 
         $organizations = $ids === [] ? [] : $this->organizations->findMany($ids);
+        // Every row's address in one read, so nine organizations cost what one does.
+        $addresses->addressesOf($ids);
 
         $options = [];
 
@@ -335,10 +302,10 @@ final readonly class ShellContext
 
             $options[] = new SwitchOptionProps(
                 id: $membership->organization_id,
-                label: $organization->name,
+                label: $addresses->addressOf($membership->organization_id)['name'] ?? $organization->name,
                 caption: ConsoleLabels::navigation($membership->role->label()),
                 current: $membership->organization_id === $currentId,
-                openHref: $openHref,
+                openHref: $openHref === null ? null : $openHref($membership->organization_id),
             );
         }
 
@@ -348,13 +315,13 @@ final readonly class ShellContext
     /**
      * The workspace's projects, each with the environments this person may open.
      *
-     * The two gates `/open/{environment}` applies, in the same order: the role must be one
+     * The two gates the console's path applies, in the same order: the role must be one
      * that manages environments at all (a Viewer reaches environments but is never handed
      * an admin token), and each environment must be among the member's accessible ones —
      * which narrows to the grants of a member scoped to a few. A project left with nothing
      * openable is dropped rather than listed empty.
      *
-     * @param  callable(string): string  $href
+     * @param  callable(string, Environment): string  $href  the URL for an environment's console path
      * @return list<ContextProjectProps>
      */
     private function projectsOf(
@@ -381,13 +348,21 @@ final readonly class ShellContext
             return [];
         }
 
+        // The organization's address at `/orgs/{org}` — its linked `cbox` slug — exactly as
+        // {@see EnvironmentConsolePath} builds and resolves it.
+        $organizationSlug = app(OrganizationLinks::class)->addressOf($organizationId)['slug'] ?? null;
+
+        if (! is_string($organizationSlug) || $organizationSlug === '') {
+            return [];
+        }
+
         // ONE read for every environment across every project, grouped in memory — the
         // same shape as the Projects page, for the same reason.
         $environments = Environment::query()
             ->whereIn('project_id', $owned->pluck('id')->all())
             ->whereIn('id', $accessible)
             ->orderBy('name')
-            ->get(['id', 'name', 'type', 'project_id'])
+            ->get(['id', 'name', 'slug', 'type', 'project_id'])
             ->groupBy('project_id');
 
         $rows = [];
@@ -412,7 +387,7 @@ final readonly class ShellContext
                     name: $environment->name,
                     type: $environment->type->value,
                     current: $isCurrent,
-                    href: $href($environment->id),
+                    href: $href('orgs/'.$organizationSlug.'/projects/'.$project->slug.'/environments/'.$environment->slug, $environment),
                 );
             }
 

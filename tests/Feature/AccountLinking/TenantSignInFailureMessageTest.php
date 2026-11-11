@@ -23,8 +23,8 @@ it('shows why a sign-in did not complete on a tenant\'s own sign-in page', funct
     // The tenant turns on Google for ITS users, environment-wide, in its own console.
     actAsEnvironmentAdmin($this->account['subjectId'], $this->account['environment']->id);
 
-    $this->from('https://'.$this->tenantHost.'/admin/social-sign-in?provider=google')
-        ->post('https://'.$this->tenantHost.'/admin/social-sign-in', [
+    $this->from(envConsole('/social-sign-in?provider=google'))
+        ->post(envConsole('/social-sign-in'), [
             'provider' => 'google', 'clientId' => 'google-client-id', 'clientSecret' => 'tenant-secret', 'parameters' => [], 'forEnvironment' => true,
         ])->assertSessionHasNoErrors();
 

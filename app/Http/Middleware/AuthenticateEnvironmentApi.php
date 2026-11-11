@@ -11,10 +11,12 @@ use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\Principal\AppTokenPrincipal;
 use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
+use App\Platform\Api\ManagementAudience;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\OAuth\DelegatedAccess;
 use App\Platform\OAuth\MachineTokenAuthority;
 use App\Platform\OAuth\RootDelegatedAccess;
+use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\Dpop\DpopResourceGuard;
@@ -117,7 +119,7 @@ final class AuthenticateEnvironmentApi
 
         // Deny-by-default twice over: a scope the vocabulary does not know is refused even
         // if a key somehow carries it, and a known one only if this key carries it.
-        if ($scope !== null && (! $this->scopes->knows($scope) || ! $key->can($scope))) {
+        if ($scope !== null && (! $this->scopes->knows($scope) || ! ScopeRegistry::satisfiedBy($scope, $key->can(...)))) {
             return $this->deny('forbidden', "This key is missing the required scope: {$scope}.", 403);
         }
 
@@ -146,7 +148,7 @@ final class AuthenticateEnvironmentApi
         // token carrying a management scope ({@see DelegatedAccess::resource()}) — or to the
         // issuer itself, as the other machine endpoints take it ({@see RequireScope}).
         $plane = $this->delegated->resource()?->identifier;
-        $audienced = $introspection->isAudience($this->issuers->issuer()) || ($plane !== null && $introspection->isAudience($plane));
+        $audienced = $introspection->isAudience($this->issuers->issuer()) || ($plane !== null && ManagementAudience::accepts($introspection, $plane));
 
         if (! $introspection->active || $introspection->clientId === null || ! $audienced || ! MachineTokenAuthority::issued($introspection)) {
             return null;
@@ -158,7 +160,7 @@ final class AuthenticateEnvironmentApi
             return $this->deny('invalid_token', $e->getMessage(), 401);
         }
 
-        if (! $introspection->hasScope($scope)) {
+        if (! ScopeRegistry::satisfiedBy($scope, $introspection->hasScope(...))) {
             return $this->deny('forbidden', "This token was not granted the required scope: {$scope}.", 403);
         }
 
@@ -180,7 +182,7 @@ final class AuthenticateEnvironmentApi
     private function asPerson(Request $request, Closure $next, ?string $scope, bool $admitted): Response
     {
         if ($this->root->onRootHost()) {
-            return $this->asWorkspaceMember($request, $next, $scope, $admitted);
+            return $this->asOrganizationMember($request, $next, $scope, $admitted);
         }
 
         $person = $this->delegated->principal($request);
@@ -193,7 +195,7 @@ final class AuthenticateEnvironmentApi
             return $this->deny('forbidden', 'This endpoint takes an environment API key (Bearer cbid_env_…). A signed-in access token reaches the management actions and their approvals only.', 403);
         }
 
-        if ($scope !== null && (! $this->scopes->knows($scope) || ! in_array($scope, $person->managementScopes(), true))) {
+        if ($scope !== null && (! $this->scopes->knows($scope) || ! ScopeRegistry::satisfies($person->managementScopes(), $scope))) {
             return $this->deny('forbidden', "This sign-in was not granted the required scope: {$scope}.", 403);
         }
 
@@ -213,7 +215,7 @@ final class AuthenticateEnvironmentApi
      *
      * @param  Closure(Request): Response  $next
      */
-    private function asWorkspaceMember(Request $request, Closure $next, ?string $scope, bool $admitted): Response
+    private function asOrganizationMember(Request $request, Closure $next, ?string $scope, bool $admitted): Response
     {
         $person = $this->root->principal($request);
 
@@ -238,7 +240,7 @@ final class AuthenticateEnvironmentApi
         $reference = $request->headers->get(self::ENVIRONMENT_HEADER);
 
         if (! is_string($reference) || trim($reference) === '') {
-            return $this->deny('environment_required', 'Name the environment to act in with the '.self::ENVIRONMENT_HEADER.' header: an environment id or slug of your workspace.', 400);
+            return $this->deny('environment_required', 'Name the environment to act in with the '.self::ENVIRONMENT_HEADER.' header: an environment id or slug of your organization.', 400);
         }
 
         try {
@@ -249,7 +251,7 @@ final class AuthenticateEnvironmentApi
             return $this->deny('forbidden', $forbidden->getMessage(), 403);
         }
 
-        if (! $this->scopes->knows($scope) || ! in_array($scope, $member->managementScopes(), true)) {
+        if (! $this->scopes->knows($scope) || ! ScopeRegistry::satisfies($member->managementScopes(), $scope)) {
             return $this->deny('forbidden', "This sign-in was not granted the required scope: {$scope}.", 403);
         }
 

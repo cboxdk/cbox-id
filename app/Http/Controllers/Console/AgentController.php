@@ -13,11 +13,13 @@ use App\Platform\Agents\ActionApprovalInbox;
 use App\Platform\Agents\AgentRoster;
 use App\Platform\Agents\AgentScope;
 use App\Platform\Agents\AgentScopes;
+use App\Platform\Api\ApiUrls;
 use App\Platform\Console\KeyTabs;
 use App\Platform\Console\ShellContext;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
+use App\Platform\IssuerUrl;
 use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OAuth\RootMcpOAuth;
 use App\Platform\PlaneResolver;
@@ -138,14 +140,15 @@ final readonly class AgentController extends ConsoleController
         $this->environmentAdmin();
 
         $mcp = $this->mcp();
-        $origin = $mcp === null ? rtrim(url('/'), '/') : self::origin($mcp->identifier);
+        $origin = $mcp === null ? IssuerUrl::to() : self::origin($mcp->identifier);
 
         return $this->page('environment/agents/connect', __('console.connect_an_agent_ce504be3'), [
             'help' => HelpProps::for(HelpTopic::ConnectAgent),
             'mcpUrl' => $mcp->identifier ?? $origin.McpProtectedResources::PATH,
             'metadataUrl' => $mcp?->metadataUrl() ?? $origin.ProtectedResource::WELL_KNOWN.McpProtectedResources::PATH,
-            'restBaseUrl' => $origin.'/api/v1',
-            'openApiUrl' => $origin.'/api/v1/environment/openapi.yaml',
+            // The API host: an environment key or a token names its own environment there.
+            'restBaseUrl' => ApiUrls::base(),
+            'openApiUrl' => ApiUrls::openApi(),
             /*
              * SIGNING IN WITH AN ACCOUNT, rather than pasting a key, is what an MCP client
              * does when the resource lets a self-registered client be issued a token for
@@ -162,7 +165,7 @@ final readonly class AgentController extends ConsoleController
              * deployment ({@see RootDelegatedAccess}). Null where there is no root apart
              * from this host to point at.
              */
-            'workspace' => $this->workspaceConnection(),
+            'organization' => $this->organizationConnection(),
             'urls' => [
                 'createAgent' => route('environment.agents.create', ['preset' => 'read-only', 'name' => 'Claude Code']),
                 'agents' => route('environment.agents'),
@@ -190,9 +193,9 @@ final readonly class AgentController extends ConsoleController
      * `oauth` says whether an MCP client may sign the person in there itself — the command
      * that needs nothing but the URL, offered first when it works ({@see RootMcpOAuth}).
      *
-     * @return array{mcpUrl: string, issuer: string, restBaseUrl: string, oauth: bool, workspaceKeysHref: string|null}|null
+     * @return array{mcpUrl: string, issuer: string, restBaseUrl: string, oauth: bool, organizationKeysHref: string|null}|null
      */
-    private function workspaceConnection(): ?array
+    private function organizationConnection(): ?array
     {
         $resource = app(RootDelegatedAccess::class)->resource();
 
@@ -205,12 +208,12 @@ final readonly class AgentController extends ConsoleController
         return [
             'mcpUrl' => $resource->identifier,
             'issuer' => $origin,
-            'restBaseUrl' => $origin.'/api/v1',
+            'restBaseUrl' => ApiUrls::base(),
             'oauth' => RootMcpOAuth::enabled() && $resource->dynamicClients,
             // "Mint one under Keys › Workspace keys" — on the workspace's host, so absolute.
-            'workspaceKeysHref' => app(PlaneResolver::class)->consoleHost() === null
+            'organizationKeysHref' => app(PlaneResolver::class)->consoleHost() === null
                 ? null
-                : app(ShellContext::class)->onWorkspaceHost('keys.workspace'),
+                : app(ShellContext::class)->onOrganizationHost('orgs.settings.api-keys.organization'),
         ];
     }
 

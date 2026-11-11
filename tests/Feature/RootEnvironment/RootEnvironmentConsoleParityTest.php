@@ -13,9 +13,9 @@ use Tests\Support\ProductionShape;
 |--------------------------------------------------------------------------
 |
 | The owner's requirement, as a test that cannot go stale: every page of the environment
-| console a tenant's administrator reaches at `{tenant}.cboxid.com/admin/…` is reachable
-| for the platform root's environment at `cboxid.com/admin/…`, by a platform operator — the
-| same route, the same answer. Enumerated from the route table, so a page added to the
+| console a tenant's administrator reaches at `cboxid.com/orgs/…/environments/{env}/…` is
+| reachable for the platform root's environment at `cboxid.com/admin/environment/…`, by a
+| platform operator — the same route, the same answer. Enumerated from the route table, so a page added to the
 | environment console tomorrow is held to it without anybody adding a line here.
 |
 | Production shape: routes cached, the trusted-host list enforced.
@@ -23,10 +23,10 @@ use Tests\Support\ProductionShape;
 
 afterEach(fn () => ProductionShape::reset());
 
-/** Every environment-console page: the `environment.*` GET routes under `/admin`. */
+/** Every environment-console page: the `environment.*` GET routes under the console's path. */
 function environmentConsolePage(Route $route): bool
 {
-    return str_starts_with((string) $route->getName(), 'environment.') && str_starts_with($route->uri(), 'admin');
+    return str_starts_with((string) $route->getName(), 'environment.') && str_starts_with($route->uri(), '{environmentPath}');
 }
 
 it('answers every environment-console page for the root environment exactly as for a tenant\'s', function (): void {
@@ -36,11 +36,11 @@ it('answers every environment-console page for the root environment exactly as f
     expect($tenant)->not->toBeNull();
 
     // The tenant's console, as its workspace's owner.
-    actAsEnvironmentAdmin($world->ownerId, (string) $tenant?->id);
+    actAsEnvironmentAdmin($world->ownerId, (string) $tenant?->id, consoleHost: ConsoleCrawl::ROOT);
     ConsoleCrawl::productionShape();
 
     $onTenant = (new ConsoleCrawl($this))->answers(
-        host: $tenant?->slug.'.'.ConsoleCrawl::ROOT,
+        host: ConsoleCrawl::ROOT,
         select: environmentConsolePage(...),
         parameters: ConsoleCrawl::parameters($world, $tenant),
     );
@@ -97,18 +97,18 @@ it('serves the root environment\'s console to nobody but its operators', functio
     $served = array_filter($answers, static fn (int $status): bool => $status !== 404);
 
     expect($answers)->not->toBeEmpty()
-        ->and($served)->toBe([], 'a workspace owner reached the platform environment\'s console: '.implode(', ', array_keys($served)));
+        ->and($served)->toBe([], 'an organization owner reached the platform environment\'s console: '.implode(', ', array_keys($served)));
 })->group('security');
 
 it('sends somebody with no session to the root\'s sign-in, and back to the page afterwards', function (): void {
     ConsoleCrawl::world();
     ConsoleCrawl::productionShape();
 
-    $this->get('https://'.ConsoleCrawl::ROOT.'/admin/social-sign-in')
+    $this->get('https://'.ConsoleCrawl::ROOT.'/admin/environment/social-sign-in')
         ->assertRedirect('https://'.ConsoleCrawl::ROOT.'/login');
 
     // The intent survives the sign-in: on the root's own host `/admin` is a subject's console.
-    expect(session('url.intended'))->toBe('https://'.ConsoleCrawl::ROOT.'/admin/social-sign-in');
+    expect(session('url.intended'))->toBe('https://'.ConsoleCrawl::ROOT.'/admin/environment/social-sign-in');
 });
 
 it('serves no environment console under a name that only resolves to the root', function (): void {
@@ -117,6 +117,6 @@ it('serves no environment console under a name that only resolves to the root', 
 
     // Not the root's host, though the context it resolves to is the root's: the same rule
     // that keeps a sign-in form off every wildcard name keeps this console off them too.
-    $this->get('https://nope.'.ConsoleCrawl::ROOT.'/admin')->assertNotFound();
-    $this->get('https://nope.'.ConsoleCrawl::ROOT.'/admin/social-sign-in')->assertNotFound();
+    $this->get('https://nope.'.ConsoleCrawl::ROOT.'/admin/environment')->assertNotFound();
+    $this->get('https://nope.'.ConsoleCrawl::ROOT.'/admin/environment/social-sign-in')->assertNotFound();
 })->group('security');

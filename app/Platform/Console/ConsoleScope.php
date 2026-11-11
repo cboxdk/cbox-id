@@ -71,6 +71,11 @@ class ConsoleScope
     /** @var array<string, bool> memo for {@see subjectIsOperator()}, keyed on the subject asked about */
     private array $operatorBySubject = [];
 
+    /** Organization-console route names whose environment-console twin has another name. */
+    private const ENVIRONMENT_TWINS = [
+        'orgs.settings.api-keys' => 'keys',
+    ];
+
     /** @see bindOrganization() — the organization this request's URL names, environment plane only. */
     private ?string $boundOrganization = null;
 
@@ -429,7 +434,23 @@ class ConsoleScope
      */
     public function routeName(string $name): string
     {
-        return $this->plane() === ConsolePlane::Environment ? 'environment.'.$name : $name;
+        return $this->plane() === ConsolePlane::Environment ? self::environmentTwin($name) : $name;
+    }
+
+    /**
+     * The environment console's name for an organization-console route: `environment.`
+     * in front, except for a page the organization console serves under `/orgs/{org}` with
+     * a name of its own (its keys are `orgs.settings.api-keys`, the environment's `keys`).
+     */
+    public static function environmentTwin(string $name): string
+    {
+        foreach (self::ENVIRONMENT_TWINS as $organization => $environment) {
+            if ($name === $organization || str_starts_with($name, $organization.'.')) {
+                return 'environment.'.$environment.substr($name, strlen($organization));
+            }
+        }
+
+        return 'environment.'.$name;
     }
 
     /**
@@ -781,7 +802,7 @@ class ConsoleScope
     }
 
     /**
-     * Whether this console is a WORKSPACE's own — see {@see WorkspaceAltitude}.
+     * Whether this console is a WORKSPACE's own — see {@see OrganizationAltitude}.
      *
      * Three conditions, each load-bearing. The organization console, because the
      * environment console is already the product. The platform root of a multi-tenant
@@ -797,7 +818,7 @@ class ConsoleScope
      * and every organization in it is administered there; an operator's workspace console
      * is the workspace's, like anybody's. See {@see RootHostConsole}.
      */
-    public function atWorkspaceAltitude(): bool
+    public function atOrganizationAltitude(): bool
     {
         return $this->plane() === ConsolePlane::Organization
             && $this->planes->onAccountPlane()
@@ -812,7 +833,7 @@ class ConsoleScope
      * a multi-tenant deployment, because that is the one shape with an environment console
      * beside this one to have taken the rest: on a single-tenant install this console IS
      * the administration, and at the platform root it is the operator's and the workspace's.
-     * And not an operator, for the same reason {@see atWorkspaceAltitude()} gives — the
+     * And not an operator, for the same reason {@see atOrganizationAltitude()} gives — the
      * full console is their job, and an operator whose environment selection is pinned to a
      * tenant must not lose it for having looked there.
      *
@@ -847,7 +868,7 @@ class ConsoleScope
             return null;
         }
 
-        return $this->ownsIdentityProviders() ? 'members' : 'directory.members';
+        return $this->ownsIdentityProviders() ? 'orgs.settings.members' : 'directory.members';
     }
 
     /** @throws AuthorizationException */

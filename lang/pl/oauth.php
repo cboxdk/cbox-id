@@ -46,7 +46,7 @@ return [
         'stale' => 'Ta prośba o autoryzację nie może być zakończona. Rozpocznij ponownie.',
         'account_attention' => 'Twoje konto wymaga uwagi przed kontynuacją. Zaloguj się ponownie.',
         'step_up' => 'Ta aplikacja wymaga nowszego lub silniejszego logowania. Prosimy o ponowne rozpoczęcie.',
-        'no_workspace' => 'To logowanie łączy agenta z obszarem roboczym w Cbox ID, ale Twoje konto nie należy do zespołu żadnego obszaru roboczego. Poproś właściciela obszaru roboczego o zaproszenie lub połącz agenta pod adresem własnego środowiska.',
+        'no_organization' => 'To logowanie łączy agenta z obszarem roboczym w Cbox ID, ale Twoje konto nie należy do zespołu żadnego obszaru roboczego. Poproś właściciela obszaru roboczego o zaproszenie lub połącz agenta pod adresem własnego środowiska.',
     ],
     'organization' => [
         'title' => 'Wybierz organizację',

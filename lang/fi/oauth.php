@@ -46,7 +46,7 @@ return [
         'stale' => 'Tätä valtuutuspyyntöä ei voida enää suorittaa. Aloita alusta.',
         'account_attention' => 'Tilisi vaatii huomiota, jotta voit jatkaa. Kirjaudu sisään uudelleen.',
         'step_up' => 'Tämä sovellus vaatii uudemman tai vahvemman kirjautumisen. Aloita alusta.',
-        'no_workspace' => 'Tämä kirjautuminen yhdistää agentin Cbox ID:n työtilaan, mutta tilisi ei kuulu minkään työtilan tiimiin. Pyydä työtilan omistajalta kutsu tai yhdistä agentti sen sijaan ympäristösi omassa osoitteessa.',
+        'no_organization' => 'Tämä kirjautuminen yhdistää agentin Cbox ID:n organisaatioon, mutta tilisi ei kuulu minkään organisaation tiimiin. Pyydä organisaation omistajalta kutsu tai yhdistä agentti sen sijaan ympäristösi omassa osoitteessa.',
     ],
     'organization' => [
         'title' => 'Valitse organisaatio',

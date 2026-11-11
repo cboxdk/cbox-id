@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
-use App\Actions\Workspace\Keys\CreateWorkspaceKey;
-use App\Actions\Workspace\Keys\RevokeWorkspaceKey;
+use App\Actions\OrgPlane\Keys\CreateOrganizationKey;
+use App\Actions\OrgPlane\Keys\RevokeOrganizationKey;
 use App\Http\Props\Console\ApiKeyRowProps;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\IssueApiKeyRequest;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Console\KeyTabs;
-use App\Platform\Console\WorkspaceLanding;
+use App\Platform\Console\OrganizationLanding;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Locale\ConsoleLabels;
@@ -42,7 +42,7 @@ use Inertia\Response;
  * role across the whole account could be minted and destroyed without a line anywhere
  * saying who did it. The environment key page beside this one always recorded both.
  *
- * Both writes are actions (`keys.workspace.create` / `.revoke`), the ones a workspace key
+ * Both writes are actions (`keys.organization.create` / `.revoke`), the ones a workspace key
  * runs over `/api/v1/workspace/keys`; the step-up stays here, because a password prompt is
  * the console's ceremony and not part of the act.
  */
@@ -53,19 +53,19 @@ final readonly class ApiKeyController extends ConsoleController
         if ($this->scope->capabilities()?->canManageMembers() !== true) {
             // Somebody arriving where they may not go is sent somewhere they can be, which
             // is the console's own answer and the one the navigation-honesty test holds.
-            return redirect()->to(app(WorkspaceLanding::class)->url());
+            return redirect()->to(app(OrganizationLanding::class)->url());
         }
 
         $organizationId = $this->scope->organizationId();
         $now = CarbonImmutable::now();
 
-        return $this->page('console/keys/workspace', __('console.api_keys_98aae897'), [
+        return $this->page('console/keys/organization', __('console.api_keys_98aae897'), [
             'help' => HelpProps::for(HelpTopic::Keys),
-            'tabs' => $tabs->for(KeyTabs::WORKSPACE),
+            'tabs' => $tabs->for(KeyTabs::ORGANIZATION),
             'keys' => $organizationId === null ? [] : $keys->forOrganization($organizationId)
                 ->map(fn (OrganizationApiKey $key): ApiKeyRowProps => ApiKeyRowProps::from(
                     $key,
-                    route('keys.workspace.destroy', $key->id),
+                    route('orgs.settings.api-keys.organization.destroy', $key->id),
                     $now,
                 ))
                 ->values()
@@ -97,7 +97,7 @@ final readonly class ApiKeyController extends ConsoleController
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
 
         $challenge = $this->stepUp(
-            __('console.a_workspace_key_acts_with_its_built_in_role__4dec8eb1'),
+            __('console.an_organization_key_acts_with_its_built_in_r_5906ff85'),
         );
 
         if ($challenge !== null) {
@@ -106,7 +106,7 @@ final readonly class ApiKeyController extends ConsoleController
 
         // The action `POST /api/v1/workspace/keys` runs: a key minted here and one minted by
         // another key are recorded alike — and only a key is bounded by its parent.
-        $result = $this->act(CreateWorkspaceKey::class, [
+        $result = $this->act(CreateOrganizationKey::class, [
             'name' => $request->name(),
             'role' => $request->role()->value,
             'expires_at' => $request->expiresAt()?->toIso8601String(),
@@ -126,7 +126,7 @@ final readonly class ApiKeyController extends ConsoleController
          */
         $this->inertia->flash('freshKey', $issued->plaintext);
 
-        return back()->with('status', __('console.workspace_key_created_copy_it_now_it_will_not_be_shown_146ccee1'));
+        return back()->with('status', __('console.organization_key_created_copy_it_now_it_will_not_be_sho_f57569af'));
     }
 
     public function destroy(string $key): RedirectResponse
@@ -136,7 +136,7 @@ final readonly class ApiKeyController extends ConsoleController
         abort_if($organizationId === null, 403);
         abort_unless($this->scope->capabilities()?->canManageMembers() === true, 403);
 
-        $challenge = $this->stepUp(__('console.revoking_a_workspace_key_stops_whatever_is_u_8adf3587'));
+        $challenge = $this->stepUp(__('console.revoking_an_organization_key_stops_whatever__fd3cd5f4'));
 
         if ($challenge !== null) {
             return $challenge;
@@ -161,12 +161,12 @@ final readonly class ApiKeyController extends ConsoleController
         }
 
         try {
-            $this->runAction(RevokeWorkspaceKey::class, ['id' => $found->id]);
+            $this->runAction(RevokeOrganizationKey::class, ['id' => $found->id]);
         } catch (ActionRefused) {
             return back();
         }
 
-        return back()->with('status', __('console.workspace_key_revoked_d031a10f'));
+        return back()->with('status', __('console.organization_key_revoked__9589e4ad'));
     }
 
     /**
@@ -183,6 +183,6 @@ final readonly class ApiKeyController extends ConsoleController
 
         // In place for a click (thrown, and replayed by the page once confirmed); the full
         // page, coming back to the keys, for anything else.
-        return StepUpPrompt::demand(request(), StepUpPlane::Organization, route('keys.workspace'), $reason);
+        return StepUpPrompt::demand(request(), StepUpPlane::Organization, route('orgs.settings.api-keys.organization'), $reason);
     }
 }

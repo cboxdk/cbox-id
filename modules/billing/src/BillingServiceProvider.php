@@ -124,8 +124,8 @@ class BillingServiceProvider extends ServiceProvider
         // existing area when the host has already declared it — but it also APPLIES the
         // label and icon passed here, so they must be the host's own, word for word, or
         // whichever provider boots last renames the area.
-        Console::nav()->area('identity-platform', 'Workspace', 'briefcase', 15)
-            ->page('billing', 'Billing', feature: 'organization.billing', order: self::NAV_ORDER);
+        Console::nav()->area('identity-platform', 'Organization', 'briefcase', 15)
+            ->page('orgs.settings.billing', 'Billing', feature: 'organization.billing', order: self::NAV_ORDER);
     }
 
     private function registerRoutes(): void
@@ -135,23 +135,25 @@ class BillingServiceProvider extends ServiceProvider
         // control-plane identity acting inside one tenant, with no bill of their own to
         // read. Serving it on that plane would render a permanently empty page.
         foreach ([
-            ['PATCH', '/billing/account', 'updateAccount', 'billing.account'],
-            ['POST', '/billing/payment-methods/setup', 'setup', 'billing.setup'],
-            ['POST', '/billing/payment-methods/complete', 'complete', 'billing.complete'],
-            ['PATCH', '/billing/payment-methods/{method}/default', 'setDefault', 'billing.payment-method.default'],
-            ['DELETE', '/billing/payment-methods/{method}', 'remove', 'billing.payment-method.remove'],
+            ['PATCH', '/settings/billing/account', 'updateAccount', 'orgs.settings.billing.account'],
+            ['POST', '/settings/billing/payment-methods/setup', 'setup', 'orgs.settings.billing.setup'],
+            ['POST', '/settings/billing/payment-methods/complete', 'complete', 'orgs.settings.billing.complete'],
+            ['PATCH', '/settings/billing/payment-methods/{method}/default', 'setDefault', 'orgs.settings.billing.payment-method.default'],
+            ['DELETE', '/settings/billing/payment-methods/{method}', 'remove', 'orgs.settings.billing.payment-method.remove'],
         ] as [$verb, $uri, $method, $name]) {
-            ConsoleRoutes::organizationAction('billing', $verb, $uri, [BillingController::class, $method], $name);
+            ConsoleRoutes::orgAction('billing', $verb, $uri, [BillingController::class, $method], $name);
         }
-        ConsoleRoutes::organizationAction('billing', 'POST', '/billing/projects/{project}/preview', [PaymentController::class, 'preview'], 'billing.preview');
-        ConsoleRoutes::organizationAction('billing', 'POST', '/billing/projects/{project}/confirm', [PaymentController::class, 'confirm'], 'billing.confirm');
-        ConsoleRoutes::organizationPage('billing', '/billing/invoices/{invoice}/download', [BillingController::class, 'invoice'], 'billing.invoice');
+        ConsoleRoutes::orgAction('billing', 'POST', '/settings/billing/projects/{project}/preview', [PaymentController::class, 'preview'], 'orgs.settings.billing.preview');
+        ConsoleRoutes::orgAction('billing', 'POST', '/settings/billing/projects/{project}/confirm', [PaymentController::class, 'confirm'], 'orgs.settings.billing.confirm');
+        ConsoleRoutes::orgPage('billing', '/settings/billing/invoices/{invoice}/download', [BillingController::class, 'invoice'], 'orgs.settings.billing.invoice');
 
-        ConsoleRoutes::organizationPage(
+        // `/orgs/{org}/settings/billing`: the organization's bill, in its settings. The v2
+        // `/billing` paths redirect here ({@see \App\Http\Controllers\Console\LegacyOrganizationPathController}).
+        ConsoleRoutes::orgPage(
             feature: 'billing',
-            uri: '/billing',
+            uri: '/settings/billing',
             component: [BillingController::class, '__invoke'],
-            name: 'billing',
+            name: 'orgs.settings.billing',
         );
     }
 }

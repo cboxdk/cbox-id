@@ -13,7 +13,7 @@ description: Inviting people into an organization, sending them back to your app
 Everyone who can sign in to this organization, what they may administer here, and the
 invitations nobody has accepted yet. The same invite form and the same pending list
 appear on the environment console's view of an organization (Organizations › *name*),
-and a workspace's own team uses the same form under Workspace › Team.
+and an organization's own team uses the same form under Organization › Team.
 
 ## Inviting someone
 
@@ -29,13 +29,13 @@ and a workspace's own team uses the same form under Workspace › Team.
   - any number of [roles](roles.md) your apps understand, app-declared or your own,
     granted the moment they accept, so there is no second step after they join.
 
-On a workspace's **Team** page the built-in roles are Admin, Developer, Member and
+On an organization's **Team** page the built-in roles are Admin, Developer, Member and
 Viewer. Developer may administer environments and create management keys but not the
 team; Viewer can read the team and billing and change nothing.
 
 A team invitation is a different kind from an organization's: the mail says "invited you
 to administer", and its link asks the person to **set a password**, then signs them in
-to this console. Your backend can send the same invitation with a workspace key —
+to this console. Your backend can send the same invitation with an organization key —
 `POST /api/v1/workspace/members` — and list, re-send and withdraw it under
 `/api/v1/workspace/invitations`. It is the same invitation either way: the same mail
 and link, the same refusals, and the same line on the audit log
@@ -103,9 +103,9 @@ The owner can delete the organization under **Settings › Delete organization**
 typing its name and confirming their password. Every member loses access at once and it
 disappears from every list; the records are kept for the audit trail. Apps that signed
 members in to it can no longer refresh their tokens. Apps registered for back-channel
-logout are told to sign those members out. A workspace (an
+logout are told to sign those members out. An organization (an
 organization that owns projects) cannot be deleted this way: close its projects under
-Workspace › Projects first.
+Organization › Projects first.
 
 ## Related
 

@@ -9,7 +9,7 @@ use App\Platform\Actions\Approvals\ActionApprovalGate;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\DelegatedApiContext;
 use App\Platform\EnvironmentApiContext;
-use App\Platform\WorkspaceApiContext;
+use App\Platform\OrganizationApiContext;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -32,7 +32,7 @@ final class ActionApprovalController extends Controller
      * The same question from a workspace key — or a member's root token — at
      * `/api/v1/workspace/action-approvals/{id}`.
      */
-    public function showForWorkspace(string $id, WorkspaceApiContext $context, ActionApprovalGate $gate): JsonResponse
+    public function showForOrganization(string $id, OrganizationApiContext $context, ActionApprovalGate $gate): JsonResponse
     {
         return $this->answer($id, $context->principal() ?? abort(401), $gate);
     }

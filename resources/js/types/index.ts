@@ -1,3 +1,4 @@
+import type { Shell as CboxShellProp } from '@cboxdk/cbox-ui';
 /**
  * THE SERVER'S CONTRACT, as TypeScript.
  *
@@ -213,7 +214,7 @@ export interface ContextEnvironment {
     /** The environment type's backing value — `production`, `sandbox`, … */
     type: string;
     current: boolean;
-    /** The workspace host's `/open/{environment}`, carrying the page to land on. Leaves this host. */
+    /** The organization host's `/open/{environment}`, carrying the page to land on. Leaves this host. */
     href: string;
 }
 
@@ -234,8 +235,8 @@ export interface ShellContext {
     /** "Workspace" where the organization owns projects, "Organization" everywhere else. */
     noun: string;
     /** Always holds the current one, even when it is the only one. */
-    workspaces: SwitchOption[];
-    /** Where choosing a workspace POSTs; null where each row is a link instead. */
+    organizations: SwitchOption[];
+    /** Where choosing an organization POSTs; null where each row is a link instead. */
     switchUrl: string | null;
     /** Only the environments this person may open, grouped by project. */
     projects: ContextProject[];
@@ -310,7 +311,20 @@ export interface CertificateWarning {
     href: string;
 }
 
-/** `App\Http\Props\Shell\ShellProps` — null on a page with no console chrome. */
+/**
+ * The shared shell (`App\Platform\Shell\IdShell`): cbox-ui's `Shell`, built by
+ * laravel-console-kit. Null on a page with no console chrome and on a customer
+ * environment's own console, which has `tenantShell` instead.
+ */
+export type ConsoleShell = CboxShellProp & {
+    /** "Platform" on the pages about the whole install, for the tab title. */
+    section?: string | null;
+};
+
+/**
+ * `App\Http\Props\Shell\ShellProps` — the chrome of a customer environment's own,
+ * white-labelled organization console (`tenantShell`).
+ */
 export interface Shell {
     areas: NavArea[];
     activeArea: string | null;
@@ -320,18 +334,18 @@ export interface Shell {
     isOperator: boolean;
     brandHref: string;
     navPinned: boolean;
-    /** Absolute on the environment console: the person's own pages live on the workspace host. */
+    /** Absolute on the environment console: the person's own pages live on the organization host. */
     accountHref: string;
     switchUserHref: string;
     /** Where Sign out posts: the admin context's own logout on a tenant's console, else `/logout`. */
     logoutHref?: string | null;
     /** `App\Platform\Console\ConsoleAltitude` — which console this page is drawn in. */
-    altitude: 'workspace' | 'organization' | 'environment';
+    altitude: 'org-plane' | 'organization' | 'environment';
     /** The account menu's Workspace settings, where this person may change them. */
-    workspaceSettingsHref: string | null;
+    organizationSettingsHref: string | null;
     /**
      * The account menu's way into platform admin — operators only, and only from a console
-     * it is not an area of (the workspace console on the root, a tenant's environment console).
+     * it is not an area of (the organization console on the root, a tenant's environment console).
      */
     platformHref: string | null;
     /** A sentence above a page the rail does not offer, and where to go instead. */
@@ -344,10 +358,10 @@ export interface Shell {
 
 /** `App\Http\Props\Shell\ShellActsOnProps` */
 export interface ShellActsOn {
-    kind: 'environment' | 'workspace' | 'organization' | 'platform';
+    kind: 'environment' | 'org-plane' | 'organization' | 'platform';
     label: string;
     detail: string | null;
-    /** The platform's own environment: a change there reaches every workspace owner and operator. */
+    /** The platform's own environment: a change there reaches every organization owner and operator. */
     critical: boolean;
 }
 
@@ -362,6 +376,10 @@ export interface CatalogApp {
     key: string;
     name: string;
     description: string | null;
+    /** One line under the name in the switcher. */
+    purpose: string | null;
+    /** A cbox-ui hue token (`violet`, `amber`, …) the tile is drawn in. */
+    hue: string | null;
     launch_url: string;
     icon_url: string | null;
     /** Null when the app has no dark icon; `icon_url` then serves both themes. */
@@ -371,6 +389,8 @@ export interface CatalogApp {
 }
 
 export interface SharedProps {
+    /** The organization `/orgs/{org}/…` route helpers default to (the path's, or this session's). */
+    org?: { slug: string } | null;
     supportSessionUrl?: string | null;
     /** Same-origin JSON catalog for `<cbox-app-switcher>` (the signed-in person's; empty for nobody). */
     appCatalogUrl: string | null;
@@ -399,10 +419,11 @@ export interface SharedProps {
     environment: CurrentEnvironment;
     impersonation: ImpersonationSession | null;
     flash: Flash;
-    shell: Shell | null;
+    shell: ConsoleShell | null;
+    tenantShell?: Shell | null;
     i18n: I18n | null;
     /**
-     * Shared on every page under `/admin/organizations/{organization}/…`: the organization the
+     * Shared on every page under an environment console's `…/organizations/{organization}/…`: the organization the
      * page is about, which the layout draws as the hub's header and tabs around the page.
      */
     organizationHub?: OrganizationHub | null;

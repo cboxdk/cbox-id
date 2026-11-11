@@ -26,15 +26,15 @@ final class ServiceProvider extends Provider
             ->handle(fn (array $arguments, ToolContext $context): array => app(SupportContext::class)->onboarding($context));
 
         foreach ([
-            'id_workspace_status' => ['Read the current Cbox ID workspace and the caller’s membership role. No credentials or private profiles.', false],
-            'id_environment_status' => ['Read this workspace’s project and environment setup. Includes only environments the current member can access.', true],
+            'id_workspace_status' => ['Read the current Cbox ID organization and the caller’s membership role. No credentials or private profiles.', false],
+            'id_environment_status' => ['Read this organization’s project and environment setup. Includes only environments the current member can access.', true],
         ] as $name => [$description, $withEnvironments]) {
             AiAssistant::tool($name)->readOnly()->description($description)->parameters([])
                 ->guard(fn (ToolContext $context): bool => app(SupportContext::class)->allowed($context, $withEnvironments))
                 ->handle(fn (array $arguments, ToolContext $context): array => app(SupportContext::class)->read($context, $withEnvironments));
         }
 
-        AiAssistant::inboxCard('id_workspace')->title('Cbox ID workspace')
+        AiAssistant::inboxCard('id_workspace')->title('Cbox ID organization')
             ->schema(['fields' => [
                 ['key' => 'organization', 'label' => 'Organization'],
                 ['key' => 'role', 'label' => 'Member role'],

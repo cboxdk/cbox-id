@@ -7,6 +7,7 @@ use App\Mcp\ActionTool;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ActionApprovalRequest;
+use App\Platform\Api\ManagementAudience;
 use App\Platform\AppMemberRoles;
 use App\Platform\EnvironmentOrigin;
 use App\Platform\GrantAccessRole;
@@ -148,7 +149,7 @@ function rootApisIn(Environment $environment): array
 
 // ── Who gets in ─────────────────────────────────────────────────────────────────
 
-it('requires an exact workspace selector for an unbound multi-workspace token', function (): void {
+it('requires an exact organization selector for an unbound multi-workspace token', function (): void {
     $other = provisionAccount('second-owner@example.test');
     $subject = $this->account['subjectId'];
     $first = $this->account['organization']->id;
@@ -170,7 +171,7 @@ it('requires an exact workspace selector for an unbound multi-workspace token', 
     $this->withToken($key)->getJson('/api/v1/workspace', ['Cbox-Organization' => $second])->assertForbidden();
 })->group('security');
 
-it('uses native app permissions rather than shared membership tier at the workspace API gate', function (): void {
+it('uses native app permissions rather than shared membership tier at the organization API gate', function (): void {
     [$membership, $subject] = addMember($this->account['organization']->id, MembershipRole::Member, 'native-admin@example.test');
     grantNativeProductRoles($membership, ['admin']);
     $token = rootToken($subject, ['team:read'], $membership->organization_id);
@@ -182,7 +183,7 @@ it('does not turn a shared organization admin into an ID product admin', functio
     [, $subject] = addMember($this->account['organization']->id, MembershipRole::Admin, 'shared-admin@example.test');
     $token = rootToken($subject, null, $this->account['organization']->id);
 
-    expect(app(RootDelegatedAccess::class)->workspaceOf($subject, $this->account['organization']->id))->toBeNull();
+    expect(app(RootDelegatedAccess::class)->organizationOf($subject, $this->account['organization']->id))->toBeNull();
     $this->withToken($token)->getJson('/api/v1/workspace/projects')->assertForbidden();
     $this->withToken($token)->getJson('/api/v1/apis', ['Cbox-Environment' => $this->account['environment']->id])->assertForbidden();
 })->group('security');
@@ -213,20 +214,20 @@ it('keeps native Reader access read-only and revokes it on the next token reques
     $this->withToken($token)->getJson('/api/v1/apis', $headers)->assertForbidden();
 })->group('security');
 
-it('never substitutes another workspace for an explicitly bound organization', function (): void {
+it('never substitutes another organization for an explicitly bound organization', function (): void {
     $access = app(RootDelegatedAccess::class);
     $subject = $this->account['subjectId'];
     $organization = $this->account['organization']->id;
 
-    expect($access->workspaceOf($subject, $organization)?->id)->toBe($organization)
-        ->and($access->workspaceOf($subject, 'missing-organization'))->toBeNull()
-        ->and($access->workspaceOf($subject, ''))->toBeNull();
+    expect($access->organizationOf($subject, $organization)?->id)->toBe($organization)
+        ->and($access->organizationOf($subject, 'missing-organization'))->toBeNull()
+        ->and($access->organizationOf($subject, ''))->toBeNull();
 
     $token = rootToken($subject, ['workspace:read'], 'missing-organization');
     $this->withToken($token)->getJson('/api/v1/workspace/projects')->assertForbidden();
 })->group('security');
 
-it('takes a workspace member\'s root token at the root\'s /mcp and says who it acts as', function (): void {
+it('takes an organization member\'s root token at the root\'s /mcp and says who it acts as', function (): void {
     $token = rootToken($this->account['subjectId']);
 
     $me = mcpCall($token, 'whoami')['structuredContent'];
@@ -238,7 +239,8 @@ it('takes a workspace member\'s root token at the root\'s /mcp and says who it a
         'operator' => false,
         'client' => ['id' => rootCliClient()->client_id, 'name' => CliClient::NAME],
     ])->and(collect($me['environments'])->pluck('id')->all())->toBe([$this->account['environment']->id])
-        ->and($me['scopes'])->toContain('team:write', 'apis:write', 'account:profile:write');
+        // Each scope under the name its action declares: v3's on the organization plane.
+        ->and($me['scopes'])->toContain('id:members:write', 'apis:write', 'account:profile:write')->not->toContain('team:write');
 });
 
 it('refuses a token from an environment\'s issuer at the root, and the root\'s token on an environment\'s host', function (): void {
@@ -279,12 +281,12 @@ it('refuses a DPoP-bound root token presented without its proof', function (): v
 
 // ── What it may do: the tools, per principal ────────────────────────────────────
 
-it('lists the workspace\'s tools, every environment tool with an environment argument, and the account\'s', function (): void {
+it('lists the organization\'s tools, every environment tool with an environment argument, and the account\'s', function (): void {
     $tools = mcpTools(rootToken($this->account['subjectId']));
 
     expect(array_keys($tools))->toContain('whoami', 'team_list', 'projects_create', 'apis_create', 'webhooks_list', 'account_profile_update')
         // The deployment is an operator's.
-        ->not->toContain('platform_workspaces_create');
+        ->not->toContain('admin_organizations_create');
 
     // An environment tool names where to act; a workspace tool does not.
     expect($tools['apis_create']['inputSchema']['required'])->toContain(ActionTool::ENVIRONMENT)
@@ -313,7 +315,7 @@ it('lists only what the token\'s scopes and the member\'s role both allow', func
 
     // An owner's token narrowed to one scope sees that scope's tools and the always-there three.
     expect(array_keys(mcpTools(rootToken($this->account['subjectId'], ['workspace:read']))))
-        ->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status', 'workspace_get', 'projects_list', 'environments_list', 'keys_workspace_list']);
+        ->toEqualCanonicalizing(['whoami', 'list_actions', 'approval_status', 'organization_get', 'projects_list', 'environments_list', 'keys_organization_list']);
 });
 
 it('lists the deployment\'s tools to an operator, and nobody else', function (): void {
@@ -322,16 +324,16 @@ it('lists the deployment\'s tools to an operator, and nobody else', function ():
 
     $token = rootToken((string) $operator->subject_id, strong: true);
 
-    expect(array_keys(mcpTools($token)))->toContain('platform_workspaces_create', 'platform_operators_create')
+    expect(array_keys(mcpTools($token)))->toContain('admin_organizations_create', 'admin_operators_create')
         ->and(mcpCall($token, 'whoami')['structuredContent']['operator'])->toBeTrue();
 });
 
 // ── The workspace plane, as the member ──────────────────────────────────────────
 
-it('runs a workspace action as the member, recorded as the member', function (): void {
+it('runs an organization action as the member, recorded as the member', function (): void {
     $token = rootToken($this->account['subjectId']);
 
-    expect(mcpCall($token, 'workspace_settings_update', ['name' => 'Acme Labs'])['isError'] ?? false)->toBeFalse();
+    expect(mcpCall($token, 'organization_settings_update', ['name' => 'Acme Labs'])['isError'] ?? false)->toBeFalse();
 
     $entry = collect(app(OrganizationActivity::class)->recent($this->account['organization']->id))
         ->first(static fn (AuditEntry $entry): bool => $entry->action === 'organization.renamed');
@@ -343,26 +345,26 @@ it('runs a workspace action as the member, recorded as the member', function ():
     $this->withToken($token)->getJson('/api/v1/workspace')->assertOk()->assertJsonPath('data.name', 'Acme Labs');
 });
 
-it('bounds a member\'s workspace token by their role, at both doors', function (): void {
+it('bounds a member\'s organization token by their role, at both doors', function (): void {
     [$developerMembership, $developer] = addMember($this->account['organization']->id, MembershipRole::Developer, 'dev@acme.example');
     grantNativeProductRoles($developerMembership, ['developer']);
     $token = rootToken($developer);
 
     $this->withToken($token)->getJson('/api/v1/workspace/members')
         ->assertForbidden()
-        ->assertJsonPath('message', 'Your role in this workspace may not read-members.');
+        ->assertJsonPath('message', 'Your role in this organization may not read-members.');
 
     // The scope is not enough either way: an owner's token without it is refused too.
     $this->withToken(rootToken($this->account['subjectId'], ['workspace:read']))
         ->getJson('/api/v1/workspace/members')
         ->assertForbidden()
-        ->assertJsonPath('message', 'This sign-in was not granted the required scope: team:read.');
+        ->assertJsonPath('message', 'This sign-in was not granted the required scope: id:members:read.');
 })->group('security');
 
-it('still takes workspace keys at the root\'s /mcp, as the key', function (): void {
+it('still takes organization keys at the root\'s /mcp, as the key', function (): void {
     $key = app(OrganizationApiKeys::class)->issue($this->account['organization']->id, 'Agent', MembershipRole::Admin)->plaintext;
 
-    expect(mcpCall($key, 'whoami')['structuredContent'])->toMatchArray(['kind' => 'workspace_key'])
+    expect(mcpCall($key, 'whoami')['structuredContent'])->toMatchArray(['kind' => 'organization_key'])
         ->and(array_keys(mcpTools($key)))->toContain('projects_create')->not->toContain('apis_create')->not->toContain('account_profile_update');
 });
 
@@ -393,7 +395,7 @@ it('runs an environment action in the environment it names, inside that environm
         ->and($entry?->actor_id)->toBe($this->account['subjectId']);
 });
 
-it('refuses an environment the member cannot reach, another workspace\'s, and no environment at all', function (): void {
+it('refuses an environment the member cannot reach, another organization\'s, and no environment at all', function (): void {
     $staging = rootSecondEnvironment($this->account);
     [$scopedMembership, $scoped] = addMember($this->account['organization']->id, MembershipRole::Developer, 'dev@acme.example');
     grantNativeProductRoles($scopedMembership, ['developer']);
@@ -431,7 +433,7 @@ it('refuses a member whose role administers no environment, even with the scope'
     $this->withToken($token)
         ->getJson('/api/v1/apis', ['Cbox-Environment' => $this->account['environment']->id])
         ->assertForbidden()
-        ->assertJsonPath('message', "You are not on a workspace's team, so there is no environment to act in.");
+        ->assertJsonPath('message', "You are not on an organization's team, so there is no environment to act in.");
 })->group('security');
 
 it('takes the environment in a header over REST, on the environment API\'s own routes', function (): void {
@@ -542,12 +544,12 @@ it('keeps a held environment action\'s poll on the root, where its token is take
 
 // ── Critical waits for the person ───────────────────────────────────────────────
 
-it('holds a critical workspace action for the person\'s approval in the root, then finishes it', function (): void {
+it('holds a critical organization action for the person\'s approval in the root, then finishes it', function (): void {
     $subject = $this->account['subjectId'];
     $token = rootToken($subject);
 
     $arguments = ['name' => 'CI', 'role' => 'developer', 'idempotency_key' => 'ws-key-once'];
-    $held = mcpCall($token, 'keys_workspace_create', $arguments)['structuredContent'];
+    $held = mcpCall($token, 'keys_organization_create', $arguments)['structuredContent'];
 
     expect($held['status'] ?? null)->toBe('approval_pending');
 
@@ -558,7 +560,7 @@ it('holds a critical workspace action for the person\'s approval in the root, th
 
     app(PlatformRoot::class)->run(static fn () => app(BackchannelAuthentication::class)->approve($approvalId, $subject));
 
-    $done = mcpCall($token, 'keys_workspace_create', [...$arguments, 'approval_id' => $approvalId]);
+    $done = mcpCall($token, 'keys_organization_create', [...$arguments, 'approval_id' => $approvalId]);
 
     expect($done['isError'] ?? false)->toBeFalse()
         ->and($done['structuredContent']['data'])->toHaveKey('token');
@@ -637,14 +639,19 @@ it('opens the operator API to an operator\'s root token, holding every call for 
 
 // ── The `cbox` CLI at the root ──────────────────────────────────────────────────
 
-it('signs the cbox CLI in at the root with the device grant, for the whole workspace', function (): void {
+it('signs the cbox CLI in at the root with the device grant, for the whole organization', function (): void {
     $client = rootCliClient();
 
     $bootstrap = $this->getJson('/.well-known/cbox-cli')->assertOk();
 
-    expect($bootstrap->json('resource'))->toBe(rootMcpResource())
+    // The API host's resource (plan §2.5); the root's own `/mcp` takes the token it buys.
+    expect($bootstrap->json('resource'))->toBe(ManagementAudience::api())
+        ->and($bootstrap->json('mcp_url'))->toBe(ManagementAudience::appMcp())
         ->and($bootstrap->json('client_id'))->toBe($client->client_id)
-        ->and($bootstrap->json('scopes'))->toContain('offline_access', 'team:write', 'apis:write', 'account:profile:write', 'operator:workspaces:write')
+        ->and($bootstrap->json('scopes'))->toContain('offline_access', 'id:members:write', 'apis:write', 'account:profile:write', 'operator:workspaces:write')
+        ->not->toContain('team:write')
+        // The client itself still holds the v2 names, so a released CLI asking for them signs in.
+        ->and($client->scopes)->toContain('team:write', 'id:members:write')
         ->and($bootstrap->json('device_authorization_endpoint'))->toEndWith('/oauth/device_authorization');
 
     $started = $this->post('/oauth/device_authorization', [

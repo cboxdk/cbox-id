@@ -132,7 +132,7 @@ it('refuses a member who may not administer', function (): void {
     declareLegacy();
     actingAsRole(MembershipRole::Member);
 
-    approveLegacyLogin()->assertRedirectContains('/open/');
+    assertRefusedByEnvironmentConsole(approveLegacyLogin());
 
     expect(LegacyLoginDeclarationRecord::query()->first()?->isApproved())->toBeFalse();
 });
@@ -261,7 +261,7 @@ it('cannot be reached by an organization administrator at all', function (): voi
     confirmEnvironmentStepUp();
     actingAsRole(MembershipRole::Owner);
 
-    approveLegacyLogin()->assertRedirectContains('/open/');
+    assertRefusedByEnvironmentConsole(approveLegacyLogin());
 
     expect(LegacyLoginDeclarationRecord::query()->first()?->isApproved())->toBeFalse()
         // And the page is absent rather than present-and-403: a route that exists and

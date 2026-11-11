@@ -60,7 +60,7 @@ it('registers a Standard Webhooks endpoint and moves it back to Cbox behind a ty
         ->fill('input[type="url"]', 'https://hooks.example.test/in')
         ->click('label:has-text("Standard Webhooks")')
         ->click('fieldset label >> nth=0')
-        ->click('button[type="submit"]');
+        ->click('#main-content button[type="submit"]');
 
     // The secret is a whsec_ secret, ready for a Standard Webhooks library as it is.
     $page->assertSee('Copy this signing secret now')

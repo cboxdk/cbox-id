@@ -17,12 +17,13 @@ use Tests\Support\UiCopy;
  * roles". Architecture words — "plane", "tenant" — leaked into sentences. The fix was a
  * vocabulary, and a vocabulary nobody checks drifts back in a quarter:
  *
- *   Workspace — the customer's own Cbox account (its console, its Team, its settings)
- *   Organization — a team of YOUR customers, inside an environment
+ *   Organization — the customer's own Cbox account (its console, its Team, its settings),
+ *     and, inside an environment, a team of YOUR customers
+ *     (it was "Workspace" until v3; see NoWorkspaceWordTest)
  *   Built-in role — Owner / Admin / Developer / Member / Viewer, exactly one per member
  *   Roles — app and custom roles, any number
  *   Admins & support — roles granted across a whole environment
- *   Apps, API keys, Switch user
+ *   Apps, API keys, Switch account
  *
  * The console's NOUNS — the names of its areas and pages — are {@see Vocabulary}'s, and so
  * are the names they replaced ({@see Vocabulary::RETIRED}), which the second sweep below
@@ -100,12 +101,12 @@ function vocabularySources(): array
  */
 const RETIRED_WORDS = [
     // Deployment shape words ("multi-tenant", "single-tenant") are not this word.
-    '/(?<!-)\btenants?\b(?!-)/i' => 'organization (a team of your customers) — or workspace, if it is the customer\'s own Cbox account',
+    '/(?<!-)\btenants?\b(?!-)/i' => 'organization',
     '/\bplanes?\b/i' => 'console or environment — "plane" is an architecture word',
-    '/\bcustomers?\b/i' => 'workspace (the customer\'s Cbox account) or organization (a team of THEIR customers)',
-    '/\bIdentity platform\b/' => 'Workspace',
+    '/\bcustomers?\b/i' => 'organization',
+    '/\bIdentity platform\b/' => 'Organization',
     '/\bAdministrators\b/' => 'Team',
-    '/\bAccount settings\b/' => 'Workspace settings',
+    '/\bAccount settings\b/' => 'Organization settings',
     '/\bApps (&|&amp;) API keys\b/' => 'Apps (keys have a page of their own)',
     '/\b(Console|Organization|Org) access\b/i' => 'Built-in role',
     '/\bAccess roles?\b/i' => 'Roles',
@@ -113,8 +114,7 @@ const RETIRED_WORDS = [
     '/\bApp roles\b/i' => 'App and custom roles, or Roles',
     '/\bOrg roles\b/i' => 'Custom roles',
     '/\bRoles everywhere\b/i' => 'Admin & support roles',
-    '/\bworkspace console\b/i' => 'the workspace',
-    '/\bSwitch account\b/i' => 'Switch user',
+    '/\bworkspace console\b/i' => 'the organization',
     '/\bEnvironment keys\b/' => 'Secret keys',
     '/\bAgent approvals\b/' => 'Approvals',
 ];
@@ -200,8 +200,8 @@ it('reads copy and not code', function (): void {
         ->and(implode(' ', $copy))->not->toContain('customer')
         ->and(implode(' ', $copy))->not->toContain('Page');
 
-    expect(UiCopy::fromPhp("<?php\n// Tenant plane history.\n\$route = 'platform.customers';\nreturn \$this->page('x', 'Workspaces');"))
-        ->toBe(['Workspaces']);
+    expect(UiCopy::fromPhp("<?php\n// Tenant plane history.\n\$route = 'platform.customers';\nreturn \$this->page('x', 'Organizations');"))
+        ->toBe(['Organizations']);
 });
 
 it('catches a retired word the moment it comes back', function (): void {

@@ -8,7 +8,7 @@ use App\Models\OnboardingDismissal;
 use App\Platform\Appearance\BrandImage;
 use App\Platform\Appearance\BrandImages;
 use App\Platform\Console\ShellContext;
-use App\Platform\EnvironmentWorkspace;
+use App\Platform\EnvironmentOwner;
 use App\Support\CliClient;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\OAuthServer\Models\AccessToken;
@@ -43,7 +43,7 @@ use Illuminate\Support\Facades\Route;
 final readonly class EnvironmentChecklist
 {
     public function __construct(
-        private EnvironmentWorkspace $workspace,
+        private EnvironmentOwner $workspace,
         private PlatformRoot $platformRoot,
         private Memberships $memberships,
         private Invitations $invitations,
@@ -87,7 +87,7 @@ final readonly class EnvironmentChecklist
                 'description' => $step->description(),
                 'actionLabel' => $step->actionLabel(),
                 'href' => match (true) {
-                    $step === EnvironmentStep::InviteTeammate => $this->shell->onWorkspaceHost('members'),
+                    $step === EnvironmentStep::InviteTeammate => $this->shell->onOrganizationHost('orgs.settings.members'),
                     $route !== null && Route::has($route) => route($route),
                     default => null,
                 },

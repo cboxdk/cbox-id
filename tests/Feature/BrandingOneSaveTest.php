@@ -74,7 +74,8 @@ it('stores the environment default\'s logo and favicon with the name & email, an
             ->where('appearance.favicon', $faviconUrl)
             ->where('profile.appName', 'Acme ID'));
 
-    // The environment's own sign-in page…
+    // The environment's own sign-in page, on its own host and in that host's own session…
+    hostJar('environment');
     $login = $this->get(route('login'))->assertOk();
 
     expect($login->inertiaProps('brand.logo'))->toBe($logoUrl)

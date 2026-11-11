@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Začnite',
         'heading' => [
-            'creates_idp' => 'Vytvorte svoj pracovný priestor',
+            'creates_idp' => 'Vytvorte svoju organizáciu',
             'for_app' => 'Vytvorte svoj účet',
             'default' => 'Vytvorte svoju organizáciu',
         ],
         'lead' => [
-            'creates_idp' => 'Pracovný priestor pre vašu spoločnosť a vlastný hostovaný poskytovateľ identity — SSO, používatelia a prihlasovanie plne pod vašou kontrolou, pripravené za minútu.',
+            'creates_idp' => 'Organizácia pre vašu spoločnosť a vlastný hostovaný poskytovateľ identity — SSO, používatelia a prihlasovanie plne pod vašou kontrolou, pripravené za minútu.',
             'join' => 'Zaregistrujte sa v :name. Budete vlastníkom tímu a po prihlásení budete môcť pozývať ďalších ľudí.',
             'default' => 'Nastavte Cbox ID pre svoj tím za menej než minútu.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Názov pracovného priestoru',
+            'creates_idp' => 'Názov organizácie',
             'for_app' => 'Názov tímu alebo spoločnosti',
             'default' => 'Názov organizácie',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'Pracovná e-mailová adresa',
         'breach_note' => 'Kontroluje sa, či heslo nie je súčasťou známych únikov údajov.',
         'submit' => [
-            'creates_idp' => 'Vytvoriť pracovný priestor',
+            'creates_idp' => 'Vytvoriť organizáciu',
             'for_app' => 'Vytvoriť účet a pokračovať',
             'default' => 'Vytvoriť organizáciu',
         ],
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'Každé prostredie je úplne izolované a má vlastných používateľov, kľúče a vydavateľa identity.',
         'environment_default' => 'Produkcia',
         'organization_label' => 'Názov organizácie',
-        'organization_hint' => 'Táto inštalácia je nastavená pre viac organizácií, preto sa vytvorí aj prvý pracovný priestor — organizácia, ktorá vlastní prostredia a fakturáciu.',
+        'organization_hint' => 'Táto inštalácia je nastavená pre viac organizácií, preto sa vytvorí aj prvá organizácia — tá, ktorá vlastní prostredia a fakturáciu.',
         'organization_placeholder' => 'Vaša spoločnosť',
         'submit' => 'Nastaviť túto inštaláciu',
         'token_mismatch' => 'Tento token na nastavenie nepatrí k tejto inštalácii alebo jeho platnosť vypršala. Vytvorte nový príkazom php artisan cbox-id:setup-token.',

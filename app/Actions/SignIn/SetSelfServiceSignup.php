@@ -12,7 +12,7 @@ use App\Platform\Actions\AsAction;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
-use App\Platform\EnvironmentWorkspace;
+use App\Platform\EnvironmentOwner;
 use App\Platform\SelfServiceSignup;
 use App\Platform\SignupPolicy;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -44,7 +44,7 @@ final readonly class SetSelfServiceSignup implements Action
     public function __construct(
         private SelfServiceSignup $selfService,
         private SignupPolicy $signupPolicy,
-        private EnvironmentWorkspace $workspace,
+        private EnvironmentOwner $workspace,
     ) {}
 
     public static function input(): InputSchema
@@ -58,8 +58,8 @@ final readonly class SetSelfServiceSignup implements Action
     {
         $environment = $this->workspace->environment() ?? throw ActionRefused::notFound('environment');
 
-        if ($this->workspace->workspaceOf($environment->id) === null) {
-            throw new AuthorizationException('This environment belongs to no workspace, so there is nowhere to record the change.');
+        if ($this->workspace->organizationOf($environment->id) === null) {
+            throw new AuthorizationException('This environment belongs to no organization, so there is nowhere to record the change.');
         }
 
         $enabled = $context->boolean('enabled');

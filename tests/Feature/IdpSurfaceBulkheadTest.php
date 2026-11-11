@@ -85,7 +85,7 @@ it('404s the whole IdP surface on the platform-root host', function (): void {
     // …while the ENVIRONMENT CONSOLE is no part of the IdP surface, and is served on the
     // root's own host for the root environment: its operators administer it there. A
     // visitor with no session is sent to sign in, never shown the page.
-    $this->get('http://cboxid.com/admin/single-sign-on')->assertRedirect(route('login'));
+    $this->get('http://cboxid.com/admin/environment/single-sign-on')->assertRedirect('http://cboxid.com/login');
 });
 
 /**
@@ -147,7 +147,7 @@ it('serves the console on the platform-root host', function (): void {
     // distinction is the whole point: 404 means the surface is absent on this host, which
     // is what it used to mean, and no amount of signing in would have changed it.
     $this->get('http://cboxid.com/dashboard')->assertRedirect('http://cboxid.com/login');
-    $this->get('http://cboxid.com/account')->assertRedirect('http://cboxid.com/login');
+    $this->get('http://cboxid.com/settings')->assertRedirect('http://cboxid.com/login');
 });
 
 /**

@@ -159,7 +159,7 @@ export default function CreateAgent({
                                 name="description"
                                 rows={2}
                                 placeholder={consoleUiText(
-                                    'console.triage_support_tickets_in_the_acme_workspace_535bad63',
+                                    'console.triage_support_tickets_in_the_acme_organization_e7ecd64c',
                                 )}
                                 value={form.data.description}
                                 onChange={(event) =>

@@ -1,8 +1,7 @@
 import { useTranslator as useConsoleTranslator } from '@/i18n';
-import { usePage } from '@inertiajs/react';
 import { EnvBadge } from '@/chrome/EnvBadge';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import type { PageProps, SharedProps } from '@/types';
+import type { ContextProject, PageProps } from '@/types';
 import { Icon, PageHeader, Panel } from '@/ui';
 
 type Props = PageProps<{
@@ -14,6 +13,8 @@ type Props = PageProps<{
     consoleHref: string;
     /** The platform's own environment console, for an operator. */
     platformHref: string | null;
+    /** Every environment this person may open, grouped by project; each link opens this page there. */
+    projects: ContextProject[];
 }>;
 
 /**
@@ -32,13 +33,12 @@ export default function ConfiguredInEnvironment({
     projectsHref,
     consoleHref,
     platformHref,
+    projects,
 }: Props) {
     const { t: consoleFinalText } = useConsoleTranslator();
 
     const { rich: consoleRich } = useConsoleTranslator();
     const { t: consoleT } = useConsoleTranslator();
-    const { shell } = usePage<SharedProps>().props;
-    const projects = (shell?.context.projects ?? []).filter((project) => project.id !== 'platform');
 
     return (
         <div style={{ maxWidth: '40rem' }}>
@@ -47,7 +47,7 @@ export default function ConfiguredInEnvironment({
                 description={
                     <>
                         {consoleRich(
-                            'console.this_console_is_your_workspace_its_projects_team_keys_a_66180b31',
+                            'console.this_console_is_your_organization_its_projects_team_key_15ebbd0f',
                             { part1: label },
                         )}
                     </>
@@ -68,7 +68,7 @@ export default function ConfiguredInEnvironment({
                                 </a>
                             ) : (
                                 consoleRich(
-                                    'console.you_have_no_environment_to_open_yet_part1_part2_part3_t_26e057f8',
+                                    'console.you_have_no_environment_to_open_yet_part1_part2_part3_t_3a10832d',
                                     {
                                         part1: ' ',
                                         part2: (
@@ -125,7 +125,7 @@ export default function ConfiguredInEnvironment({
                     <Panel title={consoleT('console.the_platform_s_own_sign_in_1b8b2a80')}>
                         <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
                             {consoleT(
-                                'console.how_workspace_owners_and_operators_sign_in_to_cbox_id_i_293f421d',
+                                'console.how_organization_owners_and_operators_sign_in_to_cbox_i_444d5c8b',
                             )}
                         </p>
                         <a

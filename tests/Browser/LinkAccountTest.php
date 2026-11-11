@@ -107,7 +107,7 @@ it('shows why a sign-in did not complete, on the sign-in page itself', function 
         ->screenshot(filename: 'link-accounts-login-reason-390');
 })->group('a11y');
 
-it('lists every way in on My account › Sign-in methods', function (): void {
+it('lists every way in on Account › Sign-in methods', function (): void {
     platformRootEnvironment();
 
     config([
@@ -124,7 +124,7 @@ it('lists every way in on My account › Sign-in methods', function (): void {
 
     signInAsMember($subject->id);
 
-    visit('/account')
+    visit('/settings')
         ->assertSee('Sign-in methods')
         ->assertSee('sn@cbox.dk · Linked')
         ->assertSee('Connect GitHub')
@@ -132,14 +132,14 @@ it('lists every way in on My account › Sign-in methods', function (): void {
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'link-accounts-my-account');
 
-    visit('/account')
+    visit('/settings')
         ->on()->iPhone15()
         ->assertSee('Sign-in methods')
         ->assertScript('document.documentElement.scrollWidth <= document.documentElement.clientWidth', true)
         ->assertNoAccessibilityIssues()
         ->screenshot(filename: 'link-accounts-my-account-390');
 
-    visit('/account')
+    visit('/settings')
         ->inDarkMode()
         ->assertSee('Sign-in methods')
         ->assertNoAccessibilityIssues()

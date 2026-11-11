@@ -99,7 +99,7 @@ export default function Settings({
                                                         className="underline"
                                                         style={{ color: 'var(--accent-strong)' }}
                                                     >
-                                                        {consoleT('console.my_account_b53181a4')}
+                                                        {consoleT('console.account_7e1b0d56')}
                                                     </Link>
                                                 ),
                                             },

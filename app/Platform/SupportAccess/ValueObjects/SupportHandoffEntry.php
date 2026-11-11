@@ -13,5 +13,7 @@ readonly class SupportHandoffEntry
         public string $clientId,
         public string $sessionId,
         public string $actorId,
+        /** The administrator's app-host session the console started this from. */
+        public ?string $consoleSessionId = null,
     ) {}
 }

@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Platform\EnvironmentAdminAuth;
-use App\Platform\EnvironmentSudo;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Governance\Contracts\SegregationOfDuties;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -83,7 +82,7 @@ function openSupportSession(array $world): void
 it('lists staff grants per app and grants one from the Staff page', function (): void {
     staffAndSupportWorld();
 
-    $page = visit('/admin/staff');
+    $page = visit(envConsole('/staff'));
 
     $page->assertSee('An admin & support role is a role you grant to your own people')
         ->assertSee('Parcels')
@@ -101,20 +100,20 @@ it('lists staff grants per app and grants one from the Staff page', function ():
         ->screenshot(filename: 'staff-refusal')
         ->assertNoJavaScriptErrors();
 
-    visit('/admin/staff')->inDarkMode()->assertSee('Sam Support')->screenshot(filename: 'staff-page-dark');
-    visit('/admin/staff')->resize(375, 812)->assertSee('Sam Support')->screenshot(filename: 'staff-page-phone');
+    visit(envConsole('/staff'))->inDarkMode()->assertSee('Sam Support')->screenshot(filename: 'staff-page-dark');
+    visit(envConsole('/staff'))->resize(375, 812)->assertSee('Sam Support')->screenshot(filename: 'staff-page-phone');
 });
 
 it('draws a user\'s staff roles and the support access form', function (): void {
     $world = staffAndSupportWorld();
 
-    visit('/admin/users/'.$world['sam'].'?section=access')
+    visit(envConsole('/users/').$world['sam'].'?section=access')
         ->assertSee('Admin & support roles')
         ->assertSee('Support')
         ->assertSee('Take back')
         ->screenshotElement('section:has(h2:has-text("Admin & support roles"))', 'user-staff-roles');
 
-    $page = visit('/admin/users/'.$world['grace'].'?section=support');
+    $page = visit(envConsole('/users/').$world['grace'].'?section=support');
 
     $page->assertSee('Support access')
         ->assertSee('Sign in to Parcels as Grace Hopper')
@@ -126,23 +125,23 @@ it('draws a user\'s staff roles and the support access form', function (): void 
         ->assertSee('Signing in to an app as this person lets you act as them there.')
         ->assertNoJavaScriptErrors();
 
-    visit('/admin/users/'.$world['grace'].'?section=support')->inDarkMode()->assertSee('Support access')
+    visit(envConsole('/users/').$world['grace'].'?section=support')->inDarkMode()->assertSee('Support access')
         ->screenshotElement('section:has(h2:has-text("Support access"))', 'user-support-access-dark');
-    visit('/admin/users/'.$world['grace'].'?section=support')->resize(375, 812)->assertSee('Support access')
+    visit(envConsole('/users/').$world['grace'].'?section=support')->resize(375, 812)->assertSee('Support access')
         ->screenshotElement('section:has(h2:has-text("Support access"))', 'user-support-access-phone');
 });
 
 it('lists an open support session on the person\'s and the organization\'s page, and ends it', function (): void {
     $world = staffAndSupportWorld();
     openSupportSession($world);
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
-    visit('/admin/users/'.$world['grace'].'?section=support')
+    visit(envConsole('/users/').$world['grace'].'?section=support')
         ->assertSee('Support session')
         ->assertSee('Ticket 4411: invoice totals look wrong')
         ->screenshotElement('section:has(h2:has-text("Support access"))', 'user-open-session');
 
-    $page = visit('/admin/organizations/'.$world['org'].'/support');
+    $page = visit(envConsole('/organizations/').$world['org'].'/support');
 
     $page->assertSee('Support sessions')
         ->assertSee('Grace Hopper')
@@ -156,14 +155,14 @@ it('lists an open support session on the person\'s and the organization\'s page,
         ->assertNoJavaScriptErrors();
 
     openSupportSession($world);
-    visit('/admin/organizations/'.$world['org'].'/support')->inDarkMode()->resize(375, 812)->assertSee('Support sessions')
+    visit(envConsole('/organizations/').$world['org'].'/support')->inDarkMode()->resize(375, 812)->assertSee('Support sessions')
         ->screenshotElement('section:has(h2:has-text("Support sessions"))', 'organization-sessions-phone-dark');
 });
 
 it('opens a review of staff roles', function (): void {
     staffAndSupportWorld();
 
-    $page = visit('/admin/access-reviews/new?review=staff');
+    $page = visit(envConsole('/access-reviews/new?review=staff'));
 
     $page->assertSee('What to review')
         ->assertSee('Snapshots every admin & support role')
@@ -177,5 +176,5 @@ it('opens a review of staff roles', function (): void {
         ->screenshot(filename: 'review-staff-show')
         ->assertNoJavaScriptErrors();
 
-    visit('/admin/access-reviews')->inDarkMode()->assertSee('Admin & support roles')->screenshot(filename: 'review-list-dark');
+    visit(envConsole('/access-reviews'))->inDarkMode()->assertSee('Admin & support roles')->screenshot(filename: 'review-list-dark');
 });

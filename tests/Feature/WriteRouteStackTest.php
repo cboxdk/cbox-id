@@ -158,6 +158,13 @@ function looserByDesign(): array
          * on `Connection`, which holds on either plane. See routes/web.php.
          */
         'sso.saml.acs' => [EnforcePlane::class],
+        /*
+         * Leaving an impersonation, on whichever host it lives: the app host for an
+         * operator's, the environment's own host for one an environment console started.
+         * The launch link beside it is the issuer host's door only, and gated so; the exit
+         * is gated on the impersonation marker instead (see routes/web.php).
+         */
+        'impersonation.exit' => [EnforcePlane::class],
     ];
 }
 
@@ -233,16 +240,12 @@ it('guards every console write at least as tightly as the pages it sits beside',
 
     // Sorted, so the list reads as a set rather than as an order somebody has to maintain.
     expect($orphans)->toBe([
-        // Language selection has no dedicated page; it is in the console chrome.
-        'console.locale.update',
         // The browser-facing sign-in API the SDKs call — no server-rendered page at all.
         'frontend.sign-in',
         'frontend.sign-in.factor',
         'frontend.sign-in.factor.sms',
         'frontend.sign-in.passkey',
         'frontend.sign-in.passkey.options',
-        // Ending a session, from either side of an impersonation.
-        'impersonation.exit',
         // The hosted pages' language picker, posted from the footer of whichever page it is on.
         'locale.update',
         'logout',

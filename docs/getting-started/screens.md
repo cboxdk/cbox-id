@@ -1,7 +1,7 @@
 ---
 title: Screens
 weight: 3
-description: A tour of the three consoles (workspace, organization and environment), their areas and topbar, and the sign-in surface, with screenshots of a seeded demo environment.
+description: A tour of the three consoles (organization, customer organization and environment), their areas and topbar, and the sign-in surface, with screenshots of a seeded demo environment.
 ---
 
 # Screens
@@ -11,7 +11,7 @@ console's own structure, with areas declared once in
 [`ConsoleArea`](https://github.com/cboxdk/cbox-id/blob/main/app/Platform/Console/ConsoleArea.php)
 and rendered by the same components on every console.
 
-The screenshots are of a seeded demo environment (the "Lovelace Labs" workspace and its
+The screenshots are of a seeded demo environment (the "Lovelace Labs" organization and its
 "Ledger" product), taken in the light theme at 1440×900 by
 `vendor/bin/pest --group=docs-screenshots`; see [Screenshots](../screenshots/_index.md) to
 regenerate them. Most of them show an **environment** console, where the organization
@@ -24,27 +24,27 @@ you signed in and what you administer:
 
 | Console | Where | Who it is for |
 |---|---|---|
-| **Workspace console** | The platform root host of a hosted deployment | Your own Cbox workspace: projects, team, keys, billing |
-| **Organization console** | A customer's environment host, or a single-tenant install | One organization: on a customer's host an admin portal (members, SSO, directory sync, roles, audit log); on a single-tenant install everything, apps included |
+| **Organization console** | The platform root host of a hosted deployment | Your own Cbox organization: projects, team, keys, billing |
+| **Customer organization console** | A customer's environment host, or a single-tenant install | One organization: on a customer's host an admin portal (members, SSO, directory sync, roles, audit log); on a single-tenant install everything, apps included |
 | **Environment console** | `/admin` on an environment's own host | One environment: every organization in it, their users, and the product's apps, hooks and settings |
 
 On a hosted deployment the two are deliberately different. A customer's administrator gets
 an admin portal and their own pages; the product's administration (apps, webhooks, the
 token vault and the rest) is the environment console's alone, and its URLs answer 404 on
 the customer's console. On a single-tenant install there is no environment console, so the
-organization console keeps every page. [Workspaces &
-organizations](../core-concepts/workspaces-and-organizations.md) explains the difference
-between a workspace and an organization, and lists what a customer's console keeps.
+customer organization console keeps every page. [Organizations &
+customers](../core-concepts/organizations-and-customers.md) explains the difference
+between your organization and a customer organization, and lists what a customer's console keeps.
 
 A page offered by both consoles has **one URL**; the environment console's is that path
 under `/admin` (`/roles` and `/admin/roles`). Old paths answer with a 301, so a bookmark
 still works. [Upgrading](https://github.com/cboxdk/cbox-id/blob/main/UPGRADING.md)
 lists them.
 
-The deployment's own pages (workspaces, environments, the organization tree, operators,
+The deployment's own pages (organizations, environments, the organization tree, operators,
 usage, queues) are **platform admin**: the **Platform** area of the platform environment's
-console at `/admin/platform` on the root host, for whoever has authority over the
-deployment. **Platform admin** in the account menu goes there from the workspace console.
+console at `/admin` on the root host, for whoever has authority over the
+deployment. **Platform admin** in the account menu goes there from the organization console.
 
 ## The rail
 
@@ -61,16 +61,16 @@ Where you are on the left, search and your account on the right:
 Acme ▾  /  Checkout ▾  /  Production ▾ [PRODUCTION]  /  All organizations ▾      Go to… ⌘K   (avatar)
 ```
 
-- **Workspace ▾ / Project ▾ / Environment ▾** is one context switcher, the same on every
+- **Organization ▾ / Project ▾ / Environment ▾** is one context switcher, the same on every
   console. Choosing another environment opens the same page there. The badge names the
-  environment's type in words. On the workspace console no environment is current, so
+  environment's type in words. On the organization console no environment is current, so
   the second crumb is **Environments ▾**, every environment you may open grouped by
-  project. [Workspaces &
-  organizations](../core-concepts/workspaces-and-organizations.md#moving-between-them)
+  project. [Organizations &
+  customers](../core-concepts/organizations-and-customers.md#moving-between-them)
   describes each menu.
 - **All organizations ▾** (environment console only) filters every page to one of your
   customers.
-- **The avatar** opens the account menu: Workspace settings, My account, Switch user,
+- **The avatar** opens the account menu: Organization settings, Account, Switch account,
   Platform admin (operators, from a console it is not part of), Theme, Sign out.
 
 On a phone the context switcher moves into the navigation sheet, and the bottom bar names
@@ -128,22 +128,22 @@ the **roles in each app** and **custom roles** the inviter ticked. A role that b
 staff-only or was retired while the invitation waited is left off, because accepting would
 withhold it.
 
-## The workspace console
+## The organization console
 
-What a workspace member sees at the platform root of a hosted deployment. The rail is the
-workspace and nothing else:
+What an organization member sees at the platform root of a hosted deployment. The rail is the
+organization and nothing else:
 
-- **Workspace:** Projects, Team, Keys, Environment domains, Billing, Workspace settings.
+- **Organization:** Projects, Team, Keys, Environment domains, Billing, Organization settings.
 - **Team sign-in:** Enterprise SSO, Authentication policy. How your own team signs in to
   Cbox, not how your product's users sign in.
 - **Logs:** Audit log.
-- **My account:** Security, Sessions & activity.
+- **Account:** Security, Sessions & activity.
 
 There is no Overview page and no setup guide here. The pages that administer end users
 (roles, apps, webhooks and the rest) are hidden from this rail and still reachable by
-URL, with a notice that says the page manages the workspace's own record in Cbox, not
-your product. [Workspaces &
-organizations](../core-concepts/workspaces-and-organizations.md#the-workspace-console)
+URL, with a notice that says the page manages the organization's own record in Cbox, not
+your product. [Organizations &
+customers](../core-concepts/organizations-and-customers.md#the-organization-console)
 explains why they are hidden rather than redirected.
 
 After signing in, a member lands on **Projects**, where each environment has **Open
@@ -151,12 +151,12 @@ console**. **Sign out** on any console signs you out of every console that sign-
 opened, and lands on **You're signed out**. It does not sign out a tenant's own users on
 the same host.
 
-## The organization console, area by area
+## The customer organization console, area by area
 
-The full organization console, as a single-tenant install (and an operator) sees it. On a
+The full customer organization console, as a single-tenant install (and an operator) sees it. On a
 customer's environment host it keeps the admin portal — Members, Roles, Enterprise SSO,
 Domains, Directory Sync, the Audit log, and App audit logs where the organization's plan
-includes them — beside the person's own Overview, Approvals and My account; every other
+includes them — beside the person's own Overview, Approvals and Account; every other
 page below is on the environment console instead.
 
 ### Overview
@@ -212,7 +212,7 @@ No screenshot.
 instance (including MCP clients self-registering through Dynamic Client Registration);
 HMAC-signed event delivery with retries and delivery history; synchronous hooks that run
 *during* a flow rather than after it; and the vault holding third-party tokens.
-Machine keys are on the [API keys](../guides/keys.md) page of the workspace and
+Machine keys are on the [API keys](../guides/keys.md) page of the organization and
 environment consoles.
 
 ![Applications](../screenshots/applications.png)
@@ -243,7 +243,7 @@ all of it. `/appearance` and the module's old Branding page redirect here.
 
 ![Settings](../screenshots/environment-settings.png)
 
-### My account
+### Account
 
 *Security · Sessions & activity · My API keys.* The signed-in person's own credentials: two-factor
 authentication, **passkeys**, and sessions (auth methods, expiry,
@@ -262,7 +262,7 @@ No screenshot of its own. The 2026-07-13 image above filed these settings under
 
 ## The environment console
 
-Every capability of the full organization console, plus the ones that only make sense for
+Every capability of the full customer organization console, plus the ones that only make sense for
 a whole environment, filed by task in the words the market uses:
 
 - **Home:** Overview, Get started.
@@ -300,19 +300,19 @@ tasks click by click.
 ![Users & orgs, Users](../screenshots/users.png)
 ![Users & orgs, Organizations](../screenshots/organizations.png)
 
-It has no My account area. Your own password, passkeys and sessions belong to your
-workspace, so **My account** and **Switch user** in the account menu open on the
-workspace host.
+It has no Account area. Your own password, passkeys and sessions belong to your
+organization, so **Account** and **Switch account** in the account menu open on the
+organization host.
 
-The topbar reads `<Workspace> ▾ / <Project> ▾ / <Environment> ▾ [badge] / <acting
-organization> ▾`. The workspace crumb goes back to the workspace's Projects page; the
+The topbar reads `<Organization> ▾ / <Project> ▾ / <Environment> ▾ [badge] / <acting
+organization> ▾`. The organization crumb goes back to the organization's Projects page; the
 environment crumb opens the same page in another environment.
 
 ## Chrome
 
 ### Context switcher
 
-A signed-in user who belongs to several workspaces or organizations switches from the
+A signed-in user who belongs to several organizations or customer organizations switches from the
 first crumb of the topbar. The switch is server-verified against membership (you can only
 switch into one you actually belong to) and the role updates with it. The security model
 is described in [Security](../security/_index.md#organization-switcher). The project and
@@ -326,20 +326,20 @@ four thousand organizations is a real one.
 ### Platform admin
 
 For whoever runs the install, platform admin is the **Platform** area of the platform
-environment's console (`/admin/platform` on the root host), first on its rail, beside the
+environment's console (`/admin` on the root host), first on its rail, beside the
 environment's own areas. **Platform admin** in the account menu goes there from the
-workspace console. The line above every Platform page says **Platform admin: The whole
-deployment**, in the warning colours, because a click there acts on every workspace on the
+organization console. The line above every Platform page says **Platform admin: The whole
+deployment**, in the warning colours, because a click there acts on every organization on the
 install. It used to be a separate console with a strip across the top and an **Exit
 platform admin** link; it is one console now. Re-point the platform pages at another
 environment from **Platform › Environments**.
 
 ![The context switcher](../screenshots/context-switcher.png)
 
-### Switch user
+### Switch account
 
-**Switch user** in the account menu moves between the people signed in on this device.
-It does not change workspace or organization; the context switcher does that.
+**Switch account** in the account menu moves between the people signed in on this device.
+It does not change organization or customer organization; the context switcher does that.
 
 ### Responsive (mobile & tablet)
 

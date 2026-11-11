@@ -264,7 +264,8 @@ it('looks organizations up a page at a time, and only for an environment adminis
         ->assertOk()
         ->assertJsonPath('results.0.name', 'Tenant 3');
 
-    // The old address of the lookup answers with the new one.
+    // The old address of the lookup, on the environment's own host, answers with the new
+    // one — which that host then sends on to the console's address on the app host.
     $this->get('/admin/acting-organization?q=Tenant')
         ->assertStatus(301)
         ->assertRedirect('/admin/lookup/organizations?q=Tenant');
@@ -283,6 +284,7 @@ it('never answers the lookup without an environment-admin session', function ():
 
     serveOnTestHost($provisioned->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($provisioned->environment->id));
+    useEnvironmentConsole($provisioned->environment->id);
 
     app(Organizations::class)->create(new NewOrganization('Secret Tenant', 'secret-tenant'));
 
@@ -330,14 +332,14 @@ it('files every tab of an organization\'s page under Users & orgs › Organizati
     // including the environment-wide pages drawn there — keeps the reader in the same place.
     $orgId = anEnvironmentAdminWithOrganizations();
 
-    $list = (array) $this->get(route('environment.organizations'))->assertOk()->inertiaProps('shell');
+    $list = consoleRail($this->get(route('environment.organizations'))->assertOk());
 
     $this->get(route('environment.organizations'))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('organizations', fn (Collection $rows): bool => $rows->firstWhere('id', $orgId)['href'] === route('environment.organizations.show', $orgId)));
 
     foreach ([OrganizationTabs::OVERVIEW, OrganizationTabs::SSO, OrganizationTabs::AUDIT, OrganizationTabs::POLICY] as $tab) {
-        $shell = (array) $this->get(route(OrganizationTabs::route($tab), $orgId))->assertOk()->inertiaProps('shell');
+        $shell = consoleRail($this->get(route(OrganizationTabs::route($tab), $orgId))->assertOk());
 
         expect($shell['activeArea'])->toBe($list['activeArea'], "the {$tab} tab lit another area of the rail");
     }
@@ -346,7 +348,7 @@ it('files every tab of an organization\'s page under Users & orgs › Organizati
 it('carries no acting organization in the console chrome any more', function (): void {
     anEnvironmentAdminWithOrganizations();
 
-    $shell = (array) $this->get(route('environment.home'))->assertOk()->inertiaProps('shell');
+    $shell = consoleRail($this->get(route('environment.home'))->assertOk());
 
     expect($shell)->not->toHaveKey('actingOrganization');
 });

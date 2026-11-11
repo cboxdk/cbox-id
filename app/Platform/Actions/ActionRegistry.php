@@ -72,7 +72,10 @@ final class ActionRegistry
 
     public function named(string $name): ActionDefinition
     {
-        return $this->all()[$name] ?? throw new InvalidArgumentException("No action is named {$name}.");
+        $all = $this->all();
+
+        // A name v3 retired still finds its action ({@see RenamedActions}).
+        return $all[$name] ?? $all[RenamedActions::current($name)] ?? throw new InvalidArgumentException("No action is named {$name}.");
     }
 
     /**

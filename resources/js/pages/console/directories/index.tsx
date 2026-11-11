@@ -302,10 +302,7 @@ export default function DirectoriesIndex({
                     )}
                 </div>
 
-                <Pagination
-                    pagination={pagination}
-                    href={(page) => listHref(search, page)}
-                />
+                <Pagination pagination={pagination} href={(page) => listHref(search, page)} />
 
                 {/*
                     The endpoint a provider posts to. On the list rather than on one

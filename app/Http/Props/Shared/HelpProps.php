@@ -23,6 +23,9 @@ use App\Platform\Help\HelpTopic;
  */
 final readonly class HelpProps implements Prop
 {
+    /** Where the page's help topic is kept on the request, for the shell's Help column. */
+    public const REQUEST_ATTRIBUTE = 'cbox.help.topic';
+
     public function __construct(
         public string $topic,
         public string $title,
@@ -32,6 +35,9 @@ final readonly class HelpProps implements Prop
 
     public static function for(HelpTopic $topic): self
     {
+        // The page that states its topic is the page Help opens on.
+        request()->attributes->set(self::REQUEST_ATTRIBUTE, $topic->value);
+
         return new self(
             topic: $topic->value,
             title: $topic->title(),

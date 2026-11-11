@@ -9,6 +9,7 @@ use App\Actions\AppCatalog\SaveCatalogApp;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\AppCatalog\AppCatalog;
 use App\Platform\AppCatalog\CatalogEntry;
+use App\Platform\AppCatalog\CatalogHue;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\FeatureFlags\Contracts\FeatureFlags;
 use Cbox\Id\Identity\Models\User;
@@ -53,7 +54,7 @@ final readonly class AppCatalogController extends ConsoleController
         $this->scope->assertMayAdministerEnvironment();
         /** @var array<string, mixed> $input */
         $input = $request->all();
-        $fields = ['key', 'name', 'description', 'launch_url', 'position', 'audience', 'required_feature', 'icon', 'icon_dark'];
+        $fields = ['key', 'name', 'description', 'purpose', 'hue', 'launch_url', 'admission_url', 'position', 'audience', 'required_feature', 'icon', 'icon_dark'];
         $result = $this->act(SaveCatalogApp::class, [...$input, 'key' => $key], array_combine($fields, $fields));
 
         return $result instanceof RedirectResponse ? $result : to_route('environment.app-catalog')->with('status', __('console.catalog_saved'));
@@ -97,6 +98,7 @@ final readonly class AppCatalogController extends ConsoleController
                 'clients' => Client::query()->whereIn('client_id', $entry->client_ids ?? [])->get()->map(fn (Client $row): array => ['value' => $row->client_id, 'label' => $row->name])->all(),
             ],
             'lookupHref' => route('environment.app-catalog.lookup'),
+            'hues' => CatalogHue::values(),
             'features' => array_map(fn ($flag): array => ['value' => $flag->key, 'label' => $flag->key], app(FeatureFlags::class)->all()),
         ]);
     }

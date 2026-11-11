@@ -64,10 +64,9 @@ it('draws navigation on a phone, not just in the markup', function (): void {
 
     visit('/dashboard')
         ->resize(375, 812)
-        // The thumb-zone bar the shared component pins to the foot of the viewport. If the
-        // shell ever loses it — or reverts to a hamburger stranded in a corner — this is
-        // what notices.
-        ->assertVisible('[data-cbox-mobile-nav]')
+        // The shared shell's phone header: its navigation button and where-you-are. If the
+        // shell ever loses it, this is what notices.
+        ->assertVisible('header.cbx-header button[aria-label="Open navigation"]')
         ->assertNoJavascriptErrors();
 });
 
@@ -96,7 +95,7 @@ it('opens a drawer that can actually reach the rest of the console', function ()
      * drawer, and every assertion below failing for a reason that has nothing to do with
      * the drawer.
      */
-    $page->assertVisible('[data-cbox-mobile-nav]');
+    $page->assertVisible('header.cbx-header button[aria-label="Open navigation"]');
 
     /*
      * BY THE SELECTOR, not by a label. `press()` matches on VISIBLE TEXT, and this
@@ -105,7 +104,7 @@ it('opens a drawer that can actually reach the rest of the console', function ()
      * silently while `press('Open menu')` timed out finding nothing. The class belongs to
      * the shell and moves with it.
      */
-    $page->click('.cbx-mobilebar-btn');
+    $page->click('header.cbx-header button[aria-label="Open navigation"]');
 
     $page->assertVisible('.cbx-sheet');
 
@@ -115,13 +114,9 @@ it('opens a drawer that can actually reach the rest of the console', function ()
      * proof that this is the SHEET and not the page behind it — a nav label would not be,
      * since which pages a person's nav holds depends on their role.
      */
-    // The account is ONE row, folded: its actions appear only when the person asks for
-    // them, so the sheet's room goes to the navigation it was opened for.
-    $page->assertDontSee('Sign out');
-    $page->click('[aria-controls="mobile-account-actions"]');
-
-    $page->assertSee('Sign out')
-        ->assertSee('Toggle theme')
+    // The account's actions follow the navigation in the same sheet.
+    $page->assertSeeIn('.cbx-sheet', 'Sign out')
+        ->assertSeeIn('.cbx-sheet', 'Dark')
         // …and the navigation itself, grouped by AREA the way the rail is. A flat list of
         // every page is the failure mode this replaces.
         ->assertSee('Members & roles')
@@ -141,7 +136,7 @@ it('keeps the console usable at a phone width without a horizontal scrollbar', f
      * content, and this test reported a console that fits at 375px without ever having
      * looked at one.
      */
-    $page->assertVisible('[data-cbox-mobile-nav]');
+    $page->assertVisible('header.cbx-header button[aria-label="Open navigation"]');
 
     expect($page->script('document.querySelectorAll("button").length'))
         ->toBeGreaterThan(0, 'the page under measurement had not rendered');

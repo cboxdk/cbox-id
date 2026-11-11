@@ -73,3 +73,18 @@ export function setNavPinned(pinned: boolean): void {
     document.cookie = `cbox-nav-pinned=${pinned ? '1' : '0'}; path=/; max-age=${YEAR}; samesite=lax${secure}`;
     document.documentElement.classList.toggle('cbx-nav-pinned', pinned);
 }
+
+/**
+ * The account menu's theme choice. "System" forgets the explicit choice, so the document
+ * follows the device again, from the first paint on.
+ */
+export function setThemePreference(theme: 'system' | 'light' | 'dark'): void {
+    if (theme !== 'system') {
+        setTheme(theme);
+
+        return;
+    }
+
+    document.cookie = `${COOKIE}=; path=/; max-age=0; samesite=lax`;
+    document.documentElement.removeAttribute('data-theme');
+}

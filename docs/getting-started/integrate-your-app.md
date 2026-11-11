@@ -17,7 +17,7 @@ that missing step. It takes about two minutes.
 
 ## 1. Sign in to the environment console
 
-Sign in to your workspace. If it has exactly one environment you may administer, you
+Sign in to your organization. If it has exactly one environment you may administer, you
 land in that environment's console straight away; otherwise open **Projects** and choose
 **Open console** beside the environment. The environment console is `/admin` on the
 environment's own host, `https://<environment>.cboxid.com/admin`. If you have not created

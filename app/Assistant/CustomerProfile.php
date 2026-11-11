@@ -7,6 +7,7 @@ namespace App\Assistant;
 use App\Platform\Console\LikeTerm;
 use App\Platform\Enterprise\EnterpriseAudit;
 use App\Platform\NativeProduct\NativeProductAccess;
+use App\Platform\Organizations\OrganizationLinks;
 use Cbox\AiAssistant\Connector\Profile\ResourceItem;
 use Cbox\AiAssistant\Connector\Profile\ResourceStatus;
 use Cbox\AiAssistant\Connector\Profile\Signals;
@@ -64,8 +65,8 @@ final readonly class CustomerProfile
         'organization.member_removed' => 'Member removed',
         'organization.member_role_changed' => 'Member role changed to',
         'organization.ownership_transferred' => 'Ownership transferred',
-        'organization.renamed' => 'Workspace renamed',
-        'organization.settings_updated' => 'Workspace settings changed',
+        'organization.renamed' => 'Organization renamed',
+        'organization.settings_updated' => 'Organization settings changed',
         'connection.activated' => 'SSO connection activated',
         EnterpriseAudit::SSO_CONNECTION_CREATED => 'SSO connection created',
         EnterpriseAudit::SSO_CONNECTION_UPDATED => 'SSO connection changed',
@@ -103,7 +104,7 @@ final readonly class CustomerProfile
                     label: $project->name,
                     status: $project->status === ProjectStatus::Suspended ? ResourceStatus::Warning : ResourceStatus::Ok,
                     statusLabel: $project->status === ProjectStatus::Suspended ? 'Suspended: no new environments' : null,
-                    url: $this->url('/projects/'.$project->id),
+                    url: $this->projectUrl($project->organization_id, $project->id),
                     attributes: ['slug' => $project->slug],
                     metrics: ['environments' => $this->count($counts, $project->id)],
                     updatedAt: $this->stamp($project, 'updated_at'),
@@ -133,13 +134,14 @@ final readonly class CustomerProfile
                 Client::query()->selectRaw('environment_id, count(*) as c')->whereIn('environment_id', $ids)->groupBy('environment_id')->pluck('c', 'environment_id'),
             ]);
             $base = $this->baseDomain();
+            $owners = Project::query()->whereIn('id', $environments->pluck('project_id')->filter()->unique()->all())->pluck('organization_id', 'id');
 
             return $environments->map(fn (Environment $environment): ResourceItem => new ResourceItem(
                 id: $environment->id,
                 label: $environment->name,
                 status: $environment->status === EnvironmentStatus::Suspended ? ResourceStatus::Inactive : ResourceStatus::Ok,
                 statusLabel: $environment->status === EnvironmentStatus::Suspended ? 'Suspended: sign-in is refused' : null,
-                url: $environment->project_id === null ? null : $this->url('/projects/'.$environment->project_id),
+                url: $environment->project_id === null ? null : $this->projectUrl(is_string($owners[$environment->project_id] ?? null) ? $owners[$environment->project_id] : null, $environment->project_id),
                 parent: $environment->project_id === null ? null : self::PROJECTS.':'.$environment->project_id,
                 attributes: [
                     'type' => $environment->type->value,
@@ -232,6 +234,18 @@ final readonly class CustomerProfile
     }
 
     /** An HTTPS console link; the SDK drops any other scheme, so none is invented here. */
+    /**
+     * A project's page in the console of the organization that owns it, at that
+     * organization's address ({@see OrganizationLinks::addressOf()}): never the viewer's
+     * last-used organization, which is not necessarily the project's.
+     */
+    private function projectUrl(?string $organizationId, string $projectId): ?string
+    {
+        $slug = $organizationId === null ? null : app(OrganizationLinks::class)->addressOf($organizationId)['slug'] ?? null;
+
+        return $slug === null ? null : $this->url('/orgs/'.$slug.'/projects/'.$projectId);
+    }
+
     private function url(string $path): ?string
     {
         $base = rtrim(config()->string('app.url'), '/');

@@ -172,11 +172,11 @@ it('refuses the sign-in rules page to a member without the env-admin capability'
     actAsEnvironmentAdmin($viewer->user_id, $r->environment->id);
 
     /*
-     * REFUSED AT THE DOOR, which is a redirect rather than a 403 — and that is the
+     * REFUSED AT THE DOOR, which is a 404 or a sign-in rather than a 403 — and that is the
      * console's own answer rather than a weaker one.
      *
-     * `AuthenticateEnvironmentAdmin` turns away a session that does not hold the capability
-     * before the page is reached at all, and sends it somewhere it can be. The
+     * `ResolveEnvironmentFromPath` turns away a session that does not hold the capability
+     * before the page is reached at all. The
      * component-level test this replaces never met that middleware, so it saw the
      * controller's 403; asking over HTTP asks the whole stack, and the whole stack answers
      * first.
@@ -185,10 +185,9 @@ it('refuses the sign-in rules page to a member without the env-admin capability'
      * shape, so what is asserted is the property this test is about: they do not get the
      * page.
      */
-    $response = $this->get(route('environment.auth-policy'));
+    $response = assertRefusedByEnvironmentConsole($this->get(route('environment.auth-policy')));
 
-    expect($response->status())->toBe(302)
-        ->and((string) $response->headers->get('Location'))->not->toContain('/sign-in-rules');
+    expect((string) $response->headers->get('Location'))->not->toContain('/sign-in-rules');
 });
 
 /**

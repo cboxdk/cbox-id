@@ -44,8 +44,10 @@ use Illuminate\Support\Facades\File;
  * makes rather than a class somebody edits.
  */
 it('frames every page at the console one width and padding', function (): void {
+    // cbox-ui's `CboxShell` draws the `<main>`; the console's own frame is the first
+    // container inside it, the one that carries `cbx-page-frame`.
     preg_match(
-        '#<main[^>]*>\s*(?:\{/\*.*?\*/\}\s*)*<div([^>]*)>#s',
+        '#<div(\s+className="cbx-page-frame[^>]*)>#s',
         File::get(base_path('resources/js/layouts/ConsoleLayout.tsx')),
         $container,
     );
@@ -54,6 +56,18 @@ it('frames every page at the console one width and padding', function (): void {
 
     expect($container[1])->toContain('p-6', 'lg:p-8')
         ->and($container[1])->toContain('72rem');
+
+    // …and a customer environment's white-labelled console frames its pages the same way.
+    preg_match(
+        '#<main[^>]*>\s*(?:\{/\*.*?\*/\}\s*)*<div([^>]*)>#s',
+        File::get(base_path('resources/js/layouts/TenantConsoleLayout.tsx')),
+        $tenant,
+    );
+
+    expect($tenant)->not->toBeEmpty('could not find the content container in the customer console shell');
+
+    expect($tenant[1])->toContain('p-6', 'lg:p-8')
+        ->and($tenant[1])->toContain('72rem');
 })->group('ux');
 
 /**
@@ -96,8 +110,8 @@ it('emits the shared mobile navigation on the organization plane', function (): 
      */
     $shell = (array) $this->get(route('dashboard'))->assertOk()->inertiaProps('shell');
 
-    expect($shell['areas'])->not->toBe([])
-        ->and($shell['activeArea'])->not->toBeNull();
+    expect($shell['nav']['areas'])->not->toBe([])
+        ->and($shell['nav']['activeArea'])->not->toBe('');
 })->group('ux');
 
 /**
@@ -129,8 +143,8 @@ it('emits the shared mobile navigation on the environment plane too', function (
      */
     $shell = (array) $this->get(route('environment.home'))->assertOk()->inertiaProps('shell');
 
-    expect($shell['areas'])->not->toBe([])
-        ->and($shell['activeArea'])->not->toBeNull();
+    expect($shell['nav']['areas'])->not->toBe([])
+        ->and($shell['nav']['activeArea'])->not->toBe('');
 })->group('ux');
 
 /**

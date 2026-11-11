@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 /*
  * Seed a v1.x (1.1.x) Cbox ID database with the data a production deployment holds, so
- * an upgrade can be rehearsed against something that looks like the real thing.
+ * an upgrade can be rehearsed against something that looks like the real thing. seed-v2.php
+ * runs this too, against 2.x, before adding what only 2.x writes; the few rows whose 1.x
+ * shape 2.x no longer has are seeded in the shape that release has.
  *
  * RUN WITH THE OLD RELEASE'S CODE. The working directory is the checkout of the previous
  * tag (its vendor/ installed), and every write below goes through that release's own
@@ -25,6 +27,7 @@ declare(strict_types=1);
 use App\Models\InvitationRoleGrant;
 use App\Models\OnboardingDismissal;
 use App\Platform\AdminPortal;
+use App\Platform\Enums\PortalIntent;
 use App\Platform\Enums\PortalScope;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Directory\Contracts\Directories;
@@ -64,6 +67,7 @@ use Cbox\Id\TokenVault\ValueObjects\VaultOwner;
 use Cbox\Id\Webhooks\Contracts\WebhookRegistry;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 $manifestPath = $argv[1] ?? throw new InvalidArgumentException('usage: php seed-v1.php <manifest.json>');
@@ -263,7 +267,9 @@ $envs->runAs($customer, function () use (&$m, $section, $customer, $totp): void 
         $revoked = $invitations->invite($orgId, 'changed-mind@acme.test', MembershipRole::Member, $m['users']['person01@acme.test']);
         $invitations->revoke($orgId, $revoked->invitation->id);
 
-        foreach (['newhire@acme.test', 'changed-mind@acme.test'] as $email) {
+        // 1.x keyed a queued role to the address; 2.x keys it to the invitation itself
+        // (2026_08_18_000200), so only a 1.x seed writes the 1.x shape.
+        foreach (defined('UPGRADE_SEED_MAJOR') ? [] : ['newhire@acme.test', 'changed-mind@acme.test'] as $email) {
             InvitationRoleGrant::query()->create([
                 'id' => strtolower((string) Str::ulid()),
                 'environment_id' => $m['environment_id'],
@@ -278,7 +284,10 @@ $envs->runAs($customer, function () use (&$m, $section, $customer, $totp): void 
 
     $section('webhooks', function () use (&$m): void {
         $hooks = app(WebhookRegistry::class);
-        $env = $hooks->register(null, 'https://hooks.acme.test/cbox', ['user.created', 'user.updated']);
+        // 1.x registered an environment endpoint with a null organization; 2.x has its own call.
+        $env = method_exists($hooks, 'registerForEnvironment')
+            ? $hooks->registerForEnvironment('https://hooks.acme.test/cbox', ['user.created', 'user.updated'])
+            : $hooks->register(null, 'https://hooks.acme.test/cbox', ['user.created', 'user.updated']);
         $org = $hooks->register($m['organizations']['acme'], 'https://hooks.acme.test/org', ['membership.created']);
         $m['webhooks'] = [
             'environment' => ['id' => $env->endpoint->id, 'secret' => $env->secret],
@@ -328,10 +337,16 @@ $envs->runAs($customer, function () use (&$m, $section, $customer, $totp): void 
     $section('admin portal links', function () use (&$m): void {
         $portal = app(AdminPortal::class);
         $m['portal_links'] = [];
-        foreach ([PortalScope::Sso, PortalScope::Scim, PortalScope::Both] as $scope) {
+        // 1.x's PortalScope was an enum of three cases; 2.x's is a set of intents.
+        $scopes = enum_exists(PortalScope::class)
+            ? [PortalScope::Sso, PortalScope::Scim, PortalScope::Both]
+            : array_map(static fn (array $intents) => PortalScope::of(array_map(PortalIntent::from(...), $intents)), [['sso'], ['dsync'], ['sso', 'dsync']]);
+        foreach ($scopes as $scope) {
             $portal->generate($m['organizations']['initech'], $scope, $m['users']['person03@acme.test']);
         }
-        $m['portal_links'] = DB::table('admin_portal_links')->orderBy('created_at')->pluck('scope', 'id')->all();
+        // 1.x stored one `scope`; 2.x stores `intents` (2026_10_11_000300).
+        $column = Schema::hasColumn('admin_portal_links', 'scope') ? 'scope' : 'intents';
+        $m['portal_links'] = DB::table('admin_portal_links')->orderBy('created_at')->pluck($column, 'id')->all();
     });
 
     $section('onboarding dismissals', function () use (&$m): void {
@@ -366,7 +381,22 @@ $section('audit chain before', function () use (&$m, $customer, $envs): void {
     });
 });
 
-$m['failures'] = $failures;
-file_put_contents($manifestPath, json_encode($m, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
-fwrite(STDOUT, $failures === [] ? "seed complete\n" : 'seed finished with '.count($failures)." failed section(s)\n");
-exit($failures === [] ? 0 : 1);
+/**
+ * Write the manifest and exit: 0 when every section seeded.
+ *
+ * @param  array<string, mixed>  $m
+ * @param  array<string, string>  $failures
+ */
+function upgrade_seed_finish(array $m, array $failures, string $manifestPath): never
+{
+    $m['failures'] = $failures;
+    file_put_contents($manifestPath, json_encode($m, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+    fwrite(STDOUT, $failures === [] ? "seed complete\n" : 'seed finished with '.count($failures)." failed section(s)\n");
+    exit($failures === [] ? 0 : 1);
+}
+
+// seed-v2.php carries on from here, then finishes itself.
+if (! defined('UPGRADE_SEED_MAJOR')) {
+    $m['from_major'] = 1;
+    upgrade_seed_finish($m, $failures, $manifestPath);
+}

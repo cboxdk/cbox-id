@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Sso\SsoFields;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
 use App\Platform\SignInThrough;
@@ -193,7 +194,7 @@ it('sends a signed-out visitor straight from the console to the cbox environment
     RootGoogle::signedOutBrowser();
 
     // The console, signed out: to the sign-in…
-    $admin = $this->get('https://'.RSC_HOST.'/admin');
+    $admin = $this->get('https://'.RSC_HOST.'/admin/environment');
     expect((string) $admin->headers->get('Location'))->toBe('https://'.RSC_HOST.'/login');
 
     // …which is not a page any more: straight to the connection's start…
@@ -310,7 +311,7 @@ it('links the root account to the cbox user by their stable sub, not by the addr
     expect($callback->status())->toBe(302)
         ->and(session(PlatformAuth::SESSION_KEY))->not->toBeNull();
 
-    $this->get('https://'.RSC_HOST.'/account')->assertOk();
+    $this->get('https://'.RSC_HOST.'/settings')->assertOk();
     expect(app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('sylvester@new-address.example')))->toBeNull();
     expect(rscSignedInSubject())->toBe($subjectId);
 })->group('security');
@@ -373,7 +374,7 @@ it('keeps the operators\' direct door working while the cbox environment cannot 
         ->and(collect($page->inertiaProps('providers'))->first()['url'] ?? null)->toBe('https://'.RSC_HOST.'/sso/oidc/'.$connection->id.'/redirect');
 });
 
-it('still hands a tenant\'s console off after signing in through the cbox environment', function (): void {
+it('still lands on a tenant\'s console after signing in through the cbox environment', function (): void {
     rscConnectCbox();
     RootGoogle::signedOutBrowser();
 
@@ -388,19 +389,16 @@ it('still hands a tenant\'s console off after signing in through the cbox enviro
         connectionId: $connection->id,
     )));
 
-    // 1. The tenant's console, signed out: to the root's door, carrying the page.
-    $open = (string) $this->get('https://'.$this->tenantHost.'/admin/users')->headers->get('Location');
-    expect($open)->toBe('https://'.RSC_HOST.'/open/'.$this->account['environment']->id.'?to=%2Fadmin%2Fusers');
+    // 1. The tenant's console's old address, signed out: to the console on the root.
+    $console = 'https://'.RSC_HOST.'/'.app(EnvironmentConsolePath::class)->for($this->account['environment']->id).'/users';
+    $this->get('https://'.$this->tenantHost.'/admin/users')->assertRedirect($console);
 
-    // 2. Through the cbox environment and back, to the door they came through.
-    $callback = rscHop('usr_cbox_owner', 'owner@acme.example', from: $open);
-    expect((string) $callback->headers->get('Location'))->toBe($open);
+    // 2. Through the cbox environment and back, to the page they asked for.
+    $callback = rscHop('usr_cbox_owner', 'owner@acme.example', from: $console);
+    expect((string) $callback->headers->get('Location'))->toBe($console);
 
-    // 3. The signed POST handoff, and the page they asked for.
-    $landed = RootGoogle::handOff($open, $this->tenantHost);
-    expect((string) $landed->headers->get('Location'))->toEndWith('/admin/users');
-
-    $this->get('https://'.$this->tenantHost.'/admin/users')->assertOk();
+    // 3. The page, in the session that just signed in.
+    $this->get($console)->assertOk();
     expect(app(EnvironmentAdminAuth::class)->subjectId())->toBe($subjectId);
 });
 
@@ -438,7 +436,7 @@ it('keeps an operator the operator, with no second prompt when they used a passk
     rscHop('usr_cbox_ops', 'ops@platform.test', claims: ['amr' => ['passkey', 'made-up']]);
 
     expect(rscSignedInSubject())->toBe($operatorSubject);
-    $this->get('https://'.RSC_HOST.'/admin/platform/environments')->assertOk();
+    $this->get('https://'.RSC_HOST.'/admin/environments')->assertOk();
 
     $amr = app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->active((string) session(PlatformAuth::SESSION_KEY))?->amr);
     expect($amr)->toContain('sso')->toContain('passkey')->not->toContain('made-up');
@@ -447,5 +445,5 @@ it('keeps an operator the operator, with no second prompt when they used a passk
     RootGoogle::signedOutBrowser();
     rscHop('usr_cbox_ops', 'ops@platform.test', claims: ['amr' => ['pwd']]);
 
-    expect((string) $this->get('https://'.RSC_HOST.'/admin/platform/environments')->headers->get('Location'))->toContain('/mfa');
+    expect((string) $this->get('https://'.RSC_HOST.'/admin/environments')->headers->get('Location'))->toContain('/mfa');
 });

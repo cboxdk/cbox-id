@@ -197,5 +197,5 @@ it('shows the same refusal on the user page, under the staff roles', function ()
 
 it('is not a page of the organization console', function (): void {
     expect(Route::has('staff'))->toBeFalse()
-        ->and(route('environment.staff', [], false))->toBe('/admin/staff');
+        ->and(Route::getRoutes()->getByName('environment.staff')?->uri())->toBe('{environmentPath}/staff');
 });

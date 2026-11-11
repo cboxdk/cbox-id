@@ -58,7 +58,9 @@ it('serves the bootstrap document once provisioned', function (): void {
     // .client_id is globally unique and cannot be compiled into one binary.
     expect($response->json('client_id'))->toBe(AuthenticatorClient::find()?->client_id)
         ->and($response->json('scopes'))->toBe(AuthenticatorClient::SCOPES)
-        ->and($response->json('api_base'))->toEndWith('/api/v1');
+        // The API host's `/v1` (plan §2.3 item 7); an installed app that predates `api_base`
+        // builds `{issuer}/api/v1` itself, and that keeps answering.
+        ->and($response->json('api_base'))->toBe('https://'.config('cbox-id.hosts.api').'/v1');
 });
 
 it('answers 404 the same way whether unprovisioned or disabled', function (): void {

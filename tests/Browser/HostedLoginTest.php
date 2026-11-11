@@ -100,7 +100,7 @@ it('marks the method this device signed in with last, after signing out', functi
     $page->assertSee('Welcome back')->assertPathIs('/dashboard');
 
     // …and out again.
-    $page->click('button.cbx-avatar-btn');
+    $page->click('button.cbx-rail-account');
     $page->click('[role="menuitem"]:has-text("Sign out")');
     $page->assertSee('You\'re signed out')->click('Sign in');
 

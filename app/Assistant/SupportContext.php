@@ -13,6 +13,7 @@ use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\NativeProduct\NativeProductAccess;
 use App\Platform\Onboarding\IntegrationProgress;
 use App\Platform\OrganizationAccess;
+use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\PlatformAuth;
 use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\AiAssistant\Connector\Support\ToolContext;
@@ -47,7 +48,7 @@ final readonly class SupportContext
             $account = $current->organizationId() ?? $request->session()->get(PlatformAuth::ORG_KEY);
         } else {
             $subject = $admin->subjectId();
-            $account = $admin->workspaceId();
+            $account = $admin->rootOrganizationId();
         }
         if (! is_string($subject) || $subject === '' || ! is_string($account) || $account === '') {
             return null;
@@ -64,7 +65,9 @@ final readonly class SupportContext
         }
         $environment = app(ConsoleScope::class)->plane() === ConsolePlane::Environment;
 
-        return ($environment ? '/admin/support/session' : '/support/session').'?scope='.hash('sha256', implode(':', $identity));
+        $base = $environment ? route('environment.support.session', [], false) : '/support/session';
+
+        return $base.'?scope='.hash('sha256', implode(':', $identity));
     }
 
     public function allowed(ToolContext $context, bool $withEnvironments = false): bool
@@ -115,7 +118,7 @@ final readonly class SupportContext
             $organization = Organization::query()->findOrFail($account);
             $base = ['organization' => $organization->name,
                 'role' => $this->memberships->activeRole($account, $subject)?->value,
-                'observed_at' => now()->toIso8601String(), 'url' => rtrim(config()->string('app.url'), '/').'/projects'];
+                'observed_at' => now()->toIso8601String(), 'url' => rtrim(config()->string('app.url'), '/').'/orgs/'.(app(OrganizationLinks::class)->addressOf($organization->id)['slug'] ?? $organization->slug).'/projects'];
             if (! $withEnvironments) {
                 return $base;
             }

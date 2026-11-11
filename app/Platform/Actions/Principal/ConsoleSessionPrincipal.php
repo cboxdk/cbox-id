@@ -7,7 +7,7 @@ namespace App\Platform\Actions\Principal;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\Approvals\StepUpPolicy;
 use App\Platform\Actions\ConsoleGate;
-use App\Platform\Actions\WorkspaceScopes;
+use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
@@ -72,7 +72,7 @@ final readonly class ConsoleSessionPrincipal implements Principal
             ConsoleGate::Administer => $this->scope->assertMayAdminister(),
             ConsoleGate::Operator => $this->assertOperator(),
             ConsoleGate::Person => $this->assertPerson(),
-            default => $this->assertWorkspaceCapability($action->consoleGate),
+            default => $this->assertOrganizationCapability($action->consoleGate),
         };
     }
 
@@ -154,13 +154,13 @@ final readonly class ConsoleSessionPrincipal implements Principal
      *
      * @throws AuthorizationException
      */
-    private function assertWorkspaceCapability(ConsoleGate $gate): void
+    private function assertOrganizationCapability(ConsoleGate $gate): void
     {
         $capabilities = $this->scope->capabilities();
         $capability = $gate->capability();
 
-        if ($capabilities === null || $capability === false || ! WorkspaceScopes::holds($capabilities, $capability)) {
-            throw new AuthorizationException('You do not have permission to do this in this workspace.');
+        if ($capabilities === null || $capability === false || ! OrganizationScopes::holds($capabilities, $capability)) {
+            throw new AuthorizationException('You do not have permission to do this in this organization.');
         }
     }
 }

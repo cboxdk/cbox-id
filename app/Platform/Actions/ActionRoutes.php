@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Route;
  * route group, which supplies the host, the prefix and the rate limiter.
  *
  * The middleware is each plane's own authenticator with the scope as its parameter —
- * `env.api:apis:write`, `workspace.api:projects:write` — so a key of the wrong plane, or
+ * `env.api:apis:write`, `org.api:projects:write` — so a key of the wrong plane, or
  * without the scope, is refused before the body is read. The principal asks again when the
  * action runs ({@see ActionRunner}); the route is one door of several.
  */
@@ -26,9 +26,9 @@ final class ActionRoutes
         self::register(ActionPlane::Environment);
     }
 
-    public static function workspace(): void
+    public static function organizationPlane(): void
     {
-        self::register(ActionPlane::Workspace);
+        self::register(ActionPlane::Organization);
     }
 
     /**
@@ -56,7 +56,7 @@ final class ActionRoutes
     {
         return match ($action->plane) {
             ActionPlane::Environment => 'env.api:'.$action->scope.','.AuthenticateEnvironmentApi::DELEGATED,
-            ActionPlane::Workspace => 'workspace.api:'.$action->scope,
+            ActionPlane::Organization => 'org.api:'.$action->scope,
             ActionPlane::Platform, ActionPlane::Account => 'delegated.api:'.$action->plane->value.','.$action->scope,
         };
     }

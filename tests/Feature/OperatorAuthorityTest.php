@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\PlatformAuth;
 use App\Providers\ConsoleServiceProvider;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
@@ -117,16 +118,16 @@ it('keeps the platform pages out of an ordinary member\'s rail', function (): vo
     // and the 404 is what proves the rail is not the authorization — a member who types
     // the URL is turned away by AuthenticateOperator whatever the nav says.
     expect(app(ConsoleScope::class)->isPlatformOperator())->toBeFalse()
-        ->and(railRoutes())->not->toContain('platform.workspaces')
+        ->and(railRoutes())->not->toContain('platform.orgs')
         ->and(railRoutes())->not->toContain('platform.environments')
         ->and(railRoutes())->not->toContain('platform.operators');
 
     $html = (string) $this->get(route('dashboard'))->assertOk()->getContent();
 
-    expect($html)->not->toContain('/admin/platform');
+    expect($html)->not->toContain('/admin');
 
-    $this->get('/admin/platform')->assertNotFound();
-    $this->get('/admin/platform/workspaces')->assertNotFound();
+    $this->get('/admin')->assertNotFound();
+    $this->get('/admin/organizations')->assertNotFound();
 })->group('security');
 
 /**
@@ -160,28 +161,29 @@ it('gives the platform pages to an operator, as an area of the same console', fu
      * consoles; the line above the page now says what a page acts on, which is what the
      * strip was for. Read off the shell the page is framed by, not the document.
      */
-    $shell = (array) $this->get(route('dashboard'))->assertOk()->inertiaProps('shell');
+    $response = $this->get(route('dashboard'))->assertOk();
+    $shell = consoleRail($response);
     $hrefs = collect($shell['areas'])->pluck('href');
 
     expect($hrefs)->toContain(route('dashboard'))
-        ->and($hrefs)->toContain(route('platform.workspaces'))
-        ->and($shell)->not->toHaveKey('platformMode')
-        ->and($shell)->not->toHaveKey('exitPlatformHref')
-        // In the rail, so not a second time in the account menu.
-        ->and($shell['platformHref'])->toBeNull()
+        ->and($hrefs)->toContain(route('platform.orgs'))
+        // In the rail, so not a second time in the account menu, and no strip over the page.
+        ->and(json_encode($response->inertiaProps('shell.account'), JSON_THROW_ON_ERROR))->not->toContain('/admin')
+        ->and((array) $response->inertiaProps('shell'))->not->toHaveKey('banner')
         ->and($shell['section'])->toBeNull();
 
     // On a platform page: the same rail, the Platform area lit, and the line above the page
     // saying it acts on the whole deployment — in the warning colours.
-    $shell = (array) $this->get(route('platform.workspaces'))->assertOk()->inertiaProps('shell');
+    $response = $this->get(route('platform.orgs'))->assertOk();
+    $shell = consoleRail($response);
     $hrefs = collect($shell['areas'])->pluck('href');
 
-    expect($hrefs)->toContain(route('platform.workspaces'))
+    expect($hrefs)->toContain(route('platform.orgs'))
         ->and($hrefs)->toContain(route('dashboard'))
         ->and($shell['activeArea'])->toBe('platform')
         ->and($shell['section'])->toBe('Platform')
-        ->and($shell['actsOn']['kind'])->toBe('platform')
-        ->and($shell['actsOn']['critical'])->toBeTrue();
+        ->and($response->inertiaProps('shell.banner.kind'))->toBe('notice')
+        ->and($response->inertiaProps('shell.banner.text'))->toContain('The whole deployment');
 })->group('security');
 
 /**
@@ -224,7 +226,7 @@ it('does not make an environment administrator an operator', function (): void {
     // authority.
     $root = app(PlatformRoot::class);
     $subject = $root->run(fn () => app(Subjects::class)->find($member->id));
-    $session = $root->run(fn () => app(SessionManager::class)->active((string) session(EnvironmentAdminAuth::SESSION_KEY)));
+    $session = $root->run(fn () => app(SessionManager::class)->active((string) session(PlatformAuth::SESSION_KEY)));
     app(CurrentUser::class)->set($subject, $session, null);
 
     expect(app(EnvironmentAdminAuth::class)->check())
@@ -285,7 +287,7 @@ it('lets an operator through the door it sent them to', function (): void {
     config()->set('cbox-id.tenancy.account_host', 'cboxid.com');
 
     // Refused while signed out, and pointed at the account door.
-    $this->get('https://cboxid.com/admin/platform/workspaces')->assertRedirect(route('login'));
+    $this->get('https://cboxid.com/admin/organizations')->assertRedirect(route('login'));
 
     // Sign in the way that door actually does it.
     $outcome = signInAtLogin('staff@cbox.test', 'a-strong-unbreached-passphrase');
@@ -293,7 +295,7 @@ it('lets an operator through the door it sent them to', function (): void {
     expect($outcome->name)->toBe('Ok', 'the account door refused an operator its own gate points at');
 
     signInAsStrongOperator($member->id);
-    $this->get('https://cboxid.com/admin/platform/workspaces')
+    $this->get('https://cboxid.com/admin/organizations')
         ->assertSuccessful();
 })->group('security');
 
@@ -313,13 +315,13 @@ it('points a refused visitor at the sign-in this deployment actually serves', fu
     installedDeployment();
 
     // Single-host: the ordinary door.
-    $this->get('/admin/platform/workspaces')->assertRedirect(route('login'));
+    $this->get('/admin/organizations')->assertRedirect(route('login'));
 
     // SaaS: the account door, on the account host.
     config()->set('cbox-id.tenancy.multi_tenant', true);
     config()->set('cbox-id.tenancy.account_host', 'cboxid.com');
 
-    $this->get('https://cboxid.com/admin/platform/workspaces')->assertRedirect(route('login'));
+    $this->get('https://cboxid.com/admin/organizations')->assertRedirect(route('login'));
 })->group('security');
 
 /**
@@ -362,7 +364,7 @@ it('signs in an operator who has no account at all', function (): void {
     $subjectId = (string) app(PlatformOperators::class)->findByEmail('lonely@cbox.test')?->subject_id;
     signInAsStrongOperator($subjectId);
 
-    $this->get('https://cboxid.com/admin/platform/workspaces')->assertSuccessful();
+    $this->get('https://cboxid.com/admin/organizations')->assertSuccessful();
 })->group('security');
 
 /** A wrong password for a real operator is still refused. */
@@ -414,7 +416,7 @@ it('signs a suspended operator in as an ordinary person, with no platform author
     // exists at that address.
     signInAsSubject((string) $operator->subject_id);
 
-    $this->get('/admin/platform/workspaces')->assertNotFound();
+    $this->get('/admin/organizations')->assertNotFound();
     expect(app(ConsoleScope::class)->isPlatformOperator())
         ->toBeFalse('a suspended operator kept platform authority');
 
@@ -422,7 +424,7 @@ it('signs a suspended operator in as an ordinary person, with no platform author
     // that answers, because asserting only where they were sent is what let a 403 pass for
     // a landing — the redirect was always issued, and it was the arrival that refused.
     nextRequest();
-    $landing = $this->followingRedirects()->get(route('projects'))->assertSuccessful();
+    $landing = $this->followingRedirects()->get('/projects')->assertSuccessful();
 
     expect((string) $landing->inertiaProps('greeting'))->toContain('belong to an organization here yet')
         // THE WAY OUT. Nothing rendered one before: the account rail needed nav areas and
@@ -516,7 +518,7 @@ it('lands an account member in the console too', function (): void {
     // than which door they came through. There was a second door for exactly this, and it
     // authenticated the same subject against the same credential.
     signInAsMember($member->id);
-    $this->get(route('projects'))->assertOk();
+    $this->get(route('orgs.projects'))->assertOk();
 })->group('security');
 
 /**
@@ -652,7 +654,7 @@ it('keeps the no-access landing reachable under an environment-wide MFA mandate'
     // matters is that the chain terminates on a page with a way out, which is the whole
     // property the account console's `no-access` page existed for.
     nextRequest();
-    expect(hasWayOut(arrivalWithin($this, route('projects'))->assertSuccessful()))
+    expect(hasWayOut(arrivalWithin($this, '/projects')->assertSuccessful()))
         ->toBeTrue('the mandate left this person on a page with no way to sign out');
 })->group('security');
 

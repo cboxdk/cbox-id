@@ -11,7 +11,7 @@ use App\Platform\Connect\ConnectSnippets;
 use App\Platform\Connect\QuickstartFramework;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\EnvironmentAdminAuth;
-use App\Platform\EnvironmentWorkspace;
+use App\Platform\EnvironmentOwner;
 use App\Platform\Help\DocsLinks;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Onboarding\EnvironmentChecklist;
@@ -52,8 +52,8 @@ final readonly class EnvironmentGetStartedController extends ConsoleController
 
         return $this->page('environment/get-started', __('console.get_started_61e8d44a'), [
             'help' => HelpProps::for(HelpTopic::EnvironmentGetStarted),
-            'checklist' => $checklist->toProps($this->workspaceId()),
-            'integrationProgress' => app(EnvironmentWorkspace::class)->environment()?->project_id !== null
+            'checklist' => $checklist->toProps($this->rootOrganizationId()),
+            'integrationProgress' => app(EnvironmentOwner::class)->environment()?->project_id !== null
                 ? app(IntegrationProgress::class)->read() : null,
             'dismissed' => $subject !== null && $checklist->isDismissed($subject),
             'frameworks' => array_map(static fn (QuickstartFramework $option): array => [
@@ -162,8 +162,8 @@ final readonly class EnvironmentGetStartedController extends ConsoleController
         return Client::query()->whereKey($id)->where('name', '!=', CliClient::NAME)->first();
     }
 
-    private function workspaceId(): ?string
+    private function rootOrganizationId(): ?string
     {
-        return app(EnvironmentAdminAuth::class)->workspaceId();
+        return app(EnvironmentAdminAuth::class)->rootOrganizationId();
     }
 }

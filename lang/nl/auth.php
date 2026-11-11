@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Starten',
         'heading' => [
-            'creates_idp' => 'Maak je werkruimte',
+            'creates_idp' => 'Maak je organisatie',
             'for_app' => 'Maak je account aan',
             'default' => 'Maak je organisatie aan',
         ],
         'lead' => [
-            'creates_idp' => 'Een werkruimte voor je bedrijf en je eigen gehoste identiteitsprovider. Je beheert SSO, gebruikers en inloggen volledig zelf. Binnen een minuut klaar voor gebruik.',
+            'creates_idp' => 'Een organisatie voor je bedrijf en je eigen gehoste identiteitsprovider. Je beheert SSO, gebruikers en inloggen volledig zelf. Binnen een minuut klaar voor gebruik.',
             'join' => 'Meld je aan voor :name. Je wordt de eigenaar van je team en kunt mensen uitnodigen zodra je bent ingelogd.',
             'default' => 'Stel Cbox ID binnen een minuut in voor je team.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Naam werkruimte',
+            'creates_idp' => 'Naam organisatie',
             'for_app' => 'Team- of bedrijfsnaam',
             'default' => 'Organisatienaam',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'Zakelijk e-mailadres',
         'breach_note' => 'Wordt gecontroleerd op bekende datalekken.',
         'submit' => [
-            'creates_idp' => 'Werkruimte aanmaken',
+            'creates_idp' => 'Organisatie aanmaken',
             'for_app' => 'Account aanmaken en verder',
             'default' => 'Organisatie aanmaken',
         ],
@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Er zijn te veel codes aangevraagd. Wacht even en probeer het opnieuw.',
     ],
     'accounts' => [
-        'title' => 'Gebruiker wisselen',
+        'title' => 'Account wisselen',
         'lead' => 'Dit zijn de accounts die op dit apparaat zijn ingelogd. Kies er een of log in met een ander account.',
         'active' => 'Actief',
         'add' => 'Inloggen als een andere persoon',
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'Een omgeving is een harde isolatiegrens – met zijn eigen gebruikers, sleutels en uitgever.',
         'environment_default' => 'Productie',
         'organization_label' => 'Organisatienaam',
-        'organization_hint' => 'Deze installatie is ingesteld voor meerdere organisaties. Daarom wordt ook de eerste werkruimte aangemaakt: de organisatie waartoe de omgevingen en facturering behoren.',
+        'organization_hint' => 'Deze installatie is ingesteld voor meerdere organisaties. Daarom wordt ook de eerste organisatie aangemaakt: de organisatie waartoe de omgevingen en facturering behoren.',
         'organization_placeholder' => 'Je bedrijf',
         'submit' => 'Installeren',
         'token_mismatch' => 'Dit installatietoken hoort niet bij deze installatie of is verlopen. Genereer een nieuw token met php artisan cbox-id:setup-token.',

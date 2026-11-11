@@ -26,6 +26,7 @@ both:
 ```bash
 composer install && npm ci && npm run build      # this checkout, as for development
 scripts/upgrade-path-check.sh --from v1.1.1 --engine pgsql
+scripts/upgrade-path-check.sh --from v2.2.0 --engine pgsql
 ```
 
 It needs PHP, Composer, git and Docker, starts its own `postgres:18`
@@ -34,13 +35,13 @@ container and the scratch directory for a look). In order:
 
 | Stage | What passes |
 |-------|-------------|
-| Previous release | `git archive <tag>` and `composer install`; `migrate`, `cbox-id:install --multi-tenant` and `scripts/upgrade-path/seed-v1.php`: people with passwords, TOTP, recovery codes and a passkey; three organizations and their members; apps with client secrets, sessions and a refresh token; invitations and role grants; webhooks; a SAML and an OIDC connection; a SCIM directory; a vault secret; a personal API token; `cbid_env_` and `cbid_org_` management keys; Admin Portal links; audit entries |
+| Previous release | `git archive <tag>` and `composer install`; `migrate`, `cbox-id:install --multi-tenant` and `scripts/upgrade-path/seed-v1.php`: people with passwords, TOTP, recovery codes and a passkey; three organizations and their members; apps with client secrets, sessions and a refresh token; invitations and role grants; webhooks; a SAML and an OIDC connection; a SCIM directory; a vault secret; a personal API token; `cbid_env_` and `cbid_org_` management keys; Admin Portal links; audit entries. From a 2.x tag `scripts/upgrade-path/seed-v2.php` seeds the same, then a `cbid_ws_` key holding the v2 scope names, the keys it minted, an idempotent answer and a pending approval under the v2 action name, and a refresh token granted the v2 `account:*` names |
 | Upgrade | this checkout's `migrate --force` |
 | Row counts | no table that held rows is dropped, and no table loses rows except where a migration says it does (`scripts/upgrade-path/compare-counts.php` names each one) |
-| Verification | `scripts/upgrade-path/verify.php`, with the new code: every password, TOTP secret, recovery code, client secret, refresh token, session, webhook secret, SSO configuration, SCIM token, vault secret, personal token and environment key from the old release still works; the old signing key is still the active one; the audit chains verify; the documented data changes happened |
+| Verification | `scripts/upgrade-path/verify.php`, with the new code: every password, TOTP secret, recovery code, client secret, refresh token, session, webhook secret, SSO configuration, SCIM token, vault secret, personal token and environment key from the old release still works; the old signing key is still the active one; the audit chains verify; the documented data changes happened. From 2.x: nothing 2.x stored is rewritten (v3.0 is expand-only) and v3 reads it all: the `cbid_ws_` key still works with its v2 scope names, the environment key it minted still finds its approver, the idempotent answer, the approval and the refresh token all still resolve, and the usage outbox keeps `workspace_id` |
 | `audit-chain:verify` | every chain intact |
 | `cbox-id:doctor` | printed for reading; it fails here only because no scheduler or queue manager runs |
-| HTTP smoke | under `php artisan serve`: `/login` on the console and an environment host, OIDC discovery and JWKS on the environment host, the management API with an old and a new `cbid_env_` key, a new `cbid_ws_` key accepted and the old `cbid_org_` refused, and a browser-style sign-in with an old password |
+| HTTP smoke | under `php artisan serve`: `/login` on the console and an environment host, OIDC discovery and JWKS on the environment host, the management API with an old and a new `cbid_env_` key, a new `cbid_ws_` organization key accepted, a 1.x `cbid_org_` key refused or a 2.x `cbid_ws_` key accepted with no `Deprecation` header, and a browser-style sign-in with an old password |
 | Rollback | `migrate:rollback --step=<every migration the upgrade ran>` leaves a schema identical to the previous release's, and `migrate` applies cleanly again |
 
 **In CI** the same script runs as the *Upgrade path* workflow
@@ -103,7 +104,7 @@ machine and the copy like production, and destroy both afterwards.
 The rehearsal from v1.1.1 on PostgreSQL 18 rolls back to v1.1.1's schema
 exactly, but these data changes stay rolled forward:
 
-- **`cbid_org_` workspace keys stay revoked.** They cannot resolve under 2.0.0 either way
+- **`cbid_org_` organization keys stay revoked.** They cannot resolve under 2.0.0 either way
   ([UPGRADING](https://github.com/cboxdk/cbox-id/blob/main/UPGRADING.md)); mint a replacement.
 - **Role grants of invitations that were no longer pending** are deleted on the way up
   (they could never be applied again).

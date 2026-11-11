@@ -164,7 +164,7 @@ it('has no accessibility issues on the ported console pages', function (string $
 })->with([
     'projects' => ['/projects', 'Projects'],
     'members' => ['/team', 'Team'],
-    'keys.workspace' => ['/keys/workspace', 'API keys'],
+    'orgs.settings.api-keys.organization' => ['/keys/workspace', 'API keys'],
     'webhooks' => ['/webhooks', 'Webhooks'],
     'audit' => ['/audit', 'Audit log'],
     'settings' => ['/settings', 'Settings'],
@@ -250,34 +250,36 @@ function environmentAdminForAudit(): void
     $providers->stopInheriting($org->id, 'discord');
 }
 
-it('has no accessibility issues on the ported environment console pages', function (string $path, string $heading): void {
+it('has no accessibility issues on the ported environment console pages', function (string $page, string $heading): void {
     environmentAdminForAudit();
 
-    visit($path)
+    // The page within the console, made a URL once the fixture has chosen the console: a
+    // dataset is built before any test runs, when no console exists yet.
+    visit(envConsole($page))
         // The page's own heading first: a console page that bounced or 403'd is a
         // perfectly accessible document about something else.
         ->assertSee($heading)
         ->assertNoAccessibilityIssues()
         ->assertNoJavaScriptErrors();
 })->with([
-    'home' => ['/admin', 'Overview'],
-    'organizations' => ['/admin/organizations', 'Organizations'],
-    'users' => ['/admin/users', 'Users'],
-    'saml-applications' => ['/admin/saml-apps', 'SAML apps'],
-    'approvals' => ['/admin/approvals', 'Approvals'],
+    'home' => ['', 'Overview'],
+    'organizations' => ['/organizations', 'Organizations'],
+    'users' => ['/users', 'Users'],
+    'saml-applications' => ['/saml-apps', 'SAML apps'],
+    'approvals' => ['/approvals', 'Approvals'],
     // The SAME page as `/usage` on the other plane, and the reason that page exists: the
     // environment plane had a primitive copy of these counters called "Analytics".
-    'analytics' => ['/admin/usage', 'Usage'],
-    'social-sign-in' => ['/admin/social-sign-in', 'On every sign-in page'],
+    'analytics' => ['/usage', 'Usage'],
+    'social-sign-in' => ['/social-sign-in', 'On every sign-in page'],
     // "Turn on Google": the setup form, for the whole environment by default.
-    'social-sign-in-setup' => ['/admin/social-sign-in?provider=google', 'Who is it for?'],
+    'social-sign-in-setup' => ['/social-sign-in?provider=google', 'Who is it for?'],
     // Every way in on one page, and every organization's domains in one list.
-    'sign-in-methods' => ['/admin/sign-in-methods', 'Sign-in methods'],
+    'sign-in-methods' => ['/sign-in-methods', 'Sign-in methods'],
     // The environment's own passkey, magic-link and session switches.
-    'authentication-policy' => ['/admin/sign-in-rules', 'Sign-in methods and sessions'],
-    'domains' => ['/admin/domains', 'No organization has claimed a domain yet'],
+    'authentication-policy' => ['/sign-in-rules', 'Sign-in methods and sessions'],
+    'domains' => ['/domains', 'No organization has claimed a domain yet'],
     // The comparison every authorization page ends with.
-    'roles' => ['/admin/roles', 'Roles, relationships, flags or entitlements?'],
+    'roles' => ['/roles', 'Roles, relationships, flags or entitlements?'],
 ])->group('a11y');
 
 /**
@@ -367,7 +369,7 @@ function accountSecurityForAudit(): void
 it('has no accessibility issues on the security page', function (): void {
     accountSecurityForAudit();
 
-    visit('/account')
+    visit('/settings')
         ->assertSee('Profile')
         // The panels, asserted rather than assumed — see the fixture's docblock.
         ->assertSee('Audit laptop')
@@ -379,7 +381,7 @@ it('has no accessibility issues on the security page', function (): void {
 it('has no accessibility issues on the security page in the dark', function (): void {
     accountSecurityForAudit();
 
-    visit('/account')
+    visit('/settings')
         ->inDarkMode()
         ->assertSee('Audit laptop')
         ->assertNoAccessibilityIssues()
@@ -389,7 +391,7 @@ it('has no accessibility issues on the security page in the dark', function (): 
 it('keeps the security page usable at a phone width', function (): void {
     accountSecurityForAudit();
 
-    visit('/account')
+    visit('/settings')
         ->on()->mobile()
         ->assertSee('Audit laptop')
         ->assertScript('document.documentElement.scrollWidth <= document.documentElement.clientWidth', true)
@@ -400,7 +402,7 @@ it('keeps the security page usable at a phone width', function (): void {
 it('has no accessibility issues on sessions and activity', function (): void {
     accountActivityForAudit();
 
-    visit('/account/activity')
+    visit('/settings/activity')
         ->assertSee('Where you are signed in')
         // The rows, asserted rather than assumed — see the fixture's docblock.
         ->assertSee('Safari on iPhone')
@@ -417,7 +419,7 @@ it('has no accessibility issues on sessions and activity', function (): void {
 it('has no accessibility issues on sessions and activity in the dark', function (): void {
     accountActivityForAudit();
 
-    visit('/account/activity')
+    visit('/settings/activity')
         ->inDarkMode()
         ->assertSee('Acme CLI')
         ->assertNoAccessibilityIssues()
@@ -428,7 +430,7 @@ it('has no accessibility issues on sessions and activity in the dark', function 
 it('keeps sessions and activity usable at a phone width', function (): void {
     accountActivityForAudit();
 
-    visit('/account/activity')
+    visit('/settings/activity')
         ->on()->mobile()
         ->assertSee('Acme CLI')
         ->assertSee('Denmark')
@@ -514,23 +516,23 @@ it('has no accessibility issues on the ported platform console pages', function 
  * knows once it has run, and a dataset cannot build a URL it does not have yet.
  */
 dataset('platform pages', [
-    'environments' => ['/admin/platform/environments', 'Environments'],
-    'customers' => ['/admin/platform/workspaces', 'Workspaces'],
+    'environments' => ['/admin/environments', 'Environments'],
+    'customers' => ['/admin/organizations', 'Organizations'],
     // The customer's OWN page, which is where the plane's real density is: a team table, a
     // panel per project, and an environment row with two controls that repoint the console.
-    'customer' => ['/admin/platform/workspaces/first', 'Acme'],
-    'organizations' => ['/admin/platform/organizations', 'Organization tree'],
+    'customer' => ['/admin/organizations/first', 'Acme'],
+    'organizations' => ['/admin/environments/root/organizations', 'Organization tree'],
     // The tenant's OWN page: a usage grid, a member table with an impersonation form on
     // every row, an entitlement table and an activity table — the densest page on the plane.
-    'organization' => ['/admin/platform/organizations/tenant', 'Tenant A11y'],
-    'operators' => ['/admin/platform/operators', 'Operators'],
-    'usage' => ['/admin/platform/usage', 'Usage'],
+    'organization' => ['/admin/environments/root/organizations/tenant', 'Tenant A11y'],
+    'operators' => ['/admin/operators', 'Operators'],
+    'usage' => ['/admin/usage', 'Usage'],
     // The queue workers' state. The suite runs jobs inline, so this is the page with no
     // queue to watch — the empty state is what renders.
-    'queues' => ['/admin/platform/queues', 'Queues'],
+    'queues' => ['/admin/queues', 'Queues'],
     // With a TERM, because the search page with none is a prompt and an empty list — the
     // result rows, which are the markup worth auditing, only exist once it has run.
-    'search' => ['/admin/platform/search?term=acme', 'Acme'],
+    'search' => ['/admin/search?term=acme', 'Acme'],
 ]);
 
 /**
@@ -594,7 +596,7 @@ it('keeps the platform console usable at a phone width', function (string $path,
 it('audits an environment list whose owner column has all three of its states', function (): void {
     operatorForAudit();
 
-    visit('/admin/platform/environments')
+    visit('/admin/environments')
         // The qualified name — "Production" alone is a name half the customers on an
         // install will have.
         ->assertSee('Acme / Production')
@@ -619,7 +621,7 @@ it('audits an environment list whose owner column has all three of its states', 
 it('confirms before it suspends a tenant, and says who the operator is', function (): void {
     operatorForAudit();
 
-    $page = visit('/admin/platform/organizations')
+    $page = visit('/admin/environments/root/organizations')
         // The page's own content first: `assertPresent` does not wait for React to mount.
         ->assertSee('Tenant A11y')
         // WHAT AUTHORITY YOU ARE HOLDING, drawn above every platform page — the topbar used
@@ -648,7 +650,7 @@ it('confirms before it suspends a tenant, and says who the operator is', functio
  * features have to be switched ON — a module's routes only exist where its feature is,
  * so an audit that did not say this would 404 rather than audit anything.
  */
-it('has no accessibility issues on the ported module pages', function (string $path, string $heading): void {
+it('has no accessibility issues on the ported module pages', function (string $page, string $heading): void {
     // Stated here rather than borrowed from a Feature test's helper: this file has to be
     // runnable on its own.
     config([
@@ -660,13 +662,13 @@ it('has no accessibility issues on the ported module pages', function (string $p
 
     environmentAdminForAudit();
 
-    visit($path)
+    visit(envConsole($page))
         ->assertSee($heading)
         ->assertNoAccessibilityIssues()
         ->assertNoJavaScriptErrors();
 })->with([
-    'connector catalogue' => ['/admin/connectors', 'Catalog'],
-    'connections' => ['/admin/connectors/connections', 'Connections'],
+    'connector catalogue' => ['/connectors', 'Catalog'],
+    'connections' => ['/connectors/connections', 'Connections'],
 ])->group('a11y');
 
 /**
@@ -679,7 +681,7 @@ it('has no accessibility issues on any tab of an organization\'s page', function
 
     $organization = app(Organizations::class)->create(new NewOrganization('Hub A11y', 'hub-a11y'));
 
-    visit('/admin/organizations/'.$organization->id.$tab)
+    visit(envConsole('/organizations/').$organization->id.$tab)
         ->assertSee('Hub A11y')
         ->assertSee($heading)
         ->assertNoAccessibilityIssues()
@@ -711,7 +713,7 @@ it('audits the environment console detail pages, with rows on them', function ()
     $user = User::query()->where('email', 'a11y-env-user@acme.test')->firstOrFail();
     $organization = Organization::query()->where('slug', 'tenant-a11y')->firstOrFail();
 
-    visit('/admin/users/'.$user->id.'?section=security')
+    visit(envConsole('/users/').$user->id.'?section=security')
         ->assertSee('Security & lifecycle')
         ->assertNoAccessibilityIssues()
         ->click('a[href$="section=access"]')
@@ -721,7 +723,7 @@ it('audits the environment console detail pages, with rows on them', function ()
         ->assertNoAccessibilityIssues()
         ->assertNoJavaScriptErrors();
 
-    visit('/admin/organizations/'.$organization->id.'/members')
+    visit(envConsole('/organizations/').$organization->id.'/members')
         ->assertSee('Members')
         ->assertSee('a11y-env-user@acme.test')
         ->assertNoAccessibilityIssues()
@@ -738,11 +740,14 @@ it('audits the environment console detail pages, with rows on them', function ()
  * about nothing. Those tests now assert what the SERVER decides; this is where what the
  * BROWSER draws is held.
  */
-it('draws the mobile navigation on both console planes', function (string $path, string $heading): void {
-    if (str_starts_with($path, '/admin')) {
+it('draws the mobile navigation on both console planes', function (string $plane, string $page, string $heading): void {
+    if ($plane === 'environment') {
         environmentAdminForAudit();
+        // A dataset is built before any test runs, when no console exists yet.
+        $path = envConsole($page);
     } else {
         signedInForAudit();
+        $path = $page;
     }
 
     /*
@@ -757,14 +762,14 @@ it('draws the mobile navigation on both console planes', function (string $path,
     visit($path)
         ->on()->mobile()
         ->assertSee($heading)
-        ->assertPresent('[data-cbox-mobile-nav]')
+        ->assertPresent('header.cbx-header')
         // The trigger is named for a screen reader rather than in visible text, so it is
         // the LABEL that is asserted — which is also the thing that matters.
-        ->assertPresent('[data-cbox-mobile-nav] [aria-label="Open menu"]')
+        ->assertPresent('header.cbx-header button[aria-label="Open navigation"]')
         ->assertNoJavaScriptErrors();
 })->with([
-    'organization plane' => ['/dashboard', 'Recent activity'],
-    'environment plane' => ['/admin', 'Quick actions'],
+    'organization plane' => ['organization', '/dashboard', 'Recent activity'],
+    'environment plane' => ['environment', '', 'Quick actions'],
 ])->group('a11y');
 
 /**
@@ -791,7 +796,7 @@ it('offers a sign-out and a security page to somebody who belongs to nowhere', f
         ->assertNoJavaScriptErrors()
         // And the way out, behind the account menu — opened, because a control that is
         // present but unreachable is the failure this is about. The trigger is the avatar
-        // top right, named for the person it belongs to.
-        ->click('button.cbx-avatar-btn')
+        // at the foot of the rail, named for what it opens.
+        ->click('button.cbx-rail-account')
         ->assertSee('Sign out');
 })->group('a11y');

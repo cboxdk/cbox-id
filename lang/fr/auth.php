@@ -80,17 +80,17 @@ return [
     'signup' => [
         'title' => 'Commencer',
         'heading' => [
-            'creates_idp' => 'Créez votre espace de travail',
+            'creates_idp' => 'Créez votre organisation',
             'for_app' => 'Créez votre compte',
             'default' => 'Créez votre organisation',
         ],
         'lead' => [
-            'creates_idp' => 'Un espace de travail pour votre entreprise et votre propre fournisseur d’identité hébergé — SSO, utilisateurs et connexion entièrement sous votre contrôle, opérationnels en une minute.',
+            'creates_idp' => 'Une organisation pour votre entreprise et votre propre fournisseur d’identité hébergé — SSO, utilisateurs et connexion entièrement sous votre contrôle, opérationnels en une minute.',
             'join' => 'Inscrivez-vous à :name. Vous serez le propriétaire de votre équipe et pourrez inviter des personnes une fois votre compte créé.',
             'default' => 'Configurez Cbox ID pour votre équipe en moins d’une minute.',
         ],
         'organization_label' => [
-            'creates_idp' => 'Nom de l’espace de travail',
+            'creates_idp' => 'Nom de l\'organisation',
             'for_app' => 'Nom de l’équipe ou de l’entreprise',
             'default' => 'Nom de l’organisation',
         ],
@@ -100,7 +100,7 @@ return [
         'email_label' => 'Adresse e-mail professionnelle',
         'breach_note' => 'Vérifié par rapport aux fuites de données connues.',
         'submit' => [
-            'creates_idp' => 'Créer l’espace de travail',
+            'creates_idp' => 'Créer l\'organisation',
             'for_app' => 'Créer le compte et continuer',
             'default' => 'Créer l’organisation',
         ],
@@ -176,7 +176,7 @@ return [
         'too_many_codes' => 'Trop de codes demandés. Veuillez patienter un instant, puis réessayer.',
     ],
     'accounts' => [
-        'title' => 'Changer d’utilisateur',
+        'title' => 'Changer de compte',
         'lead' => 'Toutes les personnes connectées sur cet appareil. Choisissez-en une, ou connectez-vous avec un autre compte.',
         'active' => 'Actif',
         'add' => 'Se connecter avec un autre compte',
@@ -241,7 +241,7 @@ return [
         'environment_hint' => 'Un environnement est la frontière d’isolation stricte — avec ses propres utilisateurs, clés et émetteur.',
         'environment_default' => 'Production',
         'organization_label' => 'Nom de l’organisation',
-        'organization_hint' => 'Ce déploiement est configuré en mode multilocataire ; l’installation crée donc aussi le premier espace de travail — l’organisation propriétaire des environnements et de la facturation.',
+        'organization_hint' => 'Ce déploiement est configuré en mode multilocataire ; l’installation crée donc aussi le premier organisation — l’organisation propriétaire des environnements et de la facturation.',
         'organization_placeholder' => 'Votre entreprise',
         'submit' => 'Installer ce déploiement',
         'token_mismatch' => 'Ce jeton de configuration ne correspond pas à celui de ce déploiement, ou il a expiré. Affichez-en un nouveau avec php artisan cbox-id:setup-token.',

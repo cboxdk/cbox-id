@@ -61,7 +61,7 @@ it('counts a sign-in by method and the person once towards monthly active users'
         ->and($rows->where('meter', 'cbox-id.monthly_active_users')->pluck('unique_key')->unique()->values()->all())->toBe(['usr_1']);
 });
 
-it('measures each workspace stock and hourly activity once, never the platform root', function (): void {
+it('measures each organization stock and hourly activity once, never the platform root', function (): void {
     Carbon::setTestNow('2026-11-08 10:07:00');
     ['organization' => $workspace, 'environment' => $environment] = provisionAccount();
     $root = platformRootEnvironment();
@@ -97,7 +97,7 @@ it('measures each workspace stock and hourly activity once, never the platform r
         ->and($rows->keys()->filter(fn (string $id): bool => str_starts_with($id, 'stock:users:'))->count())->toBe(1);
 });
 
-it('sends a workspace batch with its quantity, distinct key and dimensions and keeps the rejection reason', function (): void {
+it('sends an organization batch with its quantity, distinct key and dimensions and keeps the rejection reason', function (): void {
     ['organization' => $workspace, 'environment' => $environment] = provisionAccount();
     $transport = usageTransport();
     deliverUsage('user.session_started', $environment->id, ['user_id' => 'usr_9', 'amr' => ['pwd']], 'evt_x');

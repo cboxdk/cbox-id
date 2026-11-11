@@ -4,19 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
-use App\Actions\Workspace\Environments\CreateEnvironment;
-use App\Actions\Workspace\Projects\CreateProject;
-use App\Actions\Workspace\Projects\ReactivateProject;
-use App\Actions\Workspace\Projects\RenameProject;
-use App\Actions\Workspace\Projects\ResendVerification;
-use App\Actions\Workspace\Projects\SuspendProject;
+use App\Actions\OrgPlane\Environments\CreateEnvironment;
+use App\Actions\OrgPlane\Projects\CreateProject;
+use App\Actions\OrgPlane\Projects\ReactivateProject;
+use App\Actions\OrgPlane\Projects\RenameProject;
+use App\Actions\OrgPlane\Projects\ResendVerification;
+use App\Actions\OrgPlane\Projects\SuspendProject;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\RenameProjectRequest;
 use App\Http\Requests\Console\StoreEnvironmentRequest;
 use App\Http\Requests\Console\StoreProjectRequest;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Billing\ProductBilling;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\CurrentUser;
+use App\Platform\Help\DocsLinks;
 use App\Platform\Help\HelpTopic;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\ServiceAccess\ProductAdmission;
@@ -46,7 +48,7 @@ use Inertia\Response;
  * confined to staging was refused on the page that says so and permitted on the page that
  * does not. Two spellings of one rule is not a rule; {@see self::assertMayManage()} is.
  *
- * EVERY WRITE IS AN ACTION (`app/Actions/Workspace/Projects`, `…/Environments`), the same
+ * EVERY WRITE IS AN ACTION (`app/Actions/OrgPlane/Projects`, `…/Environments`), the same
  * one `/api/v1/workspace` runs for a workspace key — so the page and the API refuse and
  * record alike. This controller keeps what is the console's own: which page a refusal
  * lands on, and the 403 a person who may not manage gets before anything runs.
@@ -128,13 +130,15 @@ final readonly class ProjectController extends ConsoleController
                     'limit' => app(ProductBilling::class)->projectLimit($project),
                     'used' => $visible->count(),
                     'atLimit' => $visible->count() >= app(ProductBilling::class)->projectLimit($project),
-                    'settingsHref' => route('projects.show', $project->id),
+                    'settingsHref' => route('orgs.projects.show', $project->id),
                     'environments' => $visible->map(static fn (Environment $e): array => [
                         'id' => $e->id,
                         'name' => $e->name,
                         'type' => $e->type->value,
                         'host' => $e->domain ?? $e->slug,
-                        'openHref' => route('environment.open', $e->id),
+                        // Null when the console has no address ({@see EnvironmentConsolePath::for()}):
+                        // the row stays, and says why and what to do, instead of a link to a 404.
+                        'openHref' => app(EnvironmentConsolePath::class)->route($e->id),
                     ])->values()->all(),
                 ];
             }
@@ -144,8 +148,8 @@ final readonly class ProjectController extends ConsoleController
             'help' => HelpProps::for(HelpTopic::Projects),
             'projects' => $rows,
             'canManage' => $this->mayManage($members),
-            'createHref' => route('projects.create'),
-            'billingHref' => config('billing.enabled') && $this->scope->capabilities()->canReadBilling() ? route('billing') : null,
+            'createHref' => route('orgs.projects.create'),
+            'billingHref' => config('billing.enabled') && $this->scope->capabilities()->canReadBilling() ? route('orgs.settings.billing') : null,
             'manageBillingLabel' => __('billing.manage'),
             // The first environment is held back until the owner confirms their address,
             // so the page has to say so — otherwise it shows a project with no
@@ -164,7 +168,7 @@ final readonly class ProjectController extends ConsoleController
         app(ProductAdmission::class)->assertWebGranted($this->scope->actorId(), $this->scope->organizationId() ?? '');
 
         return $this->page('console/projects/create', __('console.new_project_a41eb2bf'), [
-            'indexHref' => route('projects'),
+            'indexHref' => route('orgs.projects'),
         ]);
     }
 
@@ -189,7 +193,7 @@ final readonly class ProjectController extends ConsoleController
         /** @var Project $project */
         $project = $result->value;
 
-        return to_route('projects.show', $project->id)
+        return to_route('orgs.projects.show', $project->id)
             ->with('status', __('console.project_created_add_its_first_environment_935fc40e'));
     }
 
@@ -243,16 +247,17 @@ final readonly class ProjectController extends ConsoleController
                 // The environment's own front door, which is a real URL somebody pastes
                 // to a colleague — not a route on this console.
                 'url' => 'https://'.($environment->domain ?? $environment->slug.'.'.$baseDomain),
-                'openHref' => route('environment.open', $environment->id),
+                'openHref' => app(EnvironmentConsolePath::class)->route($environment->id),
             ])->values()->all(),
             // A management surface requires the capability AND full access.
             'canManage' => ! $scoped && $this->mayManage($members),
             'scoped' => $scoped,
             'billingHref' => config('billing.enabled') === true && $this->scope->capabilities()->canReadBilling()
-                ? route('billing', ['organization' => $model->organization_id])
+                ? route('orgs.settings.billing', ['organization' => $model->organization_id])
                 : null,
             'remaining' => $scoped ? 0 : $projects->remainingEnvironments($model),
-            'indexHref' => route('projects'),
+            'indexHref' => route('orgs.projects'),
+            'guideHref' => app(DocsLinks::class)->url(HelpTopic::Projects),
             'manageBillingLabel' => __('billing.manage'),
         ]);
     }

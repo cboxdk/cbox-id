@@ -7,10 +7,12 @@ namespace App\Mcp;
 use App\Platform\Actions\AccountScopes;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
+use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Actions\PlatformScopes;
-use App\Platform\Actions\WorkspaceScopes;
+use App\Platform\Api\ManagementAudience;
 use App\Platform\OAuth\DelegatedAccess;
 use App\Platform\OAuth\RootDelegatedAccess;
+use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
@@ -36,7 +38,7 @@ use Cbox\Id\Platform\PlatformRoot;
  *
  *  - on an environment's host: that environment's plane, and the person's own account
  *    (`account:*`, `/api/v1/me` on the same host);
- *  - at the PLATFORM ROOT: those, and the workspace plane's ({@see WorkspaceScopes}) and the
+ *  - at the PLATFORM ROOT: those, and the workspace plane's ({@see OrganizationScopes}) and the
  *    operator API's ({@see PlatformScopes}) — because the root's `/mcp` is where the people
  *    who administer a hosted deployment sign in: a workspace's team, for the workspace and
  *    (named per call) each of its environments, and the operators running it
@@ -61,6 +63,15 @@ final readonly class McpProtectedResources implements ProtectedResources
     public function find(string $identifier): ?ProtectedResource
     {
         foreach ($this->all() as $resource) {
+            if ($resource->identifier === $identifier) {
+                return $resource;
+            }
+        }
+
+        // The management plane's other names (plan §2.5): the API host and the application
+        // host's MCP server. Found when a client NAMES one, never offered by all(), so a
+        // request that names no resource is not made ambiguous by three twins.
+        foreach (ManagementAudience::resources($this->mcp()) as $resource) {
             if ($resource->identifier === $identifier) {
                 return $resource;
             }
@@ -98,7 +109,7 @@ final readonly class McpProtectedResources implements ProtectedResources
     public function mcp(): ProtectedResource
     {
         $planes = $this->servingPlatformRoot()
-            ? [ActionPlane::Environment, ActionPlane::Account, ActionPlane::Workspace, ActionPlane::Platform]
+            ? [ActionPlane::Environment, ActionPlane::Account, ActionPlane::Organization, ActionPlane::Platform]
             : [ActionPlane::Environment, ActionPlane::Account];
 
         $scopes = [];
@@ -113,13 +124,17 @@ final readonly class McpProtectedResources implements ProtectedResources
         // a person's token is held to its scopes for as long as it lives, and a catalogue
         // scope no action uses yet is one a client can ask for already.
         $catalogued = $this->servingPlatformRoot()
-            ? [...AccountScopes::all(), ...WorkspaceScopes::all(), ...PlatformScopes::all()]
+            ? [...AccountScopes::all(), ...OrganizationScopes::all(), ...PlatformScopes::all()]
             : AccountScopes::all();
 
+        // The names the actions declare, ONCE each: v2's on the environment, account and
+        // platform planes, v3's on the organization plane. Publishing both spellings put both
+        // in a no-scope client's registration, its consent screen and its token. A credential
+        // that holds the other spelling still passes every check ({@see ScopeRegistry::satisfiedBy()}).
         $scopes = array_values(array_unique([...$scopes, ...$catalogued]));
         sort($scopes);
 
-        return new ProtectedResource(
+        return new TransitionalProtectedResource(
             identifier: rtrim($this->issuers->issuer(), '/').self::PATH,
             scopes: $scopes,
             // An MCP client registers itself — that is the whole MCP authorization model —

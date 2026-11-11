@@ -58,6 +58,9 @@ final class CaptureProductUsage
     }
 
     /**
+     * The column keeps its v2 name, `workspace_id`, through v3.0: the release still running
+     * while v3 rolls out writes it too. It is renamed one release later (UPGRADING, v3.1).
+     *
      * @param  array<string, string>  $dimensions
      * @return array<string, mixed>
      */

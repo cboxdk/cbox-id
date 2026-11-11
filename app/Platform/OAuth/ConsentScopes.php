@@ -10,9 +10,10 @@ use App\Platform\Actions\AccountScopes;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\Danger;
+use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Actions\PlatformScopes;
-use App\Platform\Actions\WorkspaceScopes;
 use App\Platform\ScopeCatalog;
+use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Support\Facades\Lang;
 
@@ -73,9 +74,13 @@ final readonly class ConsentScopes
     private function managementLabel(string $scope): ?string
     {
         return match (true) {
+            // A plane's own name first: the environment's vocabulary also KNOWS the
+            // organization plane's `id:environment-keys:write` by its old name `keys:write`,
+            // and would label both halves of that split "Manage management keys".
+            isset(OrganizationScopes::SCOPES[$scope]) => OrganizationScopes::label($scope),
             $this->management->knows($scope) => AppManagementScopes::label($scope),
             AccountScopes::knows($scope) => AccountScopes::label($scope),
-            WorkspaceScopes::knows($scope) => WorkspaceScopes::label($scope),
+            OrganizationScopes::knows($scope) => OrganizationScopes::label($scope),
             PlatformScopes::knows($scope) => PlatformScopes::label($scope),
             default => null,
         };
@@ -102,7 +107,9 @@ final readonly class ConsentScopes
     }
 
     /**
-     * The management scopes some critical action needs, on any plane.
+     * The management scopes some critical action needs, on any plane — under every name
+     * that satisfies it ({@see ScopeRegistry::equivalents()}), so `team:write` asked by a v2
+     * client is flagged exactly as `id:members:write` is.
      *
      * @return array<string, true>
      */
@@ -112,7 +119,9 @@ final readonly class ConsentScopes
 
         foreach ($this->actions->all() as $action) {
             if ($action->danger === Danger::Critical) {
-                $critical[$action->scope] = true;
+                foreach (ScopeRegistry::equivalents($action->scope) as $name) {
+                    $critical[$name] = true;
+                }
             }
         }
 

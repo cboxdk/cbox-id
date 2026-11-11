@@ -26,7 +26,7 @@ it('serves every environment-console page of the root environment, and every lin
     $crawl = (new ConsoleCrawl($this))->crawl(
         host: ConsoleCrawl::ROOT,
         select: static fn (Route $route): bool => str_starts_with((string) $route->getName(), 'environment.')
-            && str_starts_with($route->uri(), 'admin'),
+            && str_starts_with($route->uri(), '{environmentPath}'),
         parameters: ConsoleCrawl::parameters($world, $root),
     );
 
@@ -35,7 +35,7 @@ it('serves every environment-console page of the root environment, and every lin
         ->and($crawl->components)->toHaveKeys(['console/sign-in-methods', 'console/social-providers', 'console/auth-policy']);
 });
 
-it('serves an operator the root host\'s workspace console, sending every environment page to the platform environment\'s', function (): void {
+it('serves an operator the root host\'s organization console, sending every environment page to the platform environment\'s', function (): void {
     $world = ConsoleCrawl::world();
     $root = Environment::query()->where('is_default', true)->sole();
 

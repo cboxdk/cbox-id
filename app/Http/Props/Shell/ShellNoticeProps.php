@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Props\Shell;
 
 use App\Http\Props\Prop;
-use App\Platform\Console\WorkspaceAltitude;
+use App\Platform\Console\OrganizationAltitude;
 
 /**
  * A sentence the shell puts above a page that is reachable but not in the rail, saying
  * what the page is and where the reader probably meant to be.
  *
- * @see WorkspaceAltitude — the one case today: a workspace console
+ * @see OrganizationAltitude — the one case today: a workspace console
  *      reaching one of its organization's end-user administration pages by URL.
  */
 final readonly class ShellNoticeProps implements Prop

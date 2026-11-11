@@ -318,7 +318,9 @@ it('saves an environment-level theme and applies it to the hosted sign-in', func
     // Persisted onto the environment…
     expect(Environment::find($envId)->settings['appearance']['light']['primary'])->toBe('#00aa88');
 
-    // …and a plain env sign-in (no org) now carries the env default theme.
+    // …and a plain env sign-in (no org), on the environment's own host and in that host's
+    // own session, now carries the env default theme.
+    hostJar('environment');
     $this->get('/login')->assertOk()->assertSee('--accent:#00aa88', false);
 });
 

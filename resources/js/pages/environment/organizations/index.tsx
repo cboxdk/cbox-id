@@ -101,9 +101,9 @@ export default function OrganizationsIndex({
             {/*
                 NO EXPLAINER BOX. One used to sit here saying "these are your customers, not
                 your Cbox ID account", because "organization" named both this page's rows and
-                the customer's own account one level up. The account is the WORKSPACE now,
-                named in the topbar with the way back to it, and a box explaining the
-                vocabulary was the symptom rather than the fix.
+                the customer's own account one level up. The account is named in the topbar,
+                with the way back to it, which tells the two apart without a box explaining
+                the vocabulary.
             */}
 
             <div className="mt-6">
@@ -198,10 +198,7 @@ export default function OrganizationsIndex({
                 )}
             </div>
 
-            <Pagination
-                pagination={pagination}
-                href={(page) => listHref(search, page)}
-            />
+            <Pagination pagination={pagination} href={(page) => listHref(search, page)} />
         </>
     );
 }

@@ -73,7 +73,7 @@ beforeEach(function (): void {
 it('refuses every vault route once the step-up window has closed', function (): void {
     $secret = app(SecretVault::class)->store('K', 'stripe', 'sk_x');
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
     $this->get(route('environment.vault.show', $secret->id))->assertSuccessful();
 
     // The window closes — the administrator walks away, the fifteen minutes lapse.
@@ -96,7 +96,7 @@ it('refuses every vault route once the step-up window has closed', function (): 
 it('allows a vault write while the step-up window is open', function (): void {
     $secret = app(SecretVault::class)->store('K', 'stripe', 'sk_x');
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->post(route('environment.vault.revoke', $secret->id))
         ->assertRedirect(route('environment.vault'));
@@ -132,7 +132,7 @@ it('refuses to rotate an app secret with no step-up, and rotates with one', func
     expect(Client::query()->whereKey($client->id)->value('secret_hash'))
         ->toBe($before, 'an app secret was rotated with no step-up');
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     test()->from($url)
         ->post(route('environment.clients.rotate', ['client' => $client->id]))
@@ -156,7 +156,7 @@ it('refuses to rotate a SCIM bearer token with no step-up, and rotates with one'
     expect($directory->fresh()?->bearer_token_hash)
         ->toBe($before, 'a live SCIM bearer token was minted with no step-up');
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     test()->from($url)
         ->post(route('environment.directories.rotate', ['directory' => $directory->id]))
@@ -184,7 +184,7 @@ it('refuses to rotate a webhook signing secret with no step-up, and rotates with
     expect(WebhookEndpoint::query()->whereKey($endpoint->id)->value('secret_encrypted'))
         ->toBe($before, 'a webhook signing secret was rotated with no step-up');
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->post($rotate)->assertRedirect();
 
@@ -231,7 +231,7 @@ it('refuses to register an app with no step-up, and registers with one', functio
     expect(Client::query()->where('name', 'Support Portal')->exists())
         ->toBeFalse('an app secret was minted with no step-up, by registering the app instead of rotating it');
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     registerApp($form, 'environment.clients')->assertSessionHasNoErrors();
 
@@ -251,7 +251,7 @@ it('refuses to register a SCIM directory with no step-up, and registers with one
     expect(Directory::query()->where('name', 'Okta')->exists())
         ->toBeFalse('a SCIM bearer token was minted with no step-up');
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     registerDirectory(['name' => 'Okta'], 'environment.directories')->assertSessionHasNoErrors();
 
@@ -277,7 +277,7 @@ it('refuses to register a webhook endpoint with no step-up, and registers with o
     expect(WebhookEndpoint::query()->where('url', $form['url'])->exists())
         ->toBeFalse('a signing secret was minted with no step-up, and a live event feed pointed somewhere new');
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->post($store, $form)->assertRedirect();
 
@@ -308,7 +308,7 @@ it('refuses to register an inline hook with no step-up, and registers with one',
     expect(ExternalActionEndpoint::query()->where('url', $url)->exists())
         ->toBeFalse('an endpoint was planted inside the sign-in path with no step-up');
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     registerHook(['url' => $url], 'environment.hooks')->assertSessionHasNoErrors();
 
@@ -337,7 +337,7 @@ it('refuses to register a log stream with no step-up, and registers with one', f
     expect(LogStream::query()->where('name', 'SIEM')->exists())
         ->toBeFalse('a log-stream signing key was minted with no step-up');
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->get(route('environment.audit-streams.create'))->assertSuccessful();
 

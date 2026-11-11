@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Platform\CurrentUser;
-use App\Platform\EnvironmentAdminAuth;
 use App\Platform\IntendedUrl;
 use App\Platform\OrganizationAccess;
 use App\Platform\PlatformAuth;
@@ -77,12 +76,11 @@ final class Authenticate
 
         if ($session === null) {
             /*
-             * ONLY THIS CONTEXT'S KEY. An environment administrator's session on a tenant's
-             * host is the ADMIN context's, under a key of its own
-             * ({@see EnvironmentAdminAuth::SESSION_KEY}), so forgetting a dead end-user key
-             * here no longer costs the console anything. It used to be the same key, and
-             * a tenant page that resolved a subject — /oauth/authorize, say — signed the
-             * administrator out of their console.
+             * ONLY THIS HOST'S SESSION. The environment console is on the app host now, in
+             * that host's own session, so forgetting a dead end-user key on a tenant's host
+             * costs the console nothing. It once did: a tenant page that resolved a
+             * subject — /oauth/authorize, say — signed the administrator out of the console
+             * that shared its host.
              */
             $request->session()->forget(PlatformAuth::SESSION_KEY);
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\Navigation\ConsoleNavigation;
 use Carbon\CarbonInterface;
 use Cbox\Id\Compliance\Models\AuditExportRun;
@@ -212,10 +213,25 @@ it('drops a module page from the environment rail when the module is off', funct
  * doctor check, which went when the two consoles stopped having to match; the property it
  * held did not go with it.
  */
-it('never routes a workspace page on the environment plane', function (): void {
-    foreach (['projects', 'members', 'keys.workspace', 'environment-domains', 'activity', 'billing', 'organization-settings'] as $route) {
-        expect(Route::has($route))->toBeTrue("[{$route}] is no longer served by the workspace console")
+it('never routes an organization page on the environment plane', function (): void {
+    // The organization console's name for the page => the name it would have on the
+    // environment plane (its v2 name there, `environment.` in front).
+    foreach ([
+        'orgs.projects' => 'projects',
+        'orgs.settings.members' => 'members',
+        'orgs.settings.api-keys.organization' => 'keys.organization',
+        'orgs.environment-domains' => 'environment-domains',
+        'activity' => 'activity',
+        'orgs.settings.billing' => 'billing',
+        'orgs.settings' => 'organization-settings',
+    ] as $route => $twin) {
+        expect(Route::has($route))->toBeTrue("[{$route}] is no longer served by the organization console")
+            ->and(Route::has('environment.'.$twin))->toBeFalse("[{$route}] is routed on the environment plane")
             ->and(Route::has('environment.'.$route))->toBeFalse("[{$route}] is routed on the environment plane");
+
+        if (str_starts_with($route, 'orgs.')) {
+            expect(Route::getRoutes()->getByName($route)?->uri())->toStartWith('orgs/{org}', "[{$route}] is not under /orgs/{org}");
+        }
     }
 })->group('security');
 
@@ -261,7 +277,7 @@ it('refuses every module page to a browser holding no admin session at all', fun
         'environment.branding',
         'environment.devices.index',
     ] as $route) {
-        expect($this->get(route($route))->status())
+        expect($this->get(route($route, [EnvironmentConsolePath::PARAMETER => EnvironmentConsolePath::ROOT]))->status())
             ->not->toBe(200, "[{$route}] rendered for a request with no session");
     }
 })->group('security');

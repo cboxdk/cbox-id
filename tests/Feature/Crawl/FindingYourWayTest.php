@@ -97,12 +97,12 @@ const FINDING_YOUR_WAY = [
  * whole environment without being asked — which the test below holds as well.
  */
 const FINDING_YOUR_WAY_STATES = [
-    '/admin/social-sign-in?provider=google' => [3, 'Turn on Google for the environment'],
+    '/social-sign-in?provider=google' => [3, 'Turn on Google for the environment'],
     // Connectors (1) › "Review failing" (2): every failing connection, failing first —
     // the test below holds that the failing webhook is on it, one more click from its page.
-    '/admin/connectors/connections?status=failing' => [2, 'Find a failing webhook from Connectors'],
+    '/connectors/connections?status=failing' => [2, 'Find a failing webhook from Connectors'],
     // Connectors (1) › HR systems › Workday (2): the directory form with Workday chosen.
-    '/admin/sync-in/new?provider=workday' => [2, 'Connect Workday from Connectors'],
+    '/sync-in/new?provider=workday' => [2, 'Connect Workday from Connectors'],
 ];
 
 it('puts every task an environment administrator comes for a few clicks from home', function (): void {
@@ -114,13 +114,13 @@ it('puts every task an environment administrator comes for a few clicks from hom
     $webhook = (string) DB::table('webhook_endpoints')->where('environment_id', $environment->id)->value('id');
     DB::table('webhook_endpoints')->where('id', $webhook)->update(['consecutive_failures' => 3, 'last_error' => 'HTTP 503 from the endpoint']);
 
-    actAsEnvironmentAdmin($world->ownerId, $environment->id);
+    actAsEnvironmentAdmin($world->ownerId, $environment->id, consoleHost: ConsoleCrawl::ROOT);
     ConsoleCrawl::productionShape();
 
-    $origin = 'https://'.$environment->slug.'.'.ConsoleCrawl::ROOT;
+    $origin = 'https://'.ConsoleCrawl::ROOT;
     $version = (string) app(HandleInertiaRequests::class)->version(request());
     $urls = [];
-    $depths = findingYourWayWalk($this, $origin.'/admin', $version, maxDepth: 5, urls: $urls);
+    $depths = findingYourWayWalk($this, $origin.envConsolePath(), $version, maxDepth: 5, urls: $urls);
 
     // `FINDING_YOUR_WAY_LOG=1` prints how many clicks every page took.
     if (getenv('FINDING_YOUR_WAY_LOG') !== false) {
@@ -139,7 +139,7 @@ it('puts every task an environment administrator comes for a few clicks from hom
     }
 
     foreach (FINDING_YOUR_WAY_STATES as $path => [$budget, $task]) {
-        $took = $urls[$origin.$path] ?? null;
+        $took = $urls[$origin.envConsolePath($path)] ?? null;
 
         if ($took === null || $took > $budget) {
             $over[] = sprintf('%s (%s): %s clicks, budget %d', $task, $path, $took === null ? 'not reachable in 5' : (string) $took, $budget);
@@ -150,7 +150,7 @@ it('puts every task an environment administrator comes for a few clicks from hom
 
     // …and where "Turn on Google" lands is a form for the WHOLE environment, with the real
     // redirect URI to copy — not a form that first asks which organization.
-    $google = findingYourWayPage($this, $origin.'/admin/social-sign-in?provider=google', $version);
+    $google = findingYourWayPage($this, $origin.envConsolePath('/social-sign-in?provider=google'), $version);
 
     expect($google['props']['template']['key'] ?? null)->toBe('google')
         ->and($google['props']['organization']['allowsEnvironment'] ?? null)->toBeTrue()
@@ -159,13 +159,13 @@ it('puts every task an environment administrator comes for a few clicks from hom
 
     // …and "Review failing" lands on the failing webhook, first, linked to its own page —
     // three clicks from home to the endpoint and its delivery log.
-    $failing = findingYourWayPage($this, $origin.'/admin/connectors/connections?status=failing', $version);
+    $failing = findingYourWayPage($this, $origin.envConsolePath('/connectors/connections?status=failing'), $version);
     $first = $failing['props']['connections'][0] ?? [];
 
     expect($first['type'] ?? null)->toBe('Webhook')
         ->and($first['verdict'] ?? null)->toBe('failing')
-        ->and($first['href'] ?? null)->toBe($origin.'/admin/webhooks/'.$webhook)
-        ->and($urls[$origin.'/admin/webhooks/'.$webhook] ?? 99)->toBeLessThanOrEqual(3);
+        ->and($first['href'] ?? null)->toBe($origin.envConsolePath('/webhooks/').$webhook)
+        ->and($urls[$origin.envConsolePath('/webhooks/').$webhook] ?? 99)->toBeLessThanOrEqual(3);
 });
 
 /**
@@ -229,8 +229,8 @@ it('puts the environment\'s sign-in settings a few clicks from home on a single-
  * because an operator starts in either.
  */
 const FINDING_YOUR_WAY_OPERATOR_FROM_HOME = [
-    'platform.workspaces' => [1, 'See every workspace (each row can be suspended)'],
-    'platform.workspaces.show' => [2, 'Suspend a workspace from its own page'],
+    'platform.orgs' => [1, 'See every organization (each row can be suspended)'],
+    'platform.orgs.show' => [2, 'Suspend an organization from its own page'],
     'platform.environments' => [2, 'See every environment, and provision one'],
     'platform.organizations' => [2, 'Walk the organization tree of an environment'],
     'platform.organization' => [3, 'Open an organization and start a support session'],
@@ -242,7 +242,7 @@ const FINDING_YOUR_WAY_OPERATOR_FROM_PLATFORM = [
     'environment.home' => [1, 'Open the platform environment\'s console'],
     'environment.sign-in-methods' => [1, 'See how everybody signs in to the platform'],
     'environment.users' => [1, 'Find a user of the platform environment'],
-    'platform.workspaces.show' => [1, 'Suspend a workspace from its own page'],
+    'platform.orgs.show' => [1, 'Suspend an organization from its own page'],
 ];
 
 it('puts every task an operator comes for a few clicks away, in one console on the root host', function (): void {
@@ -259,8 +259,8 @@ it('puts every task an operator comes for a few clicks away, in one console on t
     $over = [];
 
     foreach ([
-        '/admin' => FINDING_YOUR_WAY_OPERATOR_FROM_HOME,
-        '/admin/platform/workspaces' => FINDING_YOUR_WAY_OPERATOR_FROM_PLATFORM,
+        '/admin/environment' => FINDING_YOUR_WAY_OPERATOR_FROM_HOME,
+        '/admin/organizations' => FINDING_YOUR_WAY_OPERATOR_FROM_PLATFORM,
     ] as $start => $tasks) {
         $depths = findingYourWayWalk($this, $origin.$start, $version, maxDepth: 4, platform: true);
 
@@ -397,20 +397,22 @@ function findingYourWayClicks(array $page, string $base): array
     $props = is_array($page['props'] ?? null) ? $page['props'] : [];
     $links = [];
 
-    /** @var array{areas?: list<array{href: string, active: bool, pages: list<array{href: string}>}>} $shell */
-    $shell = is_array($props['shell'] ?? null) ? $props['shell'] : [];
+    // The rail: the shared shell's `nav` on the app host, the white-labelled chrome's own
+    // on a customer environment's host.
+    /** @var array{areas?: list<array{key: string, href: string, active?: bool, pages: list<array{href: string}>}>, activeArea?: string|null} $rail */
+    $rail = is_array($props['shell']['nav'] ?? null) ? $props['shell']['nav'] : (is_array($props['tenantShell'] ?? null) ? $props['tenantShell'] : []);
 
-    foreach ($shell['areas'] ?? [] as $area) {
+    foreach ($rail['areas'] ?? [] as $area) {
         $links[] = $area['href'];
 
-        if ($area['active']) {
+        if (($area['active'] ?? false) === true || $area['key'] === ($rail['activeArea'] ?? null)) {
             foreach ($area['pages'] as $navPage) {
                 $links[] = $navPage['href'];
             }
         }
     }
 
-    unset($props['shell'], $props['i18n'], $props['errors'], $props['flash'], $props['apiEquivalents'], $props['help']);
+    unset($props['shell'], $props['tenantShell'], $props['i18n'], $props['errors'], $props['flash'], $props['apiEquivalents'], $props['help']);
 
     array_walk_recursive($props, function (mixed $value) use (&$links): void {
         if (is_string($value) && preg_match('#^(https?://|/)[^\s]*$#', $value) === 1 && ! str_starts_with($value, '//')) {

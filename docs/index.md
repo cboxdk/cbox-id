@@ -18,8 +18,8 @@ change reachable from the console, a REST API, an MCP server and the `cbox` CLI.
 · [Python](quickstarts/python.md). Each one creates the app, installs the SDK, and walks
 through sign-in, the callback, a protected route and sign-out.
 
-Then read [Workspaces & organizations](core-concepts/workspaces-and-organizations.md):
-five minutes on how your workspace, projects, environments and your customers'
+Then read [Organizations & customers](core-concepts/organizations-and-customers.md):
+five minutes on how your organization, projects, environments and your customers'
 organizations fit together saves an afternoon later.
 
 ## By what you are doing
@@ -46,7 +46,7 @@ organizations fit together saves an afternoon later.
   page title.
 - [For IT admins](for-it-admins/_index.md) — for your customers' IT administrators: what
   an Admin Portal link lets them do, with setup guides for Okta, Microsoft Entra ID, Google
-  Workspace and generic SAML, OIDC and SCIM.
+  Organization and generic SAML, OIDC and SCIM.
 - [Reference](reference/_index.md) — every action per plane, and the OpenAPI documents.
 - [Self-hosting](self-hosting/_index.md) — install, configure, deploy and operate it.
   [Configuration](configuration/_index.md), [Operations](operations/_index.md) and

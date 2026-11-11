@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Account;
 
-use App\Actions\Workspace\Keys\EnvironmentKeyIssuer;
+use App\Actions\OrgPlane\Keys\EnvironmentKeyIssuer;
 use App\Http\Resources\Environment\Timestamp;
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionContext;

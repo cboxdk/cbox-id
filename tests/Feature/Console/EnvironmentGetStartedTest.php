@@ -149,7 +149,7 @@ it('shows the checklist on top of Overview until it is put away, per person', fu
 it('puts Get started on the Home area of the rail', function (): void {
     gettingStarted();
 
-    $areas = (array) $this->get(route('environment.home'))->assertOk()->inertiaProps('shell.areas');
+    $areas = consoleRail($this->get(route('environment.home'))->assertOk())['areas'];
     $home = collect($areas)->firstWhere('label', 'Home');
 
     expect(collect($home['pages'] ?? [])->pluck('route')->all())->toContain('environment.get-started');

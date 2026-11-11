@@ -21,7 +21,7 @@ import {
     PendingInvitations,
     type RoleOption,
 } from '@/ui';
-import { access, invite, remove, role, transferOwnership } from '@routes/members';
+import { access, invite, remove, role, transferOwnership } from '@routes/orgs/settings/members';
 
 interface Administrator {
     id: string;
@@ -312,10 +312,10 @@ export default function Members({
                 open={pending?.kind === 'transfer'}
                 onOpenChange={(open) => !open && setPending(null)}
                 name={pending?.label ?? ''}
-                verb={consoleAttributeText('console.hand_this_workspace_to_2c3b6bfe')}
+                verb={consoleAttributeText('console.hand_this_organization_to_1f5bb58b')}
                 actionLabel={consoleUiText('console.transfer_ownership_3667f939')}
                 consequence={consoleUiText(
-                    'console.they_become_the_workspace_owner_and_you_are_demoted_to_892fe276',
+                    'console.this_transfers_ownership_of_the_shared_organization_rol_19e09a02',
                 )}
                 onConfirm={() => {
                     const target = pending;

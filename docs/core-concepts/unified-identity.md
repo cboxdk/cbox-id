@@ -21,9 +21,9 @@ environment.
 > [customers, projects & the platform plane](https://github.com/cboxdk/laravel-id/blob/main/docs/core-concepts/customers-and-projects.md)
 > in the framework.
 >
-> The console calls that customer organization a **workspace**, and "account" below is
+> The console calls that customer of Cbox an **organization** (a *workspace* before v3), and "account" below is
 > the older name for it. See
-> [Workspaces & organizations](workspaces-and-organizations.md).
+> [Organizations & customers](organizations-and-customers.md).
 
 ## The problem this solves
 
@@ -163,7 +163,7 @@ organization selection at all: a page about one organization names it in its URL
 - `AccountProvisioner` creates the account's organization in tenant 1 alongside the
   account, and the install flow bootstraps tenant 1 and the platform organization before
   the first account exists.
-- The workspace sign-in becomes the subject sign-in, so it inherits identifier-first
+- The organization sign-in becomes the subject sign-in, so it inherits identifier-first
   discovery, SSO, passkeys and magic links with no additional work.
 
 ## What is still on the member, not the subject
@@ -172,7 +172,7 @@ Two things deliberately did NOT move in the cutover, because moving them would h
 weakened something while the rest was being unified:
 
 - **Account-plane MFA and passkeys** (`AccountMemberMfa`, `AccountPasskeys`) still hang
-  off the account member. Routing the workspace login at subject MFA instead would have
+  off the account member. Routing the organization login at subject MFA instead would have
   orphaned every factor a member had already enrolled — a member with TOTP would stop
   being challenged for it. The account factor is therefore still enforced, and it is
   enforced on the NEW ways in too: SSO and magic-link landings hold a member with a

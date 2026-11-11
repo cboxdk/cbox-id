@@ -17,7 +17,7 @@ function project(id: string, name: string, environments: ContextEnvironment[]): 
 function environmentConsole(overrides: Partial<ShellContext> = {}): ShellContext {
     return {
         noun: 'Workspace',
-        workspaces: [
+        organizations: [
             {
                 id: 'w1',
                 label: 'Acme',
@@ -94,7 +94,7 @@ describe('ContextSwitcher', () => {
 
     it('switches workspace with a POST where the session lives, and by a link from elsewhere', async () => {
         const post = vi.spyOn(router, 'post').mockImplementation(() => undefined);
-        const workspaces = [
+        const organizations = [
             { id: 'w1', label: 'Acme', caption: 'Owner', current: true, openHref: null },
             { id: 'w2', label: 'Globex', caption: 'Developer', current: false, openHref: null },
         ];
@@ -102,8 +102,8 @@ describe('ContextSwitcher', () => {
         render(
             <ContextSwitcher
                 context={environmentConsole({
-                    workspaces,
-                    switchUrl: '/organization/switch',
+                    organizations,
+                    switchUrl: '/orgs/switch',
                     projects: [],
                 })}
                 onNavigate={vi.fn<(href: string) => void>()}
@@ -113,7 +113,11 @@ describe('ContextSwitcher', () => {
         await userEvent.click(screen.getByRole('button', { name: /Workspace: Acme/ }));
         await userEvent.click(screen.getByRole('option', { name: /Globex/ }));
 
-        expect(post).toHaveBeenCalledWith('/organization/switch', { organization: 'w2' });
+        // The page it was on goes with it, so the switch keeps it (or lands on its list).
+        expect(post).toHaveBeenCalledWith('/orgs/switch', {
+            organization: 'w2',
+            path: window.location.pathname,
+        });
         post.mockRestore();
     });
 
@@ -122,7 +126,7 @@ describe('ContextSwitcher', () => {
             <ContextSwitcher
                 context={{
                     noun: 'Organization',
-                    workspaces: [
+                    organizations: [
                         {
                             id: 'o1',
                             label: 'Plain Co',
@@ -131,7 +135,7 @@ describe('ContextSwitcher', () => {
                             openHref: null,
                         },
                     ],
-                    switchUrl: '/organization/switch',
+                    switchUrl: '/orgs/switch',
                     projects: [],
                 }}
                 onNavigate={vi.fn<(href: string) => void>()}
@@ -171,8 +175,8 @@ describe('ContextSwitcher', () => {
         render(
             <ContextSwitcher
                 context={environmentConsole({
-                    workspaces: many,
-                    switchUrl: '/organization/switch',
+                    organizations: many,
+                    switchUrl: '/orgs/switch',
                     projects: [],
                 })}
                 onNavigate={vi.fn<(href: string) => void>()}

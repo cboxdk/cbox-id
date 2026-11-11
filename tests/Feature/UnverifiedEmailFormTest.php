@@ -39,10 +39,10 @@ function rootOperatorPostsGoogle(bool $verified): TestResponse
         app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified((string) $operator->subject_id, 'op@platform.test'));
     }
 
-    $form = 'https://cboxid.com/admin/social-sign-in?provider=google';
+    $form = 'https://cboxid.com/admin/environment/social-sign-in?provider=google';
     test()->get($form)->assertOk();
 
-    return test()->from($form)->post('https://cboxid.com/admin/social-sign-in', [
+    return test()->from($form)->post('https://cboxid.com/admin/environment/social-sign-in', [
         'provider' => 'google',
         'clientId' => 'client.apps.googleusercontent.com',
         'clientSecret' => 'a-client-secret',
@@ -53,15 +53,15 @@ function rootOperatorPostsGoogle(bool $verified): TestResponse
 
 it('sends an unconfirmed owner back to the form with the sentence that says what to do', function (): void {
     rootOperatorPostsGoogle(verified: false)
-        ->assertRedirect('https://cboxid.com/admin/social-sign-in?provider=google')
+        ->assertRedirect('https://cboxid.com/admin/environment/social-sign-in?provider=google')
         ->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'Confirm your email address before you add a sign-in provider') && str_contains($message, 'Send confirmation link'));
 });
 
 it('answers an Inertia visit the same way, never with the generic 403 page', function (): void {
     actAsOperator('op@platform.test');
 
-    test()->from('https://cboxid.com/admin/social-sign-in?provider=google')
-        ->post('https://cboxid.com/admin/social-sign-in', ['provider' => 'google', 'clientId' => 'x', 'clientSecret' => 'y', 'forEnvironment' => true], ['X-Inertia' => 'true'])
+    test()->from('https://cboxid.com/admin/environment/social-sign-in?provider=google')
+        ->post('https://cboxid.com/admin/environment/social-sign-in', ['provider' => 'google', 'clientId' => 'x', 'clientSecret' => 'y', 'forEnvironment' => true], ['X-Inertia' => 'true'])
         ->assertStatus(303)
         ->assertSessionHas('error');
 });
@@ -84,10 +84,10 @@ it('shows an unconfirmed owner the banner, with a button that mails the link', f
     // Every console page carries it — the person learns before a form refuses them.
     $page = test()->get('https://cboxid.com/social-sign-in')->assertOk();
     expect($page->inertiaProps('auth.user.emailVerified'))->toBeFalse()
-        ->and($page->inertiaProps('auth.user.confirmUrl'))->toBe('/account/email/confirmation');
+        ->and($page->inertiaProps('auth.user.confirmUrl'))->toBe('/settings/email/confirmation');
 
     test()->from('https://cboxid.com/social-sign-in')
-        ->post('https://cboxid.com/account/email/confirmation')
+        ->post('https://cboxid.com/settings/email/confirmation')
         ->assertRedirect('https://cboxid.com/social-sign-in')
         ->assertSessionHas('status', fn (string $status): bool => str_contains($status, 'We sent a confirmation link'));
 
@@ -102,7 +102,7 @@ it('tells the API caller nothing was needed once the address is confirmed', func
     signInAsMember($subjectId);
 
     test()->from('https://cboxid.com/social-sign-in')
-        ->post('https://cboxid.com/account/email/confirmation')
+        ->post('https://cboxid.com/settings/email/confirmation')
         ->assertSessionHas('status', 'Your email address is already confirmed.');
 
     expect(test()->get('https://cboxid.com/social-sign-in')->inertiaProps('auth.user.confirmUrl'))->toBeNull();
@@ -114,7 +114,7 @@ it('says the mail server is unreachable instead of answering 500', function (): 
     Mail::shouldReceive('to')->andThrow(new RuntimeException('Could not resolve host: postal.example'));
 
     test()->from('https://cboxid.com/social-sign-in')
-        ->post('https://cboxid.com/account/email/confirmation')
+        ->post('https://cboxid.com/settings/email/confirmation')
         ->assertRedirect('https://cboxid.com/social-sign-in')
         ->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'cannot reach its mail server'));
 

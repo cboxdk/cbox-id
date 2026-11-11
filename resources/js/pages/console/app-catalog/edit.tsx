@@ -26,6 +26,7 @@ type Props = PageProps<{
     lookupHref: string;
     selectedOptions: { organizations: Option[]; users: Option[]; clients: Option[] };
     features: Option[];
+    hues: string[];
 }>;
 export default function EditApp({
     entry,
@@ -34,6 +35,7 @@ export default function EditApp({
     lookupHref,
     selectedOptions,
     features,
+    hues,
 }: Props) {
     const { t } = useTranslator();
     const [removing, setRemoving] = useState(false);
@@ -43,7 +45,11 @@ export default function EditApp({
         key: entry?.key ?? '',
         name: entry?.name ?? '',
         description: entry?.description ?? '',
+        purpose: entry?.purpose ?? '',
+        hue: entry?.hue ?? '',
         launch_url: entry?.launch_url ?? '',
+        admission_url: entry?.admission_url ?? '',
+        promote_when_unavailable: entry?.promote_when_unavailable ?? true,
         enabled: entry?.enabled ?? false,
         position: entry?.position ?? 0,
         audience: entry?.audience ?? 'everyone',
@@ -79,6 +85,9 @@ export default function EditApp({
                     form.transform(({ icon, icon_dark, ...data }) => ({
                         ...data,
                         required_feature: data.required_feature || null,
+                        purpose: data.purpose || null,
+                        hue: data.hue || null,
+                        admission_url: data.admission_url || null,
                         ...(iconChanged ? { icon } : {}),
                         ...(iconDarkChanged ? { icon_dark } : {}),
                     }));
@@ -118,6 +127,35 @@ export default function EditApp({
                                 onChange={(event) =>
                                     form.setData('description', event.target.value)
                                 }
+                            />
+                        </Field>
+                        <Field
+                            label={t('console.catalog_purpose')}
+                            optional
+                            error={form.errors.purpose}
+                            hint={t('console.catalog_purpose_hint')}
+                        >
+                            <Input
+                                value={form.data.purpose}
+                                maxLength={60}
+                                onChange={(event) => form.setData('purpose', event.target.value)}
+                            />
+                        </Field>
+                        <Field
+                            label={t('console.catalog_hue')}
+                            optional
+                            error={form.errors.hue}
+                            hint={t('console.catalog_hue_hint')}
+                        >
+                            <Select
+                                value={form.data.hue || '__none'}
+                                onValueChange={(value) =>
+                                    form.setData('hue', value === '__none' ? '' : value)
+                                }
+                                options={[
+                                    { value: '__none', label: t('console.catalog_no_hue') },
+                                    ...hues.map((hue) => ({ value: hue, label: hue })),
+                                ]}
                             />
                         </Field>
                         <Field
@@ -247,6 +285,29 @@ export default function EditApp({
                                 onChange={(ids) => form.setData('user_ids', ids)}
                             />
                         )}
+                        <Field
+                            label={t('console.catalog_admission_url')}
+                            optional
+                            error={form.errors.admission_url}
+                            hint={t('console.catalog_admission_hint')}
+                        >
+                            <Input
+                                type="url"
+                                value={form.data.admission_url}
+                                placeholder="https://app.example.com/signup"
+                                onChange={(event) =>
+                                    form.setData('admission_url', event.target.value)
+                                }
+                            />
+                        </Field>
+                        <Checkbox
+                            label={t('console.catalog_promote')}
+                            hint={t('console.catalog_promote_hint')}
+                            checked={form.data.promote_when_unavailable}
+                            onCheckedChange={(checked) =>
+                                form.setData('promote_when_unavailable', checked)
+                            }
+                        />
                         <Field
                             label={t('console.catalog_required_feature')}
                             optional

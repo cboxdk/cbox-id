@@ -39,15 +39,15 @@ it('leaves social providers out of Enterprise SSO, its count and its checklist s
 
     $okta = $connections->create($acme->id, ConnectionType::Saml, 'Okta', []);
 
-    $this->get('/admin/single-sign-on')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+    $this->get(envConsole('/single-sign-on'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
         ->has('connections', 1)
         ->where('connections.0.id', $okta->id));
 
-    $this->get('/admin/organizations/'.$acme->id.'/single-sign-on')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+    $this->get(envConsole('/organizations/').$acme->id.'/single-sign-on')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
         ->has('connections', 1)
         ->where('connections.0.name', 'Okta'));
 
-    $this->get('/admin')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+    $this->get(envConsole())->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
         ->where('stats', fn ($stats): bool => collect($stats)->firstWhere('label', 'Enterprise SSO')['count'] === 1));
 
     expect(app(EnvironmentChecklist::class)->progress(null)[EnvironmentStep::ConnectSso->value])->toBeTrue();

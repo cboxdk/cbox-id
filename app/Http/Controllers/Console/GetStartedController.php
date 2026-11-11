@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Http\Props\Shared\HelpProps;
-use App\Platform\Console\WorkspaceLanding;
+use App\Platform\Console\OrganizationLanding;
 use App\Platform\CurrentUser;
 use App\Platform\Onboarding\SetupChecklist;
 use App\Platform\Onboarding\SetupProgress;
@@ -33,8 +33,8 @@ final readonly class GetStartedController extends ConsoleController
         // Every step here — invite people, connect an app, define roles, brand the sign-in
         // page — is about an organization's product. A workspace's product is in its
         // environments, so its setup starts on Projects.
-        if ($this->scope->atWorkspaceAltitude()) {
-            return redirect()->to(app(WorkspaceLanding::class)->url());
+        if ($this->scope->atOrganizationAltitude()) {
+            return redirect()->to(app(OrganizationLanding::class)->url());
         }
 
         $me = $this->assertAdmin();

@@ -370,7 +370,7 @@ it('edits the schema behind the step-up, writes tuples and answers the playgroun
     $this->get(route('environment.fga.schema'))->assertRedirect(route('environment.sudo'));
     $this->put(route('environment.fga.schema.update'), ['schema' => FGA_DOCS_SCHEMA])->assertRedirect(route('environment.sudo'));
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->get(route('environment.fga.schema'))
         ->assertOk()

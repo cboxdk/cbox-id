@@ -62,7 +62,7 @@ final readonly class EmailVerificationController extends PageController
             // decides where to land, not whether to admit — a wrong guess costs a
             // redundant sign-in page, never access.
             return session()->has(PlatformAuth::SESSION_KEY)
-                ? redirect()->route($environment === null ? 'account' : 'projects')->with('status', __('auth.confirm_email.verified'))
+                ? redirect()->route($environment === null ? 'account' : 'orgs.projects')->with('status', __('auth.confirm_email.verified'))
                 : redirect()->route('login')->with('status', __('auth.confirm_email.verified_sign_in'));
         }
 

@@ -8,6 +8,7 @@ use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateMcp;
 use App\Mcp\McpProtectedResources;
 use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
+use App\Platform\Api\ManagementAudience;
 use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -138,7 +139,7 @@ final readonly class DelegatedAccess
         $issuer = $introspection->claims['iss'] ?? null;
 
         return $audience !== null && $audience !== '' && $audience !== []
-            && $introspection->isAudience($resource->identifier)
+            && ManagementAudience::accepts($introspection, $resource->identifier)
             && is_string($issuer)
             && hash_equals(rtrim($this->issuers->issuer(), '/'), rtrim($issuer, '/'));
     }

@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:fd2a56d0-77c3-4ee0-8bff-19002afc5ba6",
+    "serialNumber": "urn:uuid:bbb22617-8817-4a1e-987d-54c5a9556661",
     "version": 1,
     "metadata": {
         "tools": [
@@ -117,11 +117,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-assistant-client@v0.2.0",
+            "bom-ref": "pkg:composer/cboxdk/laravel-assistant-client@v0.2.1",
             "group": "cboxdk",
             "name": "laravel-assistant-client",
-            "version": "v0.2.0",
-            "purl": "pkg:composer/cboxdk/laravel-assistant-client@v0.2.0",
+            "version": "v0.2.1",
+            "purl": "pkg:composer/cboxdk/laravel-assistant-client@v0.2.1",
             "description": "Cbox Assistant client for Laravel: signed tools, product support and curated knowledge.",
             "licenses": [
                 {
@@ -165,11 +165,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-console-kit@v0.2.1",
+            "bom-ref": "pkg:composer/cboxdk/laravel-console-kit@v0.2.3",
             "group": "cboxdk",
             "name": "laravel-console-kit",
-            "version": "v0.2.1",
-            "purl": "pkg:composer/cboxdk/laravel-console-kit@v0.2.1",
+            "version": "v0.2.3",
+            "purl": "pkg:composer/cboxdk/laravel-console-kit@v0.2.3",
             "description": "Extension hooks for a Cbox admin console \u2014 nav areas, feature gates, UI slots, dashboard cards and per-tenant branding that an optional package registers into via composer, with zero host edits. The plugin pattern behind billing and other drop-in modules.",
             "licenses": [
                 {

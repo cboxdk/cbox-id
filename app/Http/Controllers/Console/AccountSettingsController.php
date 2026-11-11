@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
-use App\Actions\Workspace\UpdateWorkspaceSettings;
+use App\Actions\OrgPlane\UpdateOrganizationSettings;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\RenameOrganizationRequest;
-use App\Platform\Console\WorkspaceLanding;
+use App\Platform\Console\OrganizationLanding;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Models\Organization;
@@ -30,11 +30,11 @@ final readonly class AccountSettingsController extends ConsoleController
         $organization = $this->acting($organizations);
 
         if ($organization === null || $this->scope->capabilities()?->isOwner() !== true) {
-            return redirect()->to(app(WorkspaceLanding::class)->url());
+            return redirect()->to(app(OrganizationLanding::class)->url());
         }
 
-        return $this->page('console/account-settings', __('console.workspace_settings_5ebc5914'), [
-            'help' => HelpProps::for(HelpTopic::WorkspaceSettings),
+        return $this->page('console/account-settings', __('console.organization_settings_4fd62541'), [
+            'help' => HelpProps::for(HelpTopic::OrganizationSettings),
             'name' => $organization->name,
         ]);
     }
@@ -52,15 +52,15 @@ final readonly class AccountSettingsController extends ConsoleController
         }
 
         /*
-         * Through the action `PATCH /api/v1/workspace` runs ({@see UpdateWorkspaceSettings}):
+         * Through the action `PATCH /api/v1/workspace` runs ({@see UpdateOrganizationSettings}):
          * the rename in the platform root, and the line on the workspace's own log under
          * `organization.renamed` — the name the environment console's Settings page writes
          * too. This page once wrote nothing, so the name on every invoice and in every
          * invitation email could change with no record of who changed it.
          */
-        $result = $this->act(UpdateWorkspaceSettings::class, ['name' => $request->name()], ['name' => 'name'], 'name');
+        $result = $this->act(UpdateOrganizationSettings::class, ['name' => $request->name()], ['name' => 'name'], 'name');
 
-        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.workspace_settings_saved_141d0c91'));
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.organization_settings_saved__efd30954'));
     }
 
     /**

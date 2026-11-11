@@ -60,7 +60,43 @@ it('serves the console switcher the signed-in person\'s catalog as same-origin J
         ->assertJsonPath('refresh_after', 60);
     expect($response->json('apps.0'))->toHaveKeys(['key', 'name', 'description', 'launch_url', 'icon_url', 'icon_dark_url'])
         ->not->toHaveKeys(['position', 'version', 'user_ids', 'audience'])
-        ->and($response->json('revision'))->toBe(hash('sha256', json_encode($response->json('apps'), JSON_THROW_ON_ERROR)));
+        ->and($response->json('revision'))->toBe(hash('sha256', json_encode($response->json('apps'), JSON_THROW_ON_ERROR)))
+        ->and($response->json('unavailable'))->toBe([]);
+});
+
+it('gives the console switcher a "More from Cbox" section with where to ask for each app', function (): void {
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $catalog = app(AppCatalog::class);
+    $input = ['version' => 0, 'launch_url' => 'https://app.example.com/login/launch', 'enabled' => true, 'position' => 0, 'audience' => 'everyone'];
+    $catalog->save('work', CatalogEntryData::fromArray([...$input, 'name' => 'Cbox Work', 'purpose' => 'Time and invoices', 'hue' => 'amber']));
+    $catalog->save('signals', CatalogEntryData::fromArray([...$input, 'name' => 'Cbox Signals', 'purpose' => 'Risk signals', 'hue' => 'rose',
+        'audience' => 'organizations', 'organization_ids' => [], 'admission_url' => 'https://signals.example.com/signup']));
+
+    $response = $this->getJson(route('apps.catalog'))->assertOk()
+        ->assertJsonPath('apps.0.key', 'work')
+        ->assertJsonPath('apps.0.purpose', 'Time and invoices')
+        ->assertJsonPath('apps.0.hue', 'amber')
+        ->assertJsonPath('apps.0.available', true);
+
+    expect($response->json('unavailable'))->toEqual([[
+        'key' => 'signals', 'name' => 'Cbox Signals', 'description' => null, 'purpose' => 'Risk signals', 'hue' => 'rose',
+        'admission_url' => 'https://signals.example.com/signup?organization='.$org->id, 'icon_url' => null, 'icon_dark_url' => null, 'available' => false,
+    ]])->and($response->json('revision'))->toBe(AppCatalog::revision(['apps' => $response->json('apps'), 'unavailable' => $response->json('unavailable')]));
+});
+
+it('edits the switcher fields in the console and offers the hues to choose from', function (): void {
+    crudSetup();
+    $input = ['version' => 0, 'name' => 'Signals', 'launch_url' => 'https://signals.example.com', 'enabled' => true, 'position' => 0, 'audience' => 'everyone',
+        'purpose' => 'Risk signals', 'hue' => 'rose', 'admission_url' => 'https://signals.example.com/signup', 'promote_when_unavailable' => false];
+    $this->put(route('environment.app-catalog.save', 'signals'), $input)->assertRedirect()->assertSessionHasNoErrors();
+
+    $this->get(route('environment.app-catalog.edit', 'signals'))->assertOk()->assertInertia(fn ($page) => $page
+        ->where('entry.purpose', 'Risk signals')->where('entry.hue', 'rose')
+        ->where('entry.admission_url', 'https://signals.example.com/signup')->where('entry.promote_when_unavailable', false)
+        ->where('hues', fn ($hues): bool => collect($hues)->contains('rose') && collect($hues)->contains('violet')));
+
+    $this->from(route('environment.app-catalog.edit', 'signals'))->put(route('environment.app-catalog.save', 'signals'), [...$input, 'version' => 1, 'admission_url' => 'https://10.0.0.8/join'])
+        ->assertRedirect()->assertSessionHasErrors('admission_url');
 });
 
 it('gives nobody signed in to the console an empty catalog', function (): void {

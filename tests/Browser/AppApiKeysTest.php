@@ -24,7 +24,7 @@ it('creates a key on the hosted page from an SDK deep link and shows it once', f
     $fixture = appKeyFixture();
     signInKeyHolder($fixture['ada'], $fixture['org']);
 
-    $page = visit('/account/api-keys?client_id='.$fixture['clientId'].'&return_to='.urlencode('https://tax.example/settings/api'));
+    $page = visit('/settings/api-keys?client_id='.$fixture['clientId'].'&return_to='.urlencode('https://tax.example/settings/api'));
 
     $page->assertSee('Back to Acme Tax')
         ->assertSee('See your tax returns')
@@ -53,7 +53,7 @@ it('draws the key page in the dark', function (): void {
     mintAppKey($fixture, $fixture['ada'], ['returns:read']);
     signInKeyHolder($fixture['ada'], $fixture['org']);
 
-    visit('/account/api-keys')
+    visit('/settings/api-keys')
         ->inDarkMode()
         ->assertSee('Your keys')
         ->assertSee('returns:read')
@@ -67,7 +67,7 @@ it('draws the key page at phone width without a sideways scroll', function (): v
     mintAppKey($fixture, $fixture['ada'], ['returns:read', 'returns:file']);
     signInKeyHolder($fixture['ada'], $fixture['org']);
 
-    visit('/account/api-keys')
+    visit('/settings/api-keys')
         ->resize(375, 812)
         ->assertSee('Your keys')
         ->assertSee('Create key')
@@ -123,7 +123,7 @@ it('draws an organization\'s keys on the environment console\'s organization pag
     // The organization's API keys tab; brought into the frame below its header and tabs.
     $toPanel = 'Array.from(document.querySelectorAll("h2")).find((h) => h.textContent === "Member API keys")?.scrollIntoView()';
 
-    $light = visit('/admin/organizations/'.$fixture['org']->id.'/api-keys')
+    $light = visit(envConsole('/organizations/').$fixture['org']->id.'/api-keys')
         ->assertSee('Member API keys')
         ->assertSee('Accounting sync')
         ->assertSee('Ada Lovelace')
@@ -131,13 +131,13 @@ it('draws an organization\'s keys on the environment console\'s organization pag
     $light->script($toPanel);
     $light->screenshot(filename: 'environment-organization-api-keys');
 
-    $dark = visit('/admin/organizations/'.$fixture['org']->id.'/api-keys')
+    $dark = visit(envConsole('/organizations/').$fixture['org']->id.'/api-keys')
         ->inDarkMode()
         ->assertSee('Accounting sync');
     $dark->script($toPanel);
     $dark->screenshot(filename: 'environment-organization-api-keys-dark');
 
-    $phone = visit('/admin/organizations/'.$fixture['org']->id.'/api-keys')
+    $phone = visit(envConsole('/organizations/').$fixture['org']->id.'/api-keys')
         ->resize(375, 812)
         ->assertSee('Accounting sync')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);

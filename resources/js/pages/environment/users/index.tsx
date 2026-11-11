@@ -135,7 +135,7 @@ export default function UsersIndex({
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
-                <nav className="cbx-segmented" aria-label={t('console.users_6b0cc904')}>
+                <nav className="idc-segmented" aria-label={t('console.users_6b0cc904')}>
                     {filters.map((filter) => (
                         <Link
                             key={filter.value}
@@ -212,14 +212,6 @@ export default function UsersIndex({
                                 )}
                                 <Pill tone={statusTone(user.status)}>{label(user.status)}</Pill>
                             </div>
-
-                            {!user.verified && (
-                                <Pill tone="warning">
-                                    {consoleT('console.unverified_33c8e8de')}
-                                </Pill>
-                            )}
-
-                            <Pill tone={statusTone(user.status)}>{user.status}</Pill>
 
                             <Icon
                                 name="chevron"

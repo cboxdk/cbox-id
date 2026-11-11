@@ -1,4 +1,7 @@
 @import 'tailwindcss';
+/* The shared Cbox shell (cbox-ui `CboxShell`): rail, header, palette, Help, phone layout. In
+ * the components layer, so its resets never outrank a page's own components or utilities. */
+@import '@cboxdk/cbox-ui/shell.css' layer(components);
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -445,29 +448,59 @@
     }
 }
 
+/* "</> API" on a console page: top right of the content column, beside the eyebrow rather
+ * than on a row of its own above it. */
+.cbx-page-frame {
+    position: relative;
+}
+.cbx-page-tools {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    z-index: 1;
+}
+.cbx-page-tools:empty {
+    display: none;
+}
+@media (min-width: 1024px) {
+    .cbx-page-tools {
+        top: 2rem;
+        right: 2rem;
+    }
+}
+
+/* The account menu's Language, Regional format and Time zone lists. cbox-ui 0.10.1 gives the
+ * pane `flex: 1 1 0` inside a menu with no set height, so the pane collapsed to its padding
+ * and the list (21 languages, 22 formats) was clipped to a search box. Sized by its content,
+ * up to the list's own max-height, it shows. Remove once cbox-ui sizes it itself. Matched
+ * by attribute: these are cbox-ui's classes, not ones this app defines or wears. */
+[class~='cbx-menu-account'] > [class~='cbx-pane'] {
+    flex: 0 1 auto;
+}
+
 /* Subtle blue-tinted radial wash on the main scroll column — every Cbox app. */
 .canvas-gradient {
     background:
         radial-gradient(ellipse at 30% 0, var(--accent-soft), transparent 48%), var(--canvas);
 }
-.cbx-app-icon-dark {
+.idc-app-icon-dark {
     display: none;
 }
-:root[data-theme='dark'] .cbx-app-icon-light {
+:root[data-theme='dark'] .idc-app-icon-light {
     display: none;
 }
-:root[data-theme='dark'] .cbx-app-icon-dark {
+:root[data-theme='dark'] .idc-app-icon-dark {
     display: block;
 }
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme='light']) .cbx-app-icon-light {
+    :root:not([data-theme='light']) .idc-app-icon-light {
         display: none;
     }
-    :root:not([data-theme='light']) .cbx-app-icon-dark {
+    :root:not([data-theme='light']) .idc-app-icon-dark {
         display: block;
     }
 }
-.cbx-rail .cbx-rail-brand {
+.idc-rail .idc-rail-brand {
     width: auto;
     height: 32px;
     gap: 7px;
@@ -475,30 +508,30 @@
     margin: 0;
     color: var(--foreground);
 }
-.cbx-rail .cbx-rail-brand cbox-service-mark {
+.idc-rail .idc-rail-brand cbox-service-mark {
     --cbox-service-mark-size: 22px;
 }
 .cbx-rail-wordmark,
 .cbx-service-name {
     display: none;
 }
-:is(.cbx-rail.open, .cbx-nav-pinned .cbx-rail) .cbx-rail-wordmark {
+:is(.idc-rail.open, .cbx-nav-pinned .idc-rail) .cbx-rail-wordmark {
     display: block;
     width: 56px;
     height: 19px;
     background: var(--primary);
     mask: url('/brand/cbox-logo-neg-100.png') center / contain no-repeat;
 }
-:is(.cbx-rail.open, .cbx-nav-pinned .cbx-rail) .cbx-service-name {
+:is(.idc-rail.open, .cbx-nav-pinned .idc-rail) .cbx-service-name {
     display: block;
     font-size: 14px;
     font-weight: 600;
 }
-:root[data-theme='dark'] .cbx-rail .cbx-rail-wordmark {
+:root[data-theme='dark'] .idc-rail .cbx-rail-wordmark {
     background: var(--foreground);
 }
 @media (prefers-color-scheme: dark) {
-    :root:not([data-theme='light']) .cbx-rail .cbx-rail-wordmark {
+    :root:not([data-theme='light']) .idc-rail .cbx-rail-wordmark {
         background: var(--foreground);
     }
 }
@@ -1215,7 +1248,7 @@
     }
 
     /* Clickable row */
-    .cbx-row {
+    .idc-row {
         display: flex;
         align-items: center;
         gap: 16px;
@@ -1226,11 +1259,11 @@
         text-decoration: none;
         transition: background-color var(--dur-hover) var(--ease);
     }
-    .cbx-row:hover {
+    .idc-row:hover {
         background: color-mix(in oklch, var(--secondary) 60%, transparent);
         color: inherit;
     }
-    .cbx-row + .cbx-row {
+    .idc-row + .idc-row {
         border-top: 1px solid var(--border);
     }
 
@@ -1427,7 +1460,7 @@
     /* Help — the "?" next to a title, and the panel it opens. The trigger stays
        quiet until hovered: it is available on every page, so at full contrast it
        would be the loudest thing in a header it is not the subject of. */
-    .cbx-help {
+    .idc-help {
         position: relative;
         display: inline-flex;
         vertical-align: middle;
@@ -1467,13 +1500,13 @@
         text-decoration: underline;
         text-underline-offset: 2px;
     }
-    .cbx-help-title {
+    .idc-help-title {
         font-family: var(--font-display);
         font-size: 13px;
         font-weight: 600;
         color: var(--foreground);
     }
-    .cbx-help-body {
+    .idc-help-body {
         font-size: 13px;
         line-height: 1.55;
         color: var(--muted-foreground);
@@ -1574,7 +1607,7 @@
     }
 
     /* Avatar */
-    .cbx-avatar {
+    .idc-avatar {
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -1612,7 +1645,7 @@
         border-color: var(--border-strong);
         color: var(--foreground);
     }
-    .cbx-search-label {
+    .idc-search-label {
         flex: 1;
         color: var(--foreground);
         font-size: 13px;
@@ -1663,7 +1696,7 @@
         flex-direction: column;
         gap: 4px;
     }
-    .cbx-nav-group {
+    .idc-nav-group {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -1687,7 +1720,7 @@
      * Pinning changes only its WIDTH (and the flow space its spacer reserves), never
      * its position, shape or the placement of a single icon — so there is no layout
      * shift toggling pin, only a clean width grow. */
-    .cbx-rail {
+    .idc-rail {
         position: fixed;
         left: 6px;
         top: 6px;
@@ -1725,7 +1758,7 @@
         flex-shrink: 0;
     }
     :root.cbx-nav-pinned .cbx-rail-hd,
-    .cbx-rail.open .cbx-rail-hd {
+    .idc-rail.open .cbx-rail-hd {
         justify-content: flex-start;
     }
     /* Pin lives top-right of the header — absolute so it never shifts the brand's
@@ -1756,26 +1789,26 @@
         background: var(--sidebar-accent);
         color: var(--foreground);
     }
-    .cbx-rail.open .cbx-pin-btn,
+    .idc-rail.open .cbx-pin-btn,
     :root.cbx-nav-pinned .cbx-pin-btn {
         opacity: 1;
         pointer-events: auto;
     }
-    .cbx-rail-brand {
+    .idc-rail-brand {
         width: 32px;
         height: 32px;
         border-radius: 8px;
         overflow: hidden;
         flex-shrink: 0;
     }
-    .cbx-rail-brand svg,
-    .cbx-rail-brand img {
+    .idc-rail-brand svg,
+    .idc-rail-brand img {
         width: 100%;
         height: 100%;
         object-fit: cover;
         display: block;
     }
-    .cbx-rail a {
+    .idc-rail a {
         display: flex;
         align-items: center;
         gap: 10px;
@@ -1797,26 +1830,26 @@
             background-color var(--dur-hover) var(--ease),
             color var(--dur-hover) var(--ease);
     }
-    .cbx-rail a svg {
+    .idc-rail a svg {
         flex-shrink: 0;
         color: var(--sidebar-muted);
     }
-    .cbx-rail a .lbl {
+    .idc-rail a .lbl {
         font-size: 13px;
         font-weight: 500;
         opacity: 0;
         transition: opacity 120ms var(--ease);
     }
-    .cbx-rail a:hover {
+    .idc-rail a:hover {
         background: var(--sidebar-accent);
         color: var(--foreground);
     }
-    .cbx-rail a.cbx-on {
+    .idc-rail a.cbx-on {
         background: var(--accent-soft);
         color: var(--nav-active-fg);
         font-weight: 600;
     }
-    .cbx-rail a.cbx-on svg {
+    .idc-rail a.cbx-on svg {
         color: var(--nav-active-fg);
     }
     .cbx-pin {
@@ -1846,18 +1879,18 @@
      * higher specificity so its subtler shadow wins when both apply. The SSR
      * <html class="cbx-nav-pinned"> (from the cookie) makes a pinned rail render at
      * 210px on the very first frame, so it never animates 52→210 on a navigation. */
-    .cbx-rail.open {
+    .idc-rail.open {
         width: 210px;
         border-color: var(--border);
         box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
     }
-    :root.cbx-nav-pinned .cbx-rail {
+    :root.cbx-nav-pinned .idc-rail {
         width: 210px;
         border-color: var(--border);
         box-shadow: var(--rail-docked-shadow, var(--shadow-card));
     }
-    .cbx-rail.open a .lbl,
-    :root.cbx-nav-pinned .cbx-rail a .lbl {
+    .idc-rail.open a .lbl,
+    :root.cbx-nav-pinned .idc-rail a .lbl {
         opacity: 1;
     }
     /* The spacer reserves flow. Unpinned reserves just the collapsed strip (64px) so
@@ -1897,7 +1930,7 @@
      * product ("Environment keys", "Single sign-on", "Access reviews") measure well
      * inside the 140px of text room that leaves, so nothing wraps; nowrap + ellipsis
      * on the label is a guard for a future longer one, not an active truncation. */
-    .cbx-subnav {
+    .idc-subnav {
         width: 176px;
         flex-shrink: 0;
         display: flex;
@@ -1917,12 +1950,12 @@
         letter-spacing: -0.005em;
         color: var(--foreground);
     }
-    .cbx-subnav nav {
+    .idc-subnav nav {
         flex: 1;
         overflow-y: auto;
         padding: 0 10px 12px;
     }
-    .cbx-subnav nav a {
+    .idc-subnav nav a {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -1940,12 +1973,12 @@
             background-color var(--dur-hover) var(--ease),
             color var(--dur-hover) var(--ease);
     }
-    .cbx-subnav nav a > span:first-child {
+    .idc-subnav nav a > span:first-child {
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    .cbx-subnav nav a:hover {
+    .idc-subnav nav a:hover {
         background: var(--sidebar-accent);
         color: var(--foreground);
     }
@@ -1953,13 +1986,13 @@
      * neutral hover background: that made "where I am" and "where the pointer is"
      * identical, and the guideline names accent-soft as the one active marker (with
      * left-edge borders forbidden). */
-    .cbx-subnav nav a.cbx-on {
+    .idc-subnav nav a.cbx-on {
         background: var(--accent-soft);
         font-weight: 600;
         color: var(--nav-active-fg);
     }
     /* Waiting for the reader: the agent actions held for their approval. */
-    .cbx-nav-count {
+    .idc-nav-count {
         margin-left: auto;
         min-width: 18px;
         height: 18px;
@@ -1990,7 +2023,7 @@
         background: var(--primary);
         box-shadow: 0 0 0 2px var(--sidebar);
     }
-    .cbx-subnav nav a .cnt {
+    .idc-subnav nav a .cnt {
         font-size: 11px;
         font-weight: 500;
         font-variant-numeric: tabular-nums;
@@ -2012,17 +2045,17 @@
         background: var(--sidebar-accent);
         color: var(--foreground);
     }
-    .cbx-subnav.collapsed {
+    .idc-subnav.collapsed {
         width: 26px;
         cursor: pointer;
     }
-    .cbx-subnav.collapsed > *:not(.cbx-strip) {
+    .idc-subnav.collapsed > *:not(.cbx-strip) {
         display: none;
     }
     .cbx-strip {
         display: none;
     }
-    .cbx-subnav.collapsed .cbx-strip {
+    .idc-subnav.collapsed .cbx-strip {
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -2068,7 +2101,7 @@
     /* The scrim. --overlay is always darkness, never a themed colour: a token that
        inverted in dark mode is how the old confirm dialogs veiled the page in 45%
        WHITE instead of dimming it. */
-    .cbx-overlay {
+    .idc-overlay {
         position: fixed;
         inset: 0;
         z-index: 90;
@@ -2166,7 +2199,7 @@
     }
 
     /* ── Menus and select popups (one surface, three consumers) */
-    .cbx-menu {
+    .idc-menu {
         z-index: 92;
         min-width: 12rem;
         max-height: min(24rem, var(--radix-popper-available-height, 24rem));
@@ -2233,7 +2266,7 @@
         background: var(--border);
     }
 
-    .cbx-popover {
+    .idc-popover {
         z-index: 92;
         background: var(--popover);
         border: 1px solid var(--border);
@@ -2821,7 +2854,7 @@
         margin-bottom: 4px;
         border-bottom: 1px solid var(--border);
     }
-    .cbx-account-name {
+    .idc-account-name {
         margin: 0;
         font-size: 13px;
         font-weight: 600;
@@ -2911,7 +2944,7 @@
     /* The command palette. Positioned high rather than centred: the list grows
        downward as you type, and a centred box jumps under the cursor on the first
        keystroke. */
-    .cbx-palette {
+    .idc-palette {
         position: fixed;
         z-index: 91;
         left: 50%;
@@ -2926,13 +2959,13 @@
         box-shadow: var(--shadow-lg);
         animation: cbx-palette-in var(--dur-menu) var(--ease);
     }
-    .cbx-palette [cmdk-list] {
+    .idc-palette [cmdk-list] {
         max-height: min(24rem, 60vh);
         overflow-y: auto;
         padding: 4px;
     }
     /* Recent, Results, Go to, Actions — small caps over each group, as the rail's areas. */
-    .cbx-palette [cmdk-group-heading] {
+    .idc-palette [cmdk-group-heading] {
         padding: 8px 8px 4px;
         font-size: 11px;
         font-weight: 600;
@@ -2940,7 +2973,7 @@
         text-transform: uppercase;
         color: var(--faint);
     }
-    .cbx-palette [cmdk-group] + [cmdk-group] {
+    .idc-palette [cmdk-group] + [cmdk-group] {
         margin-top: 4px;
     }
     @keyframes cbx-palette-in {
@@ -3004,7 +3037,7 @@
         cursor: pointer;
     }
 
-    .cbx-sheet {
+    .idc-sheet {
         position: fixed;
         z-index: 91;
         left: 0;
@@ -3468,7 +3501,7 @@
         flex-wrap: wrap;
         gap: 12px;
     }
-    .cbx-segmented {
+    .idc-segmented {
         display: flex;
         flex-wrap: wrap;
         gap: 3px;
@@ -3476,18 +3509,18 @@
         border-radius: var(--radius-md);
         background: var(--secondary);
     }
-    .cbx-segmented a {
+    .idc-segmented a {
         padding: 7px 12px;
         border-radius: var(--radius-sm);
         font-size: 13px;
         color: var(--muted-foreground);
     }
-    .cbx-segmented a[aria-current] {
+    .idc-segmented a[aria-current] {
         background: var(--card);
         color: var(--foreground);
         box-shadow: var(--shadow-sm);
     }
-    .cbx-segmented a:focus-visible {
+    .idc-segmented a:focus-visible {
         outline: 2px solid var(--ring);
         outline-offset: 2px;
     }
@@ -3567,7 +3600,7 @@
             padding: 14px 16px;
             gap: 10px;
         }
-        .cbx-entity-row > .cbx-avatar {
+        .cbx-entity-row > .idc-avatar {
             display: none;
         }
         .cbx-user-row {
@@ -3584,10 +3617,10 @@
             grid-row: 1 / 3;
             align-self: center;
         }
-        .cbx-segmented {
+        .idc-segmented {
             width: 100%;
         }
-        .cbx-segmented a {
+        .idc-segmented a {
             flex: 1;
             text-align: center;
             min-height: 44px;
@@ -3604,14 +3637,14 @@
 }
 
 @layer components {
-    .cbx-rail.open a,
-    :root.cbx-nav-pinned .cbx-rail a {
+    .idc-rail.open a,
+    :root.cbx-nav-pinned .idc-rail a {
         height: auto;
         min-height: 36px;
         padding-block: 8px;
     }
-    .cbx-rail.open a .lbl,
-    :root.cbx-nav-pinned .cbx-rail a .lbl {
+    .idc-rail.open a .lbl,
+    :root.cbx-nav-pinned .idc-rail a .lbl {
         min-width: 0;
         white-space: normal;
         overflow-wrap: anywhere;

@@ -181,12 +181,12 @@ describe('API equivalents', () => {
 
     it("uses the plane's own client and credential", () => {
         const workspace = sdk(
-            createApp({ plane: 'workspace', sdk: 'workspace.projects.create' }),
+            createApp({ plane: 'organization', sdk: 'workspace.projects.create' }),
             {},
         );
 
         expect(workspace).toContain('new WorkspaceClient(');
-        expect(workspace).toContain('process.env.CBOX_ID_WORKSPACE_KEY');
+        expect(workspace).toContain('process.env.CBOX_ID_ORGANIZATION_KEY');
         expect(sdk(createApp({ plane: 'account', sdk: 'account.profile.update' }))).toContain(
             'accessToken:',
         );

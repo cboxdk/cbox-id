@@ -9,8 +9,8 @@ use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRoutes;
 use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\ConsoleGate;
+use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Actions\PlatformScopes;
-use App\Platform\Actions\WorkspaceScopes;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Illuminate\Support\Facades\Route;
 
@@ -51,8 +51,8 @@ it('is routed on REST exactly as it declares, behind its plane\'s key and its sc
 })->with('actions');
 
 it('requires a scope its plane\'s key can actually carry', function (ActionDefinition $action): void {
-    if ($action->plane === ActionPlane::Workspace) {
-        expect(WorkspaceScopes::knows($action->scope))->toBeTrue("{$action->name} requires {$action->scope}, which is no workspace key scope");
+    if ($action->plane === ActionPlane::Organization) {
+        expect(OrganizationScopes::knows($action->scope))->toBeTrue("{$action->name} requires {$action->scope}, which is no organization key scope");
 
         return;
     }
@@ -64,7 +64,7 @@ it('requires a scope its plane\'s key can actually carry', function (ActionDefin
 
         expect($known)->toBeTrue("{$action->name} requires {$action->scope}, which its plane does not define")
             ->and(app(ManagementScopes::class)->knows($action->scope))->toBeFalse("{$action->scope} is a management key scope: a key could reach {$action->name}")
-            ->and(WorkspaceScopes::knows($action->scope))->toBeFalse("{$action->scope} is a workspace key scope: a key could reach {$action->name}");
+            ->and(OrganizationScopes::knows($action->scope))->toBeFalse("{$action->scope} is an organization key scope: a key could reach {$action->name}");
 
         return;
     }
@@ -78,7 +78,7 @@ it('requires a scope its plane\'s key can actually carry', function (ActionDefin
 it('names a console gate its plane can answer', function (ActionDefinition $action): void {
     // A workspace action is run by a workspace key too, and a key's role can only answer a
     // WORKSPACE capability — an environment-console gate would refuse every key, silently.
-    expect($action->consoleGate->isWorkspace())->toBe($action->plane === ActionPlane::Workspace)
+    expect($action->consoleGate->isOrganizationPlane())->toBe($action->plane === ActionPlane::Organization)
         // The operator gate is the platform plane's and only its own; likewise the person's
         // for the account plane — so no operator action is reachable as a mere member, and
         // no account action administers anybody else.

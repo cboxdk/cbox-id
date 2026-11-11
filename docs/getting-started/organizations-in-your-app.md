@@ -11,6 +11,10 @@ client's, a team they were invited to. Every token Cbox ID issues is for **one**
 `org`, `org_name`, `org_role`, `roles` and `permissions` all describe the person *in that
 organization*. This page is how your app decides which one.
 
+UserInfo also returns `org_slug`, the organization's slug, and a `slug` on each entry of the
+`organizations` claim (scope `organizations`). Use it for `/orgs/{slug}` URLs: it is the same
+slug in every Cbox app. Keep keying your own records by `org`, which never changes; a slug can.
+
 The SDKs (`@cboxdk/id-js` and the React, Vue and Nuxt wrappers, `cboxdk/laravel-id-client`,
 `id-go`) already send everything below. The raw parameters are listed for anyone building
 the request by hand.

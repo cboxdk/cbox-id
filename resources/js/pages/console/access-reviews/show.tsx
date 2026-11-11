@@ -128,10 +128,7 @@ export default function AccessReviewDetail({
                 )}
             </Panel>
 
-            <Pagination
-                pagination={pagination}
-                href={() => window.location.pathname}
-            />
+            <Pagination pagination={pagination} href={() => window.location.pathname} />
 
             <ConfirmDelete
                 open={closing}

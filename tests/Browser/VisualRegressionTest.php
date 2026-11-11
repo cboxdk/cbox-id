@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Platform\AppCatalog\AppCatalog;
+use App\Platform\AppCatalog\CatalogEntryData;
 use App\Platform\Sudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -80,6 +82,14 @@ function anOwnerForPictures(): void
         grantFeature($org->id, 'cbox-id-sso');
         grantFeature($org->id, 'cbox-id-scim');
 
+        // ID's own entry in the app catalog, published with its icon: the rail's mark is
+        // drawn from it, and without it the picture would hold the initials fallback.
+        app(AppCatalog::class)->save('id', CatalogEntryData::fromArray([
+            'version' => 0, 'name' => 'Cbox ID', 'launch_url' => 'https://cboxid.com/', 'enabled' => true,
+            'position' => 0, 'audience' => 'everyone',
+            'icon' => 'data:image/png;base64,'.base64_encode((string) file_get_contents(public_path('apple-touch-icon.png'))),
+        ]));
+
         return $subject;
     });
 
@@ -88,6 +98,24 @@ function anOwnerForPictures(): void
     // Registering an endpoint is behind a fresh-password window. That gate is held in
     // ConsoleStepUpTest; opening it here keeps this file about pixels.
     app(Sudo::class)->confirm();
+}
+
+/**
+ * CboxShell is one viewport high and scrolls its main area (`.cbx-shell-main`), so the
+ * document never grows and a full-page screenshot ends at the fold. For a picture of a
+ * long page, the frame grows with its content instead.
+ */
+function unfoldShellForPicture(mixed $page): void
+{
+    $page->script(<<<'JS'
+        (() => {
+            const style = document.createElement('style');
+            style.textContent = '.cbx-shell { height: auto !important; min-height: 100svh; overflow: visible !important; }'
+                + ' .cbx-shell-body, .cbx-shell-column { min-height: 0 !important; }'
+                + ' .cbx-shell-main { overflow: visible !important; }';
+            document.head.appendChild(style);
+        })()
+        JS);
 }
 
 it('draws the sign-in door the way it was drawn', function (): void {
@@ -172,9 +200,16 @@ it('draws a long form the way it was drawn', function (): void {
 
     // Fields, a fieldset of event checkboxes, and a submit — the densest layout in
     // the console and the one most likely to shift when a spacing token moves.
-    visit('/webhooks/new')
-        ->assertSee('New webhook')
-        ->assertScreenshotMatches();
+    $page = visit('/webhooks/new')->assertSee('New webhook');
+
+    // The WHOLE form, submit button included. CboxShell holds the page in a viewport-high
+    // frame and scrolls its main area, so a full-page picture of the document stopped at
+    // the fold. Let the frame grow with the page for the picture.
+    unfoldShellForPicture($page);
+
+    expect($page->script('document.querySelector("#main-content button[type=submit]") !== null'))->toBeTrue();
+
+    $page->assertScreenshotMatches();
 })->group('visual');
 
 it('draws an empty state the way it was drawn', function (): void {

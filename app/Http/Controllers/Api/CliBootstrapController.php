@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Platform\Api\ApiHost;
+use App\Platform\Api\ApiUrls;
+use App\Platform\Api\ManagementAudience;
 use App\Support\CliClient;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -56,11 +59,17 @@ final class CliBootstrapController
             // the person who approved it. At the platform root that is the workspace, its
             // environments (named per call), the person's account and, for an operator,
             // the deployment.
-            'resource' => $signIn['resource'],
+            //
+            // The API host's own identifier where the deployment has one (plan §2.5): the
+            // token is then good on `api.cboxid.com/v1` and on the application host's `/mcp`
+            // alike, and on this issuer's own doors while those still answer.
+            'resource' => ManagementAudience::api() ?? $signIn['resource'],
             // Where the management planes live, so the CLI can save an endpoint
-            // alongside the sign-in rather than making one up from the issuer.
-            'api_base' => rtrim($issuer, '/').'/api/v1',
-            'mcp_url' => $signIn['resource'],
+            // alongside the sign-in rather than making one up from the issuer: the API host,
+            // where the credential names the environment.
+            'api_base' => ApiHost::name() !== null ? ApiUrls::base() : rtrim($issuer, '/').'/api/v1',
+            // The one MCP server, on the application host; this issuer's own where there is none.
+            'mcp_url' => ManagementAudience::appMcp() ?? $signIn['resource'],
             // The two endpoints of the device grant, named outright. The platform root
             // serves them to this client and serves no discovery document at all — it is
             // an identity provider for nobody's app — so a CLI that looked them up in

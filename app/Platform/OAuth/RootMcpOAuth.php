@@ -136,7 +136,7 @@ final readonly class RootMcpOAuth
             'via' => 'mcp',
         ];
 
-        $workspace = $this->root->workspaceOf($subjectId, $organizationId);
+        $workspace = $this->root->organizationOf($subjectId, $organizationId);
 
         if ($workspace !== null) {
             $this->activity->record($workspace->id, self::AUTHORIZED, $subjectId, 'client', $client->client_id, $context, $request);

@@ -53,18 +53,48 @@ export function searchQuery(raw: string): string {
 }
 
 /**
+ * The environment console a path is in — `/orgs/{org}/projects/{project}/environments/{env}`,
+ * or `/admin/environment` for the platform's own — or null outside one.
+ */
+export function environmentConsolePrefix(pathname: string): string | null {
+    const match =
+        /^\/(?:orgs\/[^/]+\/projects\/[^/]+\/environments\/[^/]+|admin\/environment)(?=\/|$)/.exec(
+            pathname,
+        );
+
+    return match === null ? null : match[0];
+}
+
+/**
  * Where this console's search lives, or null where there is none.
  *
  * Platform admin has no search of its own here: it is an area of a console that does — the
- * platform environment's at `/admin`, or a single-tenant install's organization console — and
- * ⌘K searches that. Every environment at once is Platform › Search, a page.
+ * platform environment's at `/admin/environment`, or a single-tenant install's organization
+ * console — and ⌘K searches that, from every operator page under `/admin` too. Every
+ * environment at once is Platform › Search (`/admin/search`), a page, not JSON. An
+ * environment console's search is under that console's own path.
  */
-export function searchHref(altitude: string | undefined): string | null {
+export function searchHref(
+    altitude: string | undefined,
+    pathname: string = typeof window === 'undefined' ? '' : window.location.pathname,
+): string | null {
     if (altitude === undefined) {
         return null;
     }
 
-    return altitude === 'environment' ? '/admin/search' : '/search';
+    if (altitude !== 'environment') {
+        return '/search';
+    }
+
+    const prefix = environmentConsolePrefix(pathname);
+
+    if (prefix !== null) {
+        return `${prefix}/search`;
+    }
+
+    // An operator page (`/admin/organizations`, `/admin/environments`, …) is drawn as the
+    // platform environment's console, so it searches that console.
+    return /^\/admin(?:\/|$)/.test(pathname) ? '/admin/environment/search' : null;
 }
 
 export function searchUrl(base: string, query: string): string {

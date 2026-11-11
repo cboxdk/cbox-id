@@ -269,7 +269,7 @@ npm ci && npm run build
 
 The guided installer generates the crypto master key, asks the few questions that
 matter (the first operator, the deployment shape, the issuer URL), writes them to
-`.env`, runs migrations, provisions the platform root — and the first workspace, in the
+`.env`, runs migrations, provisions the platform root — and the first organization, in the
 multi-tenant shape — mints the first signing key, and then runs `cbox-id:doctor`
 against what it built:
 
@@ -316,9 +316,9 @@ entrypoint does this at container start, against the container's own environment
 ## 4. Create the first platform operator
 
 Step 2 already did this: `cbox-id:install` creates the **platform operator** — the
-identity above every environment, which administers workspaces, environments,
+identity above every environment, which administers organizations, environments,
 organizations and other operators — along with the platform-root environment and, in
-the multi-tenant shape, the first workspace. Immediately enroll a passkey or TOTP
+the multi-tenant shape, the first organization. Immediately enroll a passkey or TOTP
 factor; this is the most sensitive account on the system.
 
 If the deployment was stood up without a shell (an image started by someone else),
@@ -328,7 +328,7 @@ prints on any instance of the deployment — so an internet-exposed box cannot b
 whoever finds it first. See [Installation](../getting-started/installation.md).
 
 Sign in at **`/login`** — the install command prints the URL — and open
-**`/admin/platform`**: on a multi-tenant deployment the **Platform** area of the platform
+**`/admin`**: on a multi-tenant deployment the **Platform** area of the platform
 environment's console at `/admin`, on a single-tenant one the **Platform** area of the
 console's rail. From there
 create your remaining environment(s) and use **Provision admin** on each to seed its
@@ -475,7 +475,7 @@ configuration they never made is how the setting came to be ignored in the first
   through `TRUSTED_PROXIES`. Preserve Cloudflare's
   [visitor location headers](https://developers.cloudflare.com/rules/transform/managed-transforms/reference/#http-request-headers)
   through the ingress and restrict origin access to that path. These values appear
-  under **My account → Sessions & activity**, without an external IP lookup.
+  under **Account → Sessions & activity**, without an external IP lookup.
   Existing sessions fill missing details when their device returns; location is
   only filled when the request matches the session's recorded IP.
 - Terminate TLS; forward the real scheme/host (`X-Forwarded-Proto`/`-Host`) and
@@ -498,8 +498,8 @@ no tokens, signs no assertions and has no relying parties, so the whole IdP prot
 surface is confined to the **issuer plane**: an environment's own host, i.e. a custom
 domain or `{slug}.{base_domain}`.
 
-That is a narrower claim than it used to be. The apex is also the *workspace door* — sign up,
-manage the workspace and its environments — and it was once assumed the two went together, so
+That is a narrower claim than it used to be. The apex is also the *organization door* — sign up,
+manage the organization and its environments — and it was once assumed the two went together, so
 one gate answered both "is this an issuer?" and "does the console live here?". They differ
 on exactly this host: the platform root is a tenant like any other, whose subjects sign in
 and administer their organizations there. `/login` and the console are served on the apex
@@ -532,7 +532,7 @@ environment's host:
   and the management plane genuinely uses them: an account's own organization lives in the
   platform-root environment, so home-realm discovery on `/workspace/login` or `/signup`
   sends the member to a connection URL **on the host they are already standing on**.
-  Gating them locked an account org with enforced SSO out of its own workspace. The
+  Gating them locked an account org with enforced SSO out of its own organization. The
   boundary here is the connection's environment scope, which holds on either plane, not
   the host.
 - The management plane itself: `/signup`, `/console/*` and the organization-management API

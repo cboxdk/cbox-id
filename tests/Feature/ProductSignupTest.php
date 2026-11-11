@@ -48,6 +48,9 @@ function productSignupPerson(bool $team = false): array
     $session = app(SessionManager::class)->start($person->id, $organization?->id, ['pwd']);
     session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($person, $session, $organization);
+    if ($organization !== null) {
+        useOrganizationInUrls($organization->id);
+    }
 
     return [$person, $organization];
 }
@@ -111,7 +114,7 @@ it('creates only an identity team before product admission', function (): void {
     Http::assertNothingSent();
 });
 
-it('gates direct product creation through workspace API keys before writing', function (int $billingStatus, int $expectedStatus): void {
+it('gates direct product creation through organization API keys before writing', function (int $billingStatus, int $expectedStatus): void {
     $account = provisionAccount();
     config(['service-access.identity_environment' => platformRootEnvironment()->id]);
     $token = app(OrganizationApiKeys::class)->issue($account['organization']->id, 'Provisioning', MembershipRole::Admin, null, ['projects:write', 'environments:write'])->plaintext;
@@ -137,22 +140,22 @@ it('lets an admitted root team create its first project and revokes a read once 
         return Http::response(['allowed' => $allowed]);
     }]);
 
-    $this->post(route('projects.store'), ['name' => 'First product'])->assertSessionHasNoErrors()->assertRedirect();
+    $this->post(route('orgs.projects.store'), ['name' => 'First product'])->assertSessionHasNoErrors()->assertRedirect();
     $project = Project::query()->where('organization_id', $team->id)->where('name', 'First product')->first();
     expect($project)->not->toBeNull();
-    $this->get(route('projects.show', $project->id))->assertOk();
+    $this->get(route('orgs.projects.show', $project->id))->assertOk();
     Http::assertSent(fn (Request $request): bool => $request['subject'] === $person->id && $request['organization'] === $team->id);
 
     $allowed = false;
     nextRequest();
     // Within the snapshot's lifetime the page renders from Billing's last answer.
-    $this->get(route('projects.show', $project->id))->assertOk();
+    $this->get(route('orgs.projects.show', $project->id))->assertOk();
     $this->travel(31)->seconds();
     nextRequest();
     // Stale: still served, and the refresh job asks Billing again.
-    $this->get(route('projects.show', $project->id))->assertOk();
+    $this->get(route('orgs.projects.show', $project->id))->assertOk();
     nextRequest();
-    $this->get(route('projects.show', $project->id))->assertForbidden();
+    $this->get(route('orgs.projects.show', $project->id))->assertForbidden();
 });
 
 it('does not disable admission in production when the configuration flag is false', function (): void {
@@ -188,7 +191,7 @@ function admittedTeamWithProject(): array
 
         return Http::response(['allowed' => $billing['allowed']]);
     }]);
-    test()->post(route('projects.store'), ['name' => 'First product'])->assertSessionHasNoErrors()->assertRedirect();
+    test()->post(route('orgs.projects.store'), ['name' => 'First product'])->assertSessionHasNoErrors()->assertRedirect();
     $project = Project::query()->where('organization_id', $team->id)->where('name', 'First product')->firstOrFail();
 
     return [$project, $team, $billing];
@@ -201,7 +204,7 @@ it('renders a project page from the kept answers while Billing is down, without 
     $checks = $billing['checks'];
     nextRequest();
 
-    $this->get(route('projects.show', $project->id))->assertOk();
+    $this->get(route('orgs.projects.show', $project->id))->assertOk();
 
     expect($billing['checks'])->toBe($checks);
 });
@@ -215,7 +218,7 @@ it('serves a stale answer at once and queues one refresh of it', function (): vo
     $this->travel(31)->seconds();
     nextRequest();
 
-    $this->get(route('projects.show', $project->id))->assertOk();
+    $this->get(route('orgs.projects.show', $project->id))->assertOk();
 
     expect($billing['checks'])->toBe($checks);
     Bus::assertDispatched(RefreshBillingSnapshot::class, fn (RefreshBillingSnapshot $job): bool => $job->kind === RefreshBillingSnapshot::ADMISSION && $job->parts[1] === $team->id);
@@ -229,7 +232,7 @@ it('asks Billing before a write when the kept answer is stale', function (): voi
     $this->travel(31)->seconds();
     nextRequest();
 
-    $this->post(route('projects.store'), ['name' => 'Second product']);
+    $this->post(route('orgs.projects.store'), ['name' => 'Second product']);
 
     expect($billing['checks'])->toBe($checks + 1)
         ->and(Project::query()->where('organization_id', $team->id)->where('name', 'Second product')->exists())->toBeFalse();
@@ -241,13 +244,13 @@ it('refreshes a kept answer in the background and keeps it when Billing is away'
     $billing['up'] = false;
     (new RefreshBillingSnapshot(RefreshBillingSnapshot::ADMISSION, [$person, $team->id]))->handle(app(ProductAdmission::class), app(ProductBilling::class));
     nextRequest();
-    $this->get(route('projects.show', $project->id))->assertOk();
+    $this->get(route('orgs.projects.show', $project->id))->assertOk();
 
     $billing['up'] = true;
     $billing['allowed'] = false;
     (new RefreshBillingSnapshot(RefreshBillingSnapshot::ADMISSION, [$person, $team->id]))->handle(app(ProductAdmission::class), app(ProductBilling::class));
     nextRequest();
-    $this->get(route('projects.show', $project->id))->assertForbidden();
+    $this->get(route('orgs.projects.show', $project->id))->assertForbidden();
 });
 
 it('renders the product signup page from the kept policy while Billing is down', function (): void {

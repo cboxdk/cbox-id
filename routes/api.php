@@ -52,25 +52,25 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-apps'])
 // The workspace-plane OpenAPI 3.1 spec — public, so tooling and generated clients can
 // fetch the contract without a key.
 Route::get('v1/workspace/openapi.yaml', function () {
-    $spec = @file_get_contents(resource_path('openapi/workspace.yaml'));
+    $spec = @file_get_contents(resource_path('openapi/organization.yaml'));
     abort_if($spec === false, 404);
 
     return response($spec, 200, ['Content-Type' => 'application/yaml']);
-})->name('api.workspace.openapi');
+})->name('api.organization.openapi');
 
-Route::middleware('throttle:api-workspace')
+Route::middleware('throttle:api-organization')
     ->prefix('v1/workspace')
     ->group(function (): void {
         // EVERY route here is an action, routed from the registry with the scope it
-        // declares (`workspace.api:<scope>`): the key is resolved once, its ROLE must hold
+        // declares (`org.api:<scope>`): the key is resolved once, its ROLE must hold
         // the capability the scope needs and the key must carry the scope. Reads are gated
         // too, so a leaked developer/CI key can't enumerate the member roster (PII) or
         // read billing. The console's Projects, Team, Keys and Workspace settings pages
         // run the same actions.
-        ActionRoutes::workspace();
+        ActionRoutes::organizationPlane();
 
         // Where an approval a workspace key's policy asked for stands — only its own.
-        Route::get('action-approvals/{id}', [ActionApprovalController::class, 'showForWorkspace'])->middleware('workspace.api');
+        Route::get('action-approvals/{id}', [ActionApprovalController::class, 'showForOrganization'])->middleware('org.api');
     });
 
 /*

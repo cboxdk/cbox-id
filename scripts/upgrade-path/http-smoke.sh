@@ -6,8 +6,8 @@
 #
 # <base-url> is where the server listens (http://127.0.0.1:8111); hosts are sent as the
 # Host header, so nothing needs DNS. <smoke.json> is what verify.php wrote: the keys it
-# minted with the new code, the 1.x keys, and a person to sign in as with their 1.x
-# password. Assumes the rehearsal shape: console on `id.localhost`, the customer
+# minted with the new code, the old release's keys, and a person to sign in as with their
+# old password. Assumes the rehearsal shape: console on `id.localhost`, the customer
 # environment on `<slug>.id.localhost`.
 #
 # Exits non-zero on the first failed expectation.
@@ -57,13 +57,41 @@ else
     failures=$((failures + 1))
 fi
 
-# Management API: the 1.x environment key and one minted by the new code both work; the
-# environment API did not change. The 1.x workspace key (cbid_org_) is refused and a
-# new cbid_ws_ one is accepted — the documented clean break.
+# Management API: the old environment key and one minted by the new code both work; the
+# environment API did not change. The organization API (still at /api/v1/workspace) takes
+# a cbid_ws_ key minted by the new code (v3.0 still mints cbid_ws_: the released cbox-cli
+# refuses cbid_org_). A 1.x cbid_org_ key stays refused (2.0 revoked it, a documented clean
+# break); a 2.x cbid_ws_ key works as before. From v3.0 every /api/v1 answer carries a
+# Deprecation header for the PATH (its successor is the API host's /v1); the API host's
+# /v1/organization answers the same keys with none. The API host is sent as the Host
+# header: API_HOST, or the non-production default api.cboxid.test.
 expect "env API with a new cbid_env_ key" 200 "$(status -H "Host: ${env_host}" -H "Authorization: Bearer $(field environment_key)" -H 'Accept: application/json' "${base}/api/v1/users")"
-expect "env API with the 1.x cbid_env_ key" 200 "$(status -H "Host: ${env_host}" -H "Authorization: Bearer $(field old_environment_key)" -H 'Accept: application/json' "${base}/api/v1/users")"
-expect "workspace API with a new cbid_ws_ key" 200 "$(status -H "Host: ${console}" -H "Authorization: Bearer $(field workspace_key)" -H 'Accept: application/json' "${base}/api/v1/workspace")"
-expect "workspace API refuses the 1.x cbid_org_ key" 401 "$(status -H "Host: ${console}" -H "Authorization: Bearer $(field old_workspace_key)" -H 'Accept: application/json' "${base}/api/v1/workspace")"
+expect "env API with the old cbid_env_ key" 200 "$(status -H "Host: ${env_host}" -H "Authorization: Bearer $(field old_environment_key)" -H 'Accept: application/json' "${base}/api/v1/users")"
+expect "organization API with a new cbid_ws_ key" 200 "$(status -H "Host: ${console}" -H "Authorization: Bearer $(field workspace_key)" -H 'Accept: application/json' "${base}/api/v1/workspace")"
+if [[ "$(field from_major)" == "1" ]]; then
+    expect "organization API refuses the revoked 1.x cbid_org_ key" 401 "$(status -H "Host: ${console}" -H "Authorization: Bearer $(field old_workspace_key)" -H 'Accept: application/json' "${base}/api/v1/workspace")"
+else
+    expect "organization API with the 2.x cbid_ws_ key" 200 "$(status -H "Host: ${console}" -H "Authorization: Bearer $(field old_workspace_key)" -H 'Accept: application/json' "${base}/api/v1/workspace")"
+    deprecation="$(curl -s -o /dev/null -D - -H "Host: ${console}" -H "Authorization: Bearer $(field old_workspace_key)" -H 'Accept: application/json' "${base}/api/v1/workspace" | tr -d '\r' | grep -i '^deprecation:' || true)"
+    if [[ -n "$deprecation" ]]; then
+        printf '  ok    the old /api/v1/workspace path is marked deprecated\n'
+    else
+        printf '  FAIL  the old /api/v1/workspace path has no Deprecation header\n'
+        failures=$((failures + 1))
+    fi
+fi
+
+api_host="${API_HOST:-api.cboxid.test}"
+expect "API host /v1/organization with a new cbid_ws_ key" 200 "$(status -H "Host: ${api_host}" -H "Authorization: Bearer $(field workspace_key)" -H 'Accept: application/json' "${base}/v1/organization")"
+deprecation="$(curl -s -o /dev/null -D - -H "Host: ${api_host}" -H "Authorization: Bearer $(field workspace_key)" -H 'Accept: application/json' "${base}/v1/organization" | tr -d '\r' | grep -i '^deprecation:' || true)"
+if [[ -z "$deprecation" ]]; then
+    printf '  ok    the API host answers the cbid_ws_ key without a Deprecation header\n'
+else
+    printf '  FAIL  the API host answers the cbid_ws_ key with %s\n' "$deprecation"
+    failures=$((failures + 1))
+fi
+expect "API host refuses a request with no credential" 401 "$(status -H "Host: ${api_host}" -H 'Accept: application/json' "${base}/v1/organization")"
+expect "API host serves no page" 404 "$(status -H "Host: ${api_host}" "${base}/login")"
 
 # Sign in on the environment host with a 1.x password, the way a browser does: the
 # session and XSRF cookies from the form, then the POST.

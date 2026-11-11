@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\EnvironmentSudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Platform\PlatformRoot;
 
@@ -29,7 +28,7 @@ function rootConsoleOperator(): void
 {
     $operator = actAsOperator('browser-ops@platform.test');
     app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified((string) $operator->subject_id, 'browser-ops@platform.test'));
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 }
 
 it('draws the platform environment\'s console for an operator without an accessibility issue', function (string $path, string $heading): void {
@@ -42,28 +41,28 @@ it('draws the platform environment\'s console for an operator without an accessi
         ->assertNoAccessibilityIssues()
         ->assertNoJavaScriptErrors();
 })->with([
-    'overview' => ['/admin', 'Overview'],
-    'social login' => ['/admin/social-sign-in', 'Social login'],
-    'social login, adding Google' => ['/admin/social-sign-in?provider=google', 'Google'],
-    'sign-in methods' => ['/admin/sign-in-methods', 'Sign-in methods'],
-    'branding' => ['/admin/branding', 'Branding'],
+    'overview' => ['/admin/environment', 'Overview'],
+    'social login' => ['/admin/environment/social-sign-in', 'Social login'],
+    'social login, adding Google' => ['/admin/environment/social-sign-in?provider=google', 'Google'],
+    'sign-in methods' => ['/admin/environment/sign-in-methods', 'Sign-in methods'],
+    'branding' => ['/admin/environment/branding', 'Branding'],
 ])->group('a11y');
 
 it('draws the platform environment\'s console in the dark and on a phone', function (): void {
     provisionAccount('owner@acme.example');
     rootConsoleOperator();
 
-    visit('/admin/social-sign-in')->inDarkMode()
+    visit('/admin/environment/social-sign-in')->inDarkMode()
         ->assertSee('Social login')
         ->assertNoAccessibilityIssues();
 
-    visit('/admin/social-sign-in')->resize(390, 844)
+    visit('/admin/environment/social-sign-in')->resize(390, 844)
         ->assertSee('Social login')
         ->assertNoAccessibilityIssues()
         ->assertNoJavaScriptErrors();
 })->group('a11y');
 
-it('tells a workspace owner on the root where an environment\'s settings are, without an accessibility issue', function (): void {
+it('tells an organization owner on the root where an environment\'s settings are, without an accessibility issue', function (): void {
     ['subjectId' => $owner] = provisionAccount('owner@acme.example');
     app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified($owner, 'owner@acme.example'));
     signInAsSubject($owner);
@@ -107,8 +106,8 @@ it('draws platform admin inside the platform environment\'s console, without an 
         ->assertNoAccessibilityIssues()
         ->assertNoJavaScriptErrors();
 })->with([
-    'workspaces' => ['/admin/platform/workspaces', 'Workspaces'],
-    'environments' => ['/admin/platform/environments', 'Environments'],
-    'organization tree' => ['/admin/platform/organizations', 'Organization tree'],
-    'operators' => ['/admin/platform/operators', 'Operators'],
+    'workspaces' => ['/admin/organizations', 'Organizations'],
+    'environments' => ['/admin/environments', 'Environments'],
+    'organization tree' => ['/admin/environments/root/organizations', 'Organization tree'],
+    'operators' => ['/admin/operators', 'Operators'],
 ])->group('a11y');

@@ -2,45 +2,54 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\EnvironmentAdminAuth;
-use App\Platform\EnvironmentSudo;
-use App\Platform\PlaneResolver;
-use App\Platform\PlatformAuth;
-use App\Platform\SignInLineage;
-use Cbox\Id\Identity\Contracts\SessionManager;
+use App\Platform\Sudo;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\EnvironmentStatus;
+use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Enums\MembershipRole;
-use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
-use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
-use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
 
 beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]));
 
+/*
+|--------------------------------------------------------------------------
+| The environment console on the APP HOST — the new boundary (plan step 3, risk R1).
+|--------------------------------------------------------------------------
+|
+| The console used to be `/admin` on each environment's own host, behind a session of its
+| own redeemed from a signed handoff. It is `/orgs/{org}/projects/{project}/environments/
+| {environment}/…` on the app host now, administered from the person's ordinary app-host
+| session, and `ResolveEnvironmentFromPath` is the only door: it resolves the environment
+| from the path, authorizes the person for it on every request and makes it the request's
+| environment before route model binding runs. These tests hold that door shut where it
+| must be shut.
+*/
+
 /** Provision an account (owner + first environment) and return them. */
-function envAdminSetup(): array
+function envAdminSetup(string $email = 'owner@acme.example', string $name = 'Acme'): array
 {
-    // Every door in this file is under the `/admin` prefix, which carries `multi.tenant`
-    // and 404s on a single-tenant deployment — the console is gated on an account member
-    // administering one of their ACCOUNT's environments, and a single-tenant install has
-    // one environment which is the platform root and belongs to no account.
-    // {@see \App\Http\Middleware\RequireMultiTenant}, tests/Feature/SingleTenantAdminConsoleTest.php.
     multiTenantDeployment();
+    config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
 
     platformRootEnvironment();
     $r = app(TenantProvisioner::class)->provision(new TenantBlueprint(
-        organizationName: 'Acme',
-        ownerEmail: 'owner@acme.example',
+        organizationName: $name,
+        ownerEmail: $email,
         ownerName: 'Owner',
         ownerPassword: 'a-strong-unbreached-passphrase',
     ));
@@ -48,117 +57,84 @@ function envAdminSetup(): array
     return [
         'member' => $r->membership, 'subjectId' => $r->owner->id,
         'organization' => $r->organization,
+        'project' => $r->project,
         'env' => $r->environment,
         'envId' => $r->environment->id,
-        // The env's {slug}.{base_domain} tenant host (with base_domains = ['cboxid.com']).
-        'host' => $r->environment->slug.'.cboxid.com',
     ];
 }
 
-it('authenticates an account member as admin ONLY on their environment\'s host (anti-bleed)', function (): void {
-    ['member' => $member, 'envId' => $envId] = envAdminSetup();
+/** A second environment in the same project. */
+function secondEnvironment(Project $project, string $slug = 'acme-sandbox'): Environment
+{
+    return app(PlatformRoot::class)->run(fn (): Environment => Environment::query()->create([
+        'name' => 'Sandbox',
+        'slug' => $slug,
+        'type' => EnvironmentType::Sandbox,
+        'status' => EnvironmentStatus::Active,
+        'is_default' => false,
+        'project_id' => $project->id,
+        'settings' => [],
+    ]));
+}
 
-    // The session is the member's ordinary PLATFORM-ROOT SUBJECT session — the
-    // credential of record — ANCHORED to exactly one environment. The anchor is what
-    // this test is about; who the identity is does not change it.
-    actAsEnvironmentAdmin($member->user_id, $envId);
-    expect(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId);
+it('names each environment by organization, project and environment on the app host', function (): void {
+    ['organization' => $organization, 'project' => $project, 'env' => $env] = envAdminSetup();
 
-    $auth = app(EnvironmentAdminAuth::class);
-
-    // On the anchored environment's host → authenticated.
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
-    expect($auth->subjectId())->toBe($member->user_id);
-    expect($auth->membership()?->id)->toBe($member->id);
-
-    // On a DIFFERENT environment's host → nothing, even though the session cookie is
-    // the same. Bound env ≠ host env ⇒ no bleed.
-    app(EnvironmentContext::class)->set(GenericEnvironment::of('some_other_env'));
-    expect($auth->membership())->toBeNull();
-});
-
-it('refuses a member with no access to the environment', function (): void {
-    ['organization' => $account, 'envId' => $envId] = envAdminSetup();
-
-    // A viewer scoped to NO environments.
-    $members = app(Memberships::class);
-    [$stranger, $strangerSubjectId] = addMember($account->id, MembershipRole::Viewer, 'stranger@acme.example');
-    $members->setEnvironmentAccess($stranger->organization_id, $stranger->user_id, all: false, environmentIds: []);
-
-    actAsEnvironmentAdmin($stranger->user_id, $envId);
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
-
-    expect(app(EnvironmentAdminAuth::class)->membership())->toBeNull();
-});
-
-it('redeems a signed handoff into an env-admin session', function (): void {
-    ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
-    // Reach the environment the way its admin does: on its OWN host. An unmapped host
-    // resolves to the platform ROOT, which is where the account plane lives.
-    serveOnTestHost($env);
-
-    // The handoff carries the SUBJECT; the account membership behind it is re-resolved
-    // on redemption rather than carried in the token.
-    $subjectId = $member->user_id;
-    $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $envId);
-
-    $this->post('/admin/handoff', handoffFields($token, $subjectId))->assertRedirect(route('environment.home'));
-
-    expect(app(EnvironmentAdminAuth::class)->subjectId())->toBe($subjectId)
-        ->and(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId);
+    expect(app(EnvironmentConsolePath::class)->for($env->id))
+        ->toBe('orgs/'.$organization->slug.'/projects/'.$project->slug.'/environments/'.$env->slug)
+        ->and(app(EnvironmentConsolePath::class)->for(platformRootEnvironment()->id))->toBe('admin/environment');
 });
 
 it('renders the env-admin console (overview, organizations, users) for an admin session', function (): void {
-    ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
-    serveOnTestHost($env);
+    ['member' => $member, 'envId' => $envId] = envAdminSetup();
     actAsEnvironmentAdmin($member->user_id, $envId);
 
     // The token vault is the one capability here behind a step-up, so this sweep takes it
     // once rather than dropping the two pages that would otherwise 302. Confirming it up
     // front keeps the sweep about RENDERING; the gate itself is asserted on its own in
     // EnvironmentAdminCrudTest, where a page that stopped redirecting would be caught.
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     foreach ([
-        '/admin' => 'Overview',
-        '/admin/organizations' => 'Organizations',
-        '/admin/organizations/new' => 'New organization',
-        '/admin/users' => 'Users',
-        '/admin/users/new' => 'New user',
+        envConsole() => 'Overview',
+        envConsole('/organizations') => 'Organizations',
+        envConsole('/organizations/new') => 'New organization',
+        envConsole('/users') => 'Users',
+        envConsole('/users/new') => 'New user',
         // "Applications" on both consoles — one component, one title, one slug.
-        '/admin/apps' => 'Applications',
-        '/admin/single-sign-on' => 'Enterprise SSO',
-        '/admin/single-sign-on/new' => 'connection',
+        envConsole('/apps') => 'Applications',
+        envConsole('/single-sign-on') => 'Enterprise SSO',
+        envConsole('/single-sign-on/new') => 'connection',
         // Renamed: it registers SAML service providers that trust us, which is the
         // opposite direction from Enterprise SSO, and "Login methods" named that one.
-        '/admin/saml-apps' => 'SAML apps',
-        '/admin/saml-apps/new' => 'SAML app',
-        '/admin/sync-in' => 'Directory Sync',
-        '/admin/sync-in/new' => 'directory',
+        envConsole('/saml-apps') => 'SAML apps',
+        envConsole('/saml-apps/new') => 'SAML app',
+        envConsole('/sync-in') => 'Directory Sync',
+        envConsole('/sync-in/new') => 'directory',
         // One name on both rails and on the page: the rail and the heading drifted apart
         // here once ("Outbound sync" over a page headed otherwise), which is what this
         // sweep exists to notice.
-        '/admin/sync-out' => 'Outbound provisioning',
-        '/admin/sync-out/new' => 'connection',
-        '/admin/roles' => 'Roles',
-        '/admin/roles/new' => 'role',
-        '/admin/access-reviews/new' => 'review',
-        '/admin/role-conflicts/new' => 'New role conflict',
-        '/admin/apps/new' => 'application',
-        '/admin/inline-hooks/new' => 'hook',
-        '/admin/token-vault/new' => 'token',
-        '/admin/log-streaming/new' => 'stream',
-        '/admin/access-reviews' => 'Access reviews',
-        '/admin/role-conflicts' => 'Role conflicts',
+        envConsole('/sync-out') => 'Outbound provisioning',
+        envConsole('/sync-out/new') => 'connection',
+        envConsole('/roles') => 'Roles',
+        envConsole('/roles/new') => 'role',
+        envConsole('/access-reviews/new') => 'review',
+        envConsole('/role-conflicts/new') => 'New role conflict',
+        envConsole('/apps/new') => 'application',
+        envConsole('/inline-hooks/new') => 'hook',
+        envConsole('/token-vault/new') => 'token',
+        envConsole('/log-streaming/new') => 'stream',
+        envConsole('/access-reviews') => 'Access reviews',
+        envConsole('/role-conflicts') => 'Role conflicts',
 
-        '/admin/inline-hooks' => 'Hooks',
-        '/admin/token-vault' => 'Token vault',
-        '/admin/log-streaming' => 'Log streams',
+        envConsole('/inline-hooks') => 'Hooks',
+        envConsole('/token-vault') => 'Token vault',
+        envConsole('/log-streaming') => 'Log streams',
         // "Usage" on BOTH planes now. It was "Analytics" here and "Usage" on the
         // organization plane, over the same `auth.*` counters — and this plane's version
         // was the primitive one: raw metric keys, no labels, no time window.
-        '/admin/usage' => 'Usage',
-        '/admin/approvals' => 'Approvals',
+        envConsole('/usage') => 'Usage',
+        envConsole('/approvals') => 'Approvals',
     ] as $path => $needle) {
         $this->get($path)->assertOk()->assertSee($needle);
     }
@@ -174,12 +150,12 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
      * also pass for a page that mentioned it in a link to somewhere else.
      */
     foreach ([
-        '/admin/webhooks' => ['console/webhooks/index', 'Webhooks'],
-        '/admin/webhooks/new' => ['console/webhooks/create', 'New webhook'],
-        '/admin/audit' => ['console/audit', 'Audit log'],
-        '/admin/settings' => ['console/settings', 'Settings'],
-        '/admin/branding' => ['console/branding', 'Branding'],
-        '/admin/sign-in-rules' => ['console/auth-policy', 'Authentication policy'],
+        envConsole('/webhooks') => ['console/webhooks/index', 'Webhooks'],
+        envConsole('/webhooks/new') => ['console/webhooks/create', 'New webhook'],
+        envConsole('/audit') => ['console/audit', 'Audit log'],
+        envConsole('/settings') => ['console/settings', 'Settings'],
+        envConsole('/branding') => ['console/branding', 'Branding'],
+        envConsole('/sign-in-rules') => ['console/auth-policy', 'Authentication policy'],
     ] as $path => [$component, $title]) {
         $this->get($path)
             ->assertOk()
@@ -189,133 +165,179 @@ it('renders the env-admin console (overview, organizations, users) for an admin 
     }
 });
 
-it('refuses a handoff minted for a different environment than the host', function (): void {
-    ['member' => $member, 'env' => $env] = envAdminSetup();
-    serveOnTestHost($env);
+it('admits a member only to the environments their access reaches: 404 on the others', function (): void {
+    ['organization' => $organization, 'project' => $project, 'envId' => $envId] = envAdminSetup();
+    $sandbox = secondEnvironment($project);
 
-    // Token says env X, but this host resolves env `$envId` → refused.
-    $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, 'a_different_env');
+    [$limited] = addMember($organization->id, MembershipRole::Developer, 'limited@acme.example');
+    grantNativeProductRoles($limited, ['developer']);
+    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->setEnvironmentAccess($limited->organization_id, $limited->user_id, all: false, environmentIds: [$envId]));
 
-    $this->post('/admin/handoff', ['token' => $token])->assertRedirect(route('admin.login'));
-    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
-});
+    actAsEnvironmentAdmin($limited->user_id, $envId);
+    $this->get(envConsole('/users'))->assertOk();
 
-it('bounces an unauthenticated tenant admin to the ROOT open-environment handoff (multi-tenant pull flow)', function (): void {
-    ['envId' => $envId, 'host' => $host] = envAdminSetup();
-    config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
-
-    // No credential form on the tenant host — the admin is sent to the root's
-    // "open environment" door, which authenticates once and hands off back here — to the
-    // page they asked for, which rides along as `to` and is validated at both ends.
-    $this->get("https://{$host}/admin/organizations")
-        ->assertRedirect('https://cboxid.com/open/'.$envId.'?to=%2Fadmin%2Forganizations');
-
-    // The console's front page needs no target: it is where a handoff lands anyway.
-    $this->get("https://{$host}/admin")
-        ->assertRedirect('https://cboxid.com/open/'.$envId);
-});
-
-it('sends /admin/login to the root rather than serving a door of its own', function (): void {
-    ['envId' => $envId, 'host' => $host] = envAdminSetup();
-    config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
-
-    // There is no credential form behind this path any more — account credentials are
-    // never entered on a tenant-controlled host, and the form that used to be here was
-    // reachable by no correctly-configured deployment. The name survives because every
-    // "send them to the door" redirect in the console uses it (the handoff's refusals,
-    // logout, the sudo screen), and it now sits BEHIND `env.admin`: the gate IS the door,
-    // so the bounce below comes from the middleware rather than from a mount() that had
-    // to remember to duplicate it.
-    $this->get("https://{$host}/admin/login")
-        ->assertRedirect('https://cboxid.com/open/'.$envId);
-});
-
-/**
- * The one state in which the bounce above has nowhere to go.
- *
- * Multi-tenancy claimed and no account host named anywhere is
- * {@see PlaneResolver::misconfigured()} — the first-run screen refuses to
- * install into it and `cbox-id:doctor` reports it, so the only way to arrive here is
- * configuration changed after a good install. This used to answer with a local credential
- * form: a second account-credential store, on a tenant-controlled host, offered because
- * the deployment was broken. A configuration error must not look like a working product
- * to everyone except the person whose password it takes.
- */
-it('refuses the admin console outright when the deployment names no account host', function (): void {
-    ['env' => $env] = envAdminSetup();
-    serveOnTestHost($env);
-
-    config()->set('cbox-id.tenancy.account_host', null);
-    config()->set('cbox-id.environments.base_domains', []);
-    config()->set('cbox-id.environments.platform_root_hosts', []);
-
-    expect(app(PlaneResolver::class)->misconfigured())->toBeTrue();
-
-    // 503, not 404: the console is not absent, the deployment is unfinished, and an
-    // operator reading a log needs to be able to tell those apart.
-    $this->get('/admin/organizations')->assertStatus(503);
-    $this->get('/admin/login')->assertStatus(503);
+    useEnvironmentConsole($sandbox->id);
+    $this->get(envConsole('/users'))->assertNotFound();
+    $this->get(envConsole())->assertNotFound();
 })->group('security');
 
-it('has no admin door at all on a single-host deployment', function (): void {
-    // This asserted the OPPOSITE until the console became multi-tenant-only: that a
-    // self-hosted single-host install served the LOCAL "sign in as admin" form, on the
-    // reasoning that the account console and this admin console share an origin there so
-    // the form was safe. The form was safe and it was also useless — the console is gated
-    // on an account member administering one of their ACCOUNT's environments, and the lone
-    // environment on a single-host install is the platform root, which belongs to no
-    // account. It took correct credentials and refused them, blaming the credentials.
-    //
-    // Asserted here rather than only in SingleTenantAdminConsoleTest because this one
-    // starts from a real account, a real environment and a host that resolves to it: the
-    // 404 is the deployment shape, not an empty database.
-    ['env' => $env] = envAdminSetup();
-    serveOnTestHost($env);
+it('answers 404 to a person who administers another organization entirely', function (): void {
+    ['envId' => $acme] = envAdminSetup();
+    ['subjectId' => $globexOwner] = envAdminSetup('owner@globex.example', 'Globex');
 
-    config()->set('cbox-id.tenancy.multi_tenant', false);
-    config()->set('cbox-id.tenancy.account_host', null);
-    config()->set('cbox-id.environments.base_domains', []);
+    actAsEnvironmentAdmin($globexOwner, app(Environment::class)->newQuery()->where('slug', 'globex')->value('id') ?? '');
+    useEnvironmentConsole($acme);
 
-    $this->get('/admin/organizations')->assertNotFound();
-    $this->get('/admin/login')->assertNotFound();
+    $this->get(envConsole())->assertNotFound();
+    $this->get(envConsole('/users'))->assertNotFound();
+    $this->post(envConsole('/organizations'), ['name' => 'Nope'])->assertNotFound();
 })->group('security');
 
-/*
-|--------------------------------------------------------------------------
-| Privilege boundary — "accessible" is not "administrable"
-|--------------------------------------------------------------------------
-| A viewer/billing account member defaults to all_environments=true on invite,
-| so they CAN reach every environment. Administering an environment's control
-| plane is an owner/admin/developer capability (MembershipRole::canManageEnvironments).
-| The env-admin session chokepoint and the handoff-mint door must both refuse the
-| scoped roles even though the environment is reachable.
-*/
+it('answers 404 when the path\'s organization, project and environment do not belong together', function (): void {
+    ['organization' => $organization, 'project' => $project, 'env' => $env, 'subjectId' => $owner] = envAdminSetup();
+    actAsEnvironmentAdmin($owner, $env->id);
 
-it('refuses a reachable-but-unprivileged member at the env-admin session chokepoint', function (): void {
+    $host = 'http://'.config('cbox-id.tenancy.account_host');
+
+    $this->get($host.'/orgs/'.$organization->slug.'/projects/'.$project->slug.'/environments/'.$env->slug)->assertOk();
+    $this->get($host.'/orgs/'.$organization->slug.'/projects/not-this-project/environments/'.$env->slug)->assertNotFound();
+    $this->get($host.'/orgs/not-this-org/projects/'.$project->slug.'/environments/'.$env->slug)->assertNotFound();
+    $this->get($host.'/orgs/'.$organization->slug.'/projects/'.$project->slug.'/environments/'.platformRootEnvironment()->slug)->assertNotFound();
+})->group('security');
+
+it('gives a Reader the console to read and nothing to change', function (): void {
+    ['organization' => $organization, 'envId' => $envId] = envAdminSetup();
+
+    [$reader] = addMember($organization->id, MembershipRole::Viewer, 'reader@acme.example');
+    grantNativeProductRoles($reader, ['viewer']);
+
+    actAsEnvironmentAdmin($reader->user_id, $envId);
+
+    $this->get(envConsole('/users'))->assertOk();
+    $this->post(envConsole('/organizations'), ['name' => 'Nope'])->assertForbidden();
+})->group('security');
+
+it('binds a record id from another environment to nothing: 404, never the other environment\'s record', function (): void {
+    ['project' => $project, 'envId' => $envId, 'subjectId' => $owner] = envAdminSetup();
+    $sandbox = secondEnvironment($project);
+
+    // A user who lives in the SANDBOX, asked for under PRODUCTION's path.
+    $stranger = app(EnvironmentContext::class)->runAs($sandbox, fn () => app(Subjects::class)->create('sandbox-user@acme.example', 'Sandbox User', 'a-strong-unbreached-passphrase'));
+    $local = app(EnvironmentContext::class)->runAs(Environment::query()->findOrFail($envId), fn () => app(Subjects::class)->create('prod-user@acme.example', 'Prod User', 'a-strong-unbreached-passphrase'));
+
+    actAsEnvironmentAdmin($owner, $envId);
+
+    $this->get(envConsole('/users/'.$local->id))->assertOk();
+    $this->get(envConsole('/users/'.$stranger->id))->assertNotFound();
+
+    // …and the same id under the sandbox's own path is that user.
+    useEnvironmentConsole($sandbox->id);
+    $this->get(envConsole('/users/'.$stranger->id))->assertOk();
+})->group('security');
+
+it('sends a signed-out visitor to the app host\'s sign-in, and back afterwards', function (): void {
+    ['envId' => $envId] = envAdminSetup();
+    useEnvironmentConsole($envId);
+    serveConsoleOn();
+
+    // The app host's own sign-in, in the session the console is served in.
+    $this->get(envConsole('/users'))->assertRedirect('http://'.parse_url(envConsole(), PHP_URL_HOST).'/login');
+    expect(session('url.intended'))->toBe(envConsole('/users'));
+});
+
+it('redirects a tenant host\'s old /admin addresses to the same page on the app host', function (): void {
+    ['env' => $env, 'subjectId' => $owner] = envAdminSetup();
+    actAsEnvironmentAdmin($owner, $env->id);
+    $host = $env->slug.'.cboxid.com';
+
+    $this->get('https://'.$host.'/admin')
+        ->assertStatus(302)
+        ->assertHeader('Deprecation', 'true')
+        ->assertRedirect('https://'.config('cbox-id.tenancy.account_host').'/'.app(EnvironmentConsolePath::class)->for($env->id));
+
+    $this->get('https://'.$host.'/admin/users?page=2')
+        ->assertStatus(302)
+        ->assertRedirect('https://'.config('cbox-id.tenancy.account_host').'/'.app(EnvironmentConsolePath::class)->for($env->id).'/users?page=2');
+
+    // Only a page is redirected. Nothing under `/admin` on a tenant's host acts any more.
+    // `/admin/organizations` is platform admin's now, which a tenant's host does not serve.
+    $this->post('https://'.$host.'/admin/organizations', ['name' => 'Nope'])->assertNotFound();
+    $this->post('https://'.$host.'/admin/handoff', ['token' => 'x'])->assertStatus(405);
+
+    // …and the console itself does not answer on a tenant's host.
+    $this->get('https://'.$host.'/'.app(EnvironmentConsolePath::class)->for($env->id).'/users')->assertNotFound();
+})->group('security');
+
+it('redirects the root host\'s old /admin addresses to /admin/environment', function (): void {
+    envAdminSetup();
+
+    $this->get('https://cboxid.com/admin/social-sign-in')
+        ->assertStatus(302)
+        ->assertRedirect('https://cboxid.com/admin/environment/social-sign-in');
+});
+
+it('has no console for a suspended environment, not even for its owner', function (): void {
+    ['env' => $env, 'subjectId' => $owner] = envAdminSetup();
+    actAsEnvironmentAdmin($owner, $env->id);
+
+    $this->get(envConsole('/users'))->assertOk();
+
+    // An operator's suspension is a kill switch for the console too, as it was on the
+    // environment's own host: no keys, vault or sign-in to change behind it.
+    app(PlatformRoot::class)->run(fn () => $env->forceFill(['status' => EnvironmentStatus::Suspended])->save());
+
+    $this->get(envConsole('/users'))->assertNotFound();
+    $this->get(envConsole())->assertNotFound();
+})->group('security');
+
+it('counts every use of an old console address', function (): void {
+    ['env' => $env, 'subjectId' => $owner] = envAdminSetup();
+    actAsEnvironmentAdmin($owner, $env->id);
+
+    Log::spy();
+
+    $this->get('https://'.$env->slug.'.cboxid.com/admin/users')->assertStatus(302);
+
+    Log::shouldHaveReceived('notice')->withArgs(
+        fn (string $message, array $context): bool => str_contains($message, '/admin/users') && ($context['surface'] ?? null) === 'console_url',
+    )->once();
+});
+
+it('has no environment console on a single-tenant deployment', function (): void {
+    ['envId' => $envId, 'subjectId' => $owner] = envAdminSetup();
+    actAsEnvironmentAdmin($owner, $envId);
+
+    singleTenantDeployment();
+
+    $this->get(envConsole('/users'))->assertNotFound();
+    $this->get('/admin/users')->assertNotFound();
+});
+
+it('refuses a reachable-but-unprivileged member', function (): void {
     ['organization' => $account, 'envId' => $envId] = envAdminSetup();
     $members = app(Memberships::class);
 
     foreach ([MembershipRole::Viewer, MembershipRole::Member] as $role) {
-        [$m, $mSubjectId] = addMember($account->id, $role, $role->value.'-choke@acme.example');
+        [$m] = addMember($account->id, $role, $role->value.'-choke@acme.example');
 
         // Precondition: the default invite grants access to the environment.
-        expect(app(PlatformRoot::class)->run(fn (): array => app(PlatformRoot::class)->run(fn (): array => $members->accessibleEnvironmentIds($m->organization_id, $m->user_id))))->toContain($envId);
+        expect(app(PlatformRoot::class)->run(fn (): array => $members->accessibleEnvironmentIds($m->organization_id, $m->user_id)))->toContain($envId);
 
         actAsEnvironmentAdmin($m->user_id, $envId);
         app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
 
-        // Reachable, yet the admin session must not resolve — no control-plane power.
+        // Reachable, yet no administrator resolves — no control-plane power.
         expect(app(EnvironmentAdminAuth::class)->membership())->toBeNull();
+        $this->get(envConsole('/users'))->assertNotFound();
     }
-});
+})->group('security');
 
-it('admits owner, admin, and developer to the env-admin session', function (): void {
+it('admits owner, admin, and developer', function (): void {
     ['organization' => $account, 'member' => $owner, 'envId' => $envId] = envAdminSetup();
-    $members = app(Memberships::class);
 
     $admit = ['owner' => $owner];
     foreach ([MembershipRole::Admin, MembershipRole::Developer] as $role) {
-        [$m, $mSubjectId] = addMember($account->id, $role, $role->value.'-ok@acme.example');
+        [$m] = addMember($account->id, $role, $role->value.'-ok@acme.example');
         grantNativeProductRoles($m, [$role->value]);
         $admit[$role->value] = $m;
     }
@@ -324,278 +346,65 @@ it('admits owner, admin, and developer to the env-admin session', function (): v
         actAsEnvironmentAdmin($member->user_id, $envId);
         app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
         expect(app(EnvironmentAdminAuth::class)->membership()?->id)->toBe($member->id);
+        $this->get(envConsole('/users'))->assertOk();
     }
 });
 
-it('refuses to mint a handoff for a reachable-but-unprivileged member (fail before the credential exists)', function (): void {
-    ['organization' => $account, 'envId' => $envId] = envAdminSetup();
-    config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
-    $members = app(Memberships::class);
-
-    [$viewer, $viewerSubjectId] = addMember($account->id, MembershipRole::Viewer, 'viewer-mint@acme.example');
-
-    // On the ACCOUNT HOST this fixture names. The mint used to live under `/workspace`,
-    // whose gate asked the ENVIRONMENT context — which an unmapped host resolves to the
-    // platform root, so any host reached it. It is a console route now, and `plane:console`
-    // asks the HOST by design: a sign-in served under every name pointed at us is the
-    // thing that gate exists to prevent.
-    $open = 'https://cboxid.com'.route('environment.open', $envId, absolute: false);
-
-    // Viewer reaches the env but is refused the mint — 403, no handoff token issued.
-    signInAsMember($viewerSubjectId);
-    $this->get($open)->assertForbidden();
-
-    // A developer is handed to the environment host to redeem — a self-submitting form
-    // carrying the token, not a 403.
-    [$dev, $devSubjectId] = addMember($account->id, MembershipRole::Developer, 'dev-mint@acme.example');
-    grantNativeProductRoles($dev, ['developer']);
-    signInAsMember($devSubjectId);
-    $this->get($open)->assertOk()->assertSee('/admin/handoff', false);
-});
-
-/**
- * The anchor, isolated from the access check that was standing in front of it.
- *
- * The original anti-bleed test used an environment the member had no access to, so
- * DELETING the anchor comparison left it green: the per-request access check refused
- * the session anyway. Two guards, one test, and only one of them was actually being
- * exercised.
- *
- * This is the case where they disagree — an owner with `all_environments`, so they may
- * administer BOTH, holding a session anchored to the first while standing on the second's
- * host. Access says yes; the anchor says no, and the anchor is right. An admin session is
- * minted by a one-time, audited handoff for ONE environment, and the session cookie is
- * shared across `*.cboxid.com` — without the anchor, redeeming a handoff for staging
- * would silently open production too.
- */
-it('refuses a session anchored to one environment on another the same admin may also administer', function (): void {
-    ['member' => $member, 'organization' => $account, 'envId' => $envId] = envAdminSetup();
-
-    $second = app(TenantProvisioner::class)->addEnvironment(
-        app(PlatformRoot::class)->run(fn () => $account->projects()->firstOrFail()),
-        'Staging',
-    );
-
-    // Access is NOT what refuses here — state it, or this is the old test again.
-    expect(in_array($second->id, app(PlatformRoot::class)->run(fn (): array => app(Memberships::class)->accessibleEnvironmentIds($member->organization_id, $member->user_id)), true))
-        ->toBeTrue('fixture: the admin must be entitled to BOTH, or the anchor is not what holds');
-
-    actAsEnvironmentAdmin($member->user_id, $envId);
-
-    $auth = app(EnvironmentAdminAuth::class);
-
+it('answers for nobody outside an environment console request', function (): void {
+    ['envId' => $envId, 'subjectId' => $owner] = envAdminSetup();
+    actAsEnvironmentAdmin($owner, $envId);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
-    expect($auth->membership()?->id)->toBe($member->id);
+    expect(app(EnvironmentAdminAuth::class)->subjectId())->toBe($owner);
 
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($second->id));
-    expect($auth->membership())
-        ->toBeNull('a session anchored to one environment administered another on the same cookie');
-})->group('security');
-
-/**
- * THE LOCKOUT A REAL ADMINISTRATOR HIT, in production.
- *
- * A tenant host serves two identities over one cookie: the environment ADMIN console (an
- * account member, whose session resolves in the platform root) and the tenant's own
- * end-user pages (a subject inside the environment). Neither can open the other's pages —
- * that is the design — and both refusals write the same `url.intended`.
- *
- * So: an admin opens `/device?user_code=…`, an end-user page. `redirect()->guest()` bounces
- * them to the tenant sign-in form and records `/device` as the intent. They go back to the
- * account console and open the environment again; the handoff redeems perfectly, mints a
- * good admin session — and then honours that intent. Straight to `/device`, which a
- * platform-root subject may not open, which bounces to the tenant login and rewrites the
- * intent. The admin console was unreachable from a browser that had once visited an
- * end-user page, and every hop was doing its job.
- */
-it('does not follow an end-user page an admin was bounced off', function (): void {
-    ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
-    serveOnTestHost($env);
-
-    // What `redirect()->guest()` leaves behind when /device refuses an admin.
-    $host = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
-
-    session()->put('url.intended', 'https://'.$host.'/device?user_code=GMGF-WDZW');
-
-    $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, $envId);
-
-    $this->post('/admin/handoff', handoffFields($token, (string) $member->user_id))->assertRedirect(route('environment.home'));
-
-    expect(app(EnvironmentAdminAuth::class)->subjectId())->toBe($member->user_id)
-        // And it is consumed, not left for the next sign-in on the other plane to trip on.
-        ->and(session('url.intended'))->toBeNull();
-});
-
-it('still resumes a page inside the admin console', function (): void {
-    ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
-    serveOnTestHost($env);
-
-    // On the host this request is actually made to. An intended URL naming another host
-    // is refused outright rather than reasoned about — that is an open redirect wearing a
-    // convenience feature's clothes.
-    $host = (string) parse_url((string) config('app.url'), PHP_URL_HOST);
-
-    session()->put('url.intended', 'https://'.$host.'/admin/organizations');
-
-    $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, $envId);
-
-    $this->post('/admin/handoff', handoffFields($token, (string) $member->user_id))
-        ->assertRedirect('https://'.$host.'/admin/organizations');
-});
-
-/**
- * The other half of the same collision, and the reverse of what it used to assert. A subject
- * signing in on this host used to REPLACE the admin session there — one cookie, one session
- * key — and the anchor had to be dropped by hand. The two are separate contexts now, each
- * under its own keys ({@see EnvironmentAdminAuth::SESSION_KEY}): the tenant's end user
- * signing in leaves the administrator administering, and neither names the other's row.
- */
-it('keeps the admin context when a subject of the tenant signs in on the same host', function (): void {
-    ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
-    serveOnTestHost($env);
-
-    actAsEnvironmentAdmin($member->user_id, $envId);
-    expect(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId);
-
-    $subject = app(EnvironmentContext::class)->runAs(
-        GenericEnvironment::of($envId),
-        fn () => app(Subjects::class)->create('enduser@acme.example', 'End User', 'a-strong-unbreached-passphrase'),
-    );
-
-    app(EnvironmentContext::class)->runAs(
-        GenericEnvironment::of($envId),
-        fn () => app(PlatformAuth::class)->establish(request(), $subject->id, ['pwd']),
-    );
-
+    // A request that is not a console request: the same person, the same environment
+    // context — and no administrator, because only the path middleware says "console".
+    request()->attributes->remove(EnvironmentAdminAuth::ENVIRONMENT_CONSOLE);
+    app()->forgetScopedInstances();
     app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
 
-    expect(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId)
-        ->and(session(EnvironmentAdminAuth::SESSION_KEY))->not->toBe(session(PlatformAuth::SESSION_KEY))
-        ->and(app(EnvironmentAdminAuth::class)->subjectId())->toBe($member->user_id);
+    expect(app(EnvironmentAdminAuth::class)->subjectId())->toBeNull();
 })->group('security');
 
-/**
- * THE HANDOFF TOKEN NEVER SITS IN A URL.
- *
- * It used to be a redirect to `/admin/handoff?token=…` — a live bearer credential written
- * into the browser history and into the access log of every proxy between the browser and
- * the tenant host. The minting door now answers with a self-submitting form that POSTs the
- * token, and that page carries a policy of its own: the console's `form-action` names no
- * tenant host, so under the global policy the post would simply be refused.
- */
-it('hands the token over in a self-submitting POST, never in a URL', function (): void {
-    ['subjectId' => $subjectId, 'envId' => $envId, 'host' => $host] = envAdminSetup();
-    config(['cbox-id.environments.base_domains' => ['cboxid.com']]);
-    signInAsMember($subjectId);
+/*
+|--------------------------------------------------------------------------
+| Step-up: three windows that never satisfy one another.
+|--------------------------------------------------------------------------
+*/
 
-    $response = $this->get('https://cboxid.com'.route('environment.open', $envId, absolute: false))
-        ->assertOk()
-        ->assertHeaderMissing('Location')
-        ->assertSee('<form method="post" action="https://'.$host.'/admin/handoff">', false)
-        ->assertHeader('Referrer-Policy', 'no-referrer');
+it('keeps the environment step-up apart from the organization step-up, both ways', function (): void {
+    ['envId' => $envId, 'subjectId' => $owner] = envAdminSetup();
+    actAsEnvironmentAdmin($owner, $envId);
 
-    expect((string) $response->headers->get('Cache-Control'))->toContain('no-store');
+    // The organization's `/sudo` confirmed: an environment action still asks.
+    app(Sudo::class)->confirm();
+    $this->get(envConsole('/token-vault'))->assertRedirect();
 
-    // The token is in the body, and it is a real one for this environment.
-    preg_match('#name="token" value="([^"]+)"#', (string) $response->getContent(), $token);
-    expect(app(EnvironmentAdminHandoff::class)->verify(html_entity_decode($token[1] ?? ''))?->environmentId)->toBe($envId);
-
-    // Its own policy, narrower than the console's everywhere — and naming the one tenant
-    // origin the form posts to, or the browser refuses the submission.
-    $csp = (string) $response->headers->get('Content-Security-Policy');
-    expect($csp)->toContain("default-src 'none'")
-        ->and($csp)->toContain('https://'.$host)
-        ->and($csp)->toContain("frame-ancestors 'none'")
-        ->and($csp)->not->toContain('unsafe-inline');
-
-    // The submit script runs under the nonce the header permits, and nothing else does.
-    preg_match("#script-src 'nonce-([^']+)'#", $csp, $nonce);
-    expect((string) $response->getContent())->toContain('<script nonce="'.($nonce[1] ?? 'missing').'">');
+    // The environment's confirmed: the organization's window is still shut.
+    confirmEnvironmentStepUp();
+    $this->get(envConsole('/token-vault'))->assertOk();
+    session()->forget(Sudo::SESSION_KEY);
+    expect(app(Sudo::class)->confirmed())->toBeFalse();
 })->group('security');
 
-it('refuses a handoff presented in a URL', function (): void {
-    ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
-    serveOnTestHost($env);
+it('binds an environment step-up to the environment it was confirmed in', function (): void {
+    ['project' => $project, 'envId' => $envId, 'subjectId' => $owner] = envAdminSetup();
+    $sandbox = secondEnvironment($project);
 
-    $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, $envId);
+    actAsEnvironmentAdmin($owner, $sandbox->id);
+    confirmEnvironmentStepUp();
+    $this->get(envConsole('/token-vault'))->assertOk();
 
-    // The old shape — a GET with the token in the query string — is not a door any more.
-    // It is refused to the gate without the token being read, and it says so in headers
-    // that keep the refusal out of every cache and every Referer.
-    $this->get('/admin/handoff?token='.urlencode($token))
-        ->assertRedirect(route('admin.login'))
-        ->assertHeader('Referrer-Policy', 'no-referrer');
-    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
-
-    // Nor is a POST that carries the token in its URL rather than its body: accepting it
-    // there would keep exactly the leak the move to POST closes.
-    $this->post('/admin/handoff?token='.urlencode($token))->assertRedirect(route('admin.login'));
-    expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
+    useEnvironmentConsole($envId);
+    $this->get(envConsole('/token-vault'))->assertRedirect();
 })->group('security');
 
-it('marks every handoff answer no-store and no-referrer', function (): void {
-    ['member' => $member, 'env' => $env, 'envId' => $envId] = envAdminSetup();
-    serveOnTestHost($env);
+it('serves the environment step-up under the environment\'s own path, with its mobile door', function (): void {
+    ['envId' => $envId, 'subjectId' => $owner] = envAdminSetup();
+    actAsEnvironmentAdmin($owner, $envId);
 
-    $refused = $this->post('/admin/handoff', ['token' => 'not-a-handoff'])
-        ->assertRedirect(route('admin.login'))
-        ->assertHeader('Referrer-Policy', 'no-referrer');
-    expect((string) $refused->headers->get('Cache-Control'))->toContain('no-store');
+    expect(route('environment.sudo'))->toBe(envConsole('/sudo'))
+        ->and(route('environment.sudo.mobile'))->toBe(envConsole('/sudo/mobile'));
 
-    $token = app(EnvironmentAdminHandoff::class)->mint((string) $member->user_id, $envId);
-
-    $redeemed = $this->post('/admin/handoff', handoffFields($token, (string) $member->user_id))
-        ->assertRedirect(route('environment.home'))
-        ->assertHeader('Referrer-Policy', 'no-referrer');
-    expect((string) $redeemed->headers->get('Cache-Control'))->toContain('no-store');
+    $this->get(envConsole('/sudo'))->assertOk();
+    $this->getJson(envConsole('/sudo/mobile'))->assertStatus(200);
 })->group('security');
-
-/**
- * The form is rendered by the ACCOUNT host, so it cannot carry the ENVIRONMENT host's CSRF
- * token — and Laravel's test helpers skip CSRF, so only the configuration can say whether
- * a real browser's post would be answered 419. Exactly this path and nothing else under
- * `admin/`: every other write there rides an ambient session.
- */
-it('exempts exactly the handoff redemption from CSRF', function (): void {
-    $property = new ReflectionProperty(ValidateCsrfToken::class, 'neverVerify');
-
-    /** @var list<string> $patterns */
-    $patterns = $property->getValue();
-
-    expect($patterns)->toContain('admin/handoff')
-        ->and(collect($patterns)->filter(fn (string $p): bool => str_starts_with($p, 'admin'))->values()->all())
-        ->toBe(['admin/handoff']);
-})->group('security');
-
-it('preserves a verified operators MFA when handing off into the tenant console', function (): void {
-    ['subjectId' => $subject, 'env' => $env, 'envId' => $envId] = envAdminSetup();
-    $operator = app(PlatformOperators::class)->create('owner@acme.example', 'a-strong-unbreached-passphrase', 'Owner');
-    expect($operator->subject_id)->toBe($subject);
-    signInAsStrongOperator($subject);
-    $parent = session(PlatformAuth::SESSION_KEY);
-    serveOnTestHost($env);
-    $token = app(EnvironmentAdminHandoff::class)->mint($subject, $envId);
-    $this->post('/admin/handoff', handoffFields($token, $subject, $parent))->assertRedirect(route('environment.home'));
-    $sessionId = session(EnvironmentAdminAuth::SESSION_KEY);
-    $session = app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->active($sessionId));
-    expect($session->amr)->toContain('otp', 'handoff');
-    $this->get('/admin')->assertOk();
-});
-
-it('does not borrow another subjects MFA or trust posted MFA claims during handoff', function (): void {
-    ['subjectId' => $subject, 'env' => $env, 'envId' => $envId] = envAdminSetup();
-    app(PlatformOperators::class)->create('owner@acme.example', 'a-strong-unbreached-passphrase', 'Owner');
-    [$weak, $foreign] = app(PlatformRoot::class)->run(function () use ($subject): array {
-        $other = app(Subjects::class)->create('other@acme.example', 'Other');
-        $sessions = app(SessionManager::class);
-
-        return [$sessions->start($subject, null, ['pwd'])->id, $sessions->start($other->id, null, ['pwd', 'otp'])->id];
-    });
-    serveOnTestHost($env);
-    $token = app(EnvironmentAdminHandoff::class)->mint($subject, $envId);
-    $this->post('/admin/handoff', ['token' => $token,
-        SignInLineage::FIELD => app(SignInLineage::class)->seal($token, [$foreign, $weak]),
-        'amr' => ['pwd', 'otp'],
-    ])->assertRedirect(route('admin.login'));
-    expect(session(EnvironmentAdminAuth::SESSION_KEY))->toBeNull();
-});

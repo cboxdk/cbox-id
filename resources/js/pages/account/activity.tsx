@@ -306,12 +306,9 @@ export default function Activity({
                     // state saying nothing is recorded yet.
                     activity.length === 0
                         ? consoleText('console.sign_ins_and_changes_to_how_you_sign_in_7dad1547')
-                        : consoleFinalText(
-                              'console.account_recent_events_count',
-                              {
-                                  count: activity.length,
-                              },
-                          )
+                        : consoleFinalText('console.account_recent_events_count', {
+                              count: activity.length,
+                          })
                 }
                 className="mt-6"
             >

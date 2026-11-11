@@ -46,7 +46,7 @@ it('lets the isolated account reach review and its normal enrolment page without
     signInAppReviewer();
 
     $this->get('/authenticator/review')->assertOk()->assertSee('Try an approval on your iPhone');
-    $this->get('/account/devices')->assertOk();
+    $this->get('/settings/devices')->assertOk();
 });
 
 it('denies review access unless every configured boundary matches', function (string $setting, mixed $value): void {

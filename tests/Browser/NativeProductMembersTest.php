@@ -53,7 +53,7 @@ it('lets a native Reader inspect a user with visibly disabled write controls', f
     grantNativeProductRoles($reader, ['viewer']);
     actAsEnvironmentAdmin($subject, $owner['envId']);
 
-    $page = visit('/admin/users/'.$user->id);
+    $page = visit(envConsole('/users/').$user->id);
     $page->assertSee('Visible Person')->assertSee('Read-only')
         ->assertScript('document.querySelectorAll("fieldset:disabled").length > 0', true)
         ->assertScript('Array.from(document.querySelectorAll("form input, form button")).every(control => control.matches(":disabled"))', true)

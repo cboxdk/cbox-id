@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\AdminPortal;
 use App\Platform\Enums\PortalIntent;
 use App\Platform\Enums\PortalScope;
+use App\Platform\IssuerUrl;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Enums\ConnectionType;
@@ -327,5 +328,6 @@ it('shows the SP metadata URL in the Admin Portal\'s step 2 and on the console\'
     $this->get(route('environment.connections.show', $mine->id))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('serviceProvider.sp_metadata_url', route('sso.saml.metadata', $mine->id)));
+            // On the environment's own host, where the identity provider will fetch it.
+            ->where('serviceProvider.sp_metadata_url', IssuerUrl::to(route('sso.saml.metadata', $mine->id, false))));
 });

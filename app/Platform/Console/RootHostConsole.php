@@ -19,17 +19,17 @@ use Illuminate\Support\Facades\Route;
  * workspace's record in the root environment — which nobody signs in to with it. An
  * operator who opened `cboxid.com/social-sign-in` to put Google on the platform's sign-in
  * page got a page that looked exactly like that and silently configured something else.
- * {@see WorkspaceAltitude} hid most of them from a workspace owner's rail and still served
+ * {@see OrganizationAltitude} hid most of them from a workspace owner's rail and still served
  * them by URL, and an operator was given all of them.
  *
  * NOW EVERY PAGE ON THIS HOST ACTS ON WHAT IT SAYS:
  *
- *  - the workspace's own pages ({@see WorkspaceAltitude}: projects, team, keys, billing,
+ *  - the workspace's own pages ({@see OrganizationAltitude}: projects, team, keys, billing,
  *    settings, the team's own sign-in to Cbox, its activity log), the person's account and
  *    the landing pages are served as they were — except that an OPERATOR's every sign-in
  *    page is the platform environment's, the team's own included;
  *  - platform admin is not on this console's rail at all: it is the Platform area of the
- *    platform environment's console (`/admin/platform/…`), and the account menu's
+ *    platform environment's console (`/admin/…`), and the account menu's
  *    "Platform admin" is the way there. Its pages carry their own operator gate and never
  *    this console's door, so only the rail has to leave them out;
  *  - a page that sets something an ENVIRONMENT owns — social login, sign-in methods,
@@ -82,7 +82,7 @@ final readonly class RootHostConsole
         }
 
         return ($area === 'overview' && in_array($route, self::OVERVIEW, true))
-            || WorkspaceAltitude::keepsPage($area, $route);
+            || OrganizationAltitude::keepsPage($area, $route);
     }
 
     /**

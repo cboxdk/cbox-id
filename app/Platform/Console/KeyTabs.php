@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Route;
  *    that hold them, so that tab IS AI agents › Agents — which draws these tabs too, so an
  *    agent's key and the other kinds are one click apart in both directions. Workspace keys
  *    reach the workspace rather than this environment and live on the workspace's host, so
- *    that tab is an absolute link there ({@see ShellContext::onWorkspaceHost()}).
+ *    that tab is an absolute link there ({@see ShellContext::onOrganizationHost()}).
  *
  * Secret keys come first on both, because they are the ones a developer reaches for. A
  * tab the person may not open is not drawn, by the same questions the tab's own page asks.
@@ -35,7 +35,7 @@ final readonly class KeyTabs
 {
     public const MANAGEMENT = 'management';
 
-    public const WORKSPACE = 'workspace';
+    public const ORGANIZATION = 'organization';
 
     public const FRONTEND = 'frontend';
 
@@ -61,8 +61,8 @@ final readonly class KeyTabs
 
             // Only where there IS a workspace host to send them to: a single-host deployment
             // has no second origin, and the same path here would be a page this host refuses.
-            if ($this->planes->consoleHost() !== null && Route::has('keys.workspace')) {
-                $tabs[] = new LinkTabProps(self::WORKSPACE, ConsoleLabels::navigation(Vocabulary::WORKSPACE_KEYS), $this->shell->onWorkspaceHost('keys.workspace'), false);
+            if ($this->planes->consoleHost() !== null && Route::has('orgs.settings.api-keys.organization')) {
+                $tabs[] = new LinkTabProps(self::ORGANIZATION, ConsoleLabels::navigation(Vocabulary::ORGANIZATION_KEYS), $this->shell->onOrganizationHost('orgs.settings.api-keys.organization'), false);
             }
 
             return $tabs;
@@ -71,11 +71,11 @@ final readonly class KeyTabs
         $can = $this->scope->capabilities();
 
         if ($can?->canManageEnvironments() === true) {
-            $tabs[] = new LinkTabProps(self::MANAGEMENT, ConsoleLabels::navigation(Vocabulary::SECRET_KEYS), route('keys'), $current === self::MANAGEMENT);
+            $tabs[] = new LinkTabProps(self::MANAGEMENT, ConsoleLabels::navigation(Vocabulary::SECRET_KEYS), route('orgs.settings.api-keys'), $current === self::MANAGEMENT);
         }
 
         if ($can?->canManageMembers() === true) {
-            $tabs[] = new LinkTabProps(self::WORKSPACE, ConsoleLabels::navigation(Vocabulary::WORKSPACE_KEYS), route('keys.workspace'), $current === self::WORKSPACE);
+            $tabs[] = new LinkTabProps(self::ORGANIZATION, ConsoleLabels::navigation(Vocabulary::ORGANIZATION_KEYS), route('orgs.settings.api-keys.organization'), $current === self::ORGANIZATION);
         }
 
         return $tabs;

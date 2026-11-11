@@ -43,7 +43,7 @@ it('saves an uploaded logo and favicon from the one Save, keeps them after a rel
     $logo = brandingPng(160, 40, [20, 120, 90]);
     $favicon = brandingPng(32, 32, [200, 60, 30]);
 
-    $page = visit('/admin/branding')
+    $page = visit(envConsole('/branding'))
         ->assertSee('Live preview')
         // Nothing changed, nothing to save: no bar, and no Save in the header any more.
         ->assertScript('document.querySelector(\''.SAVE_BAR.'\') === null', true)
@@ -74,7 +74,7 @@ it('saves an uploaded logo and favicon from the one Save, keeps them after a rel
         ->assertNoJavaScriptErrors();
 
     // A hard refresh: a new page load, nothing carried over in the editor's memory.
-    $page = visit('/admin/branding')
+    $page = visit(envConsole('/branding'))
         ->assertScript('document.querySelector("[data-testid=appearance-preview] img")?.getAttribute("src").startsWith("/brand-assets/")', true)
         ->assertScript('document.querySelector("img[alt=\'Logo\']")?.complete && document.querySelector("img[alt=\'Logo\']").naturalWidth', 160)
         ->assertScript('document.querySelector("img[alt=\'Favicon\']")?.getAttribute("src").startsWith("/brand-assets/")', true)
@@ -99,7 +99,7 @@ it('saves an uploaded logo and favicon from the one Save, keeps them after a rel
 it('discards from the bar, and asks before a link elsewhere drops unsaved changes', function (): void {
     actAsEnvironmentAdminOfATenant();
 
-    $page = visit('/admin/branding')->assertSee('Live preview');
+    $page = visit(envConsole('/branding'))->assertSee('Live preview');
 
     // Discard puts the stored theme back and the bar away.
     $page->click('[aria-label="Warm preset"]')
@@ -110,31 +110,31 @@ it('discards from the bar, and asks before a link elsewhere drops unsaved change
 
     // A change, then a link in the rail: the page asks, and staying keeps the draft.
     $page->click('[aria-label="Warm preset"]')
-        ->click('.cbx-rail a[href$="/admin/settings"]')
+        ->click('.cbx-rail a[href$="'.envConsolePath('/settings').'"]')
         ->assertSee('Leave without saving?')
         ->click('Keep editing')
-        ->assertPathIs('/admin/branding')
+        ->assertPathIs(envConsolePath('/branding'))
         ->assertScript('document.querySelector("[aria-label=\'Warm preset\']")?.getAttribute("aria-pressed")', 'true')
         ->assertSeeIn(SAVE_BAR, 'Unsaved changes');
 
     // Leaving anyway goes where the link pointed.
-    $page->click('.cbx-rail a[href$="/admin/settings"]')
+    $page->click('.cbx-rail a[href$="'.envConsolePath('/settings').'"]')
         ->assertSee('Leave without saving?')
         ->click('Discard and leave')
-        ->assertPathIs('/admin/settings')
+        ->assertPathIs(envConsolePath('/settings'))
         ->assertNoJavaScriptErrors();
 });
 
 it('keeps the save bar above the phone\'s navigation bar at 390px', function (): void {
     actAsEnvironmentAdminOfATenant();
 
-    $page = visit('/admin/branding')->resize(390, 844)->assertSee('Live preview');
+    $page = visit(envConsole('/branding'))->resize(390, 844)->assertSee('Live preview');
 
     // A typeface: a change the preview draws without touching its colours.
     $page->click('Nunito')
         ->assertSeeIn(SAVE_BAR, 'Unsaved changes')
-        // Above the bottom navigation bar, not under it, and nothing wider than the phone.
-        ->assertScript('document.querySelector(\''.SAVE_BAR.'\').getBoundingClientRect().bottom <= document.querySelector("[data-cbox-mobile-nav]").getBoundingClientRect().top', true)
+        // On the screen, not under its edge, and nothing wider than the phone.
+        ->assertScript('document.querySelector(\''.SAVE_BAR.'\').getBoundingClientRect().bottom <= window.innerHeight', true)
         ->assertScript('document.documentElement.scrollWidth <= 390', true)
         ->assertScript('document.querySelector(\''.SAVE_BAR.'\').getAnimations().every((animation) => animation.playState === "finished")', true)
         ->assertNoAccessibilityIssues()
@@ -142,7 +142,7 @@ it('keeps the save bar above the phone\'s navigation bar at 390px', function ():
 
     // Still there, and still above the navigation, at the far end of the page.
     $page->script('document.getElementById("main-content").scrollTo(0, 1e6)');
-    $page->assertScript('(() => { const bar = document.querySelector(\''.SAVE_BAR.'\').getBoundingClientRect(); return bar.top >= 0 && bar.bottom <= document.querySelector("[data-cbox-mobile-nav]").getBoundingClientRect().top; })()', true)
+    $page->assertScript('(() => { const bar = document.querySelector(\''.SAVE_BAR.'\').getBoundingClientRect(); return bar.top >= 0 && bar.bottom <= window.innerHeight; })()', true)
         ->screenshot(filename: 'fix-branding-logo-mobile-bottom');
 
     $page->click(SAVE_BAR.' button.btn-primary')

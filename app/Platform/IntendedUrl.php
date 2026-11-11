@@ -4,28 +4,18 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
-use App\Http\Controllers\EnvironmentHandoffController;
+use App\Http\Controllers\EnvironmentConsoleRedirectController;
 
 /**
- * The page somebody was trying to reach before they were asked to sign in — and which of
- * the two identities on a tenant host it belongs to.
+ * The page somebody was trying to reach before they were asked to sign in — and whether
+ * the sign-in that just finished may follow it.
  *
- * ONE HOST, TWO IDENTITIES, ONE `url.intended`. A tenant environment's host serves both
- * the environment ADMIN console (an account member, whose session resolves in the platform
- * root) and the tenant's own END-USER pages (a subject inside the environment). They share
- * a cookie, so they share this key — and neither can open the other's pages.
- *
- * That is how an administrator got stuck. Opening `/device?user_code=…` — an end-user page
- * — while holding an admin session bounced to the tenant sign-in form, and Laravel's
- * `redirect()->guest()` recorded `/device` as the intent. The SSO handoff from the account
- * console then succeeded, established a perfectly good admin session, and honoured that
- * intent: straight back to `/device`, which a platform-root subject may not open, which
- * bounced to the tenant login and rewrote the intent again. The console was unreachable
- * from a browser that had once visited an end-user page, and nothing about it looked like
- * a bug — every hop was doing its job.
- *
- * So an intent is claimed by the plane that can actually serve it, and anything else is
- * dropped rather than followed into a loop.
+ * A tenant environment's host used to serve both the environment ADMIN console and the
+ * tenant's own END-USER pages, under one cookie and so one `url.intended`, and an
+ * administrator who had once opened an end-user page was bounced in a loop between the two.
+ * The console lives on the app host now; on a tenant's host its old `/admin` address only
+ * redirects there, so an intent naming it is still not an end-user page and is dropped
+ * rather than followed.
  */
 final class IntendedUrl
 {
@@ -49,19 +39,8 @@ final class IntendedUrl
     /** How long a sign-in may take and still be on its way to the console it started at. */
     private const OPEN_STAMP_SECONDS = 15 * 60;
 
-    /** The account host's open-environment door, `/open/{environment}` ({@see EnvironmentHandoffController}). */
+    /** The account host's open-environment door, `/open/{environment}` ({@see EnvironmentConsoleRedirectController::open()}). */
     private const OPEN_PATH = '#\A/open/[A-Za-z0-9_-]+\z#';
-
-    /**
-     * The intended page for the environment ADMIN console, or null.
-     *
-     * Always consumes the stored value: an intent that this plane cannot serve is not one
-     * to leave lying around for the next sign-in on the other plane to trip over.
-     */
-    public static function pullForAdminConsole(): ?string
-    {
-        return self::pull(static fn (string $path): bool => str_starts_with($path, self::ADMIN_PREFIX));
-    }
 
     /** The intended page for an end-user (subject) session, or null. */
     public static function pullForSubject(): ?string

@@ -42,7 +42,7 @@ it('does not retarget a revoked organization selection to another membership', f
     $this->assertDatabaseMissing('invitations', ['email' => 'unintended@example.test']);
 })->group('security');
 
-it('refuses a suspended workspace membership behind an environment admin session', function (): void {
+it('refuses a suspended organization membership behind an environment admin session', function (): void {
     crudSetup();
     $this->get(route('environment.home'))->assertOk();
     $membership = app(EnvironmentAdminAuth::class)->membership();
@@ -50,7 +50,8 @@ it('refuses a suspended workspace membership behind an environment admin session
     app(PlatformRoot::class)->run(fn () => $membership->update(['status' => MembershipStatus::Suspended]));
 
     nextRequest();
-    $this->get(route('environment.home'))->assertRedirect();
+    // Still signed in, administering nothing here any more: the console does not exist for them.
+    $this->get(route('environment.home'))->assertNotFound();
     expect(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 })->group('security');
 
@@ -78,10 +79,11 @@ it('lets a native Reader enter the selected environment but refuses writes and r
     $this->get(route('environment.home'))->assertOk();
     expect(app(EnvironmentAdminAuth::class)->canRead())->toBeTrue()
         ->and(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
-    $this->post('/admin/organizations', ['name' => 'Forbidden organization'])->assertForbidden();
+    $this->post(envConsole('/organizations'), ['name' => 'Forbidden organization'])->assertForbidden();
 
     app(PlatformRoot::class)->run(fn () => app(Memberships::class)->setEnvironmentAccess($reader->organization_id, $subject, false, []));
     nextRequest();
-    $this->get(route('environment.home'))->assertRedirect();
+    // An environment no longer granted to them is a 404, like any they were never granted.
+    $this->get(route('environment.home'))->assertNotFound();
     expect(app(EnvironmentAdminAuth::class)->canRead())->toBeFalse();
 })->group('security');

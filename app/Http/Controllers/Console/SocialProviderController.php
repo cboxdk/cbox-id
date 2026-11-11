@@ -18,6 +18,7 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
+use App\Platform\IssuerUrl;
 use App\Platform\PlaneResolver;
 use App\Platform\Social\ProviderSetupSteps;
 use App\Platform\VerifiedEmailGate;
@@ -190,7 +191,7 @@ final readonly class SocialProviderController extends ConsoleController
 
         return [
             'kind' => app(EnvironmentAdminAuth::class)->onRootConsole() ? 'platform' : 'environment',
-            'host' => request()->getHost(),
+            'host' => IssuerUrl::host(),
             'consoleHost' => $planes->isMultiTenant() ? $planes->consoleHost() : null,
         ];
     }

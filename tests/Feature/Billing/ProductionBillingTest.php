@@ -30,10 +30,10 @@ it('refuses cross-workspace billing writes and read-only members before any paym
     $b = provisionAccount('owner-b@example.test');
     app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified($a['subjectId'], 'owner-a@example.test'));
     signInAsMember($a['subjectId']);
-    $this->postJson(route('billing.preview', $b['project']->id), ['operation' => 'plan', 'plan' => 'id-start'])->assertNotFound();
+    $this->postJson(route('orgs.settings.billing.preview', $b['project']->id), ['operation' => 'plan', 'plan' => 'id-start'])->assertNotFound();
     [, $viewer] = memberWithRole($a['organization']->id, MembershipRole::Viewer, 'viewer@example.test');
     signInAsMember($viewer);
-    $this->postJson(route('billing.setup'), ['organization' => $a['organization']->id])->assertForbidden();
+    $this->postJson(route('orgs.settings.billing.setup'), ['organization' => $a['organization']->id])->assertForbidden();
 });
 
 it('previews and confirms a project plan only once across repeated confirmations', function (): void {
@@ -48,9 +48,9 @@ it('previews and confirms a project plan only once across repeated confirmations
     $payments->shouldReceive('perform')->with('preview', $a['organization']->id, $a['project']->id, ['plan' => 'id-start'], Mockery::type('string'))->twice()->andReturn($preview);
     $payments->shouldReceive('perform')->with('change', $a['organization']->id, $a['project']->id, ['plan' => 'id-start'], Mockery::type('string'))->once()->andReturn($preview);
     app()->instance(ProjectPayments::class, $payments);
-    $quote = $this->postJson(route('billing.preview', $a['project']->id), ['operation' => 'plan', 'plan' => 'id-start'])->assertOk()->json('quote');
-    $this->postJson(route('billing.confirm', $a['project']->id), ['quote' => $quote])->assertOk();
-    $this->postJson(route('billing.confirm', $a['project']->id), ['quote' => $quote])->assertOk();
+    $quote = $this->postJson(route('orgs.settings.billing.preview', $a['project']->id), ['operation' => 'plan', 'plan' => 'id-start'])->assertOk()->json('quote');
+    $this->postJson(route('orgs.settings.billing.confirm', $a['project']->id), ['quote' => $quote])->assertOk();
+    $this->postJson(route('orgs.settings.billing.confirm', $a['project']->id), ['quote' => $quote])->assertOk();
     expect($a['project']->fresh()->environment_limit)->toBe($a['project']->environment_limit);
 });
 
@@ -64,18 +64,18 @@ it('requires a new confirmation if the charge or consequences changed after prev
     $payments->shouldReceive('subscription')->twice()->andReturn(['plan' => 'id-start', 'status' => 'active', 'recurring' => ['currency' => 'DKK']]);
     $payments->shouldReceive('perform')->with('preview', Mockery::any(), Mockery::any(), Mockery::any(), Mockery::any())->twice()->andReturn(['due_now_minor' => 100, 'new_recurring_tax' => ['total_minor' => 12500]], ['due_now_minor' => 200, 'new_recurring_tax' => ['total_minor' => 12500]]);
     app()->instance(ProjectPayments::class, $payments);
-    $quote = $this->postJson(route('billing.preview', $a['project']->id), ['operation' => 'plan', 'plan' => 'id-start'])->assertOk()->json('quote');
-    $this->postJson(route('billing.confirm', $a['project']->id), ['quote' => $quote])->assertConflict();
+    $quote = $this->postJson(route('orgs.settings.billing.preview', $a['project']->id), ['operation' => 'plan', 'plan' => 'id-start'])->assertOk()->json('quote');
+    $this->postJson(route('orgs.settings.billing.confirm', $a['project']->id), ['quote' => $quote])->assertConflict();
 });
 
-it('does not apply an old billing form to the workspace selected in another tab', function (): void {
+it('does not apply an old billing form to the organization selected in another tab', function (): void {
     config(['billing-client.base_url' => 'https://payments.test', 'billing-client.api_token' => 'test']);
     $a = provisionAccount('tab-billing-a@example.test');
     $b = provisionAccount('tab-billing-b@example.test');
     app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified($b['subjectId'], 'tab-billing-b@example.test'));
     signInAsMember($b['subjectId']);
-    $this->postJson(route('billing.setup'), ['organization' => $a['organization']->id])->assertForbidden();
-    $this->getJson(route('billing', ['organization' => $a['organization']->id]))->assertForbidden();
+    $this->postJson(route('orgs.settings.billing.setup'), ['organization' => $a['organization']->id])->assertForbidden();
+    $this->getJson(route('orgs.settings.billing', ['organization' => $a['organization']->id]))->assertForbidden();
 });
 
 it('sends project references and stable idempotency keys through the payment adapter', function (): void {
@@ -103,9 +103,9 @@ it('refuses a renewal confirmation after the subscription becomes paused', funct
     $payments = Mockery::mock(ProjectPayments::class);
     $payments->shouldReceive('subscription')->twice()->andReturn($subscription, array_replace($subscription, ['paused' => true]));
     app()->instance(ProjectPayments::class, $payments);
-    $quote = $this->postJson(route('billing.preview', $a['project']->id), ['operation' => 'reactivate'])
+    $quote = $this->postJson(route('orgs.settings.billing.preview', $a['project']->id), ['operation' => 'reactivate'])
         ->assertOk()->assertJsonPath('preview.new_recurring_tax.total_minor', 12500)->json('quote');
-    $this->postJson(route('billing.confirm', $a['project']->id), ['quote' => $quote])->assertConflict();
+    $this->postJson(route('orgs.settings.billing.confirm', $a['project']->id), ['quote' => $quote])->assertConflict();
 });
 
 it('quotes tax-inclusive first checkout and binds its currency and project before redirecting', function (string $currency): void {
@@ -118,12 +118,12 @@ it('quotes tax-inclusive first checkout and binds its currency and project befor
     $payments = Mockery::mock(ProjectPayments::class);
     $payments->shouldReceive('subscription')->twice()->andReturn(null);
     $payments->shouldReceive('perform')->once()->with('checkout', $a['organization']->id, $a['project']->id,
-        Mockery::on(fn ($input) => $input['plan'] === 'id-start' && $input['currency'] === $currency && $input['return_url'] === route('billing', ['organization' => $a['organization']->id])), Mockery::type('string'))
+        Mockery::on(fn ($input) => $input['plan'] === 'id-start' && $input['currency'] === $currency && $input['return_url'] === route('orgs.settings.billing', ['organization' => $a['organization']->id])), Mockery::type('string'))
         ->andReturn(['url' => 'https://checkout.example.test/session']);
     app()->instance(ProjectPayments::class, $payments);
-    $quote = $this->postJson(route('billing.preview', $a['project']->id), ['operation' => 'plan', 'plan' => 'id-start'])
+    $quote = $this->postJson(route('orgs.settings.billing.preview', $a['project']->id), ['operation' => 'plan', 'plan' => 'id-start'])
         ->assertOk()->assertJsonPath('operation', 'checkout')->assertJsonPath('preview.due_now_minor', 12500)->json('quote');
-    $this->postJson(route('billing.confirm', $a['project']->id), ['quote' => $quote])->assertOk()->assertJsonPath('url', 'https://checkout.example.test/session');
+    $this->postJson(route('orgs.settings.billing.confirm', $a['project']->id), ['quote' => $quote])->assertOk()->assertJsonPath('url', 'https://checkout.example.test/session');
 })->with(['DKK', 'EUR']);
 
 it('rechecks app billing authority before using a previously quoted confirmation', function (): void {
@@ -139,9 +139,9 @@ it('rechecks app billing authority before using a previously quoted confirmation
     $payments->shouldReceive('perform')->once()->with('preview', Mockery::any(), Mockery::any(), Mockery::any(), Mockery::any())
         ->andReturn(['due_now_minor' => 100, 'new_recurring_tax' => ['total_minor' => 12500]]);
     app()->instance(ProjectPayments::class, $payments);
-    $quote = $this->postJson(route('billing.preview', $account['project']->id), ['operation' => 'plan', 'plan' => 'id-start'])->assertOk()->json('quote');
+    $quote = $this->postJson(route('orgs.settings.billing.preview', $account['project']->id), ['operation' => 'plan', 'plan' => 'id-start'])->assertOk()->json('quote');
     grantNativeProductRoles($member, ['viewer']);
-    $this->postJson(route('billing.confirm', $account['project']->id), ['quote' => $quote])->assertForbidden();
+    $this->postJson(route('orgs.settings.billing.confirm', $account['project']->id), ['quote' => $quote])->assertForbidden();
 });
 
 it('refuses a first-checkout quote after another tab has already subscribed', function (): void {
@@ -154,6 +154,6 @@ it('refuses a first-checkout quote after another tab has already subscribed', fu
     $payments->shouldReceive('subscription')->twice()->andReturn(null, ['plan' => 'id-start', 'status' => 'active']);
     $payments->shouldNotReceive('perform');
     app()->instance(ProjectPayments::class, $payments);
-    $quote = $this->postJson(route('billing.preview', $account['project']->id), ['operation' => 'plan', 'plan' => 'id-start'])->assertOk()->json('quote');
-    $this->postJson(route('billing.confirm', $account['project']->id), ['quote' => $quote])->assertConflict();
+    $quote = $this->postJson(route('orgs.settings.billing.preview', $account['project']->id), ['operation' => 'plan', 'plan' => 'id-start'])->assertOk()->json('quote');
+    $this->postJson(route('orgs.settings.billing.confirm', $account['project']->id), ['quote' => $quote])->assertConflict();
 });

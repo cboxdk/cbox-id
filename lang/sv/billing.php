@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 return [
-    'description' => 'Hantera faktureringsuppgifter, betalkort och fakturor för den här arbetsytan.',
+    'description' => 'Hantera faktureringsuppgifter, betalkort och fakturor för den här organisationen.',
     'account' => 'Faktureringsuppgifter',
     'invoice_name' => 'Namn på fakturor',
     'billing_email' => 'E-post för fakturering',
@@ -39,7 +39,7 @@ return [
     'subtotal' => 'Delsumma',
     'tax' => 'Skatt',
     'tax_pending' => 'Skatten har inte beräknats ännu.',
-    'no_subscription' => 'Ingen prenumeration har tilldelats den här arbetsytan.',
+    'no_subscription' => 'Ingen prenumeration har tilldelats den här organisationen.',
     'allowance' => 'Tillåtet antal miljöer',
     'allowance_description' => 'Åtkomst och gränser tilldelas av en administratör.',
     'period' => 'Faktureringsperiod',
@@ -71,8 +71,8 @@ return [
     'credits_granted' => 'Inkluderade krediter som läggs till',
     'credits_carried' => 'Inkluderade krediter som förs över',
     'address_required' => 'Fyll i och spara din faktureringsadress innan du väljer en betalplan.',
-    'workspace_changed' => 'Arbetsytan ändrades i en annan flik. Ladda om sidan innan du ändrar faktureringen.',
-    'explanation' => 'Abonnemang gäller per projekt. Jämför priser och antal tillåtna miljöer. Faktureringsuppgifter, kort och fakturor delas av arbetsytan. Användningssiffror visar aktivitet; avgifter följer din valda plan.',
+    'organization_changed' => 'Organisationen ändrades i en annan flik. Ladda om sidan innan du ändrar faktureringen.',
+    'explanation' => 'Abonnemang gäller per projekt. Jämför priser och antal tillåtna miljöer. Faktureringsuppgifter, kort och fakturor delas av organisationen. Användningssiffror visar aktivitet; avgifter följer din valda plan.',
     'connections' => 'SSO-anslutningar',
     'environments' => 'Miljöer',
     'replace_default' => 'Välj ett annat standardkort innan du tar bort detta.',

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Actions\Principal;
 
-use App\Http\Controllers\EnvironmentHandoffController;
+use App\Http\Middleware\ResolveEnvironmentFromPath;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\Approvals\PlatformRootApprovals;
@@ -15,8 +15,8 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentOrigin;
 use App\Platform\OAuth\RootDelegatedAccess;
+use App\Platform\OAuth\ValueObjects\RootOrganization;
 use App\Platform\OAuth\ValueObjects\RootSignIn;
-use App\Platform\OAuth\ValueObjects\RootWorkspace;
 use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -31,7 +31,8 @@ use Illuminate\Auth\Access\AuthorizationException;
 /**
  * A workspace member's root-host token, BOUND TO ONE ENVIRONMENT of their workspace for one
  * call — what {@see RootPersonPrincipal::inEnvironment()} returns once the person has
- * passed the two checks `/open/{environment}` makes ({@see EnvironmentHandoffController}):
+ * passed the two checks the environment console's path makes
+ * ({@see ResolveEnvironmentFromPath}):
  * their role administers environments, and their membership reaches this one.
  *
  * THE ENVIRONMENT CONSOLE'S RIGHTS, within the token's scopes. Opening that console is
@@ -65,7 +66,7 @@ final readonly class EnvironmentMemberPrincipal implements SignedInPerson, Token
     public function __construct(
         private RootSignIn $signIn,
         private Environment $environment,
-        private ?RootWorkspace $workspace,
+        private ?RootOrganization $workspace,
         private bool $platformOperator = false,
     ) {}
 
@@ -74,7 +75,7 @@ final readonly class EnvironmentMemberPrincipal implements SignedInPerson, Token
      * has established that the person is an active operator and that $root IS the root;
      * {@see authorize()} asks the first again on every action.
      */
-    public static function forPlatformRoot(RootSignIn $signIn, Environment $root, ?RootWorkspace $workspace): self
+    public static function forPlatformRoot(RootSignIn $signIn, Environment $root, ?RootOrganization $workspace): self
     {
         return new self($signIn, $root, $workspace, platformOperator: true);
     }
@@ -154,7 +155,7 @@ final readonly class EnvironmentMemberPrincipal implements SignedInPerson, Token
         // them: the role administers environments and the membership reaches this one
         // ({@see EnvironmentAdminAuth}'s per-request re-check, for a token).
         $workspace = $this->workspace === null ? null
-            : app(RootDelegatedAccess::class)->workspaceOf($this->signIn->subjectId, $this->workspace->id);
+            : app(RootDelegatedAccess::class)->organizationOf($this->signIn->subjectId, $this->workspace->id);
         if ($workspace === null
             || ! $workspace->capabilities()->canReadEnvironments()
             || ($action->danger->writes() && ! $workspace->capabilities()->canManageEnvironments())
@@ -246,7 +247,7 @@ final readonly class EnvironmentMemberPrincipal implements SignedInPerson, Token
     }
 
     /** The workspace whose membership bound this principal — none on the platform root's own environment. */
-    public function workspaceId(): ?string
+    public function rootOrganizationId(): ?string
     {
         return $this->platformOperator ? null : $this->workspace?->id;
     }

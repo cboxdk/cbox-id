@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Actions\ActionRegistry;
+use App\Platform\Api\ApiHost;
 use App\Platform\Connect\ActionSnippets;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -49,7 +50,7 @@ it('sends the API twin of the create form with the page, and never a secret fiel
     expect($create)->not->toBeNull()
         ->and($create['method'])->toBe('POST')
         ->and($create['path'])->toBe('/apps')
-        ->and($create['url'])->toEndWith('/api/v1/apps')
+        ->and($create['url'])->toBe('https://'.ApiHost::name().'/v1/apps')
         ->and($create['scope'])->toBe('apps:write')
         ->and($create['danger'])->toBe('critical')
         ->and($create['tool'])->toBe('apps_create')
@@ -72,7 +73,7 @@ it('fills the page\'s own id into the path of the actions it hosts', function ()
 
     expect($actions)->toHaveKeys(['apps.update', 'apps.delete', 'apps.secrets.rotate'])
         ->and($actions['apps.update']['path'])->toBe('/apps/'.$app->id)
-        ->and($actions['apps.update']['url'])->toEndWith('/api/v1/apps/{id}')
+        ->and($actions['apps.update']['url'])->toBe('https://'.ApiHost::name().'/v1/apps/{id}')
         ->and(collect($actions['apps.update']['fields'])->firstWhere('name', 'id')['value'] ?? null)->toBe($app->id);
 })->group('actions');
 

@@ -18,7 +18,7 @@ export function PopoverContent({
             <Primitive.Content
                 align={align}
                 sideOffset={sideOffset}
-                className={cn('cbx-popover', className)}
+                className={cn('idc-popover', className)}
                 {...props}
             >
                 {children}

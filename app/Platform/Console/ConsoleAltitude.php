@@ -18,8 +18,8 @@ namespace App\Platform\Console;
  */
 enum ConsoleAltitude: string
 {
-    /** A workspace's own console, at the platform root — see {@see WorkspaceAltitude}. */
-    case Workspace = 'workspace';
+    /** A workspace's own console, at the platform root — see {@see OrganizationAltitude}. */
+    case OrgPlane = 'org-plane';
 
     /**
      * An organization's console: a tenant host, or a single-tenant install. On a

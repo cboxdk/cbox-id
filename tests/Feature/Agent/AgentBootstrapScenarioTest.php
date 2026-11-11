@@ -82,7 +82,7 @@ function expectByKey(?AuditEntry $entry, string $actorId, AgentDoor $door): void
 
 // ── 1. Bootstrap ─────────────────────────────────────────────────────────────
 
-it('bootstraps an environment from one workspace key, down to a supervised narrow key, and stops it with its parent', function (AgentDoor $door): void {
+it('bootstraps an environment from one organization key, down to a supervised narrow key, and stops it with its parent', function (AgentDoor $door): void {
     $account = provisionAccount();
     $workspace = $account['organization'];
     $owner = $account['subjectId'];

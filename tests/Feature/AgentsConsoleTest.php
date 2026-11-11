@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ActionApprovalRequest;
 use App\Platform\Actions\Approvals\ApprovalInput;
+use App\Platform\Api\ApiHost;
 use App\Platform\EnvironmentSudo;
 use App\Platform\OrganizationActivity;
 use Carbon\CarbonImmutable;
@@ -137,6 +138,7 @@ it('refuses somebody who does not administer the environment', function (): void
     multiTenantDeployment();
     $account = provisionAccount('nobody-here@acme.example');
     serveOnTestHost($account['environment']);
+    useEnvironmentConsole($account['environment']->id);
 
     foreach (['environment.agents', 'environment.agent-connect', 'environment.approvals'] as $route) {
         $response = $this->get(route($route));
@@ -152,7 +154,7 @@ it('puts the create flow behind the step-up, and offers every scope with its ris
 
     $this->get(route('environment.agents.create'))->assertRedirect(route('environment.sudo'));
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $props = $this->get(route('environment.agents.create', ['preset' => 'support', 'name' => 'Claude Code']))
         ->assertOk()
@@ -185,7 +187,7 @@ it('puts the create flow behind the step-up, and offers every scope with its ris
 
 it('mints an agent key with its purpose and approval policy through keys.create, and shows the value once', function (): void {
     ['environment' => $environment, 'organization' => $workspace, 'subjectId' => $owner] = agentsAdmin();
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->from(route('environment.agents.create'))
         ->post(route('environment.keys.store'), [
@@ -216,7 +218,7 @@ it('mints an agent key with its purpose and approval policy through keys.create,
 
 it('refuses an action name the registry does not know as one to hold', function (): void {
     ['environment' => $environment] = agentsAdmin();
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->from(route('environment.agents.create'))
         ->post(route('environment.keys.store'), [
@@ -241,7 +243,7 @@ it('rotates an agent through keys.rotate: a successor shown once, the old key on
     $this->from(route('environment.agents'))->post(route('environment.keys.rotate', $old->id))
         ->assertRedirect(route('environment.sudo'));
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->from(route('environment.agents'))->post(route('environment.keys.rotate', $old->id))
         ->assertRedirect(route('environment.agents'));
@@ -256,7 +258,7 @@ it('rotates an agent through keys.rotate: a successor shown once, the old key on
 
 it('404s a rotate aimed at another environment\'s key', function (): void {
     agentsAdmin();
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $theirs = app(EnvironmentApiKeys::class)->issue('env_somebody_else', 'Theirs', ['users:read']);
 
@@ -269,7 +271,7 @@ it('revokes an agent and every key it minted', function (): void {
     ['environment' => $environment, 'subjectId' => $owner] = agentsAdmin();
     [, $parent] = agentKey($environment->id, $owner, 'Claude Code');
     [, $child] = agentKey($environment->id, null, 'Sub-agent', ['keys:read'], null, $parent->id);
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->from(route('environment.agents'))
         ->delete(route('environment.keys.destroy', $parent->id), ['environment' => $environment->id])
@@ -295,18 +297,19 @@ it('gives the MCP address of this environment and the snippets\' inputs, and off
 
     expect($props['mcpUrl'])->toEndWith('/mcp')
         ->and($props['metadataUrl'])->toEndWith('/.well-known/oauth-protected-resource/mcp')
-        ->and($props['restBaseUrl'])->toEndWith('/api/v1')
-        ->and($props['openApiUrl'])->toEndWith('/api/v1/environment/openapi.yaml')
+        // The API host, where the key or token names the environment (plan §2.3 item 7).
+        ->and($props['restBaseUrl'])->toBe('https://'.ApiHost::name().'/v1')
+        ->and($props['openApiUrl'])->toBe('https://'.ApiHost::name().'/openapi.json')
         ->and($props['urls']['createAgent'])->toContain('preset=read-only')
         // …and the other way in: the platform root's, one connection for the whole workspace.
-        ->and($props['workspace']['mcpUrl'] ?? null)->toEndWith('/mcp')
-        ->and($props['workspace']['restBaseUrl'] ?? null)->toEndWith('/api/v1')
+        ->and($props['organization']['mcpUrl'] ?? null)->toEndWith('/mcp')
+        ->and($props['organization']['restBaseUrl'] ?? null)->toBe('https://'.ApiHost::name().'/v1')
         // …where an MCP client signs the person in itself, unless the deployment says not.
-        ->and($props['workspace']['oauth'] ?? null)->toBeTrue();
+        ->and($props['organization']['oauth'] ?? null)->toBeTrue();
 
     config(['api.mcp.root_oauth' => false]);
 
-    expect($this->get(route('environment.agent-connect'))->assertOk()->inertiaProps('workspace.oauth'))->toBeFalse();
+    expect($this->get(route('environment.agent-connect'))->assertOk()->inertiaProps('organization.oauth'))->toBeFalse();
 
     // The metadata it points at is real.
     $this->get(parse_url($props['metadataUrl'], PHP_URL_PATH))->assertOk()
@@ -319,7 +322,7 @@ it('finishes an agent\'s held request from the console: 202, approve with sudo, 
     ['environment' => $environment, 'subjectId' => $owner] = agentsAdmin();
 
     // Minted in the console by this person, with critical actions held for them.
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
     $this->from(route('environment.agents.create'))->post(route('environment.keys.store'), [
         'environment' => $environment->id,
         'name' => 'Claude Code',
@@ -348,14 +351,14 @@ it('finishes an agent\'s held request from the console: 202, approve with sudo, 
         ->toMatchArray(['name' => 'Sub-agent', 'scopes' => 'keys:read']);
 
     // …and the rail counts it for the person it waits for.
-    $shell = (array) $this->get(route('environment.agents'))->inertiaProps('shell');
+    $shell = consoleRail($this->get(route('environment.agents')));
     $page = collect($shell['areas'])->flatMap(fn (array $area): array => $area['pages'])->firstWhere('route', 'environment.approvals');
     expect($page['count'] ?? null)->toBe(1);
 
     // A critical action: the password first.
     $this->post(route('environment.approvals.actions.approve', $held['id']))->assertRedirect(route('environment.sudo'));
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
     $this->post(route('environment.approvals.actions.approve', $held['id']))
         ->assertRedirect(route('environment.approvals'))
         ->assertSessionHas('status');
@@ -407,7 +410,7 @@ it('lets only the person an action waits for approve it, and any administrator d
         ->and($row['approveHref'])->toBeNull()
         ->and($row['denyHref'])->not->toBeNull();
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
     $this->post(route('environment.approvals.actions.approve', $held['id']))->assertForbidden();
 
     $this->post(route('environment.approvals.actions.deny', $held['id']))->assertRedirect(route('environment.approvals'));
@@ -433,7 +436,7 @@ it('404s an approval raised in another environment', function (): void {
         'binding_code' => 'ABCD',
     ]);
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     $this->post(route('environment.approvals.actions.approve', '01JZZZZZZZZZZZZZZZZZZZZZZZ'))->assertNotFound();
     $this->post(route('environment.approvals.actions.deny', '01JZZZZZZZZZZZZZZZZZZZZZZZ'))->assertNotFound();

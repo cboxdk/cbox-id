@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'description' => 'Spravujte fakturačné údaje, platobné karty a faktúry tohto pracovného priestoru.',
+    'description' => 'Spravujte fakturačné údaje, platobné karty a faktúry tejto organizácie.',
     'account' => 'Fakturačné údaje',
     'invoice_name' => 'Meno na faktúrach',
     'billing_email' => 'Fakturačný e-mail',
@@ -37,7 +37,7 @@ return [
     'subtotal' => 'Medzisúčet',
     'tax' => 'Daň',
     'tax_pending' => 'Daň zatiaľ nebola vypočítaná.',
-    'no_subscription' => 'Tomuto pracovnému priestoru nie je priradené žiadne predplatné.',
+    'no_subscription' => 'Tejto organizácii nie je priradené žiadne predplatné.',
     'allowance' => 'Povolený počet prostredí',
     'allowance_description' => 'Prístup a limity prideľuje správca.',
     'period' => 'Fakturačné obdobie',
@@ -71,8 +71,8 @@ return [
     'credits_granted' => 'Pridané zahrnuté kredity',
     'credits_carried' => 'Prenesené zahrnuté kredity',
     'address_required' => 'Pred výberom plateného programu vyplňte a uložte fakturačnú adresu.',
-    'workspace_changed' => 'Pracovný priestor sa zmenil na inej karte. Pred úpravou fakturácie túto stránku znova načítajte.',
-    'explanation' => 'Predplatné sa vzťahuje na jednotlivé projekty. Porovnajte programy a pozrite si ceny a limity prostredí. Fakturačné údaje, karty a faktúry sú spoločné pre celý pracovný priestor. Údaje o využití zobrazujú aktivitu; poplatky sa riadia vybraným programom.',
+    'organization_changed' => 'Organizácia sa zmenila na inej karte. Pred úpravou fakturácie túto stránku znova načítajte.',
+    'explanation' => 'Predplatné sa vzťahuje na jednotlivé projekty. Porovnajte programy a pozrite si ceny a limity prostredí. Fakturačné údaje, karty a faktúry sú spoločné pre celú organizáciu. Údaje o využití zobrazujú aktivitu; poplatky sa riadia vybraným programom.',
     'connections' => 'Pripojenia SSO',
     'environments' => 'Prostredia',
     'replace_default' => 'Pred odstránením tejto karty vyberte inú predvolenú kartu.',
