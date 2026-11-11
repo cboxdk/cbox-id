@@ -259,6 +259,29 @@ it('ends a support session that outlives its window back in platform admin', fun
     expect(session(Impersonation::SESSION_KEY))->toBeNull();
 })->group('security');
 
+it('ends an outlived support session on an environment console page too', function (): void {
+    rootPlatformWorld();
+    [$organization, $member] = impersonationMember();
+
+    // Started in place on the root's environment console: the marker lives in the app host's
+    // own session, the one every environment console on this host reads.
+    $this->post('https://cboxid.com/admin/environment/impersonate/'.$member->id, ['organization' => $organization->id, 'reason' => IMPERSONATION_REASON])
+        ->assertRedirect('https://cboxid.com/dashboard');
+    nextRequest();
+
+    // Backdated rather than travelled to, so the operator's own session is still fresh.
+    $marker = session(Impersonation::SESSION_KEY);
+    $marker['started_at'] = now()->subMinutes(Impersonation::MAX_MINUTES + 1)->getTimestamp();
+    session([Impersonation::SESSION_KEY => $marker]);
+    session()->save();
+
+    $this->get('https://cboxid.com/admin/environment/users')
+        ->assertRedirect('https://cboxid.com/admin/environment')
+        ->assertSessionHas('status', 'Impersonation session expired.');
+
+    expect(session(Impersonation::SESSION_KEY))->toBeNull();
+})->group('security');
+
 it('runs a support session from the platform environment\'s own Users page, landing where the banner is', function (): void {
     rootPlatformWorld();
     [$organization, $member] = impersonationMember();

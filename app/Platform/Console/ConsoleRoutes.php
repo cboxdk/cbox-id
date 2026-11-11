@@ -141,7 +141,12 @@ final class ConsoleRoutes
      */
     public static function environment(Closure $routes, array $middleware = []): void
     {
-        Route::middleware(['web', 'env.path', 'env.admin', 'locale.console', ...$middleware])
+        // The impersonation window, ENFORCED here as on the organization plane: the console
+        // reads the app host's own session, the one an impersonation marker lives in, so an
+        // impersonation that outlived its box would otherwise keep reading these pages. AHEAD
+        // of the path middleware, which would otherwise answer for the impersonated person
+        // (a 404 or a sign-in) instead of ending it and sending the administrator back.
+        Route::middleware(['web', EnforceImpersonationWindow::class, 'env.path', 'env.admin', 'locale.console', ...$middleware])
             ->prefix('{'.EnvironmentConsolePath::PARAMETER.'}')
             ->where([EnvironmentConsolePath::PARAMETER => EnvironmentConsolePath::PATTERN])
             ->group($routes);

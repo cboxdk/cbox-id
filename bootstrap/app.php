@@ -9,6 +9,7 @@ use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Http\Middleware\BindConsoleOrganization;
 use App\Http\Middleware\EnforceCustomerConsole;
+use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\EnforceRootHostConsole;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -287,6 +288,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prependToPriorityList(
             before: SubstituteBindings::class,
             prepend: ResolveEnvironmentFromPath::class,
+        );
+
+        // An outlived impersonation is ended before the path middleware answers for the
+        // impersonated person ({@see ConsoleRoutes::environment()}).
+        $middleware->prependToPriorityList(
+            before: ResolveEnvironmentFromPath::class,
+            prepend: EnforceImpersonationWindow::class,
         );
 
         $middleware->alias([
