@@ -23,6 +23,7 @@ use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\PlatformOperator;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
  * A CONTROL-PLANE identity administering a tenant ENVIRONMENT. The admin is a subject in
@@ -319,7 +320,43 @@ final class EnvironmentAdminAuth
             return null;
         }
 
-        // …and it must still carry a MEMBERSHIP of a customer organization. That is the
+        return $this->membershipFor($subjectId, $hostEnv);
+    }
+
+    /**
+     * Whether $subjectId may administer $environmentId RIGHT NOW: an active platform operator
+     * for the platform root's environment, else {@see membershipFor()}. For a check made
+     * away from the console's own request — the support and impersonation launches on the
+     * environment's host, a support code minted later — so a decision taken in the console
+     * is re-asked, not trusted, by everything that acts on it afterwards.
+     */
+    public function administers(string $subjectId, string $environmentId): bool
+    {
+        $root = $this->platformRoot->environment()?->environmentKey();
+
+        if ($root !== null && $root === $environmentId) {
+            return $this->platformRoot->run(fn (): bool => $this->operators->findBySubject($subjectId) !== null) === true;
+        }
+
+        try {
+            return $this->membershipFor($subjectId, $environmentId) !== null;
+        } catch (HttpExceptionInterface) {
+            // The product admission refused: no authority, said as a no.
+            return false;
+        }
+    }
+
+    /**
+     * The membership through which $subjectId administers the customer environment
+     * $environmentId, or null — THE chain every environment-console request runs
+     * ({@see resolve()}), and the one a later check runs again ({@see administers()}), so
+     * the two cannot drift apart. The subject's session is the caller's to check.
+     */
+    public function membershipFor(string $subjectId, string $environmentId): ?Membership
+    {
+        $hostEnv = $environmentId;
+
+        // It must still carry a MEMBERSHIP of a customer organization. That is the
         // management-plane authority: the role, the organization's status and the
         // environment grants all hang off it, and it is re-read per request rather than
         // trusted from the session. It is also what keeps an ordinary TENANT subject out:

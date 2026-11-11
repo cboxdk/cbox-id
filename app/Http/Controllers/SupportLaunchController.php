@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Platform\Console\LaunchTicket;
+use App\Platform\EnvironmentAdminAuth;
 use App\Platform\SupportAccess\SupportHandoff;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Contracts\SupportSessions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Cache;
@@ -28,8 +31,12 @@ final class SupportLaunchController extends Controller
     /** How long the launch link works, in seconds. */
     public const TTL = 120;
 
-    public function __invoke(string $session, SupportSessions $sessions, SupportHandoff $handoff): RedirectResponse
+    public function __invoke(string $session, SupportSessions $sessions, SupportHandoff $handoff, EnvironmentContext $environments, EnvironmentAdminAuth $admins): RedirectResponse
     {
+        // The host it was minted for, and no other: the signature is relative.
+        $environment = request()->query('environment');
+        abort_unless(is_string($environment) && $environments->current()?->environmentKey() === $environment, 404);
+
         $active = $sessions->active($session);
 
         abort_if($active === null, 404);
@@ -37,9 +44,10 @@ final class SupportLaunchController extends Controller
         // Spent on first use: a second visit, from anywhere, finds nothing.
         abort_unless(Cache::add('cbox.support_launch.'.$active->id, true, self::TTL), 404);
 
-        $console = request()->query('console');
+        // The administrator who started it must still administer this environment.
+        abort_unless($admins->administers((string) $active->actor_id, $environment), 404);
 
-        $handoff->put((string) $active->client_id, (string) $active->id, (string) $active->actor_id, is_string($console) && $console !== '' ? $console : null);
+        $handoff->put((string) $active->client_id, (string) $active->id, (string) $active->actor_id, LaunchTicket::redeem(request()->query('ticket')));
 
         $launch = request()->query('to');
         abort_unless(is_string($launch) && $launch !== '', 404);

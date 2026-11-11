@@ -6,12 +6,14 @@ namespace App\Http\Controllers;
 
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\EnvironmentConsolePath;
+use App\Platform\Console\LaunchTicket;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Impersonation;
 use App\Platform\IssuerUrl;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\RedirectResponse;
@@ -130,11 +132,19 @@ final class ImpersonationController extends Controller
         // A customer's environment: its people sign in on its own host, which shares no
         // cookie with the console's. The session starts THERE, through a signed, single-use
         // link that names exactly what was authorized here ({@see launch()}).
+        // The link names the environment it was authorized for, so it opens on that host
+        // alone, and stands for the administrator's session by an opaque ticket rather than
+        // putting the session's id in the customer's access logs.
+        $console = $auth->sessionId();
+        $environment = $auth->environmentId();
+        abort_if($console === null || $environment === null, 403);
+
         $door = URL::temporarySignedRoute('impersonation.launch', now()->addSeconds(self::LAUNCH_TTL), [
             'user' => $user,
             'organization' => $orgId,
             'actor' => $actorSubjectId,
-            'console' => $auth->sessionId(),
+            'environment' => $environment,
+            'ticket' => LaunchTicket::issue($console, self::LAUNCH_TTL),
             'reason' => $request->string('reason')->toString(),
         ], absolute: false);
 
@@ -146,26 +156,33 @@ final class ImpersonationController extends Controller
 
     /**
      * The impersonation's step onto the environment's own host: signed by the console that
-     * authorized it, spent on first use, and refused once the administrator's own app-host
-     * session has ended. Starts the session here and lands on the impersonated person's
-     * console, where the banner and its Exit are.
+     * authorized it, for this environment only, spent on first use, and refused once the
+     * administrator's own app-host session has ended or they no longer administer this
+     * environment. Starts the session here and lands on the impersonated person's console,
+     * where the banner and its Exit are.
      */
-    public function launch(Request $request, Impersonation $impersonation): RedirectResponse
+    public function launch(Request $request, Impersonation $impersonation, EnvironmentContext $environments, EnvironmentAdminAuth $auth): RedirectResponse
     {
         $user = $request->query('user');
         $actor = $request->query('actor');
-        $console = $request->query('console');
+        $environment = $request->query('environment');
         $organization = $request->query('organization');
         $reason = $request->query('reason');
 
-        abort_unless(is_string($user) && is_string($actor) && is_string($console) && is_string($reason), 404);
+        abort_unless(is_string($user) && is_string($actor) && is_string($environment) && is_string($reason), 404);
+
+        // The host it was minted for, and no other: the signature is relative.
+        abort_unless($environments->current()?->environmentKey() === $environment, 404);
         abort_unless(Cache::add('cbox.impersonation_launch.'.hash('sha256', (string) $request->query('signature')), true, self::LAUNCH_TTL), 404);
 
-        $live = app(PlatformRoot::class)->run(
+        $console = LaunchTicket::redeem($request->query('ticket'));
+
+        $live = $console !== null && app(PlatformRoot::class)->run(
             fn (): bool => app(SessionManager::class)->active($console)?->user_id === $actor,
         ) === true;
 
-        abort_unless($live, 404);
+        // Re-asked, not trusted from the minute before: still signed in, still theirs.
+        abort_unless($live && $auth->administers($actor, $environment), 404);
 
         $impersonation->startAsMembership($request, $actor, $user, is_string($organization) && $organization !== '' ? $organization : null, $reason);
 

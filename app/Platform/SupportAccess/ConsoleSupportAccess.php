@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\SupportAccess;
 
 use App\Http\Controllers\SupportLaunchController;
+use App\Platform\Console\LaunchTicket;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\IssuerUrl;
 use App\Platform\OAuth\Enums\AuthorizationPrompt;
@@ -16,6 +17,7 @@ use App\Platform\SupportAccess\ValueObjects\SupportApp;
 use App\Platform\SupportAccess\ValueObjects\SupportSignInRequest;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Contracts\SupportSessions;
 use Cbox\Id\OAuthServer\Enums\SupportActorKind;
 use Cbox\Id\OAuthServer\Enums\SupportSessionRefusal;
@@ -42,6 +44,7 @@ class ConsoleSupportAccess implements SupportAccess
         private readonly EnvironmentAdminAuth $admins,
         private readonly Subjects $subjects,
         private readonly PlatformRoot $platformRoot,
+        private readonly EnvironmentContext $environments,
     ) {}
 
     public function eligibleApps(): array
@@ -107,10 +110,19 @@ class ConsoleSupportAccess implements SupportAccess
         // console that started this is on the app host, which shares no cookie with it
         // ({@see SupportLaunchController}). A relative signature, so the link is valid on the
         // host it names rather than on the one that minted it.
+        // It names the environment, so it opens on that host alone, and stands for the
+        // administrator's session by an opaque ticket ({@see LaunchTicket}).
+        $console = $this->admins->sessionId();
+
         $door = URL::temporarySignedRoute(
             'support.launch',
             now()->addSeconds(SupportLaunchController::TTL),
-            ['session' => $started->session->id, 'to' => $app->launchUrl, 'console' => $this->admins->sessionId()],
+            [
+                'session' => $started->session->id,
+                'to' => $app->launchUrl,
+                'environment' => $this->admins->environmentId(),
+                'ticket' => $console === null ? null : LaunchTicket::issue($console, SupportLaunchController::TTL),
+            ],
             absolute: false,
         );
 
@@ -163,7 +175,14 @@ class ConsoleSupportAccess implements SupportAccess
             fn (): bool => app(SessionManager::class)->active($console)?->user_id === $actor,
         ) === true;
 
-        if (! $live) {
+        // …and they must STILL ADMINISTER this environment: the same chain the console asks
+        // on every request ({@see EnvironmentAdminAuth::administers()}), asked again for every
+        // code. A session can last an hour; an administrator removed from the organization,
+        // stripped of this environment or of their role, or whose organization was suspended
+        // in that hour, mints nothing more — their root session alone is not authority.
+        $environment = $this->environments->current()?->environmentKey();
+
+        if (! $live || $environment === null || ! $this->admins->administers($actor, $environment)) {
             $this->handoff->forgetApp($clientId);
 
             return null;

@@ -325,6 +325,71 @@ it('mints nothing for the session once the administrator is no longer signed in 
     expect(session('cbox.support_handoff'))->toBe([]);
 })->group('security');
 
+/**
+ * THE AUTHORITY IS RE-ASKED FOR EVERY CODE, not remembered from the start. A session can
+ * last an hour; an administrator who stops administering this environment in that hour —
+ * their membership suspended, their organization suspended — mints nothing more, though
+ * their own root session is still live.
+ */
+it('mints nothing for the session once the administrator no longer administers the environment', function (string $revocation): void {
+    ['user' => $user, 'org' => $org, 'admin' => $admin] = supportFixture();
+    $parcels = supportApp();
+    confirmEnvironmentStepUp();
+
+    startSupport($user, ['app' => $parcels, 'organization' => $org])->assertSessionHasNoErrors();
+
+    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
+    $owner = app(PlatformRoot::class)->run(function () use ($environmentId): string {
+        $projectId = Environment::query()->whereKey($environmentId)->value('project_id');
+
+        return (string) DB::table('projects')->where('id', $projectId)->value('organization_id');
+    });
+
+    app(PlatformRoot::class)->run(fn () => match ($revocation) {
+        'membership' => DB::table('memberships')->where('organization_id', $owner)->where('user_id', $admin)
+            ->update(['status' => MembershipStatus::Suspended->value]),
+        'organization' => DB::table('organizations')->where('id', $owner)->update(['status' => 'suspended']),
+    });
+
+    nextRequest();
+
+    $answer = appSignsIn($parcels);
+
+    expect(returnedToApp($answer))->not->toHaveKey('code')
+        ->and(session('cbox.support_handoff'))->toBe([]);
+})->with(['membership', 'organization'])->group('security');
+
+it('opens a support launch link on the environment it was minted for, and nowhere else', function (): void {
+    ['user' => $user, 'org' => $org] = supportFixture();
+    $parcels = supportApp();
+    confirmEnvironmentStepUp();
+
+    supportJar('console');
+    $start = test()->from(route('environment.users.show', $user))
+        ->post(route('environment.users.support-sessions.store', $user), [
+            'reason' => 'Ticket 4411: invoice totals look wrong',
+            'minutes' => 30,
+            'app' => $parcels,
+            'organization' => $org,
+        ]);
+    $launch = (string) leftFor($start);
+
+    // The administrator's session id never rides in the link: an opaque ticket does.
+    parse_str((string) parse_url($launch, PHP_URL_QUERY), $query);
+    expect($query)->not->toHaveKey('console')
+        ->and($query['ticket'] ?? null)->toBeString()
+        ->and($query['environment'] ?? null)->toBe(app(EnvironmentContext::class)->current()?->environmentKey());
+
+    // Replayed on another environment's host, the link opens nothing.
+    supportJar('environment');
+    $other = provisionAccount('owner@other.example')['environment'];
+    $other->forceFill(['domain' => 'other-env.test', 'domain_verified_at' => now()])->save();
+
+    $path = (string) parse_url($launch, PHP_URL_PATH).'?'.(string) parse_url($launch, PHP_URL_QUERY);
+    test()->get('http://other-env.test'.$path)->assertNotFound();
+    expect(session('cbox.support_handoff'))->toBeNull();
+})->group('security');
+
 it('answers another app\'s sign-in, and a browser that started nothing, the ordinary way', function (): void {
     ['user' => $user, 'org' => $org] = supportFixture();
     $parcels = supportApp();

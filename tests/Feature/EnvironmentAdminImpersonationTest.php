@@ -13,6 +13,7 @@ use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
@@ -20,6 +21,7 @@ use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -124,6 +126,40 @@ it('refuses a launch link that was tampered with, or outlived the console that m
 
     // The administrator signed out of the console before the link was followed.
     app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->revoke($console));
+    $this->get($launch)->assertNotFound();
+    expect(session(Impersonation::SESSION_KEY))->toBeNull();
+})->group('security');
+
+it('opens a launch link only on the environment it names, for an administrator who still administers it', function (): void {
+    ['subjectId' => $admin, 'member' => $member, 'envId' => $envId, 'orgId' => $orgId, 'userId' => $userId] = envAdminImpersonationSetup();
+
+    actAsEnvironmentAdmin($admin, $envId);
+
+    $mint = fn (): string => (string) $this->post(route('environment.impersonate', $userId), ['organization' => $orgId, 'reason' => IMPERSONATION_REASON])
+        ->headers->get('Location');
+
+    $launch = $mint();
+
+    // The administrator's session id stays on the app host: the link carries a ticket.
+    parse_str((string) parse_url($launch, PHP_URL_QUERY), $query);
+    expect($query)->not->toHaveKey('console')
+        ->and($query['environment'] ?? null)->toBe($envId)
+        ->and($query['ticket'] ?? null)->toBeString();
+
+    // Replayed on another environment's host, it starts nothing.
+    backOnTestHost();
+    $other = provisionAccount('owner@other.example')['environment'];
+    $other->forceFill(['domain' => 'other-env.test', 'domain_verified_at' => now()])->save();
+
+    $this->get('http://other-env.test'.parse_url($launch, PHP_URL_PATH).'?'.parse_url($launch, PHP_URL_QUERY))->assertNotFound();
+    expect(session(Impersonation::SESSION_KEY))->toBeNull();
+
+    // An administrator suspended between minting the link and following it starts nothing.
+    serveConsoleOn();
+    $launch = $mint();
+    app(PlatformRoot::class)->run(fn () => DB::table('memberships')->where('id', $member->id)->update(['status' => MembershipStatus::Suspended->value]));
+
+    backOnTestHost();
     $this->get($launch)->assertNotFound();
     expect(session(Impersonation::SESSION_KEY))->toBeNull();
 })->group('security');
