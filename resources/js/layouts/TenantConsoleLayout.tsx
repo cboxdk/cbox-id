@@ -250,7 +250,7 @@ const ACTS_ON_ICON = {
 } as const;
 
 /**
- * WHAT THIS PAGE ACTS ON — `Environment: Production · Environment on acme.cboxid.com` — so
+ * WHAT THIS PAGE ACTS ON — `Environment: Production · Environment on acme.cboxauth.com` — so
  * nobody saves a setting believing it is somebody else's. On the platform's own environment
  * it is a warning: that sign-in is every workspace owner's and every operator's. On platform
  * admin it is a warning too, with the lock: those pages act on every organization at once.

@@ -175,7 +175,7 @@ final class PlatformRealmClients
             $environmentId = $client->environment_id ?? app(EnvironmentContext::class)->current()?->environmentKey();
 
             if ($rule->governs(is_string($environmentId) ? $environmentId : null)) {
-                throw new AuthorizationException(self::MESSAGE);
+                throw new AuthorizationException(__(self::MESSAGE_KEY));
             }
         };
 
@@ -183,5 +183,6 @@ final class PlatformRealmClients
         Client::updating($refuse);
     }
 
-    public const MESSAGE = 'Organizations cannot own OAuth clients in the platform\'s own environment. Register the app in one of your own environments.';
+    /** What a refused organization is told, in the reader's language. */
+    public const string MESSAGE_KEY = 'console.realm_organization_apps_not_allowed';
 }

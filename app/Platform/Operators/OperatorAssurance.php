@@ -117,7 +117,7 @@ final class OperatorAssurance
     /** What an operator is told where {@see self::confirms()} is false. */
     public function elsewhereMessage(): string
     {
-        return 'Platform administration requires a passkey or security key, and passkeys are confirmed on the sign-in host ('.$this->surfaces->loginHost().'). Sign out, then sign in again with your passkey.';
+        return __('console.operator_confirm_on_sign_in_host', ['host' => (string) $this->surfaces->loginHost()]);
     }
 
     /** Whether this deployment's passkey doors require the authenticator to verify the person. */

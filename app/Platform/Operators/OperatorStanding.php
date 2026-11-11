@@ -28,16 +28,16 @@ enum OperatorStanding
     /** This deployment does not ask authenticators to verify the person, so nothing can prove it. */
     case Unverifiable;
 
-    /** What the operator is told. */
+    /** What the operator is told, in their language. */
     public function message(): string
     {
         return match ($this) {
             self::Admitted => '',
-            self::NoPasskey => 'Platform administration requires a passkey or security key, and your account has none. Add one under My account → Security, then come back. If you cannot sign in at all, ask somebody with shell access to run: php artisan cbox-id:operator:passkey-link <your email>',
-            self::NeedsPasskey => 'Platform administration requires a passkey or security key. Confirm with yours to continue.',
-            self::Expired => 'Your passkey confirmation for platform administration has expired. Confirm with your passkey again.',
-            self::Idle => 'Platform administration was idle for a while. Confirm with your passkey to continue.',
-            self::Unverifiable => 'Platform administration requires a passkey with user verification, and this deployment has it turned off (cbox-id.webauthn.user_verification). Turn it on, or turn off cbox-id.operators.phishing_resistant.',
+            self::NoPasskey => __('console.operator_standing_no_passkey', ['command' => 'php artisan cbox-id:operator:passkey-link <your email>']),
+            self::NeedsPasskey => __('console.operator_standing_needs_passkey'),
+            self::Expired => __('console.operator_standing_expired'),
+            self::Idle => __('console.operator_standing_idle'),
+            self::Unverifiable => __('console.operator_standing_unverifiable'),
         };
     }
 

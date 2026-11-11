@@ -98,7 +98,7 @@ final class AppFields
         // whichever door: see PlatformRealmClients. After the confinement check, so a person
         // confined to another organization is still answered 403 for that.
         if (! app(PlatformRealmClients::class)->mayCreate($organizationId)) {
-            throw ActionRefused::because('organization_apps_not_allowed', PlatformRealmClients::MESSAGE, 'organization_id');
+            throw ActionRefused::because('organization_apps_not_allowed', new ActionMessage(PlatformRealmClients::MESSAGE_KEY), 'organization_id');
         }
 
         if ($organizationId !== null && Organization::query()->whereKey($organizationId)->doesntExist()) {

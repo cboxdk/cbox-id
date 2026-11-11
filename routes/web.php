@@ -422,7 +422,7 @@ Route::middleware(['plane:signup', 'platform.guest', 'locale'])->group(function 
  * It used to be `plane:subject`, which meant "not the platform root", so `cboxid.com/login`
  * was a 404: the one host every account member already has an identity on was the one host
  * they could not sign in to as themselves. The root is a tenant like any other — what it
- * has that acme.cboxid.com does not is the operator area and the account plane standing
+ * has that acme.cboxauth.com does not is the operator area and the account plane standing
  * alongside this console, not the absence of one. The IdP protocol surface it must NOT
  * serve moved to `plane:issuer`, which is the question that was actually being asked here.
  */
@@ -1008,7 +1008,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
      * SURFACES exist; whether an organization owns identity providers is a question about
      * the organization, and it has an answer on every host — no on all but the root's own
      * accounts. {@see \App\Platform\Console\ConsoleScope::accountRole()} is that answer,
-     * and it is what the rail reads, so on `acme.cboxid.com` the area is simply absent
+     * and it is what the rail reads, so on `acme.cboxauth.com` the area is simply absent
      * rather than gated: the same mechanism that already drops an area with no pages.
      */
 
@@ -2088,7 +2088,7 @@ ConsoleRoutes::environment(function (): void {
 |
 | `plane:operator` is the host bulkhead: the root's own host on a multi-tenant
 | deployment, any host on a single-tenant one — the same gate the queue monitor under
-| these pages carries. Without it `acme.cboxid.com/admin/platform` would reach the
+| these pages carries. Without it `acme.cboxauth.com/admin/platform` would reach the
 | operator gate on a tenant's host and answer it with a sign-in redirect; with it, the
 | address does not exist there, which is what a tenant's host should say about the
 | deployment's staff pages.

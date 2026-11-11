@@ -88,7 +88,7 @@ final readonly class SignupController extends PageController
          *
          * Without the environment in the key, every tenant on the deployment shares one
          * bucket per IP: an office behind a single NAT address burning its ten attempts
-         * on acme.cboxid.com locked out signups on every other tenant reachable from that
+         * on acme.cboxauth.com locked out signups on every other tenant reachable from that
          * office — one customer's traffic denying another's, which is the shape of a
          * cross-tenant fault however benign the cause.
          */

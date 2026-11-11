@@ -115,7 +115,7 @@ final readonly class OperatorConfirmController
         $credentialId = $request->string('id')->toString();
 
         if ($challenge === null || $credentialId === '') {
-            return $this->error('That confirmation expired. Try again.');
+            return $this->error(__('console.operator_confirmation_expired'));
         }
 
         try {
@@ -123,7 +123,7 @@ final readonly class OperatorConfirmController
         } catch (Throwable) {
             RateLimiter::hit($key, 60);
 
-            return $this->error('That passkey could not be verified. Try again.');
+            return $this->error(__('console.operator_passkey_not_verified'));
         }
 
         // The assertion is valid for SOMEBODY. It opens this window only when that
@@ -131,7 +131,7 @@ final readonly class OperatorConfirmController
         if (! is_string($verified) || ! hash_equals($subjectId, $verified)) {
             RateLimiter::hit($key, 60);
 
-            return $this->error('That passkey belongs to a different account.');
+            return $this->error(__('console.operator_passkey_other_account'));
         }
 
         RateLimiter::clear($key);
