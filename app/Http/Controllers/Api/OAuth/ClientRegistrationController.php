@@ -44,7 +44,7 @@ final class ClientRegistrationController
 
     public function __invoke(Request $request): JsonResponse
     {
-        if (! $this->planes->onAccountPlane()) {
+        if (! $this->planes->rootIssuesForMcpOnly()) {
             return ($this->framework)($request);
         }
 
