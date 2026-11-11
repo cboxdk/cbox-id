@@ -40,6 +40,7 @@ interface Delivery {
 type Props = PageProps<{
     endpoint: {
         id: string;
+        publicId: string;
         url: string;
         active: boolean;
         eventTypes: string[];
@@ -143,7 +144,7 @@ export default function WebhookDetail({
                     </div>
 
                     <p className="mt-1 text-sm mono" style={{ color: 'var(--faint)' }}>
-                        {endpoint.id}
+                        {endpoint.publicId}
                     </p>
                 </div>
 

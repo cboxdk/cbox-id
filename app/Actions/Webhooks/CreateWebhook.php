@@ -119,7 +119,7 @@ final readonly class CreateWebhook implements Action, Preflight
             throw ActionRefused::because('unsafe_url', new ActionMessage('console.that_url_is_not_allowed_it_must_be_a_public_https_endpo_2ba3a3f0'), 'url');
         }
 
-        $registered->endpoint->setAttribute('id_format', $context->nullableString('id_format') ?? WebhookIdFormat::defaultFor(request()));
+        $registered->endpoint->setAttribute('id_format', $context->nullableString('id_format') ?? WebhookIdFormat::RAW);
         $registered->endpoint->save();
 
         // Read back, so the columns the database defaulted (health, sequence) are real.

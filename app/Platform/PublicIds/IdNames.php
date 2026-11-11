@@ -20,7 +20,8 @@ final class IdNames
     /**
      * `<stem>_id` and `<stem>_ids` fields, by stem. `client_id` is absent on purpose (it is the
      * OAuth `cid_` value, never prefixed), as are the ones whose kind depends on where they
-     * stand (`actor_id`, `subject_id`, `target_id`, `secret_id`, `key_id`).
+     * stand (`actor_id`, `subject_id`, `target_id`, `secret_id`, `key_id`, and `connection_id`,
+     * which is an SSO connection in a sign-in event and a pipe's connection in a `pipe.*` one).
      *
      * @var array<string, string>
      */
@@ -38,7 +39,6 @@ final class IdNames
         'app' => 'app',
         'api' => 'api',
         'api_scope' => 'api_scope',
-        'connection' => 'sso_connection',
         'sso_connection' => 'sso_connection',
         'directory' => 'directory',
         'directory_user' => 'directory_user',

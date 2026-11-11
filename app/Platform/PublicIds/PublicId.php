@@ -16,7 +16,8 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * record wears which prefix.
  *
  * Reading is tolerant for this round: the bare ULID is accepted wherever the prefixed one is,
- * so nothing a caller already holds stops working. A prefix of ANOTHER registered kind is not
+ * so nothing a caller already holds stops working, and counted ({@see BareIdInput}) so the
+ * tolerance can go once nobody relies on it. A prefix of ANOTHER registered kind is not
  * tolerated: it names a different kind of record, and is answered as a record that is not
  * there ({@see decode()}), never quietly read as the id it happens to contain.
  *
@@ -132,6 +133,10 @@ final class PublicId
         $parsed = self::parse($value);
 
         if ($parsed === null) {
+            if (self::isUlid($value)) {
+                BareIdInput::record($expectedType);
+            }
+
             return $value;
         }
 

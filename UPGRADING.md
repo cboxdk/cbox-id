@@ -137,7 +137,13 @@ What changes for you:
   `/api/v1` keeps the bare ids it has always returned.
 - **Every id is read in both forms**, on `/v1`, `/api/v1` and in console URLs, so stored
   bare ids and old bookmarks keep working. A prefix of the wrong kind (`org_…` where a user
-  belongs) is a 404. The bare form is accepted until the next minor.
+  belongs) is a 404. The bare form is accepted until the next minor. Each bare id read on `/v1`
+  or in the console is counted in `cbox_id_bare_id_input_total` (by caller and route); the
+  tolerance goes once that counter has stood still for seven days.
+- **Compare ids in their bare form.** A client that compares an id from `/v1` (or a
+  `prefixed` webhook) with a token claim or a mirror key must strip the prefix first:
+  `organization_id` from `/v1/service-connections/{id}/inspect` is `org_01j…`, while `org_id`
+  in the token stays `01j…`.
 - **Console URLs carry public ids** (`…/users/usr_01j…`). SSO, SAML, OAuth and one-time-token
   URLs keep their shape, because they are registered with other identity providers.
 - **Webhooks:** every existing endpoint keeps receiving bare ids. An endpoint made on `/v1`
@@ -147,6 +153,11 @@ What changes for you:
 - **Token claims do not change.** `sub`, `org` and `org_id` stay bare ULIDs, because every
   app's user mirror is joined on them.
 - Run the migrations (`webhook_endpoints.id_format`, default `raw`).
+
+Not in this release, and following in step 7b (`id/public-ids-console`): the console's page
+data and the URLs the frontend builds itself still carry bare ids (the user, organization and
+webhook pages already show the public id their URL uses); the operator console (`/admin`)
+keeps bare ids in its URLs; and MCP tool output keeps bare ids. All of them read both forms.
 
 ### The environment console moved to the app host
 

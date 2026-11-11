@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Platform\PublicIds;
 
+use App\Http\Middleware\V1Parameters;
+use App\Platform\Erasure\PrefixedWebhookDeliveriesErasureStep;
 use Cbox\Id\Webhooks\Models\WebhookDelivery;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
-use Illuminate\Http\Request;
-use Illuminate\Routing\Route;
 
 /**
  * THE IDS A WEBHOOK ENDPOINT RECEIVES: bare, as every endpoint has received them so far, or
@@ -15,11 +15,16 @@ use Illuminate\Routing\Route;
  *
  * Every existing endpoint stays `raw`: each Cbox app's user mirror is joined on the bare id
  * (the same id as the token's `sub`, which does not change, §8 Q2), so flipping a live
- * receiver would orphan its rows. An endpoint made through `/v1` starts `prefixed`; any
+ * receiver would orphan its rows. An endpoint made through `/v1` starts `prefixed` (the
+ * default {@see V1Parameters::INPUT_DEFAULTS} puts in as the request
+ * arrives, so a held create keeps the surface it was asked on); any
  * endpoint can be moved, both ways, in the console or with `PATCH /v1/webhooks/{id}`.
  *
  * The payload is rewritten as the delivery is recorded, so what the delivery log shows is
- * what was signed and sent, and a retry sends the same body.
+ * what was signed and sent, and a retry sends the same body. Everything that reads a stored
+ * payload back as data reads the bare ids again: the delivery policy that is asked once more
+ * before each attempt ({@see BareIdDeliveryPolicy}) and erasure
+ * ({@see PrefixedWebhookDeliveriesErasureStep}).
  */
 final class WebhookIdFormat
 {
@@ -100,17 +105,5 @@ final class WebhookIdFormat
     public static function ofEndpoint(WebhookEndpoint $endpoint): string
     {
         return $endpoint->getAttribute('id_format') === self::PREFIXED ? self::PREFIXED : self::RAW;
-    }
-
-    /**
-     * The format a new endpoint starts with when its maker does not say: public ids on `/v1`,
-     * which speaks them everywhere, and bare ids on every surface that speaks bare ids.
-     */
-    public static function defaultFor(?Request $request): string
-    {
-        $route = $request?->route();
-        $name = $route instanceof Route ? $route->getName() : null;
-
-        return is_string($name) && str_starts_with($name, 'v1.') ? self::PREFIXED : self::RAW;
     }
 }

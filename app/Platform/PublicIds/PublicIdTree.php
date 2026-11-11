@@ -95,4 +95,29 @@ final class PublicIdTree
 
         return $changed;
     }
+
+    /**
+     * The inverse of {@see encode()} over a whole payload: every registered public id in it
+     * reads as its bare ULID again, at any depth, except under the keys {@see encode()} never
+     * writes to (a customer's own data keeps whatever it said).
+     *
+     * @param  array<array-key, mixed>  $node
+     * @return array<array-key, mixed>
+     */
+    public static function strip(array $node): array
+    {
+        foreach ($node as $key => $value) {
+            if (is_string($key) && in_array($key, self::OPAQUE, true)) {
+                continue;
+            }
+
+            if (is_array($value)) {
+                $node[$key] = self::strip($value);
+            } elseif (is_string($value) && ($parsed = PublicId::parse($value)) !== null) {
+                $node[$key] = $parsed[1];
+            }
+        }
+
+        return $node;
+    }
 }

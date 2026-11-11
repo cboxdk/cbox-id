@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\ApprovalRequestMail;
 use App\Platform\Actions\Approvals\ActionApprovalRequest;
+use App\Platform\Api\ApiHost;
 use App\Platform\Console\WebhookEventCatalogue;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
@@ -268,3 +269,32 @@ it('mails the owner of a key whose action was held, with a link to their Approva
 
     expect(app(PlatformRoot::class)->run(fn () => BackchannelAuthRequest::query()->where('user_id', $owner)->count()))->toBe(1);
 });
+
+it('keeps the ids a held webhook create asked for: the surface it was asked on, never the one it repeats on', function (): void {
+    $owner = keyOwner();
+    [$key] = supervisedKey($owner, ['min_danger' => null, 'actions' => ['webhooks.create']], PREFLIGHT_SCOPES);
+    $body = ['url' => 'https://hooks.acme.example/in', 'event_types' => [WebhookEventCatalogue::offered()[0]], 'environment_wide' => true];
+    $v1 = 'http://'.ApiHost::name().'/v1/webhooks';
+
+    // Held on /api/v1: what was asked for is a bare-id endpoint.
+    $held = $this->withToken($key)->postJson('/api/v1/webhooks', $body)->assertStatus(202)->json('approval.id');
+    expect(approveAsOwner($held, $owner))->toBeTrue();
+
+    // Repeated on /v1, whose default differs: not the request that was approved, so refused.
+    $this->withToken($key)->withHeader('Cbox-Approval', $held)->postJson($v1, $body)
+        ->assertStatus(409);
+
+    $this->withToken($key)->withHeader('Cbox-Approval', $held)->postJson('/api/v1/webhooks', $body)
+        ->assertCreated()->assertJsonPath('data.id_format', 'raw');
+
+    // Held on /v1: the default is part of what the owner approves.
+    $this->flushHeaders();
+    $heldOnV1 = $this->withToken($key)->postJson($v1, [...$body, 'url' => 'https://v1.acme.example/in'])->assertStatus(202)->json('id');
+    $heldOnV1 = substr((string) $heldOnV1, strlen('apr_'));
+
+    expect(ActionApprovalRequest::query()->whereKey($heldOnV1)->value('input'))->toMatchArray(['id_format' => 'prefixed'])
+        ->and(approveAsOwner($heldOnV1, $owner))->toBeTrue();
+
+    $this->withToken($key)->withHeader('Cbox-Approval', $heldOnV1)->postJson($v1, [...$body, 'url' => 'https://v1.acme.example/in'])
+        ->assertCreated()->assertJsonPath('id_format', 'prefixed');
+})->group('security');

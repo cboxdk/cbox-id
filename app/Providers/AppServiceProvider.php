@@ -37,6 +37,7 @@ use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
 use App\Platform\OrganizationApiContext;
 use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\Passkeys\RecordsPasskeyUse;
+use App\Platform\PublicIds\BareIdDeliveryPolicy;
 use App\Platform\PublicIds\WebhookIdFormat;
 use App\Routing\PublicIdUrlGenerator;
 use App\SignalsData\Bundled\IdMachineCredential;
@@ -59,6 +60,7 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
+use Cbox\Id\Webhooks\Contracts\WebhookDeliveryPolicy;
 use Cbox\Signals\Contracts\ManagedCredential;
 use Cbox\Signals\Contracts\ManagedSources;
 use Illuminate\Contracts\Cache\Repository;
@@ -178,6 +180,10 @@ class AppServiceProvider extends ServiceProvider
         // When each passkey last signed somebody in, for My account's list — stamped at
         // every door a passkey signs in at, because they all go through this contract.
         $this->app->extend(Passkeys::class, fn (Passkeys $inner): Passkeys => new RecordsPasskeyUse($inner));
+
+        // A stored delivery to an endpoint that receives public ids is read with bare ids
+        // again before each attempt, so the policy finds the subject it names.
+        $this->app->extend(WebhookDeliveryPolicy::class, static fn (WebhookDeliveryPolicy $inner): WebhookDeliveryPolicy => new BareIdDeliveryPolicy($inner));
 
         // One CSP nonce per request. `scoped` and not `singleton`: on a long-lived worker
         // a singleton would hand the same value to every request the process ever serves,

@@ -21,6 +21,7 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\Help\HelpTopic;
+use App\Platform\PublicIds\PublicId;
 use App\Platform\PublicIds\WebhookIdFormat;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Organization\Models\Organization;
@@ -213,6 +214,8 @@ final readonly class WebhookController extends ConsoleController
         return $this->page('console/webhooks/show', $endpoint->url, [
             'endpoint' => [
                 'id' => $endpoint->id,
+                // The form the page's URL carries (plan §3.2), shown as the id.
+                'publicId' => PublicId::encode('webhook_endpoint', $endpoint->id),
                 'url' => $endpoint->url,
                 'active' => $endpoint->status === EndpointStatus::Active,
                 'eventTypes' => array_values($endpoint->event_types),
