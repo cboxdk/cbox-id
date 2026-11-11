@@ -2663,3 +2663,23 @@ function consoleRail(TestResponse $response): array
         'section' => $shell['section'] ?? null,
     ];
 }
+
+/**
+ * The language lives in the shared shell's account menu: the rail's account button on a
+ * desktop, the navigation sheet on a phone. Its first listbox row is the language; the
+ * option is picked by its own name, which reads the same in every locale.
+ */
+function pickConsoleLanguage(mixed $page, string $name, bool $phone = false): mixed
+{
+    if ($phone) {
+        if ($page->script('document.querySelector(".cbx-sheet") === null')) {
+            $page->click('header.cbx-header button[aria-label="Open navigation"]');
+        }
+        $page->click('.cbx-sheet .cbx-menu-account button[aria-haspopup="listbox"]:first-of-type');
+    } else {
+        $page->click('button.cbx-rail-account')
+            ->click('.cbx-menu-account button[aria-haspopup="listbox"]:first-of-type');
+    }
+
+    return $page->click('.cbx-menu-account [role="option"]:has-text("'.$name.'")');
+}

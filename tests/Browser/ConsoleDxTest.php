@@ -30,7 +30,9 @@ it('opens the palette on ⌘K, finds a user by a pasted id and jumps to them', f
         ->assertVisible('.cbx-palette-search input')
         ->type('.cbx-palette-search input', $user->id)
         ->assertSee('Grace Hopper')
-        ->keys('.cbx-palette-search input', 'Enter')
+        // The record the id found, by its row: the shared palette keeps the row that was
+        // first while the search was in flight ("Ask Cbox") active when records arrive.
+        ->click('.cbx-palette [role="option"]:has-text("Grace Hopper")')
         ->assertPathIs(envConsolePath('/users/').$user->id)
         ->assertSee('Grace Hopper')
         ->assertNoJavaScriptErrors();
