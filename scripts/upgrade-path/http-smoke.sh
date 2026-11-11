@@ -81,6 +81,17 @@ else
     fi
 fi
 
+# The old release's csec_ machine secret still exchanges at the token endpoint: laravel-id
+# 2.5 mints `cbid_cs_` from now on but verifies any secret by the hash of the whole
+# plaintext, so nothing an app holds in CBOX_ID_CLIENT_SECRET stops working.
+token_status="$(curl -s -o /dev/null -w '%{http_code}' -H "Host: ${env_host}" -H 'Accept: application/json' \
+    -u "$(field machine_client_id):$(field machine_client_secret)" \
+    --data-urlencode 'grant_type=client_credentials' "${base}/oauth/token")"
+expect "client_credentials with the old release's csec_ secret" 200 "$token_status"
+expect "client_credentials with a wrong secret is refused" 401 "$(curl -s -o /dev/null -w '%{http_code}' -H "Host: ${env_host}" -H 'Accept: application/json' \
+    -u "$(field machine_client_id):$(field machine_client_secret)x" \
+    --data-urlencode 'grant_type=client_credentials' "${base}/oauth/token")"
+
 api_host="${API_HOST:-api.cboxid.test}"
 expect "API host /v1/organization with a new cbid_ws_ key" 200 "$(status -H "Host: ${api_host}" -H "Authorization: Bearer $(field workspace_key)" -H 'Accept: application/json' "${base}/v1/organization")"
 deprecation="$(curl -s -o /dev/null -D - -H "Host: ${api_host}" -H "Authorization: Bearer $(field workspace_key)" -H 'Accept: application/json' "${base}/v1/organization" | tr -d '\r' | grep -i '^deprecation:' || true)"

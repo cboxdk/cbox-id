@@ -166,7 +166,7 @@ it('creates the app for the framework picked, through apps.create, and waits for
     $response->assertRedirect(route('environment.get-started', ['framework' => 'nextjs', 'app' => $app->id]));
 
     // The secret is on the flash channel, once — never in the page's props.
-    expect(flashed('revealedSecret'))->toStartWith('csec_')
+    expect(flashed('revealedSecret'))->toStartWith('cbid_cs_')
         ->and($app->redirect_uris)->toBe(['http://localhost:3000/auth/callback'])
         ->and($app->type)->toBe(ClientType::Confidential);
 

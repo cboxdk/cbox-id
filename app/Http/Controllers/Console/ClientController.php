@@ -538,7 +538,7 @@ final readonly class ClientController extends ConsoleController
     /**
      * The step-up in front of registration, or null when the window is already open.
      *
-     * Registering a confidential app mints `csec_…` and puts it on the next screen, which
+     * Registering a confidential app mints `cbid_cs_…` and puts it on the next screen, which
      * is the same live credential rotation hands over — so it answers to the same gate.
      * Gating rotation alone only moved the cheap path: create a second app instead of
      * re-keying the first, and the plaintext arrives just the same.

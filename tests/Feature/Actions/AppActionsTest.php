@@ -71,7 +71,7 @@ it('registers, reads, edits and deletes an app, every write on the trail as the 
     $app = appActionsWebApp($key);
 
     expect($app['type'])->toBe('web')
-        ->and($app['client_secret'])->toStartWith('csec_')
+        ->and($app['client_secret'])->toStartWith('cbid_cs_')
         ->and(appActionsAudit('app.created')?->actor_type)->toBe(ActorType::Service)
         ->and(appActionsAudit('app.created')?->actor_id)->toBe($row->id);
 
@@ -185,7 +185,7 @@ it('rotates a secret with an overlap, shows it once, and records it as the key',
     $rotated = $this->withToken($key)->postJson("/api/v1/apps/{$app['id']}/secrets", ['grace_seconds' => 3600])
         ->assertCreated()->json('data');
 
-    expect($rotated['client_secret'])->toStartWith('csec_')->not->toBe($app['client_secret'])
+    expect($rotated['client_secret'])->toStartWith('cbid_cs_')->not->toBe($app['client_secret'])
         ->and($rotated['previous_expire_at'])->not->toBeNull()
         ->and(app(ClientRegistry::class)->verifySecret($client, $app['client_secret']))->toBeTrue()
         ->and(app(ClientRegistry::class)->verifySecret($client, $rotated['client_secret']))->toBeTrue()
@@ -248,7 +248,7 @@ it('never keeps a minted client secret for an idempotent replay', function (): v
 
     $secret = (string) $first->json('data.client_secret');
 
-    expect($secret)->toStartWith('csec_')
+    expect($secret)->toStartWith('cbid_cs_')
         ->and($again->headers->get('Idempotent-Replayed'))->toBe('true')
         ->and($again->json('data.id'))->toBe($first->json('data.id'))
         ->and($again->json('data.client_secret'))->toBeNull()

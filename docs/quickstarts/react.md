@@ -106,7 +106,7 @@ CBOX_ID_REDIRECT_URI=http://localhost:5173/callback
 CBOX_ID_POST_LOGOUT_REDIRECT_URI=http://localhost:5173/
 SESSION_SECRET=<at least 32 random characters, e.g. from: openssl rand -base64 32>
 # Only if you registered a Web app:
-# CBOX_ID_CLIENT_SECRET=csec_…
+# CBOX_ID_CLIENT_SECRET=cbid_cs_…
 ```
 
 Do not prefix these with `VITE_`: that would put them in the browser bundle. `CboxIdClient`

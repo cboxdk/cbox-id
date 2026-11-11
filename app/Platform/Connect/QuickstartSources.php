@@ -20,7 +20,7 @@ namespace App\Platform\Connect;
  * `tests/Feature/Console/QuickstartSnippetsTest.php` fails the moment one is not — change
  * the page and this together. The environment block is the page's, less its file-name
  * comment, with the page's placeholders (`https://<environment>.cboxid.com`, `cid_…`,
- * `csec_…`) filled in for the app that was just created ({@see ConnectSnippets::quickstart()}).
+ * `cbid_cs_…`) filled in for the app that was just created ({@see ConnectSnippets::quickstart()}).
  *
  * WHAT IS LEFT OUT is the page's sign-out step and its extras: Get started registers no
  * sign-out URI, and the page it links to has them.
@@ -32,7 +32,7 @@ final class QuickstartSources
 
     public const string CLIENT_ID_PLACEHOLDER = 'cid_…';
 
-    public const string CLIENT_SECRET_PLACEHOLDER = 'csec_…';
+    public const string CLIENT_SECRET_PLACEHOLDER = 'cbid_cs_…';
 
     public static function of(QuickstartFramework $framework): QuickstartSnippet
     {
@@ -47,7 +47,7 @@ final class QuickstartSources
                 env: <<<'SH'
                     CBOX_ID_ISSUER=https://<environment>.cboxid.com
                     CBOX_ID_CLIENT_ID=cid_…
-                    CBOX_ID_CLIENT_SECRET=csec_…
+                    CBOX_ID_CLIENT_SECRET=cbid_cs_…
                     CBOX_ID_REDIRECT_URI=http://localhost:3000/auth/callback
 
                     # Read by the code below, not by the SDK:
@@ -157,7 +157,7 @@ final class QuickstartSources
                     CBOX_ID_POST_LOGOUT_REDIRECT_URI=http://localhost:5173/
                     SESSION_SECRET=<at least 32 random characters, e.g. from: openssl rand -base64 32>
                     # Only if you registered a Web app:
-                    # CBOX_ID_CLIENT_SECRET=csec_…
+                    # CBOX_ID_CLIENT_SECRET=cbid_cs_…
                     SH,
                 code: [
                     new QuickstartBlock(<<<'TS'
@@ -300,7 +300,7 @@ final class QuickstartSources
                 env: <<<'ENV'
                     CBOX_ID_ISSUER=https://<environment>.cboxid.com
                     CBOX_ID_CLIENT_ID=cid_…
-                    CBOX_ID_CLIENT_SECRET=csec_…
+                    CBOX_ID_CLIENT_SECRET=cbid_cs_…
                     CBOX_ID_REDIRECT=http://localhost:8000/auth/callback
                     ENV,
                 code: [
@@ -357,7 +357,7 @@ final class QuickstartSources
                 env: <<<'ENV'
                     CBOX_ID_ISSUER=https://<environment>.cboxid.com
                     CBOX_ID_CLIENT_ID=cid_…
-                    CBOX_ID_CLIENT_SECRET=csec_…
+                    CBOX_ID_CLIENT_SECRET=cbid_cs_…
                     CBOX_ID_REDIRECT_URI=http://localhost:3000/auth/callback
                     CBOX_ID_POST_LOGOUT_REDIRECT_URI=http://localhost:3000/
                     CBOX_ID_SESSION_PASSWORD=<at least 32 random characters, e.g. from: openssl rand -base64 32>
@@ -411,7 +411,7 @@ final class QuickstartSources
                 env: <<<'SH'
                     CBOX_ID_ISSUER=https://<environment>.cboxid.com
                     CBOX_ID_CLIENT_ID=cid_…
-                    CBOX_ID_CLIENT_SECRET=csec_…
+                    CBOX_ID_CLIENT_SECRET=cbid_cs_…
                     CBOX_ID_REDIRECT_URI=http://localhost:8080/auth/callback
                     CBOX_ID_POST_LOGOUT_REDIRECT_URI=http://localhost:8080/
                     SH,
@@ -554,7 +554,7 @@ final class QuickstartSources
                 env: <<<'ENV'
                     CBOX_ID_ISSUER=https://<environment>.cboxid.com
                     CBOX_ID_CLIENT_ID=cid_…
-                    CBOX_ID_CLIENT_SECRET=csec_…
+                    CBOX_ID_CLIENT_SECRET=cbid_cs_…
                     CBOX_ID_REDIRECT_URI=http://localhost:5000/auth/callback
                     CBOX_ID_POST_LOGOUT_REDIRECT_URI=http://localhost:5000/
                     FLASK_SECRET_KEY=<at least 32 random characters, e.g. from: openssl rand -base64 32>

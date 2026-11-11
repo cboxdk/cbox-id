@@ -72,7 +72,7 @@ it('registers a SCIM directory and reveals a bearer token once', function () {
     $flash = session()->get(SessionKey::FLASH_DATA, []);
     $token = is_array($flash) ? ($flash['newToken'] ?? null) : null;
 
-    expect($token)->toBeString()->toStartWith('scim_');
+    expect($token)->toBeString()->toStartWith('cbid_scim_');
 
     $shown = test()->get(route('directories.show', $directory->id))->assertOk();
 
