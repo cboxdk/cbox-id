@@ -17,6 +17,7 @@ use App\Http\Middleware\EnforceCustomerConsole;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\EnforceRootHostConsole;
+use App\Http\Middleware\EnterConsoleThroughStart;
 use App\Http\Middleware\FenceApiHost;
 use App\Http\Middleware\FenceSurfaces;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -336,6 +337,11 @@ return Application::configure(basePath: dirname(__DIR__))
         // with an XHR and cannot render what comes back. AFTER the Inertia middleware, so
         // it sees the response that middleware produced.
         $middleware->appendToGroup('web', RedirectOutsideInertia::class);
+
+        // In login-host mode a redirect from the login host to a console page goes through
+        // the console's relying-party start, so the console asks who is active now. After
+        // the one above, so that one sees the address this one settled on.
+        $middleware->appendToGroup('web', EnterConsoleThroughStart::class);
 
         // Vite emits a modulepreload for the page chunk Inertia is about to fetch; this
         // turns those into Link headers so the browser starts them during the HTML

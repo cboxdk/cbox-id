@@ -20,6 +20,7 @@ use App\Platform\CurrentUser;
 use App\Platform\Impersonation;
 use App\Platform\Locale\HostedTranslations;
 use App\Platform\Shell\IdShell;
+use App\Platform\Surfaces\AccountChrome;
 use App\Platform\Theme;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Illuminate\Http\Request;
@@ -74,6 +75,7 @@ final class HandleInertiaRequests extends Middleware
         'flash',
         'shell',
         'tenantShell',
+        'accountShell',
         'appCatalogUrl',
         'i18n',
         'apiEquivalents',
@@ -167,9 +169,14 @@ final class HandleInertiaRequests extends Middleware
              */
             'supportSessionUrl' => fn (): ?string => app(SupportContext::class)->sessionUrl($request),
             // cbox-ui's `CboxShell`, built by laravel-console-kit ({@see IdShell}).
-            'shell' => fn (): ?array => app(IdShell::class)->build(),
+            // Null on the login host too: it has no console, and a person's own pages
+            // there are drawn with `accountShell` instead.
+            'shell' => fn (): ?array => app(AccountChrome::class)->applies($request) ? null : app(IdShell::class)->build(),
             // A customer environment's white-labelled console keeps its own chrome.
             'tenantShell' => fn (): ?ShellProps => app(IdShell::class)->tenant(),
+            // In login-host mode, the chrome of a person's own pages on the login host:
+            // "Back to …", their pages and the way out ({@see AccountChrome}).
+            'accountShell' => fn (): ?array => app(AccountChrome::class)->toProps($request),
             // Where the app switcher reads the signed-in person's catalog (AppCatalogFeedController).
             'appCatalogUrl' => fn (): string => route('apps.catalog', [], false),
 
@@ -190,7 +197,7 @@ final class HandleInertiaRequests extends Middleware
              * it, and `ApiEquivalentCoverageTest` holds every action to that. Empty off the
              * console, and never built for a page without chrome.
              */
-            'apiEquivalents' => fn (): array => app(ShellPayload::class)->build() === null
+            'apiEquivalents' => fn (): array => app(AccountChrome::class)->applies($request) || app(ShellPayload::class)->build() === null
                 ? []
                 : array_map(
                     static fn (ApiEquivalentProps $props): array => $props->toArray(),

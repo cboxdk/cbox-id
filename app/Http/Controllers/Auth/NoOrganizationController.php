@@ -14,6 +14,7 @@ use App\Platform\Organizations\OrganizationRequired;
 use App\Platform\Organizations\PersonalOrganizations;
 use App\Platform\PlatformAuth;
 use App\Platform\SsoRefusal;
+use App\Platform\Surfaces\ReturnUrl;
 use Cbox\Id\Organization\Exceptions\InvalidInvitation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -28,8 +29,11 @@ use Inertia\Response;
  */
 final readonly class NoOrganizationController extends PageController
 {
-    public function show(OrganizationRequired $required, OrganizationInvitations $invitations, CurrentUser $me): Response|RedirectResponse
+    public function show(Request $request, OrganizationRequired $required, OrganizationInvitations $invitations, CurrentUser $me, ReturnUrl $returns): Response|RedirectResponse
     {
+        // The console page that sent the person here, in login-host mode (`?return_to=`).
+        $returns->remember($request);
+
         // Somebody who has an organization (again) has nothing to answer here.
         if (! $required->appliesTo($me)) {
             return $this->resume();
@@ -108,6 +112,8 @@ final readonly class NoOrganizationController extends PageController
 
     private function resume(): RedirectResponse
     {
-        return redirect()->to(IntendedUrl::pullForSubject() ?? route('dashboard'));
+        // The authorization that was interrupted, else the console page that sent the
+        // person here, else the console.
+        return redirect()->to(IntendedUrl::pullForSubject() ?? app(ReturnUrl::class)->pull(request()) ?? route('dashboard'));
     }
 }

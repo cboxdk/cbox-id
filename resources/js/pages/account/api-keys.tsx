@@ -1,6 +1,6 @@
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router, useForm, usePage } from '@inertiajs/react';
-import ConsoleLayout from '@/layouts/ConsoleLayout';
+import AccountLayout from '@/layouts/AccountLayout';
 import type { HelpContent, PageProps } from '@/types';
 import {
     type AppApiKey,
@@ -421,4 +421,4 @@ function NewKeyForm({
     );
 }
 
-ApiKeys.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+ApiKeys.layout = (page: React.ReactNode) => <AccountLayout>{page}</AccountLayout>;

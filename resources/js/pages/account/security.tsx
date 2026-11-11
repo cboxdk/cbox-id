@@ -1,7 +1,7 @@
 import { useTranslator } from '@/i18n';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useCallback, useRef, useState } from 'react';
-import ConsoleLayout from '@/layouts/ConsoleLayout';
+import AccountLayout from '@/layouts/AccountLayout';
 import {
     defaultPasskeyName,
     isCancellation,
@@ -1439,7 +1439,7 @@ function SessionPanel({
     );
 }
 
-Security.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+Security.layout = (page: React.ReactNode) => <AccountLayout>{page}</AccountLayout>;
 
 /**
  * TEXT-MESSAGE CODES — a phone number as a second factor, where the environment offers it.

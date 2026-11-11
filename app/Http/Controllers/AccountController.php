@@ -31,6 +31,8 @@ use App\Platform\Passkeys\PasskeyName;
 use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
+use App\Platform\Surfaces\AccountChrome;
+use App\Platform\Surfaces\ReturnUrl;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -732,38 +734,14 @@ final readonly class AccountController extends PageController
      */
     private function validReturnTo(Request $request): ?array
     {
-        $url = $request->query('return_to');
-
-        if (! is_string($url)) {
+        // On the login host the page's chrome carries "Back to …" on every page
+        // ({@see AccountChrome}); a second link here would say the same thing twice.
+        if (app(AccountChrome::class)->applies($request)) {
             return null;
         }
 
-        $parts = parse_url($url);
+        $target = app(ReturnUrl::class)->validated($request->query(ReturnUrl::PARAMETER), $request);
 
-        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
-            return null;
-        }
-
-        $isLocal = in_array($parts['host'], ['localhost', '127.0.0.1'], true);
-
-        if ($parts['scheme'] !== 'https' && ! ($isLocal && $parts['scheme'] === 'http')) {
-            return null;
-        }
-
-        // Client is environment-scoped, so this is the current realm's registered set.
-        /** @var Collection<int, string> $redirectHosts */
-        $redirectHosts = Client::query()
-            ->get(['redirect_uris'])
-            ->flatMap(fn (Client $client): array => $client->redirect_uris)
-            ->map(static fn (string $uri): ?string => parse_url($uri, PHP_URL_HOST) ?: null)
-            ->filter();
-
-        $allowedHosts = $redirectHosts->push($request->getHost())->unique();
-
-        if (! $allowedHosts->contains($parts['host'])) {
-            return null;
-        }
-
-        return ['url' => $url, 'host' => $parts['host']];
+        return $target === null ? null : ['url' => $target['url'], 'host' => $target['host']];
     }
 }
