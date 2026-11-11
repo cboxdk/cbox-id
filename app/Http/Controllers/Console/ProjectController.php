@@ -135,7 +135,9 @@ final readonly class ProjectController extends ConsoleController
                         'name' => $e->name,
                         'type' => $e->type->value,
                         'host' => $e->domain ?? $e->slug,
-                        'openHref' => app(EnvironmentConsolePath::class)->route($e->id) ?? route('environment.open', $e->id),
+                        // Null when the console has no address ({@see EnvironmentConsolePath::for()}):
+                        // the row stays, and says why and what to do, instead of a link to a 404.
+                        'openHref' => app(EnvironmentConsolePath::class)->route($e->id),
                     ])->values()->all(),
                 ];
             }
@@ -244,7 +246,7 @@ final readonly class ProjectController extends ConsoleController
                 // The environment's own front door, which is a real URL somebody pastes
                 // to a colleague — not a route on this console.
                 'url' => 'https://'.($environment->domain ?? $environment->slug.'.'.$baseDomain),
-                'openHref' => app(EnvironmentConsolePath::class)->route($environment->id) ?? route('environment.open', $environment->id),
+                'openHref' => app(EnvironmentConsolePath::class)->route($environment->id),
             ])->values()->all(),
             // A management surface requires the capability AND full access.
             'canManage' => ! $scoped && $this->mayManage($members),

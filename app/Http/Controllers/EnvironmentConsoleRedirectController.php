@@ -10,6 +10,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\Deprecations\RetiredNameUse;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
+use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -156,7 +157,14 @@ final class EnvironmentConsoleRedirectController extends Controller
 
         $console = $this->paths->for($environment);
 
-        abort_if($console === null, 404);
+        // An environment whose console has no address (in no project of an organization):
+        // back to the projects, saying so, rather than a 404 that explains nothing.
+        if ($console === null) {
+            $slug = app(OrganizationLinks::class)->addressOf($organizationId)['slug'] ?? null;
+
+            return redirect()->to($slug !== null ? route('orgs.projects', ['org' => $slug]) : route('dashboard'))
+                ->with('error', __('console.environment_console_unresolved').'. '.__('console.environment_console_unresolved_detail'));
+        }
 
         // A page inside the console, from an old "open with ?to=/admin/users" link.
         $to = $request->query('to');

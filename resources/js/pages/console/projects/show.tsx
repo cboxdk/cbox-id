@@ -2,6 +2,7 @@ import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { store as storeEnvironment } from '@routes/orgs/projects/environments';
 import { router, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
+import { UnreachableConsole } from './UnreachableConsole';
 import type { PageProps } from '@/types';
 import {
     Badge,
@@ -24,7 +25,8 @@ interface EnvironmentRow {
     sandbox: boolean;
     status: string;
     url: string;
-    openHref: string;
+    /** Null when the console has no address: the row says why instead. */
+    openHref: string | null;
 }
 
 type Props = PageProps<{
@@ -144,14 +146,25 @@ export default function ProjectDetail({
                                     </a>
                                 </div>
 
-                                <Button asChild variant="primary" size="sm" className="shrink-0">
-                                    {/* A signed handoff to another host — a navigation, not a page. */}
-                                    <a href={environment.openHref}>
-                                        {consoleRich('console.open_part1_10c0f8b9', {
-                                            part1: <Icon name="external" className="w-3.5 h-3.5" />,
-                                        })}
-                                    </a>
-                                </Button>
+                                {environment.openHref === null ? (
+                                    <UnreachableConsole name={environment.name} />
+                                ) : (
+                                    <Button
+                                        asChild
+                                        variant="primary"
+                                        size="sm"
+                                        className="shrink-0"
+                                    >
+                                        {/* A signed handoff to another host — a navigation, not a page. */}
+                                        <a href={environment.openHref}>
+                                            {consoleRich('console.open_part1_10c0f8b9', {
+                                                part1: (
+                                                    <Icon name="external" className="w-3.5 h-3.5" />
+                                                ),
+                                            })}
+                                        </a>
+                                    </Button>
+                                )}
                             </div>
                         ))
                     )}

@@ -3,6 +3,7 @@ import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
+import { UnreachableConsole } from './UnreachableConsole';
 import type { HelpContent, PageProps } from '@/types';
 import { Badge, Button, Field, Icon, Input, PageHeader, Select } from '@/ui';
 import { resend as resendVerification } from '@routes/orgs/projects/verification';
@@ -13,7 +14,8 @@ interface EnvironmentRow {
     name: string;
     type: string;
     host: string;
-    openHref: string;
+    /** Null when the console has no address: the row says why instead. */
+    openHref: string | null;
 }
 
 interface ProjectRow {
@@ -294,22 +296,26 @@ function ProjectCard({
                                 </p>
                             </div>
 
-                            <Button asChild variant="secondary" size="sm" className="shrink-0">
-                                {/*
-                                    A plain anchor: the handoff answers with a signed
-                                    redirect to another host, which is a navigation and not
-                                    a page this client can mount.
-                                */}
-                                <a
-                                    href={environment.openHref}
-                                    aria-label={consoleFinalText(
-                                        'console.open_the_part1_console_3bbc1cbc',
-                                        { part1: environment.name },
-                                    )}
-                                >
-                                    {consoleT('console.open_console_f4063d1b')}
-                                </a>
-                            </Button>
+                            {environment.openHref === null ? (
+                                <UnreachableConsole name={environment.name} />
+                            ) : (
+                                <Button asChild variant="secondary" size="sm" className="shrink-0">
+                                    {/*
+                                        A plain anchor: the handoff answers with a signed
+                                        redirect to another host, which is a navigation and not
+                                        a page this client can mount.
+                                    */}
+                                    <a
+                                        href={environment.openHref}
+                                        aria-label={consoleFinalText(
+                                            'console.open_the_part1_console_3bbc1cbc',
+                                            { part1: environment.name },
+                                        )}
+                                    >
+                                        {consoleT('console.open_console_f4063d1b')}
+                                    </a>
+                                </Button>
+                            )}
                         </li>
                     ))
                 )}
