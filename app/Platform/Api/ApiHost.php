@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Api;
 
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Exception\SuspiciousOperationException;
 
 /**
  * The hosts the management API is reached on, read from configuration.
@@ -31,11 +32,22 @@ final class ApiHost
         return is_string($host) && trim($host) !== '' ? mb_strtolower(trim($host)) : null;
     }
 
-    /** Whether this request arrived on the API host. */
+    /**
+     * Whether this request arrived on the API host. A host that fails the trusted-host
+     * check is not the API host: asking must never turn an error page into a bare 400.
+     */
     public static function serves(Request $request): bool
     {
         $host = self::name();
 
-        return $host !== null && mb_strtolower($request->getHost()) === $host;
+        if ($host === null) {
+            return false;
+        }
+
+        try {
+            return mb_strtolower($request->getHost()) === $host;
+        } catch (SuspiciousOperationException) {
+            return false;
+        }
     }
 }

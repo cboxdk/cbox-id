@@ -49,6 +49,9 @@ it('refuses an internal path that came through the edge in production', function
             ->assertNotFound();
     } finally {
         $this->app->detectEnvironment(static fn (): string => 'testing');
+        // Production installs the trusted hosts on Symfony's Request statically; leave none
+        // behind for the next test in this process.
+        Request::setTrustedHosts([]);
     }
 
     expect(InClusterOnly::fromTheEdge(Request::create('/', server: ['HTTP_CF_RAY' => 'x'])))->toBeTrue()
