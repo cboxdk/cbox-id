@@ -17,6 +17,7 @@ use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\EnforceRootHostConsole;
 use App\Http\Middleware\FenceApiHost;
+use App\Http\Middleware\FenceSurfaces;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\InClusterOnly;
 use App\Http\Middleware\PointAtFirstRun;
@@ -265,6 +266,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // The API host answers the API and nothing else: global, so none of the application's
         // other routes (bound to no host) can start a session or render a page there.
         $middleware->append(FenceApiHost::class);
+        // In login-host mode every other host serves its own surface and nothing else: the
+        // issuer on the login host, the console on the app host, and only the health probes
+        // on a host that is neither. A no-op while no login host is configured.
+        $middleware->append(FenceSurfaces::class);
         $middleware->append(ServeMarketingWebsite::class);
 
         // Pin the current environment (session-selected) for the console + hosted UI.
