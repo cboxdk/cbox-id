@@ -9,6 +9,7 @@ use App\Http\Props\Auth\SocialProviderProps;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SendMagicLinkRequest;
 use App\Mail\MagicLinkMail;
+use App\Platform\AdminSignInLink;
 use App\Platform\Appearance\BrandContext;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\Enums\RefusedFactor;
@@ -157,6 +158,9 @@ final readonly class LoginController extends PageController
              * nothing in the browser reads cookies. See {@see LastSignInMethod}.
              */
             'lastUsed' => LastSignInMethod::read($request),
+            // The discreet link for whoever administers this environment: its console on
+            // the app host. Null where the environment hides it or there is no such console.
+            'adminUrl' => app(AdminSignInLink::class)->urlHere($request->getHost(), $request->getScheme()),
         ]);
     }
 

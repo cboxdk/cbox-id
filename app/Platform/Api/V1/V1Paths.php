@@ -214,6 +214,7 @@ final class V1Paths
         '/role-assignments/{id}' => 'grants one role: creates or keeps the assignment',
         '/role-permissions/{id}' => 'grants one permission: creates or keeps it',
         '/service-connections/{id}' => 'creates or replaces a connection by its id',
+        '/sign-in/admin-link' => 'one setting, replaced',
         '/sign-in/self-service-signup' => 'one setting, replaced',
         '/sign-in/through' => 'one setting, replaced',
         '/user-property-namespaces/{id}' => 'one namespace\'s configuration, replaced',

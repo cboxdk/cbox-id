@@ -25,13 +25,13 @@ you signed in and what you administer:
 | Console | Where | Who it is for |
 |---|---|---|
 | **Organization console** | The platform root host of a hosted deployment | Your own Cbox organization: projects, team, keys, billing |
-| **Customer organization console** | A customer's environment host, or a single-tenant install | One organization: on a customer's host an admin portal (members, SSO, directory sync, roles, audit log); on a single-tenant install everything, apps included |
+| **Customer organization console** | A single-tenant install; a customer's environment host only shows the person's own pages unless the deployment turns the customer console on | One organization: on a single-tenant install everything, apps included |
 | **Environment console** | `/admin` on an environment's own host | One environment: every organization in it, their users, and the product's apps, hooks and settings |
 
-On a hosted deployment the two are deliberately different. A customer's administrator gets
-an admin portal and their own pages; the product's administration (apps, webhooks, the
-token vault and the rest) is the environment console's alone, and its URLs answer 404 on
-the customer's console. On a single-tenant install there is no environment console, so the
+On a hosted deployment a customer's environment host serves sign-in, the person's own
+pages and the setup link for a customer's IT admin. Everything else, an organization's
+members and roles included, is the environment console's, and its URLs answer 404 on the
+customer's host. On a single-tenant install there is no environment console, so the
 customer organization console keeps every page. [Organizations &
 customers](../core-concepts/organizations-and-customers.md) explains the difference
 between your organization and a customer organization, and lists what a customer's console keeps.

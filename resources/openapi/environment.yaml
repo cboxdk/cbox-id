@@ -18191,6 +18191,83 @@ paths:
                     type: string
                   audience:
                     type: string
+  /sign-in/admin-link:
+    put:
+      tags:
+        - Sign-in
+      summary: "Show or hide the link for administrators on the environment's sign-in page. It leads to the environment console."
+      description: 'Requires scope `signin:write`. Danger: write.'
+      operationId: signin_admin_link_set
+      x-action: signin.admin_link.set
+      x-scope: 'signin:write'
+      x-scope-aliases: []
+      x-danger: write
+      parameters:
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
+        -
+          name: Cbox-Organization
+          in: header
+          required: false
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
+          schema:
+            type: string
+            minLength: 1
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                  description: "On: the sign-in page shows the link on every host of the environment. Off: on none. Until this is set, the link shows on the environment's address under the tenant base domain and not on a custom domain."
+              required:
+                - enabled
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AdminSignInLink'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+        503:
+          description: 'Product admission could not be verified. The request is refused; retry later.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /sign-in/policy:
     get:
       tags:
@@ -26164,6 +26241,14 @@ components:
             type: string
             pattern: '^[A-Z]{2}$'
           description: "The deployment's ceiling (CBOX_ID_SMS_ALLOWED_COUNTRIES). Empty: no deployment restriction. A listed country outside it is never texted."
+    AdminSignInLink:
+      type: object
+      required:
+        - enabled
+      properties:
+        enabled:
+          type: boolean
+          description: 'Whether the sign-in page shows the link for administrators on every host of the environment.'
     SelfServiceSignup:
       type: object
       required:

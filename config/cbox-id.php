@@ -658,6 +658,26 @@ return [
     ))),
 
     /*
+     * THE SINGLE REALM: what a customer environment's own host serves, and what may exist
+     * in the platform's own environment.
+     */
+    'realm' => [
+        /*
+         * Whether a customer's environment host (`{slug}.{tenant base domain}` or a custom
+         * domain) of a MULTI-TENANT deployment still serves the persistent customer console:
+         * Members, Roles, Single sign-on, Domains, Directory sync and the Audit log for the
+         * customer's own administrator.
+         *
+         * Off (the default), such a host serves sign-in, the person's own pages (Account,
+         * their Approvals) and the time-limited setup link `/setup/{token}`. An
+         * organization is administered by the environment's owner in the environment
+         * console on the app host. A single-tenant install is not asked: its organization
+         * console is the only console and stays whole.
+         */
+        'tenant_customer_console' => (bool) env('CBOX_ID_TENANT_CUSTOMER_CONSOLE', false),
+    ],
+
+    /*
      * THE SHAPE OF THIS DEPLOYMENT, as its manifest declares it — read by `cbox-id:doctor`.
      *
      * How many copies of the web process run. The application cannot count its siblings,

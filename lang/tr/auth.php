@@ -55,6 +55,7 @@ return [
             'instead' => 'Tek oturum açma ile devam et',
         ],
         'forgot_password' => 'Şifrenizi mi unuttunuz?',
+        'admin_link' => 'Yöneticiyim',
         'or' => 'VEYA',
         'continue_with' => ':provider ile devam edin',
         'last_used' => 'Son kullanılan',

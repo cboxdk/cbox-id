@@ -2004,6 +2004,17 @@ function multiTenantDeployment(string $consoleHost = 'cboxid.com'): void
 }
 
 /**
+ * Turn the persistent customer console ON for a customer's environment host
+ * (`cbox-id.realm.tenant_customer_console`). Off by default on a multi-tenant deployment,
+ * where such a host serves only sign-in and the person's own pages; a test that walks the
+ * customer console's Members, Roles, SSO or Audit pages there asks for it first.
+ */
+function withTenantCustomerConsole(): void
+{
+    config()->set('cbox-id.realm.tenant_customer_console', true);
+}
+
+/**
  * Back to the SINGLE-TENANT shape, for the organization-console half of a test whose
  * environment-console half needed {@see multiTenantDeployment()}.
  *

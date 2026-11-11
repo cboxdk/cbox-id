@@ -55,6 +55,7 @@ return [
             'instead' => 'Usar el inicio de sesión único en su lugar',
         ],
         'forgot_password' => '¿Has olvidado la contraseña?',
+        'admin_link' => 'Soy administrador',
         'or' => 'O',
         'continue_with' => 'Continuar con :provider',
         'last_used' => 'Usado por última vez',

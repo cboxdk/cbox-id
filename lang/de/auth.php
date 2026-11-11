@@ -55,6 +55,7 @@ return [
             'instead' => 'Stattdessen mit Single Sign-On fortfahren',
         ],
         'forgot_password' => 'Passwort vergessen?',
+        'admin_link' => 'Ich bin Administrator',
         'or' => 'ODER',
         'continue_with' => 'Weiter mit :provider',
         'last_used' => 'Zuletzt verwendet',

@@ -21,6 +21,8 @@ type Props = PageProps<{
     /** What the identifier step captured. The server's old-input bag, stated as a prop. */
     email: string;
     signupOpen: boolean;
+    /** The environment's console on the app host, for its administrators; null hides the link. */
+    adminUrl: string | null;
     providers: SocialProvider[];
     /** The environment's switches, under the deployment's. A method that is off is not drawn. */
     methods: { passkeys: boolean; magicLink: boolean };
@@ -35,7 +37,15 @@ type Props = PageProps<{
 /** The id the "last used" hint is referenced by — one per page, since one method is marked. */
 const LAST_USED_HINT = 'last-used-hint';
 
-export default function Login({ purpose, email, signupOpen, providers, methods, lastUsed }: Props) {
+export default function Login({
+    purpose,
+    email,
+    signupOpen,
+    adminUrl,
+    providers,
+    methods,
+    lastUsed,
+}: Props) {
     /*
      * ON THE FLASH CHANNEL, not in props.
      *
@@ -490,6 +500,23 @@ export default function Login({ purpose, email, signupOpen, providers, methods, 
                         </p>
                     )}
                 </>
+            )}
+
+            {/*
+                For whoever ADMINISTERS this environment, not for the people signing in: a
+                plain anchor to another origin (the console on the app host), small and
+                below everything else. The environment can hide it.
+            */}
+            {adminUrl !== null && (
+                <p className="mt-8 text-xs text-center">
+                    <a
+                        href={adminUrl}
+                        className="underline underline-offset-2"
+                        style={{ color: 'var(--muted-foreground)' }}
+                    >
+                        {t('auth.login.admin_link')}
+                    </a>
+                </p>
             )}
         </>
     );

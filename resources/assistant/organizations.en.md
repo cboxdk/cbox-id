@@ -94,9 +94,31 @@ keep every page there. Your customers get the narrower console below.
 
 ### Your customer's organization console
 
-On your environment's own host, signed in as one of your customers' administrators: a
-person who signs in to your product and administers their company's organization in it.
-This console is an admin portal for their IT department, exactly Members, Enterprise
+On your environment's own host, a person who signs in to your product gets sign-in and
+their own pages, and nothing else:
+
+| Area | Pages |
+|---|---|
+| **Overview** | Approvals (requests to act as them) |
+| **Account** | Security, Sessions & activity, My API keys (when one of your apps offers them), Trusted devices (when the devices module is on) |
+
+`/dashboard` there sends them to their account. Their organization is administered in two
+other places:
+
+- **By you**, in the environment console on the app host: open the organization under
+  **Organizations** for its members, invitations, roles, single sign-on, domains, directory
+  sync, audit log and app audit logs.
+- **By their IT admin**, through a **setup link** (`/setup/{token}`) you send from that
+  organization's page. It is time-limited and covers what you choose: single sign-on,
+  domains, directory sync, certificates, the audit log.
+
+The pages of a customer console (Members, Roles, single sign-on, Domains, Directory Sync,
+Audit log) answer 404 on your environment's host, writes included, and a signed-in agent
+gets no tools for them there.
+
+A self-hosted multi-tenant deployment can turn the persistent customer console back on
+with `CBOX_ID_TENANT_CUSTOMER_CONSOLE=true`. A customer's administrator then gets an admin
+portal for their IT department on your environment's host, exactly Members, Enterprise
 SSO, Domains, Directory Sync, Roles and the Audit log, plus their own pages:
 
 | Area | Pages |

@@ -55,6 +55,7 @@ return [
             'instead' => 'Nastavi s jedinstvenom prijavom',
         ],
         'forgot_password' => 'Zaboravljena lozinka?',
+        'admin_link' => 'Ja sam administrator',
         'or' => 'ILI',
         'continue_with' => 'Nastavi s :provider',
         'last_used' => 'Posljednja upotreba',

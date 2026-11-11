@@ -55,6 +55,7 @@ return [
             'instead' => 'Continuer plutôt avec le SSO',
         ],
         'forgot_password' => 'Mot de passe oublié ?',
+        'admin_link' => 'Je suis administrateur',
         'or' => 'OU',
         'continue_with' => 'Continuer avec :provider',
         'last_used' => 'Dernière utilisation',

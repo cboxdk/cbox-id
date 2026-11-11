@@ -55,6 +55,7 @@ return [
             'instead' => 'Käytä sen sijaan kertakirjautumista',
         ],
         'forgot_password' => 'Unohdit salasanan?',
+        'admin_link' => 'Olen ylläpitäjä',
         'or' => 'TAI',
         'continue_with' => 'Jatka palvelun :provider kautta',
         'last_used' => 'Viimeksi käytetty',

@@ -55,6 +55,7 @@ return [
             'instead' => 'Fortsätt med single sign-on i stället',
         ],
         'forgot_password' => 'Glömt lösenordet?',
+        'admin_link' => 'Jag är administratör',
         'or' => 'ELLER',
         'continue_with' => 'Fortsätt med :provider',
         'last_used' => 'Senast använd',

@@ -2003,6 +2003,8 @@ ConsoleRoutes::environment(function (): void {
     // The environment's self-service sign-up switch — environment plane only: it
     // decides who may create an account anywhere in the environment.
     Route::put('/sign-in-rules/self-service-signup', [AuthPolicyController::class, 'selfServiceSignup'])->name('environment.auth-policy.self-service-signup');
+    // Whether the sign-in page carries the link for administrators to this console.
+    Route::put('/sign-in-rules/admin-link', [AuthPolicyController::class, 'adminLink'])->name('environment.auth-policy.admin-link');
     // Text-message codes as a second factor — environment plane only, like sign-up: the
     // countries an environment texts are a cost and fraud decision for the environment.
     Route::put('/sign-in-rules/sms', [AuthPolicyController::class, 'sms'])->name('environment.auth-policy.sms');

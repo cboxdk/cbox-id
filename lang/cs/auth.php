@@ -55,6 +55,7 @@ return [
             'instead' => 'Místo toho použít jednotné přihlášení',
         ],
         'forgot_password' => 'Zapomněli jste heslo?',
+        'admin_link' => 'Jsem správce',
         'or' => 'NEBO',
         'continue_with' => 'Pokračujte s :provider',
         'last_used' => 'Poslední použití',
