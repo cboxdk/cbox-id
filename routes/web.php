@@ -2332,3 +2332,17 @@ Route::middleware(['api', ApiResolveEnvironment::class, 'throttle:60,1'])
     ->name('cli.bootstrap');
 
 Route::get('/app-icons/{id}/{hash}', AppCatalogIconController::class)->middleware(ApiResolveEnvironment::class)->where('hash', '[a-f0-9]{64}')->name('app-catalog.icon');
+
+/*
+|--------------------------------------------------------------------------
+| The shared shell's endpoints (laravel-console-kit)
+|--------------------------------------------------------------------------
+|
+| The header's menus, ⌘K and the preferences: `/shell/switch` (the same page in another
+| organization, project or environment, or its list), `/shell/context/{level}` (the lazy
+| lists and inline "New …"), `/shell/search`, `/shell/notifications` and
+| `/shell/preferences`. Behind the console's own sign-in, on the console host. A customer
+| environment's host keeps its own chrome and its own switch (`orgs.switch`).
+*/
+Cbox\Console\Kit\Facades\Console::shellRoutes('shell', ['web', 'plane:console', EnforceImpersonationWindow::class, 'platform.auth', 'locale.console', 'console.customer']);
+

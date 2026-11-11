@@ -96,8 +96,8 @@ it('emits the shared mobile navigation on the organization plane', function (): 
      */
     $shell = (array) $this->get(route('dashboard'))->assertOk()->inertiaProps('shell');
 
-    expect($shell['areas'])->not->toBe([])
-        ->and($shell['activeArea'])->not->toBeNull();
+    expect($shell['nav']['areas'])->not->toBe([])
+        ->and($shell['nav']['activeArea'])->not->toBe('');
 })->group('ux');
 
 /**
@@ -129,8 +129,8 @@ it('emits the shared mobile navigation on the environment plane too', function (
      */
     $shell = (array) $this->get(route('environment.home'))->assertOk()->inertiaProps('shell');
 
-    expect($shell['areas'])->not->toBe([])
-        ->and($shell['activeArea'])->not->toBeNull();
+    expect($shell['nav']['areas'])->not->toBe([])
+        ->and($shell['nav']['activeArea'])->not->toBe('');
 })->group('ux');
 
 /**

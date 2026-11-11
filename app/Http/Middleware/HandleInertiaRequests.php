@@ -19,6 +19,7 @@ use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
 use App\Platform\Impersonation;
 use App\Platform\Locale\HostedTranslations;
+use App\Platform\Shell\IdShell;
 use App\Platform\Theme;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Illuminate\Http\Request;
@@ -72,6 +73,7 @@ final class HandleInertiaRequests extends Middleware
         'impersonation',
         'flash',
         'shell',
+        'tenantShell',
         'appCatalogUrl',
         'i18n',
         'apiEquivalents',
@@ -164,7 +166,10 @@ final class HandleInertiaRequests extends Middleware
              * membership lookups behind it. See {@see ShellPayload} for what goes in.
              */
             'supportSessionUrl' => fn (): ?string => app(SupportContext::class)->sessionUrl($request),
-            'shell' => fn (): ?ShellProps => app(ShellPayload::class)->build(),
+            // cbox-ui's `CboxShell`, built by laravel-console-kit ({@see IdShell}).
+            'shell' => fn (): ?array => app(IdShell::class)->build(),
+            // A customer environment's white-labelled console keeps its own chrome.
+            'tenantShell' => fn (): ?ShellProps => app(IdShell::class)->tenant(),
             // Where the app switcher reads the signed-in person's catalog (AppCatalogFeedController).
             'appCatalogUrl' => fn (): string => route('apps.catalog', [], false),
 
