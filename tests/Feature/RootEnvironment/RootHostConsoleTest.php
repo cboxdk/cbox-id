@@ -89,7 +89,7 @@ it('sends an operator from Team sign-in to the platform environment\'s single si
 it('says above every root-host page what it acts on', function (): void {
     $workspace = (array) $this->get('https://cboxid.com/account')->assertOk()->inertiaProps('shell.actsOn');
     $environment = (array) $this->get('https://cboxid.com/admin/environment/social-sign-in')->assertOk()->inertiaProps('shell.actsOn');
-    $platform = (array) $this->get('https://cboxid.com/admin/platform/workspaces')->assertOk()->inertiaProps('shell.actsOn');
+    $platform = (array) $this->get('https://cboxid.com/admin/organizations')->assertOk()->inertiaProps('shell.actsOn');
 
     expect($environment)->toMatchArray(['kind' => 'environment', 'critical' => true])
         ->and((string) $environment['detail'])->toContain('every organization owner and every operator')

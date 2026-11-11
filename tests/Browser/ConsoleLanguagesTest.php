@@ -30,7 +30,7 @@ it('switches the environment console to Danish and keeps the choice on navigatio
 
 it('renders platform administration in Danish at a phone width', function (): void {
     actAsOperator();
-    $page = visit('/admin/platform/workspaces')->on()->mobile()->assertSee('Organizations');
+    $page = visit('/admin/organizations')->on()->mobile()->assertSee('Organizations');
     $page->click('button[aria-label="'.__('hosted.language.label', [], 'en').'"]')
         ->click('[role="menuitemradio"]:has-text("Dansk")');
     $page->assertSee('Organisationer')->assertNoJavaScriptErrors();

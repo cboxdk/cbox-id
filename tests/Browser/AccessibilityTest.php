@@ -514,23 +514,23 @@ it('has no accessibility issues on the ported platform console pages', function 
  * knows once it has run, and a dataset cannot build a URL it does not have yet.
  */
 dataset('platform pages', [
-    'environments' => ['/admin/platform/environments', 'Environments'],
-    'customers' => ['/admin/platform/workspaces', 'Organizations'],
+    'environments' => ['/admin/environments', 'Environments'],
+    'customers' => ['/admin/organizations', 'Organizations'],
     // The customer's OWN page, which is where the plane's real density is: a team table, a
     // panel per project, and an environment row with two controls that repoint the console.
-    'customer' => ['/admin/platform/workspaces/first', 'Acme'],
-    'organizations' => ['/admin/platform/organizations', 'Organization tree'],
+    'customer' => ['/admin/organizations/first', 'Acme'],
+    'organizations' => ['/admin/environments/root/organizations', 'Organization tree'],
     // The tenant's OWN page: a usage grid, a member table with an impersonation form on
     // every row, an entitlement table and an activity table — the densest page on the plane.
-    'organization' => ['/admin/platform/organizations/tenant', 'Tenant A11y'],
-    'operators' => ['/admin/platform/operators', 'Operators'],
-    'usage' => ['/admin/platform/usage', 'Usage'],
+    'organization' => ['/admin/environments/root/organizations/tenant', 'Tenant A11y'],
+    'operators' => ['/admin/operators', 'Operators'],
+    'usage' => ['/admin/usage', 'Usage'],
     // The queue workers' state. The suite runs jobs inline, so this is the page with no
     // queue to watch — the empty state is what renders.
-    'queues' => ['/admin/platform/queues', 'Queues'],
+    'queues' => ['/admin/queues', 'Queues'],
     // With a TERM, because the search page with none is a prompt and an empty list — the
     // result rows, which are the markup worth auditing, only exist once it has run.
-    'search' => ['/admin/platform/search?term=acme', 'Acme'],
+    'search' => ['/admin/search?term=acme', 'Acme'],
 ]);
 
 /**
@@ -594,7 +594,7 @@ it('keeps the platform console usable at a phone width', function (string $path,
 it('audits an environment list whose owner column has all three of its states', function (): void {
     operatorForAudit();
 
-    visit('/admin/platform/environments')
+    visit('/admin/environments')
         // The qualified name — "Production" alone is a name half the customers on an
         // install will have.
         ->assertSee('Acme / Production')
@@ -619,7 +619,7 @@ it('audits an environment list whose owner column has all three of its states', 
 it('confirms before it suspends a tenant, and says who the operator is', function (): void {
     operatorForAudit();
 
-    $page = visit('/admin/platform/organizations')
+    $page = visit('/admin/environments/root/organizations')
         // The page's own content first: `assertPresent` does not wait for React to mount.
         ->assertSee('Tenant A11y')
         // WHAT AUTHORITY YOU ARE HOLDING, drawn above every platform page — the topbar used

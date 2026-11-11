@@ -539,7 +539,7 @@ final class ConsoleCrawl
                 continue;
             }
 
-            if ($get === null || substr_count($other->uri(), '{') < substr_count($get->uri(), '{')) {
+            if ($get === null || $get->isFallback || substr_count($other->uri(), '{') < substr_count($get->uri(), '{')) {
                 return true;
             }
         }
