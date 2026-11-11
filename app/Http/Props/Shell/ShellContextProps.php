@@ -39,6 +39,15 @@ final readonly class ShellContextProps implements Prop
     ) {}
 
     /**
+     * No switcher: where the shared shell draws the context ({@see \App\Platform\Shell\IdShell}),
+     * this console's own is not built at all.
+     */
+    public static function none(): self
+    {
+        return new self('', [], null, []);
+    }
+
+    /**
      * @return array{noun: string, organizations: list<SwitchOptionProps>, switchUrl: string|null, projects: list<ContextProjectProps>}
      */
     public function toArray(): array

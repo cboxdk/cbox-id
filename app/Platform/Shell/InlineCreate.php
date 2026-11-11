@@ -19,6 +19,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * "New project" and "New environment" from the header's menus run the same actions the
@@ -30,6 +31,8 @@ use Illuminate\Validation\ValidationException;
  */
 final readonly class InlineCreate
 {
+    private const MEMO = 'cbox.shell.capabilities';
+
     public function __construct(
         private CurrentUser $user,
         private Organizations $organizations,
@@ -46,7 +49,30 @@ final readonly class InlineCreate
             return null;
         }
 
-        return $this->root->run(static fn (): OrganizationCapabilities => app(NativeProductAccess::class)->forWebSubject($subject, $organizationId));
+        // Read once per request: the project and environment levels and their "New …" all ask.
+        $memo = request()->attributes->get(self::MEMO);
+        $memo = is_array($memo) ? $memo : [];
+        $key = $subject.'|'.$organizationId;
+
+        if (array_key_exists($key, $memo)) {
+            return $memo[$key] instanceof OrganizationCapabilities ? $memo[$key] : null;
+        }
+
+        $memo[$key] = $this->read($subject, $organizationId);
+        request()->attributes->set(self::MEMO, $memo);
+
+        return $memo[$key];
+    }
+
+    private function read(string $subject, string $organizationId): ?OrganizationCapabilities
+    {
+        // The chrome never takes a page down: where the capabilities cannot be read (the
+        // product catalog is not installed, say), the menus offer nothing rather than a 503.
+        try {
+            return $this->root->run(static fn (): OrganizationCapabilities => app(NativeProductAccess::class)->forWebSubject($subject, $organizationId));
+        } catch (HttpException) {
+            return null;
+        }
     }
 
     /**

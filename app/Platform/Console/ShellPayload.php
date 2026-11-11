@@ -7,6 +7,7 @@ namespace App\Platform\Console;
 use App\Http\Props\Shell\NavAreaProps;
 use App\Http\Props\Shell\NavPageProps;
 use App\Http\Props\Shell\ShellActsOnProps;
+use App\Http\Props\Shell\ShellContextProps;
 use App\Http\Props\Shell\ShellProps;
 use App\Platform\Agents\ActionApprovalInbox;
 use App\Platform\CurrentEnvironment;
@@ -17,6 +18,7 @@ use App\Platform\IssuerUrl;
 use App\Platform\Navigation\ConsoleNav;
 use App\Platform\Navigation\ConsoleNavigation;
 use App\Platform\PlaneResolver;
+use App\Platform\Shell\ShellRequest;
 use App\Providers\ConsoleServiceProvider;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -238,7 +240,11 @@ final readonly class ShellPayload
             areas: $areas,
             activeArea: $active?->key,
             section: $platformPage ? Vocabulary::PLATFORM : null,
-            context: $this->context->forOrganizationPlane($this->activePageRoute($active)),
+            // Only a customer environment's own console draws this switcher; every other page's
+            // context is the shared shell's levels.
+            context: ShellRequest::onTenantConsole()
+                ? $this->context->forOrganizationPlane($this->activePageRoute($active))
+                : ShellContextProps::none(),
             isOperator: $isOperator,
             brandHref: $workspace ? app(OrganizationLanding::class)->url() : route('dashboard'),
             navPinned: NavPin::pinned($this->request),
@@ -439,7 +445,8 @@ final readonly class ShellPayload
             // had a back arrow and the environment's name as plain text; moving from
             // staging to production meant going back to Projects on another host and
             // opening it again.
-            context: $this->context->forEnvironmentPlane($membership, $subjectId, $this->activePageRoute($active)),
+            // The shared shell's levels say where an environment console stands.
+            context: ShellContextProps::none(),
             isOperator: $rootOperator,
             brandHref: $areas === [] ? route('environment.home') : $areas[0]->href,
             navPinned: NavPin::pinned($this->request),

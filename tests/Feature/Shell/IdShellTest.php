@@ -85,7 +85,10 @@ it('keeps the page when switching environment, and falls back to the list from a
         ->assertOk()
         ->assertJson(['url' => '/'.$sandboxPath.'/users', 'resolution' => 'same_page']);
 
-    $this->postJson(onAppHost('/shell/switch'), ['select' => ['environment' => (string) $sandbox->getKey()], 'from' => envConsolePath('/users/01JUSER')])
+    // From the header's cascade, which posts the project with the environment.
+    $project = (string) $sandbox->project_id;
+
+    $this->postJson(onAppHost('/shell/switch'), ['select' => ['project' => $project, 'environment' => (string) $sandbox->getKey()], 'from' => envConsolePath('/users/01JUSER')])
         ->assertOk()
         ->assertJson(['url' => '/'.$sandboxPath.'/users', 'resolution' => 'list_fallback']);
 })->group('shell');

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Shell\Levels;
 
 use App\Actions\OrgPlane\Projects\CreateProject;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\Shell\InlineCreate;
 use App\Platform\Shell\ShellRequest;
@@ -30,6 +31,8 @@ use Illuminate\Support\Str;
  */
 final class IdProjectLevel implements ContextLevel, CreatesContextItems
 {
+    private const SLUGS = 'cbox.shell.project-slugs';
+
     public function key(): string
     {
         return 'project';
@@ -40,9 +43,16 @@ final class IdProjectLevel implements ContextLevel, CreatesContextItems
         return Str::ucfirst(__('console.project_244210e4'));
     }
 
+    /**
+     * The project is carried in the environment console's one path parameter, as part of
+     * `orgs/{org}/projects/{project}/environments/{environment}`. Naming that parameter lets a
+     * switch from the cascade (project and environment at once) keep the page an environment
+     * console is on; the environment level, which comes after, supplies the whole path. A
+     * project's own page (`orgs.projects.show`) shows one record and falls back to the list.
+     */
     public function routeParameter(): string
     {
-        return 'project';
+        return EnvironmentConsolePath::PARAMETER;
     }
 
     public function current(Request $request, array $ancestors): ?ContextItem
@@ -157,7 +167,7 @@ final class IdProjectLevel implements ContextLevel, CreatesContextItems
             return [];
         }
 
-        return app(PlatformRoot::class)->run(static function () use ($organizationId, $all, $accessible): array {
+        $projects = app(PlatformRoot::class)->run(static function () use ($organizationId, $all, $accessible): array {
             $query = Project::query()->where('organization_id', $organizationId)->orderBy('name');
 
             if (! $all) {
@@ -166,6 +176,33 @@ final class IdProjectLevel implements ContextLevel, CreatesContextItems
 
             return array_values($query->get(['id', 'name', 'slug', 'organization_id'])->all());
         }) ?? [];
+
+        $slugs = [];
+
+        foreach ($projects as $project) {
+            $slugs[$organizationId.'|'.$project->id] = (string) $project->slug;
+        }
+
+        request()->attributes->set(self::SLUGS, array_merge(self::slugs(), $slugs));
+
+        return $projects;
+    }
+
+    /**
+     * The slug of a project this level listed in this request, so the environment level
+     * builds its paths without reading the project again; null when it was not listed.
+     */
+    public static function slugOf(string $organizationId, string $projectId): ?string
+    {
+        return self::slugs()[$organizationId.'|'.$projectId] ?? null;
+    }
+
+    /** @return array<string, string> */
+    private static function slugs(): array
+    {
+        $slugs = request()->attributes->get(self::SLUGS);
+
+        return is_array($slugs) ? $slugs : [];
     }
 
     private static function item(Project $project): ContextItem

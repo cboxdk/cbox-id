@@ -158,8 +158,10 @@ final class IdEnvironmentLevel implements ContextLevel, CreatesContextItems
             return [];
         }
 
-        $rows = app(PlatformRoot::class)->run(static function () use ($organization, $project, $accessible): array {
-            $slug = Project::query()->whereKey($project->id)->where('organization_id', $organization->id)->value('slug');
+        $known = IdProjectLevel::slugOf($organization->id, $project->id);
+
+        $rows = app(PlatformRoot::class)->run(static function () use ($organization, $project, $accessible, $known): array {
+            $slug = $known ?? Project::query()->whereKey($project->id)->where('organization_id', $organization->id)->value('slug');
 
             if (! is_string($slug)) {
                 return [];

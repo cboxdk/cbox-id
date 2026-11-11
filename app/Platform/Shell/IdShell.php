@@ -47,6 +47,7 @@ final readonly class IdShell
         $built = Console::shell()->build($this->request);
         $shell = $built->toArray();
         $shell['nav'] = self::nav($legacy);
+        $shell['section'] = $legacy->section;
 
         $unread = $built->notifications->unread;
         $bell = app(ApprovalsNotificationSource::class)->url($this->request);

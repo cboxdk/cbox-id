@@ -25,6 +25,7 @@ use Cbox\Console\Kit\Shell\ShellBanner;
 use Cbox\Console\Kit\Shell\ShellLink;
 use Cbox\Console\Kit\Shell\ShellPerson;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Support\ServiceProvider;
@@ -55,7 +56,8 @@ final class ShellServiceProvider extends ServiceProvider
 
                 if (! $user->check()) {
                     $subject = ShellRequest::subjectId();
-                    $found = $subject === null ? null : app(Subjects::class)->find($subject);
+                    // The person lives in the platform root, whichever environment the page stands in.
+                    $found = $subject === null ? null : app(PlatformRoot::class)->run(static fn () => app(Subjects::class)->find($subject));
 
                     return $found === null ? null : new ShellPerson((string) $found->id, (string) ($found->name ?: $found->email), null, null);
                 }

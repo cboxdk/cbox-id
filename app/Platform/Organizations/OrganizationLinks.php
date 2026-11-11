@@ -40,6 +40,8 @@ final class OrganizationLinks
 
     private bool $cboxResolved = false;
 
+    private mixed $root = null;
+
     /**
      * The `cbox` environment's id, or null where this deployment has none (a fresh
      * install, a developer machine, the test suite). Never the platform root itself.
@@ -67,7 +69,8 @@ final class OrganizationLinks
      */
     public function rootEnvironmentId(): ?string
     {
-        $id = DB::table('environments')->where('is_default', true)->value('id');
+        // Once per request: it does not move, and the shell and the page both ask.
+        $id = $this->root ??= DB::table('environments')->where('is_default', true)->value('id');
 
         if (is_string($id)) {
             return $id;

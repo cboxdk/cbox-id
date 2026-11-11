@@ -438,16 +438,17 @@ it('does not ask the same question twice within an organization-console render',
  * Two callers ask for it on every console page — the controller, for the word in the tab
  * title, and the shared `shell` prop — and each used to build all of it: the rail, the
  * memberships, and now the context switcher's projects and environments. Measured on the
- * statement only the context switcher issues (the environments of the workspace's projects
- * this person may open), so the count is the number of times the shell was built rather
- * than a total that drifts with the page.
+ * statement only the header's environment level issues (the environments of the current
+ * project this person may open, {@see \App\Platform\Shell\Levels\IdEnvironmentLevel}),
+ * so the count is the number of times the shell was built rather than a total that drifts
+ * with the page.
  */
 it('builds the console chrome once per request', function (): void {
     $organizationId = environmentBudgetAdmin();
 
     foreach (['environment.organizations.roles', 'environment.roles', 'environment.home'] as $route) {
         $builds = collect(consoleRequest($route, $route === 'environment.organizations.roles' ? ['organization' => $organizationId] : [])['queries'])
-            ->filter(fn (string $sql): bool => (bool) preg_match('/from ["`]environments["`] where ["`]project_id["`] in .* and ["`]id["`] in/', $sql))
+            ->filter(fn (string $sql): bool => (bool) preg_match('/from ["`]environments["`] where ["`]project_id["`] = \? and ["`]id["`] in/', $sql))
             ->count();
 
         expect($builds)->toBe(1, "{$route} built the shell {$builds} times");

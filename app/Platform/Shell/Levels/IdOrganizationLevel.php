@@ -7,7 +7,9 @@ namespace App\Platform\Shell\Levels;
 use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
 use App\Platform\OAuth\Exceptions\OrganizationCreationRefused;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
+use App\Platform\CurrentUser;
 use App\Platform\Organizations\OrganizationDirectory;
+use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\Organizations\OrganizationEntry;
 use App\Platform\Shell\ShellRequest;
 use Cbox\Console\Kit\Contracts\ContextLevel;
@@ -63,6 +65,19 @@ final class IdOrganizationLevel implements ContextLevel, CreatesContextItems
 
         if ($slug === null || $subject === null) {
             return null;
+        }
+
+        // The page's own middleware has already bound the organization the path names and
+        // checked the membership: name it from that rather than reading the memberships again.
+        $user = app(CurrentUser::class);
+        $bound = $user->check() && $user->role() !== null ? $user->organizationId() : null;
+
+        if ($bound !== null && $user->id() === $subject) {
+            $address = app(OrganizationLinks::class)->addressesOf([$bound])[$bound] ?? null;
+
+            if ($address !== null && $address['slug'] === $slug) {
+                return new ContextItem(id: $bound, name: $address['name'], routeKey: $address['slug']);
+            }
         }
 
         $entry = app(OrganizationDirectory::class)->find($subject, $slug);
