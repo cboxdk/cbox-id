@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Platform\Shell\Levels;
 
+use App\Platform\CurrentUser;
 use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
 use App\Platform\OAuth\Exceptions\OrganizationCreationRefused;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
-use App\Platform\CurrentUser;
 use App\Platform\Organizations\OrganizationDirectory;
-use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\Organizations\OrganizationEntry;
+use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\Shell\ShellRequest;
 use Cbox\Console\Kit\Contracts\ContextLevel;
 use Cbox\Console\Kit\Contracts\CreatesContextItems;

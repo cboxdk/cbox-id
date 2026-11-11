@@ -5,22 +5,28 @@ declare(strict_types=1);
 namespace App\Platform\Shell\Levels;
 
 use App\Actions\OrgPlane\Environments\CreateEnvironment;
+use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\Shell\InlineCreate;
 use App\Platform\Shell\ShellRequest;
 use Cbox\Console\Kit\Contracts\ContextLevel;
 use Cbox\Console\Kit\Contracts\CreatesContextItems;
+use Cbox\Console\Kit\Facades\Console;
 use Cbox\Console\Kit\Shell\ContextItem;
 use Cbox\Console\Kit\Shell\ContextPage;
 use Cbox\Console\Kit\Shell\ContextQuery;
 use Cbox\Console\Kit\Shell\CreatedContextItem;
 use Cbox\Console\Kit\Shell\Tone;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 /**
  * THE ENVIRONMENT LEVEL: a project's environments the person may administer.
@@ -90,7 +96,60 @@ final class IdEnvironmentLevel implements ContextLevel, CreatesContextItems
 
     public function url(ContextItem $item, array $ancestors): string
     {
+        $twin = self::twinOfSwitchOrigin();
+
+        if ($twin !== null && self::servedIn($twin, $item->id)) {
+            return route($twin, [EnvironmentConsolePath::PARAMETER => $item->routeKey], false);
+        }
+
         return route('environment.home', [EnvironmentConsolePath::PARAMETER => $item->routeKey], false);
+    }
+
+    /**
+     * Opening an environment from an organization page opens that page's twin there, by the
+     * console's naming rule (`orgs.settings.api-keys` → `environment.keys`,
+     * {@see ConsoleScope::environmentTwin()}): Workspace › Keys is the same capability as an
+     * environment's API keys. The kit keeps the page only for a route that already carries
+     * the environment, so the switch's `from` is read here. Null where there is no twin.
+     */
+    private static function twinOfSwitchOrigin(): ?string
+    {
+        $from = request()->input('from');
+
+        if (! is_string($from) || ! str_starts_with($from, '/')) {
+            return null;
+        }
+
+        try {
+            $route = app('router')->getRoutes()->match(Request::create($from));
+        } catch (HttpExceptionInterface) {
+            return null;
+        }
+
+        $name = $route->getName();
+
+        if (! is_string($name) || in_array(EnvironmentConsolePath::PARAMETER, $route->parameterNames(), true)) {
+            return null;
+        }
+
+        $twin = Route::getRoutes()->getByName(ConsoleScope::environmentTwin($name));
+
+        return $twin !== null
+            && $twin->parameterNames() === [EnvironmentConsolePath::PARAMETER]
+            && in_array('GET', $twin->methods(), true) ? $twin->getName() : null;
+    }
+
+    /** Whether that environment serves the page: a module's page is there only where its feature is on. */
+    private static function servedIn(string $route, string $environmentId): bool
+    {
+        $features = collect(Route::getRoutes()->getByName($route)?->gatherMiddleware() ?? [])
+            ->filter(static fn (mixed $middleware): bool => is_string($middleware) && str_starts_with($middleware, 'console.feature:'))
+            ->map(static fn (string $middleware): string => substr($middleware, strlen('console.feature:')));
+
+        return $features->isEmpty() || app(EnvironmentContext::class)->runAs(
+            GenericEnvironment::of($environmentId),
+            static fn (): bool => $features->every(static fn (string $feature): bool => Console::featureActive($feature)),
+        );
     }
 
     public function allUrl(array $ancestors): string

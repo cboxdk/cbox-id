@@ -66,10 +66,26 @@ final class ShellServiceProvider extends ServiceProvider
             })
             ->levels(new IdOrganizationLevel, new IdProjectLevel, new IdEnvironmentLevel)
             ->search(new IdSearchProvider)
-            ->actions(static fn (Request $request): array => array_map(
-                static fn (array $action): PaletteAction => PaletteAction::url($action['href'], $action['label'], $action['name']),
-                app(PaletteActions::class)->for(app(ShellPayload::class)->build()->areas ?? []),
-            ))
+            ->actions(static function (Request $request): array {
+                $legacy = app(ShellPayload::class)->build();
+                $actions = array_map(
+                    static fn (array $action): PaletteAction => PaletteAction::url($action['href'], $action['label'], $action['name']),
+                    app(PaletteActions::class)->for($legacy->areas ?? []),
+                );
+
+                // An operator on an organization's console: platform admin and the platform's
+                // own environment, which the old account menu linked and CboxShell's has no
+                // room for, are a ⌘K away.
+                if ($legacy?->platformHref !== null) {
+                    $actions[] = PaletteAction::url($legacy->platformHref, __('console.platform_admin_69652f55'), 'platform.admin');
+                }
+
+                if ($legacy?->platformEnvironmentHref !== null) {
+                    $actions[] = PaletteAction::url($legacy->platformEnvironmentHref, __('console.platform_environment_2676dfe4'), 'platform.environment');
+                }
+
+                return $actions;
+            })
             ->help(new IdHelpConfig)
             ->helpTopic(static function (Request $request): ?string {
                 $topic = $request->attributes->get(HelpProps::REQUEST_ATTRIBUTE);
@@ -92,8 +108,15 @@ final class ShellServiceProvider extends ServiceProvider
                     return new ShellBanner(BannerKind::Impersonation, $text, new ShellLink(__('console.exit_impersonation_357bef8f'), $exit));
                 }
 
-                if (ShellRequest::onPlatformAdmin($request)) {
-                    return new ShellBanner(BannerKind::Notice, __('console.platform_admin_69652f55').': '.__('console.the_whole_deployment_3cbe949f'));
+                // A page that reaches past one organization says so over the page: platform
+                // admin (the whole deployment) and the platform's own environment (everyone's
+                // sign-in). The same sentence the console's "acts on" line has always said.
+                $actsOn = app(ShellPayload::class)->build()?->actsOn;
+
+                if ($actsOn !== null && $actsOn->critical) {
+                    $label = $actsOn->kind === 'platform' ? __('console.platform_admin_69652f55').': '.$actsOn->label : $actsOn->label;
+
+                    return new ShellBanner(BannerKind::Notice, $actsOn->detail !== null ? $label.'. '.$actsOn->detail : $label);
                 }
 
                 return null;

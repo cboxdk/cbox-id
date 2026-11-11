@@ -150,6 +150,7 @@ use App\Http\WebRateLimiters;
 use App\Platform\Console\ConsoleRoutes;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
+use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Api\Http\Middleware\NoStore;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment as ApiResolveEnvironment;
@@ -2344,5 +2345,4 @@ Route::get('/app-icons/{id}/{hash}', AppCatalogIconController::class)->middlewar
 | `/shell/preferences`. Behind the console's own sign-in, on the console host. A customer
 | environment's host keeps its own chrome and its own switch (`orgs.switch`).
 */
-Cbox\Console\Kit\Facades\Console::shellRoutes('shell', ['web', 'plane:console', EnforceImpersonationWindow::class, 'platform.auth', 'locale.console', 'console.customer']);
-
+Console::shellRoutes('shell', ['web', 'plane:console', EnforceImpersonationWindow::class, 'platform.auth', 'locale.console', 'console.customer']);

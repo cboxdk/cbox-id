@@ -13,7 +13,6 @@ use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
-use App\Platform\NativeProduct\NativeProductAccess;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\PlaneResolver;

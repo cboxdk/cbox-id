@@ -5,8 +5,8 @@ use App\Providers\AppServiceProvider;
 use App\Providers\QueueServiceProvider;
 use App\Providers\RadarServiceProvider;
 use App\Providers\ServiceConnectionsServiceProvider;
-use App\Providers\SignalsDataServiceProvider;
 use App\Providers\ShellServiceProvider;
+use App\Providers\SignalsDataServiceProvider;
 use App\Providers\SignalsServiceProvider;
 
 return [

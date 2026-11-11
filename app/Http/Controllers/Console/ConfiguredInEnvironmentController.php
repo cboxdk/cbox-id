@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Http\Middleware\EnforceRootHostConsole;
+use App\Http\Props\Shell\ContextProjectProps;
 use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\Console\OrganizationLanding;
 use App\Platform\Console\RootHostConsole;
-use App\Http\Props\Shell\ContextProjectProps;
 use App\Platform\Console\ShellContext;
 use Inertia\Response;
 
