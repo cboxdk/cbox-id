@@ -1,21 +1,34 @@
 import {
+    applyTheme,
     CboxShell,
+    type PaletteAction,
+    parseShellCatalog,
+    readKnownAppCatalog,
+    rememberAppCatalog,
     type ShellIcon,
     type ShellLinkComponent,
     type ShellNavigate,
     type ShellPreferenceChange,
 } from '@cboxdk/cbox-ui';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { type ComponentProps, type ReactNode, useMemo } from 'react';
+import { type ComponentProps, type ReactNode, useEffect, useMemo } from 'react';
 import { EmailConfirmationBanner } from '@/chrome/Banners';
 import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { StepUpDialog } from '@/chrome/StepUpDialog';
 import { Toaster } from '@/chrome/Toaster';
-import { useDocumentLanguage } from '@/i18n';
+import { useDocumentLanguage, useTranslator } from '@/i18n';
+import {
+    FORMAT_CODES,
+    FORMAT_COOKIE,
+    formatLabel,
+    setFormatPreferences,
+    TIME_ZONE_COOKIE,
+    writeFormatCookie,
+} from '@/lib/formats';
 import { setNavPinned, setThemePreference } from '@/lib/theme';
 import { TenantConsoleLayout } from '@/layouts/TenantConsoleLayout';
 import { OrganizationFrame } from '@/pages/environment/organizations/frame';
-import type { ConsoleShell, SharedProps } from '@/types';
+import type { ConsoleShell, I18n, SharedProps } from '@/types';
 import { Icon, PageApiEquivalents, TooltipProvider } from '@/ui';
 import { iconPaths, type IconName } from '@/ui/icons';
 
@@ -95,8 +108,114 @@ export function switchRequest(
     return { select, from: typeof from === 'string' ? from : undefined };
 }
 
-function navigator(shell: ConsoleShell): ShellNavigate {
+/**
+ * A ⌘K action that changes a preference rather than going somewhere: the same choices the
+ * account menu at the rail's foot offers, findable by typing "dark", "dansk" or "format".
+ */
+const PREFERENCE_ACTION = '#preference:';
+
+export function preferenceAction(url: string): { key: string; value: string } | null {
+    if (!url.startsWith(PREFERENCE_ACTION)) {
+        return null;
+    }
+
+    const [key = '', ...rest] = url.slice(PREFERENCE_ACTION.length).split(':');
+    const value = rest.join(':');
+
+    return key === '' || value === '' ? null : { key, value };
+}
+
+/** One choice, wherever it was made: the cookie the server reads before the first paint, and the request that saves it. */
+function savePreference(key: string, value: unknown, i18n: I18n | null | undefined): void {
+    if (key === 'theme') {
+        setThemePreference(value as 'system' | 'light' | 'dark');
+    } else if (key === 'railPinned') {
+        setNavPinned(value === true);
+    } else if (key === 'helpOpen') {
+        writeCookie('cbox_shell_help', value === true ? '1' : '0');
+    } else if (key === 'regionalFormat') {
+        writeFormatCookie(FORMAT_COOKIE, typeof value === 'string' ? value : undefined);
+    } else if (key === 'timeZone') {
+        writeFormatCookie(TIME_ZONE_COOKIE, typeof value === 'string' ? value : undefined);
+    } else if (key === 'locale' && i18n?.preference && value !== i18n.locale) {
+        router.post(
+            i18n.preference.updateUrl,
+            {
+                language: String(value),
+                subject_id: i18n.preference.subjectId,
+                version: i18n.preference.version,
+            },
+            { preserveScroll: true, preserveState: true },
+        );
+    }
+}
+
+/** The palette's preference entries; the account menu holds the same choices. */
+export function preferenceActions(
+    labels: {
+        theme: string;
+        themes: Record<'system' | 'light' | 'dark', string>;
+        language: string;
+        format: string;
+    },
+    languages: { code: string; label: string }[],
+    formats: { code: string; label: string }[],
+): PaletteAction[] {
+    const actions: PaletteAction[] = (['system', 'light', 'dark'] as const).map((theme) => ({
+        id: `preference.theme.${theme}`,
+        label: `${labels.theme}: ${labels.themes[theme]}`,
+        url: `${PREFERENCE_ACTION}theme:${theme}`,
+        method: 'post',
+        // The palette draws only cbox-ui's own icon set.
+        icon: 'settings',
+        keywords: ['theme', 'appearance', 'dark mode', 'light mode', theme],
+    }));
+
+    for (const language of languages) {
+        actions.push({
+            id: `preference.locale.${language.code}`,
+            label: `${labels.language}: ${language.label}`,
+            url: `${PREFERENCE_ACTION}locale:${language.code}`,
+            method: 'post',
+            icon: 'globe',
+            keywords: ['language', 'sprog', language.code],
+        });
+    }
+
+    for (const format of formats) {
+        actions.push({
+            id: `preference.format.${format.code}`,
+            label: `${labels.format}: ${format.label}`,
+            url: `${PREFERENCE_ACTION}regionalFormat:${format.code}`,
+            method: 'post',
+            icon: 'calendar',
+            keywords: ['format', 'regional format', 'date', 'number', format.code],
+        });
+    }
+
+    return actions;
+}
+
+function navigator(shell: ConsoleShell, i18n: I18n | null | undefined): ShellNavigate {
     return (url, options) => {
+        const preference = preferenceAction(url);
+
+        if (preference !== null) {
+            if (preference.key === 'theme') {
+                applyTheme(preference.value as 'system' | 'light' | 'dark');
+            }
+
+            savePreference(preference.key, preference.value, i18n);
+
+            // The language reloads the page itself; anything else re-reads the shell, whose
+            // preferences come from the cookies just written, so the account menu agrees.
+            if (preference.key !== 'locale') {
+                router.reload({ only: ['shell'] });
+            }
+
+            return;
+        }
+
         if (options?.newTab === true) {
             window.open(url, '_blank', 'noopener');
 
@@ -120,6 +239,55 @@ function navigator(shell: ConsoleShell): ShellNavigate {
     };
 }
 
+/**
+ * The rail draws this app's mark from the catalog the browser already knows, which until
+ * now was only filled once the app switcher had been opened: a first visit showed the
+ * initials. Read once per browser, the way the switcher reads it, and only while the mark
+ * is missing.
+ */
+function useAppMark(appKey: string | undefined, catalogUrl: string | undefined): void {
+    useEffect(() => {
+        if (appKey === undefined || catalogUrl === undefined || catalogUrl === '') {
+            return;
+        }
+
+        if (readKnownAppCatalog().some((app) => app.key === appKey && app.icon_url !== null)) {
+            return;
+        }
+
+        const controller = new AbortController();
+
+        fetch(catalogUrl, {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+            signal: controller.signal,
+        })
+            .then(async (response) => {
+                const state = parseShellCatalog(
+                    response.ok,
+                    await response.json().catch(() => null),
+                    window.location,
+                );
+
+                if (state.status === 'ready') {
+                    rememberAppCatalog(
+                        state.apps.map((app) => ({
+                            key: app.key,
+                            name: app.name,
+                            launch_url: app.url,
+                            icon_url: app.iconUrl,
+                            icon_dark_url: app.iconDarkUrl,
+                        })),
+                    );
+                }
+            })
+            // The initials stay: the switcher reads the catalog again when it opens.
+            .catch(() => undefined);
+
+        return () => controller.abort();
+    }, [appKey, catalogUrl]);
+}
+
 function writeCookie(name: string, value: string): void {
     const secure = location.protocol === 'https:' ? '; secure' : '';
 
@@ -141,28 +309,28 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
 
     useDocumentLanguage(i18n?.locale ?? 'en');
 
+    const { t } = useTranslator();
+
+    useAppMark(shell?.app.key, shell?.apps.catalogUrl);
+
     const onPreferenceChange = useMemo<ShellPreferenceChange>(
         () => (key, value) => {
-            if (key === 'theme') {
-                setThemePreference(value as 'system' | 'light' | 'dark');
-            } else if (key === 'railPinned') {
-                setNavPinned(value === true);
-            } else if (key === 'helpOpen') {
-                writeCookie('cbox_shell_help', value === true ? '1' : '0');
-            } else if (key === 'locale' && i18n?.preference && value !== i18n.locale) {
-                router.post(
-                    i18n.preference.updateUrl,
-                    {
-                        language: String(value),
-                        subject_id: i18n.preference.subjectId,
-                        version: i18n.preference.version,
-                    },
-                    { preserveScroll: true, preserveState: true },
-                );
+            savePreference(key, value, i18n);
+
+            // A format or zone re-reads the shell, whose preferences come from the cookie just
+            // written; the render below then applies them, so dates on screen follow at once.
+            if (key === 'regionalFormat' || key === 'timeZone') {
+                router.reload({ only: ['shell'] });
             }
         },
         [i18n],
     );
+
+    // Dates on every page use the format and zone the shell says this person chose.
+    setFormatPreferences({
+        regionalFormat: shell?.preferences.regionalFormat,
+        timeZone: shell?.preferences.timeZone,
+    });
 
     if (tenantShell !== null && tenantShell !== undefined) {
         return <TenantConsoleLayout>{page}</TenantConsoleLayout>;
@@ -197,10 +365,38 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
         );
     }
 
+    // The languages this console is translated into, each named in itself. Offered only
+    // where the choice can be saved; elsewhere the menu shows the one language in use rather
+    // than a default list whose choices would do nothing.
     const languages =
         i18n?.preference && i18n.locales.length > 1
             ? i18n.locales.map((option) => ({ code: option.code, label: option.name }))
-            : undefined;
+            : i18n?.locales
+                  .filter((option) => option.code === i18n.locale)
+                  .map((option) => ({ code: option.code, label: option.name }));
+    const formats = FORMAT_CODES.map((code) => ({ code, label: formatLabel(code) }));
+    const palette = {
+        ...shell.palette,
+        actions: [
+            ...shell.palette.actions,
+            ...preferenceActions(
+                {
+                    theme: t('console.theme_efb52e71'),
+                    themes: {
+                        system: t('console.system_6725e7bb'),
+                        light: t('console.light_dbcd5e7b'),
+                        dark: t('console.dark_60acc53f'),
+                    },
+                    language: t('console.language'),
+                    format: t('console.regional_format'),
+                },
+                i18n?.preference
+                    ? (languages ?? []).filter((language) => language.code !== i18n.locale)
+                    : [],
+                formats,
+            ),
+        ],
+    };
 
     return (
         <TooltipProvider>
@@ -208,10 +404,11 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
             <CboxShell
                 shell={{
                     ...shell,
-                    account: { ...shell.account, languages },
+                    palette,
+                    account: { ...shell.account, languages, formats },
                     preferences: { ...shell.preferences, locale: i18n?.locale ?? 'en' },
                 }}
-                navigate={navigator(shell)}
+                navigate={navigator(shell, i18n)}
                 LinkComponent={ShellLink}
                 icons={ID_ICONS}
                 onPreferenceChange={onPreferenceChange}

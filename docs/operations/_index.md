@@ -25,6 +25,8 @@ running it yourself on a VM, a PaaS or any Kubernetes cluster.
 - [Rehearsing an upgrade](upgrade-rehearsal.md) — prove a release migrates your
   database: the seeded check on PostgreSQL, and a rehearsal on a copy of your
   own data.
+- [Rotating app client secrets to `cbid_cs_`](secret-rotation-v3.md) — the v3 runbook:
+  mint a second secret per app, confirm the app uses it, then revoke the `csec_` one.
 - [Analytics storage](analytics.md) — where authentication analytics are stored
   (nothing, the app's own database, or ClickHouse) and the retention each needs.
 

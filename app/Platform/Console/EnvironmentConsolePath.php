@@ -23,7 +23,7 @@ use Cbox\Id\Platform\PlatformRoot;
  * environment has exactly one path. A path whose organization, project or environment do
  * not belong together resolves to nothing — that is the 404 a guessed URL gets.
  */
-final readonly class EnvironmentConsolePath
+readonly class EnvironmentConsolePath
 {
     /** The route parameter every environment-console route carries in front. */
     public const PARAMETER = 'environmentPath';

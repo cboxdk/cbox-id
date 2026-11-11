@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\Organizations\OrganizationDirectory;
+use App\Platform\Shell\IdShell;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
@@ -293,3 +294,32 @@ it('keeps a customer environment\'s own console in its white-labelled chrome', f
         ->and((array) $response->inertiaProps('tenantShell'))->toHaveKey('areas')
         ->and($response->inertiaProps('tenantShell.areas'))->not->toBe([]);
 })->group('shell');
+
+it('reads the account menu\'s regional format and time zone before the first paint, and ignores a forged one', function (): void {
+    actAsEnvironmentAdminOfATenant();
+
+    $shell = (array) $this->withUnencryptedCookies(['cbox-format' => 'da-DK', 'cbox-time-zone' => 'Europe/Copenhagen'])
+        ->get(envConsole('/users'))->assertOk()->inertiaProps('shell');
+
+    expect($shell['preferences']['regionalFormat'])->toBe('da-DK')
+        ->and($shell['preferences']['timeZone'])->toBe('Europe/Copenhagen');
+
+    app()->forgetScopedInstances(); // a new request, as in a browser
+
+    $shell = (array) $this->withUnencryptedCookies(['cbox-format' => 'da-DK"><script>', 'cbox-time-zone' => 'Mars/Olympus'])
+        ->get(envConsole('/users'))->assertOk()->inertiaProps('shell');
+
+    expect($shell['preferences'])->not->toHaveKey('regionalFormat')
+        ->and($shell['preferences'])->not->toHaveKey('timeZone')
+        ->and($shell['preferences']['theme'])->toBe('system');
+})->group('shell');
+
+it('keeps a time zone the browser names by its older alias', function (string $zone): void {
+    // Browsers list Intl.supportedValuesOf('timeZone') with the old names (Europe/Kiev, not
+    // Europe/Kyiv); the account menu offers what the browser lists, so the server keeps it.
+    expect(IdShell::timeZone($zone))->toBe($zone);
+})->with(['Europe/Kiev', 'Asia/Calcutta', 'Europe/Kyiv', 'Asia/Kolkata'])->group('shell');
+
+it('drops a time zone that is not one', function (mixed $zone): void {
+    expect(IdShell::timeZone($zone))->toBeNull();
+})->with(['Mars/Olympus', '', str_repeat('A', 65), null, 3])->group('shell');

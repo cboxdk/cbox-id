@@ -16,6 +16,26 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
+/**
+ * One instant for every code in this file, mid-step (15 s into a 30 s window). Codes used to
+ * be taken at `time()` and `time() - 30` and checked against the server's own `time()`, so a
+ * run that crossed a step boundary between the two moved the confirmed step out of the
+ * ±1 window and failed. The authenticator the app verifies with reads the same instant.
+ */
+const NAMED_TOTP_NOW = 1_800_000_015;
+
+beforeEach(function (): void {
+    app()->instance(TotpAuthenticator::class, new class extends TotpAuthenticator
+    {
+        public function matchStep(string $base32Secret, string $code, ?int $timestamp = null, int $window = 1): ?int
+        {
+            return parent::matchStep($base32Secret, $code, $timestamp ?? NAMED_TOTP_NOW, $window);
+        }
+    });
+    app()->forgetInstance(Mfa::class);
+    app()->forgetInstance(TotpDevices::class);
+});
+
 function namedTotpOwner(): string
 {
     [$subject, $org] = accountWithOrg('named-apps@example.test');
@@ -43,7 +63,7 @@ function namedTotpConfirm(array $app): void
     app(Sudo::class)->confirm();
     inertiaRequest(fn () => test()->from(route('account'))->post(route('account.mfa.confirm'), [
         'factor_id' => $app['id'],
-        'code' => app(TotpAuthenticator::class)->codeAt($app['secret'], time() - 30),
+        'code' => app(TotpAuthenticator::class)->codeAt($app['secret'], NAMED_TOTP_NOW - 30),
     ]))->assertSessionHasNoErrors();
 }
 
@@ -68,7 +88,7 @@ it('adds three separately named apps without replacing keys or recovery codes', 
         ->and(json_encode($props))->not->toContain($second['secret'])
         ->and(json_encode($props))->not->toContain($third['secret']);
     foreach ([$first, $second, $third] as $app) {
-        expect(app(Mfa::class)->verifyTotp($userId, app(TotpAuthenticator::class)->codeAt($app['secret'], time())))->toBeTrue();
+        expect(app(Mfa::class)->verifyTotp($userId, app(TotpAuthenticator::class)->codeAt($app['secret'], NAMED_TOTP_NOW)))->toBeTrue();
     }
 });
 
@@ -85,8 +105,8 @@ it('renames and removes one app while retaining the other and guarding the last'
     app(Sudo::class)->confirm();
     inertiaRequest(fn () => test()->from(route('account'))->delete(route('account.mfa.totp.destroy', $first['id'])))
         ->assertSessionHasNoErrors();
-    expect(app(Mfa::class)->verifyTotp($userId, app(TotpAuthenticator::class)->codeAt($first['secret'], time())))->toBeFalse()
-        ->and(app(Mfa::class)->verifyTotp($userId, app(TotpAuthenticator::class)->codeAt($second['secret'], time())))->toBeTrue();
+    expect(app(Mfa::class)->verifyTotp($userId, app(TotpAuthenticator::class)->codeAt($first['secret'], NAMED_TOTP_NOW)))->toBeFalse()
+        ->and(app(Mfa::class)->verifyTotp($userId, app(TotpAuthenticator::class)->codeAt($second['secret'], NAMED_TOTP_NOW)))->toBeTrue();
     inertiaRequest(fn () => test()->from(route('account'))->delete(route('account.mfa.totp.destroy', $second['id'])))
         ->assertSessionHasErrors('form');
     expect(app(TotpDevices::class)->devices($userId))->toHaveCount(1);
@@ -99,14 +119,14 @@ it('cancels an unfinished setup and cannot confirm its discarded key', function 
         ->assertSessionHasNoErrors();
     expect(MfaFactor::query()->find($app['id']))->toBeNull()
         ->and(session()->has('mfa_pending_factor_id'))->toBeFalse();
-    confirmMfaEnrolment(app(TotpAuthenticator::class)->codeAt($app['secret'], time()))->assertSessionHasErrors('code');
+    confirmMfaEnrolment(app(TotpAuthenticator::class)->codeAt($app['secret'], NAMED_TOTP_NOW))->assertSessionHasErrors('code');
     expect(app(Mfa::class)->hasConfirmedTotp($userId))->toBeFalse();
 });
 
 it('does not reveal or mutate another persons apps through any route', function (): void {
     namedTotpOwner();
     $foreign = app(TotpDevices::class)->enrollDevice('somebody-else', 'other@example.test', 'Private');
-    $code = app(TotpAuthenticator::class)->codeAt($foreign->secret, time());
+    $code = app(TotpAuthenticator::class)->codeAt($foreign->secret, NAMED_TOTP_NOW);
     inertiaRequest(fn () => test()->from(route('account'))->post(route('account.mfa.confirm'), ['code' => $code, 'factor_id' => $foreign->id]))
         ->assertSessionHasErrors('code');
     test()->patch(route('account.mfa.totp.update', $foreign->id), ['name' => 'Hijacked'])->assertNotFound();
@@ -132,7 +152,7 @@ it('keeps confirmation failures bounded across apps', function (): void {
             ->assertSessionHasErrors('code');
     }
     inertiaRequest(fn () => test()->post(route('account.mfa.confirm'), [
-        'code' => app(TotpAuthenticator::class)->codeAt($second['secret'], time()), 'factor_id' => $second['id'],
+        'code' => app(TotpAuthenticator::class)->codeAt($second['secret'], NAMED_TOTP_NOW), 'factor_id' => $second['id'],
     ]))->assertSessionHasErrors('code');
     expect(MfaFactor::query()->whereNotNull('confirmed_at')->count())->toBe(0);
 });

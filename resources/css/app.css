@@ -469,6 +469,15 @@
     }
 }
 
+/* The account menu's Language, Regional format and Time zone lists. cbox-ui 0.10.1 gives the
+ * pane `flex: 1 1 0` inside a menu with no set height, so the pane collapsed to its padding
+ * and the list (21 languages, 22 formats) was clipped to a search box. Sized by its content,
+ * up to the list's own max-height, it shows. Remove once cbox-ui sizes it itself. Matched
+ * by attribute: these are cbox-ui's classes, not ones this app defines or wears. */
+[class~='cbx-menu-account'] > [class~='cbx-pane'] {
+    flex: 0 1 auto;
+}
+
 /* Subtle blue-tinted radial wash on the main scroll column — every Cbox app. */
 .canvas-gradient {
     background:

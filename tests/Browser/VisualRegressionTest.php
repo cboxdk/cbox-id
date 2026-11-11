@@ -100,6 +100,24 @@ function anOwnerForPictures(): void
     app(Sudo::class)->confirm();
 }
 
+/**
+ * CboxShell is one viewport high and scrolls its main area (`.cbx-shell-main`), so the
+ * document never grows and a full-page screenshot ends at the fold. For a picture of a
+ * long page, the frame grows with its content instead.
+ */
+function unfoldShellForPicture(mixed $page): void
+{
+    $page->script(<<<'JS'
+        (() => {
+            const style = document.createElement('style');
+            style.textContent = '.cbx-shell { height: auto !important; min-height: 100svh; overflow: visible !important; }'
+                + ' .cbx-shell-body, .cbx-shell-column { min-height: 0 !important; }'
+                + ' .cbx-shell-main { overflow: visible !important; }';
+            document.head.appendChild(style);
+        })()
+        JS);
+}
+
 it('draws the sign-in door the way it was drawn', function (): void {
     visit('/login')
         ->assertSee('Sign in')
@@ -182,9 +200,16 @@ it('draws a long form the way it was drawn', function (): void {
 
     // Fields, a fieldset of event checkboxes, and a submit — the densest layout in
     // the console and the one most likely to shift when a spacing token moves.
-    visit('/webhooks/new')
-        ->assertSee('New webhook')
-        ->assertScreenshotMatches();
+    $page = visit('/webhooks/new')->assertSee('New webhook');
+
+    // The WHOLE form, submit button included. CboxShell holds the page in a viewport-high
+    // frame and scrolls its main area, so a full-page picture of the document stopped at
+    // the fold. Let the frame grow with the page for the picture.
+    unfoldShellForPicture($page);
+
+    expect($page->script('document.querySelector("#main-content button[type=submit]") !== null'))->toBeTrue();
+
+    $page->assertScreenshotMatches();
 })->group('visual');
 
 it('draws an empty state the way it was drawn', function (): void {
