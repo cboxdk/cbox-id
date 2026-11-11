@@ -49,6 +49,10 @@ beforeEach(function (): void {
 function browserChainWorld(): array
 {
     multiTenantDeployment();
+    // Step 2 invites from the customer's own Members page on the environment's host: the
+    // persistent customer console, which a deployment turns on (off, such a host serves
+    // sign-in and the person's own pages, and invitations come from the app or the API).
+    withTenantCustomerConsole();
     platformRootEnvironment();
 
     $vendor = app(TenantProvisioner::class)->provision(new TenantBlueprint(
