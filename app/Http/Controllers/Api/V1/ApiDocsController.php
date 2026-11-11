@@ -28,6 +28,7 @@ final class ApiDocsController
         'insufficient_user_authentication' => 'The person must sign in again, more strongly or more recently, and repeat the call.',
         'environment_required' => 'A platform-root token acting inside an environment must name it in `Cbox-Environment`.',
         'not_found' => 'No such resource — or not one this credential can see. Another environment\'s records are never visible.',
+        'issuer_moved' => 'The host is a name this deployment was issued under before. `issuer` names the issuer to configure instead, and `api_base` the API.',
         'method_not_allowed' => 'That method is not allowed on this path.',
         'conflict' => 'The request conflicts with the resource\'s current state.',
         'validation_failed' => 'A field is missing or wrong. `errors` names each field and what is wrong with it.',

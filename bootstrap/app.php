@@ -25,6 +25,7 @@ use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\ReadOnlyWhileImpersonating;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RedirectLegacyLoginHost;
 use App\Http\Middleware\RedirectLegacyTenantHost;
 use App\Http\Middleware\RedirectOutsideInertia;
 use App\Http\Middleware\RefuseCrossOriginWrites;
@@ -271,6 +272,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // The API host answers the API and nothing else: global, so none of the application's
         // other routes (bound to no host) can start a session or render a page there.
         $middleware->append(FenceApiHost::class);
+        // A name the default environment used to be issued under only redirects: pages to
+        // the host that serves them now, protocol calls to a 410. Ahead of the fence, which
+        // admits nothing but the health probes on such a host.
+        $middleware->append(RedirectLegacyLoginHost::class);
         // In login-host mode every other host serves its own surface and nothing else: the
         // issuer on the login host, the console on the app host, and only the health probes
         // on a host that is neither. A no-op while no login host is configured.
