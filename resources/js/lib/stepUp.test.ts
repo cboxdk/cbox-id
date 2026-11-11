@@ -313,6 +313,45 @@ describe('step-up by a trip to the login host', () => {
         channel.close();
     });
 
+    it('does not take the window for closed when the login host isolates it', async () => {
+        const { confirmStepUpByRedirect, STEP_UP_CHANNEL } = await import('./stepUp');
+        vi.useFakeTimers();
+
+        // What the opener sees once the window reaches a host that answers with
+        // Cross-Origin-Opener-Policy: same-origin, although it is still open.
+        const popup = { closed: true } as Window;
+        const settled = vi.fn<() => void>();
+        const outcome = confirmStepUpByRedirect(
+            { plane: 'environment', confirm: door, reason: null, redirect },
+            () => popup,
+        );
+        void outcome.then(settled);
+
+        await vi.advanceTimersByTimeAsync(5_000);
+        expect(settled).not.toHaveBeenCalled();
+        vi.useRealTimers();
+
+        const channel = new BroadcastChannel(STEP_UP_CHANNEL);
+        channel.postMessage({ plane: 'environment', confirmed: true });
+
+        await expect(outcome).resolves.toBe('confirmed');
+        channel.close();
+    });
+
+    it('stops waiting when the caller gives up', async () => {
+        const { confirmStepUpByRedirect } = await import('./stepUp');
+        const wait = new AbortController();
+        const outcome = confirmStepUpByRedirect(
+            { plane: 'environment', confirm: door, reason: null, redirect },
+            () => ({ closed: false }) as Window,
+            wait.signal,
+        );
+
+        wait.abort();
+
+        await expect(outcome).resolves.toBe('closed');
+    });
+
     it('says so when the browser blocks the window, or there is nowhere to go', async () => {
         const { confirmStepUpByRedirect } = await import('./stepUp');
 

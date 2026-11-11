@@ -203,3 +203,20 @@ it('lands the old app-picker bookmark on the console in login-host mode, where t
     $this->get('https://'.LOGIN_HOST.'/switch-app')
         ->assertRedirect('https://'.APP_HOST.'/auth/start?return_to='.rawurlencode('/dashboard?switch-app=1'));
 });
+
+it('names the login host in the console shell\'s account menu, where a person\'s own pages are', function (): void {
+    loginHostMode();
+
+    $account = provisionAccount();
+    signInAsMember($account['subjectId']);
+    session()->put('cbox.surface', 'console');
+
+    $menu = (array) $this->get('https://'.APP_HOST.'/orgs')->assertOk()->inertiaProps('shell.account');
+
+    // A path here would be a page on the app host, which serves no account pages: a 404
+    // behind "Profile and security" and "Switch account".
+    expect($menu['profileUrl'] ?? null)->toBe('https://'.LOGIN_HOST.'/settings')
+        ->and($menu['switchAccountUrl'] ?? null)->toBe('https://'.LOGIN_HOST.'/settings/accounts')
+        // Signing out is the console's own, on this host.
+        ->and($menu['signOutUrl'] ?? null)->toBe('/logout');
+});

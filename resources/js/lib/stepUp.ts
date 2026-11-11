@@ -371,7 +371,7 @@ export async function confirmStepUp(
     return { ok: false, error: messages.failed };
 }
 
-/** How a step-up window ended. */
+/** How a step-up window ended. `closed` is the caller giving up on it (see `signal`). */
 export type RedirectOutcome = 'confirmed' | 'declined' | 'blocked' | 'closed';
 
 /**
@@ -384,11 +384,20 @@ export type RedirectOutcome = 'confirmed' | 'declined' | 'blocked' | 'closed';
  *
  * The message only says when to try again. The server decides: a replay without an open
  * window is answered with the same refusal, and the dialog asks once more.
+ *
+ * THE WINDOW'S OWN `closed` IS NEVER READ. The login host answers with
+ * `Cross-Origin-Opener-Policy: same-origin`, so the moment the window navigates there the
+ * browser moves it to another browsing-context group and this page's handle to it reads
+ * `closed === true`, while the person is still looking at the sign-in page. Watching it
+ * ended every step-up half a second after it began. The channel is the only word on how
+ * it went; `signal` is how the caller stops waiting (the dialog was cancelled, or the
+ * person asked for the window again).
  */
 export function confirmStepUpByRedirect(
     challenge: StepUpChallenge,
     open: (url: string) => Window | null = (url) =>
         window.open(url, 'cbox-step-up', 'popup,width=520,height=720'),
+    signal?: AbortSignal,
 ): Promise<RedirectOutcome> {
     const target = challenge.redirect?.popup;
 
@@ -404,10 +413,10 @@ export function confirmStepUpByRedirect(
 
     return new Promise<RedirectOutcome>((resolve) => {
         const channel = new BroadcastChannel(STEP_UP_CHANNEL);
-        let watch = 0;
+        const abandon = (): void => finish('closed');
 
         const finish = (outcome: RedirectOutcome): void => {
-            window.clearInterval(watch);
+            signal?.removeEventListener('abort', abandon);
             channel.close();
             resolve(outcome);
         };
@@ -420,12 +429,12 @@ export function confirmStepUpByRedirect(
             }
         };
 
-        // Closed by hand, with nothing said: the person changed their mind.
-        watch = window.setInterval(() => {
-            if (popup.closed) {
-                finish('closed');
-            }
-        }, 500);
+        // The caller stopped waiting: nothing was said, and nothing will be acted on.
+        if (signal?.aborted === true) {
+            abandon();
+        } else {
+            signal?.addEventListener('abort', abandon, { once: true });
+        }
     });
 }
 
