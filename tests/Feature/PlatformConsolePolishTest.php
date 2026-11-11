@@ -54,7 +54,7 @@ it('offers an account-less operator no area that needs an account', function ():
      * actually given — and a URL absent from the HTML could simply be a page the bundle
      * has not drawn yet.
      */
-    $shell = (array) $this->get(route('platform.environments'))->assertOk()->inertiaProps('shell');
+    $shell = consoleRail($this->get(route('platform.environments'))->assertOk());
 
     $routes = collect($shell['areas'])->pluck('pages')->flatten(1)->pluck('route');
 
@@ -74,7 +74,7 @@ it('offers an account-less operator no area that needs an account', function ():
     // Their own security page survives, and should: it is the one thing that belongs to
     // every signed-in person rather than to an organization. Inside platform admin it is
     // the account menu's, not the rail's — the rail there is the platform's alone.
-    expect($shell['accountHref'])->toBe(route('account'));
+    expect($this->get(route('platform.environments'))->inertiaProps('shell.account.profileUrl'))->toBe(route('account', [], false));
 });
 
 it('lands an account-less operator on the platform rather than on an empty Projects page', function (): void {
@@ -140,7 +140,7 @@ it('gives every platform page the eyebrow its rail area actually uses', function
      * tests/Browser, which is the only place that can see it.
      */
     foreach ($expected as $route => $area) {
-        $shell = (array) $this->get(route($route))->assertOk()->inertiaProps('shell');
+        $shell = consoleRail($this->get(route($route))->assertOk());
         $active = collect($shell['areas'])->firstWhere('key', $shell['activeArea']);
 
         expect($active)->not->toBeNull($route.' named an area the rail does not have')
@@ -231,19 +231,20 @@ it('says who the operator is signed in as when there is no account to name', fun
         // No organization to name — which is the whole persona: an operator who runs the
         // deployment and buys nothing on it has no membership row.
         ->and($auth['organization'])->toBeNull()
-        // …so the console says what they ARE instead of leaving the space blank. Drawn from
-        // this flag and from nothing else; the pill itself is held in tests/Browser.
-        ->and($shell['isOperator'])->toBeTrue();
+        // …so the console says what they are acting on instead of leaving the space blank:
+        // the line over the page names the whole deployment.
+        ->and($shell['banner']['kind'])->toBe('notice')
+        ->and($shell['banner']['text'])->toContain('The whole deployment');
 });
 
 it('shows an account owner nothing platform-shaped', function (): void {
     polishOwner();
 
     $response = $this->get(route('orgs.projects'))->assertOk();
-    $shell = (array) $response->inertiaProps('shell');
+    $shell = consoleRail($response);
 
     expect(json_encode($shell, JSON_THROW_ON_ERROR))->not->toContain(route('platform.environments'))
-        ->and($shell['isOperator'])->toBeFalse();
+        ->and((array) $response->inertiaProps('shell'))->not->toHaveKey('banner');
 
     // And the pages themselves refuse, not merely hide.
     $this->get(route('platform.environments'))->assertNotFound();

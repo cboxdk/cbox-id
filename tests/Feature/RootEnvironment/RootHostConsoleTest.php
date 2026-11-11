@@ -87,14 +87,17 @@ it('sends an operator from Team sign-in to the platform environment\'s single si
 });
 
 it('says above every root-host page what it acts on', function (): void {
-    $workspace = (array) $this->get('https://cboxid.com/settings')->assertOk()->inertiaProps('shell.actsOn');
-    $environment = (array) $this->get('https://cboxid.com/admin/environment/social-sign-in')->assertOk()->inertiaProps('shell.actsOn');
-    $platform = (array) $this->get('https://cboxid.com/admin/organizations')->assertOk()->inertiaProps('shell.actsOn');
+    $workspace = (array) $this->get('https://cboxid.com/settings')->assertOk()->inertiaProps('shell');
+    $environment = (array) $this->get('https://cboxid.com/admin/environment/social-sign-in')->assertOk()->inertiaProps('shell.banner');
+    $platform = (array) $this->get('https://cboxid.com/admin/organizations')->assertOk()->inertiaProps('shell.banner');
 
-    expect($environment)->toMatchArray(['kind' => 'environment', 'critical' => true])
-        ->and((string) $environment['detail'])->toContain('every organization owner and every operator')
-        // Platform admin, in the same console: the whole deployment, in the warning colours
-        // the amber strip used to carry.
-        ->and($platform)->toMatchArray(['kind' => 'platform', 'label' => 'The whole deployment', 'critical' => true])
-        ->and($workspace['kind'])->toBeIn(['workspace', 'organization']);
+    // The platform's own environment: whose sign-in a change here reaches, over the page.
+    expect($environment['kind'])->toBe('notice')
+        ->and((string) $environment['text'])->toContain('every organization owner and every operator')
+        // Platform admin, in the same console: the whole deployment, where the amber strip
+        // used to say it.
+        ->and($platform['kind'])->toBe('notice')
+        ->and((string) $platform['text'])->toContain('The whole deployment')
+        // A workspace's own page carries no strip: its header says where it is.
+        ->and($workspace)->not->toHaveKey('banner');
 });

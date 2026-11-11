@@ -209,10 +209,9 @@ it('serves Sign-in methods on a single-tenant install\'s organization console, a
         ->and($rows['social']['href'])->toBe(route('social-providers'));
 
     // On the rail, first in its area.
-    $this->get(route('sign-in-methods'))->assertInertia(fn (AssertableInertia $page) => $page
-        ->where('shell.areas', fn ($areas): bool => collect($areas)->contains(
-            fn (array $area): bool => collect($area['pages'] ?? [])->pluck('href')->contains(route('sign-in-methods')),
-        )));
+    expect(collect(consoleRail($this->get(route('sign-in-methods'))->assertOk())['areas'])->contains(
+        fn (array $area): bool => collect($area['pages'])->pluck('href')->contains(route('sign-in-methods')),
+    ))->toBeTrue();
 });
 
 it('refuses Sign-in methods to a plain member', function (): void {

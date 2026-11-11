@@ -8,6 +8,7 @@ use App\Platform\CurrentUser;
 use App\Platform\Install\Contracts\PlatformInstaller;
 use App\Platform\NativeProduct\NativeProductManifest;
 use App\Platform\PlatformAuth;
+use App\Platform\Shell\Levels\IdEnvironmentLevel;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -439,7 +440,7 @@ it('does not ask the same question twice within an organization-console render',
  * title, and the shared `shell` prop — and each used to build all of it: the rail, the
  * memberships, and now the context switcher's projects and environments. Measured on the
  * statement only the header's environment level issues (the environments of the current
- * project this person may open, {@see \App\Platform\Shell\Levels\IdEnvironmentLevel}),
+ * project this person may open, {@see IdEnvironmentLevel}),
  * so the count is the number of times the shell was built rather than a total that drifts
  * with the page.
  */

@@ -161,28 +161,29 @@ it('gives the platform pages to an operator, as an area of the same console', fu
      * consoles; the line above the page now says what a page acts on, which is what the
      * strip was for. Read off the shell the page is framed by, not the document.
      */
-    $shell = (array) $this->get(route('dashboard'))->assertOk()->inertiaProps('shell');
+    $response = $this->get(route('dashboard'))->assertOk();
+    $shell = consoleRail($response);
     $hrefs = collect($shell['areas'])->pluck('href');
 
     expect($hrefs)->toContain(route('dashboard'))
         ->and($hrefs)->toContain(route('platform.orgs'))
-        ->and($shell)->not->toHaveKey('platformMode')
-        ->and($shell)->not->toHaveKey('exitPlatformHref')
-        // In the rail, so not a second time in the account menu.
-        ->and($shell['platformHref'])->toBeNull()
+        // In the rail, so not a second time in the account menu, and no strip over the page.
+        ->and(json_encode($response->inertiaProps('shell.account'), JSON_THROW_ON_ERROR))->not->toContain('/admin')
+        ->and((array) $response->inertiaProps('shell'))->not->toHaveKey('banner')
         ->and($shell['section'])->toBeNull();
 
     // On a platform page: the same rail, the Platform area lit, and the line above the page
     // saying it acts on the whole deployment — in the warning colours.
-    $shell = (array) $this->get(route('platform.orgs'))->assertOk()->inertiaProps('shell');
+    $response = $this->get(route('platform.orgs'))->assertOk();
+    $shell = consoleRail($response);
     $hrefs = collect($shell['areas'])->pluck('href');
 
     expect($hrefs)->toContain(route('platform.orgs'))
         ->and($hrefs)->toContain(route('dashboard'))
         ->and($shell['activeArea'])->toBe('platform')
         ->and($shell['section'])->toBe('Platform')
-        ->and($shell['actsOn']['kind'])->toBe('platform')
-        ->and($shell['actsOn']['critical'])->toBeTrue();
+        ->and($response->inertiaProps('shell.banner.kind'))->toBe('notice')
+        ->and($response->inertiaProps('shell.banner.text'))->toContain('The whole deployment');
 })->group('security');
 
 /**

@@ -2613,3 +2613,53 @@ function followImpersonationLaunch(TestResponse $start): TestResponse
 
     return test()->get($launch);
 }
+
+/**
+ * THE CONSOLE'S RAIL, as a test reads it: each area's pages, which page and area are lit,
+ * and the section word in the tab title.
+ *
+ * On the app host the rail is the shared shell's `nav` (cbox-ui `CboxShell`, pages keyed
+ * by route, one `activePage`); on a customer environment's own host it is the
+ * white-labelled chrome's `tenantShell`. Both are read back into one shape, so a rule
+ * about which pages a person is offered is asserted the same way on either.
+ *
+ * @return array{areas: list<array<string, mixed>>, activeArea: string|null, section: string|null}
+ */
+function consoleRail(TestResponse $response): array
+{
+    $tenant = $response->inertiaProps('tenantShell');
+
+    if (is_array($tenant)) {
+        return ['areas' => $tenant['areas'], 'activeArea' => $tenant['activeArea'] ?? null, 'section' => $tenant['section'] ?? null];
+    }
+
+    $shell = $response->inertiaProps('shell');
+
+    if (! is_array($shell)) {
+        return ['areas' => [], 'activeArea' => null, 'section' => null];
+    }
+
+    $nav = $shell['nav'];
+    $activeArea = $nav['activeArea'] !== '' ? $nav['activeArea'] : null;
+
+    return [
+        'areas' => array_map(static fn (array $area): array => [
+            'key' => $area['key'],
+            'label' => $area['label'],
+            'icon' => $area['icon'] ?? null,
+            'href' => $area['href'],
+            'active' => $area['key'] === $activeArea,
+            'pages' => array_map(static fn (array $page): array => [
+                'route' => $page['key'],
+                'href' => $page['href'],
+                'label' => $page['label'],
+                'active' => $area['key'] === $activeArea && $page['key'] === ($nav['activePage'] ?? null),
+                'badge' => ($page['locked'] ?? false) === true ? 'Enterprise' : null,
+                'count' => $page['count'] ?? null,
+                'keywords' => $page['keywords'] ?? [],
+            ], $area['pages']),
+        ], $nav['areas']),
+        'activeArea' => $activeArea,
+        'section' => $shell['section'] ?? null,
+    ];
+}

@@ -28,12 +28,14 @@ use Illuminate\Support\Str;
 uses(RefreshDatabase::class);
 
 /**
- * THE TOPBAR'S `Workspace ▾ / Project ▾ / Environment ▾`, as the server decides it.
+ * THE HEADER'S `Organization ▾ / Project ▾ / Environment ▾`, as the server decides it:
+ * the shared shell's levels, their menus (`/shell/context/{level}`) and the switch
+ * (`/shell/switch`).
  *
- * Every row in that control is a door: a workspace to switch into, an environment to open
- * through the signed handoff. So what these assert is the authorization a menu implies —
- * that it lists exactly what the person may open, never another customer's estate, and
- * that each link leads where its label says.
+ * Every row in those menus is a door: an organization to switch into, an environment to
+ * open. So what these assert is the authorization a menu implies — that it lists exactly
+ * what the person may open, never another customer's estate, and that choosing a row lands
+ * where its label says.
  */
 
 /**
@@ -67,49 +69,69 @@ function contextEstate(): array
     ];
 }
 
-/** The shell's context for a URL on the workspace host. */
-function organizationContext(string $route): array
+/**
+ * The header's levels on a page, by key.
+ *
+ * @return array<string, array<string, mixed>>
+ */
+function headerLevels(string $url): array
 {
-    return (array) test()->get('https://cboxid.com'.route($route, absolute: false))->assertOk()->inertiaProps('shell.context');
+    return collect((array) test()->get($url)->assertOk()->inertiaProps('shell.context.levels'))->keyBy('key')->all();
 }
 
-/** @return list<array<string, mixed>> every environment in a context, flattened */
-function contextEnvironments(array $context): array
+/**
+ * One level's menu, as the header asks for it.
+ *
+ * @param  array<string, string>  $ancestors
+ * @return list<array<string, mixed>>
+ */
+function levelMenu(string $level, array $ancestors = [], string $base = 'https://cboxid.com'): array
 {
-    return collect($context['projects'])->pluck('environments')->flatten(1)->values()->all();
+    $query = $ancestors === [] ? '' : '?'.http_build_query(['ancestors' => $ancestors]);
+
+    return (array) test()->getJson($base.'/shell/context/'.$level.$query)->assertOk()->json('data');
+}
+
+/**
+ * Where choosing a row from a page lands.
+ *
+ * @param  array<string, string>  $select
+ */
+function switchLandsOn(array $select, string $from, string $base = 'https://cboxid.com'): string
+{
+    return (string) test()->postJson($base.'/shell/switch', ['select' => $select, 'from' => $from])->assertOk()->json('url');
 }
 
 it('lists the organization, its project and the environments its owner may open — and no other customer\'s', function (): void {
     $estate = contextEstate();
     signInAsMember($estate['subjectId']);
+    $organization = $estate['organization']->id;
+    $project = $estate['project']->id;
 
-    $context = organizationContext('orgs.projects');
+    $levels = headerLevels('https://cboxid.com'.route('orgs.projects', absolute: false));
 
-    expect($context['noun'])->toBe('Organization')
-        ->and($context['organizations'])->toHaveCount(1)
-        ->and($context['organizations'][0])->toMatchArray([
-            'id' => $estate['organization']->id,
-            'label' => 'Acme',
-            'current' => true,
-        ])
-        // Switching is a POST on this host — the session lives here.
-        ->and($context['switchUrl'])->toEndWith('/orgs/switch')
-        ->and($context['projects'])->toHaveCount(1)
-        ->and($context['projects'][0]['id'])->toBe($estate['project']->id)
-        // On the workspace's own console no environment is current: this IS the workspace.
-        ->and($context['projects'][0]['current'])->toBeFalse();
+    expect($levels['organization']['current'])->toMatchArray(['id' => $organization, 'name' => 'Acme'])
+        ->and(array_column(levelMenu('organization'), 'id'))->toBe([$organization])
+        // On the organization's own page no project is current: this IS the organization.
+        ->and($levels['project']['current'] ?? null)->toBeNull()
+        ->and(array_column(levelMenu('project', ['organization' => $organization]), 'id'))->toBe([$project]);
 
-    $environments = contextEnvironments($context);
+    $environments = levelMenu('environment', ['organization' => $organization, 'project' => $project]);
 
     expect(array_column($environments, 'id'))->toBe([$estate['production']->id, $estate['sandbox']->id])
-        ->and(array_column($environments, 'type'))->toBe(['production', 'sandbox'])
+        ->and(array_column($environments, 'tone'))->toBe(['production', 'sandbox'])
         ->and(array_column($environments, 'id'))->not->toContain($estate['foreign']->id);
 
     // Each one straight to its console's address on this host, which checks access itself
     // — and from Projects, which no environment console has, on its home page.
     foreach ($environments as $environment) {
-        expect($environment['href'])->toBe('https://cboxid.com/'.app(EnvironmentConsolePath::class)->for($environment['id']));
+        expect(switchLandsOn(['project' => $project, 'environment' => $environment['id']], route('orgs.projects', absolute: false)))
+            ->toBe('/'.app(EnvironmentConsolePath::class)->for($environment['id']));
     }
+
+    // Another customer's environment is not one to open from here.
+    test()->postJson('https://cboxid.com/shell/switch', ['select' => ['project' => $project, 'environment' => $estate['foreign']->id], 'from' => route('orgs.projects', absolute: false)])
+        ->assertStatus(404);
 });
 
 it('names every organization the person belongs to, and only those', function (): void {
@@ -124,14 +146,14 @@ it('names every organization the person belongs to, and only those', function ()
 
     signInAsMember($estate['subjectId']);
 
-    $context = organizationContext('orgs.projects');
+    $levels = headerLevels('https://cboxid.com'.route('orgs.projects', absolute: false));
 
-    expect(collect($context['organizations'])->pluck('label')->sort()->values()->all())->toBe(['Acme', 'Globex'])
-        ->and(collect($context['organizations'])->firstWhere('current', true)['label'])->toBe('Acme')
-        ->and(collect($context['organizations'])->firstWhere('label', 'Globex')['caption'])->toBe(MembershipRole::Developer->label())
+    expect(collect(levelMenu('organization'))->pluck('name')->sort()->values()->all())->toBe(['Acme', 'Globex'])
+        ->and($levels['organization']['current']['name'])->toBe('Acme')
         // Belonging to Globex does not put Globex's environments in ACME's menus: those
         // are one switch away, answered by Globex's own access rules when it is current.
-        ->and(array_column(contextEnvironments($context), 'id'))->not->toContain($estate['foreign']->id);
+        ->and(array_column(levelMenu('environment', ['organization' => $estate['organization']->id, 'project' => $estate['project']->id]), 'id'))
+        ->not->toContain($estate['foreign']->id);
 });
 
 it('carries the page being read into the environment it opens', function (): void {
@@ -140,9 +162,8 @@ it('carries the page being read into the environment it opens', function (): voi
 
     // Workspace › Keys is the same capability as an environment's Developers › API keys, so
     // opening production from here opens production's API keys.
-    $environments = contextEnvironments(organizationContext('orgs.settings.api-keys'));
-
-    expect($environments[0]['href'])->toBe('https://cboxid.com/'.app(EnvironmentConsolePath::class)->for($estate['production']->id).'/keys');
+    expect(switchLandsOn(['project' => $estate['project']->id, 'environment' => $estate['production']->id], route('orgs.settings.api-keys', absolute: false)))
+        ->toBe('/'.app(EnvironmentConsolePath::class)->for($estate['production']->id).'/keys');
 });
 
 it('lists only the environments a scoped member was granted', function (): void {
@@ -159,7 +180,8 @@ it('lists only the environments a scoped member was granted', function (): void 
 
     signInAsMember($developerId);
 
-    expect(array_column(contextEnvironments(organizationContext('orgs.projects')), 'id'))->toBe([$estate['sandbox']->id]);
+    expect(array_column(levelMenu('environment', ['organization' => $estate['organization']->id, 'project' => $estate['project']->id]), 'id'))
+        ->toBe([$estate['sandbox']->id]);
 });
 
 it('offers no operational environment to a Billing-only member', function (): void {
@@ -170,13 +192,14 @@ it('offers no operational environment to a Billing-only member', function (): vo
     signInAsMember($viewerId);
 
     test()->get('https://cboxid.com'.orgPath('/projects'))->assertForbidden();
-    $response = test()->get('https://cboxid.com'.orgPath('/settings/billing').'?organization='.$estate['organization']->id)->assertOk();
-    $context = (array) $response->inertiaProps('shell.context');
-    expect($response->inertiaProps('shell.brandHref'))
-        ->toBe('https://cboxid.com'.orgPath('/settings/billing').'?organization='.$estate['organization']->id);
+    $levels = headerLevels('https://cboxid.com'.orgPath('/settings/billing').'?organization='.$estate['organization']->id);
 
-    expect($context['projects'])->toBe([])
-        ->and($context['organizations'][0]['label'])->toBe('Acme');
+    expect($levels['organization']['current']['name'])->toBe('Acme')
+        ->and(levelMenu('project', ['organization' => $estate['organization']->id]))->toBe([]);
+
+    // …and a project it was not offered is not one whose environments it can list.
+    test()->getJson('https://cboxid.com/shell/context/environment?'.http_build_query(['ancestors' => ['organization' => $estate['organization']->id, 'project' => $estate['project']->id]]))
+        ->assertNotFound();
 });
 
 it('gives the environment console every environment it may switch to, landing on the same page', function (): void {
@@ -188,29 +211,23 @@ it('gives the environment console every environment it may switch to, landing on
 
     // It used to be sent `organizations: []` and `environments: []` — a back arrow and the
     // environment's name, and nothing to switch to.
-    $context = (array) $this->get(route('environment.users'))->assertOk()->inertiaProps('shell.context');
+    $levels = headerLevels(route('environment.users'));
 
-    expect($context['noun'])->toBe('Organization')
-        ->and($context['switchUrl'])->toBeNull()
-        ->and($context['organizations'][0])->toMatchArray([
-            'label' => 'Acme',
-            'current' => true,
-            'openHref' => 'https://cboxid.com/orgs/acme/projects',
-        ])
-        ->and($context['projects'])->toHaveCount(1)
-        ->and($context['projects'][0]['current'])->toBeTrue();
+    expect($levels['organization']['current'])->toMatchArray(['name' => 'Acme'])
+        ->and($levels['project']['current']['id'])->toBe($estate['project']->id)
+        ->and($levels['environment']['current']['id'])->toBe($estate['production']->id);
 
-    $environments = collect(contextEnvironments($context))->keyBy('id');
+    $environments = levelMenu('environment', ['organization' => $estate['organization']->id, 'project' => $estate['project']->id], 'http://cboxid.com');
 
-    expect($environments->keys()->all())->toBe([$estate['production']->id, $estate['sandbox']->id])
-        ->and($environments[$estate['production']->id]['current'])->toBeTrue()
-        ->and($environments[$estate['sandbox']->id]['current'])->toBeFalse()
-        // The same page in the other environment, on the same host and the same session.
-        ->and($environments[$estate['sandbox']->id]['href'])
-        ->toBe('http://cboxid.com/'.app(EnvironmentConsolePath::class)->for($estate['sandbox']->id).'/users');
+    expect(array_column($environments, 'id'))->toBe([$estate['production']->id, $estate['sandbox']->id]);
+
+    // The same page in the other environment, on the same host and the same session…
+    $url = switchLandsOn(['environment' => $estate['sandbox']->id], (string) parse_url(route('environment.users'), PHP_URL_PATH), 'http://cboxid.com');
+
+    expect($url)->toBe('/'.app(EnvironmentConsolePath::class)->for($estate['sandbox']->id).'/users');
 
     // …and it opens, without a sign-in or a handoff in between.
-    $this->get($environments[$estate['sandbox']->id]['href'])->assertOk();
+    $this->get('http://cboxid.com'.$url)->assertOk();
 });
 
 it('names a linked organization by its Cbox slug in the environment switcher, the address its console answers to', function (): void {
@@ -233,13 +250,13 @@ it('names a linked organization by its Cbox slug in the environment switcher, th
     app(EnvironmentContext::class)->set(GenericEnvironment::of($estate['production']->id));
     actAsEnvironmentAdmin($estate['subjectId'], $estate['production']->id);
 
-    $environments = collect(contextEnvironments((array) $this->get(route('environment.users'))->assertOk()->inertiaProps('shell.context')))->keyBy('id');
+    $this->get(route('environment.users'))->assertOk();
+    $url = switchLandsOn(['environment' => $estate['sandbox']->id], (string) parse_url(route('environment.users'), PHP_URL_PATH), 'http://cboxid.com');
 
     expect(app(EnvironmentConsolePath::class)->for($estate['sandbox']->id))->toStartWith('orgs/lovelace-labs/')
-        ->and($environments[$estate['sandbox']->id]['href'])
-        ->toBe('http://cboxid.com/'.app(EnvironmentConsolePath::class)->for($estate['sandbox']->id).'/users');
+        ->and($url)->toBe('/'.app(EnvironmentConsolePath::class)->for($estate['sandbox']->id).'/users');
 
-    $this->get($environments[$estate['sandbox']->id]['href'])->assertOk();
+    $this->get('http://cboxid.com'.$url)->assertOk();
 });
 
 it('lands a detail page on its list, and the home page on the home page', function (): void {
@@ -252,18 +269,12 @@ it('lands a detail page on its list, and the home page on the home page', functi
     // An organization of THIS environment has no counterpart in the next one, so its page
     // lands on the list it came from rather than on a 404.
     $tenant = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'tenant-co-context'));
+    $sandbox = '/'.app(EnvironmentConsolePath::class)->for($estate['sandbox']->id);
 
-    $detail = contextEnvironments((array) $this->get(route('environment.organizations.show', $tenant->id))
-        ->assertOk()
-        ->inertiaProps('shell.context'));
-
-    expect(collect($detail)->firstWhere('id', $estate['sandbox']->id)['href'])
-        ->toBe('http://cboxid.com/'.app(EnvironmentConsolePath::class)->for($estate['sandbox']->id).'/organizations');
-
-    $home = contextEnvironments((array) $this->get(route('environment.home'))->assertOk()->inertiaProps('shell.context'));
-
-    expect(collect($home)->firstWhere('id', $estate['sandbox']->id)['href'])
-        ->toBe('http://cboxid.com/'.app(EnvironmentConsolePath::class)->for($estate['sandbox']->id));
+    expect(switchLandsOn(['environment' => $estate['sandbox']->id], (string) parse_url(route('environment.organizations.show', $tenant->id), PHP_URL_PATH), 'http://cboxid.com'))
+        ->toBe($sandbox.'/organizations')
+        ->and(switchLandsOn(['environment' => $estate['sandbox']->id], (string) parse_url(route('environment.home'), PHP_URL_PATH), 'http://cboxid.com'))
+        ->toBe($sandbox);
 });
 
 it('calls an organization that owns no projects an organization, with nothing below it', function (): void {
@@ -275,9 +286,10 @@ it('calls an organization that owns no projects an organization, with nothing be
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     session([PlatformAuth::SESSION_KEY => $session->id]);
 
-    $context = (array) $this->get(route('dashboard'))->assertOk()->inertiaProps('shell.context');
+    $levels = headerLevels(route('dashboard'));
 
-    expect($context['noun'])->toBe('Organization')
-        ->and($context['organizations'][0])->toMatchArray(['label' => 'Plain Co', 'current' => true])
-        ->and($context['projects'])->toBe([]);
+    expect($levels['organization']['label'])->toBe('Organization')
+        ->and($levels['organization']['current']['name'])->toBe('Plain Co')
+        ->and($levels['project']['current'] ?? null)->toBeNull()
+        ->and(levelMenu('project', ['organization' => $org->id], rtrim(url('/'), '/')))->toBe([]);
 });

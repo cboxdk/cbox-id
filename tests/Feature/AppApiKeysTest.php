@@ -292,7 +292,7 @@ it('lights the page being shown in Account, and not Security as well', function 
     $fixture = appKeyFixture();
     signInKeyHolder($fixture['ada'], $fixture['org']);
 
-    $areas = $this->get(route($route))->assertOk()->inertiaProps('shell.areas');
+    $areas = consoleRail($this->get(route($route))->assertOk())['areas'];
     $account = collect($areas)->firstWhere('key', 'account');
 
     // `account` is a prefix of both neighbours' route names, and lit on each of them too.

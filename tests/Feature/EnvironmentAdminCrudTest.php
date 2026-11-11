@@ -701,12 +701,10 @@ it('scopes the org-detail member lookup to the roster, not every user in the env
 it('names the area this page belongs to, above its title', function (): void {
     crudSetup();
 
-    $this->get(route('environment.users'))
-        ->assertOk()
-        ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('shell.activeArea', fn (string $key): bool => $key !== '')
-            ->where('shell', fn (Collection $shell): bool => collect($shell['areas'])
-                ->firstWhere('key', $shell['activeArea'])['label'] === 'Users & orgs'));
+    $rail = consoleRail($this->get(route('environment.users'))->assertOk());
+
+    expect($rail['activeArea'])->not->toBeNull()
+        ->and(collect($rail['areas'])->firstWhere('key', $rail['activeArea'])['label'])->toBe('Users & orgs');
 });
 
 /**

@@ -143,7 +143,7 @@ it('takes its eyebrow and its lit rail entry from the nav registry, without writ
      * which is the failure this exists to catch. That the element is drawn is held in the
      * browser suite, which is the only place that can see it.
      */
-    $shell = (array) $props['shell'];
+    $shell = consoleRail(test()->get(route('platform.orgs.show', $estate['organization']->id))->assertOk());
     $area = collect($shell['areas'])->firstWhere('key', $shell['activeArea']);
 
     expect($area)->not->toBeNull('the page named an area the rail does not have')
