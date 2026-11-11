@@ -278,6 +278,8 @@ export interface OrganizationPicker {
 /** `App\Http\Props\Console\OrganizationHeaderProps` — the header every tab of an organization's page shares. */
 export interface OrganizationHub {
     id: string;
+    /** The id as the page's URL carries it (`org_01j…`): the one shown and copied. */
+    publicId: string;
     name: string;
     slug: string;
     status: string;

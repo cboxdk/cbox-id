@@ -140,7 +140,7 @@ it('inspects a grant on the API host with either an inspect-only or a lease-only
 
     // `/status` (lease) folded into `/inspect` on /v1: the consumer's lease-only machine
     // token, which laravel-id-client uses today, keeps its answer there.
-    $this->withToken('provider')->postJson($inspect)->assertOk()->assertJsonPath('active', true)->assertJsonPath('organization_id', $this->organization->id);
+    $this->withToken('provider')->postJson($inspect)->assertOk()->assertJsonPath('active', true)->assertJsonPath('organization_id', 'org_'.$this->organization->id);
     $this->withToken('lease-only')->postJson($inspect)->assertOk()->assertJsonPath('active', true);
 
     $this->withToken('manage-only-machine')->postJson($inspect)

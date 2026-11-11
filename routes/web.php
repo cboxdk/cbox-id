@@ -1210,6 +1210,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
         Route::post('/webhooks/{webhook}/resume', [WebhookController::class, 'resume'])->name('webhooks.resume');
         Route::post('/webhooks/{webhook}/rotate', [WebhookController::class, 'rotate'])->name('webhooks.rotate');
         Route::post('/webhooks/{webhook}/signature-scheme', [WebhookController::class, 'scheme'])->name('webhooks.scheme');
+        Route::post('/webhooks/{webhook}/id-format', [WebhookController::class, 'idFormat'])->name('webhooks.id-format');
         Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('webhooks.destroy');
     });
     // Activity log: the SAME component the environment plane serves. The row scoping is
@@ -1808,6 +1809,7 @@ ConsoleRoutes::environment(function (): void {
         Route::post('/webhooks/{webhook}/resume', [WebhookController::class, 'resume'])->name('environment.webhooks.resume');
         Route::post('/webhooks/{webhook}/rotate', [WebhookController::class, 'rotate'])->name('environment.webhooks.rotate');
         Route::post('/webhooks/{webhook}/signature-scheme', [WebhookController::class, 'scheme'])->name('environment.webhooks.scheme');
+        Route::post('/webhooks/{webhook}/id-format', [WebhookController::class, 'idFormat'])->name('environment.webhooks.id-format');
         Route::delete('/webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('environment.webhooks.destroy');
     });
     // Inline hooks — routable list → create → detail, on the merged component. The

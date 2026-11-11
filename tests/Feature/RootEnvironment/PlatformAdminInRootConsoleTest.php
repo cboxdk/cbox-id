@@ -188,7 +188,7 @@ it('runs a support session from the organization tree end to end, on the root ho
         ->assertOk()->inertiaProps('members');
     $href = collect($members)->firstWhere('userId', $member->id)['impersonateHref'] ?? null;
 
-    expect($href)->toBe('https://cboxid.com/admin/environments/root/impersonate/'.$member->id);
+    expect($href)->toBe('https://cboxid.com/admin/environments/root/impersonate/usr_'.$member->id);
 
     // …which lands on the member's own console, where the banner and its Exit render —
     // not on platform admin, which would answer the member's session with a 404 and no

@@ -6,6 +6,9 @@ namespace App\Http\Middleware;
 
 use App\Platform\Api\V1\SpecNode;
 use App\Platform\Api\V1\V1Routes;
+use App\Platform\PublicIds\PublicId;
+use App\Platform\PublicIds\RouteIds;
+use App\Platform\PublicIds\WebhookIdFormat;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
@@ -17,11 +20,26 @@ use Symfony\Component\HttpFoundation\Response;
  * or the body. This puts each back where the handler reads it, so the same controller and the
  * same action serve the old path and the new one.
  *
+ * Every id is read in either form, `usr_01j…` or `01j…` (plan §3.2), and reaches the handler as
+ * the stored id; a public id of the wrong kind is a 404.
+ *
  * Also reads a page-number cursor (`page:2`) as the page it stands for, for the lists that
  * page by number: on `/v1` every list pages by an opaque `next_cursor`.
  */
 final class V1Parameters
 {
+    /**
+     * What an action's input means on `/v1` when the caller leaves it out, where that differs
+     * from every other surface. Put into the input as the request arrives, so it is part of
+     * what an approval is asked for (the digest covers it) and the action never has to ask
+     * which surface it runs on.
+     *
+     * @var array<string, array<string, string>>
+     */
+    public const array INPUT_DEFAULTS = [
+        'webhooks.create' => ['id_format' => WebhookIdFormat::PREFIXED],
+    ];
+
     /**
      * @param  Closure(Request): Response  $next
      */
@@ -32,6 +50,8 @@ final class V1Parameters
         if ($route instanceof Route) {
             self::place($request, $route);
         }
+
+        AcceptPublicIds::decodeInput($request);
 
         $after = $request->query('after');
 
@@ -50,6 +70,14 @@ final class V1Parameters
         $inputs = $route->defaults[V1Routes::INPUTS] ?? [];
         $id = $route->parameter('id');
 
+        if (is_string($id)) {
+            $id = PublicId::decodeString(RouteIds::v1Id('/'.substr($route->uri(), strlen('v1')), is_string($idName) ? $idName : null), $id);
+
+            if ($route->hasParameter('id')) {
+                $route->setParameter('id', $id);
+            }
+        }
+
         $values = [];
 
         if (is_string($idName) && $idName !== 'id' && $id !== null) {
@@ -62,7 +90,7 @@ final class V1Parameters
             $value = $request->input(SpecNode::string($publicName)) ?? ($handlerName !== 'id' ? $request->input((string) $handlerName) : null);
 
             if (is_scalar($value) && (string) $value !== '') {
-                $values[(string) $handlerName] = (string) $value;
+                $values[(string) $handlerName] = PublicId::decodeString(RouteIds::parameter(SpecNode::string($publicName)) ?? RouteIds::parameter((string) $handlerName), (string) $value);
             }
         }
 
@@ -72,6 +100,14 @@ final class V1Parameters
 
         foreach ($values as $name => $value) {
             $route->setParameter($name, $value);
+        }
+
+        $action = $route->defaults['action'] ?? null;
+
+        foreach (is_string($action) ? self::INPUT_DEFAULTS[$action] ?? [] : [] as $field => $default) {
+            if (! $request->exists($field)) {
+                $request->merge([$field => $default]);
+            }
         }
 
         // The route's own bookkeeping is not a parameter of the handler: a controller receives

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\PublicIds\PublicId;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Models\AccessToken;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -33,7 +34,8 @@ it('opens the palette on ⌘K, finds a user by a pasted id and jumps to them', f
         // The record the id found, by its row: the shared palette keeps the row that was
         // first while the search was in flight ("Ask Cbox") active when records arrive.
         ->click('.cbx-palette [role="option"]:has-text("Grace Hopper")')
-        ->assertPathIs(envConsolePath('/users/').$user->id)
+        // A bare pasted id still finds the record; the console links to its public id.
+        ->assertPathIs(envConsolePath('/users/').PublicId::encode('user', $user->id))
         ->assertSee('Grace Hopper')
         ->assertNoJavaScriptErrors();
 })->group('a11y');

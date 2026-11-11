@@ -39,6 +39,7 @@ use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
+use App\Platform\PublicIds\PublicId;
 use App\Platform\Staff\Contracts\StaffRoles;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\SupportAccess\ValueObjects\SupportApp;
@@ -294,6 +295,8 @@ final readonly class EnvironmentUserController extends ConsoleController
         return $this->page('environment/users/show', $model->name ?? $model->email, [
             'user' => [
                 'id' => $model->id,
+                // The form the page's URL carries (plan §3.2), shown and copied as the id.
+                'publicId' => PublicId::encode('user', $model->id),
                 'name' => $model->name,
                 'email' => $model->email,
                 'status' => $model->status->value,
