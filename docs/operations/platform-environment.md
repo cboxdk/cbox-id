@@ -41,17 +41,17 @@ a warning: *the platform's own environment … a change here applies to all of t
 ## Platform admin
 
 The deployment's own pages are the first area of the same console, **Platform**, at
-`cboxid.com/admin/platform`:
+`cboxid.com/admin`:
 
 | Page | Address | What it is for |
 |---|---|---|
-| Organizations | `/admin/platform/workspaces` | Every organization on the install. Open one to walk its projects and environments; **Suspend** and **Reactivate** are on its row and its page. |
-| Environments | `/admin/platform/environments` | Every environment and who owns it. Create one, point platform admin at it, and **Provision admin** to seed its first organization and owner. |
-| Organization tree | `/admin/platform/organizations` | The organizations of the environment platform admin is pointed at, as the reseller → customer → sub-unit tree. Re-parent, suspend, and open one to start a **support session** (impersonation) as one of its members. |
-| Operators | `/admin/platform/operators` | Who runs the install. Add or suspend an operator. |
-| Usage | `/admin/platform/usage` | Sign-ins, users and tokens across every environment. |
-| Queues | `/admin/platform/queues` | Whether the queue workers are running, with the job monitor at `/admin/platform/queues/monitor`. |
-| Search | `/admin/platform/search` | One search across every environment. ⌘K searches the platform environment itself. |
+| Organizations | `/admin/organizations` | Every organization on the install. Open one to walk its projects and environments; **Suspend** and **Reactivate** are on its row and its page. |
+| Environments | `/admin/environments` | Every environment and who owns it. Create one, point platform admin at it, and **Provision admin** to seed its first organization and owner. |
+| Organization tree | `/admin/environments/root/organizations` | The organizations of the environment platform admin is pointed at, as the reseller → customer → sub-unit tree. Re-parent, suspend, and open one to start a **support session** (impersonation) as one of its members. |
+| Operators | `/admin/operators` | Who runs the install. Add or suspend an operator. |
+| Usage | `/admin/usage` | Sign-ins, users and tokens across every environment. |
+| Queues | `/admin/queues` | Whether the queue workers are running, with the job monitor at `/admin/queues/monitor`. |
+| Search | `/admin/search` | One search across every environment. ⌘K searches the platform environment itself. |
 
 The line above each of these pages is the warning: *Platform admin: the whole deployment …
 a suspension, a new environment or an operator change here applies across all of them.*
@@ -64,7 +64,7 @@ Every write is the same action the operator API runs (`/api/v1/platform/…` on 
 the root's MCP tools); the console address does not change the API's.
 
 **Who sees it.** Active platform operators, on the root's own host. Anybody else gets
-`404` for every `/admin/platform` address, signed in or not, and a tenant's host has no
+`404` for every `/admin` address, signed in or not, and a tenant's host has no
 such address at all. On a single-tenant install there is no environment console; the same
 pages, at the same addresses, are a **Platform** area of the console's rail for its
 operators.
@@ -86,16 +86,16 @@ to its new address, with the query string kept:
 
 | Old | New |
 |---|---|
-| `/platform` | `/admin/platform/environments` |
-| `/platform/workspaces`, `/platform/workspaces/{id}` | `/admin/platform/workspaces`, `/admin/platform/workspaces/{id}` |
-| `/platform/customers`, `/platform/customers/{id}` | `/admin/platform/workspaces`, `/admin/platform/workspaces/{id}` |
-| `/platform/organizations`, `/platform/organizations/{id}` | `/admin/platform/organizations`, `/admin/platform/organizations/{id}` |
-| `/platform/operators` | `/admin/platform/operators` |
-| `/platform/usage` | `/admin/platform/usage` |
-| `/platform/queues` | `/admin/platform/queues` |
-| `/platform/queues/monitor`, `/platform/queues/monitor/job/{uuid}` | `/admin/platform/queues/monitor`, `/admin/platform/queues/monitor/job/{uuid}` |
-| `/platform/search`, `/platform/search/jump/{id}` | `/admin/platform/search`, `/admin/platform/search/jump/{id}` |
-| `/operator` | `/admin/platform` |
+| `/platform` | `/admin/environments` |
+| `/platform/workspaces`, `/platform/workspaces/{id}` | `/admin/organizations`, `/admin/organizations/{id}` |
+| `/platform/customers`, `/platform/customers/{id}` | `/admin/organizations`, `/admin/organizations/{id}` |
+| `/platform/organizations`, `/platform/organizations/{id}` | `/admin/environments/root/organizations`, `/admin/environments/root/organizations/{id}` |
+| `/platform/operators` | `/admin/operators` |
+| `/platform/usage` | `/admin/usage` |
+| `/platform/queues` | `/admin/queues` |
+| `/platform/queues/monitor`, `/platform/queues/monitor/job/{uuid}` | `/admin/queues/monitor`, `/admin/queues/monitor/job/{uuid}` |
+| `/platform/search`, `/platform/search/jump/{id}` | `/admin/search`, `/admin/search/jump/{id}` |
+| `/operator` | `/admin` |
 | `/platform/security` | `/account` |
 
 Form posts to the old addresses are not redirected; a page rendered before the move posts
@@ -261,7 +261,7 @@ kubectl -n cbox-id exec -it deploy/<web-deployment> -- php artisan cbox-id:opera
 ```
 
 The person can open `https://<root>/admin`, and platform admin at
-`https://<root>/admin/platform`, on their next page load.
+`https://<root>/admin`, on their next page load.
 
 ## The organization console on the root host
 
@@ -282,7 +282,7 @@ product's settings.
 
 Single-tenant installs are unchanged. There the root environment is the product, and its
 customer organization console is its administration — with platform admin as its **Platform** area,
-at the same `/admin/platform` addresses, for its operators.
+at the same `/admin` addresses, for its operators.
 
 ## Related
 
