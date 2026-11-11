@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Auth\SignedOutController;
+use App\Platform\OAuth\AppSignIns;
 use Cbox\Id\Api\Http\Controllers\EndSessionController;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -32,6 +33,9 @@ final class HostedEndSessionController extends EndSessionController
 
     public function __invoke(Request $request): RedirectResponse|Response
     {
+        // Read before the sign-out: which app the person pressed "Sign out" in.
+        $app = $this->appOf($request);
+
         $response = parent::__invoke($request);
 
         if ($response instanceof RedirectResponse || $response->getContent() !== self::SIGNED_OUT) {
@@ -39,7 +43,37 @@ final class HostedEndSessionController extends EndSessionController
         }
 
         // 303: the POST binding must not be replayed at the page.
-        return redirect()->route('signed-out', status: 303)
+        return redirect()->route('signed-out', $app === null ? [] : [AppSignIns::PARAMETER => $app], status: 303)
             ->withHeaders(['Cache-Control' => 'no-store', 'Pragma' => 'no-cache']);
+    }
+
+    /**
+     * The client the request names: `client_id`, else the audience of the `id_token_hint`.
+     *
+     * The hint is read UNVERIFIED, and that is safe for what it is used for: the id only
+     * travels to the signed-out page, which looks it up among the apps this environment's
+     * administrators registered and offers a link to that app's own home
+     * ({@see AppSignIns::named()}). It names no address and decides no redirect; an id
+     * that names nothing known is dropped there.
+     */
+    private function appOf(Request $request): ?string
+    {
+        $clientId = $request->input('client_id');
+
+        if (! is_string($clientId) || $clientId === '') {
+            $hint = $request->input('id_token_hint');
+            $clientId = null;
+
+            if (is_string($hint) && substr_count($hint, '.') === 2) {
+                $payload = base64_decode(strtr(explode('.', $hint)[1], '-_', '+/'), true);
+                $claims = $payload === false ? null : json_decode($payload, true);
+                $audience = is_array($claims) ? ($claims['aud'] ?? null) : null;
+                $clientId = is_array($audience) ? ($audience[0] ?? null) : $audience;
+            }
+        }
+
+        return is_string($clientId) && $clientId !== '' && app(AppSignIns::class)->named($clientId, environmentWide: true)?->homeUrl !== null
+            ? $clientId
+            : null;
     }
 }

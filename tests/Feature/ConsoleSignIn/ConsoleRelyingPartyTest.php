@@ -13,8 +13,14 @@ use App\Platform\SignInLineage;
 use App\Platform\StepUpPrompt;
 use App\Platform\Sudo;
 use App\Platform\Surfaces\SessionSurface;
+use Cbox\Id\Identity\Contracts\AdminPasswords;
+use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\SessionManager;
+use Cbox\Id\Identity\Enums\MfaRequirement;
+use Cbox\Id\Identity\Enums\PasswordRevocationScope;
 use Cbox\Id\Identity\Models\Session;
+use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
+use Cbox\Id\Identity\ValueObjects\AuthPolicy;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\LogoutTokenIssuer;
 use Cbox\Id\OAuthServer\Enums\AuthMethod;
@@ -667,3 +673,77 @@ it('takes over a console client registered before the console was a relying part
         ->and($taken['client']->backchannel_logout_uri)->toBe('https://'.RP_APP.'/auth/backchannel-logout')
         ->and(Client::query()->withoutGlobalScopes()->where('name', ConsoleClient::NAME)->count())->toBe(1);
 });
+
+it('sends a console session that owes a password change to the login host and brings it back to the page it was opening', function (): void {
+    $realm = consoleRealm();
+    signInToTheConsole($realm['subjectId']);
+    $console = session()->all();
+
+    app(PlatformRoot::class)->run(fn () => app(AdminPasswords::class)->assign(new AdminPasswordAssignment(
+        userId: $realm['subjectId'],
+        password: 'the-handed-over-passphrase',
+        temporary: true,
+        expiresAt: null,
+        revoke: PasswordRevocationScope::Nothing,
+    )));
+
+    $page = 'https://'.RP_APP.'/dashboard?tab=general';
+    $held = (string) $this->get($page)->assertRedirect()->headers->get('Location');
+
+    expect($held)->toBe('https://'.RP_LOGIN.'/password/change?return_to='.urlencode($page));
+
+    // A write names no page: the change then ends on the console's own default.
+    expect((string) $this->post('https://'.RP_APP.'/directory/members/leave')->headers->get('Location'))
+        ->toBe('https://'.RP_LOGIN.'/password/change');
+
+    atTheLoginHost($realm['subjectId']);
+    $this->get($held)->assertOk();
+
+    $done = $this->post('https://'.RP_LOGIN.'/password/change', [
+        'password' => 'a-new-strong-unbreached-passphrase',
+        'password_confirmation' => 'a-new-strong-unbreached-passphrase',
+    ]);
+
+    // Through the console's start, to the page they were opening, on the app host only.
+    $done->assertRedirect('https://'.RP_APP.'/auth/start?return_to='.urlencode('/dashboard?tab=general'));
+
+    // An address on another origin is never where the change ends.
+    app(PlatformRoot::class)->run(fn () => app(AdminPasswords::class)->assign(new AdminPasswordAssignment(
+        userId: $realm['subjectId'],
+        password: 'another-handed-over-passphrase',
+        temporary: true,
+        expiresAt: null,
+        revoke: PasswordRevocationScope::Nothing,
+    )));
+    atTheLoginHost($realm['subjectId']);
+    $this->get('https://'.RP_LOGIN.'/password/change?return_to='.urlencode('https://evil.example/x'))->assertOk();
+
+    $location = (string) $this->post('https://'.RP_LOGIN.'/password/change', [
+        'password' => 'yet-another-strong-unbreached-passphrase',
+        'password_confirmation' => 'yet-another-strong-unbreached-passphrase',
+    ])->headers->get('Location');
+
+    expect($location)->toStartWith('https://'.RP_APP.'/auth/start')->not->toContain('evil.example');
+
+    atTheConsole($console);
+})->group('security');
+
+it('sends a console session that owes a second factor to the security page on the login host, with the way back', function (): void {
+    $realm = consoleRealm();
+    signInToTheConsole($realm['subjectId']);
+
+    app(PlatformRoot::class)->run(fn () => app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(mfa: MfaRequirement::Required)));
+
+    $page = 'https://'.RP_APP.'/dashboard';
+    $held = (string) $this->get($page)->assertRedirect()->headers->get('Location');
+
+    expect($held)->toBe('https://'.RP_LOGIN.'/settings?return_to='.urlencode($page));
+
+    atTheLoginHost($realm['subjectId']);
+
+    $this->get($held)->assertOk()
+        ->assertInertia(fn ($inertia) => $inertia
+            // The chrome's "Back to …" is the one link; the page adds no second one.
+            ->where('returnTo', null)
+            ->where('accountShell.back.url', $page));
+})->group('security');

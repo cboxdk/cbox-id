@@ -121,6 +121,42 @@ it('fills in the address the app named with login_hint and submits nothing', fun
     expect((string) session('url.intended'))->toContain('login_hint=pat%40acme.test');
 });
 
+it('opens the account chooser when login_hint names somebody other than the signed-in person', function (): void {
+    $clientId = hostedApp();
+    hostedMember('pat@acme.test');
+
+    // Another address: not continued as Pat. The chooser, with the request kept.
+    authorizeRequest(hostedAppRequest($clientId, ['login_hint' => 'sam@acme.test']))->assertRedirect(route('accounts'));
+
+    $resume = (string) session('url.intended');
+
+    expect($resume)->toContain('login_hint=sam%40acme.test')->toContain('reauthed=1');
+
+    // Having chosen (here: stayed as Pat), the request goes on. A hint is a hint.
+    $this->get($resume)->assertRedirect();
+    expect((string) $this->get($resume)->headers->get('Location'))->toStartWith('https://billing.example.com/auth/callback?code=');
+});
+
+it('continues when login_hint names the signed-in person, whatever the case', function (): void {
+    $clientId = hostedApp();
+    hostedMember('pat@acme.test');
+
+    $location = (string) authorizeRequest(hostedAppRequest($clientId, ['login_hint' => 'Pat@Acme.test']))->headers->get('Location');
+
+    expect($location)->toStartWith('https://billing.example.com/auth/callback?code=');
+});
+
+it('answers login_required to a silent request whose login_hint names somebody else', function (): void {
+    $clientId = hostedApp();
+    hostedMember('pat@acme.test');
+
+    $location = (string) authorizeRequest(hostedAppRequest($clientId, ['login_hint' => 'sam@acme.test', 'prompt' => 'none']))->headers->get('Location');
+
+    expect($location)->toStartWith('https://billing.example.com/auth/callback?')
+        ->toContain('error=login_required')
+        ->not->toContain('code=');
+});
+
 it('ignores a login_hint that is not an email address', function (): void {
     $clientId = hostedApp();
 

@@ -3,7 +3,10 @@ import AuthLayout from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button } from '@/ui';
 
-type Props = PageProps<{ signInUrl: string }>;
+type Props = PageProps<{
+    signInUrl: string;
+    backToApp: { url: string; label: string } | null;
+}>;
 
 /**
  * WHERE EVERY SIGN-OUT LANDS — a page, not a door.
@@ -11,8 +14,10 @@ type Props = PageProps<{ signInUrl: string }>;
  * Sending people to a sign-in door after signing out let an environment console's gate
  * hand them straight back in. This page does nothing by itself; Sign in is a plain link,
  * not an Inertia visit, because on an environment's host it leaves for the account host.
+ *
+ * Signed out from an app the environment knows, it also offers the way back to that app.
  */
-export default function SignedOut({ signInUrl }: Props) {
+export default function SignedOut({ signInUrl, backToApp }: Props) {
     const { t } = useTranslator();
 
     return (
@@ -27,6 +32,15 @@ export default function SignedOut({ signInUrl }: Props) {
             <Button asChild variant="primary" size="lg" className="mt-7 w-full">
                 <a href={signInUrl}>{t('auth.common.sign_in')}</a>
             </Button>
+
+            {/* Signed out from an app: its own home, on another origin, so a plain link. */}
+            {backToApp !== null && (
+                <Button asChild variant="secondary" size="lg" className="mt-3 w-full">
+                    <a href={backToApp.url} data-test="signed-out-back-to-app">
+                        {backToApp.label}
+                    </a>
+                </Button>
+            )}
         </div>
     );
 }
