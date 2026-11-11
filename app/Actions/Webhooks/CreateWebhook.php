@@ -20,6 +20,7 @@ use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\Integrations\IntegrationAudit;
 use App\Platform\Integrations\IntegrationReach;
 use App\Platform\Integrations\OutboundUrl;
+use App\Platform\PublicIds\WebhookIdFormat;
 use Cbox\Id\Webhooks\Contracts\WebhookSigningSchemes;
 use Cbox\Id\Webhooks\Enums\SignatureScheme;
 use Cbox\Id\Webhooks\Exceptions\UnsafeWebhookUrl;
@@ -72,6 +73,7 @@ final readonly class CreateWebhook implements Action, Preflight
             Field::string('url')->required()->max(500)->format('uri')->describe('A public HTTPS URL. Signed deliveries are POSTed here.'),
             Field::list('event_types', Field::string('event_type')->oneOf(WebhookEventCatalogue::offered()))->required()->min(1)->describe('The events it receives.'),
             Field::string('signature_scheme')->oneOf(self::schemes())->describe('How deliveries are signed: `cbox` (X-Cbox-Signature, the default) or `standard_webhooks` (webhook-id / webhook-timestamp / webhook-signature, verifiable with any Standard Webhooks library; the secret is a `whsec_` secret).'),
+            Field::string('id_format')->oneOf(WebhookIdFormat::FORMATS)->describe('The ids deliveries carry: `raw` (bare ids, as every endpoint so far) or `prefixed` (public ids, `usr_01j…`). Defaults to `prefixed` on `/v1` and `raw` elsewhere.'),
             ...IntegrationReach::ownerFields(),
         ]);
     }
@@ -117,6 +119,9 @@ final readonly class CreateWebhook implements Action, Preflight
             throw ActionRefused::because('unsafe_url', new ActionMessage('console.that_url_is_not_allowed_it_must_be_a_public_https_endpo_2ba3a3f0'), 'url');
         }
 
+        $registered->endpoint->setAttribute('id_format', $context->nullableString('id_format') ?? WebhookIdFormat::defaultFor(request()));
+        $registered->endpoint->save();
+
         // Read back, so the columns the database defaulted (health, sequence) are real.
         $endpoint = $registered->endpoint->refresh();
 
@@ -124,6 +129,7 @@ final readonly class CreateWebhook implements Action, Preflight
             'url' => $endpoint->url,
             'event_types' => array_values($endpoint->event_types),
             'signature_scheme' => $endpoint->signature_scheme->value,
+            'id_format' => WebhookIdFormat::ofEndpoint($endpoint),
         ]);
 
         return ActionResult::item($registered, WebhookResource::from($endpoint, $registered->secret));

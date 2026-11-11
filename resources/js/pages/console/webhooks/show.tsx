@@ -18,7 +18,13 @@ import {
     Pill,
     RadioGroup,
 } from '@/ui';
-import { type SignatureScheme, signatureSchemeLabels, signatureSchemeOptions } from './schemes';
+import {
+    type IdFormat,
+    idFormatOptions,
+    type SignatureScheme,
+    signatureSchemeLabels,
+    signatureSchemeOptions,
+} from './schemes';
 
 interface Delivery {
     id: string;
@@ -38,6 +44,7 @@ type Props = PageProps<{
         active: boolean;
         eventTypes: string[];
         signatureScheme: SignatureScheme;
+        idFormat: IdFormat;
         /** Null means the ENVIRONMENT owns it and it receives every organization's events. */
         owner: string | null;
     };
@@ -56,6 +63,7 @@ type Props = PageProps<{
         resume: string;
         rotate: string;
         scheme: string;
+        idFormat: string;
         destroy: string;
     };
 }>;
@@ -88,8 +96,11 @@ export default function WebhookDetail({
      */
     const newSecret = usePage().flash.newSecret;
 
-    const [confirming, setConfirming] = useState<'rotate' | 'scheme' | 'delete' | null>(null);
+    const [confirming, setConfirming] = useState<
+        'rotate' | 'scheme' | 'idFormat' | 'delete' | null
+    >(null);
     const [scheme, setScheme] = useState<SignatureScheme>(endpoint.signatureScheme);
+    const [idFormat, setIdFormat] = useState<IdFormat>(endpoint.idFormat);
     const [secretVisible, setSecretVisible] = useState(true);
 
     const form = useForm({
@@ -333,6 +344,30 @@ export default function WebhookDetail({
                             </div>
                         </Panel>
 
+                        <Panel
+                            title={consoleT('console.ids_in_deliveries_fbfc89f6')}
+                            description={consoleT(
+                                'console.which_form_of_id_every_delivery_carries_move_7eecdf37',
+                            )}
+                        >
+                            <div className="space-y-4">
+                                <RadioGroup
+                                    label={consoleT('console.ids_in_deliveries_fbfc89f6')}
+                                    name="idFormat"
+                                    value={idFormat}
+                                    onValueChange={setIdFormat}
+                                    options={idFormatOptions(consoleOptionText)}
+                                />
+                                <Button
+                                    size="sm"
+                                    disabled={idFormat === endpoint.idFormat}
+                                    onClick={() => setConfirming('idFormat')}
+                                >
+                                    {consoleT('console.change_id_format_7b79ed9d')}
+                                </Button>
+                            </div>
+                        </Panel>
+
                         <Panel title={consoleT('console.recent_deliveries_9d067ec8')}>
                             {deliveries.length === 0 ? (
                                 <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
@@ -473,6 +508,23 @@ export default function WebhookDetail({
                 onConfirm={() => {
                     setConfirming(null);
                     router.post(urls.scheme, { signatureScheme: scheme }, { preserveScroll: true });
+                }}
+            />
+
+            <ConfirmDelete
+                open={confirming === 'idFormat'}
+                onOpenChange={(open) => setConfirming(open ? 'idFormat' : null)}
+                name={endpoint.url}
+                verb={consoleAttributeText('console.change_id_format_7b79ed9d')}
+                title={consoleFinalText(
+                    'console.change_the_ids_this_endpoint_s_deliveries_ca_50dc93e2',
+                )}
+                consequence={consoleUiText(
+                    'console.from_the_next_delivery_every_id_in_the_paylo_b8c391de',
+                )}
+                onConfirm={() => {
+                    setConfirming(null);
+                    router.post(urls.idFormat, { idFormat }, { preserveScroll: true });
                 }}
             />
 

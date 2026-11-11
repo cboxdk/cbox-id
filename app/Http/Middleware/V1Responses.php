@@ -7,6 +7,8 @@ namespace App\Http\Middleware;
 use App\Platform\Api\Problem;
 use App\Platform\Api\V1\SpecNode;
 use App\Platform\Api\V1\V1Routes;
+use App\Platform\PublicIds\IdNames;
+use App\Platform\PublicIds\PublicIdTree;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +22,8 @@ use Symfony\Component\HttpFoundation\Response;
  *  - a list is `{"object":"list","data":[…],"has_more":…,"next_cursor":…}` — one cursor for
  *    every list, the lists that paged by number included (their cursor is `page:N`);
  *  - a held action is the approval it waits for, `object: "approval"`;
+ *  - every record id is its public id, `usr_01j…` (plan §3.2): `id` by the kind of record the
+ *    object is, `<kind>_id` fields by their kind;
  *  - a failure is an RFC 9457 problem (`application/problem+json`), `errors` beside it on
  *    a validation failure.
  *
@@ -63,12 +67,16 @@ final class V1Responses
         }
 
         if (($body['error'] ?? null) === 'approval_required' && is_array($body['approval'] ?? null)) {
-            $response->setData(['object' => 'approval', ...$body['approval'], 'detail' => $body['message'] ?? null]);
+            $response->setData(PublicIdTree::encode(['object' => 'approval', ...$body['approval'], 'detail' => $body['message'] ?? null], 'approval'));
 
             return $response;
         }
 
+        $type = IdNames::object(self::objectOf($request));
+
         if (! array_key_exists('data', $body)) {
+            $response->setData(PublicIdTree::encode($body, $type));
+
             return $response;
         }
 
@@ -78,7 +86,7 @@ final class V1Responses
         if (is_array($data) && array_is_list($data)) {
             $response->setData([
                 'object' => 'list',
-                'data' => $data,
+                'data' => array_map(static fn (mixed $item): mixed => is_array($item) ? PublicIdTree::encode($item, $type) : $item, $data),
                 'has_more' => (bool) ($meta['has_more'] ?? false),
                 'next_cursor' => self::cursor($meta),
             ]);
@@ -87,7 +95,7 @@ final class V1Responses
         }
 
         if (is_array($data)) {
-            $response->setData(['object' => $data['object'] ?? self::objectOf($request), ...$data]);
+            $response->setData(PublicIdTree::encode(['object' => $data['object'] ?? self::objectOf($request), ...$data], $type));
         }
 
         return $response;

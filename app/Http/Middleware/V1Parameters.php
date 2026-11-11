@@ -6,6 +6,8 @@ namespace App\Http\Middleware;
 
 use App\Platform\Api\V1\SpecNode;
 use App\Platform\Api\V1\V1Routes;
+use App\Platform\PublicIds\PublicId;
+use App\Platform\PublicIds\RouteIds;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
@@ -16,6 +18,9 @@ use Symfony\Component\HttpFoundation\Response;
  * name (`user_id`), and the parent it hangs under (`organization_id`) now comes in the query
  * or the body. This puts each back where the handler reads it, so the same controller and the
  * same action serve the old path and the new one.
+ *
+ * Every id is read in either form, `usr_01j…` or `01j…` (plan §3.2), and reaches the handler as
+ * the stored id; a public id of the wrong kind is a 404.
  *
  * Also reads a page-number cursor (`page:2`) as the page it stands for, for the lists that
  * page by number: on `/v1` every list pages by an opaque `next_cursor`.
@@ -32,6 +37,8 @@ final class V1Parameters
         if ($route instanceof Route) {
             self::place($request, $route);
         }
+
+        AcceptPublicIds::decodeInput($request);
 
         $after = $request->query('after');
 
@@ -50,6 +57,14 @@ final class V1Parameters
         $inputs = $route->defaults[V1Routes::INPUTS] ?? [];
         $id = $route->parameter('id');
 
+        if (is_string($id)) {
+            $id = PublicId::decodeString(RouteIds::v1Id('/'.substr($route->uri(), strlen('v1')), is_string($idName) ? $idName : null), $id);
+
+            if ($route->hasParameter('id')) {
+                $route->setParameter('id', $id);
+            }
+        }
+
         $values = [];
 
         if (is_string($idName) && $idName !== 'id' && $id !== null) {
@@ -62,7 +77,7 @@ final class V1Parameters
             $value = $request->input(SpecNode::string($publicName)) ?? ($handlerName !== 'id' ? $request->input((string) $handlerName) : null);
 
             if (is_scalar($value) && (string) $value !== '') {
-                $values[(string) $handlerName] = (string) $value;
+                $values[(string) $handlerName] = PublicId::decodeString(RouteIds::parameter(SpecNode::string($publicName)) ?? RouteIds::parameter((string) $handlerName), (string) $value);
             }
         }
 

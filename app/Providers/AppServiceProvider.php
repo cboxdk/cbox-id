@@ -37,6 +37,8 @@ use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
 use App\Platform\OrganizationApiContext;
 use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\Passkeys\RecordsPasskeyUse;
+use App\Platform\PublicIds\WebhookIdFormat;
+use App\Routing\PublicIdUrlGenerator;
 use App\SignalsData\Bundled\IdMachineCredential;
 use App\SignalsData\Bundled\IdManagedSources;
 use Cbox\Dns\Dns;
@@ -63,6 +65,7 @@ use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Routing\UrlGenerator;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Psr\Log\LoggerInterface;
@@ -74,6 +77,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Console URLs carry public ids (`usr_01j…`), wherever a URL is built.
+        $this->app->extend('url', static fn (UrlGenerator $url): PublicIdUrlGenerator => PublicIdUrlGenerator::from($url));
+
         $this->app->bind(\Cbox\Id\Api\Http\Controllers\DecisionController::class, DecisionController::class);
         $this->app->bind(\Cbox\Id\Api\Http\Controllers\UserInfoController::class, UserInfoController::class);
 
@@ -202,6 +208,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // An endpoint that asked for public ids receives them (`usr_01j…`); the rest keep bare ids.
+        WebhookIdFormat::register();
+
         // No environment takes a slug the platform's own hosts use (`api`, `app`, …).
         ReservedEnvironmentSlugs::guard();
 

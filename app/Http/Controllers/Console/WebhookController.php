@@ -21,6 +21,7 @@ use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\Help\HelpTopic;
+use App\Platform\PublicIds\WebhookIdFormat;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Webhooks\Enums\EndpointStatus;
@@ -216,6 +217,7 @@ final readonly class WebhookController extends ConsoleController
                 'active' => $endpoint->status === EndpointStatus::Active,
                 'eventTypes' => array_values($endpoint->event_types),
                 'signatureScheme' => $endpoint->signature_scheme->value,
+                'idFormat' => WebhookIdFormat::ofEndpoint($endpoint),
                 'owner' => $endpoint->organization_id !== null
                     ? (Organization::query()->whereKey($endpoint->organization_id)->value('name')
                         ?? $endpoint->organization_id)
@@ -261,6 +263,7 @@ final readonly class WebhookController extends ConsoleController
                 'resume' => $this->url('webhooks.resume', $endpoint->id),
                 'rotate' => $this->url('webhooks.rotate', $endpoint->id),
                 'scheme' => $this->url('webhooks.scheme', $endpoint->id),
+                'idFormat' => $this->url('webhooks.id-format', $endpoint->id),
                 'destroy' => $this->url('webhooks.destroy', $endpoint->id),
             ],
         ]);
@@ -369,6 +372,23 @@ final readonly class WebhookController extends ConsoleController
         ], ['signature_scheme' => 'signatureScheme']);
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.signature_scheme_changed_deliveries_are_signed_the_new_9a0fb26a'));
+    }
+
+    /**
+     * Move the endpoint's deliveries to public ids (`usr_01j…`) or back to bare ids. Like the
+     * scheme, it can make a receiver misread deliveries until it is updated, so the page asks
+     * for the same typed confirmation.
+     */
+    public function idFormat(Request $request, string $webhook): RedirectResponse
+    {
+        $endpoint = $this->manageable($webhook);
+
+        $result = $this->act(UpdateWebhook::class, [
+            'id' => $endpoint->id,
+            'id_format' => (string) $request->string('idFormat'),
+        ], ['id_format' => 'idFormat']);
+
+        return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.id_format_changed_the_next_delivery_carries__1887383d'));
     }
 
     public function destroy(string $webhook): RedirectResponse

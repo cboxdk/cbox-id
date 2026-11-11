@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Environment;
 
+use App\Platform\PublicIds\WebhookIdFormat;
 use Cbox\Id\Webhooks\Enums\EndpointStatus;
 use Cbox\Id\Webhooks\Models\WebhookEndpoint;
 
@@ -29,6 +30,7 @@ final class WebhookResource
             'event_types' => array_values($endpoint->event_types),
             'active' => $endpoint->status === EndpointStatus::Active,
             'signature_scheme' => $endpoint->signature_scheme->value,
+            'id_format' => WebhookIdFormat::ofEndpoint($endpoint),
             'consecutive_failures' => $endpoint->consecutive_failures,
             'last_success_at' => Timestamp::of($endpoint->last_success_at),
             'created_at' => Timestamp::of($endpoint->getAttribute('created_at')),

@@ -2,6 +2,7 @@
 
 use App\Http\ApiErrorRenderer;
 use App\Http\ApiRequest;
+use App\Http\Middleware\AcceptPublicIds;
 use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\AuthenticateDelegatedApi;
@@ -305,6 +306,17 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->prependToPriorityList(
             before: SubstituteBindings::class,
             prepend: ResolveEnvironmentFromPath::class,
+        );
+
+        // AN ID IN EITHER FORM (plan §3.2): `usr_01j…` and `01j…` reach every handler as the
+        // stored id, in the console and on `/api/v1` alike. Ahead of route model binding and
+        // of every middleware that reads a route's parameters; a public id of the wrong kind
+        // is a 404 here, before anything reads the ULID inside it.
+        $middleware->appendToGroup('web', AcceptPublicIds::class);
+        $middleware->appendToGroup('api', AcceptPublicIds::class);
+        $middleware->prependToPriorityList(
+            before: SubstituteBindings::class,
+            prepend: AcceptPublicIds::class,
         );
 
         // An outlived impersonation is ended before the path middleware answers for the

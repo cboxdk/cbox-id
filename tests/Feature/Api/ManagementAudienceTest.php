@@ -119,7 +119,7 @@ it('issues and accepts a token for the API host, and keeps it to the issuer\'s e
     $this->withToken($token)->getJson(audienceUrl("/v1/webhooks/{$own->id}"))
         ->assertOk()
         ->assertJsonPath('object', 'webhook')
-        ->assertJsonPath('id', $own->id);
+        ->assertJsonPath('id', 'whe_'.$own->id);
 
     $this->withToken($token)->getJson(audienceUrl("/v1/webhooks/{$foreign->id}"))->assertNotFound();
 
@@ -195,7 +195,7 @@ it('keeps a CLI token from before the change working on /v1/organization and on 
     $this->withToken($token)->getJson(audienceUrl('/v1/organization'))
         ->assertOk()
         ->assertJsonPath('object', 'organization')
-        ->assertJsonPath('id', $account['organization']->id);
+        ->assertJsonPath('id', 'org_'.$account['organization']->id);
 
     expect(mcpTools($token))->not->toBeEmpty();
 
