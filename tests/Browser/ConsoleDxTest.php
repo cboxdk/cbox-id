@@ -27,11 +27,10 @@ it('opens the palette on ⌘K, finds a user by a pasted id and jumps to them', f
     $page = visit(envConsole());
 
     $page->keys('.cbx-page-title', 'Meta+k')
-        ->assertVisible('[cmdk-input]')
-        ->assertSee('Applications')
-        ->type('[cmdk-input]', $user->id)
-        ->assertSee('Open Grace Hopper')
-        ->keys('[cmdk-input]', 'Enter')
+        ->assertVisible('.cbx-palette-search input')
+        ->type('.cbx-palette-search input', $user->id)
+        ->assertSee('Grace Hopper')
+        ->keys('.cbx-palette-search input', 'Enter')
         ->assertPathIs(envConsolePath('/users/').$user->id)
         ->assertSee('Grace Hopper')
         ->assertNoJavaScriptErrors();

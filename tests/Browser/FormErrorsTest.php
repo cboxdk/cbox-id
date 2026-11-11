@@ -76,7 +76,7 @@ it('draws a server validation error on the field it belongs to', function (): vo
     $long = 'https://valid.example.test/'.str_repeat('x', 520);
 
     $page->fill('input[type="url"]', $long)
-        ->click('button[type="submit"]');
+        ->click('#main-content button[type="submit"]');
 
     /*
      * THE MESSAGE IS DRAWN. `field-error` is the design system's one place for this, and
@@ -114,7 +114,7 @@ it('reveals the fieldset error rather than leaving it hidden', function (): void
     // A VALID url, so the only thing wrong is the empty event list — otherwise this would
     // pass on the url error and prove nothing about the fieldset.
     $page->fill('input[type="url"]', 'https://valid.example.test/hook')
-        ->click('button[type="submit"]');
+        ->click('#main-content button[type="submit"]');
 
     /*
      * VISIBLE, not merely present. `assertSee` resolves visibility, so a `hidden`
