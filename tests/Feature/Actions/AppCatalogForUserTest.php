@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Api\ApiHost;
 use App\Platform\AppCatalog\AppCatalog;
 use App\Platform\AppCatalog\CatalogEntryData;
 use Cbox\Id\FeatureFlags\Contracts\FeatureFlags;
@@ -261,7 +262,7 @@ it('keeps the catalog revision and refresh_after on the /v1 list, where laravel-
     $query = http_build_query(['user_id' => $this->ada, 'organization_id' => $this->acme]);
 
     $old = forUserRequest($token, $this->ada, $this->acme)->assertOk();
-    $v1 = $this->withToken($token)->getJson('http://'.App\Platform\Api\ApiHost::name().'/v1/app-catalog/for-user?'.$query)->assertOk();
+    $v1 = $this->withToken($token)->getJson('http://'.ApiHost::name().'/v1/app-catalog/for-user?'.$query)->assertOk();
 
     expect($v1->json('object'))->toBe('list')
         ->and(array_column($v1->json('data'), 'key'))->toBe(['zeta', 'alpha', 'acme-only'])
