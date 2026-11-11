@@ -10,45 +10,15 @@ use App\Platform\Surfaces\Surfaces;
 use App\Platform\TrustedHosts;
 use Cbox\Id\Console\ValueObjects\HealthResult;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-use Cbox\Id\Organization\Enums\EnvironmentStatus;
-use Cbox\Id\Organization\Enums\EnvironmentType;
-use Cbox\Id\Organization\Models\Environment;
 
 /**
  * LOGIN-HOST MODE: each host serves its own surface and nothing else.
  *
  * One representative route per surface, asked of every host. A surface that is absent on a
  * host answers 404 there, before any route, session or cookie.
+ *
+ * `loginHostMode()` and the host names live in tests/Pest.php.
  */
-const LOGIN_HOST = 'login.cboxid.test';
-const APP_HOST = 'app.cboxid.test';
-const API_HOST = 'api.cboxid.test';
-const TENANT_HOST = 'acme.cboxauth.test';
-
-/** Turn the mode on, with a default environment and one tenant environment. */
-function loginHostMode(): Environment
-{
-    config([
-        'cbox-id.tenancy.multi_tenant' => true,
-        'cbox-id.tenancy.account_host' => APP_HOST,
-        'cbox-id.hosts.login' => LOGIN_HOST,
-        'cbox-id.hosts.api' => API_HOST,
-        'cbox-id.environments.base_domains' => ['cboxauth.test'],
-        'cbox-id.issuer' => 'https://'.LOGIN_HOST,
-    ]);
-
-    installedDeployment();
-    platformRootEnvironment();
-
-    return Environment::query()->create([
-        'name' => 'Acme',
-        'slug' => 'acme',
-        'type' => EnvironmentType::Production,
-        'status' => EnvironmentStatus::Active,
-        'is_default' => false,
-        'settings' => [],
-    ]);
-}
 
 /** Whether the path exists on the host at all: anything but a 404. */
 function served(string $host, string $path): bool
