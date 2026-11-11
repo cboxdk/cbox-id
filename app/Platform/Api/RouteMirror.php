@@ -22,18 +22,36 @@ final class RouteMirror
      */
     public static function mirror(Router $router, string $name, string $uri, string $as, array $middleware = []): ?Route
     {
-        $original = $router->getRoutes()->getByName($name);
+        // Looked for by walking the table: while routes are still being registered the name
+        // index is not built yet, and a route named after it was added is not in it.
+        $original = null;
+
+        foreach ($router->getRoutes()->getRoutes() as $route) {
+            if ($route->getName() === $name) {
+                $original = $route;
+
+                break;
+            }
+        }
 
         if (! $original instanceof Route) {
             return null;
         }
 
-        $copy = $router->addRoute($original->methods(), $uri, $original->getAction('uses'))
+        $uses = $original->getAction('uses');
+
+        if (! is_string($uses) && ! $uses instanceof \Closure) {
+            return null;
+        }
+
+        $copy = $router->addRoute($original->methods(), $uri, $uses)
             ->middleware([...array_values(array_filter($original->middleware(), 'is_string')), ...$middleware])
             ->name($as);
 
         foreach ($original->wheres as $parameter => $pattern) {
-            $copy->where($parameter, $pattern);
+            if (is_string($pattern)) {
+                $copy->where($parameter, $pattern);
+            }
         }
 
         foreach ($original->defaults as $key => $value) {

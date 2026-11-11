@@ -8,6 +8,7 @@ use App\Platform\Keys\OrganizationKeyPrefixes;
 use Cbox\Id\Kernel\Tenancy\Contracts\Environment;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
+use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Kernel\Tenancy\Scopes\EnvironmentScope;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\Platform\PlatformRoot;
@@ -49,7 +50,7 @@ final readonly class CredentialEnvironment
     {
         return match (self::kind($bearer)) {
             'environment_key' => $this->ofKey((string) $bearer),
-            'token' => $this->ofIssuer((string) (self::claims((string) $bearer)['iss'] ?? '')),
+            'token' => $this->ofIssuer(self::issuer((string) $bearer)),
             default => null,
         };
     }
@@ -66,7 +67,7 @@ final readonly class CredentialEnvironment
             return null;
         }
 
-        return $this->environments->forKey((string) $key->environment_id);
+        return $this->environments->forKey((string) $key->environment_id) ?? GenericEnvironment::of((string) $key->environment_id);
     }
 
     /** The id of the key row behind a `cbid_env_` key, for counting who still calls. */
@@ -133,6 +134,24 @@ final readonly class CredentialEnvironment
         $json = base64_decode(strtr($parts[1], '-_', '+/'), true);
         $claims = is_string($json) ? json_decode($json, true) : null;
 
-        return is_array($claims) && isset($claims['iss']) && is_string($claims['iss']) ? $claims : null;
+        if (! is_array($claims) || ! isset($claims['iss']) || ! is_string($claims['iss'])) {
+            return null;
+        }
+
+        $named = [];
+
+        foreach ($claims as $claim => $value) {
+            $named[(string) $claim] = $value;
+        }
+
+        return $named;
+    }
+
+    /** The `iss` of a JWT, unverified; empty when it has none. */
+    private static function issuer(string $token): string
+    {
+        $issuer = self::claims($token)['iss'] ?? null;
+
+        return is_string($issuer) ? $issuer : '';
     }
 }

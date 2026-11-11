@@ -191,7 +191,8 @@ final class ActionSnippets
             // The TEMPLATE, placeholders and all: the browser fills it from the form, which may
             // name a different id than the page's own. The filled path is for reading.
             url: $target === null ? IssuerUrl::to($template) : ApiUrls::to($template),
-            path: $target === null ? $filled['path'] : self::placed('/v1'.$template, $filled['values']),
+            path: $target === null ? $filled['path'] : self::placed($template, $filled['values']),
+            base: $target === null ? '/api/v1' : '/v1',
             fields: $fields,
             cli: self::SHIPPED_CLI[$action->name] ?? 'cbox id '.str_replace('.', ':', $action->name),
             cliShipped: isset(self::SHIPPED_CLI[$action->name]),

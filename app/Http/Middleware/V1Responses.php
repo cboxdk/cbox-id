@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Platform\Api\Problem;
+use App\Platform\Api\V1\SpecNode;
 use App\Platform\Api\V1\V1Routes;
 use Closure;
 use Illuminate\Http\JsonResponse;
@@ -50,7 +51,7 @@ final class V1Responses
         $status = $response->getStatusCode();
 
         if ($status >= 400) {
-            $problem = Problem::fromEnvelope($body, $status);
+            $problem = Problem::fromEnvelope(SpecNode::map($body), $status);
 
             if ($problem !== null) {
                 $response->setData($problem);
@@ -72,7 +73,7 @@ final class V1Responses
         }
 
         $data = $body['data'];
-        $meta = is_array($body['meta'] ?? null) ? $body['meta'] : null;
+        $meta = is_array($body['meta'] ?? null) ? SpecNode::map($body['meta']) : null;
 
         if (is_array($data) && array_is_list($data)) {
             $response->setData([

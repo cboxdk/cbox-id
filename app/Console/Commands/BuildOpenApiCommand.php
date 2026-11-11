@@ -53,9 +53,9 @@ final class BuildOpenApiCommand extends Command
             $this->components->info("Wrote {$outPath}.");
         }
 
-        // The one contract for the API host, built from the plane documents just written
-        // (or, with --check, from what they would be).
-        $v1 = V1OpenApi::encode(app(V1OpenApi::class)->build($this->option('check') ? $this->planeDocuments($openApi) : null));
+        // The one contract for the API host, built from the plane documents as committed
+        // (just written, or — with --check — already reported above when they are stale).
+        $v1 = V1OpenApi::encode(app(V1OpenApi::class)->build());
         $v1Path = V1OpenApi::path();
 
         if ((is_file($v1Path) ? (string) file_get_contents($v1Path) : '') !== $v1) {
@@ -78,23 +78,5 @@ final class BuildOpenApiCommand extends Command
         }
 
         return self::SUCCESS;
-    }
-
-    /**
-     * The plane documents as the build would write them, without writing them.
-     *
-     * @return array<string, array<string, mixed>>
-     */
-    private function planeDocuments(ActionOpenApi $openApi): array
-    {
-        $documents = [];
-
-        foreach (ActionPlane::cases() as $plane) {
-            $documents[$plane->value] = $openApi->build(Yaml::parseFile(resource_path("openapi/base/{$plane->value}.yaml")), $plane);
-        }
-
-        $documents['app-services'] = Yaml::parseFile(resource_path('openapi/app-services.yaml'));
-
-        return $documents;
     }
 }

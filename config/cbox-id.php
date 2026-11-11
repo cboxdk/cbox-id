@@ -558,12 +558,14 @@ return [
      * than from the host ({@see \App\Http\Middleware\ResolveApiEnvironment}). It answers
      * nothing else: no session, no CSRF, no pages.
      *
-     * Production sets `CBOX_ID_API_HOST=api.cboxid.com` (infra, before the deploy). The
-     * local default needs only an `/etc/hosts` line, and nothing depends on the name
-     * resolving: `/api/v1` keeps answering on every host until the old paths are retired.
+     * Production sets `CBOX_ID_API_HOST=api.cboxid.com` (infra, before the deploy; see
+     * docs/operations/v3-api-host-infra.md). Production has no default: until the variable
+     * is set, nothing advertises a host that does not exist — the CLI and the Authenticator
+     * keep being handed the issuer's own `/api/v1`. The local default needs only an
+     * `/etc/hosts` line, and `/api/v1` keeps answering on every host until it is retired.
      */
     'hosts' => [
-        'api' => env('CBOX_ID_API_HOST', 'api.cboxid.test'),
+        'api' => env('CBOX_ID_API_HOST', env('APP_ENV') === 'production' ? null : 'api.cboxid.test'),
     ],
 
     /*

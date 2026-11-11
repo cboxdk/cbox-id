@@ -31,7 +31,7 @@ return new class extends Migration
 
         if ($taken !== []) {
             throw new RuntimeException('These environments use a slug reserved for the platform\'s own hosts; rename them first: '
-                .implode(', ', array_map(static fn (string $id, string $slug): string => "{$slug} ({$id})", array_keys($taken), $taken)).'.');
+                .implode(', ', array_map(static fn (int|string $id, mixed $slug): string => (is_string($slug) ? $slug : '?')." ({$id})", array_keys($taken), $taken)).'.');
         }
     }
 

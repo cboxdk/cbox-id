@@ -33,7 +33,9 @@ export interface ApiAction {
     name: string;
     summary: string;
     method: string;
-    /** Below `/api/v1`, with the page's ids filled in where it knew them. */
+    /** The base `path` is below: `/v1` on the API host, `/api/v1` where it is not served there. */
+    base?: string;
+    /** Below `base`, with the page's ids filled in where it knew them. */
     path: string;
     url: string;
     scope: string;

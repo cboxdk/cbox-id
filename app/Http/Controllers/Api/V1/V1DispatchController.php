@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Middleware\ResolveApiEnvironment;
 use App\Http\Middleware\V1Parameters;
 use App\Platform\Api\Problem;
+use App\Platform\Api\V1\SpecNode;
 use App\Platform\Api\V1\V1Routes;
 use Illuminate\Container\Container;
 use Illuminate\Http\Request;
@@ -49,11 +50,21 @@ final readonly class V1DispatchController
             return Problem::response('not_found', 'No such resource.', 404);
         }
 
-        $byFields = array_values(array_filter($operations, static fn (array $operation): bool => ($operation['when'] ?? null) !== null));
+        $variants = [];
+        $byFields = [];
+
+        foreach ($operations as $operation) {
+            $operation = SpecNode::map($operation);
+            $variants[] = $operation;
+
+            if (($operation['when'] ?? null) !== null) {
+                $byFields[] = $operation;
+            }
+        }
 
         return $byFields !== []
             ? $this->byFields($request, $route, $byFields)
-            : $this->byPlane($request, $route, $operations);
+            : $this->byPlane($request, $route, $variants);
     }
 
     /**
@@ -97,7 +108,7 @@ final readonly class V1DispatchController
         $asked = [];
 
         foreach ($operations as $operation) {
-            $when = (string) $operation['when'];
+            $when = SpecNode::string($operation['when'] ?? null);
             $asked[] = $when;
 
             if (! self::matches($request, $when)) {
@@ -161,7 +172,7 @@ final readonly class V1DispatchController
 
         foreach ($snapshot as $name => $value) {
             if (! in_array($name, ['action', V1Routes::VARIANTS], true)) {
-                $route->setParameter($name, $value);
+                $route->setParameter($name, self::parameter($value));
             }
         }
 
@@ -170,10 +181,12 @@ final readonly class V1DispatchController
 
             $middleware = $this->router->resolveMiddleware(is_array($operation['middleware']) ? $operation['middleware'] : []);
 
-            return (new Pipeline($this->container))
+            $response = (new Pipeline($this->container))
                 ->send($request)
                 ->through($middleware)
-                ->then(fn (Request $request): Response => $this->router->prepareResponse($request, $this->call($route, (string) $operation['uses'])));
+                ->then(fn (Request $request): Response => $this->router->prepareResponse($request, $this->call($route, SpecNode::string($operation['uses'] ?? null))));
+
+            return $response instanceof Response ? $response : $this->router->prepareResponse($request, $response);
         } finally {
             $route->defaults = $defaults;
 
@@ -182,9 +195,15 @@ final readonly class V1DispatchController
             }
 
             foreach ($snapshot as $name => $value) {
-                $route->setParameter($name, $value);
+                $route->setParameter($name, self::parameter($value));
             }
         }
+    }
+
+    /** A route parameter as the route holds one: a bound model, a string, or nothing. */
+    private static function parameter(mixed $value): object|string|null
+    {
+        return is_object($value) || is_string($value) || $value === null ? $value : SpecNode::string($value);
     }
 
     private function call(Route $route, string $uses): mixed

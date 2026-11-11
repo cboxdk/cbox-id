@@ -67,7 +67,9 @@ final class ReservedEnvironmentSlugs
         });
 
         Environment::updating(static function (Environment $environment): void {
-            if ($environment->isDirty('slug') && self::reserved($environment->getAttribute('slug'))) {
+            $slug = $environment->getAttribute('slug');
+
+            if ($environment->isDirty('slug') && is_string($slug) && self::reserved($slug)) {
                 throw ValidationException::withMessages([
                     'slug' => __('validation.not_in', ['attribute' => 'slug']),
                 ]);

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\V1\ApiDocsController;
+use App\Http\Controllers\Api\V1\ApiIndexController;
 use App\Http\Controllers\Api\V1\ApiResourceMetadataController;
 use App\Http\Controllers\Api\V1\LegacyPathController;
 use App\Http\Controllers\Api\V1\OpenApiController;
@@ -43,6 +44,8 @@ if ($host !== null) {
 
 $public->group(function (): void {
     // The contract, one document for every plane, and the reference rendered from it.
+    // The base itself, which a person may open: what it is and where its reference lives.
+    Route::get('v1', ApiIndexController::class)->name('v1.index');
     Route::get('openapi.json', OpenApiController::class)->name('v1.openapi');
     Route::get('docs', ApiDocsController::class)->name('v1.docs');
     // A problem's `type` resolves to its entry in the reference.

@@ -106,7 +106,7 @@ final class V1Routes
             $old = '/'.ltrim(substr($uri, strlen('api/v1')), '/');
 
             foreach ($route->methods() as $method) {
-                if ($method === 'HEAD') {
+                if (! is_string($method) || $method === 'HEAD') {
                     continue;
                 }
 
@@ -179,7 +179,7 @@ final class V1Routes
         $middleware = [];
 
         foreach ($route->middleware() as $entry) {
-            if (! is_string($entry) || $entry === 'api' || $entry === ResolveEnvironment::class) {
+            if ($entry === 'api' || $entry === ResolveEnvironment::class) {
                 continue;
             }
 

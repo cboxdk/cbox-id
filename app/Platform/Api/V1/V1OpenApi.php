@@ -38,7 +38,11 @@ final class V1OpenApi
         return resource_path('openapi/openapi.json');
     }
 
-    /** The document as committed, encoded the one way the build and the check agree on. */
+    /**
+     * The document as committed, encoded the one way the build and the check agree on.
+     *
+     * @param  array<string, mixed>  $document
+     */
     public static function encode(array $document): string
     {
         return json_encode($document, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR)."\n";
@@ -52,10 +56,13 @@ final class V1OpenApi
     {
         $this->sharedResponses = [];
 
-        $sources ??= array_map(
-            static fn (string $name): array => Yaml::parseFile(resource_path("openapi/{$name}.yaml")),
-            array_combine(array_keys(self::SOURCES), array_keys(self::SOURCES)),
-        );
+        if ($sources === null) {
+            $sources = [];
+
+            foreach (array_keys(self::SOURCES) as $name) {
+                $sources[$name] = SpecNode::map(Yaml::parseFile(resource_path("openapi/{$name}.yaml")));
+            }
+        }
 
         $components = ['schemas' => [], 'parameters' => [], 'responses' => [], 'securitySchemes' => []];
         $paths = [];
@@ -65,37 +72,40 @@ final class V1OpenApi
         foreach (self::SOURCES as $name => $plane) {
             $document = $sources[$name] ?? null;
 
-            if (! is_array($document)) {
+            if ($document === null) {
                 continue;
             }
 
             $renames = $this->claimComponents($document, $components, $plane);
-            $document = $this->rewriteRefs($document, $renames);
+            $document = SpecNode::map($this->rewriteRefs($document, $renames));
+            $documentComponents = SpecNode::map($document['components'] ?? null);
             $own = [];
 
             foreach ($renames as $section => $map) {
+                $entries = SpecNode::map($documentComponents[$section] ?? null);
+
                 foreach ($map as $from => $to) {
-                    if (isset($document['components'][$section][$from])) {
-                        $own[$section][$to] = $document['components'][$section][$from];
-                        $components[$section][$to] ??= $own[$section][$to];
+                    if (isset($entries[$from])) {
+                        $own[$section][$to] = $entries[$from];
+                        $components[$section][$to] ??= $entries[$from];
                     }
                 }
             }
 
-            foreach (($document['paths'] ?? []) as $oldPath => $item) {
+            foreach (SpecNode::map($document['paths'] ?? null) as $oldPath => $item) {
                 if (! is_array($item) || isset($item['servers'])) {
                     continue;
                 }
 
                 foreach (self::METHODS as $method) {
                     $operation = $item[$method] ?? null;
-                    $target = is_array($operation) ? V1Paths::target($method, (string) $oldPath) : null;
+                    $target = is_array($operation) ? V1Paths::target($method, $oldPath) : null;
 
                     if ($target === null) {
                         continue;
                     }
 
-                    $operation = $this->moveOperation($operation, $item['parameters'] ?? [], $target, $own, $plane);
+                    $operation = $this->moveOperation(SpecNode::map($operation), array_values(SpecNode::list($item['parameters'] ?? null)), $target, $own, $plane);
                     $newPath = '/v1'.$target['path'];
                     $verb = strtolower($target['method']);
 
@@ -103,15 +113,17 @@ final class V1OpenApi
                         ? $this->mergeOperations($paths[$newPath][$verb], $operation)
                         : $operation;
 
-                    foreach ($operation['tags'] ?? [] as $tag) {
-                        $tags[$tag] = true;
-                        $groups[$plane][$tag] = true;
+                    foreach (SpecNode::list($operation['tags'] ?? null) as $tag) {
+                        if (is_string($tag)) {
+                            $tags[$tag] = true;
+                            $groups[$plane][$tag] = true;
+                        }
                     }
                 }
             }
         }
 
-        foreach ($this->sharedResponses as $responseName => $response) {
+        foreach ($this->takeSharedResponses() as $responseName => $response) {
             $components['responses'][$responseName] = $response;
         }
 
@@ -133,14 +145,27 @@ final class V1OpenApi
             ],
             'servers' => [['url' => 'https://api.cboxid.com', 'description' => 'Cbox ID']],
             'tags' => array_map(static fn (string $tag): array => ['name' => $tag], array_keys($tags)),
-            'x-tagGroups' => array_values(array_map(
+            'x-tagGroups' => array_map(
                 static fn (string $plane, array $planeTags): array => ['name' => $plane, 'tags' => array_keys($planeTags)],
                 array_keys($groups),
                 $groups,
-            )),
+            ),
             'paths' => $paths,
             'components' => array_filter($components, static fn (array $section): bool => $section !== []),
         ];
+    }
+
+    /**
+     * The shared responses the operations collected, handed over once.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function takeSharedResponses(): array
+    {
+        $shared = $this->sharedResponses;
+        $this->sharedResponses = [];
+
+        return $shared;
     }
 
     /**
@@ -155,14 +180,10 @@ final class V1OpenApi
     {
         $renames = [];
 
-        foreach (($document['components'] ?? []) as $section => $entries) {
-            if (! is_array($entries)) {
-                continue;
-            }
-
-            foreach ($entries as $name => $value) {
+        foreach (SpecNode::map($document['components'] ?? null) as $section => $entries) {
+            foreach (SpecNode::map($entries) as $name => $value) {
                 $taken = $components[$section][$name] ?? null;
-                $renames[$section][$name] = $taken === null || $taken == $value ? (string) $name : $plane.$name;
+                $renames[$section][$name] = $taken === null || $taken == $value ? $name : $plane.$name;
             }
         }
 
@@ -193,16 +214,16 @@ final class V1OpenApi
 
     /**
      * @param  array<string, mixed>  $operation
-     * @param  array<int, mixed>  $itemParameters
+     * @param  list<mixed>  $itemParameters
      * @param  array{method: string, path: string, id: string|null, inputs: array<string, string>, when: string|null}  $target
-     * @param  array<string, mixed>  $own
+     * @param  array<string, array<string, mixed>>  $own
      * @return array<string, mixed>
      */
     private function moveOperation(array $operation, array $itemParameters, array $target, array $own, string $plane): array
     {
         $parameters = [];
 
-        foreach ([...$itemParameters, ...($operation['parameters'] ?? [])] as $parameter) {
+        foreach ([...$itemParameters, ...array_values(SpecNode::list($operation['parameters'] ?? null))] as $parameter) {
             $resolved = $this->deref($parameter, $own, 'parameters');
 
             if (! is_array($resolved) || ($resolved['in'] ?? null) !== 'path') {
@@ -211,7 +232,7 @@ final class V1OpenApi
                 continue;
             }
 
-            $name = (string) ($resolved['name'] ?? '');
+            $name = SpecNode::string($resolved['name'] ?? null);
 
             if ($name === $target['id']) {
                 $parameters[] = ['name' => 'id', ...array_diff_key($resolved, ['name' => true])];
@@ -229,8 +250,8 @@ final class V1OpenApi
             }
         }
 
-        $operation['parameters'] = array_values($parameters);
-        $operation['tags'] = array_map(static fn (string $tag): string => $plane.' › '.$tag, $operation['tags'] ?? ['General']);
+        $operation['parameters'] = $parameters;
+        $operation['tags'] = array_map(static fn (mixed $tag): string => $plane.' › '.SpecNode::string($tag), SpecNode::list($operation['tags'] ?? null) ?: ['General']);
 
         if (isset($operation['operationId']) && is_string($operation['operationId'])) {
             $operation['operationId'] = strtolower($plane).'_'.$operation['operationId'];
@@ -240,24 +261,31 @@ final class V1OpenApi
             $operation['x-when'] = $target['when'];
         }
 
-        foreach (($operation['responses'] ?? []) as $status => $response) {
+        $responses = SpecNode::list($operation['responses'] ?? null);
+
+        foreach ($responses as $status => $response) {
+            $code = (int) $status;
+            $ref = is_array($response) ? ($response['$ref'] ?? null) : null;
+
             // A shared response stays shared: the component itself is written in the `/v1`
             // shape, once, for the status it answers with.
-            if (is_array($response) && is_string($response['$ref'] ?? null)
-                && preg_match('#\A\#/components/responses/(.+)\z#', $response['$ref'], $m) === 1 && isset($own['responses'][$m[1]])) {
-                $this->sharedResponses[$m[1]] ??= $this->moveResponse((int) $status, $own['responses'][$m[1]]);
+            if (is_string($ref) && preg_match('#\A\#/components/responses/(.+)\z#', $ref, $m) === 1 && isset($own['responses'][$m[1]])) {
+                $this->sharedResponses[$m[1]] ??= $this->moveResponse($code, $own['responses'][$m[1]]);
 
                 continue;
             }
 
-            $operation['responses'][$status] = $this->moveResponse((int) $status, $response);
+            $responses[$status] = $this->moveResponse($code, $response);
+        }
+
+        if (array_key_exists('responses', $operation)) {
+            $operation['responses'] = $responses;
         }
 
         return $operation;
     }
 
     /**
-     * @param  array<string, mixed>  $response
      * @return array<string, mixed>
      */
     private function moveResponse(int $status, mixed $response): array
@@ -265,6 +293,8 @@ final class V1OpenApi
         if (! is_array($response)) {
             return ['description' => ''];
         }
+
+        $response = SpecNode::map($response);
 
         if ($status >= 400) {
             return array_filter([
@@ -274,21 +304,25 @@ final class V1OpenApi
             ], static fn (mixed $value): bool => $value !== null);
         }
 
-        $schema = $response['content']['application/json']['schema'] ?? null;
+        $content = SpecNode::map($response['content'] ?? null);
+        $json = SpecNode::map($content['application/json'] ?? null);
+        $schema = $json['schema'] ?? null;
 
         if (! is_array($schema)) {
             return $response;
         }
 
-        $properties = is_array($schema['properties'] ?? null) ? $schema['properties'] : [];
+        $properties = SpecNode::map($schema['properties'] ?? null);
 
         if (isset($properties['approval'])) {
-            $response['content']['application/json']['schema'] = [
+            $json['schema'] = [
                 'allOf' => [
                     $properties['approval'],
                     ['type' => 'object', 'required' => ['object'], 'properties' => ['object' => ['const' => 'approval'], 'detail' => ['type' => ['string', 'null']]]],
                 ],
             ];
+            $content['application/json'] = $json;
+            $response['content'] = $content;
 
             return $response;
         }
@@ -300,22 +334,22 @@ final class V1OpenApi
         $data = $properties['data'];
         $isList = ($data['type'] ?? null) === 'array' || isset($data['items']);
 
-        $response['content']['application/json']['schema'] = $isList
+        $json['schema'] = $isList
             ? ['allOf' => [['$ref' => '#/components/schemas/List'], ['type' => 'object', 'properties' => ['data' => $data]]]]
             : ['allOf' => [$this->allowObjectMember($data), ['type' => 'object', 'required' => ['object'], 'properties' => ['object' => ['type' => 'string']]]]];
+        $content['application/json'] = $json;
+        $response['content'] = $content;
 
         return $response;
     }
 
-    /**
-     * A schema that refuses unknown members must still admit `object`.
-     *
-     * @return array<string, mixed>
-     */
+    /** A schema that refuses unknown members must still admit `object`. */
     private function allowObjectMember(mixed $schema): mixed
     {
         if (is_array($schema) && ($schema['additionalProperties'] ?? null) === false) {
-            $schema['properties']['object'] ??= ['type' => 'string'];
+            $properties = SpecNode::map($schema['properties'] ?? null);
+            $properties['object'] ??= ['type' => 'string'];
+            $schema['properties'] = $properties;
         }
 
         return $schema;
@@ -332,30 +366,42 @@ final class V1OpenApi
      */
     private function mergeOperations(array $first, array $second): array
     {
-        $first['security'] = array_values(array_unique([...($first['security'] ?? []), ...($second['security'] ?? [])], SORT_REGULAR));
-        $first['responses'] = ($first['responses'] ?? []) + ($second['responses'] ?? []);
-        $first['tags'] = array_values(array_unique([...($first['tags'] ?? []), ...($second['tags'] ?? [])]));
-        $first['description'] = trim(($first['description'] ?? '')."\n\n".($second['summary'] ?? '').(isset($second['description']) ? ': '.$second['description'] : ''));
+        $first['security'] = array_values(array_unique([...array_values(SpecNode::list($first['security'] ?? null)), ...array_values(SpecNode::list($second['security'] ?? null))], SORT_REGULAR));
+        $first['responses'] = SpecNode::list($first['responses'] ?? null) + SpecNode::list($second['responses'] ?? null);
+        $tags = array_map(SpecNode::string(...), [...array_values(SpecNode::list($first['tags'] ?? null)), ...array_values(SpecNode::list($second['tags'] ?? null))]);
+        $first['tags'] = array_values(array_unique($tags));
+        $description = SpecNode::string($second['description'] ?? null);
+        $first['description'] = trim(SpecNode::string($first['description'] ?? null)."\n\n".SpecNode::string($second['summary'] ?? null).($description !== '' ? ': '.$description : ''));
 
-        $names = array_map(static fn (mixed $p): string => is_array($p) ? (string) ($p['$ref'] ?? $p['name'] ?? '') : '', $first['parameters'] ?? []);
+        $parameters = array_values(SpecNode::list($first['parameters'] ?? null));
+        $names = array_map(static fn (mixed $p): string => is_array($p) ? SpecNode::string($p['$ref'] ?? $p['name'] ?? null) : '', $parameters);
 
-        foreach ($second['parameters'] ?? [] as $parameter) {
-            $name = is_array($parameter) ? (string) ($parameter['$ref'] ?? $parameter['name'] ?? '') : '';
+        foreach (SpecNode::list($second['parameters'] ?? null) as $parameter) {
+            if (! is_array($parameter)) {
+                continue;
+            }
+
+            $name = SpecNode::string($parameter['$ref'] ?? $parameter['name'] ?? null);
 
             if (! in_array($name, $names, true)) {
-                $first['parameters'][] = ['required' => false, ...$parameter, ...(isset($parameter['in']) && $parameter['in'] === 'query' ? ['required' => false] : [])];
+                $parameters[] = ['required' => false, ...SpecNode::map($parameter), ...(($parameter['in'] ?? null) === 'query' ? ['required' => false] : [])];
             }
         }
 
-        $a = $first['requestBody']['content']['application/json']['schema'] ?? null;
-        $b = $second['requestBody']['content']['application/json']['schema'] ?? null;
+        $first['parameters'] = $parameters;
+
+        $firstBody = SpecNode::map($first['requestBody'] ?? null);
+        $secondBody = SpecNode::map($second['requestBody'] ?? null);
+        $a = SpecNode::map(SpecNode::map($firstBody['content'] ?? null)['application/json'] ?? null)['schema'] ?? null;
+        $b = SpecNode::map(SpecNode::map($secondBody['content'] ?? null)['application/json'] ?? null)['schema'] ?? null;
 
         if (is_array($a) && is_array($b) && isset($a['properties'], $b['properties'])) {
-            $first['requestBody']['content']['application/json']['schema'] = [
+            $firstBody['content'] = ['application/json' => ['schema' => [
                 'type' => 'object',
-                'properties' => [...$a['properties'], ...$b['properties']],
-            ];
-            $first['requestBody']['required'] = true;
+                'properties' => [...SpecNode::map($a['properties']), ...SpecNode::map($b['properties'])],
+            ]]];
+            $firstBody['required'] = true;
+            $first['requestBody'] = $firstBody;
         } elseif ($a === null && is_array($b)) {
             $first['requestBody'] = $second['requestBody'];
         }
@@ -366,7 +412,7 @@ final class V1OpenApi
     }
 
     /**
-     * @param  array<string, mixed>  $own
+     * @param  array<string, array<string, mixed>>  $own
      */
     private function deref(mixed $node, array $own, string $section): mixed
     {

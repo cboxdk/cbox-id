@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Platform\Api\ApiUrls;
+use App\Platform\Api\V1\SpecNode;
 use App\Platform\Api\V1\V1OpenApi;
 use App\Platform\CspNonce;
 use Illuminate\Http\RedirectResponse;
@@ -44,7 +45,7 @@ final class ApiDocsController
 
         abort_if(! is_array($spec), 404);
 
-        return response($this->page($spec, $nonce->value()), 200, [
+        return response($this->page(SpecNode::map($spec), $nonce->value()), 200, [
             'Content-Type' => 'text/html; charset=utf-8',
             'Cache-Control' => 'public, max-age=300',
         ]);
@@ -63,10 +64,11 @@ final class ApiDocsController
     {
         $operations = [];
 
-        foreach (($spec['paths'] ?? []) as $path => $item) {
-            foreach ((array) $item as $method => $operation) {
+        foreach (SpecNode::map($spec['paths'] ?? null) as $path => $item) {
+            foreach (SpecNode::map($item) as $method => $operation) {
                 if (is_array($operation)) {
-                    $operations[(string) (($operation['tags'] ?? ['General'])[0] ?? 'General')][] = [(string) $method, (string) $path, $operation];
+                    $tag = SpecNode::string(SpecNode::list($operation['tags'] ?? null)[0] ?? null);
+                    $operations[$tag !== '' ? $tag : 'General'][] = [$method, $path, SpecNode::map($operation)];
                 }
             }
         }
@@ -74,11 +76,14 @@ final class ApiDocsController
         $nav = '';
         $body = '';
 
-        foreach (($spec['x-tagGroups'] ?? []) as $group) {
-            $nav .= '<p class="group">'.e((string) $group['name']).'</p><ul>';
+        foreach (SpecNode::list($spec['x-tagGroups'] ?? null) as $group) {
+            $group = SpecNode::map($group);
+            $nav .= '<p class="group">'.e(SpecNode::string($group['name'] ?? null)).'</p><ul>';
 
-            foreach ($group['tags'] as $tag) {
-                if (! isset($operations[$tag])) {
+            foreach (SpecNode::list($group['tags'] ?? null) as $tag) {
+                $tag = SpecNode::string($tag);
+
+                if ($tag === '' || ! isset($operations[$tag])) {
                     continue;
                 }
 
@@ -105,8 +110,9 @@ final class ApiDocsController
             $problems .= '<dt id="problem-'.e($code).'"><code>'.e($code).'</code></dt><dd>'.self::inline($meaning).'</dd>';
         }
 
-        $title = e((string) ($spec['info']['title'] ?? 'Cbox ID API'));
-        $intro = self::markdown((string) ($spec['info']['description'] ?? ''));
+        $info = SpecNode::map($spec['info'] ?? null);
+        $title = e(SpecNode::string($info['title'] ?? null) ?: 'Cbox ID API');
+        $intro = self::markdown(SpecNode::string($info['description'] ?? null));
         $base = e(ApiUrls::base());
         $openApi = e(ApiUrls::openApi());
 
@@ -162,26 +168,28 @@ final class ApiDocsController
      */
     private function operation(string $method, string $path, array $operation): string
     {
-        $summary = (string) ($operation['summary'] ?? '');
-        $text = mb_strtolower($method.' '.$path.' '.$summary.' '.($operation['description'] ?? ''));
+        $summary = SpecNode::string($operation['summary'] ?? null);
+        $description = SpecNode::string($operation['description'] ?? null);
+        $text = mb_strtolower($method.' '.$path.' '.$summary.' '.$description);
         $rows = '';
 
-        foreach (($operation['parameters'] ?? []) as $parameter) {
+        foreach (SpecNode::list($operation['parameters'] ?? null) as $parameter) {
             if (! is_array($parameter) || ! isset($parameter['name'])) {
                 continue;
             }
 
-            $rows .= '<tr><td><code>'.e((string) $parameter['name']).'</code></td><td>'.e((string) ($parameter['in'] ?? '')).'</td><td>'.(($parameter['required'] ?? false) === true ? 'yes' : '').'</td><td>'.self::inline((string) ($parameter['description'] ?? '')).'</td></tr>';
+            $rows .= '<tr><td><code>'.e(SpecNode::string($parameter['name'])).'</code></td><td>'.e(SpecNode::string($parameter['in'] ?? null)).'</td><td>'.(($parameter['required'] ?? false) === true ? 'yes' : '').'</td><td>'.self::inline(SpecNode::string($parameter['description'] ?? null)).'</td></tr>';
         }
 
+        $documented = SpecNode::list($operation['responses'] ?? null);
         $responses = implode(' ', array_map(
-            static fn (int|string $status, mixed $response): string => '<code>'.e((string) $status).'</code> '.e(is_array($response) ? (string) ($response['description'] ?? '') : ''),
-            array_keys($operation['responses'] ?? []),
-            array_values($operation['responses'] ?? []),
+            static fn (int|string $status, mixed $response): string => '<code>'.e((string) $status).'</code> '.e(SpecNode::string(SpecNode::map($response)['description'] ?? null)),
+            array_keys($documented),
+            array_values($documented),
         ));
 
         return '<details class="op" data-text="'.e($text).'"><summary><span class="m '.e($method).'">'.e($method).'</span><span class="p">'.e($path).'</span><span class="s">'.e($summary).'</span></summary><div class="in">'
-            .self::markdown((string) ($operation['description'] ?? ''))
+            .self::markdown($description)
             .($rows !== '' ? '<table><thead><tr><th>Parameter</th><th>In</th><th>Required</th><th>About</th></tr></thead><tbody>'.$rows.'</tbody></table>' : '')
             .'<p class="s">Responses: '.$responses.'</p></div></details>';
     }
@@ -208,7 +216,7 @@ final class ApiDocsController
         foreach (preg_split('/\n\s*\n/', trim($text)) ?: [] as $block) {
             $lines = array_map('trim', explode("\n", trim($block)));
 
-            if ($lines !== [] && str_starts_with($lines[0], '- ')) {
+            if (str_starts_with($lines[0], '- ')) {
                 $html .= '<ul>'.implode('', array_map(static fn (string $line): string => '<li>'.self::inline(ltrim(substr($line, 1))).'</li>', array_filter($lines, static fn (string $line): bool => str_starts_with($line, '- ')))).'</ul>';
 
                 continue;

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Platform\Api\ApiHost;
+use App\Platform\Api\V1\V1OpenApi;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Testing\TestResponse;
@@ -59,6 +61,15 @@ final class ApiContract
 
         $path = '/'.ltrim($request->getPathInfo(), '/');
 
+        // The API host's `/v1`: RFC 9457 problems, and the one document, `openapi.json`.
+        if (ApiHost::serves($request) && ($path === '/v1' || str_starts_with($path, '/v1/')) && ! self::isTransition($request)) {
+            $body = self::json($response);
+            self::assertProblem($request, $response, $body);
+            self::assertDocumentedShape($request, $response, $body, v1: true);
+
+            return;
+        }
+
         // The OAuth surface is checked for SHAPE where the spec documents an operation of it
         // (`/oauth/api-keys/verify`, whose path item carries its own server), never for the
         // envelope: its errors are RFC 6749's `{error, error_description}` by design.
@@ -113,7 +124,33 @@ final class ApiContract
 
     // ── 2. The documented shape ─────────────────────────────────────────────────
 
-    private static function assertDocumentedShape(Request $request, Response $response, mixed $body): void
+    /** An old path on the new base (the transition route) keeps the old shapes. */
+    private static function isTransition(Request $request): bool
+    {
+        $route = $request->route();
+
+        return $route instanceof Route && $route->getName() === 'v1.legacy';
+    }
+
+    private static function assertProblem(Request $request, Response $response, mixed $body): void
+    {
+        if ($response->getStatusCode() < 400) {
+            return;
+        }
+
+        $where = $request->getMethod().' '.$request->getPathInfo().' → '.$response->getStatusCode();
+
+        Assert::assertStringStartsWith('application/problem+json', (string) $response->headers->get('Content-Type'), "{$where}: a failure on the API host is an RFC 9457 problem.");
+        Assert::assertIsArray($body, "{$where}: a problem has a JSON body.");
+
+        foreach (['type', 'title', 'status', 'detail', 'error'] as $member) {
+            Assert::assertArrayHasKey($member, $body, "{$where}: a problem carries `{$member}`. Got: ".json_encode($body, JSON_UNESCAPED_SLASHES));
+        }
+
+        Assert::assertSame($response->getStatusCode(), $body['status'], "{$where}: the problem's `status` is the response's.");
+    }
+
+    private static function assertDocumentedShape(Request $request, Response $response, mixed $body, bool $v1 = false): void
     {
         $route = $request->route();
 
@@ -128,7 +165,7 @@ final class ApiContract
         }
 
         $uri = '/'.ltrim($route->uri(), '/');
-        $found = self::operation($uri, $method);
+        $found = $v1 ? self::v1Operation($uri, $method) : self::operation($uri, $method);
 
         if ($found === null) {
             // Undocumented on purpose (see OpenApiCoverageTest::undocumentedByDesign).
@@ -148,7 +185,17 @@ final class ApiContract
             .'(it documents '.implode(', ', $documented).'). Document it, or stop returning it.'
         );
 
-        $schema = $responses[$status]['content']['application/json']['schema'] ?? null;
+        $documentedResponse = $responses[$status] ?? [];
+
+        // On `/v1` a shared response (`$ref`) is checked too; the plane documents' shared
+        // responses stay unchecked, as before.
+        if ($v1 && is_array($documentedResponse) && isset($documentedResponse['$ref']) && is_string($documentedResponse['$ref'])) {
+            $documentedResponse = $spec['components']['responses'][substr($documentedResponse['$ref'], strlen('#/components/responses/'))] ?? [];
+        }
+
+        $schema = $documentedResponse['content']['application/json']['schema']
+            ?? $documentedResponse['content']['application/problem+json']['schema']
+            ?? null;
 
         if (! is_array($schema)) {
             return;
@@ -183,6 +230,20 @@ final class ApiContract
         }
 
         return null;
+    }
+
+    /** @var array<string, mixed>|null */
+    private static ?array $v1 = null;
+
+    /**
+     * @return array{0: array<string, mixed>, 1: string, 2: array<string, mixed>}|null
+     */
+    private static function v1Operation(string $routeUri, string $method): ?array
+    {
+        self::$v1 ??= json_decode((string) file_get_contents(V1OpenApi::path()), true);
+        $operation = self::$v1['paths'][$routeUri][$method] ?? null;
+
+        return is_array($operation) ? [self::$v1, $routeUri, $operation] : null;
     }
 
     /**

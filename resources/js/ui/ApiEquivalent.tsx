@@ -116,7 +116,10 @@ export function ApiEquivalentBody({
         <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-xs">
                 <Pill tone={action.danger === 'read' ? 'neutral' : 'info'}>{action.method}</Pill>
-                <code className="mono break-all">/api/v1{action.path}</code>
+                <code className="mono break-all">
+                    {action.base ?? '/api/v1'}
+                    {action.path}
+                </code>
                 <span style={{ color: 'var(--muted-foreground)' }}>
                     {consoleRich('console.needs_part1_5e67f8f1', {
                         part1: <code className="mono">{action.scope}</code>,

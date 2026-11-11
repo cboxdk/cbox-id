@@ -17,8 +17,8 @@ package changes that need action here rather than in a client.
 ## 3.0.0 (unreleased): the workspace is the organization
 
 The Cbox customer was called a *workspace*; v3 calls it an **organization**, in the
-console, the API and all 21 languages. URLs do not change in this step:
-`/api/v1/workspace/…` and the console paths still answer. Everything renamed below keeps
+console, the API and all 21 languages. Every old URL keeps answering: `/api/v1/workspace/…`
+next to the API host's `/v1/organization` (below), and the old console paths. Everything renamed below keeps
 its old name working **until v3.1**; move to the new names before then.
 
 - **No migration, and nothing stored is rewritten.** ID is live: the release before v3
@@ -34,8 +34,8 @@ its old name working **until v3.1**; move to the new names before then.
 ### Organization keys stay cbid_ws_ in v3.0
 
 New organization keys are still minted `cbid_ws_…`: the released cbox-cli reads a
-`cbid_org_…` key as retired and refuses it. v3 already resolves both prefixes, with no
-`Deprecation` header on either. Minting switches to `cbid_org_` once a cbox-cli release that
+`cbid_org_…` key as retired and refuses it. v3 already resolves both prefixes, and neither
+key is deprecated (the `/api/v1` path is; see the API host below). Minting switches to `cbid_org_` once a cbox-cli release that
 reads it as an organization key is out. A revoked 1.x `cbid_org_` key stays revoked.
 
 ### Organization-plane scopes are `id:<resource>:<read|write>`
@@ -95,6 +95,36 @@ policy that names an old action still holds the renamed one.
   `organization_id`; `workspace_id` is still accepted and still sent until v3.1.
 - The doc *Workspaces & organizations* is now
   [Organizations & customers](docs/core-concepts/organizations-and-customers.md).
+
+### The management API moved to the API host
+
+Every management plane is now at `https://api.cboxid.com/v1` (`CBOX_ID_API_HOST`), with one
+OpenAPI document at `/openapi.json` and its reference at `/docs`. The environment comes from
+the credential, never the host. Lists are `{object: "list", data, has_more, next_cursor}`,
+paged with `?limit=&after=`, and every failure is an RFC 9457 `application/problem+json`.
+The workspace plane is `/v1/organization` and `/v1/projects`, and the platform plane is
+`/v1/admin/…`.
+
+What changes for you:
+
+- **Set `CBOX_ID_API_HOST`** and route that name to ID before you deploy (Cbox:
+  `docs/operations/v3-api-host-infra.md`). In production there is no default. Until the
+  variable is set, the CLI and the Authenticator keep the old base.
+- **`/api/v1/*` keeps answering as before**, on every host, now with `Deprecation`,
+  `Sunset` (`CBOX_ID_API_V1_SUNSET`, default 2027-02-01) and a `successor-version` link. Each
+  call is counted per caller in `cbox_id_legacy_api_requests_total`. A path goes after seven
+  days with no traffic. The Authenticator's `/api/v1/devices` and `/api/v1/approvals*` stay
+  until a new app version is out.
+- **Tokens:** request resource `https://api.cboxid.com` (or `https://app.cboxid.com/mcp`).
+  A token for an issuer's own `/mcp` keeps working on the API host until
+  `CBOX_ID_LEGACY_MCP_AUDIENCE=false`.
+- `/.well-known/cbox-cli` and `/.well-known/cbox-authenticator` now advertise `api_base`.
+- In-cluster paths moved to `/internal/v1/*` (health, metrics, onboarding eligibility, which
+  also accepts `organization_id`). Inbound webhooks moved to `/webhooks/*`. The old paths
+  still answer.
+- Environment slugs the platform's hosts use (`api`, `app`, `www`, `admin`, …) are
+  reserved. A new environment that asks for one gets `<slug>-env`. The migration
+  stops if an existing environment already holds one.
 
 ### The environment console moved to the app host
 

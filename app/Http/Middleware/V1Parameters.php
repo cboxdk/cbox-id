@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Platform\Api\V1\SpecNode;
 use App\Platform\Api\V1\V1Routes;
 use Closure;
 use Illuminate\Http\Request;
@@ -58,7 +59,7 @@ final class V1Parameters
         foreach (is_array($inputs) ? $inputs : [] as $handlerName => $publicName) {
             // The public name, or — for a caller that still says it the old way — the
             // handler's own, unless that is `id`, which on `/v1` is the path's.
-            $value = $request->input((string) $publicName) ?? ($handlerName !== 'id' ? $request->input((string) $handlerName) : null);
+            $value = $request->input(SpecNode::string($publicName)) ?? ($handlerName !== 'id' ? $request->input((string) $handlerName) : null);
 
             if (is_scalar($value) && (string) $value !== '') {
                 $values[(string) $handlerName] = (string) $value;
