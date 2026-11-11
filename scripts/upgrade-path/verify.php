@@ -15,8 +15,8 @@ declare(strict_types=1);
  * rather than comparing columns, so a changed hash scheme, sealing context or lookup
  * that the migrations did not carry across fails here the way it would fail a user.
  *
- * It also mints the NEW release's keys (`cbid_env_`, `cbid_ws_`) and writes them to
- * <smoke.json> for the HTTP smoke test that follows. Exits 1 if any check fails.
+ * It also mints the NEW release's keys (`cbid_env_`, `cbid_ws_`) and writes them, with the
+ * old release's `csec_` machine secret, to <smoke.json> for the HTTP smoke test that follows. Exits 1 if any check fails.
  */
 
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
@@ -31,11 +31,14 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Crypto\Contracts\KeyManager;
 use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
+use Cbox\Id\Kernel\Crypto\SecretPrefix;
 use Cbox\Id\Kernel\Crypto\TotpAuthenticator;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
+use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\UserApiTokens;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
@@ -202,10 +205,46 @@ $envs->runAs($customer, function () use ($m, $check, $totp, $nextStep): void {
         return $registry->byClientId($m['apps']['spa']['client_id']) !== null ?: 'spa gone';
     });
 
-    $check('a 1.x refresh token still rotates', function () use ($m): bool|string {
+    $check('a 1.x refresh token still rotates, and its successor is a cbid_rt_ token', function () use ($m): bool|string {
         $grant = app(RefreshTokens::class)->rotate($m['apps']['web']['client_id'], $m['refresh_token']);
+        if ($grant->userId !== $m['users']['person01@acme.test']) {
+            return 'rotated to someone else';
+        }
 
-        return $grant->userId === $m['users']['person01@acme.test'] ?: 'rotated to someone else';
+        return str_starts_with($grant->refreshToken, SecretPrefix::RefreshToken->value) ?: 'successor minted as '.substr($grant->refreshToken, 0, 8);
+    });
+
+    // laravel-id 2.5 mints every secret as `cbid_<kind>_`. The old forms are verified by the
+    // hash of the whole plaintext, so they keep working untouched; nothing rewrites them.
+    $check('the old release minted the legacy forms (csec_, scim_), so the checks above prove the grace', function () use ($m): bool|string {
+        foreach (['web', 'machine'] as $app) {
+            if (! str_starts_with($m['apps'][$app]['secret'], SecretPrefix::ClientSecret->legacy())) {
+                return "{$app} secret was minted as ".substr($m['apps'][$app]['secret'], 0, 8);
+            }
+        }
+
+        return str_starts_with($m['directory']['token'], SecretPrefix::ScimToken->legacy()) ?: 'SCIM token was minted as '.substr($m['directory']['token'], 0, 8);
+    });
+
+    $check('a client secret and a SCIM token minted by the new code are cbid_cs_ and cbid_scim_', function () use ($m): bool|string {
+        $registered = app(ClientRegistry::class)->register(new NewClient(
+            name: 'Upgrade smoke',
+            type: ClientType::Confidential,
+            grantTypes: ['client_credentials'],
+            scopes: ['id:users:read'],
+        ));
+        if (! str_starts_with((string) $registered->secret, SecretPrefix::ClientSecret->value)) {
+            return 'client secret minted as '.substr((string) $registered->secret, 0, 8);
+        }
+        if (! app(ClientRegistry::class)->verifySecret($registered->client, (string) $registered->secret)) {
+            return 'the new client secret does not verify';
+        }
+        $directory = app(Directories::class)->register($m['organizations']['acme'], 'Upgrade smoke SCIM');
+        if (! str_starts_with($directory->token, SecretPrefix::ScimToken->value)) {
+            return 'SCIM token minted as '.substr($directory->token, 0, 8);
+        }
+
+        return app(Directories::class)->authenticate($directory->token)?->id === $directory->directory->id ?: 'the new SCIM token does not authenticate';
     });
 
     $check('1.x sessions are still active', function () use ($m): bool|string {
@@ -436,6 +475,9 @@ $check('mint a cbid_env_ and a cbid_ws_ organization key with the new code', fun
     $smoke['signing_kid'] = $m['signing_kid'];
     $smoke['password'] = $m['password'];
     $smoke['organization_id'] = $m['organizations']['acme'];
+    // The old release's csec_ secret, for the smoke test's client_credentials exchange.
+    $smoke['machine_client_id'] = $m['apps']['machine']['client_id'];
+    $smoke['machine_client_secret'] = $m['apps']['machine']['secret'];
 
     return str_starts_with($smoke['workspace_key'], 'cbid_ws_') ?: 'organization key minted as '.substr($smoke['workspace_key'], 0, 9);
 });

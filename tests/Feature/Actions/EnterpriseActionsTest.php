@@ -555,7 +555,7 @@ it('registers a SCIM directory and re-keys it, each token shown once and never k
         ->json('data');
     $replay = $this->withToken($key)->withHeader('Idempotency-Key', 'dir-1')->postJson('/api/v1/directories', $body)->assertCreated();
 
-    expect($created['bearer_token'])->toStartWith('scim_')
+    expect($created['bearer_token'])->toStartWith('cbid_scim_')
         ->and($replay->headers->get('Idempotent-Replayed'))->toBe('true')
         ->and($replay->json('data.bearer_token'))->toBeNull()
         ->and(Directory::query()->count())->toBe(1);
@@ -565,7 +565,7 @@ it('registers a SCIM directory and re-keys it, each token shown once and never k
     $rotated = $this->withToken($key)->withHeader('Idempotency-Key', 'rot-1')->postJson("/api/v1/directories/{$created['id']}/rotate")->assertOk()->json('data.bearer_token');
     $rotatedAgain = $this->withToken($key)->withHeader('Idempotency-Key', 'rot-1')->postJson("/api/v1/directories/{$created['id']}/rotate")->assertOk();
 
-    expect($rotated)->toStartWith('scim_')->not->toBe($created['bearer_token'])
+    expect($rotated)->toStartWith('cbid_scim_')->not->toBe($created['bearer_token'])
         ->and(Directory::query()->whereKey($created['id'])->value('bearer_token_hash'))->toBe(hash('sha256', $rotated))
         ->and($rotatedAgain->json('data.bearer_token'))->toBeNull();
 

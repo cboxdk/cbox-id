@@ -521,7 +521,7 @@ it('rotates a secret through the framework\'s own definition of one', function (
     $registry = app(ClientRegistry::class);
     $fresh = $client->fresh() ?? $client;
 
-    expect($secret)->toBeString()->toStartWith('csec_')
+    expect($secret)->toBeString()->toStartWith('cbid_cs_')
         ->and($registry->verifySecret($fresh, (string) $secret))->toBeTrue()
         // A cut-over until the page offers an overlap: the old secret is gone at once, and
         // the client holds exactly one.

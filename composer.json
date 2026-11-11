@@ -21,7 +21,7 @@
         "cboxdk/laravel-dns": "^1.0",
         "cboxdk/laravel-engage-client": "^0.1.1",
         "cboxdk/laravel-health": "^2.0",
-        "cboxdk/laravel-id": "^2.4",
+        "cboxdk/laravel-id": "^2.5",
         "cboxdk/laravel-postal": "^0.1.1",
         "cboxdk/laravel-queue-autoscale": "^4.3",
         "cboxdk/laravel-queue-metrics": "^3.4",

@@ -803,7 +803,7 @@ final readonly class DirectoryController extends ConsoleController
     /**
      * The step-up in front of registering a directory, or null when it is already open.
      *
-     * A SCIM registration mints `scim_…` — the bearer token that authenticates every
+     * A SCIM registration mints `cbid_scim_…` — the bearer token that authenticates every
      * inbound provisioning call for this organization — and hands it over in plaintext,
      * which is precisely what the rotation is gated for. Gating only rotation left the
      * cheaper path: register a second directory and read its token off the confirmation.
