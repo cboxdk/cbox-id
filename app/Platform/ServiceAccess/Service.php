@@ -4,17 +4,21 @@ declare(strict_types=1);
 
 namespace App\Platform\ServiceAccess;
 
+use Cbox\Billing\Client\Http\WireId;
+
 final readonly class Service
 {
     /**
+     * @param  string  $id  the program's id at Billing: `acp_…` from Billing v2, a decimal string before it
      * @param  list<array{key: string, label: string, required: bool, type: string, options: list<string>, validation: string, min_length: int, max_length: int}>  $questions
      * @param  array<string, string>  $countries
      */
-    public function __construct(public int $id, public string $key, public string $name, public ?string $description, public string $mode, public array $questions, public ?string $publicUrl, public string $kind = 'service', public string $scope = 'organization', public ?string $serviceName = null, public ?string $featureKey = null, public bool $loginRequired = false, public string $countryCollection = 'optional', public array $countries = [], public ?string $acceptanceUrl = null) {}
+    public function __construct(public string $id, public string $key, public string $name, public ?string $description, public string $mode, public array $questions, public ?string $publicUrl, public string $kind = 'service', public string $scope = 'organization', public ?string $serviceName = null, public ?string $featureKey = null, public bool $loginRequired = false, public string $countryCollection = 'optional', public array $countries = [], public ?string $acceptanceUrl = null) {}
 
     public static function from(mixed $value): self
     {
-        if (! is_array($value) || ! is_int($value['id'] ?? null) || ! is_string($value['key'] ?? null)
+        $id = is_array($value) ? WireId::from($value['id'] ?? null) : null;
+        if (! is_array($value) || $id === null || ! is_string($value['key'] ?? null)
             || ! is_string($value['name'] ?? null) || ! is_string($value['mode'] ?? null)
             || ! in_array($value['mode'], ['waitlist', 'paused', 'invite_only', 'open'], true)
             || ! is_array($value['questions'] ?? null)
@@ -75,6 +79,6 @@ final readonly class Service
             $countries[$code] = $name;
         }
 
-        return new self($value['id'], $value['key'], $value['name'], is_string($value['description'] ?? null) ? $value['description'] : null, $value['mode'], $questions, $publicUrl, $value['kind'] ?? 'service', $value['scope'] ?? 'organization', is_string($value['service_name'] ?? null) ? $value['service_name'] : null, is_string($value['feature_key'] ?? null) ? $value['feature_key'] : null, $value['login_required'] ?? false, $countryCollection, $countries, $acceptanceUrl);
+        return new self($id, $value['key'], $value['name'], is_string($value['description'] ?? null) ? $value['description'] : null, $value['mode'], $questions, $publicUrl, $value['kind'] ?? 'service', $value['scope'] ?? 'organization', is_string($value['service_name'] ?? null) ? $value['service_name'] : null, is_string($value['feature_key'] ?? null) ? $value['feature_key'] : null, $value['login_required'] ?? false, $countryCollection, $countries, $acceptanceUrl);
     }
 }

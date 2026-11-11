@@ -40,7 +40,7 @@ final readonly class JoinServiceWaitlist implements Action
     public static function input(): InputSchema
     {
         return InputSchema::of([
-            Field::integer('program')->inPath()->min(1),
+            Field::string('program')->inPath()->max(64)->describe('The waitlist program\'s id at Billing (`acp_…`).'),
             Field::string('organization')->nullable()->max(64)->describe('An active team you belong to; required for feature waitlists.'),
             Field::string('interest')->oneOf(['notify', 'test'])->nullable()->describe('Feature updates or participation in a test group.'),
             Field::string('country')->nullable()->max(2)->describe('Optional two-letter country code.'),
@@ -82,7 +82,7 @@ final readonly class JoinServiceWaitlist implements Action
         }
         $country = $context->nullableString('country');
         try {
-            $this->billing->join((int) $context->string('program'), $subject->id, $subject->email, $country === null ? null : strtoupper($country), $answers, $context->string('reference'), $organization, $context->nullableString('interest') ?? 'test');
+            $this->billing->join($context->string('program'), $subject->id, $subject->email, $country === null ? null : strtoupper($country), $answers, $context->string('reference'), $organization, $context->nullableString('interest') ?? 'test');
         } catch (ServiceAccessUnavailable) {
             throw new ActionRefused('waitlist_unavailable', __('service_access.unavailable'), 503, 'waitlist');
         }

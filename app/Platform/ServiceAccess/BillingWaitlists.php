@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\ServiceAccess;
 
+use Cbox\Billing\Client\Http\WireId;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -34,8 +35,9 @@ final readonly class BillingWaitlists
         return ['services' => $services, 'page' => $data['current_page'], 'lastPage' => $data['last_page']];
     }
 
-    /** @param list<int> $programs
-     * @return array<int, string|null>
+    /**
+     * @param  list<string>  $programs  program ids as Billing names them (`acp_…`)
+     * @return array<string, string|null>
      */
     public function registrations(array $programs, string $subject, string $email, ?string $organization = null): array
     {
@@ -48,7 +50,11 @@ final readonly class BillingWaitlists
         }
         $registrations = [];
         foreach ($data as $row) {
-            if (! is_array($row) || ! is_int($row['program_id'] ?? null) || ! in_array($row['program_id'], $programs, true)) {
+            if (! is_array($row)) {
+                throw new ServiceAccessUnavailable('Unexpected registration response.');
+            }
+            $program = WireId::from($row['program_id'] ?? null);
+            if ($program === null || ! in_array($program, $programs, true)) {
                 throw new ServiceAccessUnavailable('Unexpected registration response.');
             }
             $registration = $row['registration'] ?? null;
@@ -56,7 +62,7 @@ final readonly class BillingWaitlists
             if ($registration !== null && ! in_array($status, ['waiting', 'invited', 'accepted', 'following', 'revoked'], true)) {
                 throw new ServiceAccessUnavailable('Unknown registration status.');
             }
-            $registrations[$row['program_id']] = is_string($status) ? $status : null;
+            $registrations[$program] = is_string($status) ? $status : null;
         }
         if (count($registrations) !== count($programs)) {
             throw new ServiceAccessUnavailable('Incomplete registration response.');
@@ -66,9 +72,9 @@ final readonly class BillingWaitlists
     }
 
     /** @param array<string, string|list<string>> $answers */
-    public function join(int $program, string $subject, string $email, ?string $country, array $answers, string $reference, ?string $organization = null, string $interest = 'test'): void
+    public function join(string $program, string $subject, string $email, ?string $country, array $answers, string $reference, ?string $organization = null, string $interest = 'test'): void
     {
-        $response = $this->request('POST', '/api/v1/access/directory/'.$program.'/join', [
+        $response = $this->request('POST', '/api/v1/access/directory/'.rawurlencode($program).'/join', [
             'subject' => $subject, 'email' => $email, 'country' => $country, 'organization' => $organization, 'interest' => $interest,
             'answers' => $answers === [] ? (object) [] : $answers, 'reference' => $reference,
         ], $reference);
@@ -77,9 +83,9 @@ final readonly class BillingWaitlists
         }
     }
 
-    public function leave(int $program, string $subject, string $organization, string $reference): void
+    public function leave(string $program, string $subject, string $organization, string $reference): void
     {
-        $response = $this->request('POST', '/api/v1/access/directory/'.$program.'/leave', [
+        $response = $this->request('POST', '/api/v1/access/directory/'.rawurlencode($program).'/leave', [
             'subject' => $subject, 'organization' => $organization, 'reference' => $reference,
         ], $reference);
         if ($response->json('status') !== 'withdrawn') {
