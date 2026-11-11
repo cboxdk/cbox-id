@@ -4815,4 +4815,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'Platform yönetimi bir süredir boştaydı. Devam etmek için geçiş anahtarınızla onaylayın.',
     'operator_standing_unverifiable' => 'Platform yönetimi, kullanıcı doğrulamalı bir geçiş anahtarı gerektirir ve bu, bu kurulumda kapalıdır (cbox-id.webauthn.user_verification). Açın veya cbox-id.operators.phishing_resistant ayarını kapatın.',
     'operator_confirm_on_sign_in_host' => 'Platform yönetimi bir geçiş anahtarı veya güvenlik anahtarı gerektirir ve geçiş anahtarları oturum açma ana bilgisayarında (:host) onaylanır. Oturumu kapatın, ardından geçiş anahtarınızla yeniden oturum açın.',
+    'shell_project' => 'Proje',
+    'shell_create_project' => 'Proje oluştur',
+    'shell_create_slug_hint' => 'Addan oluşturmak için boş bırakın.',
+    'shell_team_member' => 'Ekip üyesi',
 ];

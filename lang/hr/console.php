@@ -4815,4 +4815,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'Administracija platforme neko je vrijeme bila neaktivna. Potvrdite svojim pristupnim ključem za nastavak.',
     'operator_standing_unverifiable' => 'Administracija platforme zahtijeva pristupni ključ s provjerom korisnika, a ona je u ovoj instalaciji isključena (cbox-id.webauthn.user_verification). Uključite je ili isključite cbox-id.operators.phishing_resistant.',
     'operator_confirm_on_sign_in_host' => 'Administracija platforme zahtijeva pristupni ključ ili sigurnosni ključ, a pristupni ključevi potvrđuju se na poslužitelju za prijavu (:host). Odjavite se pa se ponovno prijavite svojim pristupnim ključem.',
+    'shell_project' => 'Projekt',
+    'shell_create_project' => 'Stvori projekt',
+    'shell_create_slug_hint' => 'Ostavite prazno da se stvori iz naziva.',
+    'shell_team_member' => 'Član tima',
 ];

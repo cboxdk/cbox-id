@@ -32,7 +32,8 @@ it('edits multiple native roles and invites with app roles on desktop and mobile
         ->click('label:has-text("All environments (including ones added later)")')->click('Save access')
         ->assertSee('Access to 1 of 1 environments');
 
-    $page->resize(390, 844)->fill('input[type="email"]', 'native-new@example.test')
+    // Crossing to the phone layout remounts the page (cbox-ui 0.11 draws its own phone tree): wait for it.
+    $page->resize(390, 844)->wait(0.5)->fill('form:has(button:has-text("Send invitation")) input[type="email"]', 'native-new@example.test')
         ->check('form label:has-text("Billing") input')->click('button:has-text("Send invitation")')
         ->assertSee('native-new@example.test')->assertSee('Billing, Reader')
         ->assertNoJavaScriptErrors()->screenshot(filename: 'native-members-phone');

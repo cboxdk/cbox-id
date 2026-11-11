@@ -4813,4 +4813,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'Platform administration was idle for a while. Confirm with your passkey to continue.',
     'operator_standing_unverifiable' => 'Platform administration requires a passkey with user verification, and this deployment has it turned off (cbox-id.webauthn.user_verification). Turn it on, or turn off cbox-id.operators.phishing_resistant.',
     'operator_confirm_on_sign_in_host' => 'Platform administration requires a passkey or security key, and passkeys are confirmed on the sign-in host (:host). Sign out, then sign in again with your passkey.',
+    'shell_project' => 'Project',
+    'shell_create_project' => 'Create project',
+    'shell_create_slug_hint' => 'Leave it blank to make one from the name.',
+    'shell_team_member' => 'Team member',
 ];

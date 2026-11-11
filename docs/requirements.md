@@ -57,7 +57,7 @@ Pulled in automatically by `composer install`:
 | `cboxdk/laravel-health` | `^2.0` | Health/readiness reporting. |
 | `cboxdk/laravel-risk` | `^1.1` | Bot/abuse risk scoring on signup/login (monitor mode by default). |
 | `cboxdk/laravel-telemetry` | `^3.9.3` | Tracing, metrics and scheduled OTLP export (trace IDs on error screens). |
-| `cboxdk/laravel-console-kit` | `^0.2.2` | Console plugin sockets (nav/areas/widgets) the app and its plugins extend, and the shared shell (`Console::shell()`) behind cbox-ui's `CboxShell`. |
+| `cboxdk/laravel-console-kit` | `^0.2.6` | Console plugin sockets (nav/areas/widgets) the app and its plugins extend, and the shared shell (`Console::shell()`) behind cbox-ui's `CboxShell`. |
 | `cboxdk/laravel-dns` | `^1.0` | DNS lookups for domain-verification (TXT) and MX checks. |
 | `cboxdk/dns` | `^0.1` | The framework-agnostic DNS resolver beneath laravel-dns. |
 | `bacon/bacon-qr-code` | `^3.1` | TOTP enrolment QR codes. |

@@ -4815,4 +4815,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'Die Plattformverwaltung war eine Weile inaktiv. Bestätigen Sie mit Ihrem Passkey, um fortzufahren.',
     'operator_standing_unverifiable' => 'Die Plattformverwaltung erfordert einen Passkey mit Benutzerverifizierung, und diese ist in dieser Installation ausgeschaltet (cbox-id.webauthn.user_verification). Schalten Sie sie ein oder schalten Sie cbox-id.operators.phishing_resistant aus.',
     'operator_confirm_on_sign_in_host' => 'Die Plattformverwaltung erfordert einen Passkey oder Sicherheitsschlüssel, und Passkeys werden auf dem Anmelde-Host (:host) bestätigt. Melden Sie sich ab und dann erneut mit Ihrem Passkey an.',
+    'shell_project' => 'Projekt',
+    'shell_create_project' => 'Projekt erstellen',
+    'shell_create_slug_hint' => 'Leer lassen, um einen aus dem Namen zu bilden.',
+    'shell_team_member' => 'Teammitglied',
 ];

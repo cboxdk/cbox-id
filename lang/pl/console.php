@@ -4815,4 +4815,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'Administracja platformą była przez pewien czas bezczynna. Potwierdź swoim kluczem dostępu, aby kontynuować.',
     'operator_standing_unverifiable' => 'Administracja platformą wymaga klucza dostępu z weryfikacją użytkownika, a w tym wdrożeniu jest ona wyłączona (cbox-id.webauthn.user_verification). Włącz ją albo wyłącz cbox-id.operators.phishing_resistant.',
     'operator_confirm_on_sign_in_host' => 'Administracja platformą wymaga klucza dostępu lub klucza bezpieczeństwa, a klucze dostępu potwierdza się na hoście logowania (:host). Wyloguj się, a następnie zaloguj ponownie swoim kluczem dostępu.',
+    'shell_project' => 'Projekt',
+    'shell_create_project' => 'Utwórz projekt',
+    'shell_create_slug_hint' => 'Pozostaw puste, aby utworzyć z nazwy.',
+    'shell_team_member' => 'Członek zespołu',
 ];

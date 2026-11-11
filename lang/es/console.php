@@ -4815,4 +4815,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'La administración de la plataforma estuvo inactiva un rato. Confirme con su llave de acceso para continuar.',
     'operator_standing_unverifiable' => 'La administración de la plataforma requiere una llave de acceso con verificación del usuario, y esta está desactivada en este despliegue (cbox-id.webauthn.user_verification). Actívela, o desactive cbox-id.operators.phishing_resistant.',
     'operator_confirm_on_sign_in_host' => 'La administración de la plataforma requiere una llave de acceso o llave de seguridad, y las llaves de acceso se confirman en el host de inicio de sesión (:host). Cierre sesión y vuelva a iniciarla con su llave de acceso.',
+    'shell_project' => 'Proyecto',
+    'shell_create_project' => 'Crear proyecto',
+    'shell_create_slug_hint' => 'Déjalo en blanco para crear uno a partir del nombre.',
+    'shell_team_member' => 'Miembro del equipo',
 ];

@@ -4815,4 +4815,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'L\'administration de la plateforme est restée inactive un moment. Confirmez avec votre clé d\'accès pour continuer.',
     'operator_standing_unverifiable' => 'L\'administration de la plateforme exige une clé d\'accès avec vérification de l\'utilisateur, et celle-ci est désactivée dans ce déploiement (cbox-id.webauthn.user_verification). Activez-la, ou désactivez cbox-id.operators.phishing_resistant.',
     'operator_confirm_on_sign_in_host' => 'L\'administration de la plateforme exige une clé d\'accès ou une clé de sécurité, et les clés d\'accès sont confirmées sur l\'hôte de connexion (:host). Déconnectez-vous, puis reconnectez-vous avec votre clé d\'accès.',
+    'shell_project' => 'Projet',
+    'shell_create_project' => 'Créer le projet',
+    'shell_create_slug_hint' => 'Laissez vide pour en créer un à partir du nom.',
+    'shell_team_member' => 'Membre de l’équipe',
 ];

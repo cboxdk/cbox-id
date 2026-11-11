@@ -4815,4 +4815,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'Plattformadministrasjonen har vært inaktiv en stund. Bekreft med passnøkkelen din for å fortsette.',
     'operator_standing_unverifiable' => 'Plattformadministrasjon krever en passnøkkel med brukerverifisering, og den er slått av i denne installasjonen (cbox-id.webauthn.user_verification). Slå den på, eller slå av cbox-id.operators.phishing_resistant.',
     'operator_confirm_on_sign_in_host' => 'Plattformadministrasjon krever en passnøkkel eller sikkerhetsnøkkel, og passnøkler bekreftes på påloggingsverten (:host). Logg ut, og logg så inn igjen med passnøkkelen din.',
+    'shell_project' => 'Prosjekt',
+    'shell_create_project' => 'Opprett prosjekt',
+    'shell_create_slug_hint' => 'La feltet stå tomt for å lage en fra navnet.',
+    'shell_team_member' => 'Teammedlem',
 ];

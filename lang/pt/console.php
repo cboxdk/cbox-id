@@ -4815,4 +4815,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'A administração da plataforma esteve inativa durante algum tempo. Confirme com a sua chave de acesso para continuar.',
     'operator_standing_unverifiable' => 'A administração da plataforma exige uma chave de acesso com verificação do utilizador, e esta está desativada nesta instalação (cbox-id.webauthn.user_verification). Ative-a, ou desative cbox-id.operators.phishing_resistant.',
     'operator_confirm_on_sign_in_host' => 'A administração da plataforma exige uma chave de acesso ou chave de segurança, e as chaves de acesso são confirmadas no anfitrião de início de sessão (:host). Termine sessão e inicie-a novamente com a sua chave de acesso.',
+    'shell_project' => 'Projeto',
+    'shell_create_project' => 'Criar projeto',
+    'shell_create_slug_hint' => 'Deixe em branco para criar um a partir do nome.',
+    'shell_team_member' => 'Membro da equipa',
 ];

@@ -4815,4 +4815,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'A platformadminisztráció egy ideje tétlen volt. A folytatáshoz erősítse meg az hozzáférési kulcsával.',
     'operator_standing_unverifiable' => 'A platformadminisztrációhoz felhasználó-ellenőrzéssel rendelkező hozzáférési kulcs szükséges, és ez ebben a telepítésben ki van kapcsolva (cbox-id.webauthn.user_verification). Kapcsolja be, vagy kapcsolja ki a cbox-id.operators.phishing_resistant beállítást.',
     'operator_confirm_on_sign_in_host' => 'A platformadminisztrációhoz hozzáférési kulcs vagy biztonsági kulcs szükséges, és az hozzáférési kulcsokat a bejelentkezési gazdagépen (:host) erősítik meg. Jelentkezzen ki, majd jelentkezzen be újra az hozzáférési kulcsával.',
+    'shell_project' => 'Projekt',
+    'shell_create_project' => 'Projekt létrehozása',
+    'shell_create_slug_hint' => 'Hagyja üresen, és a névből készül.',
+    'shell_team_member' => 'Csapattag',
 ];

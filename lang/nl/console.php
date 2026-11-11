@@ -4815,4 +4815,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'Platformbeheer was een tijdje inactief. Bevestig met uw passkey om door te gaan.',
     'operator_standing_unverifiable' => 'Platformbeheer vereist een passkey met gebruikersverificatie, en die staat in deze installatie uit (cbox-id.webauthn.user_verification). Zet die aan, of zet cbox-id.operators.phishing_resistant uit.',
     'operator_confirm_on_sign_in_host' => 'Platformbeheer vereist een passkey of beveiligingssleutel, en passkeys worden bevestigd op de aanmeldhost (:host). Meld u af en meld u daarna opnieuw aan met uw passkey.',
+    'shell_project' => 'Project',
+    'shell_create_project' => 'Project maken',
+    'shell_create_slug_hint' => 'Laat leeg om er een te maken van de naam.',
+    'shell_team_member' => 'Teamlid',
 ];

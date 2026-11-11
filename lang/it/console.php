@@ -4816,4 +4816,8 @@ Le connessioni',
     'operator_standing_idle' => 'L\'amministrazione della piattaforma è rimasta inattiva per un po\'. Conferma con la tua passkey per continuare.',
     'operator_standing_unverifiable' => 'L\'amministrazione della piattaforma richiede una passkey con verifica dell\'utente, che in questa installazione è disattivata (cbox-id.webauthn.user_verification). Attivala, oppure disattiva cbox-id.operators.phishing_resistant.',
     'operator_confirm_on_sign_in_host' => 'L\'amministrazione della piattaforma richiede una passkey o una chiave di sicurezza, e le passkey si confermano sull\'host di accesso (:host). Esci, poi accedi di nuovo con la tua passkey.',
+    'shell_project' => 'Progetto',
+    'shell_create_project' => 'Crea progetto',
+    'shell_create_slug_hint' => 'Lascia vuoto per crearne uno dal nome.',
+    'shell_team_member' => 'Membro del team',
 ];

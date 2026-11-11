@@ -4815,4 +4815,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'Administrarea platformei a fost inactivă o vreme. Confirmați cu cheia de acces pentru a continua.',
     'operator_standing_unverifiable' => 'Administrarea platformei necesită o cheie de acces cu verificarea utilizatorului, iar aceasta este dezactivată în această instalare (cbox-id.webauthn.user_verification). Activați-o sau dezactivați cbox-id.operators.phishing_resistant.',
     'operator_confirm_on_sign_in_host' => 'Administrarea platformei necesită o cheie de acces sau o cheie de securitate, iar cheile de acces se confirmă pe gazda de autentificare (:host). Deconectați-vă, apoi autentificați-vă din nou cu cheia de acces.',
+    'shell_project' => 'Proiect',
+    'shell_create_project' => 'Creați proiectul',
+    'shell_create_slug_hint' => 'Lăsați gol pentru a-l crea din nume.',
+    'shell_team_member' => 'Membru al echipei',
 ];

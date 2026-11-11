@@ -2,6 +2,7 @@ import { useTranslator } from '@/i18n';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useCallback, useRef, useState } from 'react';
 import AccountLayout from '@/layouts/AccountLayout';
+import { countryOptions } from '@/lib/countries';
 import {
     defaultPasskeyName,
     isCancellation,
@@ -12,6 +13,7 @@ import {
 import type { HelpContent, PageProps } from '@/types';
 import {
     Button,
+    Combobox,
     CopyButton,
     Dialog,
     Field,
@@ -25,7 +27,6 @@ import {
     PasswordManagerIdentity,
     Pill,
     ProviderMark,
-    Select,
 } from '@/ui';
 
 interface PasskeyRow {
@@ -1555,7 +1556,7 @@ function SmsPanel({
     totpEnabled: boolean;
     urls: Props['urls'];
 }) {
-    const { t: tc } = useTranslator();
+    const { t: tc, locale: smsLocale } = useTranslator();
 
     const { smsEnrolmentSentTo, recoveryCodes } = usePage().flash;
     const enrol = useForm({ phone: '', country: sms.countries[0] ?? '' });
@@ -1643,15 +1644,12 @@ function SmsPanel({
                                     label={tc('console.country_701d021d')}
                                     error={enrol.errors.country}
                                 >
-                                    <Select
-                                        name="country"
+                                    {/* A flag and a name, found by typing; never an ISO code. */}
+                                    <Combobox
                                         aria-label={tc('console.country_701d021d')}
-                                        value={enrol.data.country}
+                                        value={enrol.data.country || undefined}
                                         onValueChange={(code) => enrol.setData('country', code)}
-                                        options={sms.countries.map((code) => ({
-                                            value: code,
-                                            label: code,
-                                        }))}
+                                        options={countryOptions(sms.countries, smsLocale)}
                                     />
                                 </Field>
                             )}

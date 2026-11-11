@@ -24,8 +24,8 @@ it('opens the same app selector directly in the mobile header', function (): voi
     crudSetup();
     visit(route('environment.app-catalog'))
         ->resize(375, 812)
-        ->click('header.cbx-header button[aria-label="Open navigation"]')
-        ->click('.cbx-sheet button:has-text("Switch app")')
+        ->click('nav.cbx-tabbar button[aria-controls="cbx-more"]')
+        ->click('#cbx-more button:has-text("Switch app")')
         ->assertVisible('.cbx-menu-apps')
         ->assertSee('No apps available')
         ->assertNoJavaScriptErrors()

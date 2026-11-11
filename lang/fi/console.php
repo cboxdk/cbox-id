@@ -4815,4 +4815,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'Alustan hallinta oli jonkin aikaa käyttämättä. Jatka vahvistamalla pääsyavaimellasi.',
     'operator_standing_unverifiable' => 'Alustan hallinta vaatii pääsyavaimen, jossa on käyttäjän varmennus, ja se on tässä asennuksessa pois päältä (cbox-id.webauthn.user_verification). Ota se käyttöön tai poista cbox-id.operators.phishing_resistant käytöstä.',
     'operator_confirm_on_sign_in_host' => 'Alustan hallinta vaatii pääsyavaimen tai suojausavaimen, ja pääsyavaimet vahvistetaan kirjautumispalvelimella (:host). Kirjaudu ulos ja kirjaudu sitten uudelleen pääsyavaimellasi.',
+    'shell_project' => 'Projekti',
+    'shell_create_project' => 'Luo projekti',
+    'shell_create_slug_hint' => 'Jätä tyhjäksi, niin se muodostetaan nimestä.',
+    'shell_team_member' => 'Tiimin jäsen',
 ];

@@ -4815,4 +4815,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'Správa platformy bola istý čas nečinná. Pokračujte potvrdením svojím prístupovým kľúčom.',
     'operator_standing_unverifiable' => 'Správa platformy vyžaduje prístupový kľúč s overením používateľa a to je v tomto nasadení vypnuté (cbox-id.webauthn.user_verification). Zapnite ho, alebo vypnite cbox-id.operators.phishing_resistant.',
     'operator_confirm_on_sign_in_host' => 'Správa platformy vyžaduje prístupový kľúč alebo bezpečnostný kľúč a prístupové kľúče sa potvrdzujú na prihlasovacom hostiteľovi (:host). Odhláste sa a potom sa znova prihláste svojím prístupovým kľúčom.',
+    'shell_project' => 'Projekt',
+    'shell_create_project' => 'Vytvoriť projekt',
+    'shell_create_slug_hint' => 'Nechajte prázdne a vytvorí sa z názvu.',
+    'shell_team_member' => 'Člen tímu',
 ];

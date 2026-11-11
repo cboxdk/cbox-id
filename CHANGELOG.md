@@ -8,6 +8,11 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Fixed
+
+- **`/continue` on a customer environment's host passes the customer console's door** (it was registered beside it), and the environment console no longer reads the session row twice on every request while the per-organization SSO mandate is off.
+- `/v1` lists keep the fields their `meta` carried beyond paging. The app catalog's `GET /v1/app-catalog/for-user` lost `revision` and `refresh_after`, so laravel-id-client rejected every answer as malformed, and apps with `CBOX_ID_API_URL` served a stale switcher or none.
+
 ### Added
 
 - **Service connections keep working under `CBOX_ID_REALM_PLATFORM_CLIENTS_ONLY`.** The client the platform creates for an organization's service connection is admitted in the platform's own environment: created by the service-connection feature and served for as long as an unrevoked connection names it. A customer's client with the same name is still refused.
@@ -15,8 +20,2446 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 - **`/switch-app` on the login host.** An app's "switch app" link names the issuer; on the login host it now sends the person to the console's switcher through the console's own sign-in instead of a 404.
 - **`cboxdk/laravel-id` `^2.6`** (membership-only deprovisioning per environment, the phishing-resistant `acr`). The operator plane asks the framework's `AuthenticationContextClass::PhishingResistant` directly.
 - **An invitation that names an app lands at the app when its stored return address no longer holds**, instead of in the console: the address is still not followed, and the invitee starts at the one origin the app is registered on. With the app gone, the console as before.
-- **Fixed: `/continue` on a customer environment's host passes the customer console's door** (it was registered beside it), and the environment console no longer reads the session row twice on every request while the per-organization SSO mandate is off.
+- **"Leave organization" on your own account page.** The security page (`/settings`) lists the organizations you belong to, each with Leave (`POST /settings/organizations/{organization}/leave`, the existing `account.organizations.leave` action with its rules: the last owner cannot leave, a roster administered elsewhere is refused). It is there on every host, and it is the only place to leave from on the login host and on a customer environment's host, which have no People page. You stay signed in on the page; if the session was acting in the organization you left it moves to another of yours, and with none left the account is still yours.
+- **A language picker on the account pages on the login host.** It saves your interface language (the same preference the console's picker writes); `POST /interface-language` now answers on the login host as well as on the app host.
+
 - **`login_hint` that names somebody else opens the account chooser.** When `/oauth/authorize` carries an email `login_hint` and the browser is signed in with another address, the person is shown the account chooser (pick the account the app meant, or add it; the sign-in form is filled in with the hint) and the request resumes with whoever they chose. The same address, in any letter case, continues as before. Under `prompt=none` the answer is `login_required`. Not applied with `prompt=login` (which already asks for a sign-in) or a login ticket.
 - **The signed-out page offers the way back to the app.** An RP-initiated logout that ends on the hosted signed-out page now shows "Back to {app}" when the request named its client (`client_id`, or the audience of `id_token_hint`) and that client is an environment-wide app an administrator registered: the link is the app's catalog `launch_url`, else the single origin of its redirect URIs. An organization's own client, a self-registered client and an unknown id get no link.
 - **A fresh operator passkey for two more root sign-in settings.** With `CBOX_ID_OPERATORS_PHISHING_RESISTANT` on, creating an SSO connection (`sso.connections.create`) and turning a social provider back on (`signin.social.enable`) in the platform's own environment now ask for a passkey confirmation no older than the re-confirm window, like the other root sign-in settings. Their danger class is unchanged (`write`), so API keys, approvals and customers' own environments behave as before.
 - **With a login host, a console session held for a password change or a second factor comes back to the page it was opening.** The console sends the person to `{login host}/password/change` or `{login host}/settings` with `return_to` naming the console page (GET requests only). After the password change the browser returns there through `/auth/start`; the security page's "Back to …" leads there. `return_to` is validated on the login host as before: an address on another origin is dropped.
+- **With a login host, the console signs people in at the login host as an OAuth client of its own.** Nothing changes while `CBOX_ID_LOGIN_HOST` is unset. Set, the app host has no sign-in page: an unauthenticated console request goes to `/auth/start`, on to `{login host}/oauth/authorize` (authorization code, PKCE, `state`, `nonce`), and back to `/auth/callback`, which redeems the code, verifies the ID token and starts a console session for the person named by `sub`. The console session is a row of its own, carries the `amr` and organization of the sign-in, and is tied to the SSO session it came from. An Inertia visit is answered 409 with `X-Inertia-Location`, a JSON call 401 with the door in `redirect`. A refusal on the way back is a page ("We could not sign you in"), never a redirect to the start. `/auth/start?return_to=/path` lands on that path on the app host afterwards (a path only, never another origin).
+- **`php artisan cbox-id:console:client`** registers that client (platform-owned, first-party, confidential) in the default environment, and on every later run brings its redirect, sign-out and back-channel logout addresses in line with the app host. A client of that name left by an earlier setup is taken over, not duplicated. The secret is printed once, on creation or with `--rotate`; the deployment keeps it in `CBOX_ID_CONSOLE_CLIENT_SECRET` (`cbox-id.console.client_secret`). `--secret-only` prints only the secret, for a pipe into a secret store.
+- **Sign-out and back-channel logout between the console and the login host.** "Log out" in the console ends the console's sessions and the SSO session they came from, then sends the browser to `{login host}/oauth/logout` (by `client_id`, no `id_token_hint`, so other devices stay signed in) and back to "You're signed out". `POST /auth/backchannel-logout` on the app host takes the login host's logout token and ends the console sessions handed down from that SSO session.
+- **With a login host, the console asks for no password: a step-up is a trip to the login host.** A gated action is refused as before (403, `X-Cbox-Step-Up`), and the refusal now carries `step_up.redirect` (`page`, `popup`). The "Confirm it's you" dialog opens the login host in a window of its own, the login host re-authenticates the person with whatever they sign in with, and the page repeats the request it was holding, body included. The window counts from the ID token's `auth_time`. What is asked is configuration: `cbox-id.console.step_up.max_age` (default 0) and an `acr` per plane (`urn:cbox-id:phr` for the operator plane). `/sudo` and the environment console's `/sudo` take no password on the app host in this mode. A passkey sign-in at the login host opens the operator plane from its `auth_time`.
+- **`?organization=` on the way into the console** (login-host mode). `/`, `/dashboard` and `/auth/start` open `/orgs/{slug}` for the organization named by id or slug when the person is an active member of it, signed in or after signing in. The app switcher's Cbox ID entry lands in the organization the person was working in.
+- **With a login host, the platform's MCP resource is `https://{app host}/mcp`** and its authorization server is the login host. `/.well-known/oauth-protected-resource/mcp` is served on the app host and names both; the `401` at `/mcp` points at it. A tenant environment's `/mcp`, and every `/mcp` in single-host mode, is `{issuer}/mcp` as before.
+- **A pending authorization survives the detours.** After `/oauth/authorize` sends a person to the hosted pages, these now end in the waiting request where they ended in the console: accepting an organization invitation (`POST /invitations/{token}/accept`) and the forced password change (`POST /password/change`). The security page a person is held on for a second factor shows "Return to {app}", which follows the waiting request. An invitation that names its app without a return address lands at the app (its catalog launch address, else its one registered web origin) instead of the console.
+- **Mailed links name the app.** A sign-in link or password reset requested while an authorization is pending carries `?app={client_id}`. Finished in the browser that asked, the authorization resumes as before. Finished in another browser, the person is sent on to that app's home after signing in (`GET /continue`, new; on the login host and tenant hosts). Only apps the environment itself registered, never an organization's own or a self-registered client; any other id is ignored.
+- **In the platform's own environment, a first-party app is never given a person without an organization.** On the root of a multi-tenant deployment, `/oauth/authorize` for a first-party client now sends a signed-in person with no organization to `/organization-required` (accept an invitation, or continue with a personal organization) whatever `CBOX_ID_SIGNUP_PERSONAL_ORGANIZATION` says, and answers `interaction_required` under `prompt=none`. With the switch off this used to mint a code with no organization. Operators and support sessions are not asked. The console's own landings still follow the switch.
+
+- **With a login host, the default environment is an ordinary issuer for self-registered clients, and signs in through nobody.** The rules that held the root of a multi-tenant deployment to its own `/mcp` (the narrowed RFC 8414 document, registration without RFC 7592 management, no `openid`, no audience but the root's `/mcp`, sign-in only for people with standing there) no longer apply in login-host mode: an MCP client of any app that signs in through the realm would otherwise be refused its audience. A sign-in-through connection named on the default environment is ignored there, and `signin.through.set` refuses to name one (`not_available_in_the_realm`); clearing it is allowed. Single-host mode is unchanged.
+- **The hosted sign-in page names the app.** When `/oauth/authorize` sends a person to sign in, the page reads "Sign in to continue to {app}" (the client's name) and shows the app's icon when the environment's app catalog lists that client; the sign-up line reads "No account yet? Create an account". Without a pending authorization the line is "Welcome back. Sign in to continue." (it no longer mentions an identity console). The app is read from the session, never from the page's address. OAuth clients have no logo field of their own, so an app the catalog does not list has no icon.
+- **`login_hint` on `/oauth/authorize`.** An email address in `login_hint` (query, POST or pushed request) fills in the sign-in page's address field; nothing is submitted. Other kinds of hint are ignored. The parameter survives the resume after sign-in.
+- **Passkeys in the address field's autofill.** Where the browser supports WebAuthn conditional UI, the sign-in page's address field offers the person's passkeys; the "Sign in with a passkey" button is unchanged. `POST /passkeys/login/options` takes `autofill: true` and then issues a challenge that lives 10 minutes instead of 2.
+- **A stale authorization step offers the app.** The "can no longer be completed" page has a "Start over at {app}" button to the app's catalog launch address, or to the origin of the redirect URI the request named, above "Back to …".
+
+- **Old issuer names redirect (`CBOX_ID_LEGACY_LOGIN_HOSTS`, login-host mode only).** A comma list of hosts the default environment was issued under before. Such a host issues and renders nothing. Pages (`/login`, `/signup`, `/settings/*`, `/device`, invitations, `/.well-known/openid-configuration`, JWKS, `/.well-known/cbox-cli`, `/.well-known/cbox-authenticator`) answer GET and HEAD with a 308 to the same path and query on the login host, or on the app host for a console page (`/settings`, `/account`, `/approvals`, `/dashboard`). `/oauth/*` (except `/oauth/logout` and the device QR), `/api/v1`, `/v1`, `/mcp`, `/scim`, `/frontend/v1`, every method other than GET and HEAD, and any request with an `Authorization` header answer 410 with an RFC 9457 problem `issuer_moved` that carries `issuer` and `api_base`. `/admin` and the rest of the console are 404. Remove the name from the list to retire it. `cbox-id:doctor` lists the names and fails when one is also the login, app or API host.
+- **With a login host, the Authenticator's enrolment code names the login host.** The Trusted devices page is on the app host, which issues nothing, so a code naming it could not be redeemed.
+- **"SSO required" per organization, behind a switch.** With `CBOX_ID_SSO_MANDATE_PER_ORGANIZATION=true` (`cbox-id.sso.mandate_per_organization`, default off), an organization's SSO mandate is judged for the organization being entered, never for the person's other organizations. Signing in follows the environment's own baseline, so a member of a mandating organization can still sign in with a password, passkey, magic link or social account, and starts in an organization that session may enter. A mandating organization is entered only on a session the framework started through one of that organization's enterprise connections (`amr` `sso`, in that organization): `/orgs/{org}` and the organization switch send any other session through the connection and back; `/oauth/authorize` does the same for `organization=…` and for the hosted picker (`interaction_required` under `prompt=none`, `access_denied` when there is no active connection or the connection did not satisfy it), and the code is refused at issue as a last check. Home-realm discovery offers the organization's SSO first instead of forcing it. With the switch off nothing changes.
+- **No customer-created OAuth clients in the platform's own environment, behind a switch.** With `CBOX_ID_REALM_PLATFORM_CLIENTS_ONLY=true` (`cbox-id.realm.platform_clients_only`, default off) the default environment of a multi-tenant deployment holds only clients the environment itself owns. Registering an app for an organization there is refused by the console, the management API and MCP (`apps.create` answers 422 `organization_apps_not_allowed`; the model refuses the write whichever door asked), and `/oauth/*` answers 404 for an organization's client that is already there, read from `client_id`, HTTP Basic or a `client_assertion`. Existing such clients can still be renamed and deleted. Customers' own environments and single-tenant installs are unaffected.
+- **A login host (`CBOX_ID_LOGIN_HOST`), off by default.** Unset, one host serves sign-in, the issuer and the console as before. Set, the default environment is issued from that host only: hosted sign-in, sign-up and consent, `/oauth/*`, discovery, JWKS, the frontend API and a person's own security pages answer there and are a 404 on the app host (`CBOX_ID_CONSOLE_HOST`), the console and the operator plane are a 404 on the login host, and a host that is neither (nor the API host, nor a tenant environment's) serves the health probes and nothing else. Every plane gate is then answered from the exact host. Set `CBOX_ID_ISSUER=https://<login host>` with it; `cbox-id:doctor` fails when the issuer, the app host or an environment's own name disagrees. The login host is added to the trusted hosts and to the CSP `form-action` list.
+- **With a login host, each surface keeps its own session.** The session cookie is `__Host-cbox-sso` on the login host, `__Host-cbox-console` on the app host and `__Host-cbox-session` on a tenant environment's host (host-only, Secure, path `/`; without the prefix on plain http). A session records the surface that minted it and is dropped on any other. A write to the login host is refused with 403 when the browser reports another origin (`Sec-Fetch-Site`, or `Origin`), except on the endpoints a protocol posts to from elsewhere (`/oauth/authorize`, `/oauth/logout`, `/oauth/register`, the SAML and OIDC callbacks, `/frontend/v1/*`). Turning the login host on signs everyone out once, because the cookie name changes. Nothing changes while it is unset.
+- **With a login host, the frontend API holds no session and operators get no login ticket.** `/frontend/v1/*` then ignores the request's cookies, keeps its session in memory for that request only, sets no cookie and no longer answers `Access-Control-Allow-Credentials: true`; the origin allow-list is unchanged. An embedded sign-in for a platform operator answers `hosted_sign_in_required` (after the password or passkey was right) and no ticket is minted. A pinned passkey origin (`CBOX_ID_WEBAUTHN_ORIGIN`) is replaced by the login host's origin, and `cbox-id:doctor` fails when `CBOX_ID_WEBAUTHN_RP_ID` does not cover the login host. Nothing changes while the login host is unset.
+
+- **With a login host: a person's own pages live there.** In login-host mode `/settings` (security: name, password, two-factor, passkeys, sign-in methods, email confirmation), `/settings/activity` (sessions and connected applications), `/settings/api-keys`, `/settings/connected-services` and its provider callback, `/settings/services`, `/settings/devices`, the account chooser (`/settings/accounts`), `/sudo`, `/password/change`, `/organization-required` and the v2 `/account…` redirects are served on the login host with the SSO session and are a 404 on the app host. They are drawn without the console: a header with "Back to …" (the console, or the page or app that sent the person, from a validated `?return_to=`), the person's own pages and Sign out. What belongs to an organization (members, roles, organization keys, single sign-on, approvals) stays in the console. Unset, nothing changes.
+- **With a login host: a link names the host that serves it.** A named route's URL now carries the login host for sign-in and account paths and the app host for console paths, wherever it is built: the console rail's Account section, the account menu, the "confirm your email" banner, redirects, and every mailed link (email confirmation, password reset, magic link, both invitation links, Admin Portal setup links, approval requests), also when a queue worker or a console action mints it. A link minted while acting in a tenant's environment is on that environment's own host. A redirect from the login host to a console page goes through the console's `/auth/start?return_to=<path>`, so the console takes up the account that is active on the login host after a sign-in, a sign-up, an accepted invitation or an account switch.
+
+- **A "no organization" screen, behind the same switch.** With `CBOX_ID_SIGNUP_PERSONAL_ORGANIZATION=true`, a signed-in person on the platform root who has no active membership of a live organization is never sent on to an app or the console without one. `/organization-required` lists the pending invitations for their confirmed email address (accepted there, without the emailed link) and offers "Continue with a personal organization"; either answer resumes the interrupted `/oauth/authorize` request or the console landing. A `prompt=none` request answers `interaction_required`. Operators and support sessions are not held. Strings in all 21 languages.
+- **"I'm an administrator" on an environment's sign-in page.** A small link below the sign-in form opens the environment console on the app host. Per environment (`signin.admin_link.set`, `PUT /v1/sign-in/admin-link`, schema `AdminSignInLink`; the switch is on **Authentication policy**), on every plan: until somebody chooses, it shows on `{slug}.{tenant base domain}` and not on a custom domain. Audit actions `environment.admin_sign_in_link_enabled` / `_disabled`. Translated in all 21 languages. A single-tenant install has no such link.
+- **Personal organization at signup, behind a switch.** With `CBOX_ID_SIGNUP_PERSONAL_ORGANIZATION=true` (`cbox-id.signup.personal_organization`, default off), a person who signs up at `/signup` on the platform root of a multi-tenant deployment gets a personal organization: an ordinary organization named after them, with a unique slug, which they own. It is marked `settings.personal_for` = their id, which survives a rename and restricts nothing. An invitation still joins the inviting organization and creates no personal one. Customer environments and single-tenant installs are unchanged.
+- **The tenant base domain can move, and older ones keep working.** `CBOX_ID_ENVIRONMENT_BASE_DOMAINS` is an ordered list: the first base is canonical (issuer and every printed address are `{slug}.{first}`), every later base keeps resolving. A browser that navigates to `{slug}.{older base}` is now sent to the same path on the environment's canonical host (302, `no-store`); API calls, form posts, signed links, SAML endpoints and a sign-in that a SAML request started are served where they arrived. `CBOX_ID_REDIRECT_LEGACY_BASE_DOMAINS=false` turns the browser redirect off. Nothing changes with one base listed. Quickstarts, the assistant's reference pages, the OpenAPI descriptions and the docs now say `<environment>.cboxauth.com`; the Branding preview takes its address from the configured base. See *Moving the tenant base domain* in the deployment guide.
+- **More reserved environment slugs.** `login`, `admin` and `www` join `api` and `app`; migration `2026_11_11_130000_refuse_more_reserved_environment_slugs` stops the deploy if an environment (other than the platform root) holds one. `CBOX_ID_RESERVED_ENVIRONMENT_SLUGS` adds names per deployment without touching an environment that already holds one.
+- **Platform administration can require a passkey** (`cbox-id.operators.phishing_resistant`, `CBOX_ID_OPERATORS_PHISHING_RESISTANT`, off by default). With it on, `/admin` and the root environment's console open only on a passkey or security key with user verification: an operator must hold one (an authenticator app alone no longer qualifies), the proof lasts 60 minutes and 15 minutes idle whatever the session lifetime is, and destructive or critical actions, step-up pages in the root console and starting an impersonation need a proof no older than 5 minutes. The root environment refuses to turn passkeys off while an operator relies on one. See `docs/operations/operator-plane.md`.
+- **`php artisan cbox-id:operator:passkey-link <email>`**: a one-time, short-lived link on which a locked-out operator enrols a passkey. Audited when issued and when used.
+- **A passkey sign-in without user verification no longer records `mfa`** in the session's `amr` (only when `cbox-id.webauthn.user_verification` is turned off; it is on by default).
+
+- **`cbox-id:realm:flip`: the one-time migration from two realms to one.** Makes the `cbox` environment the platform root and retires the old root, in one transaction: root organizations, team roles, projects, keys, clients, invitations and sign-in configuration are re-keyed to the `cbox` organization and person (by `organization_links`, linked `sub`, then address); the old root's audit trail is archived verbatim to `realm_flip_archive` instead of re-chained; every session and token is revoked. The dry run (the default) is the same run rolled back; `--execute` needs `--confirm=<root environment id>` and commits only if its post-conditions hold, which include a search of every text column for a retired id; `--verify` checks them again later. `scripts/realm-flip-rehearsal.sh` rehearses it on a restored dump or a seeded fixture in a throwaway PostgreSQL 18. New tables `realm_flips`, `realm_flip_ids`, `realm_flip_archive` (additive). See `docs/operations/realm-flip.md`.
+- **The shared shell on cbox-ui 0.11 and laravel-console-kit 0.2.6.** The phone layout is the approved V6 design: a context pill, a tab bar of the four main areas (`nav.tabs`) and More. "+" opens the page's own create form in the shell's create sheet: a user or an organization in an environment's console, a project or a team member in an organization's (`App\Platform\Shell\IdCreatables`, posting to the same routes the pages do). Pages declare palette actions. Environments say whether they are live and are grouped Production / Sandbox.
+- **App catalog: purpose, hue and "More from Cbox".** Catalog apps gain `purpose` (one line, 60 characters), `hue` (a cbox-ui hue token), `admission_url` (a public HTTPS signup or waitlist page) and `promote_when_unavailable` (default on); migration `2026_11_11_090000_add_shell_fields_to_app_catalog_entries` is additive, and a save that omits them keeps them. `/api/v1/me/apps`, `/api/v1/app-catalog/for-user` and the console's own catalog feed add `purpose`, `hue` and `available`, and list the apps a person can ask for under `meta.unavailable` (the feed: `unavailable`) with their `admission_url`. A `users`-audience app is never listed to anyone it does not name. `php artisan app-catalog:apply resources/app-catalog/cbox.json` sets purpose and hue for the 14 Cbox products.
+- **UserInfo carries organization slugs.** `org_slug` beside `org`, and `slug` on each entry of the `organizations` claim, read live. `sub`, `org` and token claims are unchanged.
+
+- **Token exchange carries RFC 9396 `authorization_details`** (laravel-id 2.4.0). An RFC 8693 exchange may send 1–10 `authorization_details` objects; each type must be one the client is registered for (`oauth_clients.authorization_details_types`, migration `2026_11_10_160000_add_authorization_details_types_to_clients`, additive). Cbox Infra uses it for browser approvals of a change plan.
+- **CIBA tokens say which approval they are, and CIBA ping mode** (laravel-id 2.3.0). A token minted from an approved backchannel request carries `auth_req_id` (the client's own) and `binding_message` (what the person saw), on the access token and the ID Token, so an API that asked for one approval can check it got that one. An operator can register a client for ping mode with an https notification endpoint (`ClientRegistry::configureBackchannelTokenDelivery`); its requests then send `client_notification_token`, and on approve or deny the worker POSTs `{"auth_req_id": "…"}` to the endpoint with that bearer token. Discovery advertises `["poll", "ping"]`; poll stays the default. Migration `2026_11_10_120000_add_ciba_ping_mode` is additive.
+- **Cbox Assistant knows the customer's projects and environments.** Through `cboxdk/laravel-assistant-client` 0.2, ID serves the customer profile: pickable `id_projects` and `id_environments`, plus signals (customer since, seats, recent workspace changes from the audit log, member role, environment count, SSO enabled, two-factor enforced). A member sees what the console shows them.
+- **Support elevations are audited in the workspace.** A verified Cbox support elevation widens the profile to the whole workspace (never another) and is written to the workspace's audit log as `organization.support_access_used` with the staff member, reason, expiry and what was read.
+- **App catalog icons for dark mode.** Each catalog app takes a second icon, `icon_dark` (same PNG/JPEG/WebP rules, SVG refused; omit keeps, `null` clears), uploaded in the console next to the light one with a dark preview. `GET /api/v1/me/apps` adds `icon_dark_url` (null without a dark icon), and `meta.revision` changes when it changes. The catalog is now the single source of app icons for every Cbox product.
+
+- **An environment can sign in through another identity provider.** `signin.through.set` (`PUT /api/v1/sign-in/through`, critical, schema `SignInThrough`) names one of the environment's own active OpenID Connect connections; `/login` then redirects straight to it, so a person with a session there arrives signed in. `/login/direct` is always the environment's own sign-in page (`/operator/login` now goes there). Audit action `auth_policy.sign_in_through_updated`. The hosted platform environment uses it to sign in through the `cbox` environment, so the console at app.cboxid.com is a single sign-on hop from the other Cbox apps. See *Administering the platform's own environment*.
+
+- **PKCE on hand-configured OpenID Connect connections.** Signing in through an OIDC connection that is not from the catalogue now sends an S256 `code_challenge` and proves it with the `code_verifier` at the token endpoint. Cbox ID itself requires PKCE of every client, so one Cbox ID environment can now sign in through another (the hosted platform environment through `cbox`). Catalogue providers are unchanged.
+
+- **An app's backend reads a person's app catalog with its own token.** `app_catalog.for_user` (`GET /api/v1/app-catalog/for-user?user_id=…&organization_id=…`) answers an app's client-credentials token carrying the new scope `app_catalog:resolve` with the same items, order and envelope as `GET /api/v1/me/apps`, so an app switcher no longer needs the person's `account:apps:read` grant, a Reconnect or a sign-in hop. `organization_id` is required. A person who does not exist, is not active or is not an active member of the organization gets the same `404 not_found`. The read is not audited. The scope is granted to an app in the console only (it is reserved: a management key cannot hand it out), and a person's account token is refused. See *App catalog and switcher*.
+
+### Changed
+
+- **RP-initiated logout without an accepted redirect ends on the signed-out page.** `GET|POST /oauth/logout` with no `post_logout_redirect_uri`, or one that is not registered for the client, now answers `303` to `/signed-out` (the hosted page) where it answered `200` with the plain text "You are signed out.". A registered redirect is followed as before, and under `APP_DEBUG=true` a dropped redirect is still explained in plain text.
+- **A customer environment's host serves sign-in and the person's own pages only.** On a multi-tenant deployment the persistent customer console (Members, Roles, Single sign-on, Domains, Directory Sync, Audit log, Overview) is no longer served on `{slug}.{tenant base domain}` or a custom domain: those URLs answer 404, writes included, `/dashboard` redirects to Account, and a signed-in agent gets only the person's own account tools there. Kept: sign-in, signup, consent, MFA and recovery, Account, Approvals, and the setup link `/setup/{token}`. The environment's owner administers each organization under **Organizations** in the environment console on the app host. `CBOX_ID_TENANT_CUSTOMER_CONSOLE=true` brings the customer console back. Single-tenant installs are unchanged.
+- **The workspace is the organization.** The console, the API and all 21 languages say *organization* for the Cbox customer. Organization-plane scopes take the `id:<resource>:<read|write>` names; action and MCP tool names move from `workspace.*`/`keys.workspace.*`/`platform.*` to `organization.*`/`keys.organization.*`/`admin.*`, and the old tool names still answer `tools/call` (unlisted, counted) until v3.1. URLs are unchanged. Expand-only: no migration, nothing stored is rewritten, v3 reads both spellings and still writes the v2 one where v2 reads it, and organization keys are still minted `cbid_ws_` until a cbox-cli release reads `cbid_org_`. See UPGRADING, *3.0.0*.
+- **The console's app switcher is the one every Cbox app draws.** The header renders `<cbox-app-switcher>` from `@cboxdk/cbox-ui` 0.9 (and the rail's mark is `<cbox-service-mark>`), the same element as Billing, Infra and the rest: icons from the catalog only, light and dark, with no Reconnect link. It reads the signed-in person's catalog from `GET /switch-app/catalog` (`apps.catalog`), same-origin JSON `{apps, revision, refresh_after}` straight from the catalog `GET /api/v1/me/apps` serves, with no OAuth round trip. The `appCatalog` page prop is replaced by `appCatalogUrl`; the console's own switcher, its local service marks and their CSS are gone. `img-src` admits the issuer, which serves the catalog's icons.
+- **The app switcher's catalog token lives 12 hours.** An access token whose scopes are exactly `account:apps:read` (token exchange at sign-in, or the `/apps/authorize` fallback at `{issuer}/mcp`) now lives 43200 s instead of 900 s, so app switchers no longer lose the catalog after 15 minutes. Tune with `CBOX_ID_APP_CATALOG_TOKEN_TTL` (0 turns it off); still capped by `CBOX_ID_MAX_ACCESS_TOKEN_TTL`. A token with any other scope keeps the normal lifetime (laravel-id 2.2.0, `oauth.scope_token_ttls`).
+
+### Fixed
+
+- **`/switch-app` in login-host mode** opened the account page on the login host, which has no app switcher. On the app host it now lands on the console's dashboard (`/dashboard?switch-app=1`). Single-host installs still land on the account page.
+- **`prompt=login`, `max_age` and step-up could not be completed by a signed-in person.** They are sent to the add-another-account page (`/settings/accounts/add`), whose address step, password, passkey, social and sign-in-link requests all sat behind the guest gate, which sent a signed-in browser to the dashboard: the authorization was never resumed, and "Sign in as someone else" on the account chooser did nothing either. Opening that page now lets the browser through those requests for 15 minutes (never during impersonation).
+- **An operator who signs in with a passkey keeps CLI and MCP access at the platform root.** The check compared the token's `acr` with `urn:cbox-id:aal2` by name; it now asks whether the class reaches it (takes effect with the laravel-id release that ranks `urn:cbox-id:phr` above it).
+- **An archived organization no longer shows in the organization switchers.** Archiving keeps the memberships, and the switchers listed them, so "Cbox" showed twice.
+
+## [2.2.0] - 2026-11-08
+
+### Added
+
+- **Agents and CLIs can register themselves for CIBA and the device grant.** An operator opens a resource in `CBOX_ID_PROTECTED_RESOURCES` (`dynamic_client_grants`, and `dynamic_public_backchannel` for keyless CIBA). A self-registered client then registers with its own key (`private_key_jwt` with inline `jwks`), names the resource (RFC 8707) on every request, and gets a token whose `aud` is that resource. Docs: Agents and CLIs without a browser (laravel-id 2.1.0).
+- **The approval shows what it is for.** The Approvals page and the authenticator API show the resource a token will be for (name and identifier) and mark a client that registered itself, so its name reads as its own claim.
+- **Docs: when an approval arrives silently.** Trusted devices explains why a delivered approval push can stay hidden behind a Focus mode or a notification summary, and how a person allows Cbox ID on iPhone and Android. Linked from Approvals and Approvals without the mobile app.
+
+### Changed
+
+- **CIBA `login_hint` accepts a user id or a confirmed email only.** An unconfirmed address now returns `unknown_user_id` with a plain `error_description`.
+
+### Security
+
+- **CIBA is rate limited per client and hint, and per person.** `CBOX_ID_CIBA_PER_CLIENT_HINT` (5 per minute) and `CBOX_ID_CIBA_PER_PERSON` (10 per 10 minutes); past either the client gets `429 slow_down` with `Retry-After`. Requests, approvals and denials are audited.
+
+## [2.1.0] - 2026-11-08
+
+### Changed
+
+- **The marketing site leads with agents.** cboxid.com now has an Agents section (delegated sign-in, approval before action, backchannel approval), a CIBA example, an agent approval in the hero preview, OpenID CIBA and MCP in the standards strip, and an FAQ answer on approving without the mobile app.
+
+### Added
+
+- **Approvals reach people without the app by mail.** When a CIBA request or an action held by a key's approval policy waits for somebody no enrolled Cbox Authenticator can reach, Cbox ID mails them a link to their Approvals page: who is asking and when it expires, never the binding message. In all 21 languages, branded, at most 5 per person per 10 minutes, and failing open (a mail error never fails the request). `CBOX_ID_APPROVAL_EMAIL`: `fallback` (default), `always` or `off`.
+- **Docs: Approvals without the mobile app.** How a CIBA or held-action approval reaches a person with no trusted device (the Approvals page), and what the agent must tell them: where to go, the binding message, the deadline. Linked from Approvals, Trusted devices and the approvals concept.
+
+### Fixed
+
+- **Hourly usage arrives inside Billing's grace window.** Row-based activity (tokens, one-time codes, MFA, passkeys) was dated at the start of the closed hour, 65 minutes old when sent, and Billing refused it as `too_old` (grace one hour). It is now dated at the hour's last second, and only the latest closed hour is counted by default. A `too_old` row is closed with its reason kept instead of failing the reporter every minute.
+- **Usage reaches Cbox Billing.** Every ID meter had been published without a source, so Billing created them totals-fed and refused each usage event (`meter_fed_by_totals`); no usage was ever recorded. The meters are replaced by event-fed keys (`cbox-id.sign_ins`, `cbox-id.sso_sign_ins`, …) and the old `cbox-id.auth.*` keys retire. Pending outbox rows move to the new keys (migration `2026_11_08_010000`, additive). The reporter sends one batch per workspace instead of one request per event and keeps Billing's rejection reason.
+
+### Added
+
+- **Measure everything, price nothing yet.** 31 meters, all event-fed: sign-ins by method (password, passkey, SSO, social, handoff…), SSO sign-ins, monthly active users (distinct people), tokens issued, one-time codes sent, MFA and passkey enrolments, invitations, members, CIBA approvals, directory provisioning, plus an hourly peak of users, organizations, memberships, environments, SSO and social connections, directories, verified domains, apps and active API keys per workspace. New hourly `billing:snapshot-product-usage`. See `docs/core-concepts/central-product-billing.md`.
+
+### Configuration
+
+- Optional `CBOX_ID_INTROSPECTION_RESOURCE_SERVERS` JSON mapping for explicit resource-server grants in laravel-id 1.27. Default empty; existing own-client introspection is unchanged. No deployment grant is created by this configuration adapter.
+
+### Added
+
+- Shared user preferences and app-defined metadata namespaces, with management actions for explicit reader/writer app groups and webhook recipients. The data API, versioned patches, restricted change events and erasure support live in the companion `laravel-id` change; deploy with that package release and migration.
+
+- **`idp_hint` on `/oauth/authorize`.** An app that draws its own "Continue with Google" sends `idp_hint=google`, and a signed-out person goes straight to that provider instead of to the sign-in page where they had to press Google again. Only a provider the sign-in page would offer is honoured; anything else shows the page. A failed provider sign-in lands on the sign-in page, and the resumed request carries no hint, so it cannot loop. `laravel-id-client` 0.15.1 sends it as `redirect(idpHint: 'google')`.
+- **Name your passkeys.** A new passkey is named after the password manager or authenticator that made it, read from its AAGUID (*iCloud Keychain*, *Google Password Manager*, *1Password*, *Windows Hello*, *Bitwarden*, *YubiKey*…), or after the browser and system when it does not say (*Passkey on Chrome · macOS*). Right after adding one, My account offers the name to keep or change. **Rename** on every passkey in the list changes it later; the list shows the name, the date added and when it last signed you in. Names are trimmed, 1 to 64 characters, with no control characters or direction overrides. New action `account.passkeys.rename` (`PATCH /api/v1/me/passkeys/{passkey_id}`, MCP, scope `account:sign_in:write`, audit `user.passkey_renamed`, shown on Sessions & activity); console route `account.passkeys.update`, which needs no step-up because a name is not a credential. "Last used" is stamped on every passkey sign-in (`RecordsPasskeyUse` around the framework's `Passkeys`) in a new nullable `webauthn_credentials.last_used_at` column added by this app; the framework's table already had `name`.
+- **Link at sign-in: "Link your Google account to you@example.com?"** A social or SSO sign-in whose verified address already belongs to an account in the environment, through an identity not linked to it yet, no longer bounces to a blank sign-in page. It stops on a hosted, branded link step (`/login/link`, six languages, mobile-first) where the person proves they hold the existing account: its second factor if it has one (authenticator, recovery code or texted code — a password alone is not accepted there), otherwise its password or a one-time code mailed to its own address (sent straight away when that is the only proof). Then the identity is linked on the provider's stable subject id and they are signed in and land where they were going, including the platform root's hand-off into a tenant's `/admin`. **Don't link** changes nothing. Offered only when the provider vouched for the address (Google's `email_verified`, the OAuth 2.0 catalogue's verified flag, an organization's SSO for its verified domain); otherwise refused with a sentence. The held link is server-side, signed with the application key, ten minutes, single use, five wrong answers; wrong answers count against the account's lockout and Radar. A Radar block ends it with the generic sentence; a Radar challenge withdraws the password. An SSO mandate on the account's organization refuses a link through any other provider. A mailed code answered confirms the address; the provider's claim never does. Audit `user.identity_linked` (person, provider, proof, `through: sign_in|account`). Covers environment and organization connections (OIDC, OAuth 2.0, SAML) and the deployment operator's own providers. New routes `login.link`, `login.link.verify`, `login.link.code`, `login.link.cancel` (sign-in ceremonies on the parity list).
+- **My account › Sign-in methods** replaces *Connected accounts*: password set or not, passkey count, every linked identity (provider mark and name, the address the provider gave, linked date, last used), **Connect** for every provider the environment (or the person's organization) offers that is not linked yet — through the connection's own redirect URI, behind a fresh step-up — and **Disconnect**, refused when it would leave no way in and for an organization's own SSO. On every host where My account is served. New action `account.sign_in_methods.disconnect` (`DELETE /api/v1/me/sign-in-methods/{identity_id}`, MCP, scope `account:sign_in:write`, audit `user.identity_unlinked`); `account.social.unlink` stays for existing clients. "Last used" reads `identities.last_used_at`, which `cboxdk/laravel-id` adds in its next release; until then the page leaves it out.
+- `GET /sso/oidc/{connection}/redirect` is served by the app (`Sso\OidcRedirectController`, wrapping the framework's), so a switched-off or unreachable provider lands on the sign-in page with a sentence instead of a JSON body.
+- **The platform's own environment has a console, an API and MCP tools, like every environment.** On a multi-tenant deployment the platform root environment is how every workspace owner and operator signs in to Cbox ID. Until now it had no environment console, so nobody could set its social login, sign-in methods, authentication policy, branding, typeface, SMS, Radar, apps, keys, webhooks, log streams, roles, feature flags, FGA, pipes or hooks.
+  - **Console:** the environment console is served at `/admin/…` on the root's own host, at the same paths a tenant uses, and only to **active platform operators** (`EnvironmentAdminAuth::rootOperator()`). A workspace owner who is not an operator gets `404`. A visitor with no session goes to the root's sign-in and back to the page they asked for. A name that only resolves to the root (an unmapped wildcard) serves no environment console. An operator whose organization's rules hold them (a second factor to enrol, a password to change) is sent to the console that holds them first. The console's legacy `/admin/…` redirects now answer on the root too.
+  - **Navigation:** for operators the context switcher shows a **Platform › Platform** environment on every console. The account menu adds **Platform environment** (and **Platform admin** on a tenant's console for an operator). ⌘K gains **Open …** for every environment the switcher offers. **Platform admin › Environments** has **Open console** on the platform root row.
+  - **Every console page now says what it acts on**, in one line above the page: the environment and its host, the workspace, the organization, or the whole deployment. On the platform environment the line is a warning that the change applies to everyone who signs in to Cbox ID.
+  - **REST, MCP, CLI:** an operator's root token names the platform environment like any other: `Cbox-Environment: <root slug or id>` on `/api/v1/…`, or the `environment` argument at the root's `/mcp`. It runs every environment action a workspace member's token runs in their environment (`EnvironmentMemberPrincipal::forPlatformRoot()`). `whoami` lists the platform environment for an operator. Keys of the root environment (`cbid_env_…`, minted in its console with the same key lifecycle as a tenant's) work on the root host.
+  - **Approvals:** a token or key acting on the platform environment needs its person's approval for every write, not only for critical actions (`PlatformRootApprovals`). Danger is not redeclared and no action is forked: only the credential's approval threshold is raised on the root of a multi-tenant deployment.
+  - **Lockout guards** (`RootSignInGuard`, run by the actions themselves, so every door refuses the same changes): `signin.policy.update`, `sso.connections.require_sso`, `sso.connections.disable` / `delete` and `signin.social.disable` / `delete` refuse (`would_lock_out_operators`) a change to the platform environment that would leave an active operator with no way to sign in. The refusal names who would be stranded and what to do first.
+  - **The root's hosted sign-in page** shows the platform environment's social providers, sign-in methods, theme, typeface, last-used badge, and its logo and favicon under the product's own name.
+  - **Google on the root, and every environment console:** environment administrators are root accounts, so signing in to `{tenant}/admin` happens at the root, with the root's buttons. The bounce now carries the page that was asked for (`/open/{environment}?to=/admin/users`). It is validated as an environment-console page there and signed into the POST handoff, so the person lands on that page. There is one redirect URI per provider, on the root host. A root account that administers nothing in an environment sees **You don't administer this environment** (`console/environment-refused`, 403) instead of a blank error. Each Social login page now says whose sign-in it is: the platform's (`cboxid.com/login` and every console) or the tenant's (its apps' users, never its console).
+- **The root host's workspace console acts only on the workspace.** Social login, Sign-in methods, Branding, Domains, Apps, Webhooks, Roles and the other pages that set something an environment owns used to configure the workspace's own organization in the root environment while looking like the platform's settings. They are no longer served there (`RootHostConsole`, `console.root` middleware):
+  - an **operator** is redirected to the same page of the platform environment's console (`/social-sign-in` → `/admin/social-sign-in`, Team sign-in included);
+  - anybody else sees, at that URL, where it is set, with a link to the same page in each of their environments (`console/configured-in-environment`);
+  - a write to one of them answers `404`.
+
+  Operators now get the workspace rail on the root host like anybody else (`ConsoleScope::atWorkspaceAltitude()` no longer exempts them). **Team sign-in** (the workspace team's own SSO and sign-in rules) stays for workspace owners and says so above the page.
+- **`php artisan cbox-id:operator:grant {email} [--reactivate]`:** makes an existing person of the platform root an operator. It is idempotent and recorded in the root's trail as `operator.granted`. It never creates a person and never touches their credentials, and it refuses to undo a suspension without `--reactivate`. It is for a deployment whose owner is not an operator.
+- Docs: `docs/operations/platform-environment.md` (new), `docs/getting-started/finding-your-way.md`, `docs/core-concepts/planes-and-hosts.md`, `docs/guides/social-sign-in.md`. New tests:
+  - `tests/Feature/RootEnvironment/*`: every `environment.*` console page answers the same on the root for an operator as on a tenant for its owner, and `404` for a workspace owner; every environment action authorizes, lists over MCP and routes over REST for an operator exactly as for an owner in their environment; Google end to end, with a faked IdP and real RS256; the lockout guards; the grant command; the root host's sign-in writes; the hosted sign-in page.
+  - The crawl gains an operator-on-the-root persona for both consoles.
+
+- **Social login for the whole environment** (needs `cboxdk/laravel-id` ^1.25). Authentication › Social login › **Google** now opens a form for **the whole environment** by default — every organization's sign-in page, and the plain one, offers it — with the real redirect URI to copy before saving (the provider's id is reserved when the form opens and kept across reloads). An organization can still bring its own credentials, which replace the environment's on its page, or turn one of the environment's off for its page (**Turn off here**). Precedence for one provider on one organization's page: its own (offered when on, and no button when it turned its own off — the environment's does not stand in), then its opt-out, then the environment's. Signing in with an environment provider makes nobody a member of the organization whose page it was on. Social login filtered to an organization shows exactly what that page offers and where each button comes from; the environment view lists the environment's providers, organizations' own, and which organizations turned one off. Providers can now be **changed** (rotate the client secret, provider values or extra scopes without a new redirect URI) and **turned off and on** without being removed. Existing per-organization providers keep working unchanged; nothing is migrated.
+- Actions: `signin.social.set` takes `environment_wide: true` (or `organization_id`, as before — one of them is required), `reserved_id` and `scopes`; new `signin.social.update` (`PATCH /api/v1/sign-in/social-providers/{id}`, critical), `signin.social.enable` / `signin.social.disable` (`POST …/{id}/enable`, `…/disable`), `signin.social.inherit` (`PUT /api/v1/sign-in/social-providers/inherited/{provider}` with `organization_id` and `offered`) and `signin.social.offered` (`GET /api/v1/sign-in/social-providers/offered`, what one page shows and from where; schema `OfferedSocialProviders`). `signin.social.list` takes `level`; `SocialProvider` gains `level`, `enabled` and `scopes`. Turning a provider on (created or re-enabled) emits the existing `connection.activated` webhook; audit actions `social_provider.updated`, `social_provider.disabled`, `social_provider.not_inherited`, `social_provider.inherited`.
+- **Passkeys, magic links, the bot challenge and session lifetime are the environment's**, on Authentication policy › **Sign-in methods and sessions**, under the deployment's ceiling (needs `cboxdk/laravel-id` ^1.25). Turning passkeys off removes the button from the sign-in page and **Add passkey** from My account and refuses passkey sign-in and enrolment (existing passkeys are kept); turning magic links off removes the button, refuses sending, and stops links already mailed from working; `users.create` refuses `send_sign_in_link` (`magic_link_disabled`). The bot challenge can be switched off where the deployment has Turnstile keys (a flagged sign-up then confirms its email instead). Idle and absolute session lengths apply to new sessions, and a shorter absolute length also ends longer sessions already running. New deployment switches `CBOX_ID_PASSKEYS_ENABLED` and `CBOX_ID_MAGIC_LINK_ENABLED` (default on) win over any environment; `CBOX_ID_SESSION_TTL_MINUTES` and `CBOX_ID_SESSION_IDLE_MINUTES` are the most an environment may choose. `signin.policy.update` takes `passkeys`, `magic_link`, `session_idle_minutes`, `session_absolute_minutes` and `bot_challenge` on the environment baseline (`environment_only` on an organization; `past_deployment_limit` with the limit named); `signin.policy.get` returns `in_force` and `deployment`. The embedded sign-in's `/frontend/v1/config` gains `methods`. Refused doors answer in the visitor's language (en, da, de, fr, nb, sv).
+- **A single-tenant install administers its environment from the organization console.** There is no environment console on that shape, so **platform operators and owners of the install's own organization** now change the environment's passkeys, magic link, bot challenge, session lengths and text-message codes (Authentication policy, under *For the whole environment*) and the environment's social providers (Social login: *Who is it for?* defaults to every sign-in page; change, turn off and remove them there) — through the same actions, with the same limits (`ConsoleScope::administersEnvironment()`, `ConsoleSessionPrincipal::forEnvironment()`). The install's own organization is named with the new `php artisan cbox-id:installation-organization {organization}` (flag `installation_own` on that organization's settings; until it is named, only platform operators). A customer organization's owners and admins on the same install — and an admin of the install's own organization who is not an owner — see those rows read-only and are refused every environment-level write. Self-service sign-up there stays the deployment's (`CBOX_ID_SIGNUP_MODE`) and the panel says so. A multi-tenant deployment's organization consoles are unchanged: nothing of the environment is drawn there and the writes are refused. New routes `auth-policy.methods` and `auth-policy.sms` on the organization plane.
+- **The embedded sign-in's social buttons match the hosted page** (needs `cboxdk/laravel-id` ^1.25): `/frontend/v1/config` lists the environment's providers, and with `?organization=` (id or slug) exactly what that organization's hosted page offers.
+- **Sign-in methods on the organization console** — a single-tenant install's whole administration — first under Sign-in: that organization's effective rules, the social buttons its page shows after inheritance, its SSO connection, and the environment-wide rows marked as such. On the environment console the passkeys, magic link, session and bot challenge rows now say **Set for this environment** and link to the panel; a method the deployment switched off says the deployment wins and names the variable, and session rows show the deployment's limits.
+- Docs: `docs/guides/authentication-policy.md` (new), `docs/guides/social-sign-in.md`, `docs/getting-started/finding-your-way.md`, `docs/configuration/environment-variables.md`. `FindingYourWayTest` holds "Turn on Google for the environment" to three clicks and checks the form lands on the whole environment; the console crawl's demo world has environment providers, an organization's own and an opt-out.
+- **Finding your way in the environment console** (`docs/getting-started/finding-your-way.md`, with the map, what moved, and every common task click by click):
+  - **Authentication › Sign-in methods**, the area's first page: every way in — password, passkeys, magic link, social login, Enterprise SSO, two-factor, text-message codes, self-service sign-up, Radar, the bot challenge, session and token lifetimes — with whether it is on, whose decision it is (this environment, each organization, or the deployment, naming the variable), and a link to the one page that changes it. Read-only; no new writer.
+  - **Authentication › Domains**: every organization's claimed email domains in one list, with verified/waiting and capture state, the Organization filter and search; each row opens the organization's Domains tab, where it is verified and captured.
+  - **⌘K finds a page by the word people type for it**, not only its label — *SAML*, *OIDC*, *Okta*, *SCIM*, *HR system*, *Workday*, *Google login*, *tenant*, *RBAC*, *ReBAC*, *passkeys*, *magic link*, *MFA*, *redirect URI*, *MCP*, *logo*, *SIEM* and more (`App\Platform\Console\ConsoleSynonyms`, sent as each nav page's `keywords`). A page whose keyword is exactly what was typed ranks first, so "SAML" opens Enterprise SSO rather than SAML apps.
+  - **Breadcrumbs** on every detail and create page — "Authentication / Enterprise SSO" above a connection, "Users & orgs / Organizations" above an organization — in place of the bare back link.
+  - **"Roles, relationships, flags or entitlements?"** at the foot of Roles, Permissions, Fine-grained authorization and Feature flags: the four side by side, with an example of each, linked where this console has the page.
+  - A user's page links to **Sign-in decisions** (Radar, filtered to their address); an organization's Members tab has **Invite by email**; the Directory Sync empty state names the HR systems.
+  - `tests/Feature/Crawl/FindingYourWayTest.php` walks the console from the environment's home as a person clicks — rail areas, the active area's sub-nav, the links on the page; ⌘K excluded — and holds 25 tasks to a click budget; `tests/Feature/ConsoleSynonymsTest.php` pins the searches.
+- **SMS as a second factor**, off in every environment until its Authentication policy turns it on (requires `cboxdk/laravel-id` 1.24). People add a phone number in **My account › Security** — the number is texted a code that proves it, the first second factor anyone confirms also hands out recovery codes, and the number is stored sealed and shown masked (`+45 ******78`) everywhere after. At sign-in the second-factor page offers **Text me a code** beside the authenticator app and recovery codes; the text is sent when the person presses the button, never on page load, and the page and the text are in the person's language (en, da, de, fr, nb, sv). A session completed this way records `amr` `["pwd","sms","mfa"]` — `sms`, not `otp`, so an app can tell it from an authenticator. One check now decides whether a person is held for a second factor on the password form, the embedded channel and the consent step-up (`PlatformAuth::hasSecondFactor()`), so nobody whose only factor is SMS signs in on a password at a door that only asked about TOTP. A phone number the environment no longer accepts (SMS off, country removed) does not count as a factor and is not texted.
+- **Authentication policy › Text-message codes** (environment console): on/off, the countries numbers may be in (required while on — they are the toll-fraud exposure), and "administrators need an authenticator app or a passkey too" (on by default: an owner or admin can add SMS only beside a stronger factor, and one holding SMS alone is held on My account until they add one). The panel states the security trade-off. Actions `signin.sms.get` (`GET /api/v1/sign-in/sms`, `signin:read`) and `signin.sms.update` (`PATCH /api/v1/sign-in/sms`, `signin:write`, critical; refused for an organization-confined principal; recorded as `auth_policy.sms_updated` with before and after), schema `SmsFactorPolicy`.
+- **Removing a phone number.** `users.mfa.sms.remove` (`DELETE /api/v1/users/{id}/mfa/sms`, `users:write`, critical) and the Users page's **Remove phone number** (behind the step-up), and `account.mfa.sms.remove` (`DELETE /api/v1/me/mfa/sms`, `account:sign_in:write`) for your own. Other factors and recovery codes stay; recorded as `user.mfa_sms_removed` naming who did it. The Users page shows the masked number and whether the policy still accepts it; **Reset 2FA** now counts an SMS factor as two-factor.
+- **Embedded sign-in:** `mfa_required` answers carry `factors` (`totp`, `sms`, `recovery_code` — kinds only), `POST /frontend/v1/sign-in/factor/sms` texts the code for a pending ticket (each send spends one of the ticket's five attempts), and `/frontend/v1/sign-in/factor` takes `"method": "sms"`.
+- **SMS provider and toll-fraud configuration**: `CBOX_ID_SMS_DRIVER` (`twilio`, `messagebird`, `bird`, `46elks`; `log` refuses in production), `CBOX_ID_SMS_ALLOWED_COUNTRIES`, the cooldown and per-number, per-IP, per-environment and deployment daily caps, and each provider's credentials — `docs/configuration/environment-variables.md`. Every text, refusal and provider failure is audited (`sms.sent`, `sms.refused`, `sms.failed`) with the number masked. New guide: `docs/guides/sms-mfa.md`, with what SMS does not protect against.
+- **Radar: adaptive protection at sign-in and sign-up** (Authentication › Radar; `docs/guides/radar.md`). Every attempt is judged allow, challenge or block, in this order: a **deny list**, an **allow list** (IPs and CIDR ranges, addresses, mail domains, devices; entries may expire), the environment's **own rules** in order — structured conditions (`field`, `operator`, `value`), first match decides — and ten **built-in rules**, the strictest that fires decides: credential stuffing (different addresses per IP in 10 minutes), bot-like velocity (attempts per IP per minute), repeated failures on one account, impossible travel from the last **successful** sign-in, new device (off by default), Tor/VPN/open proxy, hosting network (off by default), disposable sign-up address, and the risk score's reject and elevated verdicts (what `RISK_MODE=enforce` did before). Each built-in rule can be switched off, given another action and another threshold. Each environment chooses **monitor** (record only) or **enforce**; until it does it follows `RISK_MODE`. A block answers with the one generic sentence in the visitor's language; a challenge is the authenticator or an emailed code on sign-in, and Turnstile or — new — an emailed code before the first session on sign-up. The **decisions explorer** shows every verdict with the deciding rule, every rule that fired, the reasons and the facts, filtered by verdict, flow, rule, country, address or IP (matched by pseudonym, never shown), device and date, with *Deny this device* on a row. Signals: a pluggable `App\Platform\Radar\IpIntelligence\IpIntelligence` (geo, ASN, VPN/proxy/Tor/hosting) with `none` (default), `maxmind` (local GeoLite2/GeoIP2 files, read with the new `maxmind-db/reader` dependency, Apache-2.0) and `ipinfo` drivers, cached a day under a pseudonym; a first-party HttpOnly device cookie (`cbox_device`, 128 random bits) with a coarse user-agent/client-hints fingerprint as the fallback, no third-party script; sliding-window velocity counters per IP, address and device in the cache (`CBOX_ID_RADAR_CACHE_STORE`); a bundled list of ~600 disposable mail domains, shared with the risk score's `email.disposable` signal and refreshable with `php artisan radar:refresh-disposable-domains` (not scheduled). Fourteen actions on the environment plane — `radar.settings.get` / `.update`, `radar.mode.set` (**critical**, `radar:manage`; behind a fresh password in the console), `radar.rules.list` / `.get` / `.create` / `.update` / `.delete` / `.reorder`, `radar.lists.list` / `.add` / `.remove`, `radar.decisions.list` / `.get` — over REST, MCP and the console, with new scopes `radar:read`, `radar:write`, `radar:manage`. Configuration changes are on the audit chain (`radar.mode_changed`, `radar.builtin_rules_updated`, `radar_rule.*`, `radar_list_entry.*`); a listed value is not copied there. **Run the migration**: new tables `radar_settings`, `radar_rules`, `radar_list_entries` and `radar_devices` (pseudonyms only, the last sign-in's country and a point rounded to ~11 km, swept by `model:prune` after `CBOX_ID_RADAR_DEVICE_RETENTION_DAYS`, 180), and `risk_decisions` gains `verdict`, `enforced`, `rule`, `method`, `country`, `asn`, `device_hash`, `triggered` and `facts` — still no IP, address or user agent. `users.erase` deletes a person's remembered devices (`app.radar_devices` on the receipt) and unlinks their device from the trail. New environment variables: `CBOX_ID_RADAR_IP_INTELLIGENCE`, `CBOX_ID_RADAR_MAXMIND_CITY_DB`, `CBOX_ID_RADAR_MAXMIND_ASN_DB`, `CBOX_ID_RADAR_MAXMIND_ANONYMOUS_DB`, `CBOX_ID_RADAR_IPINFO_TOKEN`, `CBOX_ID_RADAR_IPINFO_URL`, `CBOX_ID_RADAR_IPINFO_TIMEOUT`, `CBOX_ID_RADAR_IP_CACHE_TTL`, `CBOX_ID_RADAR_CACHE_STORE`, `CBOX_ID_RADAR_DEVICE_COOKIE`, `CBOX_ID_RADAR_DEVICE_RETENTION_DAYS`, `CBOX_ID_RADAR_TRAVEL_MIN_KM`, `CBOX_ID_RADAR_DISPOSABLE_DOMAINS_PATH`, `CBOX_ID_RADAR_DISPOSABLE_DOMAINS_URL`.
+- **Feature flags** (needs `cboxdk/laravel-id` ^1.24). Developers › Feature flags on the environment console: define a flag (a key, a description, a kill switch and a default), turn it on or off for named organizations and named users (by email or id), roll it out to a stable percentage of everyone else, check who it is on for and why, and delete it. A user rule beats an organization rule, which beats the rollout, which beats the default. Six actions on REST, MCP and the console — `feature_flags.list`, `.get`, `.create`, `.update`, `.delete` and `feature_flags.evaluate` (`GET /api/v1/feature-flags/evaluate?user_id=&organization_id=`, every flag's answer and the rule that decided, plus the list the token's claim would carry) — behind the new `feature_flags:read` / `feature_flags:write` key scopes. Apps can be given the new **Their feature flags** sign-in scope (`feature_flags`), which puts a `feature_flags` claim on the access token, the ID token and UserInfo; the consent screen names it in all six languages. Changes are audited under the person or key that made them and sent as `feature_flag.created` / `.updated` / `.deleted` webhooks. `docs/guides/feature-flags.md`.
+- **Fine-grained authorization** — an environment's own relationship model, Zanzibar-style, on `cboxdk/laravel-id`'s new `FineGrainedAuthorization`. Ten actions, every one on REST, MCP and the CLI: `fga.schema.get`, `fga.schema.validate`, `fga.schema.update` (**Critical**: it changes every decision; refused with every error by line when invalid, and with the tuples it would strand when it conflicts), `fga.tuples.write` and `fga.tuples.delete` (atomic batches of 1–100, schema-checked), `fga.tuples.list`, `fga.check`, `fga.check.batch`, `fga.resources.list` and `fga.subjects.list`, under `/api/v1/fga/*`. Reads take and return a `consistency_token` (at least as fresh as a given write; another environment's token is refused) and are cached by revision, so a write is visible to the next check at once. New management scopes `fga:read`, `fga:write` and `fga:schema` (flagged critical on the key form). The trail records `fga.schema.updated`, `fga.tuples.written` and `fga.tuples.deleted` with the tuples by name and the revision. Console: **Users & orgs › Fine-grained authorization** — the schema at a glance, the tuples (filter, write, delete), and a check playground whose question is a shareable link — and the schema editor behind `env.sudo`, with Validate and a documents-in-folders starter. Guide: `docs/guides/fine-grained-authorization.md`. **Requires `cboxdk/laravel-id` ^1.24** (new tables `fga_stores` and `fga_tuples` — run the migrations).
+- **Pipes — connected third-party accounts.** People connect their own GitHub, Google, Microsoft 365, Slack, Salesforce, HubSpot, Linear or Notion account (OAuth 2.0 authorization code + PKCE), and the apps you grant lease a fresh access token for them from `POST /api/v1/vault/pipes/{provider}/token` (scope `vault.lease`; a machine token names the person in `user_id`, a person's token leases their own; an organization's app only for its members). Answers: 200 with the token, `expires_at`, `lease_expires_at`, `scopes` and `metadata` (Salesforce's `instance_url`), `Cache-Control: no-store`; a uniform 403 `lease_denied`; 404 `not_connected` and 409 `reauthorization_required` with a `connect_url`; 503 `temporarily_unavailable` with `Retry-After`. The tokens are user-owned token-vault secrets, refreshed before they expire and single-flight (framework `cbox-id:pipes:refresh`, scheduled every five minutes); a refused refresh token marks the connection needs-reconnect and emits `pipe.connection.needs_reauth`. Built on `cboxdk/laravel-id` Pipes — **requires `cboxdk/laravel-id ^1.24`** and its migration.
+  - **Developers › Pipes** in the environment console (behind the environment step-up): set up a provider with its setup steps and redirect URI, change scopes, parameters or the client secret (sealed, never shown), switch it off, grant and revoke apps, see who connected and disconnect them, remove it.
+  - Actions (REST, MCP, console): `pipes.list`, `pipes.get`, `pipes.create`, `pipes.update`, `pipes.delete`, `pipes.grants.create` (critical), `pipes.grants.delete`, `pipes.connections.list`, `pipes.connections.delete` under the new `pipes:read` / `pipes:write` key scopes; `account.pipes.disconnect` (`DELETE /api/v1/me/pipes/{provider}`, scope `account:pipes:write`).
+  - **Hosted, translated pages for the person** (all six languages): `/account/connected-services/{provider}/connect` says what connecting means and which app asked (`?client_id=…&return_to=…`, a return address only on that app's registered origins, which gets `?provider=…&status=connected|cancelled|failed`), then sends them to the provider; **My account › Connected services** lists their connections with Connect, Reconnect and Disconnect.
+  - Webhook events `pipe.connection.connected`, `pipe.connection.needs_reauth`, `pipe.connection.disconnected`; OpenAPI schemas `Pipe`, `PipeConnection`, `PipeConnectRequired`; `docs/guides/pipes.md` with an end-to-end GitHub example.
+- **The production crawl, kept** (`tests/Feature/Crawl`): for an operator, a workspace owner and admin, an environment administrator, a customer's organization admin and member, the Admin Portal, the hosted sign-in pages and the consent screen, every GET page of their console is requested and every link the returned Inertia props offer is followed as a click, on a root host and an environment host with routes cached and the trusted-host list enforced (`tests/Support/ConsoleCrawl.php`, `tests/Support/ProductionShape.php`). A 5xx, a 400, or a link a page offers that answers 403 or 404 fails it. It runs in the normal suite against the `DemoEnvironmentSeeder` world.
+- **The documentation's screenshots are retaken on every release.** `.github/workflows/docs-screenshots.yml` runs `tests/Browser/DocsScreenshotsTest.php` on each release tag and on demand, in the same image and Chromium as CI and the visual baselines, and opens a pull request against `main` with the pictures that changed — never a push to `main`. The run is also a smoke test of every page the docs show: before a picture is saved it fails on an error status for the page, any request the page made that answered 4xx/5xx, the server's error page or the console's "Something went wrong" fallback (now marked `data-app-error`), an uncaught exception, a console error or warning (read from Playwright's own buffers, so errors before any script loaded count), or a broken image; and its last test fails if any listed picture was not taken by that run. `Tests\Support\DocsScreenshots::NAMES` is the one list, and `DocsScreenshotsCatalogueTest` (normal suite) holds `docs/screenshots` to it: every file taken by the generator, embedded by a page and listed in its `_index.md`, and every embedded picture present. The screenshots in `docs/screenshots` are retaken.
+- `docs/operations/live-smoke-test.md`: a reproducible end-to-end run with the released `cbox` CLI, the MCP Inspector and both SDKs against a production-shaped local deployment (Postgres, Valkey, Mailpit, TLS through Caddy), with every command and its result, to rerun against staging.
+- **Upgrade rehearsal.** `scripts/upgrade-path-check.sh --from v1.1.1 --engine mysql|pgsql` builds a database with the previous release's own code (install, then `scripts/upgrade-path/seed-v1.php`: people with passwords, TOTP and a passkey, apps with secrets, sessions, webhooks, SSO connections, a SCIM directory, vault and management keys, portal links, audit entries), upgrades it with this checkout, compares row counts, checks every old credential with the new code (`scripts/upgrade-path/verify.php`), runs `audit-chain:verify`, `cbox-id:doctor` and an HTTP smoke test, then rolls the new migrations back and requires the previous release's schema exactly. The *Upgrade path* workflow (`.github/workflows/upgrade-path.yml`) runs it on MySQL 8.4 and PostgreSQL 17 for every release tag and on demand. `docs/operations/upgrade-rehearsal.md` covers it and the rehearsal against a restored copy of an operator's own data.
+- **"Last used" on the sign-in page.** The method a device signed in with last time — a social provider's button, the passkey, the magic link, or the email step for a password or single sign-on — carries a small *Last used* badge, as on Clerk, WorkOS and Stytch; the buttons keep their order. The method alone (`google`, `passkey`, `password`, `magic_link`, `sso`) is kept in a first-party, host-only, HttpOnly cookie (`cbox_last_sign_in`) written wherever a session is established, read on the server and handed to the page as `lastUsed`; impersonation and invitations leave it alone. Translated in all six languages; screen readers hear it as a description of the button.
+- **Device sign-in for TVs and devices (RFC 8628), end to end.** `/device` is now a hosted page — the environment's brand, the visitor's language (all six), laid out for a phone — instead of a page inside the admin console in English. `verification_uri_complete` goes straight to the confirm step; the code is accepted lower-case, without its dash or with a space; the confirm step shows the code to check against the TV, the account, what the app will get, Deny first; the success screen says to return to the TV. **`GET /oauth/device/qr?user_code=…`** draws `verification_uri_complete` as an SVG QR code for a pending code (404 otherwise), sessionless, throttled and cacheable for the code's lifetime, so a TV app needs no QR library. Approving a code is assessed by **Radar** like a sign-in: a block refuses it, a challenge emails a one-time code and asks for it on the page (`POST /device/verify`). New guide: `docs/guides/sign-in-on-tvs-and-devices.md`, with id-js and plain-HTTP snippets.
+- **Typefaces that render.** Appearance offers System, Inter, Plus Jakarta Sans, Nunito and Source Serif — every one self-hosted as latin + latin-ext variable woff2 in `public/fonts` (SIL Open Font License, licence texts beside them), so `font-src 'self'` holds and no visitor is sent to a font CDN.
+- **Shared storage for files that cross pods: the `r2` disk.** `config/filesystems.php` has an `r2` disk for Cloudflare R2 (S3 driver, region `auto`, path-style, private, `throw`), configured by `R2_BUCKET`, `R2_ENDPOINT`, `R2_ACCESS_KEY_ID` and `R2_SECRET_ACCESS_KEY`, and the application now requires `league/flysystem-aws-s3-v3` (with `aws/aws-sdk-php`, Apache-2.0) so it and the stock `s3` disk work at all. Set `CBOX_ID_AUDIT_LOGS_EXPORT_DISK=r2` and an audit-log export is written to the bucket by the worker and streamed from it through the signed download on any web pod; `CBOX_ID_COMPLIANCE_JSONL_DISK=r2` does the same for the compliance archive. `cbox-id:doctor` reports **Shared files** for them, fails **Shared disk has no bucket** for an object-storage disk without one, and fails **Brand assets cannot be uploaded** for `WHITELABEL_ASSETS_DISK=r2` (R2 refuses the public objects the disk store writes; the database store is the default). Documented under *Shared file storage* in `docs/configuration/environment-variables.md` and *Shared storage on Kubernetes* in `docs/operations/deployment.md`.
+- **The production crawl, kept** (`tests/Feature/Crawl`): for an operator, a workspace owner and admin, an environment administrator, a customer's organization admin and member, the Admin Portal, the hosted sign-in pages and the consent screen, every GET page of their console is requested and every link the returned Inertia props offer is followed as a click, on a root host and an environment host with routes cached and the trusted-host list enforced (`tests/Support/ConsoleCrawl.php`, `tests/Support/ProductionShape.php`). A 5xx, a 400, or a link a page offers that answers 403 or 404 fails it. It runs in the normal suite against the `DemoEnvironmentSeeder` world.
+- **The documentation's screenshots are retaken on every release.** `.github/workflows/docs-screenshots.yml` runs `tests/Browser/DocsScreenshotsTest.php` on each release tag and on demand, in the same image and Chromium as CI and the visual baselines, and opens a pull request against `main` with the pictures that changed — never a push to `main`. The run is also a smoke test of every page the docs show: before a picture is saved it fails on an error status for the page, any request the page made that answered 4xx/5xx, the server's error page or the console's "Something went wrong" fallback (now marked `data-app-error`), an uncaught exception, a console error or warning (read from Playwright's own buffers, so errors before any script loaded count), or a broken image; and its last test fails if any listed picture was not taken by that run. `Tests\Support\DocsScreenshots::NAMES` is the one list, and `DocsScreenshotsCatalogueTest` (normal suite) holds `docs/screenshots` to it: every file taken by the generator, embedded by a page and listed in its `_index.md`, and every embedded picture present. The screenshots in `docs/screenshots` are retaken.
+- `docs/operations/live-smoke-test.md`: a reproducible end-to-end run with the released `cbox` CLI, the MCP Inspector and both SDKs against a production-shaped local deployment (Postgres, Valkey, Mailpit, TLS through Caddy), with every command and its result, to rerun against staging.
+- **Upgrade rehearsal.** `scripts/upgrade-path-check.sh --from v1.1.1 --engine mysql|pgsql` builds a database with the previous release's own code (install, then `scripts/upgrade-path/seed-v1.php`: people with passwords, TOTP and a passkey, apps with secrets, sessions, webhooks, SSO connections, a SCIM directory, vault and management keys, portal links, audit entries), upgrades it with this checkout, compares row counts, checks every old credential with the new code (`scripts/upgrade-path/verify.php`), runs `audit-chain:verify`, `cbox-id:doctor` and an HTTP smoke test, then rolls the new migrations back and requires the previous release's schema exactly. The *Upgrade path* workflow (`.github/workflows/upgrade-path.yml`) runs it on MySQL 8.4 and PostgreSQL 17 for every release tag and on demand. `docs/operations/upgrade-rehearsal.md` covers it and the rehearsal against a restored copy of an operator's own data.
+
+### Fixed
+
+- **"Last used" marks the Google button after a Google sign-in on a tenant's sign-in page.** An environment's or organization's Google, GitHub or other catalogue provider signed people in with `amr` `['sso']`, so the badge landed on the email step. With laravel-id 1.26.2 those sign-ins record `['social', '<provider>']`, as the operator's own providers always did. The badge corrects itself on the next sign-in.
+- **"Confirm it's you" no longer loses what you clicked.** Every step-up sent the browser to the full-page `/sudo` screen and back to the page, never to the action: *Add passkey* ended on My account with no passkey, and every other gated button (connecting or disconnecting a sign-in method, new recovery codes, rotating a secret, registering an app, hook, webhook or directory, the token vault, legacy login, support sessions…) had to be clicked again. The prompt now opens as a dialog on the page you are on, with the reason the action gave, and the action runs as soon as the password is accepted (`StepUpPrompt`, `resources/js/lib/stepUp.ts`). Adding a passkey ends the dialog on **Continue: create passkey**, because browsers only run the passkey ceremony inside a click. Both planes keep their own step-up: `/sudo` for the organization console and My account, `/admin/sudo` (the platform-root account) for the environment console; one never opens the other. A gated request a script made gets `403` with `X-Cbox-Step-Up` and a `step_up` body instead of a redirect; `/sudo` and `/admin/sudo` answer JSON when asked (`200`, `422`, `429`), with the same five-attempt throttle. A page opened directly still goes to the full-page screen, which now returns to the page you came from instead of My account or the environment's home.
+- **Connectors leads somewhere.** The environment console's Connectors area was a dead end: the catalog showed four cards (outbound SCIM, webhooks, inbound directory sync, IdP federation) that could not be clicked and had no action, Directory Sync said "Managed in module" instead of a count, and Connections said "No connectors yet" in an environment with an SSO connection, a SCIM directory, a webhook and a log stream. Connectors is now the one place to see and start every integration. Each integration is still set up and changed on its own page; Connectors writes nothing and adds no actions.
+  - **Catalog:** a card for every kind the platform has: Enterprise SSO, Social login, Directory Sync, HR systems, outbound SCIM provisioning, SAML apps, webhooks, hooks, log streams and Pipes. Each card shows a live and a failing count, one line on what it is for, **Set up** (the setup form), **Manage (n)** (the list, filtered to the organization when the catalog is about one) and its guide. The whole card is a link. Shortcuts for a provider (Google, Workday, Datadog, GitHub…) open the setup form with that provider chosen: the directory form now reads `?provider=` and the log stream form `?destination=`. A banner at the top links to every failing connection.
+  - **Connections:** every connection of every kind in one list, with its type, organization (or *Whole environment*), status, health, last activity and last error, each row linking to its own page. Failing connections come first. Filter by status, type and organization. **New connection** opens the catalog. Health is read from each connection's own records (a webhook's or provisioning connection's consecutive failures, a directory's last sync, a log stream's circuit); a bound `ConnectorAnalytics` backend still overrides it.
+  - The list reads the connections themselves rather than the modules' narrower "list" contracts, which is why directories, paused connections and webhooks subscribed to unlisted events were missing. `config('connectors.webhook_event_types')` is gone.
+  - `tests/Feature/Crawl/ConnectorsCrawlTest.php` follows every link on every Connectors page, with no per-route limit (`ConsoleCrawl::everyLink()`), and fails on any that answers 403 or 404. `FindingYourWayTest` adds "set up an outbound SCIM connection from Connectors" (2 clicks, which is only possible through Connectors), "find a failing webhook from Connectors" and "connect Workday from Connectors".
+- **Other pages that named a page without linking to it, or had nothing to click.** The require-SSO notes on Sign-in methods, an SSO connection's page and an organization's Social login view now link to Authentication policy. SAML apps links to Enterprise SSO, a directory's group mapping links to Roles, and a new agent's form links to Approvals. An empty Apps, APIs, Feature flags, Radar rules, App audit log schemas or Fine-grained authorization page now has its create button in the empty state as well as in the header. A role with no permissions to grant offers **Write a permission**. The chevron on a Roles row is a link to the role. An organization's empty API keys tab says where member keys come from and links to Apps.
+- **Enterprise SSO lists enterprise connections only.** Social providers are stored as federation connections too, and **Authentication › Enterprise SSO** (and an organization's SSO tab) listed the environment's Google and GitHub buttons as SSO connections. The environment home's Enterprise SSO count and the setup checklist's "Connect enterprise SSO" step counted them too, so turning Google on ticked that step. All three now count enterprise connections only, as the organization overview, Sign-in methods and the Admin Portal already did.
+- **Connectors › Connections is paged in the database.** Each type is one query that says in SQL whether a row is active and whether it is failing. The list is a `UNION ALL` of them, ordered failing first, then by type, then by name, and cut to the page there. Only the 50 rows on the page are loaded as models. The catalog and the filter counts use one aggregate per type. The filters, the order and the crawl are unchanged.
+- **The Agents page shows the key tabs.** AI agents › Agents is the environment's **Secret keys** tab, but it drew no tabs, so publishable keys were a rail away. It now shows the same tabs as **Developers › API keys**: Secret keys, Publishable keys, and **Workspace keys**, which is an absolute link to the workspace's host where that page lives. **AI agents › Connect** links "Keys › Workspace keys" there too.
+- **A Radar rule's page has a breadcrumb** (*Authentication / Radar rules*) like every other detail page, and is titled by the rule, instead of a "← Rules" button under the heading "Radar".
+- **Every email is branded, translated and has a plain-text part — including one-time codes.** The code email (a Radar step-up on sign-in or sign-up, approving a TV or CLI sign-in, linking a sign-in method) was the framework's generic message: English, plain text, unbranded, subject "Your verification code". It is now `OneTimeCodeMail`, sent through `App\Platform\Otp\BrandedEmailOtpChannel`, which `config/cbox-id.php` binds to the framework's `cbox-id.otp.channels.email` key (the framework's own extension point; nothing forked). It is in the language of the page the code was asked from, says what the code is for, shows the code large, monospaced and selectable in one tap, says how long it lasts and that it works once, and says what to do if it was not you — per flow (an unasked device code is device-code phishing; an unasked sign-in code means the password is known). **The code is not in the subject or the inbox preview line** (a hidden preheader carries the purpose sentence instead): a subject is readable on a lock screen, a watch and in gateway logs, and every one of these codes is a second factor or an ownership proof.
+- **All nine emails** (magic link, password reset, email confirmation, admin-set password, invitation, workspace invitation, Admin Portal link, certificate warning, one-time code) now share `BrandedMailable`: the brand of whoever the reader was dealing with (`MailBrands`: the organization's when the email is about one — invitation, portal link, certificate warning, or a sign-in on its `/o/{slug}` page — else the environment's). That is the Branding page's product name (else, on a customer's environment, the environment's name, as on its sign-in page; else `CBOX_ID_BRAND_NAME`), its uploaded logo, its theme colour on the button, monogram and card edge (with text kept at 4.5:1 on it), and its **email sender name** on the From line, which the Branding page has offered for a while and nothing read. The address stays `MAIL_FROM_ADDRESS`. Every email gains a plain-text alternative. Grey text that was 3.1:1 (footer) and 3.3:1 (fine print) is now above 4.5:1. The email confirmation, workspace invitation and Admin Portal emails gain an "if you weren't expecting this" line. New `mail.one_time_code.*`, `mail.email_verification.not_you`, `mail.organization_invite.note` and `mail.portal_link.not_expected` in all six languages.
+- **Microsoft Entra ID sign-ins can use the link step.** Entra never sends `email_verified`, so every Entra sign-in whose address already had an account was refused. Its documented signal, the optional `xms_edov` claim (the address is in a domain the user's tenant has verified), now counts when it is the JSON boolean `true` (`EntraVerifiedEmail`): for the environment's or the operator's own Microsoft provider as `email_verified` would, and for an organization's own Entra connection only inside a domain that organization has verified. Without the claim the existing sentence still refuses. The Microsoft provider's setup steps on the Social sign-in page now say to add `email` and `xms_edov` under Token configuration (`ProviderSetupSteps`), and docs/guides/social-sign-in.md explains why.
+- **Starting a support session on the root host no longer lands on a 404.** Impersonating from platform admin (or from the platform environment's Users page) sent the operator to platform admin (or the environment console's home), which answers the impersonated member's session with a 404 that has no banner and no Exit. It now lands on `/dashboard` everywhere, as it already did on a single-tenant install. **Exit impersonation** after a session started from the platform environment's console now restores the operator, who holds no workspace membership, instead of signing them out.
+- **Every federated sign-in failure now says why, on the page the person lands on.** The SSO and social callbacks put their message in the validation bag under `email`, which the sign-in page never reads on a fresh load, so the message was dropped — production: signing in with Google as an address that already had a password account bounced to `/login` with nothing on screen. The reason is now a translated `FederationFailure` on Inertia's flash (`signInProblem`), drawn as an alert on the sign-in page on every host, in the visitor's language (the federation routes now resolve the locale): expired or replayed state, Cancel at the provider (no longer reported as an expired link), an answer that does not verify, a provider that cannot be reached, a switched-off or unknown connection (also on the button, and on the OAuth 2.0 button, which answered a bare 404), an incomplete SAML response, a refused link, a deactivated account (previously an uncaught `AccountInactive`, a 500). Somebody already signed in sees it on My account. The operator providers' failures use the same sentences.
+- **An uploaded logo is no longer thrown away by the wrong Save on the Branding page.** The page had two Saves: **Save changes** in the header (theme, logo, favicon) and **Save name & email** at the foot of the panel below. An administrator who uploaded a logo, scrolled down and pressed the nearer one was told "Branding saved." while the logo, which that button never sent, was gone after a refresh (production: only `POST /admin/branding/profile` in the session's log). The page now has **one Save**, in a bar pinned to the bottom of the screen that appears with the first change ("Unsaved changes · Discard · Save changes"), stays in view while scrolling the editor and preview, and sits above the phone's navigation bar. It sends the theme, the changed images and the name & email in **one request** to the theme's save route; the theme's action runs first and a refusal there writes nothing, a refused profile field is marked on that field (`profile.appName`, `profile.palette.primary`, …), and the page scrolls to the first refusal. Leaving with changes unsaved asks first: `beforeunload` for the tab, a dialog for a link inside the console (`useUnsavedChangesGuard`, `resources/js/lib/unsavedChanges.ts`). The header Save is gone, the `profileHref` page prop is gone, and `branding.whitelabel.set` now names the theme's save routes among its console routes. `POST …/branding/profile` still saves the name & email on its own. Tests: `tests/Feature/BrandingOneSaveTest.php` (the environment default's logo and favicon stored, served as `image/png` with an immutable year-long cache, kept after a reload, drawn on the environment's `/login` and on an inheriting organization's `/o/{slug}/login`; refusals), `tests/Browser/EnvironmentBrandingTest.php` (on an environment host as its administrator: attach a logo and a favicon, preview from `data:`, save from the bar, reload, sign-in page; Discard and the leave guard; the bar at 390px).
+- **The phone menu gives its room to navigation.** The account block at the bottom of the mobile sheet — name, address and up to six actions — was pinned open and took half the sheet; it is now one row (initial, name, address) that folds the actions out when tapped.
+- **Signing in no longer ends on a blank white modal.** A workspace owner with one environment is sent from the dashboard to `/open/{environment}`, which answers with a self-submitting form to the environment host. The sign-in is an Inertia visit, so the client followed that redirect inside its request and drew the form as an empty modal. `/open` is now marked as leaving the app (`RedirectOutsideInertia::LEAVES`) and answers an Inertia visit with a real navigation (409 `X-Inertia-Location`).
+- **Resend works as the mailer.** `resend/resend-php` is now a dependency, so `MAIL_MAILER=resend` with `RESEND_API_KEY` sends (the `resend` mailer and `services.resend.key` were configured, but the package Laravel's transport needs was missing).
+- **An unreachable mail server is said, not a 500.** "Send confirmation link" answers with a sentence when the deployment cannot reach its mail server (and does not count the attempt). `cbox-id:doctor` now fails **Mail server unreachable** when the mail server's name does not resolve — it used to report "sent with postal" for a Postal host that no longer existed. New `php artisan cbox-id:users:confirm-email {email}` (audited as `user.email_confirmed_by_operator`) confirms a platform-root person's address when mail cannot deliver the link.
+- **An unconfirmed email address can now be confirmed from the console.** Every console page shows a banner while the signed-in person's address is unconfirmed, with **Send confirmation link** (new action `account.email.confirmation.send`, `POST /api/v1/me/email/confirmation`, limited per person); an environment administrator on an environment host is sent to their account on the root host. Before, the refusal pointed at "your account page", which had no such button — and the signup resend sent nothing to an owner whose workspace already had an environment.
+- A console form refused because the person has not confirmed their email address now goes back to the form with the sentence that says so ("Confirm your email address before you add a sign-in provider…"), instead of the generic "Access denied" page that hid it. The API still answers 403 with the same message. (`App\Platform\EmailNotVerified`)
+- Management API: an action that itself answers `202` (a queued directory sync) now documents both bodies under `202` (`oneOf` its own answer and the approval hold); the hold used to overwrite it, so generated clients lost the real answer. The FGA batch check is the action `fga.check_batch` (was `fga.check.batch`, which nested inside `fga.check` in every generated client); its route and MCP tool are unchanged.
+- **The typeface choice on Appearance did nothing in the preview, and half of it on the real page.** The editor set `--font-sans` on the preview, but its text inherited the computed family from `<body>`, so the preview never changed; and the hosted page applied the choice to body text only — headings are drawn in `--font-display`, which nothing overrode. The preview now applies the family, both variables are emitted (`AppearanceCss`, `lib/appearance.ts`), and "Serif" is a bundled face rather than whatever serif the visitor's system has.
+- **Signing in with a passkey, a social provider or a magic link lost the page you were going to** — a device approval, an app's sign-in — and landed on the dashboard; only the password form returned you. All of them now go back to the intended page.
+- **A person held by the MFA mandate could not enrol.** The hold exempted the `account` and `sudo` screens but not their submits, so every enrolment POST (authenticator, passkey, the password confirmation in front of them) was bounced back to the page that held the person. The submits under `account.mfa.*`, `sudo.*` and `passkeys.register*` now pass.
+- **HR-system directory sync** — Workday, BambooHR, Rippling, HiBob and Personio, on laravel-id's new HRIS connectors (requires `cboxdk/laravel-id` ^1.24). Accounts follow employment: created on the start date, deactivated at the end of the last day, departments as groups mapped to roles, the manager and chosen HR fields carried onto each person; leavers who never had an account get none, a record that cannot be synced is reported by employee ID without holding anybody else up, and a sync that would deactivate more than half of the people deactivates nobody.
+  - Actions (REST, MCP, CLI and the console alike): `directories.hris.connect` (`POST /api/v1/directories/hris`, critical — the credentials are shaped by the framework's catalogue and probed against the HR system before they are sealed; the first sync is queued), `directories.sync` (`POST /api/v1/directories/{id}/sync`, write — pull now on a worker, `full` for an incremental system), `directories.sync_settings.update` (`PATCH /api/v1/directories/{id}/sync-settings` — each pull directory's interval, 15–1440 minutes, and an HR system's passed-through fields), `directories.credentials.replace` (`PUT /api/v1/directories/{id}/credentials`, critical — any pull directory, verified first).
+  - `Directory` answers `hris`, `last_sync_started_at`, `last_sync_status` (`running` / `succeeded` / `partial` / `failed`), `last_sync_stats` (counts and per-record failures by employee ID, never by name or email), `sync_interval_minutes`, `next_sync_at` and `custom_attributes`; `provider` gains `workday`, `bamboohr`, `rippling`, `hibob`, `personio`.
+  - Console › Directory Sync offers the five HR systems with their own steps and fields, and a pull directory's page shows its last sync (status, counts, the records that could not be synced), **Sync now** / **Full sync**, its sync settings, and — for an HR system — **Replace credentials** behind a step-up.
+  - Admin Portal: a link covering Directory Sync can now connect an HR system (`/setup/hr-system`) — pick it, follow its guide, paste what it produced — in all six languages, and pull it on demand. The intent covers `directories.hris.connect` and `directories.sync`.
+  - Docs: [HR system sync](docs/guides/hris.md), and an IT-admin page per HR system (`docs/for-it-admins/idp/{workday,bamboohr,rippling,hibob,personio}.md`), generated with the identity provider pages by `php artisan docs:idp-guides` from the framework's catalogue.
+- **An expired audit-log export whose file could not be deleted stopped the prune.** On a disk that throws (`r2`), one refused delete ended `audit-logs:prune` mid-sweep. It is now reported, the export is left as it was, and the next run deletes it, never marking an export `expired` while its file is still in the bucket.
+- **Every environment-console page but its home answered 400 in production**, and so did the workspace's Audit log, Keys, Enterprise SSO and Sign-in rules. The environment switcher asks the router whether the page you are on exists in the other environment, and asked with `Request::create('/admin/users')` — a request for `http://localhost/…`. Production caches its routes (`LARAVEL_AUTO_OPTIMIZE`) and enforces its trusted-host list, so the compiled matcher read that host and Symfony refused `localhost` with a `SuspiciousOperationException`: a bare "400 Bad Request". `App\Platform\RouteLookup` now matches a path from the origin of the request being served; `HandoffTarget` and `RedirectOutsideInertia` (which had the same probe for a relative redirect) use it. Invisible to the suite, which neither cached routes nor enforced hosts and ran on `localhost`; `tests/Support/ProductionShape.php` does both now. Found by crawling a production-shaped stack (two web replicas behind a TLS-terminating proxy, PostgreSQL 18, Valkey).
+- **Token vault, Legacy login, New agent and New log stream were dead links in the environment console.** A click is an Inertia visit, which the environment step-up gate answered as a ceremony XHR — a 403 JSON body the client can only show as an error. It now redirects to the step-up screen, as the account plane's gate already did, and returns the administrator to the page they clicked. The account plane's gate also returns to the clicked page now, rather than to the page it was clicked from.
+- **An uploaded logo or favicon never displayed in production.** Brand images went to the `public` disk and were served at `APP_URL/storage/…`, which the production image does not serve (nothing runs `storage:link`) — and with two web replicas, each with its own disk and both replaced on every deploy, could not have worked for long if it had. They are now stored in the database (new `whitelabel_brand_assets` table — run the migration) and served at `/brand-assets/…`, sessionless and cached as immutable. `WHITELABEL_ASSETS_STORE=disk` keeps the disk store for a single machine. A logo uploaded before this keeps its old URL; upload it again.
+- **The dashboard linked to modules that were switched off.** A module's card (Logins, Audit export, Risk events, Active connectors, Branding) linked to its module's page whether or not the module was on, and the page answered 404 — on cboxid.com, "Sign-in activity" and "View exports & retention". `DashboardCards::add()` takes the module's feature, and a card is resolved only while it is active.
+- **Settings on the platform root offered an issuer that is not one.** On a multi-tenant deployment the root's discovery document is a deliberate 404, but Settings showed every workspace administrator an Integration panel pointing their OIDC client at the apex. The panel is shown where the host is an issuer.
+- **Pages offered links their viewer would be refused**: the member roster's Roles link (403 for a member), the app page's Secrets link for an app without a shared secret (404), and on a customer's console the roles page's "add permissions manually" (404 there) and the dashboard's audit-log and setup-guide links (403/404 for a member). Each is now offered only where it opens; `ConsoleScope::serves()` answers "does this console serve that page" for a pointer.
+- **An audit-log CSV export downloaded as an empty file** when the file was not on the answering replica's disk — the export is written by the worker, and the default `local` disk is per pod. The download now answers 404 instead of an empty 200, and `cbox-id:doctor` fails a `local` disk for files that cross processes (audit-log exports, compliance JSONL bundles, brand images on a disk) when the deployment is scaled out.
+- **An audit-log export downloaded as an empty CSV on Kubernetes.** The worker pod wrote the file to its own disk and the web pod streaming the download had none; `readStream()` answered null and the response was a 200 with an empty `audit-logs-….csv` for an export marked `ready`. A missing export file is now a 404 with an error in the log naming the disk, and `cbox-id:doctor` fails a scaled-out deployment whose audit-log export, brand-asset or compliance-archive disk is a pod-local `local` disk (**Files are local to one machine**), and a brand-asset disk served through a `public/storage` link that does not exist (**Brand asset links are dead** — the image has no `storage:link`).
+- **`TRUSTED_PROXIES` written in `.env` was ignored once `config:cache` had run.** It was read with `env()` in `bootstrap/app.php`, before the application bootstraps, so on a VM that followed the deployment docs (`.env`, then `php artisan config:cache`) no proxy was trusted and every redirect, mailed link and absolute URL went out as `http` with the proxy's IP for every client. It is now `config/trustedproxy.php`, which Laravel's TrustProxies middleware reads per request. Unset still trusts nobody. Kubernetes, which passes the variable in the process environment, was not affected.
+- **`php artisan view:cache` failed on every container start.** Six console modules registered a Blade namespace for a `resources/views` directory none of them has (their pages are Inertia components), and `view:cache` — which the production image runs at start under `LARAVEL_AUTO_OPTIMIZE` — stopped on the first missing directory, as did `php artisan optimize` on any checkout. The dead registrations are gone.
+- **Dead documentation links.** `https://cboxid.com/docs` answered 404: config/docs.php gave it as the example of a docs site while nothing served it, and the docs are published on cbox.dk. `/docs` and `/docs/{page}` now redirect, on every host, to the published page (`DocsRedirectController`, a 302; a trailing `.md` is dropped, only letters, digits, `_`, `-` and `/` are accepted, and with `DOCS_BASE_URL` blank it is a 404). The console's **Read the guide** links and the Get started page's quickstart link now default to the rendered site, `https://cbox.dk/products/cbox-id/docs/<page>` (`DOCS_BASE_URL`, `DOCS_LINK_SUFFIX` now empty), instead of GitHub's source view; set the GitHub URL with the `.md` suffix to keep the old behaviour. `/docs` is not pointed at the first-run screen on an unclaimed install. `tests/Feature/ProductLinksTest.php` holds every literal link the product renders (React pages, Blade views, redirects, props) to a route or a public file, every quickstart and guide link to a page in `docs/`, and the redirect's behaviour.
+- **24 old console addresses redirected to a 404 on cboxid.com.** The moved-page redirects (`/admin/applications` → `/admin/apps`, `/admin/conflict-rules`, `/admin/event-hooks`, `/admin/stored-tokens`, `/admin/frontend-keys`, `/admin/analytics`, `/admin/acting-organization`, … and their `/new` and `/{id}` pages) answered on every host, while the environment console they point at exists only on an environment's host of a multi-tenant deployment — so on the platform root and on a single-tenant install they answered `301` to a `404`. `ConsoleRoutes::moved()` now gives an old address the existence gates of the page it moved to (`plane:environment` + `multi.tenant` for `/admin/…`, `plane:console` for console pages), so it answers where its destination does and is a plain 404 elsewhere. `tests/Feature/MovedPageRedirectsTest.php` follows every registered moved page on the platform root, an environment's host and a single-tenant install.
+- **79 anchors in the actions reference were dead on the docs site.** `docs/reference/actions-*.md` linked each action by GitHub's slug of its heading (`#organizationsportal_linkscreate`); the docs site's renderer drops the `_` (`organizationsportallinkscreate`), so every Contents link to an action with an underscore went nowhere on cbox.dk. Each action heading now carries an explicit anchor that is its name (`#organizations.portal_links.create`), the same id on both renderers (`ActionsReference::anchor()`). `DocsLinksTest` now checks every anchor against GitHub's slugs AND the ids the docs site's own renderer (league/commonmark, with cbox.dk's options) produces, and also covers `CHANGELOG.md` and `SECURITY.md`.
+- **Four screenshots no page showed** (`users`, `organizations`, `directory-detail`, `admin-portal-link`) are now embedded where they belong (the environment console in `getting-started/screens.md`, Directory Sync's group mapping step, the IT admin's setup link page). A broken sentence in the Directory Sync guide's first step is fixed.
+- **An environment action taken from the platform root minted its URLs on the root.** With a workspace member's root token — `cbox id …` after `cbox login`, the root's `/mcp` with `environment`, or an SDK with `environment=` — a SAML connection's `service_provider` entity ID, ACS URL and metadata URL, an OIDC connection's `redirect_uri`, an Admin Portal link and a mailed invitation's accept link all named the root, which serves none of them (a 404, "This link has expired", a bounce to the root's sign-in). The action now runs with URLs pinned to the environment's issuer (`App\Platform\EnvironmentOrigin`), and `MailLinks` follows the pin. An approval's `poll_url` stays on the host the request came to, where the root's token is valid. A SAML connection created from the root before this keeps the root-host `sp_entity_id` / `sp_acs_url` it stored; set them again with `sso.connections.update` or recreate the draft. Found by the live smoke test.
+- **MCP tool descriptions** no longer tell an agent that a critical action (`apps_create`, `keys_create`, …) "removes or revokes something"; a critical tool says it hands out a credential, changes sign-in, or removes something hard to undo.
+- **Claiming a fresh install works with more than one web replica.** The `/first-run` setup token lived in a file on one pod's disk, so with two replicas the claim landed on the pod without it and failed at random. It now lives in the database every replica shares (new `setup_tokens` table — run the migration): stored only as a SHA-256 hash, compared in constant time, spent on a successful claim, and valid for an hour (`CBOX_ID_SETUP_TOKEN_TTL`, in minutes). `php artisan cbox-id:setup-token` now **mints a fresh token** on any instance and prints it, retiring the previous one — a hashed token cannot be read back; on a claimed platform it prints nothing and spends any leftover, and on an un-migrated database it says to migrate. An expired token is re-armed on the next look at `/first-run`. `CBOX_ID_LOG_SETUP_TOKEN=true` still logs the token armed on the first look. The old `storage/app/private/cbox-id-first-run.token` file is no longer read; delete it if one is left over.
+- **The queue worker count can be raised.** Every queue sits in one worker group, and its `max` of 2 was a literal in `WorkerProfile`, so raising `QUEUE_AUTOSCALE_MAX_TOTAL_WORKERS` alone did nothing. `QUEUE_AUTOSCALE_WORKERS_MIN` / `QUEUE_AUTOSCALE_WORKERS_MAX` (defaults 1 and 2, today's values) now set each group's bounds through the package's own per-group `overrides`. The pair is checked when the configuration loads and refuses to boot, naming the variable, when a value is not a whole number, the minimum is below 1, the maximum is below the minimum, or the maximum is above the total cap (a bound the cap would silently clamp). `docs/operations/queue-workers.md` and `docs/configuration/environment-variables.md` describe the knob.
+- **`cbox.yaml` binds the database user as `user`**, the field name the Cbox platform's manifest reader knows; it refused `username`. The Postgres major is now stated (`version: "17"`) rather than left to the platform's default, and `DeploymentManifestTest` holds it to the `postgres:17` CI tests on, holds the file to the reader's keys, binding fields and command rules, and names `secrets` and `health` as the two keys the platform still has to learn.
+- **A refusal the input already decided came after the approval.** A key whose policy holds `webhooks.create` had its owner approve on their phone, and the repeat then failed `unsafe_url`. The action runner now runs authorize → validate → the action's preflight (`App\Platform\Actions\Preflight`) → approval gate → execute, and the actions whose refusal is knowable up front say it before anything is held: `webhooks.create` / `update`, `hooks.create`, `log_streams.create` / `update`, `provisioning.targets.create`, `sso.saml_metadata.import`, `sso.connections.create` / `update` and `sso.domains.create` — an unsafe URL (the same SSRF guards and toggles as the registries, `App\Platform\Integrations\OutboundUrl`), a foreign id, a missing owner, incomplete settings, a malformed domain. A preflight changes nothing and calls no one's server; the discovery and metadata fetches still wait for the approval. Found by the live smoke test.
+- **`organizations.portal_links.create` said `emailed_to` for a mail a sandbox dropped.** In a sandbox environment the answer is now `emailed_to: null` with `email_suppressed: true` (a new, always-present field), the link records no address, and the console says to share the link by hand. Found by the live smoke test.
+- **The MCP server reported version `1.0.0`** whatever ran. `serverInfo.version` is now the application's version: `config('app.version')`, `APP_VERSION`, which the image build stamps from `git describe --tags` (`2.0.0`, or `2.0.0-3-gabc1234` past it); unset, `dev`. Found by the live smoke test.
+- **A key's approval request did not name its environment.** The binding message on the approver's phone now reads `Key "Deploy agent" in Production wants to run webhooks.create · 7F3A`; a long name is cut from the label, never from the action or the code. Found by the live smoke test.
+- **MCP tool input schemas wrote nullable fields as `type: ["string", "null"]`**, which dialects without type arrays (OpenAPI 3.0-style, Gemini's function declarations) refuse — 185 MCP Inspector warnings. Tool schemas now write `anyOf: [{type: "string", …}, {type: "null"}]` with the description beside it (`App\Mcp\PortableSchema`); null stays sendable. The REST API's OpenAPI 3.1 is unchanged. Found by the live smoke test.
+- **Rolling 2.0.0's migrations back now restores 1.1.x's schema exactly.** `onboarding_dismissals.organization_id` is `NOT NULL` again (the environment checklist's dismissals, which name no organization, are removed), and `admin_portal_links.scope` comes back without the `default 'sso'` it never had. An Admin Portal link whose intents the old `scope` cannot name (domain verification, log streams, certificate renewal) is expired on the way down instead of coming back as an SSO link.
+
+### Changed
+
+- `cboxdk/laravel-id` `^1.25` → `^1.26` (migration adds `identities.last_used_at`). **My account › Sign-in methods** now shows when each linked identity last signed you in; identities linked earlier read *never* until their next sign-in.
+- **Platform admin is part of `/admin`: one console for an operator on the root host.** It was a second console at `/platform`, with its own rail, an amber strip and an **Exit platform admin** link, beside the platform environment's console at `/admin`, with the account menu between them. Its pages are now the **Platform** area of the platform environment's console, first on its rail: **Workspaces, Environments, Organization tree, Operators, Usage, Queues, Search** (`/admin/platform/workspaces`, `/admin/platform/environments`, `/admin/platform/organizations`, `/admin/platform/operators`, `/admin/platform/usage`, `/admin/platform/queues`, `/admin/platform/search`; the queue monitor at `/admin/platform/queues/monitor`). Same shell, rail, context switcher, ⌘K, breadcrumbs and page headers as every other `/admin` page.
+  - **The amber strip is the page-scope line.** Every Platform page says *Platform admin: The whole deployment* above it, in the warning colours the platform environment's own pages use. `PlatformStrip`, the shell's `platformMode` and `exitPlatformHref`, and the strip's CSS are deleted.
+  - **One area, not three.** Platform, Insights and Administration are one **Platform** area, so the root console's rail does not carry "Insights" and "Administration" beside Monitoring and Advanced. Platform › Organizations is **Organization tree**, so the rail does not have two pages called Organizations. New nouns in `Vocabulary`: `PLATFORM`, `WORKSPACES`, `ENVIRONMENTS`, `ORGANIZATION_TREE`.
+  - **Who sees it is unchanged:** active platform operators (`AuthenticateOperator`), on the root's own host (`plane:operator` on the route group, which the old `/platform` group did not carry). Anybody else gets `404` for every `/admin/platform` address, and a tenant's host has no such address. On a single-tenant install, which has no environment console, the same pages at the same addresses are a **Platform** area of the console's rail.
+  - **Route names and writes are unchanged:** `platform.*` routes keep their names, every write runs the same action, and the operator API stays at `/api/v1/platform`.
+  - **Every old address redirects (301, query string kept):** `/platform` → `/admin/platform/environments`; `/platform/workspaces[/{id}]`, `/platform/customers[/{id}]` → `/admin/platform/workspaces[/{id}]`; `/platform/organizations[/{id}]`, `/platform/operators`, `/platform/usage`, `/platform/queues`, `/platform/queues/monitor`, `/platform/queues/monitor/job/{uuid}`, `/platform/search`, `/platform/search/jump/{id}` → the same path under `/admin`; `/operator` → `/admin/platform`; `/platform/security` → `/account`.
+  - The workspace console on the root keeps **Platform admin** in the account menu (now `/admin/platform/workspaces`); the platform environment's console drops it, since it is in the rail.
+- Docs: `docs/operations/platform-environment.md` (a Platform admin section, support sessions, the redirect table), `docs/getting-started/finding-your-way.md`, `docs/core-concepts/planes-and-hosts.md`, `docs/core-concepts/workspaces-and-organizations.md`, `docs/getting-started/screens.md`, `docs/operations/queue-workers.md`, `docs/operations/deployment.md`, `docs/getting-started/installation.md`, `docs/self-hosting/quickstart.md`. Tests: `tests/Feature/RootEnvironment/PlatformAdminInRootConsoleTest.php` (the shell, the 404s on every platform route for a non-operator and on every other host, support sessions end to end), every old address in `MovedPageRedirectsTest`, the operator crawl from `/admin`, and an operator task list in `FindingYourWayTest`.
+
+- **One Branding page.** "Appearance" and the white-label module's "Branding" page both set the logo and the colours, and the environment rail read "Branding › Branding". They are one page now — Settings › Branding (`/branding`), the environment console's Branding (`/admin/branding`) and an organization's Branding tab (`/admin/organizations/{id}/branding`): the sign-in theme, typeface, logo and favicon against a live preview, then **Name & email** (product name, email sender, welcome mail, and the console palette folded away) from the white-label module. Each half saves through its own action (`branding.appearance.set`; `branding.whitelabel.set`, read with `branding.whitelabel.get`, now readable by an organization's administrator from the console). `/appearance`, `/admin/appearance` and `/admin/organizations/{id}/appearance` redirect. Route names: `appearance` → `branding`, `environment.appearance` → `environment.branding`, the module's `whitelabel.branding*` routes are gone (`branding.profile.update` and its environment twins replace their saves).
+- **Logos and favicons are uploads, never URLs** — a remote image on a sign-in page tells its host the address, browser and arrival time of every visitor. `branding.appearance.set` (`PUT /api/v1/branding/appearance`) takes `logo` and `favicon` as base64 `data:` URIs (logo PNG/JPEG/WebP ≤ 1 MB and 4096 px; favicon PNG/ICO/WebP ≤ 256 KB and 1024 px), sniffed from the bytes; **SVG is refused** (it can carry script), and an https URL is refused with `invalid_logo` and the reason. Images are stored by the white-label asset store (the database by default, served at `/brand-assets/…`) through a new `App\Platform\Appearance\BrandImages` socket the module binds, so the image uploaded is the one every hosted page draws. The response gains `favicon` and `remote_logo_ignored`; `logo` is now this application's URL. The sign-in, sign-up, consent, device and Admin Portal pages draw the uploaded logo (and a branded door the uploaded favicon), and **mail** carries the environment's uploaded logo as an absolute URL on this application. The Appearance editor uploads both with a live preview; the Branding page shows them and links there. **Existing `brand_logo_url` values are no longer drawn and never fetched**; the Appearance page shows "Upload your logo — remote logo URLs are no longer shown" until a logo is uploaded or removed, which clears the old value.
+- **Content security policy: `img-src 'self' data:`** (was `'self' data: https:`), plus the deployment's own brand-asset CDN when `WHITELABEL_ASSETS_CDN_URL` (or a disk store's URL) names one. The consent screen no longer draws an app's `logo_uri` from its registration or metadata document — an image on the publisher's host — and shows a neutral mark instead.
+- **The Admin Portal carries the environment's brand** (name and uploaded logo) on a customer's environment, like the sign-in doors.
+- **The environment rail has an Authorization area**, beside Authentication: Roles, Permissions and Fine-grained authorization (from Users & orgs) and Access reviews and Role conflicts (from Advanced). Users & orgs is Users and Organizations; Advanced keeps what is genuinely rare. No URL changed.
+- **An organization's page has nine tabs instead of fourteen** — Overview, Members, SSO, Directory Sync, Domains, Roles, Authentication policy, Audit log, Settings — with a group's pages as a second row: Members and Invitations, the Audit log and App audit logs, and Settings' General, Branding, API keys and Support access. At laptop width the last two of fourteen were cut off. `organizationHub.subTabs` carries the second row. No URL changed.
+- Inside an organization's page, a tab's heading no longer carries the rail area as an eyebrow (it named an area the page was not being shown in).
+- **A challenged sign-up on a deployment without Turnstile keys is no longer let straight in.** The account is created and its first session waits for a one-time code emailed to the address it signed up with (the step-up page, with its own title and sentence in all six languages). With Turnstile configured nothing changes.
+- **`RiskGuard::assess()` returns a `RadarDecision`** (the score, Radar's verdict and the environment's mode) instead of the bare `RiskAssessment`; `shouldBlock()` and `shouldStepUp()` take it. Both predicates read the environment's mode, not `config('risk.mode')` directly.
+- **The compliance JSONL archive writes one object per batch on object storage.** An object cannot be appended to: `append()` on an S3-compatible disk downloads the whole bundle and uploads it again with the batch on the end, a transfer the size of the whole archive for every 500 entries. On a disk that is not `local` the sink now writes `<prefix>/<environment>/<scope>/<first sequence>.jsonl` (zero-padded, so the objects list in chain order and concatenate into the bundle), and a batch re-offered after a failed cursor save overwrites its own object instead of archiving its entries twice. A `local` disk keeps appending to `<prefix>/<environment>/<scope>.jsonl`.
+- **The deployment docs describe how cboxid.com really runs**: on Cbox's own Kubernetes cluster (`cbox-hel1`, ARM64), defined in the private infrastructure repository — a web Deployment of two replicas, a worker Deployment whose `cbox-init` runs the scheduler and the queue manager, PostgreSQL 18 and Valkey in the namespace, a Cloudflare Tunnel for `cboxid.com` and `*.cboxid.com`. `docs/operations/deployment.md` explains the continuous release from `main` (a commit whose checks all pass and whose `linux/arm64` image exists is released within minutes: the migrate Job first, then web and worker; a failed rollout returns to the previous images without reverting migrations, and the commit is not retried; docs-only commits are skipped), how the operator holds releases, and the environment the application expects (`cbox-id-env`, shared Valkey, `CBOX_ID_REPLICAS`, `HEALTH_TOKEN`, the `cbox-init` process flags). Self-hosting on a VM, a PaaS or any Kubernetes cluster is its own section. The README says merging to `main` releases to production; `UPGRADING.md`'s 2.0.0 checklist describes the real system and notes that cboxid.com took 2.0.0 continuously; `docs/requirements.md`, `docs/operations/queue-workers.md`, the doctor's "no queue manager" message and the config comments say where the queue manager and scheduler run. The last Laravel Cloud wording outside this changelog is gone.
+- **`cbox.yaml` is the local manifest, not the production one.** cbox-engine (the `cbox` CLI and Cbox Local) reads it to run Cbox ID on a developer's machine in production's shape: two web replicas sharing Valkey, the `queue` and `scheduler` processes, PostgreSQL 18, the working copy mounted on the production image's base. The `secrets:` and `health:` keys the engine's reader refused are gone (the keys come from the working copy's `.env`), as are `APP_ENV`, `APP_DEBUG` and `MAIL_MAILER`, which would override it. `tests/Feature/DeploymentManifestTest.php` now holds the file to the engine's reader with no exceptions and to production's shape, and the PostgreSQL major to CI's and the one `docs/requirements.md` names.
+- **CI's `engines` job tests on PostgreSQL 18**, production's major (was 17).
+- **Danish hosted pages and mail, reviewed by a native speaker's standard.** `lang/da` now uses one term per concept — "log ind" / "login", "loginlink", "adgangskode", "adgangsnøgle", "totrinsbekræftelse", "arbejdsområde" (was also "workspace"), "revisionslog" (was also "audit-log"), "logstreaming", "API-nøgle" — with "access key" kept in English on the AWS form so it is never confused with a passkey. Sentence case, du-form, “ ” quotation marks (no more » «), spaced en dashes, no comma before restrictive subclauses, "den" before dates in mail, and the Admin Portal addressing the IT admin's organization as "jeres". Wording that read as translated is rewritten (the forgot-password lead no longer offers to reset the email address; "tamper-evident" is now "der ikke kan ændres ubemærket"). Identity providers' own field and button names are unchanged. The chosen terms are listed in `docs/guides/languages.md` under **Danish terminology**.
+
+### Removed
+
+- The "sign in first, then confirm" link interstitial (`/link/confirm`, `link.connect`, `link.decline`, `auth/link-confirm`, the `Authenticate` hold and `PlatformAuth::startPendingLink()` and friends). The link step replaces it, and proves control of the account before anything is linked rather than after a full sign-in.
+
+### Security
+
+- Require an enrolled second factor after magic-link login and reject password-only login when required MFA is satisfied only by an enrolled passkey. Recheck existing sessions and OAuth consent, preserving the actual authentication methods after step-up. Factor enrolment rotates the session after proving possession.
+- Pair with the laravel-id security fix that rejects authorization-code redemption, refresh and token issuance for inactive subjects and invalidates outstanding codes on deactivation. Regression coverage exercises all three bypasses and successful sign-ins.
+
+
+- **Log out now logs you out of the context you are in, everywhere it reached.** Logging out of a tenant's environment console (`{tenant}/admin`) ended only that host's session. The account host (`cboxid.com`) stayed signed in, the console's gate sent the person to the account host's open-environment door, and the door minted a fresh handoff straight back into the console. There are two contexts, and a sign-out now ends exactly one of them:
+  - **Admin context** (the account host, its consoles and My account, and every `{tenant}/admin` console handed off from it): logging out of any of them ends the root session, every account the browser holds there, and every console session handed off from those, in every tab. Each handoff carries the sign-in it was minted from, encrypted and bound to its token, and the environment's host refuses a handoff without it or whose sign-in has ended, so an unspent handoff is worthless after logging out too. New table `session_lineage`. The console's Sign out posts to `admin.logout` (`shell.logoutHref`).
+  - **End-user context** on a tenant's host (its hosted sign-in, My account, its SSO session, `/oauth/logout`): logging out ends the tenant's own sessions only and lands on the tenant's sign-in as before.
+  - The two used to share keys on a tenant's host, so they displaced each other: an end user signing in there removed the console's anchor, the console's sign-out revoked the end user's sessions, and an end user's sign-out (My account or an app's RP-initiated logout) wiped the console. The admin context now keeps its own session key (`EnvironmentAdminAuth::SESSION_KEY`) and neither context's sign-in or sign-out touches the other. Logout also revoked nothing on an environment's host for the administrator (their row lives in the platform root and was looked up in the tenant's scope); it does now.
+  - Another device's sign-in is left alone. **Sign out other sessions**, an administrator or a password reset still end every session, console sessions included.
+- **Logging out of the admin context lands on "You're signed out"** (`/signed-out`, `auth/signed-out`, six languages, branded like the sign-in page) on the same host, not on a sign-in door. An environment console used to land on its own gate, which signed the person back in by itself; its Sign in button now goes through the account host when the person means it. The landing clears Inertia's page history, signed-in pages are now `Cache-Control: no-store` with encrypted history, so Back after logging out asks the server instead of redrawing a console page.
+- **A sign-in at the account host lands on the account host.** A workspace with one environment was dropped straight into that environment's console after every sign-in (`WorkspaceLanding`); it now lands on Projects, which has **Open console**. A stored intent to open an environment's console is honoured only when this browser was sent to sign in from that console in the last 15 minutes (`IntendedUrl`), so a sign-in hours after bouncing off a tenant's `/admin` no longer ends up there. Starting at `{tenant}/admin` signed out still brings you back to it after signing in.
+
+- **A mailed logo can no longer point at another host.** The logo in an email was made absolute with `url()`, from the request's Host header. Under a poisoned Host (the platform root answers unmapped hosts) a forgot-password email would have carried an image on the attacker's host: a read receipt reporting when and where it was opened. It is now minted by `MailLinks::to()`, on the origin the deployment states about itself, like every mailed link.
+
+## [2.0.0] - 2026-10-08
+
+### Security
+
+- Revoking a workspace key now also revokes the environment management keys it minted (an environment's `initial_key`, `keys.environment.create`) and everything those keys minted in turn. A credential an agent was handed by a key no longer outlives that key on the other plane.
+### Added
+
+- **Log streams to Datadog, Amazon S3 and Google Cloud Storage** (laravel-siem 0.2), end to end. `log_streams.create` takes every destination; for the three cloud ones an `options` object declared key by key in the input schema (Datadog `site`/`service`/`source`/`tags`/`hostname`; S3 `bucket`/`region`/`prefix`/`access_key_id` or `role_arn`/`sse`/`kms_key_id`/`path_style`/`gzip`; GCS `bucket`/`prefix`/`gzip`), an `endpoint_url` that may be left out for the destination's own endpoint, and a `secret` that is the API key, secret access key or service-account JSON key — never echoed. An assumed-role S3 stream stores no secret; its answer carries the generated `external_id` for the role's trust policy. The package's `InvalidStreamConfiguration` is refused as `invalid_stream_configuration` on the field it names (`options.bucket`, `secret`, …); a role when the platform has no AWS identity, as `assumed_role_unavailable`. `log_streams.update` now changes name, destination, endpoint, options (merged over the stored ones; `null` removes a key) and credential through `LogStreams::update()`, which re-validates and resets the circuit breaker, and records `log_stream.updated` (with which fields changed, never a value); `enabled` is no longer required. `log_streams.test` runs the package's `StreamTester` and answers `failure` (`transient`/`authentication`/`configuration`) beside `delivered` and `error`. `LogStream` gains `options`, `external_id`, `health` (`healthy`/`degraded`/`paused`/`action_required`), `last_error`, `last_failure_kind` and `last_failure_at`.
+- **Console log streams for every destination.** The new-stream form asks each destination's own questions in its vendor's words (Datadog site and API key; bucket, AWS Region, access key or IAM role ARN, server-side encryption, custom endpoint for MinIO/R2; service account key). A stream's page shows its health, the last error and its settings, has **Send test event** (`audit-streams.test`) and **Edit** (`audit-streams.edit`/`audit-streams.update`, behind the step-up like creating), and for S3 the least-privilege permissions policy — and, for an assumed role, the external ID and a ready trust policy with copy buttons, opened first right after the stream is created.
+- **Admin Portal log streams for Datadog, S3 and GCS**, in all six languages: the same per-destination fields, credentials never shown back, an **AWS setup** section per S3 destination (external ID, trust policy, permissions policy) opened when it is added, and each destination's status (Retrying, Paused after failures, Action needed) with its last error.
+- **`SIEM_AWS_ACCESS_KEY_ID`, `SIEM_AWS_SECRET_ACCESS_KEY`, `SIEM_AWS_PRINCIPAL_ARN`** — the platform's own AWS identity (an IAM user allowed only `sts:AssumeRole`) for assumed-role S3 streams, and its ARN for the trust policy shown to customers (`cbox-id.log_streams.aws_principal_arn`). Documented in `docs/configuration/environment-variables.md`, `.env.example`, and as commented-out secret references in `cbox.yaml`.
+
+### Changed
+
+- **A log stream test event is the package's.** `log_streams.test` now sends laravel-siem's marker event (action `siem.stream.test`, "safe to ignore") instead of the app's own `log_stream.test` entry; a SIEM rule that dropped the old action should drop the new one. A successful test also clears a stream's `action_required` status.
+- The Admin Portal's log-stream row shows the stream's health instead of a single "Failing" (`portal.log_streams.failing` is replaced by `portal.log_streams.health.*`).
+### Added
+
+- **Standard Webhooks signatures, per endpoint** (laravel-id 1.23). `webhooks.create` (console form, REST, MCP) takes `signature_scheme`: `cbox` (the default, `X-Cbox-Signature`) or `standard_webhooks` (`webhook-id` / `webhook-timestamp` / `webhook-signature`, with a `whsec_` secret any Standard Webhooks library takes as is). The new action `webhooks.signature_scheme.change` (`POST /api/v1/webhooks/{id}/signature-scheme`, `webhooks:write`, **destructive**: nothing is minted, but a receiver still verifying the old headers rejects every delivery until it is updated) moves an endpoint between schemes without a new secret — a hex secret is used as `'whsec_'.base64_encode($hex)` — behind a typed confirmation on the endpoint's page, recorded as `webhook.signature_scheme_changed`. The scheme is on the `Webhook` schema, the list and the detail page; rotating a Standard Webhooks endpoint mints a `whsec_` secret. `docs/guides/webhooks.md` explains both schemes with verification snippets in Node, PHP and Python.
+- **RFC 9470 step-up on the management plane** (`api.mcp.step_up`, `CBOX_ID_MCP_STEP_UP_ACR` / `CBOX_ID_MCP_STEP_UP_MAX_AGE`, off by default). With a requirement set, a Critical action from a person's token whose `acr` / `auth_time` fall short is answered `401 insufficient_user_authentication` with `acr_values` and `max_age` in `WWW-Authenticate` — on `/mcp` at the HTTP layer before the `tools/call` reaches a tool, on REST from the action runner. It is asked before the approval hold. Management keys are never asked. See `docs/guides/agents-and-mcp.md`.
+- **LinkedIn, Bitbucket, Xero and Intuit** on the console's Social login page and as sign-in buttons, with neutral monochrome glyphs (not the companies' logos).
+- **Twenty identity provider guides in the Admin Portal**, from laravel-id's `IdentityProviderGuides`, replacing the portal's own copy of eight: PingOne, AD FS, Auth0, Keycloak, Duo, CyberArk Identity, Shibboleth, Oracle Cloud Infrastructure IAM, SAP Cloud Identity Services, Salesforce, LastPass and Cloudflare Access join, and Directory Sync gains PingFederate, PingOne, Duo, CyberArk and Oracle. Our values come from `ServiceProviderValues` (now also the Single Logout URL, the SP-initiated login URL and Oracle's SCIM host and path); fields show where on the provider's screen they sit and which are optional. Step text is translated per guide key in all six languages, falling back to the framework's English for a guide nobody has translated yet.
+- **`php artisan docs:idp-guides`** writes `docs/for-it-admins/idp/<provider>.md` for every guide without a hand-written page, and the provider table on that section's index; `--check` fails when one is stale.
+
+### Changed
+
+- **`/authorize` reads `max_age` and `acr_values` through the framework** (`AuthenticationRequirement::fromAuthorizationRequest()` / `assessSession()`), the same rule a resource server applies to the resulting token. A malformed `max_age` is now refused with `invalid_request` instead of ignored. A session that is fresh but not strong enough goes to the second-factor screen when the person has an authenticator, instead of a whole new sign-in; a session that is too old still signs in again. The `error_description` for an unmet class is the framework's.
+- **SAML: the email may be an `emailAddress`-format NameID.** laravel-id 1.23 reads it when no email attribute is sent (an attribute still wins), so the Admin Portal's steps (six languages) and `docs/for-it-admins/idp/generic-saml.md`, `okta.md` and `google-workspace.md` say: an email attribute or an `emailAddress` NameID; the assertion must be signed.
+- **Guide labels corrected upstream**: Okta's "Application username format", Google's "Email" Name ID format and "Download Metadata", JumpCloud SCIM's "Token".
+- **SCIM, documented as laravel-id 1.23 serves it**: `409 uniqueness` on a duplicate `externalId` or group name (no longer an upsert), weak ETags with `If-Match` / `If-None-Match`, `sortBy` / `sortOrder`, the full filter grammar, and `/Bulk` — in `docs/for-it-admins/idp/generic-scim.md`, `docs/for-it-admins/directory-sync.md` and `docs/guides/sync-users-in.md`, held by `tests/Feature/ScimDirectoryBehaviourTest.php` against this app's routes.
+- Social sign-in stores an OpenID provider's discovery document whole (`toConfig()`: the UserInfo endpoint and the token endpoint auth method included) and reads it where the catalogue says — Intuit publishes its document away from its issuer.
+
+### Fixed
+
+- **Every held action is documented as one.** Any action can answer `202 approval_required` when a key's policy (or a person's token, for a critical action) holds it, but the 46 hand-written operations in the OpenAPI documents named neither the `202` nor the `Cbox-Approval` header, so a held `POST /apps` broke the contract. `ActionOpenApi` now adds both to a hand-written operation as it does to a generated one.
+- **Every project write is on the workspace's log.** Creating, renaming, suspending and reactivating a project — the workspace's billing anchors — recorded nothing, from the API or the console. They now record `organization.project_created`, `organization.project_renamed`, `organization.project_suspended` and `organization.project_reactivated`, as whoever made them.
+- **Get started's code is the quickstarts' code.** The console's per-framework snippets were written apart from `docs/quickstarts/` and were wrong: Laravel's block set `CBOX_ID_REDIRECT_URI` (laravel-id-client reads `CBOX_ID_REDIRECT`, so a pasted setup answered 503), Go called `CreateAuthorizationRequest` and `Authenticate` with signatures id-go does not have, React ran a browser-only sign-in the token endpoint's missing CORS headers make impossible, and Nuxt and Python were wired by hand instead of with `@cboxdk/id-nuxt` and `cbox-id-client`. `App\Platform\Connect\QuickstartSources` now holds each framework's install commands, environment block, code and run command verbatim from its quickstart page (React's sign-in runs in the page's small `server.mjs`), Get started shows them block by block and links the full page, and `QuickstartSnippetsTest` fails when a block is not on the page or an environment block misses a variable the SDK reads. The app page's Go snippet uses id-go's real signatures too. The quickstart pages no longer carry notes telling readers to ignore the console. The `quickstart` prop's `install`, `code` and `run` are now lists of `{code, file, note}`.
+- **Admin Portal Directory Sync completes for SCIM.** "First update received" waited on `last_synced_at`, which only a pull directory's scheduled sync stamps, so a SCIM directory stayed at 1 of 2 — and its row said "No updates received yet" — however many people its identity provider pushed. A push directory now counts as updated once it holds any user or group the provider wrote, and its row shows the latest of those writes (`App\Platform\Portal\DirectoryUpdates`).
+- **The Audit log names the agent.** An entry an environment management key caused showed the stored actor — "Service" with a "Management key" label, or "System" where a framework service named no one — instead of the agent. It now shows the key's name as an **Agent**, linking to AI agents › Agents in the environment console, beside the door it came through (`via MCP`, `via REST API`).
+- **The Admin Portal's SAML steps say what the validator requires.** The generic SAML guide said to sign "the assertion or the response — both work" and to send the email as the NameID; the assertion must be signed, and the email is read only from an attribute (`email`, `mail`, `emailAddress`, the `…/claims/emailaddress` URI or `urn:oid:0.9.2342.19200300.100.1.3`), never from the NameID. The generic, OneLogin and PingFederate steps now say so in all six languages, and `docs/for-it-admins/idp/` agrees.
+- **The domain TXT record is shown where it is looked up.** The console's Domains page and an organization's Domains tab said to add the record "at acme.com"; the verifier reads `_cbox-id-challenge.acme.com`. The server now sends the record's name (`recordName`) beside its value, and the page shows both with copy buttons.
+- **Approvals says how long a held action really waits.** The page said fifteen minutes; requests lapse after `CBOX_ID_CIBA_TTL_SECONDS` (five minutes by default). The approval gate now files every request with that window explicitly and the page renders it from the same number (`approvalWindow`).
+
+### Security
+
+- **Revoking an environment key from the workspace stops the keys it minted.** `keys.environment.revoke` (and the workspace console's revoke, which runs it) revoked the key named and left the narrower keys it had minted working — so revoking an agent's key did not stop the agents it had handed keys to. It now revokes the whole tree, as the environment plane's `keys.revoke` always has, recording each child with `because_parent_revoked`; a child that outlived an already-revoked parent is stopped the next time the parent is revoked.
+- **The step-up client is registered as the platform.** The first approval ever asked for registers the platform's own "Cbox ID step-up" client, inside the action that needed it — and its `app.created` was written as that action's key, through its door: the audit log said an agent had created a first-party client in the platform root. It is now written as the platform, with no door.
+- **A log stream's supplied token is no longer echoed back.** Creating a stream with a bearer or Splunk token in the console flashed that token into the "copy this signing key" banner on the next page. Only a signing key the platform generated (HMAC) is shown, once; a token the person typed never comes back. The Admin Portal's log streams page already behaved this way and is now covered by a test.
+
+### Added
+
+- **The agent acceptance scenarios** (`tests/Feature/Agent/AgentBootstrapScenarioTest.php`), each run over the REST API and over MCP with identical assertions through `Tests\Support\AgentDoor`: one workspace key bootstraps a project, an environment and a supervised narrow key that builds and rotates an app with its owner's approval, cannot exceed its scopes and dies with its parent; an environment key sets up an enterprise customer (app, organization, SAML connection from metadata, verified domain, Admin Portal link, webhook), checked through the read actions; and a person's root token lists their environments, acts in one by name and waits for them on a critical action — each step checked on the audit trail for actor and door.
+- **Documentation overhaul.** Framework quickstarts (`docs/quickstarts/`: Next.js, React, Laravel, Nuxt, Go, Python) from zero to a first sign-in; a Concepts section (planes and hosts, keys and tokens, actions — "one action, four doors" —, approvals, Audit log versus App audit logs); new guides for the Admin Portal, Log streams, Custom domains and Step-up approvals; a section for customers' IT admins (`docs/for-it-admins/`) per portal intent with identity-provider setup guides; a Self-hosting landing page. `docs/quickstart.md` is now a stub pointing at the quickstarts and at `docs/self-hosting/quickstart.md`, where the operator walkthrough moved.
+- **`php artisan docs:actions`** writes `docs/reference/actions-<plane>.md` from the action registry — every action's REST method and path, scope, danger, MCP tool, CLI command, summary and input fields — and `--check` fails when a committed page is stale (`tests/Feature/Actions/ActionsReferenceTest.php`), the same gate `openapi:build --check` is for the OpenAPI documents.
+- **A docs link checker** (`tests/Feature/DocsLinksTest.php`): every relative link and `#anchor` under `docs/`, and in the README and UPGRADING, resolves case-sensitively; a link out of `docs/` must be a canonical URL. It replaces the narrower `.md`-only sweep that lived in `ConsoleHelpTest`.
+- **Docs screenshots on demand**: `DemoEnvironmentSeeder` seeds a realistic demo environment and `tests/Browser/DocsScreenshotsTest.php` (group `docs-screenshots`, excluded from every normal and CI run) saves the key pages to `docs/screenshots/`. Run `vendor/bin/pest --group=docs-screenshots`.
+
+### Changed
+
+- **OpenAPI tags use the console's nouns.** Environment: Apps → Applications, Audit Logs → App audit logs, Frontend keys → Publishable keys, Management keys → Secret keys, Provisioning → Outbound provisioning. Workspace: Organization → Workspace, Members → Team, and the workspace document's prose says workspace where it still said organization. Operation ids, paths and `x-action` are unchanged; only the grouping a generated client or a docs viewer shows differs.
+- README rewritten: what the platform is, the hierarchy, the two kinds of host, the action layer and its four doors, the planes, quick links, and the licence stated as source-available (Elastic-2.0).
+
+### Added
+
+- **Domains in the organization console** (Sign-in › Domains, `/domains`): the email domains the organization claims, each proved with a DNS TXT record and, once verified, able to send everyone on it to the organization's Enterprise SSO. The same domains and the same writes as the Enterprise SSO page, which keeps listing them; gated on the same plan feature.
+- **Admin Portal links can be listed and revoked.** `organizations.portal_links.list` (`GET /api/v1/organizations/{organization_id}/portal-links`, new scope `portal_links:read`) lists an organization's links from the last 30 days — intents, `status` (`pending`, `in_use`, `completed`, `expired`, `revoked`), who minted it, whom it was mailed to, and when it was created, opened, finished and revoked; never the URL. `organizations.portal_links.revoke` (`DELETE …/portal-links/{id}`, `portal_links:write`, destructive) withdraws one: it can no longer be opened, and a setup session it already opened ends on its next request (`/setup/expired`). Recorded as `portal_link.revoked`. An organization's Overview lists its outstanding links with a **Revoke** button. Migration adds `completed_at`, `revoked_at` and `revoked_by` to `admin_portal_links`.
+- **SAML SP metadata URL.** `SsoConnection.service_provider` carries `sp_metadata_url` (`/sso/saml/{connection}/metadata`) for a SAML connection, shown with a copy button on the console's connection page and in the Admin Portal's step 2 (under PingFederate's own *Import Metadata — URL*). The URL now serves a draft's metadata too, before the identity provider's half is known — the framework's route answered 422 until then.
+
+### Changed
+
+- **An OIDC connection no longer needs a signing key.** Issuer, client id and client secret are enough: ID tokens are verified against the key set the provider's discovery document publishes (`jwks_uri`), key rotations included. `signing_key` stays as an optional input on the API, the console forms and the Admin Portal, for a provider whose discovery document names no `jwks_uri` — saving one of those without a key is `422 incomplete_connection` on `signing_key`. Activation's completeness check asks the same.
+
+- **One word per thing in the console, written down once.** `App\Platform\Console\Vocabulary` holds the console's nouns, and the rails, the page titles and the API keys tabs read them; `ConsoleVocabularyTest` fails the build when a retired name comes back in copy a person reads — console pages, action summaries and scope labels shown beside forms, the English source strings and the mail views. Renamed: Activity log → **Audit log** (the trail; the app's events are **App audit logs**), "Sync users in/out" → **Directory Sync** / **Outbound provisioning**, "Single sign-on" as a label → **Enterprise SSO**, "Approve/Review agent requests" → **Approvals** on both consoles, "Staff" labels → **Admins & support** (one role: an *admin & support role*), Log streaming → **Log streams**, Sign-in rules → **Authentication policy**, Social sign-in → **Social login**, Inline hooks → **Hooks**, SAML applications → **SAML apps**. On the organization console the areas are **Members & roles** (was People) and **Audit log** (was Logs), and the workspace's Keys page is **API keys**, with tabs **Secret keys** (management keys), **Publishable keys** (frontend keys) and **Workspace keys**; the person's own page under My account is **My API keys**. In an environment console the Secret keys tab still leads to AI agents › Agents, where those keys are listed. OpenAPI tags follow (`Enterprise SSO`, `Hooks`, `Approvals`, `Directory Sync`); paths, operation ids, scopes and action names are unchanged. The docs use the same words; guide URLs are unchanged.
+- **A customer's organization console is exactly the admin portal.** On a customer's environment host it offers Members, Roles, Enterprise SSO, Domains, Directory Sync and the Audit log — plus App audit logs when the organization is entitled to `audit_logs` — beside the person's own Overview, Approvals and My account. **Permissions** left it: writing a permission is the app vendor's job (a customer still composes roles from the existing ones on the Roles page); `permissions.*` answers 404 there, and a delegated token on a customer's host no longer runs `permissions.create/update/delete`. A new route walk (`CustomerConsoleTest`) hands every organization-console route to the door on a customer's environment and requires everything that gets through to belong to a kept page or a named ceremony.
+
+### Added
+
+- **The Admin Portal, widened to WorkOS's.** A portal link now covers a SET of intents — `sso`, `dsync`, `domain_verification`, `log_streams`, `certificate_renewal` and `audit_logs` — chosen per link (`organizations.portal_links.create` takes `intents`, an optional `expires_in_minutes` from 5 to 10080, and an optional `email` + `locale` that mails the link to the customer's IT contact in their language). The organization header's **Admin Portal link** dialog asks for all four. The portal opens on a checklist with each intent's progress, read from what is configured, and a guided page per intent: single sign-on (provider guides for Okta, Microsoft Entra ID, Google Workspace, OneLogin, JumpCloud, PingFederate and generic SAML/OIDC, with the exact field each value goes in, metadata import, domain proof and activation), directory sync (SCIM guides for Okta, Entra ID, OneLogin, JumpCloud and generic SCIM, token rotation), domain verification with copyable TXT records, the organization's own log streams (create, send a test entry, delete) and SAML certificate renewal. All of it in the six hosted languages, refusals included. Every portal write is an action run as the new `PortalPrincipal` — confined to the link's organization and to the actions its intents list — and recorded `via: portal` with `portal_link_id` and `portal_link_created_by`.
+- **SAML certificate renewal with no outage.** `sso.connections.certificates.list` (`GET /api/v1/sso/connections/{id}/certificates`), `.stage` (`POST …/certificates`, a PEM or the IdP's metadata — tested before it is trusted: readable, not expired, RSA ≥ 2048, not already on file, same entity id; the answer carries the checks) and `.activate` (`POST …/certificates/activate`, retires the certificate it replaces).
+- **Certificate expiry alerts.** The daily `cbox-id:sso:certificate-expiry` sends `connection.certificate_expiring` (a new webhook event, in the picker and the OpenAPI enum) at 30 and 7 days before an active SAML connection stops working — once per certificate and threshold — with a trail entry and a mail to the organization's owners and admins (`CBOX_ID_CERTIFICATE_ALERT_MAIL`). An organization's Overview and SSO tab warn while one is within 30 days.
+- `log_streams.test` (`POST /api/v1/log-streams/{id}/test`): one synthetic entry, shipped now through the same sink, answering whether the SIEM accepted it.
+- `sso.connections.create` takes `pending_idp` to create a draft before the identity provider's details are known, and fills in a SAML connection's own entity id and ACS URL when they are left out. `SsoConnection` gains `complete` and `service_provider` (what to paste into the IdP); activating an incomplete connection is `422 incomplete_connection`.
+
+### Changed
+
+- **Breaking:** `organizations.portal_links.create` takes `intents` (a list) instead of `covers`, and answers `intents` and `emailed_to`. `covers: both` is `intents: ["sso", "dsync"]`, `scim` is `dsync`. Existing links are migrated.
+- A redeemed portal session lasts `CBOX_ID_PORTAL_SESSION_MINUTES` (default 120) from redemption, rather than ending when the link would have expired.
+- `sso.connections.update` keeps the settings it does not take — staged certificates, the logout URL — instead of dropping them.
+
+- Every response carries an `X-Request-Id` header, and every JSON error envelope (`{error, message}`) carries the same id as `request_id`. A well-formed inbound `X-Request-Id` is kept, so an ingress's or caller's trace id joins up; anything else is replaced. The id is in Laravel's `Context`, so every log line written while serving the request, including by the jobs it dispatches, carries it.
+- Generated OpenAPI operations carry `x-scope` and `x-danger` beside `x-action`, so generated clients read them instead of parsing the description.
+- **Audit Logs: your app's own audit events, per customer organization.** `POST /api/v1/audit-logs/events` (`audit_logs.events.create`, new scope `audit_logs:write`) records a batch of 1–100 events (action, occurred_at, actor, targets, context, flat metadata), all or nothing, made safe to retry by `Idempotency-Key`. Each organization's events are a SHA-256 hash chain of their own (`sequence`, `prev_hash`, `hash`, returned with every event); `GET /api/v1/audit-logs/verify` re-hashes one. Read with `GET /api/v1/audit-logs/events` (`audit_logs:read`), newest first, keyset-paginated, filtered by organization, actions, actor, target and time range on indexes. Per-action schemas (`/api/v1/audit-logs/schemas`, versioned; metadata in a stated subset of JSON Schema, with allowed target types) validate events on arrival, and strict mode refuses actions without one. Retention is per environment (default 365 days, `PATCH /api/v1/audit-logs/settings`, new critical scope `audit_logs:manage`), applied by the daily `audit-logs:prune` from the front of each chain. CSV exports run on the queue (`POST /api/v1/audit-logs/exports`, new scope `audit_logs:export`; `GET /api/v1/audit-logs/exports/{id}` with a 15-minute signed URL), with spreadsheet formulas neutralised. An organization's own log streams carry its events (`source: app`); environment-wide streams do not. Every endpoint is an MCP tool. Console: Monitoring › App audit logs (every organization, or one through the chip) with Schemas & retention, an **App audit logs** tab on an organization's page, and Logs › App audit logs on the organization console, each with a CSV export. Admin Portal: a link may now cover `audit_logs` (the header's **Admin Portal link** and `organizations.portal_links.create`), which opens that organization's events read-only, filterable and downloadable as CSV, in all six hosted languages, behind the new `CBOX_ID_ENTITLEMENT_AUDIT_LOGS` entitlement. See docs/guides/audit-logs.md.
+
+### Added
+- **One connection for your whole workspace, at the platform root.** The root host's `/mcp` takes an access token the PLATFORM ROOT issued one of a workspace's team or an operator (audienced to the root's `/mcp`; live, from the root's issuer, a person's, no `act`, DPoP-proven when bound). One sign-in reaches the workspace as the MEMBER (their role ∩ the token's scopes, recorded as the member), every environment of the workspace they could open the console of (the environment console's rights ∩ the token's scopes, run inside that environment's tenancy and recorded in its own trail as the member, with the client), their own root account, and — for an active operator — the deployment. Every critical action waits for the person's approval on their device; `approval_status` at the root finds the ones raised in any environment. Over MCP every environment tool takes a required `environment` argument (id or slug) for such a person, and `whoami` lists the environments they can act in; over REST the environment API's own routes take the environment in a `Cbox-Environment` header on the root's host (`400 environment_required` without it, `404` for one the person cannot reach). The workspace API (`/api/v1/workspace`) takes the same token beside workspace keys.
+- **`/api/v1/me` and `/api/v1/platform` answer delegated tokens.** `DelegatedTokens` is bound to a real resolver: on an environment's host, the environment's own token for its own subject's account; at the root and on the platform plane, the root's token — and only an operator's reaches `/api/v1/platform`. Keys are still refused on both. New `GET /api/v1/me/action-approvals/{id}` and `GET /api/v1/platform/action-approvals/{id}`: the `poll_url` a held account or operator action names.
+- **Any MCP client signs in at the platform root.** `claude mcp add --transport http cbox-id https://<platform-root>/mcp` is now one connection for a person's whole workspace, the same reach as `cbox login`. On a multi-tenant root, while `CBOX_ID_ROOT_MCP_OAUTH` is on (default), the root serves exactly what an MCP client needs: `/.well-known/oauth-protected-resource/mcp`; an RFC 8414 `/.well-known/oauth-authorization-server` written for the root (code flow with S256, public clients, registration, client ID metadata documents, the CLI's device grant, the root `/mcp` scopes plus `offline_access`, no OpenID Connect); `/oauth/register` in the `mcp` profile only and without RFC 7592 management; and `/oauth/authorize`, consent, `/oauth/token` and `/oauth/revoke` for a client that registered itself there or a metadata-document client (`plane:mcp-client`, `plane:mcp-discovery`). Such a client is held to the root's `/mcp`: a missing `resource` defaults to it, any other (the issuer, a registered API, another host) is `invalid_target`, `openid`/`profile`/`email` are refused and never registered (`App\Platform\OAuth\RootMcpAudiences`, `RootMcpSelfRegisteredScopes`). Only a workspace team member or an operator can finish signing in; anyone else gets a translated refusal (`oauth.failure.no_workspace`). Each registration is recorded as `mcp.client_registered` with its address, each consent as `mcp.client_authorized` in the person's workspace trail, and `/oauth/authorize` at the root is metered per address (60/min). OpenID Connect discovery, UserInfo, PAR, SAML, SCIM and administrator-created clients stay absent on the root. AI agents › Connect offers the OAuth command first in "One connection for your whole workspace", with `cbox login` and a workspace key as alternatives.
+- **`cbox login` at the platform root.** The root serves the device grant to its own platform-owned first-party CLI client (and to no other client: `plane:first-party`), the installer provisions that client in the root as well as in the first tenant, and `/.well-known/cbox-cli` names the root's `/mcp` as the `resource` plus the `device_authorization_endpoint` and `token_endpoint` outright, since the root serves no discovery document. AI agents › Connect and the Agents and MCP guide explain the root option beside the per-environment one, with the exact commands.
+
+- **An organization's own page in the environment console.** `/admin/organizations/{organization}` opens on a header (name, copyable id, status, and an **Admin Portal link** button that runs `organizations.portal_links.create`) and thirteen tabs, each its own URL: Overview (is SSO connected, a domain verified, a directory syncing — read from what is configured — and the latest audit entries), Members, Invitations, SSO, Directory Sync, Domains, Roles, API keys, Branding, Policy (the organization's own sign-in rules override, editable from the environment console for the first time), Support, Audit log and Settings. The environment-wide pages that are also tabs here (Enterprise SSO, Directory Sync, Roles, Appearance, Sign-in rules, Audit log) are the same pages narrowed to the organization; every write on them is the existing action. Module pages and an organization's own token vault are reachable under the same address. Rows on Users & orgs › Organizations open it.
+- **An Organization filter on the environment-wide lists.** Enterprise SSO, Directory Sync, Outbound provisioning, Roles, Role conflicts, Access reviews, Applications, APIs, Webhooks, Hooks, Social login and the Audit log take `?organization=` — a chip on the page, added from a search (`GET /admin/lookup/organizations`) and cleared in one click — and name each row's organization when unfiltered. An id that names no organization in the environment is an empty list, never an unfiltered one. Role conflicts scan the organization the list is filtered to.
+- **"For which organization?" on the environment console's create forms** (single sign-on, directories, outbound provisioning, roles, role conflicts, access reviews, apps, APIs, webhooks, hooks, social login): a searchable field, prefilled and locked when the form is opened from an organization's own page, checked against the environment on submit.
+
+- **An organization's own People page is actions — every console write now is.** Invite, re-send and revoke an invitation, change a member's role, grant or revoke an access role, remove a member, transfer ownership and revoke a member's API key run the same actions as the environment console (`invitations.*`, `members.update`, `members.remove`, `members.roles.grant`/`revoke`, `organizations.transfer_ownership`, `api_keys.revoke`). From inside an organization — its console, or a person's signed-in token, both confined to it — the tenant's rules hold: an admin cannot change or remove an owner, nobody removes themselves (`remove_self`), only the owner hands it over, staff roles are `role_not_assignable`, and a customer workspace's roster answers `409 managed_elsewhere`. So an organization admin's agent can now manage their own organization's roster over REST and MCP. The organization console signs invitations with the person's own name (it said "An administrator"). The parity allowlist's pending list is empty and the test keeps it so.
+- **Leave an organization from the account API.** `account.organizations.leave` — `POST /api/v1/me/organizations/{organization_id}/leave` with the new `account:organizations:write` scope, and the People page's "Leave organization" — acts only on the caller's own membership (anyone else's is `404`); the last owner is `409 last_owner`.
+- **"</> API" on every console action.** Each console page is handed the actions its forms run (`apiEquivalents`, from the action registry by route — `App\Platform\Connect\ActionSnippets`), and the top bar's **API** button shows each as curl, an MCP tool call, a `cbox id …` command and an `@cboxdk/id-js/management` call. Key forms (new app, an app's details, new user) carry an inline disclosure that fills in what the form holds now; secrets are always written as environment variables. Empty lists on action-backed pages offer their first step as code. New UI blocks: `CodeBlock`, `SnippetTabs` (the app page's private snippet panel), `ApiEquivalent`. `ApiEquivalentCoverageTest` holds every action that claims a console route to a page that offers it.
+- **⌘K searches.** `GET /admin/search?q=` on the environment console and `GET /search?q=` on the organization console find users (email, name), organizations, apps (name, client id), management keys (name, prefix) and audit entries (id) — the current environment only, and on the organization console only that organization's people and apps. A pasted id, client id or key (cut to its 13-character prefix before it is sent or used) jumps straight to its record. The palette adds Recent, Results and Actions ("Create app", "Rotate app secret…", read from the action registry) to Go to; it is debounced, a cmdk combobox, and on a phone an icon in the top bar.
+- **Get started on the environment console** (`/admin/get-started`, Home › Get started): pick Next.js, React, Laravel, Nuxt, Go or Python, get an app with that framework's localhost redirect through `apps.create`, the `.env` block, install command and sign-in code (`ConnectSnippets::quickstart()`), then "Waiting for your first sign-in…" until a token is issued to a person for it. Beneath it, and on top of Overview until done or hidden, a checklist computed from the environment — first app, a redirect, a sign-in, branding, an organization, SSO, an agent that has made a call, a teammate, a public https redirect (`App\Platform\Onboarding\EnvironmentChecklist`). Hidden per person per environment (`onboarding_dismissals.organization_id` is now nullable).
+- **The audit trail names the door.** Every entry an action causes carries `context.via` — `console`, `rest`, `mcp` or `cli` (a person's token for the environment's CLI client, or a `cbox-cli/` user agent) — and, for an action a key was held on, `approval_id` and `approved_by`. Written once by the audit decorator while the action runs (`App\Platform\Actions\ActionTrail`), so framework entries and workspace activity carry it too. The audit log filters by who (Human, Agent, API key, System) and by door (`?via=`), shows "via MCP" and "approved by <person>" on each row, and opens one entry with `?entry=`.
+
+- **Erase a person (GDPR Art. 17).** `users.erase` — the console's new Danger zone on a user's page, `POST /api/v1/users/{id}/erase` and the MCP tool `users_erase` — runs laravel-id 1.22's `SubjectEraser` in one transaction and returns its `ErasureReceipt`. Critical: the console asks for a fresh credential and the person's address typed out; a key needs the new `users:erase` scope (offered, flagged critical on the key form, not implied by `users:write`). The app's own stores are erasure steps of the same pipeline: Frontend API sign-in tickets, checklist dismissals, the risk trail's address pseudonym, and — registered by their modules — devices, push history and enrolment codes, and risk-plus's review trail and signal memory. The only owner of an organization is refused (`409 last_owner`) and nothing changes. The audit trail is not rewritten and still verifies.
+- **Organization-owned SAML applications.** A SAML app can belong to one organization (`organization_id` on `/v1/saml-apps`, "For which organization?" in the console); only its active members are then asserted to it. The list flags environment-wide apps.
+- `CBOX_ID_CRYPTO_PREVIOUS_KEYS` and a master-key rotation runbook (Operations › Rotating the crypto master key). The devices module registers its sealed push token with `SealedColumns`, so `cbox-id:crypto:rewrap` covers it.
+- `CBOX_ID_LOCKOUT_THRESHOLD`, `CBOX_ID_LOCKOUT_WINDOW_MINUTES`, `CBOX_ID_LOCKOUT_DURATION_MINUTES` in `.env.example` and the configuration docs.
+- **Enterprise SSO, directory sync, outbound provisioning, access governance, the token
+  vault and Admin Portal links are actions** — management API endpoints and MCP tools, and
+  the console's own writes run the same actions. New environment-plane endpoints:
+  `/sso/connections` (create, update, activate, disable, require-sso, delete, list, get),
+  `/sso/domains` (claim, verify, capture, remove, list), `/sso/saml-metadata` (parse IdP
+  metadata, stores nothing), `/directories` (SCIM register, Google/Entra connect, rename,
+  status, token rotate, group→role mapping, delete, list, get, groups),
+  `/provisioning-targets`, `/sod-policies`, `/access-reviews` (open, items, decide, close),
+  `/token-vault/secrets` (store, rotate, revoke, grants) and
+  `POST /organizations/{organization_id}/portal-links`. New key scopes: `sso:*`,
+  `directory_sync:*`, `provisioning:*`, `governance:*`, `token_vault:*` and
+  `portal_links:write` — `token_vault:*` manages the vault and is not the `vault.manage` /
+  `vault.lease` scopes an app's own token carries. Secrets are input only: a SCIM bearer
+  token and a portal link are shown once and redacted from idempotent replays; IdP
+  certificates, client secrets, signing keys, provider credentials and vault values are
+  never returned. Critical: connection update/activate/disable/delete/require-sso, domain
+  capture, SCIM register and rotate, pull connect, target register, SoD switch and delete,
+  vault rotate and grant, portal links.
+- Writes that recorded nothing now leave an attributed audit entry, from the console and
+  the API alike: `sso_connection.created|updated|disabled|deleted`, `directory.registered|
+  connected|renamed|token_rotated|paused|resumed|deleted|group_role_mapped|
+  group_role_unmapped`, `provisioning_connection.registered|paused|resumed|deleted`,
+  `sod.policy_deleted`, and `auth_policy.updated` for require-SSO.
+
+### Changed
+
+- An environment's `/mcp` resource also accepts the `account:*` scopes, so one sign-in covers the person's own account on the same host; the root's `/mcp` accepts the workspace, account and operator scopes beside the environment plane's. The consent and device pages label and flag them. `DelegatedTokens::principal()` takes the request (DPoP needs it), not the bearer string.
+- **The environment console no longer has an "acting organization".** The organization chosen in the console header and kept in the session — which silently narrowed sixteen pages and decided where their writes landed — is gone, with `environment.acting-organization.choose|clear`, `ConsoleScope::SELECTION_KEY` and the shell's `actingOrganization`. A page about one organization names it in its URL (`console.org` binds it for that request only; another environment's id is a 404), a list is narrowed by `?organization=`, and a form asks. `GET /admin/acting-organization` answers 301 to `/admin/lookup/organizations`. The environment's own Appearance and Sign-in rules pages are always the environment default (one organization's are its Branding and Policy tabs), and its Settings page no longer renames an organization (`environment.settings.rename` is gone; rename on the organization's Settings tab). The SSO page's domains and portal link, and the directory portal link, live under the organization's address on the environment console. A console step-up is no longer dropped on "switching" organizations, because nothing switches.
+- **Sign-in rules: an empty lockout threshold is the deployment default, not "off".** Since laravel-id 1.22, 10 failures inside 15 minutes lock an account when no rule names a threshold; the page said "leave empty to disable lockout" and now states the default this deployment actually applies.
+
+- **Sign a person in to the management plane with OAuth.** `/mcp` and the REST environment
+  plane (`/api/v1/*` actions on an environment's host) now take an access token this
+  environment issued, audienced to its `/mcp` resource, as well as a management key. The
+  token becomes a `DelegatedTokenPrincipal`: the person, acting through the client they
+  signed in. It may run an action only when the token carries the action's scope AND the
+  person could do it on their own console here: an organization administrator, confined to
+  the organization the token is bound to, and on a customer's environment only what a
+  customer's console offers. The environment console's actions (APIs, keys, domains…) are
+  refused. Every **critical** action is held for the person's own approval on their device,
+  filed in their environment (`approval_pending` over MCP, `202 approval_required` over
+  REST, pollable at `/api/v1/action-approvals/{id}`). The trail names the person as a user
+  and records `context.oauth_client_id`. Live, `aud` present and naming `/mcp`, `iss` this
+  issuer, a subject and no `act`, and a valid DPoP proof when the token is bound; anything
+  else is `401 invalid_token`. A missing scope is a missing tool, never a 403, at `/mcp`.
+  See [Agents and MCP](docs/guides/agents-and-mcp.md).
+- **MCP clients sign in knowing only the URL.** `/oauth/register` defaults to the
+  framework's `mcp` profile (public clients, code + refresh grants, https or loopback
+  callbacks, the `/mcp` scopes) — `CBOX_ID_DCR_MODE`; client ID metadata documents are on —
+  `CBOX_ID_CIMD_ENABLED`; `/mcp` is open to self-registered clients —
+  `CBOX_ID_MCP_DYNAMIC_CLIENTS`; and self-registered clients unused for 30 days are pruned —
+  `CBOX_ID_PRUNE_UNUSED_DYNAMIC_CLIENTS`.
+- **The consent screen says who is asking and what they may do.** `/oauth/authorize`
+  resolves the client through the framework's `AuthorizationClients` (so a metadata
+  document client works, held to the exact redirect URIs it published), reads `resource`
+  with `ResourceParameter` (one value, a repeated one is `invalid_target`) and asks the
+  token endpoint's `AudienceResolver` before showing anything, so it never agrees to what
+  redemption would refuse. A self-registered client is marked as one and never skips
+  consent; a metadata document client leads with the host that published it, its
+  `client_uri` and `logo_uri`. Management scopes are listed with their labels, and the
+  ones a critical action needs are flagged **Critical**. The device page flags them too.
+  New strings in all six hosted languages.
+- **`cbox login` reaches the management plane.** `/.well-known/cbox-cli` lists the
+  management scopes and the `resource` to name on the device grant (and `mcp_url`), so the
+  CLI's one token works at `/mcp` and on the REST environment API.
+  `php artisan cbox-id:cli:client` (and the installer) now provisions the CLI client with
+  those scopes, and brings an existing one up to them without replacing it.
+
+### Changed
+
+- `Principal` gains `confinedToOrganization()` and `approverEnvironmentId()`. The organization
+  confinement the action layer applied to organization-console sessions
+  (`OrganizationTarget`, `IntegrationReach`, the app actions' lookup) is now asked of the
+  principal, so a delegated token is confined the same way.
+- Environment action routes are `env.api:{scope},delegated`. The routes that are not
+  actions yet still take an environment key only, and answer a valid access token with a
+  `403` that says so.
+- **Users, organizations, members, invitations, roles, permissions, staff roles and support
+  sessions are actions** — one class each in `app/Actions/{Users,Organizations,Members,Invitations,Roles,Permissions,CustomerApiKeys,SupportSessions}`,
+  run by the console, the management API and MCP alike (a tool per action). The console's
+  environment-plane writes for them, and their organization-console twins for roles,
+  permissions and rename, now run those actions; 53 console writes leave the parity
+  allowlist (`BASELINE` 160 → 104).
+- New management API endpoints, with the actions behind them: `PATCH /users/{id}`,
+  `POST /users/{id}/reactivate`, `POST /users/{id}/password`, `POST /users/{id}/password-reset`,
+  `POST /users/{id}/verification`, `POST /users/{id}/verify`, `DELETE /users/{id}/mfa`,
+  `GET|DELETE /users/{id}/sessions`, `DELETE /users/{id}/sessions/{session_id}`,
+  `POST /organizations/{id}/suspend|reactivate`, `GET|POST /organizations/{organization_id}/domains`
+  with `…/{domain_id}/verify`, `PUT …/{domain_id}/capture` and `DELETE …/{domain_id}`,
+  `GET /roles/{id}`, `POST|PATCH|DELETE /roles…`, `PUT|DELETE /roles/{id}/permissions/{permission_id}`,
+  `GET|POST|PATCH|DELETE /permissions…` and `DELETE /support-sessions/{id}`.
+- `GET /users` takes `email` (exact, case-insensitive), `q` (a fragment of the address or
+  name) and `status`; `GET /organizations` takes `q` and `status`. Organizations carry
+  free-form `metadata` (create, update, and in every answer). `POST …/members` takes the
+  person by `email` as well as `user_id`, and `roles` to grant with the membership.
+  `POST /users` takes `send_sign_in_link`.
+- A management key scope, `role_definitions:write`, for defining roles and authoring
+  permissions — separate from `roles:write`, which grants and takes away roles.
+
+### Changed
+
+- The existing environment API endpoints for users, organizations, members, invitations,
+  roles, customer API keys and support sessions are the actions now; their hand-written
+  controllers are gone. URLs and answers are unchanged, except: the nested path
+  parameters are documented as `{organization_id}`, `{user_id}`, `{role_id}` and
+  `{invitation_id}`; every write takes `Idempotency-Key` and can answer `202
+  approval_required` under a key's step-up policy; and adding a member to a suspended or
+  archived organization is refused (`409 organization_inactive`).
+- **Ownership handed over by the environment's authority is recorded as its act.**
+  `POST /organizations/{id}/transfer-ownership` used to run the framework's owner-to-owner
+  hand-over when the organization had one owner, which records the OUTGOING owner as the
+  actor. A key (or the environment console) is nobody inside the organization, so every
+  current owner now steps down to admin and `organization.ownership_transferred` names the
+  key — with the previous owners in its context.
+- Console behaviour that moved with the actions: a typed URL handle that is taken is
+  refused rather than suffixed; an access role that cannot be held in the organization, or
+  a segregation-of-duties conflict, refuses an add-member/assign-organization outright
+  rather than skipping the role; a session, role or member that is not there is a 404
+  rather than a silent return; resetting a user's two-factor and setting their password
+  are recorded with the administrator's subject id as the actor (the reset used to name
+  the user themselves).
+- Danger levels: changing a user's address, setting a password, marking an address
+  verified, resetting two-factor, handing over ownership, granting a staff role, turning
+  domain capture on or off and starting a support session are **critical** — a key whose
+  step-up policy holds critical actions waits for its owner's approval on each.
+- **The operator API, `/api/v1/platform`** — the deployment itself as actions, run by the
+  console's Platform pages and by REST alike: `platform.workspaces.create` /
+  `.set_status`, `platform.environments.create` / `.provision`,
+  `platform.organizations.create` / `.set_status` / `.move` (inside a named environment),
+  `platform.operators.create` / `.set_status`. Every write is critical. No key of any kind
+  is accepted: only a platform operator's delegated token carrying `operator:*` scopes
+  (`operator:workspaces:write`, `operator:environments:write`,
+  `operator:organizations:write`, `operator:operators:write`). Statuses take the state
+  you want rather than flipping, so a retry never undoes itself. Spec at
+  `/api/v1/platform/openapi.yaml`.
+- **My account API, `/api/v1/me`** — the person's own profile, sessions, application
+  grants, personal API keys (`/organizations/{id}/api-keys`), passkeys, social links and
+  trusted devices, as actions (`account.*`), behind `account:*` scopes. Only a token the
+  person delegated reaches it; no management key acts as a person. Password, second-factor
+  enrolment, recovery codes and passkey registration stay ceremonies in the browser. Spec
+  at `/api/v1/me/openapi.yaml`.
+- Both planes answer 401 to every bearer until delegated management tokens are issued: the
+  resolver is the `DelegatedTokens` contract (bound to `NoDelegatedTokens`), the one seam
+  that opens them. Until then the console is the only way in.
+- **Custom domains from the workspace plane:** `environments.domain.request`, `.verify`
+  and `.remove` at `/api/v1/workspace/environments/{id}/domain` (scope
+  `environments:write`) — the workspace console's Environment domains page runs the same
+  actions, recorded on the workspace's trail as the key or the member.
+- **Agent requests on the environment plane:** `approvals.list` (`GET /agent-requests`,
+  `approvals:read`) and `approvals.deny` (`POST /agent-requests/{id}/deny`,
+  `approvals:write`) — the environment console's Approvals page denies through it.
+  Approving stays the person's own consent and has no action.
+
+### Changed
+
+- **The Platform section's customer pages are at `/platform/workspaces`**, with route names
+  `platform.workspaces.*`. `/platform/customers` and `/platform/customers/{id}` answer 301
+  to the new paths, query string kept.
+- Console writes that name an id they cannot reach now answer 404 throughout the actions
+  moved here: an environment domain write for an environment the member cannot reach
+  (was 403), an unknown operator on the roster toggle (was a silent redirect), an
+  organization or parent from another environment in the operator's organization writes
+  (a foreign parent was accepted on create).
+- The parity allowlist names a reason for every UI-only console write, grouped as
+  ceremonies, file downloads, UI preferences and vendor UI. Impersonation (operator and
+  environment admin) is a ceremony: a browser session by definition.
+- **AI agents in the environment console.** Three pages under **AI agents**:
+  - **Agents** (`/admin/agents`): the environment's management keys as the agents holding
+    them — scopes summarised, a risk badge for the most harmful thing they unlock (the
+    highest danger among the registry's actions needing each scope), the approval policy,
+    who created each, and keys minted by a key indented under their parent. Rotate (new
+    `environment.keys.rotate` route, claimed by `keys.rotate`) and revoke, with a warning
+    when revoking also revokes the keys it minted. The create flow (`/admin/agents/new`,
+    behind the environment step-up) offers **Read-only**, **Support agent** and **Full
+    admin** presets, a scope picker grouped by resource, approval by danger level and by
+    named action (`require_approval` on `keys.create`), and an expiry; the key is shown
+    once with the Claude Code command already carrying it. Every write is an existing key
+    action.
+  - **Approvals** (`/admin/approvals`): an agent's held actions now appear here with the
+    agent, action, danger, target, redacted arguments, binding code and expiry. The person
+    an action waits for can approve it here instead of on their phone — the same CIBA
+    request, so the agent's poll and repeat are unchanged — after confirming their
+    password for a critical action; any administrator can deny one. Both are recorded on
+    the workspace's activity log (`organization.action_approval_approved` / `_denied`). A
+    count beside **Approvals** in the rail shows what waits for the signed-in person.
+  - **Connect** (`/admin/agents/connect`): the environment's MCP URL and setup for Claude
+    Code, Claude Desktop, Cursor, VS Code and any other client (RFC 9728 metadata, REST
+    and OpenAPI URLs). Signing in with your account is shown as coming soon while the
+    `/mcp` resource accepts management keys only.
+- An action approval now stores the environment it belongs to, its binding code and a
+  redacted copy of the validated input (the action's `redact` fields and any field named
+  like a secret are removed), so it can be read before it is answered.
+
+### Changed
+
+- On the environment console, the management keys tab of **Developers › API keys** is
+  now **AI agents › Agents**; `/admin/keys` redirects there and **API keys** opens on the
+  frontend keys. One page per credential, so the two lists cannot disagree.
+
+- Requires `cboxdk/laravel-id` ^1.22. The MCP server at `/mcp` is now declared as an RFC 9728 protected resource of each environment's issuer (`App\Mcp\McpProtectedResources`), so the framework serves `/.well-known/oauth-protected-resource/mcp` and audiences an RFC 8707 `resource=…/mcp` token to it. Its scopes are those of the environment plane's actions. The app's own metadata controller is gone. Its 401 challenge is built with the framework's `BearerChallenge`.
+
+### Changed
+
+- **`cbox.yaml` is the production deployment.** `APP_ENV=production`, `APP_DEBUG=false`, `LOG_CHANNEL=stderr`, two web replicas, cache, sessions and the queue in the bound Valkey (documented: the queue's store runs `maxmemory-policy noeviction`), the queue manager as a cluster, SMTP mail, readiness on `/health/ready` and liveness on `/up`, and every secret — `APP_KEY`, `CBOX_ID_CRYPTO_KEY`, `HEALTH_TOKEN`, `MAIL_*` — referenced from a platform Secret under `secrets:`, never written in the file. `tests/Feature/DeploymentManifestTest.php` boots its environment and runs the doctor's production checks against it.
+- **`cbox-id:doctor` asks how many replicas there are.** A `file`, `array` or `apc` cache or session store fails when the deployment declares more than one web replica (new `CBOX_ID_REPLICAS`, beside `replicas:` in the manifest) or runs the queue manager as a cluster, and warns on exactly one.
+- One PHP version: 8.5 in `composer.json` (`require.php` and `config.platform.php`), the Dockerfile, `cbox.yaml`, CI and the docs. CI's 8.4 cell is gone.
+- The README says what the licence makes it: source-available (Elastic-2.0), not open source.
+
+### Security
+
+- **A person's signed-in token could change every organization's roles and permissions.** The role and permission actions decided whose authority a write carried by asking "is this the organization console?" (`RoleAuthority::of()`), so an organization owner's or admin's delegated token — confined to their organization everywhere else — held the ENVIRONMENT's authority there: `roles.update`, `roles.delete`, `roles.permissions.grant`/`revoke`, `permissions.update` and `permissions.delete` reached any organization's roles in the environment. Authority is now the principal's own `confinedToOrganization()`, the question every other action already asked. Found by the new cross-tenant sweep.
+- **Somebody else's id answers 404, by construction.** `tests/Feature/Actions/CrossTenantIdSweepTest.php` walks every action in the registry that takes an id — on the environment, workspace, account and platform planes — and sends it ids from another environment, from another organization (as the organization console, a signed-in token and an Admin Portal session), from another workspace and from another person, one path field at a time and all at once, with a control proving the caller's own ids are found. What it found is fixed: another organization's id was a `403` for a confined principal across invitations, members, organization updates, transfers, portal links and the sign-in policy (`OrganizationTarget` now answers it as an unknown organization: `404` in the URL, `organization_not_found` in the body); removing an unknown permission from a role was a `200`, and a confined principal's lookup saw every permission in the environment; another app's client secret was `422 secret_not_live`; an organization the person is not in was `422 not_a_member` on `account.api_keys.create`; and a workspace key got `403 owner_only` for another workspace's member on `team.transfer_ownership`. Each is now `404`. docs/security/console-action-sweep.md describes the guarantee.
+- **Named rate limits on the remaining anonymous doors**, each a `429` with `Retry-After`: the sign-in link request (`magic-link-send`, per address and email typed in, and per address), the environment invitation page and accept (`link-token`), the signup confirmation resend (`verification-resend`, per person) and the first-run claim (`first-run`). The passkey enrolment challenge is also metered per signed-in person.
+- The generic OAuth 2.0 SSO pair (`/sso/oauth2/{connection}/redirect`, `/callback`) is throttled and `no-store` like the OIDC and SAML doors beside it, and social sign-in's redirect and callback are `no-store`. A regression test holds the app's SSO callbacks to `no-store` and to never carrying the session row key.
+- `docker-compose.yml` no longer carries default `APP_KEY` and `CBOX_ID_CRYPTO_KEY` values: they are read from `.env` (or the shell) and compose refuses to start without them.
+
+- **The environment-admin handoff no longer puts its token in a URL.** Opening an
+  environment redirected to `/admin/handoff?token=…`, which wrote a live bearer token into
+  the browser history and the access logs between the browser and the tenant host. The
+  account host now answers with a self-submitting form that POSTs the token; that page
+  carries its own narrow CSP (the request nonce, `form-action` limited to the account
+  hosts and the one environment), `Cache-Control: no-store` and
+  `Referrer-Policy: no-referrer`. `/admin/handoff` accepts POST only, reads the token from
+  the body only, answers `no-store`/`no-referrer`, and is the one CSRF-exempt path under
+  `admin/` — the signed, single-use token is the proof. A GET (an old `?token=` link) is
+  refused to the env-admin gate without the token being read.
+- **Single-use links and passkey ceremonies are rate limited.** `POST /magic/{token}`,
+  `POST /setup/{token}`, `/invite/{token}/accept` (both verbs), `POST /verify-email/{token}`,
+  `/passkeys/login` and `/passkeys/login/options`, `/passkeys/register/options`, and the
+  Frontend API's `sign-in/passkey` pair had no throttle. Named limiters key on route,
+  environment and client address (plus a token fingerprint on the link doors: 10 presses
+  of one token, 30 of any, per minute; passkeys 30 per minute). CORS preflights are not
+  counted.
+- **A plain member's People page no longer carries the organization's authorization
+  model.** The roster shipped every access role with its permission catalogue, and each
+  colleague's role assignments, to every member, and relied on the page to hide them.
+  Members now get names, addresses and tiers; access roles and permissions go to
+  administrators only.
+- **Console lookups by id are one scoped query.** Revoking a workspace or management key,
+  acting on an SSO domain (console and Admin Portal) and acting on an identity-platform
+  member loaded the whole collection and picked the row out in PHP. Each is now a single
+  query with the organization or environment fence in it. A foreign or unknown id answers
+  404 — keys used to bounce back silently, and domains answered 403.
+
+- **The Token Vault decided whose secrets a token reached from the token's `org` claim
+  alone.** For a user-delegated token that claim is the PERSON's organization, so any
+  member who consented to an app holding `vault.manage` gave it rotate, revoke and grant
+  over their organization's vault — even when the app belonged to another organization.
+  The owner now comes from the app: an organization's app acts in that organization only
+  and a token naming another is refused; the environment's own app acts in the
+  organization its token names, or in the environment's unowned secrets; a token whose app
+  the environment does not know is refused.
+- **A management key that could only register apps could give itself the vault.**
+  `POST /api/v1/apps` accepted `vault.manage` and `decisions:read`, so `apps:write` alone
+  was enough to create an app holding them and ask for a token. The management API now
+  refuses both (`422 scope_not_grantable`); an administrator grants them in the console.
+- **Dependencies:** league/commonmark 2.10.3 (quadratic-time DoS in the GFM extension;
+  `DisallowedRawHtml` bypass), laravel/framework 13.35 (debug-page XSS), league/flysystem
+  3.36 (control characters in paths). Cbox ID renders no user-supplied Markdown; the
+  updates close the advisories `composer audit` reported.
+
+- **The queue monitor is operator-only, on the platform root, and stores no job payloads.**
+  `cboxdk/laravel-queue-monitor` would serve its dashboard at `/queue-monitor` on every
+  host (customer domains included) behind an `APP_ENV` check, and keep each job's raw
+  serialized payload for replay. It lives at `/platform/queues/monitor` behind
+  `plane:operator`, the operator gate and its own authorization callback; its REST API is
+  off. Payload storage is off in config and blanked on every write, so a job that asks to
+  keep its payload does not get to.
+
+- **The steps after `/oauth/authorize` answered for whatever `client_id` the browser
+  added.** On the platform root, `plane:first-party` admits our own first-party app and
+  nothing else, and it read the client from `client_id`. The consent screen, approve/deny
+  and the hosted organization picker name only a pending authorization, so on the root
+  they 404'd for our own app (the picker could never be used there) — and a `client_id`
+  appended to one of those URLs was believed instead of the pending request's own client.
+  They now ask about the pending authorization's client, and only that.
+- **An organization's administrator could claim another API's scopes by typing them.** A
+  scope was free text on each app, so anybody who could edit an app could put
+  `tax:assess` on it and receive a token whose audience and scope a tax API would accept.
+  Environments can now register their APIs (Developers › APIs) and decide, scope by scope,
+  which organizations' apps may request them. The app page offers only the scopes an app
+  may hold, and a refused scope typed under Advanced, ticked in a crafted request or given
+  to a newly registered app is refused on save with a sentence naming the API and why.
+- **Taking back a staff role did not refresh the person's tokens.** Changing a role held
+  in one organization revoked the person's refresh tokens there, so apps picked up the new
+  roles on the next refresh. A staff role (`role.assigned_everywhere` /
+  `role.unassigned_everywhere`) did nothing, so apps kept minting the old roles until the
+  refresh token expired. Both events now revoke the person's refresh tokens in every
+  organization. Nobody is signed out.
+- **Two conflicting staff roles could be held by somebody in no organization.**
+  Segregation of duties was only asked inside organizations the person belonged to, so a
+  pair of staff roles under an environment-wide conflict rule was refused nowhere and
+  landed in every organization they later joined. The console now refuses it.
+- **Opening an app signed an environment administrator out of the console.** The
+  environment host's `/oauth/authorize` resolves a subject under the tenant's scope,
+  never found the administrator's platform-root session, and forgot it. A live
+  administrator session is now left alone; it still grants nothing on the tenant's pages.
+
+- **Sign-up on a tenant environment followed the deployment's mode.** On the SaaS shape a
+  tenant's sign-in page offered "Create an account" (linking to a page that 404'd there),
+  and a magic link, which creates the account on first use, was sent to any address,
+  because both read `CBOX_ID_SIGNUP_MODE` (default `open`). Both now follow the
+  environment's own self-service sign-up switch, which is off until an administrator turns
+  it on.
+- **Tenant admins could hand out staff-only roles.** laravel-id 1.19 lets an app mark a
+  role `tenant_assignable: false` (the vendor's own support or back-office role). The
+  People page, invitations and directory group mappings listed and granted roles through
+  the environment plane's `assign()`, so an organization's administrator could give one to
+  their own people. Those surfaces now use `Roles::tenantAssignableRoles()` and
+  `assignAsTenant()`. A role made staff-only after an invitation went out is withheld when
+  the invitation is accepted. The environment console still grants staff roles.
+- **Closing an organization left its members' apps signed in.** The token endpoint does
+  not check organization status on refresh, so refresh tokens bound to a closed
+  organization kept working. Closing one now calls `withdrawAccess()` for every member,
+  scoped to that organization (`WithdrawAccessOnOrganizationClosed`).
+- **"Revoke all sessions" left refresh tokens alive.** The environment console's revoke
+  ended the sessions, but apps holding refresh tokens kept minting access as the person.
+  It now calls `withdrawAccess()` first.
+
+- **Minting, revoking, rotating and renaming now leave a line on the activity log.**
+  Account API keys were created and revoked with no audit entry; an app being registered,
+  edited, having its secret rotated or being deleted wrote nothing; renaming the account
+  from Account settings wrote nothing (the environment console's Settings already wrote
+  `organization.renamed`). New actions: `organization.api_key_created`,
+  `organization.api_key_revoked`, `organization.renamed` (now on the account log too),
+  and the app lifecycle on the app's own organization trail: `app.created`, `app.updated`,
+  `app.secret_rotated` and `app.deleted`. laravel-id 1.19's client registry writes them,
+  and every console write now goes through it, so each change is logged once. The
+  console's interim `client.*` entries are gone. The environment-key audit is now unconditional rather than skipped whenever no
+  organization was resolved.
+
+- **The environment key list drew revoked keys like live ones, Revoke button included.**
+  Both key lists now show a status (active, expired or revoked — expired was reported as
+  revoked on the account page), the key prefix, when it was created, last used and expires,
+  each as a relative and an absolute time, and offer Revoke only on an active key. A second
+  revoke of the same key records nothing.
+- **Opening a mailed link spent it — and a mail scanner opens every link.** Organization
+  invitations, sign-in links, address confirmations and Admin Portal setup links were all
+  redeemed by their GET. Outlook Safe Links, Mimecast, Proofpoint and the link previews in
+  Slack and Teams fetch URLs before a person sees them, so the scanner accepted the
+  invitation or took the sign-in session, and the person who clicked was told the link had
+  expired. Each link now opens a page that says what it is for (an invitation names the
+  organization, who invited you and the role), and a button POSTs to spend it. The page is
+  not auto-submitted.
+
+- **Withdrawing an invitation deleted its parked access roles by invitation id alone.** The
+  roster's revoke action was scoped to the acting organization; the cleanup beside it was
+  not, so it could be pointed at another organization's invitation. Every write is now
+  bound to the organization in the query that finds the invitation.
+
+- **A tenant admin could edit the whole environment's permission catalog.** The Permissions
+  page is offered on both consoles deliberately — roles are made of permissions, and a plane
+  that offers one while hiding the other asks an admin to assign a thing they cannot inspect.
+  Where the rows landed was not deliberate: every manual permission an organization admin
+  wrote went into the environment-wide tier, so they could rename a key a peer's roles were
+  built from, and Delete cascades `role_permission` for **every** role in the environment.
+
+  The plane now decides ownership. Reads use `visibleToOrganization()`, writes use
+  `ownedByOrganization()` — they differ by exactly the shared tier, which is readable
+  because roles are composed from it and unwritable because that was the bug. Requires
+  `cboxdk/laravel-id` ^1.9 for the `organization_id` column; existing rows stay shared and
+  are not backfilled. Two smaller leaks on the same page went with it: every app-declared
+  key was rendered to every tenant admin regardless of `tenant_assignable` (an internal key
+  is named after the thing it guards), and the "in N roles" count included peers' roles.
+
+  Found by a third-party review of this repo.
+
+- **`plane:keys` was applied to no route, so the platform root published no verification
+  keys.** `/.well-known/jwks.json` fell back to `plane:first-party`, which decides by
+  reading a `client_id` off the request — and a key set carries none. The root answered 404
+  while `/oauth/token` beside it issued signed tokens to the authenticator. The middleware,
+  the resolver and the reasoning all shipped in an earlier commit; the config line that puts
+  the plane on the route did not. `PlaneBulkheadTest` now refuses any plane name no route
+  carries, with `operator` named as the one deliberate exception.
+
+- **A re-pointed brand domain inherited the previous domain's DNS proof.**
+  `ManageCustomDomain` promised to leave `domain_verified_at` null and wrote only the
+  `domain` column, so it left whatever was there — and `TrustedHosts` selects on exactly
+  that column while the issuer resolver adopts the domain as OIDC `iss` on the same
+  condition. Latent: nothing routes to that writer yet, which is also the state it would
+  have been in when somebody wired the console page. `clear()` had the same gap.
+
+### Added
+
+- **An MCP server on every environment host, at `/mcp`.** Claude Code, Cursor or any MCP
+  client connects with a management key (`Authorization: Bearer cbid_env_…`) and gets one
+  tool per action, built from the action registry: today the seven APIs actions
+  (`apis_create`, `apis_delete`, …), plus `whoami` and `list_actions`. A tool appears only
+  when the key holds its scope, and every call runs through the same runner as the REST
+  API, so the checks, refusals (`{error, message, field}` as a tool error) and activity log
+  entries are the API's. Write tools take an `idempotency_key` that shares its records with
+  the API's `Idempotency-Key`. Destructive actions are annotated as such so a client asks
+  before running them. A refused request gets a `WWW-Authenticate` challenge pointing at
+  `/.well-known/oauth-protected-resource/mcp` (RFC 9728), which names the environment's
+  issuer; OAuth sign-in for MCP clients is not accepted yet. Rate limited per key at 240 a
+  minute (`CBOX_ID_API_RATE_LIMIT_MCP`); laravel/mcp's tool search is available behind
+  `CBOX_ID_MCP_TOOL_SEARCH`, off by default. See `docs/guides/agents-and-mcp.md`.
+- **A key can be told to wait for its owner's approval.** `POST /api/v1/keys` takes
+  `require_approval` (`min_danger` and/or named `actions`). An action the policy names is
+  answered `202 approval_required`; the owner — whoever minted the key in the console, or
+  the first person in its minting chain — gets the request on their phone (Cbox
+  Authenticator) and in the console's approvals, the caller polls
+  `GET /api/v1/action-approvals/{id}`, and repeats the request with `Cbox-Approval: <id>`.
+  The approval is bound to exactly that request and spent once. A key-minted key is never
+  less supervised than its parent; a policy with nobody to approve fails closed.
+
+- **Webhooks, inline hooks and log streams on the management API, and every change to
+  them on the trail.** `/api/v1/webhooks` (list, get, create, update, pause, resume,
+  rotate, delete), `/api/v1/hooks` and `/api/v1/log-streams` (list, get, create, update,
+  delete) run the same actions as the console's pages, behind new `webhooks:*`, `hooks:*`
+  and `log_streams:*` scopes. A new one names its owner (`organization_id`, or
+  `environment_wide: true`). Signing secrets are returned once and never kept for an
+  idempotent replay. The console's webhook edit, pause, resume, re-key and delete, a hook's
+  pause/activate/remove and a stream's disable/resume/delete were model writes that left
+  no audit entry; every one now records `webhook.*`, `inline_hook.*` or `log_stream.*`
+  naming who did it, from either door. 24 console writes are now actions (pending list
+  251 → 227).
+- **`GET /api/v1/events` and `GET /api/v1/audit-log`.** Read this environment's domain
+  events (the facts webhooks deliver) and its audit trail with an `after` cursor, behind
+  `events:read` and `audit:read` — strictly this environment's, never another's.
+- **Apps are actions: everything the console does to an app, a management key can do too.**
+  The console's app pages (both consoles) and `/api/v1/apps` now run the same actions, so
+  a change is checked, refused and recorded the same way whichever door made it. New on
+  the API: `GET`, `PATCH` and `DELETE /apps/{id}`; `PUT /apps/{id}/scopes` (the complete
+  set); `GET /apps/{id}/secrets`, `POST /apps/{id}/secrets` (rotate, with
+  `grace_seconds` said explicitly) and `DELETE /apps/{id}/secrets/{secret_id}` (never the
+  last live one); `PUT /apps/{id}/manifest` and `POST /apps/{id}/manifest/sync`;
+  `PUT /apps/{id}/settings/token-lifetime`, `…/token-exchange`, `…/backchannel-logout` and
+  `…/api-key-prefix`; and `POST /apps/{id}/copy`, which only a person on the environment
+  console can use — a key exports the blueprint instead. Every `{id}` takes the app's id
+  or its `client_id`. A minted `client_secret` (create, rotate, copy) is in the first
+  answer only: an idempotent replay returns `null` and the stored replay never held it.
+  The platform scopes reserved for the console (`vault.manage`, `decisions:read`) are
+  refused on the scope endpoint too, unless the app already holds one. The `App` schema
+  gains `manifest_url`, `access_token_ttl`, `backchannel_logout_uri`,
+  `backchannel_logout_session_required` and `api_key_prefix`. The parity count of console
+  writes that are not yet actions drops from 251 to 226.
+- **How people sign in, as actions — and on the management API.** The sign-in rules,
+  self-service sign-up, social sign-in providers, frontend keys, SAML applications, the
+  legacy-login approval, branding and the custom domain are now actions: the console's
+  pages (environment and organization planes) and the management API run the same classes,
+  so a change is checked, refused and recorded the same way whichever door made it. New on
+  `/api/v1`: `GET/PATCH /sign-in/policy`, `DELETE /sign-in/policy/organizations/{id}`,
+  `PUT /sign-in/self-service-signup`, `GET/POST /sign-in/social-providers`,
+  `DELETE /sign-in/social-providers/{id}`, `GET/POST /frontend-keys`,
+  `PUT /frontend-keys/{id}/origins`, `DELETE /frontend-keys/{id}`, `/saml-apps` (list,
+  get, create, update, delete), `GET /legacy-login` and `POST /legacy-login/probe|approve|revoke`,
+  `GET/PUT /branding/appearance`, `GET/PUT /branding/whitelabel` and `GET/POST/DELETE /domains`
+  with `POST /domains/verify` — behind the new `signin:*`, `frontend_keys:*`,
+  `saml_apps:*`, `branding:*` and `domains:*` key scopes. Changing how people sign in is
+  `critical`; secrets (a provider's client secret, a SAML certificate) are input only and
+  never returned. An organization override that would loosen the environment baseline is
+  refused (`422 loosens_environment_baseline`, every loosened rule named). Modules can ship
+  their own actions: the white-label module's lives in the module and is named to the
+  registry from its service provider. The parity count of console writes that are not yet
+  actions is down from 251 to 229.
+- **The workspace API runs on the action layer, and one workspace key can bootstrap an
+  environment.** Every `/api/v1/workspace` endpoint is now an action, shared with the
+  workspace console's Projects, Team, Keys and Workspace settings pages, so both doors
+  refuse and record alike. Workspace keys can carry **scopes** below their role
+  (`workspace:read`, `projects:write`, `environments:write`, `team:read`, `team:write`,
+  `keys:write`, `settings:write`); a key with none is bounded by its role, as before.
+  `POST /workspace/environments` takes `initial_key` and returns the new environment's
+  first management key once, so an agent with one workspace key can create a project and
+  an environment and then configure it on the environment's own host. New endpoints:
+  `PATCH /workspace` (rename), `PATCH /workspace/projects/{id}`, `POST
+  /workspace/projects/{id}/suspend` and `/reactivate`, `POST
+  /workspace/projects/verification/resend`, `PATCH /workspace/members/{id}/role`, `PUT
+  /workspace/members/{id}/access`, `POST /workspace/members/{id}/transfer-ownership`
+  (owner, console only), `DELETE /workspace/members/{id}`, `POST/DELETE
+  /workspace/environments/{id}/keys`, and `GET/POST/DELETE /workspace/keys` — a key-minted
+  workspace key is never wider than its parent (role, scopes, expiry) and is revoked with
+  it. Writes take `Idempotency-Key`; a replay never carries a key's value. Creating an
+  environment over the API is now on the workspace's activity log, as it was from the
+  console. 18 console writes left the parity allowlist (251 → 233).
+- **The hosted pages and their emails speak six languages.** Sign-in, sign-up, MFA and
+  step-up, password reset, invitations, the OAuth consent screen and organization
+  picker, the Admin Portal, the error pages and the six hosted emails are now available
+  in English, Danish, German, Swedish, Norwegian Bokmål and French. The admin console
+  stays English. A visitor's language comes from, in order: OIDC `ui_locales` (kept for
+  the rest of that authorization), the new language menu in the sign-in footer (a
+  cookie), `Accept-Language`, and the environment's default. Languages that are not
+  supported or not switched on are skipped. `CBOX_ID_DEFAULT_LOCALE` and
+  `CBOX_ID_LOCALES` set the deployment's defaults; an environment can override them
+  with `default_locale` and `enabled_locales` in its settings. Self-service emails go
+  out in the language of the page they were requested from, and administrator-sent
+  emails in the environment's default. `<html lang>` and `Content-Language` match the
+  page. React pages get only their own group's text, through a typed `t()`; the key type
+  is generated from the English catalogue by `php artisan i18n:types`. See
+  docs/guides/languages.md.
+- **Hosted emails and error pages carry the configured product name.** The bodies,
+  the logo mark and the footer used to say "Cbox ID" even when `CBOX_ID_BRAND_NAME`
+  changed the subject line.
+
+- **The shared action layer, starting with APIs.** A change is now an action
+  (`app/Actions/*`): declared once with its scope, danger, REST route and input schema,
+  and run by one runner for every door, so the console and the management API check,
+  refuse and record it identically. APIs are the first area: the console's Developers ›
+  APIs and `/api/v1/apis` run the same seven actions. New on the API:
+  `PUT /apis/{id}/scopes/{key}` and `DELETE /apis/{id}/scopes/{key}`, and an
+  `Idempotency-Key` header on writes (the first answer is replayed for 24 hours). A parity
+  test counts the console writes that are not yet actions (251) and fails if that number
+  grows.
+- **`scheduler` and `event_relay` checks on `/health/status`, and doctor checks for both.**
+  The deployment manifest declared no scheduler process, so the event relay behind every
+  webhook, outbound SCIM, the audit-stream pump and pruning never ran, and every health
+  signal stayed green. `cbox.yaml` now runs `schedule:work`; the scheduler writes a heartbeat
+  every minute, and `/health/status` answers 503 when it is older than five minutes or the
+  oldest undelivered event is.
+- **`cbox-id:doctor` names the production defaults that are wrong in production:** mail
+  to `log`, a cache or sessions local to one process, an inline queue, logs written only to
+  the container's disk, and no `HEALTH_TOKEN`.
+
+- **Queue workers that run, and a signal when they do not.** Production had no queue worker:
+  webhooks, back-channel logout, app manifest syncs and Postal delivery reports were
+  queued and never sent, and every health check stayed green. `php artisan
+  queue:autoscale` (`cboxdk/laravel-queue-autoscale` ^4.3) is now the worker supervisor,
+  configured in `config/queue-autoscale.php` for a 512 MB instance: one worker group per
+  queue connection covering every queue the app dispatches to (derived from the same
+  settings the dispatchers read), at least one worker always, at most two, a 30 s pickup
+  SLA, a 75 s job timeout below Redis's `retry_after`, and the failure fuse on.
+  `/health/status` gains a `queue_workers` check (and answers 503) when no manager has
+  reported in for 140 s or a queue's oldest job has waited past its SLA. It is deliberately
+  not on `/health/ready`, which the platform routes on; `cbox-id:doctor` reports the
+  same, plus missing `ext-pcntl`/`ext-posix`. See `docs/operations/queue-workers.md`.
+- **Platform › Insights › Queues** shows whether the queue manager is running and how far
+  behind each queue is, and opens the job monitor (`cboxdk/laravel-queue-monitor` ^1.11).
+  Monitor history is pruned daily to 7 days / 100,000 rows; stuck `processing` rows are
+  closed every 15 minutes.
+- **The environment management API runs a whole tenancy, not just orgs and users.** An
+  app's backend could create an organization and a user and nothing else: no owner, no
+  members, no invitations, no roles. New endpoints, each behind its own scope (and each
+  scope now offered on the Keys page, which lists a scope only once a route needs it):
+  `POST /v1/organizations` with `owner_user_id` and `parent_id` (and an optional slug),
+  `PATCH` (through `Organizations::update()`, so `organization.updated` fires) and `DELETE`
+  (archive); members (`GET|POST`, `PATCH|DELETE …/members/{userId}`) and
+  `transfer-ownership`; invitations with roles, `client_id`, `return_to` and
+  `inviter_name`, re-send and withdraw, through the same `OrganizationInvitations` service
+  as the consoles; a member's roles in one organization (`GET`, `PUT|DELETE
+  …/roles/{roleId}`); `GET /v1/roles`; staff grants everywhere
+  (`/v1/users/{id}/environment-roles/{roleId}`); apps (list, register from a blueprint or
+  a short form, export a blueprint); APIs (CRUD); member API keys per organization and
+  revoke; and `POST /v1/support-sessions`. A role can be named by your manifest `key` with
+  `client_id`. The key acts with the environment's authority, so it may grant a staff role
+  inside one organization; the tenant plane still cannot, and an invitation from the API
+  refuses one rather than dropping it. Documented in `environment.yaml` and
+  [Run your tenancy from your backend](docs/getting-started/management-api.md).
+- **What a management key does is recorded as the key's act.** The framework services
+  behind the API wrote most entries with no actor, so an organization provisioned by a
+  vendor's backend looked like it made itself. While a key is on the request, an entry
+  with no actor (or with the key's id) is `actor_type: service` with the key's id, every
+  entry carries `context.environment_api_key`, and the activity log names the key.
+- **`POST /oauth/api-keys/verify` is in the OpenAPI document**, under its own server (it
+  is served at the host's root). The spec gates read a path item's `servers`, so its
+  response is checked against the schema like every `/api/v1` one.
+- **Developers › APIs** (environment console): register an API with its identifier (the
+  `aud` its tokens carry, fixed once registered), its owner (the environment, or the
+  organization chosen in the console header), the app whose roles it enforces, and its
+  scopes with "Organizations' apps may request this". Only environment administrators
+  register APIs: identifiers and scope keys are first come per environment, so an
+  organization registering them could squat another's. Every change is on the activity
+  log (`api.created`, `api.updated`, `api.scope_defined`, `api.scope_removed`,
+  `api.deleted`), one entry per change and the same entry whether the console or the
+  management API's `/v1/apis` made it. Guide: `docs/guides/apis.md`.
+- **The app page is four tabs, each its own URL**: Overview, Scopes
+  (`/apps/{id}/scopes`), Secrets (`/apps/{id}/secrets`) and Settings
+  (`/apps/{id}/settings`), on both consoles.
+  - **Scopes** groups registered APIs' scopes under each API, shows the audience the app's
+    tokens will carry (issuer, one API, or "name one with `resource`"), and keeps typed
+    scopes under Advanced, marked as unowned.
+  - **Secrets** lists every live secret (last four characters, created, last used,
+    expires), rotates with an overlap — immediately, 1 hour, 24 hours or 7 days, bounded by
+    `CBOX_ID_CLIENT_SECRET_MAX_ROTATION_GRACE` — and revokes one secret at a time (never
+    the app's last). Both behind the step-up.
+  - **Settings**: access-token lifetime in minutes (bounded by
+    `CBOX_ID_MAX_ACCESS_TOKEN_TTL`, stated on the page), token exchange (confidential apps
+    only), back-channel logout URI and "needs the session id", and an API key prefix
+    (**API keys**) that lets the app's people create keys under My account › API keys.
+- **Download blueprint** (both consoles) — the app's configuration as JSON, never a client
+  id or secret. **Copy to another environment** (environment console) registers the app in
+  another environment of the same project that the person administers, with its own client
+  id and secret shown once. Behind the step-up; recorded as `app.created` in the target
+  environment, attributed to the person.
+- **API keys for the apps built on an environment (laravel-id 1.19 customer API keys).**
+  An app that declares an API key prefix lets the people using it create keys for its API
+  on a hosted page, **My account › API keys** (`/account/api-keys`). They pick the app,
+  the organization (switchable among their memberships), a name, the permissions (only
+  the ones they hold in that app, with the manifest's descriptions) and an expiry. The key
+  is shown once. The list shows status, last use and expiry, and has a revoke button.
+  SDKs deep-link with `/account/api-keys?client_id=…&return_to=…`. `return_to` is only
+  offered as a link, and only when it sits on an origin the named app registered. A
+  refused key says why and names the permission the person does not hold. An app that
+  belongs to another organization is never offered and is refused if posted. Owners and
+  admins see every key in their organization on **People › Member API keys**
+  (`/directory/api-keys`), and environment administrators see them on each
+  organization's page. Both can revoke, and neither can create a key for somebody else.
+  Both rail entries appear only where an app offers keys or a key already exists.
+  Creating and revoking show up in the organization's activity log as `api_key.created`
+  and `api_key.revoked`. The webhooks come from the framework. Creating a key needs no
+  step-up, because the step-up asks for a password and people who sign in with single
+  sign-on have none. Guides: [Let your customers create API keys](docs/getting-started/let-your-customers-create-api-keys.md)
+  and [API keys](docs/guides/api-keys.md).
+- **People › Staff (environment console).** Who holds a staff role (a role held across
+  the whole environment), grouped by the app it reaches, with grant by email and take
+  back. An app's own role can be a staff role now (laravel-id 1.19); it reaches only that
+  app's tokens. Segregation-of-duties refusals name the organization where the
+  conflicting role already sits. A user's page shows the same list under **Staff roles**.
+- **Access reviews of staff roles.** The environment console's **New review** can review
+  every staff role instead of one organization; closing it takes revoked staff roles
+  back everywhere. An organization's review never lists them and cannot open one.
+- **Support access: "Sign in to *app* as *person*".** From a user's page in the
+  environment console: pick one of the environment's own first-party apps, one of the
+  person's organizations, a reason and a duration (never over
+  `CBOX_ID_SUPPORT_SESSION_MAX_TTL`), confirm your password, and your browser goes to the
+  app, which signs in as them. Tokens carry `act`, there is no refresh token, and nothing
+  outlives the session. Open sessions are listed on the user's and the organization's
+  pages with **End now**. The organization's activity log shows who started it and why
+  (the reason first, the administrator by name), and the person's own activity page
+  shows it once. A session is one organization: an app that names another with
+  `organization` (or asks for `prompt=create_organization`) is answered `access_denied`,
+  never with a code for the session's organization. See `docs/guides/support-access.md`.
+
+- **Apps choose the organization.** `/oauth/authorize` honours `organization`,
+  `organization_hint`, `prompt=select_organization` and `prompt=create_organization`, as
+  the SDKs already send them. The chosen organization is bound to the code and carried into
+  the access token, ID token, UserInfo and every refresh. An organization the person cannot
+  use (not an active member, suspended or deleted, another environment) returns
+  `access_denied`, under `prompt=none` too. Contradictory combinations return
+  `invalid_request`. With PAR, the organization parameters are read from the pushed request
+  only. See docs/getting-started/organizations-in-your-app.md.
+- **A hosted organization picker and a hosted "Create an organization" step.** The picker
+  lists the person's live, active memberships in the environment, marks the app's hint or
+  their current organization as the suggestion, and binds only that sign-in: it does not
+  move their console or remember the choice. The create step makes the person Owner through
+  the framework's organization and membership services and finishes the sign-in bound to
+  the new organization. Five per person per hour.
+- **Self-service sign-up on a tenant environment, and `prompt=create`.** An environment
+  setting under Sign-in rules (off by default) opens `/signup` on the environment's host:
+  a stranger creates an account and their own organization, as its Owner. `prompt=create`
+  sends a signed-out person to that form and back into the authorization, bound to the new
+  organization. The setting also gates `prompt=create_organization`. Password rules, the
+  breach check, the confirmation email, rate limits, the risk check and SSO domain capture
+  all apply. Switching it is audited (`environment.self_service_signup_enabled` /
+  `_disabled`).
+- **`prompt=consent`** shows the consent screen to a first-party app that would otherwise
+  skip it.
+- **Discovery lists `prompt_values_supported`**, on both the OIDC and the RFC 8414
+  document. `create` and `create_organization` appear only where sign-up is on.
+- **The consent screen names the organization** the app will see the person in.
+- **OIDC Back-Channel Logout (laravel-id 1.19).** Codes carry the session the person
+  approved from, so ID Tokens carry `sid`. `SignedInSession` is bound, so an RP-initiated
+  logout without a verifiable `id_token_hint` ends this browser's session and tells its
+  apps. Back-channel logout needs a queue worker.
+
+- **One Keys page per console, with the kind of key as a tab in the URL.** Seven kinds of
+  credential were spread over four pages under three names. The workspace console's
+  `/keys` holds **Management keys** (`cbid_env_…`, for one environment's management API,
+  with the environment in the URL as `?environment=`) and `/keys/workspace` holds
+  **Workspace keys** (the workspace API: projects, environments, team; each carries a
+  built-in role). The environment console's `/admin/keys` holds **Management keys** for
+  that environment and `/admin/keys/frontend` its **Frontend keys**. A tab the person may
+  not open is not drawn, so a Developer sees Management keys alone. See
+  [Keys](docs/guides/keys.md).
+- **Management keys can be created from the environment console.** A developer working in
+  an environment had to go back to the workspace, on another host, to get a key for the
+  environment they were standing in. The environment console now issues them for its own
+  environment only, behind the same step-up, and records them on the workspace's
+  activity log, where the workspace console records them.
+- **A "?" help topic on every console page**, each linking to its guide where there is
+  one. New guides: [Keys](docs/guides/keys.md), and
+  [Workspaces & organizations](docs/core-concepts/organizations-and-customers.md)
+  (renamed from `accounts-and-organizations.md` and rewritten around the workspace, the
+  organization and which console you are in).
+- **A vocabulary test fails the build if a retired UI word comes back.** The labels below
+  were renamed once before and drifted back through modules and page copy nobody
+  re-read; the sweep reads the copy a person sees and refuses the old words.
+
+- **Key expiry in the console.** Both key forms (account API keys, environment keys) now
+  ask how long the key lives — never, 30 days, 90 days, 1 year or a custom date (the key
+  stops at the end of that day, UTC). The services always supported it; the forms never
+  asked. Omitting the field still mints a key that never expires.
+- **Invitations can send people back to the app that invited them.** An invitation takes
+  an optional `client_id` and `return_to`; after accepting, the person is sent to
+  `return_to` instead of this console's dashboard. The address must sit on one of the
+  app's registered redirect-URI origins, and it is checked again at acceptance. Stored in a
+  new app table, `invitation_contexts`, beside `invitation_role_grants`.
+- **One invite form and one pending-invitations list everywhere.** People › Members, the
+  environment console's organization page and Workspace › Team draw the
+  same React component (`InviteForm`, `PendingInvitations`); the organization invite runs
+  through one service (`OrganizationInvitations`). Every surface can now **send again** and
+  **withdraw**, and each role in the picker says what it means.
+- **Transfer ownership** on People › Members (owner only) and **Make owner** on the
+  environment console's organization page; **Leave organization** for any member except the
+  last owner; the owner can **delete their own organization** under Settings, confirmed by
+  typing its name and behind a fresh password.
+- A **Members and invitations** guide, linked from the page's "?".
+
+- **A Permissions guide, and the "?" topic the page never had.** Every other console page
+  has one; this had neither, so the only written account of what a permission is lived in
+  the SDK reference. `docs/guides/permissions.md` is in plain language, for an administrator
+  who does not want to write code to use a form that is already on their screen.
+- **An end-to-end test of an app built on Cbox ID.** One vendor environment, one app with a
+  manifest and a registered API, and the whole scenario as a chain of real requests:
+  sign-up from the app, a second team, an invitation with an app role back to the app,
+  a team the backend founds, a staff role that reaches one app and not its neighbour, a
+  support session, and a member's API key that dies with his role and his membership
+  (`tests/Feature/AppBuiltOnCboxIdChainTest.php`). The browser suite walks the first three
+  steps through the real pages.
+
+### Changed
+
+- **Sign-in changes are on the audit trail.** Changing the sign-in rules (`auth_policy.updated`,
+  `auth_policy.inherited`), removing a social provider (`social_provider.removed`),
+  registering, changing or removing a SAML application (`saml_app.*`) and approving or
+  withdrawing the legacy login (`legacy_login.approved` / `.revoked`) recorded nothing
+  before; they are recorded now, from the console as the person and from the API as the key.
+  A second SAML application with an entity id already registered is refused rather than
+  failing on the database, and revoking or editing a frontend key that does not exist is a
+  404 rather than a silent no-op.
+- **Requires `cboxdk/laravel-id` ^1.21.** Management-key scopes are its `ManagementScopes`
+  vocabulary: the framework's own plus this app's (`AppManagementScopes`).
+- **One context switcher in every console's topbar: `Workspace ▾ / Project ▾ /
+  Environment ▾ [PRODUCTION]`.** It lists the workspaces you belong to, the current
+  workspace's projects, and only the environments you may administer (the same two checks
+  `/open/{environment}` makes). Choosing an environment opens the same console page there
+  when it exists without a record in its URL, else that page's list, else the Overview:
+  the page travels through `/open/{environment}?to=` into the handoff, bound to its token
+  with an HMAC and checked on both ends against an allow-list (a path under `/admin` that
+  routes to an environment-console GET page; `//host`, backslashes, absolute URLs and
+  anything else are dropped). The environment console has the switcher too; it used to
+  show a back arrow and the environment's name. It replaces the organization switcher and
+  the operator's "target environment" menu, which moved to Platform › Environments.
+- **The account menu is the avatar, top right:** Workspace settings, My account, Switch
+  user, Platform admin (operators), Theme, Sign out.
+- **The rail shows its labels by default.** Pinned is the default; unpinning is
+  remembered in the `cbox-nav-pinned` cookie, which now records only an explicit `0`.
+- **Platform admin is a mode.** The Platform, Insights and Administration areas are no
+  longer appended to every operator's rail; the account menu opens them, the rail there
+  holds only them, and a strip across the top says "Platform admin" with "Exit platform
+  admin".
+- **The environment console is filed by task, in market terms:** Home, Users & orgs,
+  Authentication, Developers, AI agents, Branding, Monitoring, Advanced, Settings (plus
+  Connectors when that module is on). Renamed pages, on both consoles where a page is
+  shared: Single sign-on → Enterprise SSO, Sync users in → Directory Sync, Sync users out
+  → Outbound provisioning, Activity log → Audit log, Log streaming → Log streams, Sign-in
+  rules → Authentication policy, Social sign-in → Social login, Apps → Applications,
+  Inline hooks → Hooks, SAML applications → SAML apps, Staff → Admins & support, Review
+  agent requests → Approvals, and the environment console's Keys → API keys. URLs and
+  route names are unchanged.
+- **The console chrome is built once per request.** The controller and the shared prop
+  each built it before.
+- **A customer's organization console is an admin portal now.** On a customer's
+  environment host of a multi-tenant deployment, the organization console offers Members,
+  Roles and Permissions, Single sign-on (with its domains), Sync users in, the Activity
+  log, an Overview without the module cards and setup checklist, and the person's own
+  pages (My account, their API keys, agent and device approvals). The product's
+  administration (apps, webhooks, inline hooks, token vault, access reviews, role
+  conflicts, sync users out, log streaming, social sign-in, sign-in rules, appearance,
+  settings, usage, member API keys, the setup guide, and the analytics, compliance,
+  connectors, trusted-device inventory, risk and branding module pages) answers 404 there,
+  writes included (`CustomerConsole` is the one list the rail and the 404 both read). The
+  environment console at `/admin` keeps all of it. A single-tenant install, an operator
+  and the workspace console at the platform root are unchanged, because there the
+  organization console is the only console.
+- **The rule that the organization and environment consoles offer the same capabilities
+  is dropped**, with the `cbox-id:doctor` check that enforced it
+  (`ConsoleParityHealthCheck`). The property it also held, that no workspace page is routed
+  on the environment plane, is a test now.
+- Linking a social account from My account, and confirming a step-up with nothing to
+  return to, land on My account instead of the organization's Settings.
+- **Docs say what the app is.** README and the Dockerfile described a Livewire + Volt UI
+  (it is Inertia + React); SECURITY.md said the project was pre-1.0; the console action
+  sweep is marked as describing the pre-Inertia console, superseded by the action layer
+  and tracked by the action parity test; the deployment guide no longer points at Laravel
+  Cloud as where the workers run. `MERGE-PLAN.md`, a working doc that asked to be deleted
+  once executed, is gone.
+- **`docker-compose.yml` reads `APP_KEY` and `CBOX_ID_CRYPTO_KEY` from the environment.**
+  The public throwaway values remain the defaults, so `docker compose up` still works with
+  no setup, under a DEV ONLY banner.
+- **The workspace API is `/api/v1/workspace` with `cbid_ws_` keys** (was `/api/v1/organization`
+  with `cbid_org_`): one name for the plane in the console, the API and the credential.
+  Existing `cbid_org_` keys are revoked by a migration; no aliases. See UPGRADING.
+
+- **Requires `cboxdk/laravel-queue-autoscale` ^4.3** (was ^3.0, never started) and
+  `cboxdk/laravel-queue-metrics` ^3.4. `cbox.yaml` and `docker-compose.yml` run
+  `queue:autoscale` as the queue process.
+- **Requires `cboxdk/laravel-id` ^1.19** (ten additive migrations; see UPGRADING.md).
+- **Inviting onto a workspace's team is one service for the console and the workspace
+  API** (`TeamInvitations`). `POST /api/v1/organization/members` used to mail the
+  invitation without its role, record nothing on the activity log, answer 201 when the
+  mail server had refused (leaving a live invitation nobody received), and could not
+  list, re-send or withdraw what it sent. It now behaves exactly like Workspace › Team:
+  the role is in the mail, the key's name signs it (on the accept page too), the log
+  records `organization.member_invited` / `organization.invitation_revoked` with the key
+  as the actor, a refused mail is a `503` with nothing left behind, and
+  `GET /api/v1/organization/invitations`, `POST …/invitations/{id}/resend` and
+  `DELETE …/invitations/{id}` are new. The spec's role lists now name the roles the API
+  has accepted all along (`admin`, `developer`, `member`, `viewer`). An organization's
+  invitations (its people, `OrganizationInvitations`) are unchanged and stay a separate
+  kind.
+
+- **Rotating an app secret no longer has to be a cut-over.** The console passed a grace of
+  0; it now passes the overlap chosen on the Secrets tab, "immediately" still among them.
+  A rotation posted without one is still immediate.
+- **An app's scopes are edited on its Scopes tab**, `PUT /apps/{id}/scopes`. The details
+  form (`PATCH /apps/{id}`) no longer carries or changes scopes.
+
+- **`plane:account` is now `plane:signup`**, served on the platform root and on tenant
+  hosts. `/signup` was the only route on `plane:account`. Whether a tenant's sign-up is
+  open is the environment's setting.
+- **After sign-up, the person goes back to where they were headed**, an authorization
+  included, instead of always to the dashboard.
+- **App writes go through the framework's `ClientRegistry`.** That covers register,
+  update (built from `blueprint()` so settings the page does not show survive), manifest
+  URL, secret rotation and delete. Rotation no longer writes the deprecated `secret_hash`;
+  it calls `rotateSecret()` with no grace period until the overlap UI exists. Settings
+  the registry refuses come back as form errors.
+- **Transfer, leave and close use the framework's verbs** (`transferOwnership()`,
+  `leave()`, `archiveAsOwner()`), which lock the rows and write their own audit entries.
+  Ownership goes only to an active member. The environment console's Delete organization
+  calls `Organizations::archive()` and sends the `organization.deleted` webhook.
+- **Webhook event pickers come from `WebhookEventType::catalogue()`**, limited to offered
+  events. A new endpoint may subscribe only to those. An existing endpoint keeps what it
+  already has.
+- **Environment key scopes** are the framework's `offerable()` scopes that some
+  `env.api:<scope>` route requires. A scope appears once its endpoint ships.
+
+- **The workspace console is the workspace.** A workspace that owns identity providers
+  signed in to a console that showed its own record in Cbox's root environment with the
+  full end-user rail (roles, apps, webhooks, inline hooks, token vault, connectors,
+  access reviews), as though it were their product. The product was an environment
+  console on another host. At the platform root of a multi-tenant deployment the rail is
+  now **Workspace** (Projects, Team, Keys, Environment domains, Billing, Workspace
+  settings), **Team sign-in** (Single sign-on, Sign-in rules: how the workspace's own
+  team signs in to Cbox), Logs › Activity log and My account. Overview (`/dashboard`) and
+  the setup guide (`/get-started`) are not shown there either. Operators, single-tenant
+  installs and every other organization keep the full console.
+- **Hidden, not redirected.** The end-user pages a workspace console no longer lists stay
+  reachable by URL, so an app or webhook registered there before is not stranded, and
+  they stay authorized by the one check every console page uses. Reached that way, a
+  page says above its content that it manages the workspace's own record in Cbox, not the
+  product, and links to Projects.
+- **Signing in lands where people work.** A workspace member with exactly one active
+  environment they may administer (Owner, Admin or Developer) goes straight into that
+  environment's console through the signed handoff Projects › Open uses. Everyone else
+  lands on Projects, where each environment has **Open console**.
+- **The environment console shows its workspace and the way back.** The topbar reads
+  `← <Workspace> / <Environment> [badge] / <acting organization>`, and the first crumb
+  opens the workspace's Projects page.
+- **One URL per page.** About forty pages had a different path on each console
+  (`/sod-policies` beside `/admin/conflict-rules`, `/hooks` beside `/admin/event-hooks`,
+  `/clients` beside `/admin/applications`, and `/analytics` meaning sign-in activity on
+  one and usage on the other). Every page now has one slug, named after the page, and the
+  environment console's is that slug under `/admin`. Every old GET answers **301** with
+  its query string kept; writes moved too and are not redirected. The full table is in
+  [UPGRADING.md](UPGRADING.md). Route names are unchanged except the merged key pages and
+  `environment.analytics`, now `environment.usage`.
+- **One word per thing in the console.** *Identity platform* is **Workspace**,
+  *Administrators* is **Team**, *Account settings* is **Workspace settings**, and the
+  operator's *Customers* is **Workspaces**. The membership tier is the **built-in role**
+  (Owner, Admin, Developer, Member, Viewer); app-declared and custom roles are just
+  **Roles**, and people screens show both in one **Roles** control: exactly one built-in
+  role plus any number of roles (it was *Console access*, *Organization access*, *Access
+  roles* and *App roles* on different pages). *Roles everywhere in this environment* is
+  **Staff roles**. *Apps & API keys* is **Apps**. *Switch account* is **Switch user**,
+  which is what it does. The two agent approval pages are named for what each does:
+  **Approve agent requests** (a person approves requests to act as them) and **Review
+  agent requests** (an environment administrator sees every pending request and can deny
+  abuse).
+- **Sign-in rules moved from Settings to Sign-in** on both consoles. They are the
+  password, MFA and session policy, and on a workspace console they are half of the only
+  sign-in administration it has.
+- **Every rail area has its own icon.** The rail had three shields and two stacks, which
+  at 18px in a 64px rail were one glyph drawn several times.
+
+- **Ownership is transferred, never assigned, on every roster.** People › Members offered
+  "Owner" in its role picker, so an owner could mint further owners; the organization
+  roster's roles are now Admin and Member, and ownership moves only with Transfer ownership
+  / Make owner. Existing extra owners keep their role until an owner or an environment
+  administrator changes it.
+- **The two invitation mails no longer share a subject line.** Joining an organization reads
+  "*Dana* invited you to join *Acme*"; administering a customer account reads "*Dana*
+  invited you to administer *Acme* on Cbox ID". The account mail used to be signed with the
+  inviter's subject id instead of their name.
+
+### Fixed
+
+- **A support session's API response listed scopes its tokens did not carry.** The
+  session stored the app's whole registration (less `offline_access`), and the token
+  endpoint then audienced every token to the app's registered API, where an unregistered
+  scope such as `apps.manifest` cannot ride. Sessions now settle their scopes through the
+  same audience rules before they start — for the management API and the console alike —
+  so the stored session, its codes, the response and the tokens agree. Scopes of two
+  registered APIs are refused up front (`422 invalid_target`) instead of starting a
+  session whose codes no token endpoint would redeem.
+- **The invitation page said "Role: Member" to somebody invited as an Editor.** It
+  listed only the built-in role. It now lists the built-in role and every app and custom
+  role accepting will grant, in the console's words ("Built-in role", "Roles in cboxtax",
+  "Custom roles"), and leaves off a role that was made staff-only or retired since.
+- **A customer environment's sign-up showed Cbox ID's marketing panel to its end users.**
+  Every door on a customer environment of a multi-tenant deployment — sign-in, sign-up,
+  password reset, magic link, invitation, organization picker, create organization — now
+  carries the environment's brand (its name and logo from Appearance, over its colours,
+  also in the tab title) and no Cbox ID panel, pitch or "Set up Cbox ID" copy. An
+  organization-branded door drops the panel too. The platform root's doors and a
+  single-tenant install's keep theirs; the consoles on that host keep Cbox ID's name.
+- **A staff-only role posted to an organization's People page was refused in silence.**
+  Granting it by id redirected back with nothing said, and an invitation carrying it was
+  sent — "Invitation sent" — without it. Both now refuse the whole request with "That
+  access role is not offered in this organization", shown on the page (against the invite
+  form's access roles, or in the People page's alert). The same sentence answers another
+  organization's role and an id that matches nothing, so the refusal does not map the
+  vendor's staff roles. The environment API's invitation endpoint reports it as
+  `access_role_not_offered` (422).
+- The "Publish its own manifest" scope described itself with a literal `&amp;`.
+
+- **My account and Switch user in the environment console bounced to the environment's
+  end-user sign-in.** Both were relative links, so on an environment's host they opened a
+  page that needs the workspace session, found none, and sent the administrator to the
+  sign-in page of the product they were administering. Both now open on the workspace
+  host, where the person is signed in.
+- Environment-key scopes are shown by their label with the API key beside them, and the
+  reserved `directories:*` scopes, which no route requires, are no longer offered.
+- The API keys page promised the account API could "read billing"; it lists projects and
+  environments, creates environments, and lists and invites administrators. The environment
+  OpenAPI spec said environment keys are minted in the environment's console; they were
+  created only under the workspace's keys page (both consoles issue them now, under Keys).
+- Key and secret verbs are one set across the console: **Create key**, **Revoke**,
+  **Rotate secret**; the new-app form's button says **Create app**.
+- Secret rotation mints through the framework's `ClientSecret` value object instead of
+  a second inline copy of the format, and its docblock no longer claims overlap rotation:
+  rotation is a cut-over, and the page now says there is no overlap window.
+- The roles list said "No permissions yet." and "Every available permission is already
+  granted." on the same row when nothing could be granted; it now says which. With every
+  organization in view, an organization's role shows the organization that owns it, so two
+  tenants' "Editor" roles are no longer identical rows.
+- The setup guide's **Invite your team** step and the Roles page's **console access** link
+  pointed at a customer's administrators page, which redirected a tenant organization's
+  admin to projects and then to the dashboard. Both now open the organization's own People
+  page.
+- A refused roster change (the last owner, a role that is not offered) is shown on the
+  page; it used to go into an error bag nothing read, so the control silently did nothing.
+
+- `pip install cbox-id-client` appeared in step 5 of the quickstart — the first command a
+  new integrator runs. It has never been published. The block now lists the four packages
+  that do resolve, and says Python is source-only.
+
+## [1.1.0] - 2026-08-08
+
+One console. The `/platform` pages were still a second one — their own layout, their own
+navigation tree — and this finishes the fold that 1.0.0 started.
+
+### Changed
+
+- **The platform section is three areas of the one console, not a console of its own.**
+  `layouts/platform` is deleted; the nine operator pages render in `layouts/app` like every
+  other page, and Platform / Insights / Administration are seeded into the same nav registry
+  as Billing and Webhooks, gated on a `platform.operator` feature.
+  `ConsoleNavigation::operator()` is gone with it — the class now describes the environment
+  plane and nothing else.
+
+  Signing in and clicking through to `/platform` read as arriving at a different product. It
+  is the same person, the same session, and the same rail with three more areas on it. What
+  made the separation possible to remove is that the operator is a subject: with
+  `platform_operators` as a second credential store there was no way to ask "is this session
+  staff", so the only way to gate the pages was a different door, and therefore a different
+  shell.
+
+- **Two things the retired shell carried are now carried by the one console.** The browser
+  title says `· Platform ·` on a platform page — half those pages share a name with a page
+  about the operator's own organization, and "Usage" in a tab strip is either this install's
+  traffic or one customer's bill. And a **Platform operator** marker sits in the topbar on
+  every console page: the topbar names the organization you are acting for, which for an
+  operator is their own employer and says nothing about the authority they hold over
+  everybody else's. It does not lapse when they navigate to a customer-facing page, so
+  neither does the marker.
+
+- **The target-environment switcher is guarded on the scope, not on the shell.** It used to
+  exist only in a file only operators reached, and a shell is not an authorization check.
+
+### Added
+
+- **An operator can create a customer.** `TenantProvisioner::provision()` is the package's
+  own entry point and the operator console had no caller for it anywhere: an operator could
+  suspend a customer, walk their estate and impersonate their people, and could not create
+  one. Onboarding anybody who had not self-served meant tinker on a production console.
+
+  **The form has no password field.** The blueprint requires a credential, so it gets 64
+  random characters that are never rendered, never logged and never returned; the owner is
+  emailed a link and chooses their own. An operator who typed a password for a customer
+  would be an operator who knows that customer's credential, which is precisely the
+  authority the platform must not hold over its customers' identities. An address that
+  already holds a Cbox ID is reused and its password left untouched.
+
+- **Billing is a module.** `modules/billing/` registers its own nav entry, route, view and
+  gates through the same console-kit sockets the other six modules use. It was a hardcoded
+  nav line and a hardcoded route behind a capability check — invisible to a member who may
+  not read it, and present in every deployment whether or not the deployment bills anybody.
+  `CBOX_BILLING_ENABLED=false` now means absent: no route, no nav entry, no page.
+
+  Two gates, because they are two questions. `billing` is whether this deployment bills and
+  gates the route; `organization.billing` is whether this person may see the figures and
+  gates the nav entry. The route deliberately does not ask the second — a member who may
+  not read billing is redirected to Projects by the page itself, and gating the route on the
+  capability turned that redirect into a 404.
+
+### Fixed
+
+- **Enrolling an authenticator on the platform root returned 404.**
+  `.well-known/cbox-authenticator` advertised `issuer: https://cboxid.com` with a real
+  `client_id`, while `plane:issuer` made every endpoint that document implies absent on that
+  host — so scanning the QR from `/account/devices` worked on a tenant subdomain and failed
+  on the root. Two components disagreed about whether the root is an issuer, and the console
+  offering the feature was the half telling the truth: the fold made the root a tenant whose
+  people sign in, and every customer owner and operator is an ordinary subject there.
+
+  The wall is not opened. A new `plane:first-party` covers `/oauth/authorize`,
+  `/oauth/token` and `/oauth/revoke`, and on the root it admits a **platform-owned**
+  first-party client and refuses every other. Both halves matter: `first_party` alone is a
+  flag that can sit on a client scoped to one organization, and an organization admin signed
+  in at the root can create OAuth clients there from Developers › Apps. Without the
+  platform-owned test this would let a customer turn the buyer host into an identity
+  provider for their own app. Discovery, JWKS, dynamic registration, SCIM and the SAML
+  bindings stay absent on the root — including for the very client that opens the token
+  endpoints.
+
+  Requires `cboxdk/laravel-id` 1.1.0, whose `cbox-id.api.first_party_middleware` is what
+  lets the token endpoints take a different wall from the rest of the surface.
+
+## [1.0.0] - 2026-08-07
+
+The account plane is gone, here and in the framework. A customer **is** an organization.
+
+### Changed
+
+- **One identity.** `AccountAuth` is deleted rather than renamed: its lookup half duplicated
+  `CurrentUser`, which the `Authenticate` middleware already populates — including the guard
+  against a tampered organization id in the session. Its three responsibilities went where
+  they belong: who is acting → `CurrentUser`, the door → `PlatformAuth::establish()`, the
+  mandate → `SubjectCredentialGate` (renamed from `MemberCredentialGate`, and reduced to the
+  subject id it always really wanted).
+- **The console speaks organization.** `/members`, `/activity`, `/organization-settings`,
+  `/invite/{token}/accept`, and the operator's customer pages at `/platform/customers` —
+  not `/organizations`, which already exists on that console and means a tenant's own
+  end-user organizations.
+- **The machine plane is `/api/v1/organization`**, authenticated with `cbid_org_` keys, and
+  `resources/openapi/account.yaml` becomes `organization.yaml`. Breaking, and deliberate
+  now: after 1.0.0 the paths and the key prefix would permanently name a plane that has not
+  existed since before the first tag.
+- **`CBOX_ID_ACCOUNT_HOST` → `CBOX_ID_CONSOLE_HOST`**, which is what it always described.
+
+### Fixed
+
+- **Every member-management action on the console 404'd.** `account_members` was
+  environment-owned and nothing else, so the ownership fence could be written by hand.
+  `memberships` is TENANT-owned as well, and that scope is deny-by-default — so the
+  one-for-one model substitution produced a query that matched nothing, on a row rendered
+  three lines above it on the same page.
+- **A suspended customer kept a live environment-admin session.** The owner-active check
+  did not survive the resolver's move to memberships. The host resolver refuses a suspended
+  owner too, but that answer is cached — which is exactly why the second check exists.
+- **An SSO mandate was looked for in one scope.** A tenant's end user holds memberships in
+  the ambient environment; a customer's people hold theirs in the platform root. Looking in
+  one place reports "no mandate" for everybody in the other, and no mandate fails OPEN.
+- **The environment console audited a membership row id as the actor**, so its entries
+  resolved against a different id space than the management console's.
+- **Impersonation could not be exited.** The marker held a membership row id, which names
+  no session, so an environment admin who stepped into a user came back to the sign-in door.
+- **The accept-invite page rendered for a spent invitation** and asked for a password before
+  refusing.
+- **The environment switcher selected a dropped column** on the chrome of every operator
+  console page. sqlite answers null; PostgreSQL and MySQL raise.
+
+### Build
+
+- `composer qa` runs **`sbom-check`**, and the app's is an EXACT comparison — this is an
+  application with a committed lockfile, so a byte match is achievable and is what CI
+  already enforced. A local gate weaker than CI is a gate you can push red through.
+- `process-timeout: 0`, so the gate cannot fail on the suite's duration rather than on its
+  result.
+
+
+### Added
+
+- **`php artisan cbox-id:install` now installs the platform, not just the schema.** A
+  fresh deployment held nothing — no platform operator, no account, no environment — and
+  there was no supported way to change that, so the product could not be installed by
+  anyone who was not us. The command (which replaces the framework package's command of
+  the same name) mints the crypto key, migrates, asks for or accepts the deployment
+  shape, creates the platform-root environment, the first operator and — in the
+  multi-tenant shape — the first account and its environment, records the shape and
+  issuer in `.env`, and finishes by running `cbox-id:doctor` against what it built.
+  Fully non-interactive via options, and it fails loudly rather than guessing when a
+  required one is missing.
+
+  It **refuses a platform that is not empty**, naming what it found, and there is no
+  `--force`: the second run's job would be to mint a second platform root and hand out a
+  credential on a live deployment.
+
+- **A first-run screen at `/first-run`**, for a deployment nobody can open a shell on.
+  It exists only while the platform is empty, and it requires a **setup token** that the
+  deployment publishes to `storage/app/private/cbox-id-first-run.token` and to the
+  application log — never to the page, never to a URL. Plain lazy-create would hand a
+  public identity provider to whoever reached it first, which on the open internet is a
+  port scanner. Completing it provisions the platform, spends the token, and the route
+  404s for good.
+
+  While the platform is empty, every other human-facing page redirects here, so a fresh
+  box no longer answers with a sign-in form that no credential can satisfy. Protocol
+  front channels (`/oauth/*`, `/sso/*`, `/api/*`, `/.well-known/*`, `/up`) are left
+  alone: a 302 to a setup page is not an answer any of those callers can read.
+
+### Changed
+
+- **One person, one session.** There were three session stores for what is one human: a
+  subject session, an account-member session, and an environment-admin one. Only the first
+  was ever an identity. The other two held a SELECTION — which account, which environment —
+  dressed up as a credential, and the credential behind all three was already the
+  subject's: account members and platform operators are ordinary subjects in the
+  platform-root environment.
+
+  Every bug closed in this area was a seam between those stores. An operator signed in and
+  was bounced back to the sign-in forever, silently, because the login wrote a member
+  session and the gate asked for a subject one. `AccountAuth::attempt()` grew an
+  `attemptOperator()` branch so somebody with no membership could get in at all. The
+  console gate grew an operator clause so it would admit them. `ConsoleScope` asked all
+  three stores in turn. None of those were separate problems.
+
+  `cbox.account_member` and `cbox.account_member_v` are gone, and so is
+  `cbox.env_admin_subject`. Membership is a lookup — `account_members.subject_id` is
+  unique, so "which account" has exactly one answer and the session cannot carry a
+  different one — and authority is a permission, re-asked of the live record on every
+  request. The door authenticates a PERSON; whether they hold a membership, operator
+  authority, both or neither is not the door's business.
+
+  What survives is the environment ANCHOR (`cbox.env_admin_env`), because it is not an
+  identity. The session cookie is shared across `*.cboxid.com`, so an admin session minted
+  for one environment must be worth nothing on another's host, and that check is what says
+  so. It is defence in depth — membership access is re-verified per request too — and the
+  falsification that found this file's blind spot is in the suite: the original anti-bleed
+  test used an environment the admin had no access to, so deleting the anchor comparison
+  left it green.
+
+- **A suspended operator can now sign in, and gets a console with no platform pages in
+  it.** The door used to refuse them outright, which was an artefact rather than a
+  decision: a successful sign-in meant a member session, and a suspended operator has no
+  member row — so "holds no authority" and "has no way in" were the same answer. They are
+  different questions. Refusing the credential revoked nothing (the same password still
+  worked on any tenant plane they belonged to) and put "is this person staff?" back inside
+  the door.
+
+- **A member's password reset now ends their sessions everywhere** — see the framework
+  changelog. The stamp on `account_members` that used to do this could not reach an
+  ordinary subject session; it keeps its other job, which is making a reset link
+  single-use.
+
+- **The workspace console runs behind `platform.auth:optional`,** like the platform
+  section already did, so `CurrentUser` is populated there and the standing holds — a
+  temporary password, an expired one, an MFA mandate — are enforced once, in
+  `Authenticate`, rather than in a second copy that could disagree. Those holds now send
+  people to the console they are STANDING IN: the workspace change page rather than the
+  tenant one.
+
+### Fixed
+
+- **The "no workspace yet" landing was itself a redirect loop under an environment-wide
+  MFA mandate.** The hold exempted the security page, and the security page turns a
+  member-less non-operator around to the landing, which was not exempt — so the page that
+  exists precisely so this person is not stuck at a door became `ERR_TOO_MANY_REDIRECTS`.
+  No membership is needed to reach it: the mandate resolves from the environment
+  baseline, which the sign-in rules page sets. The landing is now exempt from every hold,
+  because nothing on it satisfies any of them and the sign-out it offers is the only move
+  a person with no membership has.
+
+- **An account that mandates SSO could not open its own tenant console.** The redemption
+  of an account→environment handoff asked whether a *password* would still be admitted;
+  an SSO mandate answers no forever, and the refusal went to the admin sign-in, which is
+  behind the environment-admin gate and bounces back to the account console's minting
+  door, which minted again. The mandate governs a door the handoff is not: it is minted
+  from a session that already satisfied whatever the account's own door asked of it, and
+  the tenant cannot see which door that was. Redemption now asks only the standing
+  requirement it can answer — an administrative password owed a change — which the
+  account plane resolves on its change page, so the bounce ends there instead of cycling.
+
+- **`Authenticate` populated `CurrentUser` but could never empty it.** "Nobody is signed
+  in" was a fact the object could not state, only fail to have been told — safe only
+  because a real deployment drops scoped instances between requests. Once the console
+  started reading the acting person from there, a subject left over from earlier in the
+  same process answered for a request whose session had been revoked.
+
+- **`/operator`, `/operator/login` and `/operator/login/mfa` redirect again.** The move of
+  the platform pages to `/platform` dropped the bookmark redirects that were deliberately
+  kept when the separate operator login was retired.
+
+### Security
+
+- **Mandating SSO now ends the password sessions that predate the mandate.** Every other
+  rule in a sign-in policy is re-asked of a live session — two-factor and password age are
+  holds on every request — but "a local password is not a way in" was asked at the door
+  and nowhere else, so switching it on governed the next sign-in and nobody already
+  inside. Their sessions kept working until their ttl ran out.
+
+  That gap widened when handoff redemption stopped asking the password question (above):
+  an account tightening its policy left live password sessions reaching the tenant admin
+  console, which they had previously been refused at. Both halves are closed together —
+  the redemption stays out of the password's business, and a policy that stops admitting
+  passwords now revokes the sessions it no longer admits, in the environment it was
+  written in, the administrator who made the change included.
+
+  Revocation happens at the WRITE, wrapping the policy store rather than the console page,
+  so it covers every writer — the sign-in rules page today, an organization-level surface
+  or an API path when either appears. It fires only on a **tightening**: relaxing a
+  mandate, or saving a policy without touching it, strands nobody.
+
+## [0.35.1] - 2026-08-03
+
+### Fixed
+
+- **`cboxdk/laravel-ssrf` raised to `^1.1.1`, repairing DNS pinning for dual-stack
+  hosts.** Up to and including v1.1.0 the guard emitted one `CURLOPT_RESOLVE` entry per
+  validated address; curl treats a second entry for the same `host:port` as a
+  replacement rather than an addition, so only whichever address sorted last survived.
+  Any dual-stack host whose AAAA sorted last — `accounts.google.com` is one — was pinned
+  to IPv6 alone, with no fallback to the IPv4 address validated moments earlier.
+
+  This was **latent in production, not breaking it**: Laravel Cloud `eu-central-1` has
+  working IPv6 and was resolving discovery over it, verified by running the real Google
+  OIDC discovery on the deployed v1.1.0 instance, which returned the correct
+  authorization endpoint. The same call on a machine without an IPv6 route failed with
+  `OidcDiscoveryFailed … cURL error 7`. So every OIDC discovery, token exchange and JWKS
+  fetch had been running single-family with no failover — fine until the region, the
+  host or Google's IPv6 endpoint changed.
+
+  `docs/requirements.md` is updated to match, as `RequirementsAccuracyTest` enforces.
+
+## [0.35.0] - 2026-08-01
+
+The console assumed you already knew what an IdP does. This is the pass that stops it
+assuming that: names that match where you clicked, an explanation on every page, and a
+setup checklist that measures reality instead of asserting it.
+
+### Added
+
+- **An in-app explanation layer.** `HelpTopic` holds one plain-language explanation per
+  concept (what it is, when you need it) and `<x-help>` puts it behind the "?" beside
+  every page title. Where a guide exists it links out; where none does it links nowhere
+  rather than shipping a 404 — `DocsLinks` returns null for a topic with no guide, and
+  for a deployment with `DOCS_BASE_URL` blanked (air-gapped installs keep the in-app
+  text and lose only the outbound links).
+- **Admin guides** under `docs/guides/` — twelve task-oriented guides for the person
+  administering an organization, one per console surface, which is what the "?" links to.
+- **A guided first run** at `/get-started`: the setup steps with room to explain
+  themselves, each linking out to the page that does the work. A fresh organization is
+  led there by a banner on an otherwise-empty dashboard, and it stays reachable from
+  Settings after it is dismissed.
+- **Empty states that teach.** `<x-empty-state>` adds the "what this is, why you want
+  it, and the three steps to get there" that a bare "No connections yet" left out;
+  applied across the console's first-use surfaces.
+
+### Changed
+
+- **The setup checklist is measured, not hardcoded.** `SetupChecklist` derives each step
+  from live state (a second member or a pending invitation, an org-registered client,
+  roles, branding, an SSO connection, a directory), so a step ticks itself whether the
+  work was done from the checklist, its own page, or the API. The old card asserted
+  "Organization created ✓" in markup and had three items that could never tick, which
+  made it inert decoration. Steps the org is not entitled to are dropped rather than
+  shown locked, so the list can actually reach 100%; dismissal is per-admin and lives in
+  `onboarding_dismissals`.
+- **Nav labels, page titles and browser titles are one string.** Six pages disagreed
+  with the sidebar entry that reached them: the rail said "Stored tokens" over a page
+  headed "Token vault", "Event hooks" over "Inline hooks", "Conflict rules" over
+  "Segregation of duties". Both halves now read **Token vault**, **Inline hooks** and
+  **Role conflicts**, and the SCIM pair became **Sync users in** / **Sync users out**,
+  which says which way people move; "User sync" beside "Outbound sync" did not.
+- **Page eyebrows come from the nav registry** (`ConsoleLocation`) instead of a string
+  typed into each page, which had drifted to "Authentication", "Security" and "You" above
+  pages reached from "Sign-in", "Developers" and "My account" — the one label whose job is
+  orientation, disagreeing with the navigation. Every console page now renders through
+  `<x-page-header>`, so a plugin's page gets a correct eyebrow for free.
+- **One rail area per subject, not per module.** The console grew to twelve top-level
+  areas because each module minted its own: Analytics sat beside Overview › Usage,
+  Compliance's audit pages beside Logs › Activity log, and a one-page "Security" area
+  collided with My account › Security. The analytics, compliance and risk modules now
+  append to the host area that already owns the subject, the way the devices module
+  already did. Area orders are unique across modules — two pairs shared a number, and
+  `DefaultNavRegistry` sorts on order alone, so the rail reshuffled with provider boot
+  order whenever a module was enabled or disabled.
+- **The activity log names people.** Actor and target were rendered as raw ULIDs, so the
+  row that says someone was added did not say who. `AuditNames` resolves both, batched
+  per page rather than per row, and the dashboard feed now shares it instead of carrying
+  its own narrower copy.
+- **"Console access", not "workspace access"** (Members). Workspace already names a
+  different plane in this product — projects, environments, billing — while this control
+  decides who can run *this* console. Settings stopped calling the organization a
+  workspace for the same reason.
+- **One prefix, not two: the `ID_*` env var fallback is removed.** 0.34.0 renamed the
+  vendored modules' variables to `CBOX_ID_*` and kept the old names readable as a
+  fallback; 37 config reads carried both spellings. Two names for one setting is a
+  footgun in a ConfigMap nobody reads twice — and the ambiguity had already reached the
+  test suite, which was pinning both. `CBOX_ID_` is now the only prefix this deployment
+  answers to. **Breaking for anyone still setting an `ID_*` variable**: it is ignored
+  rather than refused, so the setting silently falls back to its default. See
+  UPGRADING.md, which lists the four families and the two defaults worth knowing.
+- **The mobile nav sheet carries one icon per group** rather than repeating the area's
+  glyph on each of its pages, which at 375px spent the width the labels needed on three
+  identical marks that distinguished nothing.
+
+### Fixed
+
+- The Roles empty state rendered a literal `&quot;`, and the Apps page an `&amp;amp;`,
+  from copy that pre-escaped what `<x-page-header>` and `<x-empty-state>` escape again.
+- Members showed a dead "None" in the roles column for an organization that has no roles
+  defined; it now links to the page where you make one.
+- The accessibility guard covered eight console pages; it now covers eighteen, including
+  every page this work added or renamed.
+- **CI was red on `main` for a reason no developer machine could reproduce: the suite
+  needed a Redis nobody starts.** `cboxdk/laravel-queue-metrics` ships enabled with a
+  Redis storage driver and a listener that writes on every job dispatch, so every test
+  that queues a job required a running Redis. Developer machines usually have one, and
+  CI does not — the worst possible split, because the machine with no local services is
+  the one whose red build everybody learns to ignore. Metrics are now off for the suite.
+  While proving that, the test environment was also made authoritative: phpunit.xml's
+  `<env>` writes `$_ENV` and `putenv()` but not `$_SERVER`, which Laravel's `Env`
+  repository reads first, so an exported `QUEUE_CONNECTION=redis` beat the suite's own
+  configuration. `tests/bootstrap.php` sets all three and strips every inherited
+  `CBOX_ID_`/`ID_` variable, so what the tests see is a function of that file and
+  nothing else. `DB_*` is the deliberate exception — the engines matrix redirects the
+  run to PostgreSQL and MySQL by exporting it — and `TestEnvironmentTest` asserts each
+  half.
+- **The parallel test suite is green again.** 48 tests failed under `pest --parallel`
+  while the same suite passed serially: eight helpers and one constant were declared in
+  one test file and called from another, and paratest gives each worker only a subset of
+  the files, so the declaration is simply absent in the process that needs it. Which
+  files share a worker depends on the shard split, so the failures moved around and read
+  as flakiness. The shared fixtures now live in `tests/Pest.php`, which every worker
+  loads, and `SharedTestHelperTest` tokenises the suite to fail the build the next time
+  one leaks.
+
+### Security
+
+- **Account-plane sign-ins are now audited** (`account.signed_in`). The workspace
+  console owns environments, API keys and billing, and the act of getting into it left
+  no trace on the account's activity chain — the administration it enables was audited,
+  but not the entry, on any of the five sign-in paths. A takeover was invisible in the
+  very log an admin would open to investigate one, with `last_login_at` (a single
+  overwritten column) as the only evidence a session had ever started. Recorded in
+  `AccountAuth::establish()`, the one place a member session is created, so a sixth door
+  added later inherits it. Audit failure is reported and swallowed — an unavailable
+  audit backend must not lock members out of their own console.
+
+## [0.34.0] - 2026-07-30
+
+Requires `cboxdk/laravel-id` v0.65.0.
+
+Devices, take two: enrolment moves to where the people it is for can actually reach
+it, and nothing about the module asks anyone to run a command any more.
+
+### Added
+
+- **Personal Trusted devices page** (`My account → Trusted devices`) — enrolment QR and
+  the caller's own handsets, with self-service removal. Enrolment was previously only on
+  the org-admin fleet page, which plain members cannot open, so members had no way to
+  enrol at all. The admin page keeps the fleet inventory and delivery health, and links
+  here instead of showing a code.
+- **The authenticator OAuth client provisions itself** on first view of the Trusted
+  devices page. `php artisan cbox-id:devices:client` is no longer a required setup step;
+  it remains for pre-provisioning an environment or adding extra redirect URIs.
+
+### Changed
+
+- **Module env vars renamed `ID_*` → `CBOX_ID_*`** (`ID_DEVICES_*`, `ID_ANALYTICS_*`,
+  `ID_COMPLIANCE_*`, `ID_CONNECTORS_*`), matching the prefix the rest of the deployment
+  uses. The old names still work as a fallback; see UPGRADING.md.
+
+## [0.33.0] - 2026-07-30
+
+Requires `cboxdk/laravel-id` v0.65.0.
+
+CIBA could always *ask* a user to approve something out of band; nothing ever told them.
+This adds the notification surface the framework's own docblock says belongs to the host.
+
+### Added
+
+- **Trusted devices and push approvals** (`modules/devices`) — a registry of a user's
+  enrolled handsets and an FCM delivery pipeline, modelled on the webhook dispatcher:
+  durable row before enqueue, gap-free per-device sequence, exponential backoff, a
+  per-device circuit breaker and a stranded-job rescue. Off by default
+  (`ID_DEVICES_ENABLED=false`); with no transport configured it records notifications and
+  sends nothing.
+- **The CIBA approval push is synchronous.** The domain event goes to a transactional
+  outbox relayed once a minute, against a 300-second CIBA TTL, so approvals are pushed
+  from a decorator around `BackchannelAuthentication` and reach the handset in the same
+  request. Security alerts take the opposite trade and keep the relay, staying off the
+  login path. Note the decorator is installed even when the module is disabled, where it
+  is a pass-through.
+- **A device API for a first-party mobile client** — enrol, list, deregister, and read,
+  approve or deny pending CIBA requests. Behind `scope:` with DPoP sender-constraining;
+  the approving subject comes from the verified token, never the body.
+- **`cbox-id:devices:client`** provisions the authenticator's public OAuth client per
+  environment, and `GET /.well-known/cbox-authenticator` lets one mobile binary discover
+  it. That endpoint is load-bearing rather than convenient: `oauth_clients.client_id`
+  carries a global unique index, so no single client id can serve every environment.
+- **An enrolment QR code** on the Trusted devices page. It carries only the host — no
+  token, nothing time-limited — so it is safe on a screen.
+
+### Fixed
+
+- **The retry sweep never selected a row.** It runs from the scheduler, which has no
+  environment context, so the deny-by-default tenancy scope compiled it to `WHERE 1 = 0`.
+  The durability guarantee was inert in production while passing every test that set an
+  environment first. It now spans environments under `withoutScope()` and lets each job
+  re-enter its own.
+- **A mistyped FCM project id would have wiped every push token in the estate.** A
+  project-level 404 carries no `errorCode`, and a bare 404 was treated as token death.
+  Only `UNREGISTERED` and `SENDER_ID_MISMATCH` now retire a device; `INVALID_ARGUMENT` is
+  a malformed message, not a dead handset.
+- Delivery no longer clobbers a push token rotated while a send was in flight, and
+  circuit-breaker state is written atomically instead of read-modify-write.
+- Notifications parked by an open breaker are bounded by a deadline, so one dead handset
+  cannot accumulate a backlog that starves every other tenant's approval retries.
+- `OpenApiCoverageTest` derived its path base from a filename heuristic `ApiContract` does
+  not share, so a new spec file would either fail the build or pass it while silently
+  skipping response validation.
+
+### Security
+
+- The Trusted devices console page had no authorization gate. Any authenticated member
+  could read the environment's entire device inventory — who is enrolled, on what, and
+  which devices are failing — by typing the URL. Now gated on admin in `boot()`, so the
+  check is re-run on every hydration rather than only at mount.
+- `approve()`/`deny()` collapse unknown, expired, already-answered and wrong-subject into
+  one response, and the API preserves that collapse, so a stolen handset cannot probe
+  which request ids exist.
+- The CIBA binding message is never pushed. A lock screen is readable by anyone holding
+  the phone, and that message is the transaction detail CIBA exists to protect; it is
+  fetched over TLS after the app opens.
+
+### Not yet verified
+
+- The mobile sign-in flow has not been exercised end to end. `Browser::auth()`'s callback
+  delivery is untested, so enrolment from a real handset is unproven. Enabling
+  `ID_DEVICES_ENABLED` in production makes the console surface visible before that is
+  established.
+- Push has never left the building: no deployment has FCM credentials configured, so the
+  transport is inert and only the Null path has run outside tests.
+
+## [0.32.0] - 2026-07-27
+
+Requires `cboxdk/laravel-id` v0.65.0.
+
+The open-core split is gone. Cbox ID is now one application that self-hosts with no
+licence key, no limits, and every capability present; billing becomes something you add
+where you actually bill someone.
+
+### Added
+
+- **Five console modules are now part of the application** — analytics, compliance,
+  connectors, risk-plus and whitelabel, previously five separate proprietary packages.
+  They live under `modules/` and still register themselves the way an external package
+  would, through the public console-kit sockets with no edit to `app/`. See
+  [Console modules](docs/core-concepts/modules.md).
+- **`CBOX_ID_ENTITLEMENTS=open` (the new default)** — an unset entitlement is granted.
+  It is a floor, not an override: an explicit entitlement still wins in both directions,
+  so per-organization differentiation by hand keeps working and a revocation still
+  revokes. Set `metered` where a billing transport is wired to restore deny-by-default.
+  See [Entitlements](docs/core-concepts/entitlements.md).
+- **A relational analytics event store** (`ID_ANALYTICS_STORE=database`). Analytics could
+  previously stream to ClickHouse or nowhere; this is the third option, for deployments
+  with no column store. Idempotent through the engine — `event_id` is the primary key and
+  writes are `insertOrIgnore` — and swept by the daily `model:prune`, which it needs:
+  this is the one table that grows with traffic rather than with tenants. See
+  [Analytics storage](docs/operations/analytics.md).
+- **CI runs the suite against MySQL 8.4 and PostgreSQL 17.** Until now this application
+  had only ever executed against sqlite, while production ran PostgreSQL.
+
+### Fixed
+
+Four defects the new engine coverage surfaced on its first run, two of them live bugs on
+an engine that ran in production:
+
+- **The Apps & API keys console 500s on MySQL.** It filtered `oauth_clients` on
+  `orphaned_at`, a column that lives on `roles`/`permissions` and exists on
+  `oauth_clients` on no engine. sqlite hid it by falling back to treating the
+  unresolvable double-quoted identifier as a string literal, so the query matched nothing
+  instead of failing.
+- **The environment-scope guard refused legitimate writes on PostgreSQL.** Thirteen
+  `ulid()` declarations across this app's own migrations and two modules compiled to
+  `char(26)`, which PostgreSQL blank-pads — so a row's `environment_id` came back padded
+  and compared false against the very environment that owned it. `SchemaPortabilityTest`
+  is ported from the framework, widened to scan `modules/`, so it cannot return.
+- **The compliance audit export failed outright on PostgreSQL**, which ordered a
+  `SELECT DISTINCT` by an expression not in the select list.
+- **Analytics read across every environment** when none was in context: the ClickHouse
+  reader dropped the environment clause entirely. Both readers now deny by default.
+
+- `docs/security/adaptive-risk.md` told operators to run `CAST(… AS INTEGER)`, which
+  MySQL spells `SIGNED`. Query 1 is now portable; queries 2–5 are marked PostgreSQL-only
+  rather than left silently wrong.
+
+### Changed
+
+- `BrandProfile`'s `palette` and `email_templates` leave the `array` cast for `Palette`
+  and `EmailTemplates` value objects. The palette was previously validated at *render* —
+  an invalid colour could reach storage and was only rejected on the way out.
+- The brand asset stores depend on the `Cloud` filesystem contract rather than
+  `Filesystem`, which does not declare the `url()` they were calling.
+- `ReportSink` and `AuditExportSink` gained `isInert()`. The providers were sniffing the
+  concrete class to decide whether a feature was live, which missed a host binding its
+  own no-op sink.
+- Module Volt components converted from the functional API to the class API used
+  everywhere else in this application, so they carry typed properties and pass analysis.
+
+### Removed
+
+- The licensing layer. `cboxdk/laravel-id-licensing` is retired and
+  `EntitlementSource::License` is gone from the framework; there is nothing left to
+  unlock.
+
+## [0.31.0] - 2026-07-27
+
+Requires `cboxdk/laravel-id` v0.64.0.
+
+### Changed
+
+- The operator accounts screen no longer writes its own audit entry. `Accounts::suspend()`
+  and `reactivate()` now take an actor and record internally, so the four lines that did it
+  at the call site are gone. That is the point of the upstream change: an audit written at
+  the call site is one a second caller can silently forget, and this screen was the only
+  caller there had ever been.
+- **Known cost, accepted and tracked.** The package scopes that entry to the **system**
+  chain, because an account sits above the tenancy boundary — consistent with
+  `PlatformOperators`, which does the same. `App\Platform\AccountActivity` reads
+  `where('scope', $accountId)`, so an account's own activity view no longer surfaces its
+  suspension. The package's scoping is the right one and the test follows it rather than
+  forcing the package to match the app; `OperatorAccountsTest` now asserts both that the
+  entries land on the system chain **and** that the account's own chain is empty for those
+  actions, so the gap cannot quietly disappear.
+
+## [0.30.0] - 2026-07-27
+
+Requires `cboxdk/laravel-id` v0.63.0.
+
+### Security
+
+- Picks up two privilege fixes in the framework. `POST /user-tokens/introspect` checked no
+  scope at all, so any valid environment API key — however narrowly issued — could
+  introspect every personal access token in its environment; it now requires `users:read`.
+  And an **empty** resource-family allow-list was stored as `null`, which means
+  *unrestricted*, so the most restrictive request possible produced a token permitted on
+  everything.
+- **Both are breaking upstream, and both have zero blast radius here** — verified against
+  the production database rather than assumed: it holds **0** environment API keys and
+  **0** user API tokens, and this app has no caller of `UserApiTokens::issue()` or any
+  reference to `resource_families`.
+
+### Changed
+
+- The framework renamed `password_reset_tokens` to `cbox_id_password_reset_tokens`,
+  because the old name collided with Laravel's own skeleton migration and made a
+  greenfield install fail to migrate at all. **Requires a migration**; on PostgreSQL it is
+  a rename, not a table rewrite, so it is far cheaper than the v0.62.0 conversion.
+
+## [0.29.0] - 2026-07-27
+
+Requires `cboxdk/laravel-id` v0.62.0.
+
+### Changed
+
+- **Requires a migration.** laravel-id v0.62.0 moves 225 identifier columns across 81
+  tables off PostgreSQL's blank-padded `char` to `varchar`, because `char(26)` handed any
+  identifier shorter than 26 characters back to PHP padded — so a strict comparison
+  against the unpadded value was false. This deployment is **not** currently affected:
+  every id in production is a full 26-character ULID, verified by
+  `SELECT count(*) … WHERE octet_length(id) <> length(id)` returning 0 on every table
+  checked. The migration is therefore preventive and changes no data. On PostgreSQL it
+  rewrites each table but keeps every foreign key throughout, so there is no integrity
+  window; set `lock_timeout` so the `ACCESS EXCLUSIVE` queue fails fast rather than
+  blocking readers behind it.
+
+## [0.28.0] - 2026-07-27
+
+Requires `cboxdk/laravel-id` v0.61.0.
+
+### Security
+
+- **A "deleted" organization kept authenticating its members.** The console wrote
+  `OrganizationStatus::Deleted`, but all three enforcement points tested only
+  `=== Suspended`, and every other reference to `Deleted` was cosmetic — list filtering
+  and badge colours. Its members kept signing in, kept consenting, and kept minting
+  tokens. Production had no organization in that state, so this was latent rather than
+  breached. `Deleted` is now enforced everywhere `Suspended` is, via
+  `App\Platform\OrganizationAccess`, whose `match` is exhaustive with no `default` — so a
+  status added upstream fails static analysis instead of defaulting to "allowed", which
+  is exactly how this slipped through. The delete path now writes an audit entry.
+
+### Fixed
+
+- **The console claimed to delete a user and did not.** `deleteUser()` removed
+  memberships, called `$user->delete()`, and caught `Throwable` with "they still have
+  linked records — deactivate instead". There is no foreign key on `user_id` anywhere in
+  the schema, so that catch was structurally unreachable: the delete always succeeded and
+  always reported "User deleted", while the person's sessions, passkeys, MFA factors,
+  TOTP seeds, password history, `identities.raw`, magic links, OAuth tokens, role
+  assignments and `directory_users.resource` (their full SCIM payload, including phone,
+  title and manager) stayed behind. It emitted no domain event, so nothing propagated
+  downstream, and wrote no audit entry. The action is removed rather than repaired:
+  deactivation is the honest capability today, and erasure is a designed programme that
+  must not be faked with a `->delete()`.
+- `docs/security/compliance.md` inherited the framework's Art. 17 claim wholesale without
+  restating it, so a reader had no signal to go and check. There is no erasure
+  implementation. It now states what exists — deactivate, revoke, soft-delete — and that
+  erasure is manual and out-of-band.
+- Operators can suspend and reactivate an account. `Accounts::suspend()` was fully
+  implemented in the package with zero callers and no screen anywhere, so five junk
+  signups could not even be disabled.
+
+### Added
+
+- **Response-schema validation for the REST management API.** Every `/api/*` response
+  the test suite produces is now validated against the documented OpenAPI response
+  schema for that operation, and against the status list the spec declares
+  (`Tests\Support\ApiContract`, wired into `Tests\TestCase::createTestResponse()` so
+  there is no per-test opt-in). `OpenApiCoverageTest` kept the spec honest about paths;
+  this keeps it honest about bodies. Validation is by `opis/json-schema` — **dev-only**,
+  so the production dependency surface and the SBOM are unchanged.
+- `OpenApiCoverageTest` gained a fourth check: an operation that is documented can no
+  longer sit on the known-debt list.
+
+### Changed
+
+- **The REST API rate limit is keyed on the API key, not the client IP.** The routes
+  carried a bare `throttle:240,1` (Laravel's default IP key) and the repo had no
+  `RateLimiter::for()` at all, so every customer whose CI egressed through one NAT
+  shared a single bucket — one noisy tenant throttled the rest. Named limiters
+  (`api-account`, `api-environment`, `api-vault`, `api-apps`) now bucket per credential,
+  with a per-IP backstop for floods of invalid credentials. Budgets are configurable via
+  `CBOX_ID_API_RATE_LIMIT_*` (see `config/api.php`).
+
+### Fixed
+
+- **One error shape on the REST API, actually honoured.** `bootstrap/app.php` had an
+  empty `withExceptions()`, so `$request->validate()` rendered Laravel's default
+  `{"message": …, "errors": {…}}` — with no `error` key, which both specs declare
+  REQUIRED. A generated client that switched on `error` broke on the most common failure
+  there is. `App\Http\ApiErrorRenderer` now maps every exception off the API surface into
+  `{error, message}` (plus `errors` on a validation failure), preserving `Retry-After` /
+  `X-RateLimit-*` on a 429. The RFC-specified surfaces are untouched: OAuth's
+  `{error, error_description}` bearer challenges and SCIM's Error envelope are protocol
+  conformance, not inconsistency.
+- The two stragglers that spelled the envelope differently: `AppManifestController`
+  returned `{error, detail}`, and `VaultController` returned a bare `{error}` for
+  `not_found` and `lease_denied`. Both now carry `message` — constant strings in the
+  vault's case, so the no-enumeration property of a uniform refusal is preserved.
+- **Spec/controller drift, found by the new schema gate.** `environment.yaml` documented
+  a `revoked_at` timestamp on a vault secret that the API has never returned (it returns
+  a boolean `revoked`); the lease response omitted the `provider` field it does return;
+  the vault's 401/403 were documented as the standard error envelope when they are
+  RFC 6750 bearer challenges; and every nullable field in both specs used OpenAPI 3.0's
+  `nullable: true`, which a 3.1 document (these declare `openapi: 3.1.0`) ignores — so
+  eight fields that are routinely null were typed as non-nullable. Undocumented statuses
+  (403 on the vault, 404/422 on several account operations, 429 everywhere) are now
+  documented.
+
+## [0.27.0] - 2026-07-27
+
+### Added
+
+- **Risk decisions are now persisted and queryable.** Every `RiskGuard::assess()` call
+  writes a row to the new `risk_decisions` table (`App\Models\RiskDecision`, via
+  `App\Platform\RiskTrail`) with the score, outcome, mode, reasons, per-signal weighted
+  points and pseudonymised identity. `docs/security/adaptive-risk.md` documents the
+  queries that turn that corpus into an enforcement threshold — a score histogram, the
+  outcome mix, a threshold sweep scored against a known-bad cohort, a per-signal
+  contribution breakdown, and a provider-level aggregate for the Gmail dot-abuse shape.
+- Retention for the trail: `CBOX_ID_RISK_TRAIL_RETENTION_DAYS` (default 90), swept
+  daily by `model:prune`, scheduled in `routes/console.php`.
+
+### Fixed
+
+- **Monitor mode produced no evidence.** `RiskGuard` logged each decision with
+  `Log::info` and its docblock called that "the audit trail for tuning and review", but
+  production runs `LOG_CHANNEL=stderr` with no aggregation and no `log_streams` sink —
+  every decision went to pod stdout and was destroyed by the next rollout. Weeks of
+  monitor mode left nothing to set a threshold from, which is why the CAPTCHA wired to
+  `RiskGuard::shouldStepUp()` could not responsibly be armed. The `Log::info` is
+  replaced by the durable write; a failed write is logged at `warning` and never blocks
+  a sign-in.
+
+### Security
+
+- The trail stores an HMAC-SHA256 **pseudonym** of the email alongside the existing
+  hashed IP, never the address — a pre-auth table fed by unauthenticated traffic must
+  not become the platform's largest plaintext store of personal data. The mail domain
+  is kept in the clear (it names a provider, not a person) because provider-abuse
+  patterns are unreadable without it. Both pseudonyms are keyed under `app.key` and
+  domain-separated.
+- `RISK_MODE` is deliberately **unchanged** (`monitor`). Enforcement is the tuning
+  decision this data exists to inform.
+
+### Changed
+
+- Requires `cboxdk/laravel-id` v0.60.0, which fixes a concurrency defect that silently
+  dropped audit entries when two writers appended to the same chain. Relevant here: it
+  is the same measurement that ruled the audit chain out as the home for this trail.
+
+## [0.26.0] - 2026-07-27
+
+Requires `cboxdk/laravel-id ^0.59.1`.
+
+### Added
+
+- Five more inline hook points are now registrable from the console — `post_login`,
+  `pre_registration`, `post_registration`, `pre_password_change`,
+  `post_password_change`, alongside the existing `token_minting`. The console reads
+  `HookPoint::cases()`, so they appeared as soon as the framework shipped them.
+
+### Fixed
+
+- The hook picker rendered the raw PHP case name, so an admin chose between
+  "TokenMinting" and "PrePasswordChange", and the list showed the machine value
+  `token_minting`. Both now use the framework's `label()`, and the picker shows
+  `description()` beside each option — which states whether that hook can refuse the
+  operation, the fact you need before wiring a URL that can stop people signing in.
+
+## [0.25.0] - 2026-07-27
+
+Signup had no bot protection, and production showed the bill: five of eight accounts
+were Gmail dot-abuse bot signups, each of which had provisioned a full environment and
+none of which ever verified an address.
+
+### Security
+
+- **A self-serve signup no longer provisions an environment up front.** The account, its
+  home organization, its owner and its first project are created immediately; the
+  environment — the routable IdP whose signing key is warmed on creation — is released
+  only when the owner opens the emailed verification link (new
+  `App\Platform\SignupProvisioner`, consumed by `EmailVerificationController`). This does
+  not make bulk signup harder, it makes it worthless. Idempotent: a replayed link never
+  mints a second environment, and a suspended account is not revived by one.
+- **A risk-triggered CAPTCHA on signup.** An `Outcome::Challenge` / `StepUp` from the
+  risk scorer now demands a Cloudflare Turnstile token, verified server-side against
+  `siteverify` (new `App\Platform\Turnstile`); previously the signup form consulted only
+  `shouldBlock()`, so a Challenge outcome did nothing at all. A missing or rejected token
+  is a field error, never a 500. Deliberately **not** an always-on CAPTCHA — the friction
+  lands on the submissions the scorer flagged.
+- Both keys unset (`CBOX_ID_TURNSTILE_SITE_KEY` / `CBOX_ID_TURNSTILE_SECRET_KEY`) means
+  the feature does not exist: no widget, no Cloudflare script, and the CSP keeps its
+  strict `script-src 'self' 'unsafe-eval'`. `https://challenges.cloudflare.com` is added
+  to `script-src` and `frame-src` **only** on a deployment that configured it.
+
+### Changed
+
+- `risk.mode` is untouched and still ships as `monitor`. Flipping it to `enforce` is a
+  production tuning decision that needs the monitor-mode data behind it; this release
+  only makes the Challenge branch mean something once it is flipped.
+- The workspace launchpad explains the wait, rather than showing a project with no
+  environments and no reason why. It now also names the address the confirmation went to
+  and the sender to look for, and says the link is good for 24 hours.
+
+### Added
+
+- **A resend control on the launchpad banner** (`App\Platform\MemberEmailVerification`,
+  `App\Platform\Enums\VerificationResendOutcome`). Holding the environment back until the
+  address is proven put a real owner's whole account behind one email; without a resend,
+  losing it or letting the 24-hour token lapse left an account with a member, a project
+  and no way forward. The action takes an `AccountMember`, never an address, so there is
+  no input to steer it at someone else's inbox; it retires every previously-issued link
+  before minting the next one (single-use is not the same as single-*live*); it answers
+  identically whether or not the address is already confirmed, so the button is not a
+  verification oracle; and it is a no-op once the environment is up. Throttled at **3 per
+  10 minutes per member** — outbound mail is the abusable resource, and the member id is
+  the key nobody can rotate.
+
+## [0.24.0] - 2026-07-26
+
+Requires `cboxdk/laravel-id ^0.58`, which made `MembershipRole` a type rather than a
+string on the membership and invitation contracts. Adopting it surfaced four latent
+bugs the type change had nothing to do with.
+
+### Fixed
+
+- **Any page listing pending invitations would have 500'd.** `Invitation::$role` is now
+  cast to the enum upstream, and two templates still called `ucfirst()` on it —
+  `environment/organizations/show.blade.php` and `members.blade.php`. Neither had a test.
+- **The role dropdowns never pre-selected a member's current role**, because
+  `@selected($m['role'] === $val)` compared an enum case to a string. Pre-existing.
+- Role validation is now deny-by-default against the *assignable* set rather than merely
+  a valid enum case. `MembershipRole::tryFrom('viewer')` returns a real case that this
+  console must never assign, so a non-null check was not sufficient — `'viewer'` is now
+  refused exactly like `'archduke'`.
+- The three JS-invoked role actions had no field to report into and previously used
+  `in_array()`; they now go through the same deny-by-default parse.
+
+### Changed
+
+- New `App\Platform\OrgRoles` — the subject-plane analogue of the framework's
+  `AccountRole::assignable()`, exposing the assignable set, a validation rule, a message
+  naming the accepted roles, and a parse for actions with no field. All four role selects
+  now render from it instead of hand-written option triples, and each gained an `@error`
+  sink so the message is visible.
+- `cboxdk/laravel-id` floor raised to `>=0.58` — the app does not run below it.
+
+### Testing
+
+- Four regression tests drive each affected form with both an unknown value and a
+  real-but-unassignable enum case, asserting a field error rather than a 500, no side
+  effect, and no mail. Mutation-checked: swapping the guard back to `from()` makes them
+  fail with the `ValueError` at the component line, so they pin the distinction rather
+  than the presence of a rule.
+
+## [0.23.0] - 2026-07-26
+
+Requires `cboxdk/laravel-id ^0.57`. Output of a whole-platform review loop plus a
+re-review that caught eight regressions the fixes themselves introduced. See
+`UPGRADING.md` — **this release refuses things earlier versions accepted**, and one
+change requires infrastructure work before deploying.
+
+### Security
+
+- **Admin portal links are environment-scoped.** The token lookup was unscoped and the
+  `/setup` routes carried no plane gate, so a link minted in one environment could be
+  redeemed on another's host — and the entitlement re-check in front of it read a cache
+  keyed without the environment, which an attacker could warm on demand. Reachable
+  deterministically, not as a race, because `redeem()` checks entitlement before burning
+  the link. It allowed writing SSO connections and SCIM directories into another
+  customer's environment; it did not allow taking over a domain, which still needs DNS.
+- Every destructive console action that destroys a credential, revokes someone else's
+  access or transfers ownership now requires type-to-confirm naming the resource.
+- An org admin can no longer deactivate an environment-wide segregation-of-duties policy.
+- The console now consults the SoD gate it ships the UI for, so it can no longer create
+  on one screen the violation it reports on another.
+
+### Changed — read UPGRADING.md before deploying
+
+- **The platform-root host no longer serves the IdP surface.** Discovery, JWKS, all
+  `/oauth/*`, SCIM and the SAML IdP endpoints 404 on the apex. Anything pointing at the
+  apex as an issuer will now fail at discovery instead of half-working. Account-plane
+  federation entry and callback deliberately still answer there.
+- `/up` returns JSON, not HTML.
+- The app no longer sets security headers that the nginx layer also sets. **This needs
+  four `NGINX_HEADER_*` env vars set empty at deploy time** — see UPGRADING.md; the
+  base image refills them otherwise, so the app's stricter Referrer-Policy was being
+  silently downgraded.
+
+### Fixed
+
+- OIDC step-up worked in neither direction: `max_age` was arithmetically unsatisfiable
+  (so `max_age=0` always failed), and `acr_values` was advertised and ignored.
+- SSO failure paths redirected to a subject-plane route that 404s on the account host —
+  after a successful IdP authentication, so the user believed SSO had worked. The error
+  bag key also did not match what either sign-in screen renders, so the message was
+  dropped on both planes.
+- Published config merged block-by-block, so partial overrides silently discarded package
+  defaults — `CBOX_ID_ACCESS_TOKEN_TTL`, `CBOX_ID_REQUIRE_PAR`, `CBOX_ID_DCR_MODE` and
+  others were inert.
+- The permissions page counted the whole platform-wide pivot in PHP, showing other
+  environments' role usage and loading every row on each render.
+
+### Accessibility
+
+- Seven contrast pairs failed AA in the light theme, including the one-time API-key
+  warning and the password-strength affordance. An eighth was a hover state weaker than
+  its own resting stroke. A stray brace was closing `@layer components` early, leaving
+  ~240 lines unlayered.
+- Search inputs labelled, list results announced, section headers promoted to real
+  headings, login step two focuses and announces itself.
+
+### Testing
+
+- 70% of `assertNoRedirect()` calls asserted nothing: it inspects the Livewire effect,
+  not the response, so it was silent on mount-time redirects — the exact class the
+  `max_age` bug belonged to. Replaced with `assertRenderedNotRedirected()`, which checks
+  both, and every converted site now carries a positive assertion.
+- PHPStan now analyses `resources/views/livewire`, which was never covered despite most
+  of the app's logic living there.
+
+## [0.22.1] - 2026-07-25
+
+### Fixed
+
+- The CycloneDX SBOM still named `laravel-id v0.52.0` after four dependency bumps, so
+  every release from 0.21.0 onward carried a supply-chain record that misstated what it
+  actually ran. No dependency was added or removed — the file was simply never
+  regenerated. Releases 0.21.0 and 0.22.0 should be treated as having an inaccurate SBOM;
+  this is the first one whose record is true.
+
+## [0.22.0] - 2026-07-25
+
+Closes the remaining review findings. Adopts `cboxdk/laravel-id` v0.56.0.
+
+**Upgrading:** behavioural on the environment admin console. It now applies the SSO
+mandate, administrative password expiry and account lockout, which it previously did
+not, and refuses a temporary password outright. An environment that mandates SSO will
+stop admitting local admin passwords there — which is what mandating SSO meant.
+
+### Fixed
+
+- **The environment admin console's three doors disagreed.** The local password form
+  checked neither the SSO mandate nor administrative password expiry, so an environment
+  mandating SSO could be entered with a local password and an expired hand-off credential
+  kept working. The signed handoff re-resolved the membership but never asked whether the
+  ACCOUNT behind it was still active, so a token minted before a suspension still opened
+  the console. Both now ask `MemberCredentialGate` — the same object the account door
+  asks — which also adds the per-subject lockout none of them had.
+- **Crafted enum props answered 500 rather than refusing.** Public Livewire props on the
+  sign-in rules page, the admin set-password panel and the inline-hooks form reached
+  `Enum::from()` unvalidated.
+- **The invite form named other accounts.** Account-member emails are globally unique, so
+  "that email already belongs to a member" let an admin of one account probe whether an
+  address belonged to another. Both cases answer identically now.
+
+## [0.21.0] - 2026-07-25
+
+The sign-in rules page stops being a page of promises. Adopts `cboxdk/laravel-id`
+v0.55.1.
+
+**Upgrading:** behavioural, and worth reading before deploying. Every control on the
+auth-policy page is now enforced, where three of them previously were not. Review what
+your environments and organizations have set — a `maxAgeDays` or `mfa: required` saved
+while it did nothing will start doing something on the first request after deploy.
+
+Two new tables arrive from the framework (`password_ages`, `login_attempt_counters`);
+`password_ages` is seeded with every existing subject at migration time, so a rotation
+policy starts its clock for everyone at once rather than never applying to anyone who
+predates it.
+
+### Fixed
+
+- **Every password form used a hardcoded `min:12`.** An environment demanding 24
+  characters got 24 from an administrator and 12 from signup, invitation acceptance and
+  both self-service resets. The forms apply the tenant's policy now; the framework
+  enforces it at the credential primitive regardless, so the rule is what makes a weak
+  password impossible and the form is only what makes the refusal land on the field.
+- **A temporary password was never actually temporary.** `requiresChange()` was read
+  once, to render a line of prose. With "valid until they change it" selected, the
+  result was a permanent administrator-known credential — the opposite of what the UI
+  promised.
+
+### Added
+
+- A forced password change on both planes, held on every authenticated request rather
+  than checked at sign-in: an administrator can hand a temporary password to someone who
+  then arrives by magic link, SSO, or an already-open session.
+- Rotation (`maxAgeDays`), the MFA mandate (`mfa`) and account lockout
+  (`lockoutThreshold`) are enforced. The MFA mandate holds a subject on the security page
+  rather than refusing them entry — turning away someone with no factor locks out exactly
+  the people who need to enrol. Lockout is checked before the credential, so a locked
+  account is not an oracle for which guess was right.
+- Operator creation gains the breach screen it never had. Operators sit above every
+  environment, so no tenant policy governs them, but they are the most privileged
+  accounts on the platform.
+
+## [0.20.0] - 2026-07-25
+
+Second platform-review loop, plus unified account identity. Adopts `cboxdk/laravel-id`
+v0.52.0.
+
+**Upgrading:** breaking. An account member now authenticates as a **subject** in the
+platform-root environment. Existing account members need their subjects minted before
+sign-in works; there is no backfill, because the platform had no external consumers at
+the time of the cut.
+
+### Added
+
+- **Set a user's password from the environment console** — temporary (with a deadline) or
+  permanent, revealed once or emailed, with the revocation blast radius an explicit
+  choice. Reason required and audited; the revealed credential never enters the Livewire
+  snapshot.
+- **Sign-in rules** page: the environment's authentication baseline (length, breach
+  check, rotation, reuse history, two-factor, SSO) with a per-organization table showing
+  what each one effectively gets — an organization override can only tighten.
+- **Account-plane SSO and magic links.** The workspace door is identifier-first with
+  home-realm discovery, so account SSO is an ordinary connection.
+
+### Security
+
+- **Manual permissions are environment-scoped.** An environment admin could previously
+  see, edit and delete another environment's manual permission, and the delete cascaded
+  `role_permission` across tenants.
+- **Member role toggle enforces membership and assignability server-side.** It assigned
+  from raw Livewire parameters with no authorization.
+- **Minted hook and Admin Portal secrets no longer reach the DOM.** Both were public
+  Livewire properties, so an HMAC signing secret and a SCIM bearer token — the latter
+  handed to a third-party IT admin — dehydrated into the wire snapshot.
+- **SSO enforcement at sign-in**: a tenant that mandates SSO refuses local password auth;
+  the strictest membership wins.
+- `EnforcePlane` and `SetEnvironment` resolved the platform root in opposite orders; a
+  deployment setting both defaults differently would have had `plane:account` 404 on the
+  host that is the account root.
+
+### Fixed
+
+- **CSP silently killed five inline handlers**, including Copy on a one-time-shown API key
+  (straight data loss) and two impersonation confirmations that fell open.
+- **`EnvironmentAdminAuth` had no container binding**, so the middleware, layout and every
+  component `boot()` rebuilt it and re-ran the same identity queries — roughly nine per
+  page load. Now scoped with an input-keyed memo, so a mid-request environment switch
+  cannot return a stale answer.
+- **Environments are listed under their project on the launchpad**, with an Open button
+  each and an inline create — reaching an environment took three clicks.
+- Field errors are linked to their inputs (`aria-invalid` / `aria-describedby`) on the
+  environment forms.
+- `composer analyse` and `composer test` carry a memory limit; both crashed at PHP's
+  128M default, so neither could be run as written.
+
+## [0.19.0] - 2026-07-24
+
+Platform-review remediation. Adopts `cboxdk/laravel-id` v0.49.0 (environment-scoped
+permission catalog, idempotent refresh rotation, DPoP-exchange proof-of-possession,
+`azp` enforcement, and more — see that release).
+
+### Security
+
+- **Environment-admin privilege escalation closed.** Administering an environment's
+  control plane now requires the `AccountRole::canManageEnvironments()` capability at
+  the env-admin session chokepoint and at the handoff mint/redeem sites — a `viewer`
+  or `billing` account member (who defaults to `all_environments = true`) can reach an
+  environment but can no longer administer it. "Accessible" is not "administrable".
+- **Org-admin console pages re-authorize on every request.** The read gate on the
+  Connections, Directories, Roles and Webhooks pages moved from `mount()` to `boot()`,
+  so an admin demoted mid-session cannot keep re-rendering org-wide SSO/SCIM/role/webhook
+  configuration from an open Livewire snapshot.
+- **One-time secrets no longer dehydrate into the page.** Freshly minted client secrets,
+  SCIM/directory tokens, webhook secrets and SIEM signing secrets are held in protected
+  (never-dehydrated) Livewire state and surfaced through the render only — they are shown
+  once and never serialized into the `wire:snapshot` in the DOM.
+
+### Fixed
+
+- **Organization detail no longer loads the whole environment.** The environment
+  organization-detail page scoped its member-name lookup to the org roster instead of
+  hydrating every user in the environment on each render.
+- **Context switchers use a CSS `:hover`** instead of inline handlers the app's own
+  Content-Security-Policy blocked (which never fired and logged a violation on hover).

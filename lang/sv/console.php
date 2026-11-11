@@ -4815,4 +4815,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'Plattformsadministrationen har varit inaktiv en stund. Bekräfta med din passkey för att fortsätta.',
     'operator_standing_unverifiable' => 'Plattformsadministration kräver en passkey med användarverifiering, och den är avstängd i den här installationen (cbox-id.webauthn.user_verification). Slå på den, eller stäng av cbox-id.operators.phishing_resistant.',
     'operator_confirm_on_sign_in_host' => 'Plattformsadministration kräver en passkey eller säkerhetsnyckel, och passkeys bekräftas på inloggningsvärden (:host). Logga ut och logga sedan in igen med din passkey.',
+    'shell_project' => 'Projekt',
+    'shell_create_project' => 'Skapa projekt',
+    'shell_create_slug_hint' => 'Lämna tomt för att skapa en av namnet.',
+    'shell_team_member' => 'Teammedlem',
 ];

@@ -64,9 +64,10 @@ it('draws navigation on a phone, not just in the markup', function (): void {
 
     visit('/dashboard')
         ->resize(375, 812)
-        // The shared shell's phone header: its navigation button and where-you-are. If the
+        // The shared shell's phone navigation (cbox-ui 0.11): the tab bar with More. If the
         // shell ever loses it, this is what notices.
-        ->assertVisible('header.cbx-header button[aria-label="Open navigation"]')
+        ->assertVisible('nav.cbx-tabbar')
+        ->assertVisible('nav.cbx-tabbar button[aria-controls="cbx-more"]')
         ->assertNoJavascriptErrors();
 });
 
@@ -95,32 +96,27 @@ it('opens a drawer that can actually reach the rest of the console', function ()
      * drawer, and every assertion below failing for a reason that has nothing to do with
      * the drawer.
      */
-    $page->assertVisible('header.cbx-header button[aria-label="Open navigation"]');
+    $page->assertVisible('nav.cbx-tabbar');
 
     /*
-     * BY THE SELECTOR, not by a label. `press()` matches on VISIBLE TEXT, and this
-     * trigger's accessible name is its `aria-label` — the text says "Menu" and the label
-     * says "Open menu", so `press('Menu')` resolved to something else and pressed it
-     * silently while `press('Open menu')` timed out finding nothing. The class belongs to
-     * the shell and moves with it.
+     * BY THE SELECTOR, not by a label. `press()` matches on VISIBLE TEXT, and More's
+     * accessible name and its text are not guaranteed to agree across languages. The
+     * attribute belongs to the shell and moves with it.
      */
-    $page->click('header.cbx-header button[aria-label="Open navigation"]');
+    $page->click('nav.cbx-tabbar button[aria-controls="cbx-more"]');
 
-    $page->assertVisible('.cbx-sheet');
+    $page->assertVisible('#cbx-more');
 
     /*
-     * Signing out and the theme toggle live in the account menu on a desktop. At this
-     * width the drawer is the only place either of them appears, which makes them the
-     * proof that this is the SHEET and not the page behind it — a nav label would not be,
-     * since which pages a person's nav holds depends on their role.
+     * More is the phone's whole navigation (cbox-ui 0.11, V6): the areas first, then Help,
+     * Switch app, and the profile last. The profile row opens the account screen, which is
+     * where signing out and the theme are at this width — the proof that this is More and
+     * not the page behind it, since which areas a person has depends on their role.
      */
-    // The account's actions follow the navigation in the same sheet.
-    $page->assertSeeIn('.cbx-sheet', 'Sign out')
-        ->assertSeeIn('.cbx-sheet', 'Dark')
-        // …and the navigation itself, grouped by AREA the way the rail is. A flat list of
-        // every page is the failure mode this replaces.
-        ->assertSee('Members & roles')
-        ->assertSee('Members')
+    $page->assertSeeIn('#cbx-more', 'Switch app')
+        ->assertSeeIn('#cbx-more', 'Phone Owner')
+        ->click('#cbx-more button:has-text("Phone Owner")')
+        ->assertSeeIn('#cbx-more', 'Sign out')
         ->assertNoJavaScriptErrors();
 })->group('a11y');
 
@@ -136,7 +132,7 @@ it('keeps the console usable at a phone width without a horizontal scrollbar', f
      * content, and this test reported a console that fits at 375px without ever having
      * looked at one.
      */
-    $page->assertVisible('header.cbx-header button[aria-label="Open navigation"]');
+    $page->assertVisible('nav.cbx-tabbar');
 
     expect($page->script('document.querySelectorAll("button").length'))
         ->toBeGreaterThan(0, 'the page under measurement had not rendered');

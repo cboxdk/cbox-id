@@ -4813,4 +4813,8 @@ https://staging.example.com',
     'operator_standing_idle' => 'Platformadministration har været inaktiv et stykke tid. Bekræft med din adgangsnøgle for at fortsætte.',
     'operator_standing_unverifiable' => 'Platformadministration kræver en adgangsnøgle med brugerverifikation, og den er slået fra i denne installation (cbox-id.webauthn.user_verification). Slå den til, eller slå cbox-id.operators.phishing_resistant fra.',
     'operator_confirm_on_sign_in_host' => 'Platformadministration kræver en adgangsnøgle eller sikkerhedsnøgle, og adgangsnøgler bekræftes på loginværten (:host). Log ud, og log så ind igen med din adgangsnøgle.',
+    'shell_project' => 'Projekt',
+    'shell_create_project' => 'Opret projekt',
+    'shell_create_slug_hint' => 'Lad feltet stå tomt for at lave et ud fra navnet.',
+    'shell_team_member' => 'Teammedlem',
 ];
