@@ -167,9 +167,10 @@ it('opens an invitation on a page that says who is inviting whom, and joins on t
 })->group('a11y');
 
 it('offers the owner "Delete organization" under Settings', function (): void {
-    anOwnerWithATeam();
+    [$org] = anOwnerWithATeam();
 
-    visit('/settings')
+    // `/settings` is the person's own account now; the organization's is under `/orgs/{org}`.
+    visit('/orgs/'.orgSlug($org->id).'/settings')
         ->assertSee('Delete organization')
         ->click('button:has-text("Delete organization")')
         ->assertSee('Confirm “Delete” for Acme People')
