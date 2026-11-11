@@ -255,3 +255,19 @@ it('keeps the switcher fields when a client that predates them saves, and clears
     expect(fn () => forUserEntry(['hue' => 'chartreuse']))->toThrow(ValidationException::class)
         ->and(fn () => forUserEntry(['purpose' => str_repeat('x', 61)]))->toThrow(ValidationException::class);
 });
+
+it('keeps the catalog revision and refresh_after on the /v1 list, where laravel-id-client reads them', function (): void {
+    $token = forUserMachineToken();
+    $query = http_build_query(['user_id' => $this->ada, 'organization_id' => $this->acme]);
+
+    $old = forUserRequest($token, $this->ada, $this->acme)->assertOk();
+    $v1 = $this->withToken($token)->getJson('http://'.App\Platform\Api\ApiHost::name().'/v1/app-catalog/for-user?'.$query)->assertOk();
+
+    expect($v1->json('object'))->toBe('list')
+        ->and(array_column($v1->json('data'), 'key'))->toBe(['zeta', 'alpha', 'acme-only'])
+        ->and($v1->json('revision'))->toBe($old->json('meta.revision'))
+        ->and($v1->json('refresh_after'))->toBe(60)
+        ->and($v1->json('has_more'))->toBeFalse()
+        ->and($v1->json())->not->toHaveKey('limit');
+});
+

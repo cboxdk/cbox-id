@@ -8,6 +8,10 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Fixed
+
+- `/v1` lists keep the fields their `meta` carried beyond paging. The app catalog's `GET /v1/app-catalog/for-user` lost `revision` and `refresh_after`, so laravel-id-client rejected every answer as malformed, and apps with `CBOX_ID_API_URL` served a stale switcher or none.
+
 ### Added
 
 - **App catalog: purpose, hue and "More from Cbox".** Catalog apps gain `purpose` (one line, 60 characters), `hue` (a cbox-ui hue token), `admission_url` (a public HTTPS signup or waitlist page) and `promote_when_unavailable` (default on); migration `2026_11_11_090000_add_shell_fields_to_app_catalog_entries` is additive, and a save that omits them keeps them. `/api/v1/me/apps`, `/api/v1/app-catalog/for-user` and the console's own catalog feed add `purpose`, `hue` and `available`, and list the apps a person can ask for under `meta.unavailable` (the feed: `unavailable`) with their `admission_url`. A `users`-audience app is never listed to anyone it does not name. `php artisan app-catalog:apply resources/app-catalog/cbox.json` sets purpose and hue for the 14 Cbox products.
