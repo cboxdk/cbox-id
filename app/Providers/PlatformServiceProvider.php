@@ -11,6 +11,9 @@ use App\Platform\Appearance\BrandImages;
 use App\Platform\Appearance\NoBrandImages;
 use App\Platform\BreachedPasswords;
 use App\Platform\Console\DashboardCards;
+use App\Platform\ConsoleSignIn\ConsoleClient;
+use App\Platform\ConsoleSignIn\HttpIssuerTokens;
+use App\Platform\ConsoleSignIn\IssuerTokens;
 use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
@@ -113,6 +116,11 @@ final class PlatformServiceProvider extends ServiceProvider
          * would read an empty one.
          */
         $this->app->singleton(DashboardCards::class);
+
+        // Login-host mode: the console as a relying party of the login host. The client is
+        // looked up once per request; the token endpoint is called over HTTP.
+        $this->app->scoped(ConsoleClient::class);
+        $this->app->bind(IssuerTokens::class, HttpIssuerTokens::class);
 
         $this->app->singleton(LegacyCredentialSource::class, DeclaredCredentialSource::class);
 

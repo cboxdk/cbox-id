@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Platform\ConsoleSignIn\ConsoleSignIn;
 use App\Platform\CurrentUser;
 use App\Platform\IntendedUrl;
 use App\Platform\OperatorMfa;
@@ -13,6 +14,7 @@ use App\Platform\SessionMetadata;
 use App\Platform\SignedInPage;
 use App\Platform\SsoMandates;
 use App\Platform\Surfaces\SessionSurface;
+use App\Platform\Surfaces\Surfaces;
 use App\SignalsData\IdentityCapture;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
@@ -114,7 +116,10 @@ final class Authenticate
                 return $next($request);
             }
 
-            return redirect()->guest(route('login'));
+            // In login-host mode the console has no `/login`: its door is the login host.
+            return ($door = app(ConsoleSignIn::class))->active($request)
+                ? $door->refuse($request)
+                : redirect()->guest(route('login'));
         }
 
         // Resolve the active org — but ONLY honour one the subject is a member of.
@@ -186,10 +191,16 @@ final class Authenticate
         // replace an already enrolled factor. OAuth resolves prompt/PAR itself below.
         $requiresEnrolment = $this->mfaMandate->requiresEnrolment($subject->id);
 
-        if (! $request->routeIs('oauth.authorize', 'oauth.authorize.*', 'logout', 'logout.*')
+        if (! $request->routeIs('oauth.authorize', 'oauth.authorize.*', 'logout', 'logout.*', 'console.auth.*')
             && ! $requiresEnrolment
             && app(MfaVerification::class)->requiresVerification($subject->id, array_values($session->amr))) {
             $this->current->clear();
+
+            // The second factor is asked for where the person signs in. On the console of
+            // login-host mode that is the login host, reached through the console's door.
+            if (($door = app(ConsoleSignIn::class))->active($request)) {
+                return $optional ? $next($request) : redirect()->to($door->startUrl(['mfa' => 1]));
+            }
 
             return redirect()->to(app(PlatformAuth::class)->challengeSession($request, $session));
         }
@@ -201,7 +212,11 @@ final class Authenticate
         }
 
         if ($this->mustChangePassword($request, $subject->id)) {
-            return redirect()->route('password.change');
+            // A person's own security pages live with the SSO session: on the login host
+            // in login-host mode, where the console does not serve them.
+            return app(ConsoleSignIn::class)->active($request)
+                ? redirect()->away(app(Surfaces::class)->loginUrl('/password/change'))
+                : redirect()->route('password.change');
         }
 
         // A tenant that requires a second factor cannot enforce it by turning people
@@ -307,6 +322,9 @@ final class Authenticate
             // port, and a hold that let somebody reach the page but not answer it would
             // strand the relying party's callback rather than protect anything.
             'oauth.authorize', 'oauth.authorize.*',
+            // The console's door in login-host mode: how a hold that sends somebody to
+            // the login host is come back from.
+            'console.auth.*',
         );
     }
 
@@ -353,6 +371,12 @@ final class Authenticate
      */
     private function refuse(Request $request): Response
     {
+        // In login-host mode the console has no `/login`: an unauthenticated request goes
+        // to the login host as the console's own client, and comes back to this page.
+        if (($door = app(ConsoleSignIn::class))->active($request)) {
+            return $door->refuse($request);
+        }
+
         // guest() stashes the intended URL, so a user sent here mid-flow (e.g.
         // /oauth/authorize?…) is returned to complete it after logging in.
         $redirect = redirect()->guest(route('login'));

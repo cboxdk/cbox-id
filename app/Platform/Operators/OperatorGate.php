@@ -44,7 +44,7 @@ final readonly class OperatorGate
             return null;
         }
 
-        if ($standing->confirmable() && $this->assurance->confirmsHere()) {
+        if ($standing->confirmable() && $this->assurance->confirms()) {
             return StepUpPrompt::demand($request, StepUpPlane::Operator, reason: $standing->message());
         }
 
@@ -76,7 +76,7 @@ final readonly class OperatorGate
             return;
         }
 
-        abort_unless($this->assurance->confirmsHere(), 403, $this->assurance->elsewhereMessage());
+        abort_unless($this->assurance->confirms(), 403, $this->assurance->elsewhereMessage());
 
         throw new HttpResponseException(StepUpPrompt::demand($request, StepUpPlane::Operator, reason: $reason));
     }

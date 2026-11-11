@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Platform\Console\EnvironmentConsolePath;
+use App\Platform\ConsoleSignIn\ConsoleSignIn;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\Operators\OperatorGate;
@@ -114,6 +115,11 @@ final class ResolveEnvironmentFromPath
     {
         // Signed in as somebody who cannot see this environment: it does not exist for them.
         abort_if($this->auth->signedInRootSubject() !== null, 404);
+
+        // Login-host mode: the console's door is the login host.
+        if (($door = app(ConsoleSignIn::class))->active($request)) {
+            return $door->refuse($request);
+        }
 
         if ($request->expectsJson()) {
             return response()->json(['message' => 'Your session has expired.', 'redirect' => route('login')], 401);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\PageController;
+use App\Platform\ConsoleSignIn\ConsoleSignIn;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -48,7 +49,9 @@ final readonly class SignedOutController extends PageController
     {
         // Everybody signs in on this host's own page — the environment consoles too, which
         // live on the app host now and sign in there.
-        $signIn = route('login');
+        // In login-host mode the console's sign-in is its door to the login host.
+        $door = app(ConsoleSignIn::class);
+        $signIn = $door->active($request) ? $door->startUrl() : route('login');
 
         $response = $this->page('auth/signed-out', __('auth.signed_out.title'), [
             'signInUrl' => $signIn,

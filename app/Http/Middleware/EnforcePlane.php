@@ -74,7 +74,7 @@ final class EnforcePlane
      *
      * @var list<string>
      */
-    private const PLANES = ['signup', 'console', 'issuer', 'first-party', 'mcp-client', 'mcp-discovery', 'keys', 'environment', 'operator'];
+    private const PLANES = ['signup', 'console', 'issuer', 'first-party', 'mcp-client', 'mcp-discovery', 'mcp-resource', 'keys', 'environment', 'operator'];
 
     /**
      * Where a client identifier is found on the endpoints carrying `plane:first-party`.
@@ -145,6 +145,9 @@ final class EnforcePlane
             // What an MCP client reads and writes before it can send anybody to sign in. A
             // HOST question at the root, like `console`: see PlaneResolver::servesRootMcpOAuth().
             'mcp-discovery' => $this->planes->servesIssuer() || $this->planes->servesRootMcpOAuth($request->getHost()),
+            // The RFC 9728 document alone: also on the app host in login-host mode, where
+            // the platform's `/mcp` is. See PlaneResolver::servesResourceMetadata().
+            'mcp-resource' => $this->planes->servesResourceMetadata($request->getHost()),
             // The environment console. Asked as its own question rather than borrowed from
             // `issuer`, and the reason it was kept apart came true: the two answers parted
             // when the root environment got its console, while the root stays an issuer

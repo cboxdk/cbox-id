@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Platform\Operators;
 
+use App\Platform\ConsoleSignIn\ConsoleStepUps;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
+use App\Platform\StepUpPlane;
 use App\Platform\Surfaces\Surfaces;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Models\Session;
@@ -115,7 +117,17 @@ final class OperatorAssurance
         return ! $this->surfaces->split();
     }
 
-    /** What an operator is told where {@see self::confirmsHere()} is false. */
+    /**
+     * Whether a confirmation can be asked for at all: on this host, or, in login-host mode,
+     * by a trip to the login host as the console's own client, which comes back with the
+     * proof ({@see ConsoleStepUps}).
+     */
+    public function confirms(): bool
+    {
+        return $this->confirmsHere() || StepUpPlane::Operator->redirectUrl() !== null;
+    }
+
+    /** What an operator is told where {@see self::confirms()} is false. */
     public function elsewhereMessage(): string
     {
         return 'Platform administration requires a passkey or security key, and passkeys are confirmed on the sign-in host ('.$this->surfaces->loginHost().'). Sign out, then sign in again with your passkey.';

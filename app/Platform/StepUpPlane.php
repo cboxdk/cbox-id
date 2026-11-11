@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\ConsoleSignIn\ConsoleSignIn;
 use App\Platform\Operators\OperatorAssurance;
 
 /**
@@ -42,10 +43,29 @@ enum StepUpPlane: string
         };
     }
 
-    /** The full-page "Confirm it's you" screen — the fallback for a request with no script. */
+    /**
+     * The full-page "Confirm it's you" screen — the fallback for a request with no script.
+     *
+     * In login-host mode the console has no such screen: the step-up is a trip to the
+     * login host through the console's door ({@see redirectUrl()}).
+     */
     public function pageUrl(): string
     {
-        return route($this->value);
+        return $this->redirectUrl() ?? route($this->value);
+    }
+
+    /**
+     * Where the browser is sent to step up at the login host, or null where the console
+     * confirms on its own origin (single-host mode). `$popup` is the in-place dialog's
+     * window, which is answered with a page that closes itself.
+     */
+    public function redirectUrl(bool $popup = false): ?string
+    {
+        $door = app(ConsoleSignIn::class);
+
+        return $door->active()
+            ? $door->startUrl(['step_up' => $this->label(), 'popup' => $popup ? 1 : null])
+            : null;
     }
 
     /**
@@ -54,7 +74,9 @@ enum StepUpPlane: string
      */
     public function confirmUrl(): string
     {
-        return route($this->value.'.confirm');
+        // Nothing is posted to the console in login-host mode; the name is kept for a
+        // client that reads it, and it leads to the same door.
+        return $this->redirectUrl() ?? route($this->value.'.confirm');
     }
 
     /** What the client is told, so it can say which door it is asking at. */

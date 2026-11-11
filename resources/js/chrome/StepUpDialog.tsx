@@ -4,6 +4,7 @@ import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import {
     confirmStepUp,
+    confirmStepUpByRedirect,
     type StepUpPrompt,
     stepUpCancelled,
     stepUpConfirmed,
@@ -138,6 +139,32 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
     const carryOn = useRef<HTMLButtonElement>(null);
 
     const continuing = prompt.continueLabel !== null;
+    // Login-host mode: no password here. The step-up is a window at the login host.
+    const redirect = prompt.challenge.redirect ?? null;
+    const [waiting, setWaiting] = useState(false);
+    const [blocked, setBlocked] = useState(false);
+
+    const leave = async (): Promise<void> => {
+        if (waiting) {
+            return;
+        }
+
+        setWaiting(true);
+        setError(null);
+
+        // Called inside the click, so the browser lets the window open.
+        const outcome = await confirmStepUpByRedirect(prompt.challenge);
+
+        setWaiting(false);
+
+        if (outcome === 'confirmed') {
+            stepUpConfirmed();
+        } else if (outcome === 'blocked') {
+            setBlocked(true);
+        } else if (outcome === 'declined') {
+            setError(consoleT('console.step_up_redirect_not_confirmed'));
+        }
+    };
 
     /*
      * The password field goes away when it has done its job, and focus would go with it —
@@ -225,9 +252,25 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
                         <Button onClick={stepUpCancelled}>
                             {consoleT('console.cancel_19766ed6')}
                         </Button>
-                        <Button type="submit" form="cbx-step-up" variant="primary" loading={busy}>
-                            {consoleT('console.confirm_eebdd24a')}
-                        </Button>
+                        {redirect === null ? (
+                            <Button
+                                type="submit"
+                                form="cbx-step-up"
+                                variant="primary"
+                                loading={busy}
+                            >
+                                {consoleT('console.confirm_eebdd24a')}
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="primary"
+                                loading={waiting}
+                                data-step-up-redirect
+                                onClick={() => void leave()}
+                            >
+                                {consoleT('console.step_up_redirect_continue')}
+                            </Button>
+                        )}
                     </>
                 )
             }
@@ -241,6 +284,28 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
                     />
                     {consoleT('console.you_are_confirmed_for_the_next_few_minutes_7b76614c')}
                 </output>
+            ) : redirect !== null ? (
+                <div className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                    <p>
+                        {waiting
+                            ? consoleT('console.step_up_redirect_waiting')
+                            : consoleT('console.step_up_redirect_lead')}
+                    </p>
+                    {error !== null && (
+                        <p role="alert" className="mt-2" style={{ color: 'var(--danger)' }}>
+                            {error}
+                        </p>
+                    )}
+                    {blocked && (
+                        // A plain link: this tab leaves for the login host and comes back
+                        // to the page, where the action can be repeated.
+                        <p className="mt-2">
+                            <a href={redirect.page} className="underline">
+                                {consoleT('console.step_up_redirect_same_tab')}
+                            </a>
+                        </p>
+                    )}
+                </div>
             ) : (
                 <form id="cbx-step-up" noValidate onSubmit={(event) => void submit(event)}>
                     <PasswordField

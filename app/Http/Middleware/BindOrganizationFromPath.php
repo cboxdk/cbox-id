@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Platform\ConsoleSignIn\ConsoleSignIn;
 use App\Platform\CurrentUser;
 use App\Platform\Impersonation;
 use App\Platform\IntendedUrl;
@@ -100,7 +101,11 @@ final class BindOrganizationFromPath
 
             $request->session()->put(IntendedUrl::KEY, $request->fullUrl());
 
-            return Inertia::location($mandate->startUrl);
+            // Login-host mode: the console is a client of the login host, which is where
+            // the connection is. It is asked to sign the person in to this organization.
+            $door = app(ConsoleSignIn::class);
+
+            return Inertia::location($door->active($request) ? $door->startUrl(['enter' => $entry->id]) : $mandate->startUrl);
         }
 
         if ($subject !== null && $session !== null) {

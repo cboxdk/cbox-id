@@ -34,9 +34,14 @@ final class Sudo
         return is_int($at) && (time() - $at) < self::WINDOW;
     }
 
-    public function confirm(): void
+    /**
+     * Open the window: from now, or from `$at` when the proof was given earlier. In
+     * login-host mode the console is handed the `auth_time` of a re-authentication at the
+     * login host and counts from that, never from a moment still to come.
+     */
+    public function confirm(?int $at = null): void
     {
-        session()->put(self::SESSION_KEY, time());
+        session()->put(self::SESSION_KEY, $at === null ? time() : min($at, time()));
     }
 
     public function forget(): void

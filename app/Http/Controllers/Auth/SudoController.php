@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\PageController;
 use App\Http\Requests\Auth\ConfirmSudoRequest;
+use App\Platform\ConsoleSignIn\ConsoleSignIn;
+use App\Platform\ConsoleSignIn\ConsoleStepUps;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
@@ -50,9 +52,13 @@ use Inertia\Response;
  */
 final readonly class SudoController extends PageController
 {
-    public function show(Request $request): Response
+    public function show(Request $request): Response|RedirectResponse
     {
         $this->rememberWhereFrom($request, StepUpPlane::Organization);
+
+        if (($away = $this->atTheLoginHost(StepUpPlane::Organization)) !== null) {
+            return $away;
+        }
 
         return $this->page('auth/sudo', __('console.confirm_it_s_you_6176eec2'), [
             /*
@@ -74,6 +80,8 @@ final readonly class SudoController extends PageController
         Sudo $sudo,
         CurrentUser $me,
     ): RedirectResponse|JsonResponse {
+        $this->refusePasswordsOnTheConsole();
+
         // Throttled like a sign-in. A live session must not buy unlimited password
         // guesses against the identity it belongs to.
         $key = 'sudo|'.$me->id();
@@ -94,11 +102,17 @@ final readonly class SudoController extends PageController
         return $this->confirmed($request, StepUpPlane::Organization, route('account'));
     }
 
-    public function showEnvironment(Request $request, EnvironmentAdminAuth $admin): Response
+    public function showEnvironment(Request $request, EnvironmentAdminAuth $admin): Response|RedirectResponse
     {
         abort_unless($admin->check(), 403);
 
         $this->rememberWhereFrom($request, StepUpPlane::Environment);
+
+        if (($away = $this->atTheLoginHost(StepUpPlane::Environment)) !== null) {
+            app(ConsoleStepUps::class)->remember($request, StepUpPlane::Environment);
+
+            return $away;
+        }
 
         return $this->page('auth/sudo', __('console.confirm_it_s_you_6176eec2'), [
             'reason' => StepUpReason::pending('environment.sudo'),
@@ -113,6 +127,7 @@ final readonly class SudoController extends PageController
         PlatformRoot $root,
         EnvironmentSudo $sudo,
     ): RedirectResponse|JsonResponse {
+        $this->refusePasswordsOnTheConsole();
         abort_unless($admin->check(), 403);
 
         $subjectId = $admin->subjectId();
@@ -146,14 +161,37 @@ final readonly class SudoController extends PageController
     }
 
     /**
+     * LOGIN-HOST MODE: the console never asks for a password itself. Its step-up screen is
+     * a trip to the login host, which re-authenticates the person with whatever they sign
+     * in with and hands back a fresh `auth_time` ({@see ConsoleStepUps}).
+     */
+    private function atTheLoginHost(StepUpPlane $plane): ?RedirectResponse
+    {
+        $url = $plane->redirectUrl();
+
+        return $url === null ? null : redirect()->to($url);
+    }
+
+    /** …and it accepts none: the confirm endpoints do not exist on the console there. */
+    private function refusePasswordsOnTheConsole(): void
+    {
+        abort_if(app(ConsoleSignIn::class)->active(), 404);
+    }
+
+    /**
      * The operator plane's screen: the same page, with a passkey as the proof
      * ({@see OperatorConfirmController} holds the ceremony). Also where an operator with no
      * passkey lands, told how to add one and how to recover.
      */
-    public function showOperator(OperatorAssurance $assurance): Response
+    public function showOperator(OperatorAssurance $assurance): Response|RedirectResponse
     {
         $standing = $assurance->standing();
         $plane = StepUpPlane::Operator;
+
+        // Login-host mode: the passkey is confirmed at the login host.
+        if ($standing->confirmable() && ($away = $this->atTheLoginHost($plane)) !== null) {
+            return $away;
+        }
 
         return $this->page('auth/sudo', __('console.confirm_it_s_you_6176eec2'), [
             'reason' => match (true) {

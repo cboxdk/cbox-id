@@ -788,6 +788,37 @@ final class PlatformAuth
     }
 
     /**
+     * The console's session in LOGIN-HOST MODE, where the console is a relying party of
+     * the login host ({@see ConsoleSignIn\ConsoleSession}): hold this one session and no
+     * other.
+     *
+     * The set of accounts a browser is signed in to belongs to the SSO session on the login
+     * host. The console holds exactly the person the login host last answered with, so a
+     * row it held before (another person, or the same person before a re-authentication)
+     * is ended here and not kept as a switchable account.
+     */
+    public function relyOn(Request $request, Session $session): void
+    {
+        foreach ($this->heldSessionIds() as $held) {
+            if ($held !== $session->id) {
+                $this->sessions->revoke($held);
+            }
+        }
+
+        session()->forget([
+            self::SESSION_KEY, self::ORG_KEY, self::ACCOUNTS_KEY, self::ACTIVE_KEY,
+            self::MFA_PENDING_KEY, self::MFA_AMR_KEY, self::OTP_PENDING_KEY, LinkHold::SESSION_KEY,
+        ]);
+        $this->dropStepUp();
+
+        SessionMetadata::captureMissing($session, $request);
+        $this->addAccount($session->user_id, $session->id, $session->organization_id);
+
+        // Rotate the id: the session is somebody's now (fixation).
+        session()->regenerate();
+    }
+
+    /**
      * End any step-up window. Call before every `regenerate()` in this class.
      *
      * `Sudo` stores a bare timestamp under one global session key —

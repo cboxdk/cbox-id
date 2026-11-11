@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\EnvironmentConsolePath;
+use App\Platform\ConsoleSignIn\ConsoleSignIn;
 use App\Platform\Operators\OperatorAssurance;
 use App\Platform\Operators\OperatorGate;
 use Closure;
@@ -55,7 +56,10 @@ final class AuthenticateOperator
     public function handle(Request $request, Closure $next): Response
     {
         if (! $this->scope->signedIn()) {
-            return redirect()->route('login');
+            // Login-host mode: the console's door is the login host.
+            return ($door = app(ConsoleSignIn::class))->active($request)
+                ? $door->refuse($request)
+                : redirect()->route('login');
         }
 
         abort_unless($this->scope->isPlatformOperator(), 404);

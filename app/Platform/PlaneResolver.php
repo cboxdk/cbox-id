@@ -331,6 +331,23 @@ final class PlaneResolver
     }
 
     /**
+     * Whether the RFC 9728 document of a protected resource
+     * (`/.well-known/oauth-protected-resource/…`) is served here.
+     *
+     * Wherever {@see servesIssuer()} or {@see servesRootMcpOAuth()} says so, as before. And
+     * in login-host mode on the APP HOST: the platform's `/mcp` is there while its
+     * authorization server is the login host, and the document is what a client reads after
+     * the `401` at the resource, so it is served from the resource's own host. Nothing else
+     * of the authorization server is: not its metadata, not registration, not a token.
+     */
+    public function servesResourceMetadata(string $host): bool
+    {
+        return $this->servesIssuer()
+            || $this->servesRootMcpOAuth($host)
+            || ($this->surfaces()->of($host) === Surface::Console && RootMcpOAuth::enabled());
+    }
+
+    /**
      * Whether `/oauth/authorize` and the token endpoints admit `$clientId` at the platform
      * root as an MCP CLIENT — one that registered itself there in the `mcp` profile, or a
      * client ID metadata document — on top of the platform-owned first-party clients
