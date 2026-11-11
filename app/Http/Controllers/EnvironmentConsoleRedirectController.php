@@ -50,6 +50,10 @@ final class EnvironmentConsoleRedirectController extends Controller
     /** `{host}/admin/{path?}` → the app host. */
     public function __invoke(Request $request, EnvironmentContext $environments, ?string $path = null): Response
     {
+        if (! $request->isMethod('GET') && ! $request->isMethod('HEAD')) {
+            return $this->write($request, $environments, $path);
+        }
+
         $environment = $environments->current()?->environmentKey();
         $console = $environment === null ? null : $this->paths->for($environment);
 
@@ -72,7 +76,7 @@ final class EnvironmentConsoleRedirectController extends Controller
      *    opens the nearest page of that console that exists, where the change can be made
      *    again. A redirect would degrade into a failed cross-origin request and a page that
      *    silently did nothing.
-     *  - Anything else is the 404 it was: nothing but the console's own tab ever wrote here.
+     *  - Anything else is the 405 it was: nothing but the console's own tab ever wrote here.
      */
     public function write(Request $request, EnvironmentContext $environments, ?string $path = null): Response
     {
@@ -91,7 +95,8 @@ final class EnvironmentConsoleRedirectController extends Controller
             return $this->deprecated(redirect()->away($this->appHostUrl($console, $page).$this->query($request), 308));
         }
 
-        abort_unless($request->header('X-Inertia') !== null, 404);
+        // Not a console tab: nothing under `/admin` here acts any more, as before.
+        abort_unless($request->header('X-Inertia') !== null, 405);
 
         $landing = $this->nearestPage($console, $page);
 

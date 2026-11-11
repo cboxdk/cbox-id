@@ -95,6 +95,9 @@ it('keeps an old tab\'s platform-admin writes POSTs, at their new address', func
         ->assertStatus(308)
         ->assertRedirect('https://cboxid.com/admin/organizations/01hzzzzzzzzzzzzzzzzzzzzzzz/status');
 
+    // The old unscoped organization form never lands on an environment it did not name.
+    oldTabWrite('POST', 'https://cboxid.com/admin/platform/organizations', ['name' => 'x'])->assertStatus(405);
+
     // A read stays a counted 302.
     $this->get('https://cboxid.com/admin/platform/workspaces')->assertStatus(302);
 })->group('security');
@@ -126,7 +129,7 @@ it('sends an old tab\'s write on a tenant host\'s /admin to that page of the con
             ->assertHeader('Deprecation', 'true');
     }
 
-    // Nothing but the console's own (Inertia) tab ever wrote there: anything else is the 404 it was.
-    $this->patch($host.'/admin/users/01hzzzzzzzzzzzzzzzzzzzzzzz', ['name' => 'x'])->assertNotFound();
+    // Nothing but the console's own (Inertia) tab ever wrote there: anything else is the 405 it was.
+    $this->patch($host.'/admin/users/01hzzzzzzzzzzzzzzzzzzzzzzz', ['name' => 'x'])->assertStatus(405);
     $this->post($host.'/admin/organizations', ['name' => 'Nope'])->assertNotFound();
 })->group('security');

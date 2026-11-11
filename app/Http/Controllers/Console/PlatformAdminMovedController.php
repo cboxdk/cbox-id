@@ -27,6 +27,11 @@ final class PlatformAdminMovedController extends Controller
         $query = $request->getQueryString();
 
         $read = $request->isMethod('GET') || $request->isMethod('HEAD');
+
+        // The old unscoped organization forms acted on whichever environment the operator
+        // had targeted; its successor names the environment in the path, so a write there
+        // is refused rather than sent to one it did not name.
+        abort_if(! $read && ($path === 'organizations' || str_starts_with((string) $path, 'organizations/')), 405);
         $verb = $read ? '' : $request->method().' ';
 
         RetiredNameUse::record('console_url', $verb.'/admin/platform'.($path === null || $path === '' ? '' : '/'.trim($path, '/')), $verb.$to);

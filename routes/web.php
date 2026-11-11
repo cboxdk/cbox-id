@@ -1429,17 +1429,14 @@ Route::middleware('plane:console')->group(function (): void {
 | (below), until they have seen no traffic for a week.
 */
 Route::middleware([RefuseReadOfOperatorWrite::class, 'plane:environment', 'multi.tenant'])->prefix('admin')->group(function (): void {
-    Route::get('/{path?}', EnvironmentConsoleRedirectController::class)
+    // A read is redirected; a v2 tab's write is answered by
+    // {@see EnvironmentConsoleRedirectController::write()}.
+    Route::match(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'], '/{path?}', EnvironmentConsoleRedirectController::class)
         ->where('path', '(?!platform(?:/|$)|environment(?:/|$)).*')
         // Matched LAST, after every route that still answers under `/admin` (platform
         // admin, the moved-page aliases), whatever order they were registered in.
         ->fallback()
         ->name('admin.moved');
-    // A v2 tab's write to the same addresses ({@see EnvironmentConsoleRedirectController::write()}).
-    Route::match(['POST', 'PUT', 'PATCH', 'DELETE'], '/{path?}', [EnvironmentConsoleRedirectController::class, 'write'])
-        ->where('path', '(?!platform(?:/|$)|environment(?:/|$)).*')
-        ->fallback()
-        ->name('admin.moved.write');
 });
 
 ConsoleRoutes::environment(function (): void {
@@ -2055,11 +2052,9 @@ Route::redirect('/operator/login', '/login/direct');
 Route::redirect('/operator/login/mfa', '/login/direct');
 
 // The old addresses: `/admin/platform/…` → `/admin/…`, counted, until a week without traffic.
-Route::get('/admin/platform/{path?}', PlatformAdminMovedController::class)
+// A v2 tab's write there too: a 308, so the method and body go along.
+Route::match(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'], '/admin/platform/{path?}', PlatformAdminMovedController::class)
     ->where('path', '.*')->middleware('plane:operator')->name('platform.moved');
-// A v2 tab's write there: a 308, so the method and body go along.
-Route::match(['POST', 'PUT', 'PATCH', 'DELETE'], '/admin/platform/{path?}', PlatformAdminMovedController::class)
-    ->where('path', '.*')->middleware('plane:operator')->name('platform.moved.write');
 
 Route::prefix('admin')->middleware([RedirectOldEnvironmentConsolePage::class, 'plane:operator'])->group(function (): void {
     // `platform.auth:optional` RESOLVES the one session without requiring one, then

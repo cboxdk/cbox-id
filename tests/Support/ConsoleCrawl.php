@@ -535,7 +535,9 @@ final class ConsoleCrawl
         foreach (['POST', 'PUT', 'PATCH', 'DELETE'] as $method) {
             $other = $this->match($url, $method);
 
-            if ($other === null || $other->methods() === ['GET', 'HEAD']) {
+            // A fallback (the old `/admin/…` addresses, which answer an old tab's write
+            // too) matches every path, so it never says a form posts HERE.
+            if ($other === null || $other->methods() === ['GET', 'HEAD'] || $other->isFallback) {
                 continue;
             }
 
