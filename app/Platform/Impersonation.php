@@ -10,6 +10,7 @@ use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\PlatformRoot;
@@ -137,22 +138,12 @@ final class Impersonation
         // longer exists. Either way it attests to something that has stopped being true.
         session()->forget([Sudo::SESSION_KEY, EnvironmentSudo::SESSION_KEY]);
 
-        // An env-admin session is anchored to exactly one environment; capture the anchor
-        // so exit can restore it, and drop it so /admin is unreachable until then.
-        // Dropping the identity is not enough on its own: the anchor is half of what makes
-        // an admin session worth anything, and an admin who came back UNBOUND would keep
-        // the console with the anti-bleed check silently satisfied by nothing.
-        $env = $request->session()->get(EnvironmentAdminAuth::ENV_KEY);
+        // The environment this console request administers, so exit can come back to it. The
+        // administrator's own session is the app host's ordinary one, which
+        // suspendPrincipal() puts aside like an operator's.
+        $env = app(EnvironmentContext::class)->current()?->environmentKey();
 
-        // …and put aside the identity itself, for the same reason the operator branch
-        // does: an env admin is an ordinary signed-in subject, and left in place they
-        // would still be that person inside the impersonated session, one switch away.
-        //
-        // On a tenant's host the administrator's session is the ADMIN context's, under its
-        // own key ({@see EnvironmentAdminAuth::SESSION_KEY}); on the platform root's own
-        // console it is the root's ordinary session.
-        $adminSession = $request->session()->get(EnvironmentAdminAuth::SESSION_KEY);
-        $suspended = $this->suspendPrincipal($request, is_string($adminSession) && $adminSession !== '' ? $adminSession : null);
+        $suspended = $this->suspendPrincipal($request);
 
         $request->session()->put(self::SESSION_KEY, (new ImpersonationMarker(
             actorType: ActorType::OrganizationMember,
@@ -261,7 +252,7 @@ final class Impersonation
             // own key; an operator from the platform root's own console, into the root's
             // ordinary session, which is that console's.
             if ($stillAMember) {
-                $this->resumePrincipal($request, $marker, $subjectId, adminContext: $marker->environmentKey);
+                $this->resumePrincipal($request, $marker, $subjectId);
             }
         } else {
             $this->restoreOperator($request, $marker);
@@ -365,7 +356,7 @@ final class Impersonation
      * the sign-in door, which is what a revoked session, a deleted operator or a member
      * unlinked during the window has to look like.
      */
-    private function resumePrincipal(Request $request, ImpersonationMarker $marker, ?string $subjectId, ?string $adminContext = null): bool
+    private function resumePrincipal(Request $request, ImpersonationMarker $marker, ?string $subjectId): bool
     {
         $sessionId = $marker->suspended->subjectSessionId;
 
@@ -385,11 +376,7 @@ final class Impersonation
             return false;
         }
 
-        if ($adminContext !== null) {
-            app(EnvironmentAdminAuth::class)->resume($session->id, $adminContext);
-        } else {
-            $this->platformAuth->adopt($request, $session);
-        }
+        $this->platformAuth->adopt($request, $session);
 
         return true;
     }

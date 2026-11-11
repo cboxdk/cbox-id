@@ -6,7 +6,6 @@ namespace App\Platform;
 
 use App\Http\Middleware\RedirectOutsideInertia;
 use App\Http\Middleware\TrustHostsExceptHealth;
-use App\Platform\Console\HandoffTarget;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
@@ -17,8 +16,7 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
  * WHICH ROUTE A PATH LANDS ON — asked of the real router, from the origin of the request
  * being served.
  *
- * Two places need it: {@see HandoffTarget}, which only lets the environment switcher carry
- * a page this console actually serves, and {@see RedirectOutsideInertia}, which decides
+ * It is needed by {@see RedirectOutsideInertia}, which decides
  * whether a redirect lands on a page the Inertia client can mount. Both used to build the
  * probe with `Request::create($path)`, and that is the bug this class exists to stop
  * coming back.

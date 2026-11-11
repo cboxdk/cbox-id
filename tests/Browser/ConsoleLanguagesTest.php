@@ -9,13 +9,13 @@ beforeEach(function (): void {
 it('switches the environment console to Danish and keeps the choice on navigation and reload', function (): void {
     actAsEnvironmentAdminOfATenant();
 
-    $page = visit('/admin');
+    $page = visit(envConsole());
     $page->click('button[aria-label="'.__('hosted.language.label', [], 'en').'"]')
         ->click('[role="menuitemradio"]:has-text("Dansk")')
         ->assertSee('Brugere og organisationer')
         ->assertNoJavaScriptErrors();
     expect($page->script('document.documentElement.lang'))->toBe('da');
-    $page->navigate('/admin/users')->assertSee('Ny bruger')->assertNoJavaScriptErrors();
+    $page->navigate(envConsole('/users'))->assertSee('Ny bruger')->assertNoJavaScriptErrors();
     $page->script('window.location.reload()');
     $page->assertSee('Ny bruger')->assertNoJavaScriptErrors();
     $page->screenshot(false, 'console-languages-danish-users');
@@ -41,7 +41,7 @@ it('renders platform administration in Danish at a phone width', function (): vo
 
 it('switches through every additional language from the mobile topbar', function (): void {
     actAsEnvironmentAdminOfATenant();
-    $page = visit('/admin/users')->on()->mobile()->assertSee('Users');
+    $page = visit(envConsole('/users'))->on()->mobile()->assertSee('Users');
     $currentLocale = 'en';
     foreach ([
         ['de', 'Deutsch', 'Benutzer'],

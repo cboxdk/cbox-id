@@ -99,8 +99,8 @@ it('offers no approve action to an operator', function (): void {
      * Both spellings the deny endpoint suggests, and the state afterwards: a refusal
      * status over a request that had nonetheless been approved would pass on status alone.
      */
-    test()->post('/admin/approvals/'.$pending->requestId.'/approve')->assertNotFound();
-    test()->post('/admin/approvals/'.$pending->requestId)->assertNotFound();
+    test()->post(envConsole('/approvals/').$pending->requestId.'/approve')->assertNotFound();
+    test()->post(envConsole('/approvals/').$pending->requestId)->assertNotFound();
 
     expect(BackchannelAuthRequest::query()->whereKey($pending->requestId)->value('status'))
         ->toBe(GrantPollStatus::Pending);
@@ -166,5 +166,7 @@ it('shows one page of requests and pays a flat number of queries for it', functi
 
     expect($single)->toHaveCount(1)
         ->and($fullPageQueries)->toBe($queries)
-        ->and($fullPageQueries)->toBeLessThan(30);
+        // The flat part: the console's path names its environment by organization, project
+        // and environment slug, three reads every console request pays before the page's own.
+        ->and($fullPageQueries)->toBeLessThan(40);
 });

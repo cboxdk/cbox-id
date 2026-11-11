@@ -10,10 +10,10 @@ use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Http\Middleware\BindConsoleOrganization;
 use App\Http\Middleware\BindOrganizationFromPath;
 use App\Http\Middleware\EnforceCustomerConsole;
+use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\EnforceRootHostConsole;
 use App\Http\Middleware\HandleInertiaRequests;
-use App\Http\Middleware\KeepAdminContextThroughEndUserLogout;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\ReadOnlyWhileImpersonating;
@@ -25,6 +25,7 @@ use App\Http\Middleware\RequireMultiTenant;
 use App\Http\Middleware\RequireScope;
 use App\Http\Middleware\RequireSudo;
 use App\Http\Middleware\ResolveConsoleLocale;
+use App\Http\Middleware\ResolveEnvironmentFromPath;
 use App\Http\Middleware\ResolveLocale;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\ServeMarketingWebsite;
@@ -51,6 +52,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Middleware\TrustHosts;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
@@ -221,24 +223,6 @@ return Application::configure(basePath: dirname(__DIR__))
              * signed in here.
              */
             'oauth/authorize',
-
-            /*
-             * The environment-admin handoff redemption, on the ENVIRONMENT host. The form
-             * that posts here is rendered by the ACCOUNT host, a different origin with a
-             * different session, so it cannot know this host's CSRF token — there is no
-             * request in the flow that could have fetched it. Exempting it is safe because
-             * the token in the body IS the proof CSRF stands in for: it is signed by the
-             * platform, minted for one subject and THIS environment only, short-lived and
-             * single-use, and the membership behind it is re-resolved before anything is
-             * established. A forged cross-site post without such a token establishes
-             * nothing; one WITH a token can only sign the browser in as whoever minted it,
-             * into the environment they already administer — the same reach the GET this
-             * replaced had, minus the URL in everybody's logs.
-             *
-             * THE EXACT PATH. `admin/logout` and every console write under `admin/` ride
-             * an ambient session and keep their token check.
-             */
-            'admin/handoff',
         ]);
 
         // The sidebar pin state is a pure UI preference written by JS
@@ -263,11 +247,6 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Pin the current environment (session-selected) for the console + hosted UI.
         $middleware->appendToGroup('web', SetEnvironment::class);
-
-        // An app's RP-initiated sign-out on a tenant's host ends the tenant's END USER and
-        // nothing else: the environment console's administrator sharing the cookie is
-        // another context. After SetEnvironment, which says whose host this is.
-        $middleware->appendToGroup('web', KeepAdminContextThroughEndUserLogout::class);
 
         // An UNINSTALLED deployment has exactly one surface: the first-run screen. In
         // the web group rather than on individual routes because the property is about
@@ -301,6 +280,24 @@ return Application::configure(basePath: dirname(__DIR__))
         // response rather than after parsing it. Pure latency, no behaviour.
         $middleware->appendToGroup('web', AddLinkHeadersForPreloadedAssets::class);
 
+        // THE ENVIRONMENT FROM THE PATH BEFORE ANY BINDING. Route model binding resolves
+        // environment-owned records under the request's environment context, so the
+        // environment console's path has to have set that context first: a user id from
+        // another environment in the rest of the path must find nothing, not something.
+        // Laravel sorts a route's middleware by this list, so naming it here is what puts
+        // it ahead of `SubstituteBindings` from the `web` group.
+        $middleware->prependToPriorityList(
+            before: SubstituteBindings::class,
+            prepend: ResolveEnvironmentFromPath::class,
+        );
+
+        // An outlived impersonation is ended before the path middleware answers for the
+        // impersonated person ({@see ConsoleRoutes::environment()}).
+        $middleware->prependToPriorityList(
+            before: ResolveEnvironmentFromPath::class,
+            prepend: EnforceImpersonationWindow::class,
+        );
+
         $middleware->alias([
             'platform.auth' => Authenticate::class,
             'platform.guest' => RedirectIfAuthenticated::class,
@@ -324,6 +321,9 @@ return Application::configure(basePath: dirname(__DIR__))
             // Host-plane bulkheads + the environment-admin (account-layer) console gate.
             'plane' => EnforcePlane::class,
             'env.admin' => AuthenticateEnvironmentAdmin::class,
+            // The environment console's one door on the app host: the environment from the
+            // path, authorized for this person on every request (see the class).
+            'env.path' => ResolveEnvironmentFromPath::class,
             // The organization an environment-console page acts on, from its URL
             // (`/admin/organizations/{organization}/…`) — never from the session.
             'console.org' => BindConsoleOrganization::class,

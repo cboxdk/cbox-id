@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
 use App\Platform\SelfServiceSignup;
 use App\Platform\SupportAccess\Exceptions\SupportRequestRefused;
@@ -40,6 +39,11 @@ uses(RefreshDatabase::class);
 | gets tokens that carry `act`, and no refresh token.
 */
 
+beforeEach(function (): void {
+    $this->supportJarCurrent = 'console';
+    $this->supportJars = [];
+});
+
 const SUPPORT_VERIFIER = 'support-session-verifier-of-sufficient-length-0123456789';
 
 /** An app a support session can reach: first-party, owned by the environment, web sign-in. */
@@ -74,17 +78,73 @@ function supportFixture(): array
 
 function startSupport(string $userId, array $fields): TestResponse
 {
-    return test()->from(route('environment.users.show', $userId))
+    supportJar('console');
+
+    $start = test()->from(route('environment.users.show', $userId))
         ->post(route('environment.users.support-sessions.store', $userId), [
             'reason' => 'Ticket 4411: invoice totals look wrong',
             'minutes' => 30,
             ...$fields,
         ]);
+
+    // The console is on the app host; the app's sign-in arrives on the environment's own
+    // host. Starting a session sends the browser through that host's signed launch door,
+    // which hands it on to the app — followed here as the browser follows it.
+    $launch = (string) leftFor($start);
+
+    if (! str_contains($launch, '/support/launch/')) {
+        return $start;
+    }
+
+    // Two hosts, two cookies: the console's session stays on the app host, and the
+    // browser arrives on the environment's host with that host's session.
+    supportJar('environment');
+
+    $session = (array) session()->all();
+    $door = test()->get($launch)->assertRedirect();
+
+    expect($door->headers->get('Referrer-Policy'))->toBe('no-referrer');
+
+    // The door is spent: the same link a second time opens nothing.
+    test()->get($launch)->assertNotFound();
+    expect(session()->all())->not->toBe($session);
+
+    return $door;
+}
+
+/**
+ * Switch the browser's cookie jar between the app host (`console`) and the environment's
+ * own host (`environment`), which share no session in a real browser.
+ */
+function supportJar(string $jar): void
+{
+    $t = test();
+    $current = $t->supportJarCurrent;
+
+    if ($jar === $current) {
+        return;
+    }
+
+    $jars = $t->supportJars;
+    $jars[$current] = session()->all();
+
+    app()->forgetScopedInstances();
+    session()->flush();
+    session()->put($jars[$jar] ?? []);
+
+    $t->supportJars = $jars;
+    $t->supportJarCurrent = $jar;
+
+    if ($jar === 'environment') {
+        backOnTestHost();
+    }
 }
 
 /** The app's own sign-in, arriving at the authorization endpoint from the same browser. */
 function appSignsIn(string $clientId, string $name = 'Parcels'): TestResponse
 {
+    supportJar('environment');
+
     return authorizeRequest([
         'client_id' => $clientId,
         'redirect_uri' => 'https://'.strtolower($name).'.test/callback',
@@ -142,6 +202,7 @@ it('signs the administrator in to the app as the person, with act on every token
         ->and($tokens)->not->toHaveKey('refresh_token');
 
     // And the console is still the administrator's, to end the session from.
+    supportJar('console');
     $this->get(route('environment.users.show', $user))->assertOk();
 })->group('security');
 
@@ -154,6 +215,7 @@ it('offers only the apps a support session can reach', function (): void {
     supportApp('Native', ['redirectUris' => ['com.example.native:/callback']]);
     supportApp('Machine', ['grantTypes' => ['client_credentials'], 'type' => ClientType::Confidential]);
 
+    supportJar('console');
     $support = $this->get(route('environment.users.show', $user))->assertOk()->inertiaProps('support');
 
     expect(collect($support['apps'])->pluck('label')->all())->toBe(['Parcels'])
@@ -218,6 +280,7 @@ it('requires a reason, and never runs longer than the configured maximum', funct
     startSupport($user, ['app' => $parcels, 'organization' => $org, 'minutes' => 30])
         ->assertSessionHasErrors(['minutes' => 'A support session lasts at most 15 minutes.']);
 
+    supportJar('console');
     expect($this->get(route('environment.users.show', $user))->inertiaProps('support.maxMinutes'))->toBe(15);
 
     startSupport($user, ['app' => $parcels, 'organization' => $org, 'minutes' => 15])->assertSessionHasNoErrors();
@@ -248,7 +311,10 @@ it('mints nothing for the session once the administrator is no longer signed in 
 
     startSupport($user, ['app' => $parcels, 'organization' => $org])->assertSessionHasNoErrors();
 
-    $consoleSession = (string) session(EnvironmentAdminAuth::SESSION_KEY);
+    // The administrator's app-host session — the console's — revoked while the browser is
+    // on its way to the app.
+    $consoleSession = (string) (test()->supportJars['console']['cbox']['session'] ?? '');
+    expect($consoleSession)->not->toBe('');
     app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->revoke($consoleSession));
 
     nextRequest();
@@ -257,6 +323,71 @@ it('mints nothing for the session once the administrator is no longer signed in 
 
     // And the note is gone, so a later sign-in here cannot pick it back up.
     expect(session('cbox.support_handoff'))->toBe([]);
+})->group('security');
+
+/**
+ * THE AUTHORITY IS RE-ASKED FOR EVERY CODE, not remembered from the start. A session can
+ * last an hour; an administrator who stops administering this environment in that hour —
+ * their membership suspended, their organization suspended — mints nothing more, though
+ * their own root session is still live.
+ */
+it('mints nothing for the session once the administrator no longer administers the environment', function (string $revocation): void {
+    ['user' => $user, 'org' => $org, 'admin' => $admin] = supportFixture();
+    $parcels = supportApp();
+    confirmEnvironmentStepUp();
+
+    startSupport($user, ['app' => $parcels, 'organization' => $org])->assertSessionHasNoErrors();
+
+    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
+    $owner = app(PlatformRoot::class)->run(function () use ($environmentId): string {
+        $projectId = Environment::query()->whereKey($environmentId)->value('project_id');
+
+        return (string) DB::table('projects')->where('id', $projectId)->value('organization_id');
+    });
+
+    app(PlatformRoot::class)->run(fn () => match ($revocation) {
+        'membership' => DB::table('memberships')->where('organization_id', $owner)->where('user_id', $admin)
+            ->update(['status' => MembershipStatus::Suspended->value]),
+        'organization' => DB::table('organizations')->where('id', $owner)->update(['status' => 'suspended']),
+    });
+
+    nextRequest();
+
+    $answer = appSignsIn($parcels);
+
+    expect(returnedToApp($answer))->not->toHaveKey('code')
+        ->and(session('cbox.support_handoff'))->toBe([]);
+})->with(['membership', 'organization'])->group('security');
+
+it('opens a support launch link on the environment it was minted for, and nowhere else', function (): void {
+    ['user' => $user, 'org' => $org] = supportFixture();
+    $parcels = supportApp();
+    confirmEnvironmentStepUp();
+
+    supportJar('console');
+    $start = test()->from(route('environment.users.show', $user))
+        ->post(route('environment.users.support-sessions.store', $user), [
+            'reason' => 'Ticket 4411: invoice totals look wrong',
+            'minutes' => 30,
+            'app' => $parcels,
+            'organization' => $org,
+        ]);
+    $launch = (string) leftFor($start);
+
+    // The administrator's session id never rides in the link: an opaque ticket does.
+    parse_str((string) parse_url($launch, PHP_URL_QUERY), $query);
+    expect($query)->not->toHaveKey('console')
+        ->and($query['ticket'] ?? null)->toBeString()
+        ->and($query['environment'] ?? null)->toBe(app(EnvironmentContext::class)->current()?->environmentKey());
+
+    // Replayed on another environment's host, the link opens nothing.
+    supportJar('environment');
+    $other = provisionAccount('owner@other.example')['environment'];
+    $other->forceFill(['domain' => 'other-env.test', 'domain_verified_at' => now()])->save();
+
+    $path = (string) parse_url($launch, PHP_URL_PATH).'?'.(string) parse_url($launch, PHP_URL_QUERY);
+    test()->get('http://other-env.test'.$path)->assertNotFound();
+    expect(session('cbox.support_handoff'))->toBeNull();
 })->group('security');
 
 it('answers another app\'s sign-in, and a browser that started nothing, the ordinary way', function (): void {
@@ -291,6 +422,7 @@ it('ends a session now — no more codes, every token it issued revoked', functi
         'code_verifier' => SUPPORT_VERIFIER,
     ])->assertOk();
 
+    supportJar('console');
     $sessions = $this->get(route('environment.users.show', $user))->inertiaProps('support.sessions');
 
     expect($sessions)->toHaveCount(1)
@@ -300,9 +432,11 @@ it('ends a session now — no more codes, every token it issued revoked', functi
         ->and($sessions[0]['startedBy'])->toBe('Owner');
 
     // The organization's Support tab lists the same session.
+    supportJar('console');
     expect($this->get(route('environment.organizations.support', $org))->inertiaProps('supportSessions.0.id'))
         ->toBe($sessions[0]['id']);
 
+    supportJar('console');
     $this->from(route('environment.users.show', $user))->delete($sessions[0]['endHref'])->assertSessionHasNoErrors();
 
     expect(AccessToken::query()->whereNotNull('support_session_id')->whereNull('revoked_at')->count())->toBe(0)
@@ -315,6 +449,7 @@ it('ends a session now — no more codes, every token it issued revoked', functi
 it('ends only a session of this environment', function (): void {
     supportFixture();
 
+    supportJar('console');
     $this->delete(route('environment.support-sessions.end', '01KNOSUCHSESSION0000000000'))->assertNotFound();
 });
 
@@ -331,6 +466,7 @@ it('puts the session on the organization\'s activity log and on the person\'s ow
     startSupport($user, ['app' => $parcels, 'organization' => $org])->assertSessionHasNoErrors();
 
     // The organization's own trail, as the audit log narrowed to it shows it.
+    supportJar('console');
     $entry = collect($this->get(route('environment.audit', ['organization' => $org]))->assertOk()->inertiaProps('entries'))
         ->firstWhere('action', 'support_session.started');
 
@@ -339,8 +475,10 @@ it('puts the session on the organization\'s activity log and on the person\'s ow
         ->and($entry['targetName'])->toBe('Grace Hopper')
         ->and($entry['facts'][0])->toBe('reason: Ticket 4411: invoice totals look wrong');
 
-    // Now as Grace, on her own activity page.
+    // Now as Grace, on her own activity page — on the environment's own host.
+    supportJar('environment');
     session()->flush();
+    app(EnvironmentContext::class)->set(Environment::query()->where('is_default', false)->firstOrFail());
     app(PlatformAuth::class)->establish(request(), $user, ['pwd']);
 
     $rows = collect(accountActivity()['activity'])->where('label', 'Support signed in to an app as you');
@@ -421,6 +559,7 @@ it('answers the session\'s organization when the app names it, a hint, or asks f
         ->and(supportTokenOrg($parcels, (string) $query['code']))->toBe($org);
 
     // And the administrator's console session survived the round trip.
+    supportJar('console');
     $this->get(route('environment.users.show', $user))->assertOk();
 })->with([
     'organization = the session\'s' => [['organization' => '{org}']],
@@ -441,6 +580,7 @@ it('refuses an app that names another organization, and keeps the session for on
         ->and($query)->not->toHaveKey('code');
 
     expect(returnedToApp(appSignsIn($parcels))['code'] ?? null)->toBeString();
+    supportJar('console');
     $this->get(route('environment.users.show', $user))->assertOk();
 })->group('security');
 

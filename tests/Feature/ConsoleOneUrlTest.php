@@ -113,8 +113,9 @@ it('redirects a moved page to a path on this host and never elsewhere', function
 });
 
 it('serves each shared page at the same slug on both consoles', function (string $organization, string $environment): void {
-    // The environment console's path is the organization console's under `/admin`.
-    expect(route($organization, [], false))->toBe(substr(route($environment, [], false), strlen('/admin')));
+    // The environment console's path is the organization console's under the environment's
+    // own path — here the platform root's, `/admin/environment`.
+    expect(route($organization, [], false))->toBe(substr(route($environment, ['environmentPath' => 'admin/environment'], false), strlen('/admin/environment')));
 })->with([
     ['clients', 'environment.clients'],
     ['connections', 'environment.connections'],
@@ -137,13 +138,14 @@ it('serves each shared page at the same slug on both consoles', function (string
 
 it('gives the pages that moved into /orgs/{org} or made way for /settings their own address', function (): void {
     // `/settings` is the signed-in person's own settings on every Cbox app, so the console
-    // page that sat there is `/organization`, and the environment keeps `/admin/settings`.
+    // page that sat there is `/organization`, and the environment keeps its own `settings`
+    // under its console path — here the platform root's, `/admin/environment`.
     expect(route('settings', [], false))->toBe('/organization')
-        ->and(route('environment.settings', [], false))->toBe('/admin/settings')
+        ->and(route('environment.settings', ['environmentPath' => 'admin/environment'], false))->toBe('/admin/environment/settings')
         ->and(route('account', [], false))->toBe('/settings')
-        // The organization's keys live in its settings; the environment's at `/admin/keys`.
+        // The organization's keys live in its settings; the environment's under its console path.
         ->and(Route::getRoutes()->getByName('orgs.settings.api-keys')?->uri())->toBe('orgs/{org}/settings/api-keys')
-        ->and(route('environment.keys', [], false))->toBe('/admin/keys');
+        ->and(route('environment.keys', ['environmentPath' => 'admin/environment'], false))->toBe('/admin/environment/keys');
 });
 
 it('no longer routes any old spelling as a page of its own', function (): void {

@@ -10,6 +10,7 @@ use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ApprovalInput;
 use App\Platform\Actions\Input\Field;
+use App\Platform\IssuerUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
@@ -181,7 +182,7 @@ final class ActionSnippets
             action: $action,
             // The TEMPLATE, placeholders and all: the browser fills it from the form, which may
             // name a different id than the page's own. The filled path is for reading.
-            url: url('/api/v1'.$action->documentedPath()),
+            url: IssuerUrl::to('/api/v1'.$action->documentedPath()),
             path: $filled['path'],
             fields: $fields,
             cli: self::SHIPPED_CLI[$action->name] ?? 'cbox id '.str_replace('.', ':', $action->name),

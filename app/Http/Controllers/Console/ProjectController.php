@@ -16,6 +16,7 @@ use App\Http\Requests\Console\StoreEnvironmentRequest;
 use App\Http\Requests\Console\StoreProjectRequest;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Billing\ProductBilling;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
@@ -134,7 +135,7 @@ final readonly class ProjectController extends ConsoleController
                         'name' => $e->name,
                         'type' => $e->type->value,
                         'host' => $e->domain ?? $e->slug,
-                        'openHref' => route('environment.open', $e->id),
+                        'openHref' => app(EnvironmentConsolePath::class)->route($e->id) ?? route('environment.open', $e->id),
                     ])->values()->all(),
                 ];
             }
@@ -243,7 +244,7 @@ final readonly class ProjectController extends ConsoleController
                 // The environment's own front door, which is a real URL somebody pastes
                 // to a colleague — not a route on this console.
                 'url' => 'https://'.($environment->domain ?? $environment->slug.'.'.$baseDomain),
-                'openHref' => route('environment.open', $environment->id),
+                'openHref' => app(EnvironmentConsolePath::class)->route($environment->id) ?? route('environment.open', $environment->id),
             ])->values()->all(),
             // A management surface requires the capability AND full access.
             'canManage' => ! $scoped && $this->mayManage($members),

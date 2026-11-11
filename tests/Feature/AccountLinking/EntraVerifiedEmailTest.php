@@ -119,7 +119,7 @@ it('tells the administrator to add the xms_edov claim when setting Microsoft up'
 
     // And the console's Social sign-in page shows it.
     RootGoogle::operatorSignedIn();
-    $page = test()->get('https://'.RootGoogle::HOST.'/admin/social-sign-in?provider=microsoft')->assertOk();
+    $page = test()->get('https://'.RootGoogle::HOST.'/admin/environment/social-sign-in?provider=microsoft')->assertOk();
 
     expect((string) json_encode($page->inertiaProps()))->toContain('xms_edov');
 });

@@ -408,7 +408,7 @@ export interface SharedProps {
     shell: Shell | null;
     i18n: I18n | null;
     /**
-     * Shared on every page under `/admin/organizations/{organization}/…`: the organization the
+     * Shared on every page under an environment console's `…/organizations/{organization}/…`: the organization the
      * page is about, which the layout draws as the hub's header and tabs around the page.
      */
     organizationHub?: OrganizationHub | null;

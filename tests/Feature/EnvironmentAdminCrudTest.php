@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Mail\InvitationMail;
 use App\Mail\PasswordResetMail;
-use App\Platform\EnvironmentSudo;
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
 use Cbox\Id\AccessControl\Contracts\Roles;
@@ -61,11 +60,11 @@ it('renders the user + org detail pages and edits a user profile', function (): 
     $user = app(Subjects::class)->create('jane@acme.example', 'Jane');
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant A', slug: 'tenant-a'));
 
-    $this->get("/admin/users/{$user->id}")
+    $this->get(envConsole("/users/{$user->id}"))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('user.email', 'jane@acme.example'));
 
-    $this->get("/admin/organizations/{$org->id}")
+    $this->get(envConsole("/organizations/{$org->id}"))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('organizationHub.name', 'Tenant A'));
 
@@ -138,7 +137,7 @@ it('starts an env-admin impersonation of a member (redirect + marker)', function
     $user = app(Subjects::class)->create('erin@acme.example', 'Erin');
     app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
 
-    $this->post("/admin/impersonate/{$user->id}", ['organization' => $org->id, 'reason' => 'support ticket 42'])
+    followImpersonationLaunch($this->post(envConsole("/impersonate/{$user->id}"), ['organization' => $org->id, 'reason' => 'support ticket 42']))
         ->assertRedirect(route('dashboard'));
 
     $marker = session('cbox.impersonation');
@@ -156,14 +155,17 @@ it('expires an env-admin impersonation back to the env console (not the operator
     $user = app(Subjects::class)->create('gina@acme.example', 'Gina');
     app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
 
-    $this->post("/admin/impersonate/{$user->id}", ['organization' => $org->id, 'reason' => 'support']);
+    followImpersonationLaunch($this->post(envConsole("/impersonate/{$user->id}"), ['organization' => $org->id, 'reason' => 'support']))
+        ->assertRedirect(route('dashboard'));
 
     // Age the marker past the 30-minute window, then hit an authenticated route.
     $marker = session('cbox.impersonation');
     $marker['started_at'] = now()->subMinutes(31)->getTimestamp();
     session()->put('cbox.impersonation', $marker);
 
-    $this->get('/dashboard')->assertRedirect(route('environment.home'));
+    // Back to the console it was started from, on the app host.
+    $back = (string) $this->get('/dashboard')->assertRedirect()->headers->get('Location');
+    expect(parse_url($back, PHP_URL_HOST).parse_url($back, PHP_URL_PATH))->toBe(parse_url(envConsole(), PHP_URL_HOST).envConsolePath());
     expect(session('cbox.impersonation'))->toBeNull();
 });
 
@@ -173,7 +175,7 @@ it('refuses to impersonate an owner/admin', function (): void {
     $user = app(Subjects::class)->create('frank@acme.example', 'Frank');
     app(Memberships::class)->add($org->id, $user->id, MembershipRole::Admin);
 
-    $this->post("/admin/impersonate/{$user->id}", ['organization' => $org->id, 'reason' => 'nope'])
+    $this->post(envConsole("/impersonate/{$user->id}"), ['organization' => $org->id, 'reason' => 'nope'])
         ->assertForbidden();
 });
 
@@ -201,11 +203,11 @@ it('renders the detail pages for connections, directories, roles, applications a
         ['issuer' => 'https://okta.example', 'client_id' => 'abc', 'client_secret' => 'shh'],
     );
 
-    $this->get("/admin/roles/{$role->id}")->assertOk()->assertSee('Support');
-    $this->get("/admin/apps/{$client->id}")->assertOk()->assertSee('Test App');
-    $this->get("/admin/webhooks/{$webhook->id}")->assertOk()->assertSee('example.com');
-    $this->get("/admin/sync-in/{$directory->id}")->assertOk()->assertSee('HR directory');
-    $this->get("/admin/single-sign-on/{$connection->id}")->assertOk()->assertSee('Okta');
+    $this->get(envConsole("/roles/{$role->id}"))->assertOk()->assertSee('Support');
+    $this->get(envConsole("/apps/{$client->id}"))->assertOk()->assertSee('Test App');
+    $this->get(envConsole("/webhooks/{$webhook->id}"))->assertOk()->assertSee('example.com');
+    $this->get(envConsole("/sync-in/{$directory->id}"))->assertOk()->assertSee('HR directory');
+    $this->get(envConsole("/single-sign-on/{$connection->id}"))->assertOk()->assertSee('Okta');
 });
 
 it('sends an organization invitation and lists it as pending', function (): void {
@@ -328,7 +330,7 @@ it('pins an impersonation session to the authorized org, not the subject\'s olde
     app(Memberships::class)->add($ownerOrg->id, $user->id, MembershipRole::Owner);   // oldest membership
     app(Memberships::class)->add($memberOrg->id, $user->id, MembershipRole::Member); // the one we authorize
 
-    $this->post("/admin/impersonate/{$user->id}", ['organization' => $memberOrg->id, 'reason' => 'support'])
+    followImpersonationLaunch($this->post(envConsole("/impersonate/{$user->id}"), ['organization' => $memberOrg->id, 'reason' => 'support']))
         ->assertRedirect(route('dashboard'));
 
     // Must land in the AUTHORIZED (member) org — never the subject's owner org.
@@ -377,15 +379,15 @@ it('renders the access-review, stored-token and log-stream detail pages', functi
         Cbox\LaravelSiem\Enums\AuthScheme::Bearer,
     )->stream;
 
-    $this->get("/admin/access-reviews/{$campaign->id}")->assertOk()->assertSee('Q3 Review');
-    $this->get("/admin/log-streaming/{$stream->id}")->assertOk()->assertSee('SIEM export');
+    $this->get(envConsole("/access-reviews/{$campaign->id}"))->assertOk()->assertSee('Q3 Review');
+    $this->get(envConsole("/log-streaming/{$stream->id}"))->assertOk()->assertSee('SIEM export');
 
     // The vault is the one page here behind a step-up, so this test has to take the step
     // up. It used to assert a bare 200 on this URL, which is a test asserting the ABSENCE
     // of the gate — and that is what kept the weaker half of the pair in place: the
     // organization plane's identical page had demanded a fresh password since it shipped.
-    app(EnvironmentSudo::class)->confirm();
-    $this->get("/admin/token-vault/{$secret->id}")->assertOk()->assertSee('Stripe key');
+    confirmEnvironmentStepUp();
+    $this->get(envConsole("/token-vault/{$secret->id}"))->assertOk()->assertSee('Stripe key');
 });
 
 /**
@@ -401,13 +403,13 @@ it('demands a fresh step-up before any token-vault page on the environment plane
     crudSetup();
     $secret = app(SecretVault::class)->store('Stripe key', 'stripe', 'sk_test_x');
 
-    foreach (['/admin/token-vault', '/admin/token-vault/new', "/admin/token-vault/{$secret->id}"] as $url) {
+    foreach ([envConsole('/token-vault'), envConsole('/token-vault/new'), envConsole("/token-vault/{$secret->id}")] as $url) {
         $this->get($url)->assertRedirect(route('environment.sudo'));
     }
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
-    foreach (['/admin/token-vault', '/admin/token-vault/new', "/admin/token-vault/{$secret->id}"] as $url) {
+    foreach ([envConsole('/token-vault'), envConsole('/token-vault/new'), envConsole("/token-vault/{$secret->id}")] as $url) {
         $this->get($url)->assertOk();
     }
 })->group('security');
@@ -424,7 +426,7 @@ it('never lets an organization-plane step-up satisfy the environment plane', fun
     app(Sudo::class)->confirm();
     app(Sudo::class)->confirm();
 
-    $this->get('/admin/token-vault')->assertRedirect(route('environment.sudo'));
+    $this->get(envConsole('/token-vault'))->assertRedirect(route('environment.sudo'));
 })->group('security');
 
 // RP-initiated logout only returns the browser to the app when the requested
@@ -533,10 +535,10 @@ it('renders the detail pages for login methods, event hooks, conflict rules and 
         'a-secret',
     )->connection;
 
-    $this->get("/admin/saml-apps/{$sp->id}")->assertOk()->assertSee('sp.example');
-    $this->get("/admin/inline-hooks/{$hook->id}")->assertOk()->assertSee('example.com');
-    $this->get("/admin/role-conflicts/{$policy->id}")->assertOk()->assertSee('Maker/Checker');
-    $this->get("/admin/sync-out/{$sync->id}")->assertOk()->assertSee('Downstream');
+    $this->get(envConsole("/saml-apps/{$sp->id}"))->assertOk()->assertSee('sp.example');
+    $this->get(envConsole("/inline-hooks/{$hook->id}"))->assertOk()->assertSee('example.com');
+    $this->get(envConsole("/role-conflicts/{$policy->id}"))->assertOk()->assertSee('Maker/Checker');
+    $this->get(envConsole("/sync-out/{$sync->id}"))->assertOk()->assertSee('Downstream');
 });
 
 // --- B: org RBAC access-role assignment (distinct from the coarse membership tier) ---

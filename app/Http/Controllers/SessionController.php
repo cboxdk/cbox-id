@@ -32,12 +32,11 @@ final class SessionController extends Controller
         // end only the active one.
         //
         //  - On the account host (`cboxid.com`) that is the ADMIN context: the root's
-        //    session, and every environment console handed off from it on any tenant's
-        //    host ({@see PlatformAuth::logoutAll()}). It lands on "You're signed out".
+        //    session, which every console there — environment consoles included — runs on
+        //    ({@see PlatformAuth::logoutAll()}). It lands on "You're signed out".
         //  - On a tenant's host it is the END-USER context — the tenant's hosted sign-in and
-        //    My account. Only those sessions end; the environment console's administrator
-        //    on the same host is another context and stays signed in (the console's own
-        //    Sign out is `admin.logout`). It lands on the tenant's sign-in, as it always has.
+        //    My account. Only those sessions end. It lands on the tenant's sign-in, as it
+        //    always has.
         $root = $auth->onPlatformRoot();
 
         $auth->logoutAll($request);

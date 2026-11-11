@@ -42,6 +42,13 @@ final class SetEnvironment
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // An environment console on the app host: its path has already set the environment
+        // (it runs ahead of route model binding, {@see ResolveEnvironmentFromPath}), and the
+        // host's would put the platform root back in its place.
+        if ($request->attributes->has(ResolveEnvironmentFromPath::ATTRIBUTE)) {
+            return $next($request);
+        }
+
         $environment = $this->resolve($request);
 
         if ($environment !== null) {

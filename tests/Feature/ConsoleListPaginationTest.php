@@ -153,13 +153,14 @@ it('labels a directory row with its organization without loading every organizat
 
     // BOUNDED, which is what this is about — not the exact shape of the predicate. An
     // `id in (…)` label lookup is bounded by the rows on the page; so is a `where id = ?`
-    // for the ONE acting organization, which the console chrome asks for by name. What must
+    // for the ONE acting organization, which the console chrome asks for by name, and a
+    // `where slug = ?` for the one the console's path names. What must
     // not appear is a read of the table with neither: that grows with the tenant count and
     // is re-run on every Livewire action.
     foreach ($orgReads as $statement) {
         $exactMembershipJoin = str_contains($statement, '"organizations"."id" = "memberships"."organization_id"')
             && str_contains($statement, '"memberships"."organization_id" = ?');
-        expect(str_contains($statement, '"id" in') || str_contains($statement, '"id" = ?') || $exactMembershipJoin)
+        expect(str_contains($statement, '"id" in') || str_contains($statement, '"id" = ?') || str_contains($statement, '"slug" = ?') || $exactMembershipJoin)
             ->toBeTrue('an unbounded organizations read: '.$statement);
     }
 });

@@ -18,6 +18,7 @@ use App\Platform\Console\ShellContext;
 use App\Platform\Enums\KeyLifetime;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Help\HelpTopic;
+use App\Platform\IssuerUrl;
 use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OAuth\RootMcpOAuth;
 use App\Platform\PlaneResolver;
@@ -138,7 +139,7 @@ final readonly class AgentController extends ConsoleController
         $this->environmentAdmin();
 
         $mcp = $this->mcp();
-        $origin = $mcp === null ? rtrim(url('/'), '/') : self::origin($mcp->identifier);
+        $origin = $mcp === null ? IssuerUrl::to() : self::origin($mcp->identifier);
 
         return $this->page('environment/agents/connect', __('console.connect_an_agent_ce504be3'), [
             'help' => HelpProps::for(HelpTopic::ConnectAgent),

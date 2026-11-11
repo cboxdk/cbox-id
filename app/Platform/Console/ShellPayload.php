@@ -13,6 +13,7 @@ use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
 use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\IssuerUrl;
 use App\Platform\Navigation\ConsoleNav;
 use App\Platform\Navigation\ConsoleNavigation;
 use App\Platform\PlaneResolver;
@@ -257,7 +258,7 @@ final readonly class ShellPayload
             actsOn: $this->organizationActsOn($platformPage, $workspace),
             // The platform's own environment console, beside platform admin in the account
             // menu: an operator at the root is one click from the environment they run.
-            platformEnvironmentHref: $isOperator && $rootHost && Route::has('environment.home') ? route('environment.home') : null,
+            platformEnvironmentHref: $isOperator && $rootHost && Route::has('environment.home') ? route('environment.home', [EnvironmentConsolePath::PARAMETER => EnvironmentConsolePath::ROOT]) : null,
         );
     }
 
@@ -452,11 +453,9 @@ final readonly class ShellPayload
             // operator is standing in. On the root's own console it is in the rail.
             platformHref: $tenantOperator ? $this->context->onOrganizationHost('platform.orgs') : null,
             actsOn: $actsOn,
-            platformEnvironmentHref: $tenantOperator ? $this->context->onOrganizationHost('environment.home') : null,
-            // A tenant's console signs out of the ADMIN context, not the tenant's end-user
-            // session that shares this host. On the platform root's own console the admin
-            // context IS the root's session, which `/logout` ends.
-            logoutHref: $rootOperator ? route('logout') : route('admin.logout'),
+            platformEnvironmentHref: $tenantOperator ? route('environment.home', [EnvironmentConsolePath::PARAMETER => EnvironmentConsolePath::ROOT]) : null,
+            // The console is on the app host and its session is the app host's own.
+            logoutHref: route('logout'),
         );
     }
 
@@ -467,7 +466,7 @@ final readonly class ShellPayload
     private function environmentActsOn(bool $root): ShellActsOnProps
     {
         $name = $this->environmentName() ?? __('console.this_environment_549c0268');
-        $host = $this->request->getHost();
+        $host = IssuerUrl::host();
 
         if ($root) {
             return new ShellActsOnProps(

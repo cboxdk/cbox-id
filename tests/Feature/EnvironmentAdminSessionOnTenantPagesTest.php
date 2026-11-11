@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\EnvironmentAdminAuth;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
@@ -15,10 +16,10 @@ uses(RefreshDatabase::class);
 /**
  * AN ENVIRONMENT ADMINISTRATOR'S SESSION SURVIVES THE TENANT'S OWN PAGES.
  *
- * Their session is a platform-root one anchored to this host, so the subject middleware —
- * which reads under the tenant's scope — never finds it, and used to forget it. The first
- * app an administrator opened from the environment host (every app signs in through
- * /oauth/authorize) signed them out of the console they had come from.
+ * The console lives on the app host now, under its own host-only session; the tenant's own
+ * pages (every app signs in through its /oauth/authorize) run on the environment's host
+ * with a session of their own. Opening an app there used to sign the administrator out of
+ * the console they came from; now it cannot reach that session at all.
  */
 function firstPartyEnvironmentApp(): string
 {
@@ -37,24 +38,26 @@ it('keeps the console session when the administrator\'s browser opens an app', f
     $clientId = firstPartyEnvironmentApp();
 
     $this->get(route('environment.home'))->assertOk();
+    $console = (string) session(PlatformAuth::SESSION_KEY);
 
     // The administrator is nobody on this tenant, so the app's sign-in asks them to sign
-    // in — as before. What changes is that the console is still theirs afterwards.
+    // in — on the environment's host, in that host's own session.
+    hostJar('environment');
     authorizeRequest(['client_id' => $clientId, 'redirect_uri' => 'https://parcels.test/callback'])
         ->assertRedirect(route('login'));
+    expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
 
-    expect(session(EnvironmentAdminAuth::SESSION_KEY))->toBeString();
+    // The console is still theirs afterwards.
+    hostJar('console');
+    expect(session(PlatformAuth::SESSION_KEY))->toBe($console);
     $this->get(route('environment.home'))->assertOk();
 })->group('security');
 
 it('still refuses an administrator session that has been revoked', function (): void {
     crudSetup();
-    $clientId = firstPartyEnvironmentApp();
 
-    $sessionId = (string) session(EnvironmentAdminAuth::SESSION_KEY);
+    $sessionId = (string) session(PlatformAuth::SESSION_KEY);
     app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->revoke($sessionId));
-
-    authorizeRequest(['client_id' => $clientId, 'redirect_uri' => 'https://parcels.test/callback']);
 
     // Only a LIVE administrator session opens the console; a revoked one is refused by the
     // console's own gate, which re-reads the row on every request.

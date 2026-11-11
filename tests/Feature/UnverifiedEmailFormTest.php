@@ -39,10 +39,10 @@ function rootOperatorPostsGoogle(bool $verified): TestResponse
         app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified((string) $operator->subject_id, 'op@platform.test'));
     }
 
-    $form = 'https://cboxid.com/admin/social-sign-in?provider=google';
+    $form = 'https://cboxid.com/admin/environment/social-sign-in?provider=google';
     test()->get($form)->assertOk();
 
-    return test()->from($form)->post('https://cboxid.com/admin/social-sign-in', [
+    return test()->from($form)->post('https://cboxid.com/admin/environment/social-sign-in', [
         'provider' => 'google',
         'clientId' => 'client.apps.googleusercontent.com',
         'clientSecret' => 'a-client-secret',
@@ -53,15 +53,15 @@ function rootOperatorPostsGoogle(bool $verified): TestResponse
 
 it('sends an unconfirmed owner back to the form with the sentence that says what to do', function (): void {
     rootOperatorPostsGoogle(verified: false)
-        ->assertRedirect('https://cboxid.com/admin/social-sign-in?provider=google')
+        ->assertRedirect('https://cboxid.com/admin/environment/social-sign-in?provider=google')
         ->assertSessionHas('error', fn (string $message): bool => str_contains($message, 'Confirm your email address before you add a sign-in provider') && str_contains($message, 'Send confirmation link'));
 });
 
 it('answers an Inertia visit the same way, never with the generic 403 page', function (): void {
     actAsOperator('op@platform.test');
 
-    test()->from('https://cboxid.com/admin/social-sign-in?provider=google')
-        ->post('https://cboxid.com/admin/social-sign-in', ['provider' => 'google', 'clientId' => 'x', 'clientSecret' => 'y', 'forEnvironment' => true], ['X-Inertia' => 'true'])
+    test()->from('https://cboxid.com/admin/environment/social-sign-in?provider=google')
+        ->post('https://cboxid.com/admin/environment/social-sign-in', ['provider' => 'google', 'clientId' => 'x', 'clientSecret' => 'y', 'forEnvironment' => true], ['X-Inertia' => 'true'])
         ->assertStatus(303)
         ->assertSessionHas('error');
 });

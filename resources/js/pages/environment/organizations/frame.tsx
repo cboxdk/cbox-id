@@ -24,7 +24,7 @@ import {
  * administrator most often came here to do — hand the customer's IT administrator an Admin
  * Portal link — and the tabs.
  *
- * Drawn by the layout around EVERY page under `/admin/organizations/{organization}/…` (the
+ * Drawn by the layout around EVERY page under an environment console's `…/organizations/{organization}/…` (the
  * server shares `organizationHub` there), which is what lets the environment-wide pages that
  * are also tabs here — Enterprise SSO, Roles, the audit log — sit inside an organization's
  * page without knowing they are one.

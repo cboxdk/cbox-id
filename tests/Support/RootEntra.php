@@ -50,8 +50,8 @@ final class RootEntra
     /** Microsoft, environment-wide, in the platform root — as an operator does it in its console. */
     public static function turnOn(): Connection
     {
-        test()->from('https://'.RootGoogle::HOST.'/admin/social-sign-in?provider=microsoft')
-            ->post('https://'.RootGoogle::HOST.'/admin/social-sign-in', [
+        test()->from('https://'.RootGoogle::HOST.'/admin/environment/social-sign-in?provider=microsoft')
+            ->post('https://'.RootGoogle::HOST.'/admin/environment/social-sign-in', [
                 'provider' => 'microsoft',
                 'clientId' => 'entra-client-id',
                 'clientSecret' => 'entra-client-secret',

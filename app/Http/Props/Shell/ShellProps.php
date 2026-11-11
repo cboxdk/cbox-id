@@ -84,10 +84,8 @@ final readonly class ShellProps implements Prop
          */
         public ?string $platformEnvironmentHref = null,
         /**
-         * Where the account menu's Sign out posts. An environment's console on a tenant's
-         * host signs out of the ADMIN context only (`admin.logout`): the tenant's own
-         * end-user session on that host is another context and stays signed in. Null means
-         * the ordinary `/logout`.
+         * Where the account menu's Sign out posts. Every console is on the app host now and
+         * signs out of the one session there (`/logout`). Null means the same.
          */
         public ?string $logoutHref = null,
     ) {}

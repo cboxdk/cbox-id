@@ -2,20 +2,26 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Impersonation;
+use App\Platform\PlatformAuth;
+use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 uses(RefreshDatabase::class);
@@ -23,9 +29,10 @@ uses(RefreshDatabase::class);
 beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]));
 
 /**
- * An environment-admin session is TWO things: the ordinary subject session, and the
- * ANCHOR naming the one environment it administers. Impersonation has to put both aside
- * and bring both back, and the second is the half that is easy to lose.
+ * The environment console is on the app host; the person an administrator steps into signs
+ * in on the environment's own host, which shares no cookie with it. So an impersonation
+ * starts THERE, through a signed, single-use link the console hands out, and the
+ * administrator's own app-host session is never put aside at all.
  *
  * Losing the identity is loud — the admin comes back to a sign-in. Losing the anchor is
  * silent: the console still opens, because the person really is an admin of that
@@ -70,64 +77,89 @@ function envAdminImpersonationSetup(): array
     ];
 }
 
-it('takes the environment anchor away for the duration, and gives exactly it back', function (): void {
-    ['member' => $member, 'envId' => $envId, 'orgId' => $orgId, 'userId' => $userId] = envAdminImpersonationSetup();
+it('starts the impersonation on the environment\'s own host, through a signed single-use link', function (): void {
+    ['subjectId' => $admin, 'env' => $env, 'envId' => $envId, 'orgId' => $orgId, 'userId' => $userId] = envAdminImpersonationSetup();
 
     app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
-    actAsEnvironmentAdmin($member->user_id, $envId);
+    actAsEnvironmentAdmin($admin, $envId);
+    $console = (string) session(PlatformAuth::SESSION_KEY);
 
     expect(app(EnvironmentAdminAuth::class)->check())
         ->toBeTrue('fixture: this is meant to BE an environment admin before it steps into anyone');
 
-    $this->post(route('environment.impersonate', $userId), ['organization' => $orgId, 'reason' => IMPERSONATION_REASON])
-        ->assertRedirect(route('dashboard'));
+    $start = $this->post(route('environment.impersonate', $userId), ['organization' => $orgId, 'reason' => IMPERSONATION_REASON]);
+    $launch = (string) $start->headers->get('Location');
 
-    // The anchor is gone from the browser, not merely outranked by the victim's session.
-    expect(session(Impersonation::SESSION_KEY))->not->toBeNull()
-        ->and(session(EnvironmentAdminAuth::ENV_KEY))->toBeNull();
+    // Nothing has happened on the app host: the administrator is still themselves there.
+    expect(session(Impersonation::SESSION_KEY))->toBeNull()
+        ->and(session(PlatformAuth::SESSION_KEY))->toBe($console)
+        ->and(parse_url($launch, PHP_URL_PATH))->toBe('/impersonation/launch');
 
-    // …and the control plane is genuinely shut, asked fresh through the real gate rather
-    // than by re-reading the key we just asserted on. The refusal is the SaaS pull flow —
-    // "go authenticate at the account host and hand off back here" — which is what an
-    // unauthenticated visitor to a tenant's admin console gets.
-    nextRequest();
-    $this->get(route('environment.home'))
-        ->assertRedirect('https://cboxid.com'.route('environment.open', $envId, false));
+    // On the environment's host, the link starts it and lands on the person's console.
+    backOnTestHost();
+    $this->get($launch)->assertRedirect(route('dashboard'))->assertHeader('Referrer-Policy', 'no-referrer');
+    expect(session(Impersonation::SESSION_KEY))->not->toBeNull();
 
-    $this->post(route('impersonation.exit'));
+    // Spent: the same link a second time starts nothing.
+    $this->get($launch)->assertNotFound();
 
-    // Back, and back to the SAME environment — an admin who returned unbound would find
-    // the console open with nothing confining them to one host.
-    expect(session(EnvironmentAdminAuth::ENV_KEY))->toBe($envId);
-
-    nextRequest();
-    $this->get(route('environment.home'))->assertOk();
+    // Exit goes back to the console it was started from, on the app host.
+    $back = (string) $this->post(route('impersonation.exit'))->assertRedirect()->headers->get('Location');
+    expect(parse_url($back, PHP_URL_HOST))->toBe(config('cbox-id.tenancy.account_host'))
+        ->and(parse_url($back, PHP_URL_PATH))->toBe('/'.app(EnvironmentConsolePath::class)->for($envId))
+        ->and(session(Impersonation::SESSION_KEY))->toBeNull();
 })->group('security');
 
-/**
- * The anchor is not an identity, so restoring it must not be able to CREATE one.
- *
- * A member removed, unlinked, or whose session was revoked during the window restores
- * nothing — and if nothing came back, the anchor must not come back either. An anchor
- * sitting in a browser nobody is signed into is not an authorization on its own, but it
- * is exactly the half-restored state the exit path exists to avoid, and the next person
- * to sign in on that browser inherits it.
- */
-it('restores no anchor when the acting admin does not come back', function (): void {
-    ['member' => $member, 'envId' => $envId, 'orgId' => $orgId, 'userId' => $userId] = envAdminImpersonationSetup();
+it('refuses a launch link that was tampered with, or outlived the console that minted it', function (): void {
+    ['subjectId' => $admin, 'envId' => $envId, 'orgId' => $orgId, 'userId' => $userId] = envAdminImpersonationSetup();
 
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
-    actAsEnvironmentAdmin($member->user_id, $envId);
+    actAsEnvironmentAdmin($admin, $envId);
+    $console = (string) session(PlatformAuth::SESSION_KEY);
 
-    $this->post(route('environment.impersonate', $userId), ['organization' => $orgId, 'reason' => IMPERSONATION_REASON])
-        ->assertRedirect(route('dashboard'));
+    $launch = (string) $this->post(route('environment.impersonate', $userId), ['organization' => $orgId, 'reason' => IMPERSONATION_REASON])
+        ->headers->get('Location');
 
-    // The acting admin's membership disappears mid-window: exit resolves the member id
-    // captured at start and finds nothing to resolve it to.
-    $member->delete();
+    backOnTestHost();
 
-    $this->post(route('impersonation.exit'));
+    // Another person named in the link: the signature no longer holds.
+    $this->get(str_replace($userId, $admin, $launch))->assertForbidden();
 
-    expect(session(EnvironmentAdminAuth::ENV_KEY))->toBeNull()
-        ->and(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
+    // The administrator signed out of the console before the link was followed.
+    app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->revoke($console));
+    $this->get($launch)->assertNotFound();
+    expect(session(Impersonation::SESSION_KEY))->toBeNull();
+})->group('security');
+
+it('opens a launch link only on the environment it names, for an administrator who still administers it', function (): void {
+    ['subjectId' => $admin, 'member' => $member, 'envId' => $envId, 'orgId' => $orgId, 'userId' => $userId] = envAdminImpersonationSetup();
+
+    actAsEnvironmentAdmin($admin, $envId);
+
+    $mint = fn (): string => (string) $this->post(route('environment.impersonate', $userId), ['organization' => $orgId, 'reason' => IMPERSONATION_REASON])
+        ->headers->get('Location');
+
+    $launch = $mint();
+
+    // The administrator's session id stays on the app host: the link carries a ticket.
+    parse_str((string) parse_url($launch, PHP_URL_QUERY), $query);
+    expect($query)->not->toHaveKey('console')
+        ->and($query['environment'] ?? null)->toBe($envId)
+        ->and($query['ticket'] ?? null)->toBeString();
+
+    // Replayed on another environment's host, it starts nothing.
+    backOnTestHost();
+    $other = provisionAccount('owner@other.example')['environment'];
+    $other->forceFill(['domain' => 'other-env.test', 'domain_verified_at' => now()])->save();
+
+    $this->get('http://other-env.test'.parse_url($launch, PHP_URL_PATH).'?'.parse_url($launch, PHP_URL_QUERY))->assertNotFound();
+    expect(session(Impersonation::SESSION_KEY))->toBeNull();
+
+    // An administrator suspended between minting the link and following it starts nothing.
+    serveConsoleOn();
+    $launch = $mint();
+    app(PlatformRoot::class)->run(fn () => DB::table('memberships')->where('id', $member->id)->update(['status' => MembershipStatus::Suspended->value]));
+
+    backOnTestHost();
+    $this->get($launch)->assertNotFound();
+    expect(session(Impersonation::SESSION_KEY))->toBeNull();
 })->group('security');

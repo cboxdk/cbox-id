@@ -293,7 +293,7 @@ it('confirms an environment step-up against the administrator\'s platform-root p
 it('never lets an environment step-up satisfy the console', function (): void {
     crudSetup();
 
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
     // Two keys, and the separation that survives the merge is the one that was always
     // about AUTHORITY rather than about which shell rendered: confirming you hold an

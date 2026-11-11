@@ -250,34 +250,36 @@ function environmentAdminForAudit(): void
     $providers->stopInheriting($org->id, 'discord');
 }
 
-it('has no accessibility issues on the ported environment console pages', function (string $path, string $heading): void {
+it('has no accessibility issues on the ported environment console pages', function (string $page, string $heading): void {
     environmentAdminForAudit();
 
-    visit($path)
+    // The console's address is only known once the fixture has chosen it, so the dataset
+    // carries the page and the URL is built here.
+    visit(envConsole($page))
         // The page's own heading first: a console page that bounced or 403'd is a
         // perfectly accessible document about something else.
         ->assertSee($heading)
         ->assertNoAccessibilityIssues()
         ->assertNoJavaScriptErrors();
 })->with([
-    'home' => ['/admin', 'Overview'],
-    'organizations' => ['/admin/organizations', 'Organizations'],
-    'users' => ['/admin/users', 'Users'],
-    'saml-applications' => ['/admin/saml-apps', 'SAML apps'],
-    'approvals' => ['/admin/approvals', 'Approvals'],
+    'home' => ['', 'Overview'],
+    'organizations' => ['/organizations', 'Organizations'],
+    'users' => ['/users', 'Users'],
+    'saml-applications' => ['/saml-apps', 'SAML apps'],
+    'approvals' => ['/approvals', 'Approvals'],
     // The SAME page as `/usage` on the other plane, and the reason that page exists: the
     // environment plane had a primitive copy of these counters called "Analytics".
-    'analytics' => ['/admin/usage', 'Usage'],
-    'social-sign-in' => ['/admin/social-sign-in', 'On every sign-in page'],
+    'analytics' => ['/usage', 'Usage'],
+    'social-sign-in' => ['/social-sign-in', 'On every sign-in page'],
     // "Turn on Google": the setup form, for the whole environment by default.
-    'social-sign-in-setup' => ['/admin/social-sign-in?provider=google', 'Who is it for?'],
+    'social-sign-in-setup' => ['/social-sign-in?provider=google', 'Who is it for?'],
     // Every way in on one page, and every organization's domains in one list.
-    'sign-in-methods' => ['/admin/sign-in-methods', 'Sign-in methods'],
+    'sign-in-methods' => ['/sign-in-methods', 'Sign-in methods'],
     // The environment's own passkey, magic-link and session switches.
-    'authentication-policy' => ['/admin/sign-in-rules', 'Sign-in methods and sessions'],
-    'domains' => ['/admin/domains', 'No organization has claimed a domain yet'],
+    'authentication-policy' => ['/sign-in-rules', 'Sign-in methods and sessions'],
+    'domains' => ['/domains', 'No organization has claimed a domain yet'],
     // The comparison every authorization page ends with.
-    'roles' => ['/admin/roles', 'Roles, relationships, flags or entitlements?'],
+    'roles' => ['/roles', 'Roles, relationships, flags or entitlements?'],
 ])->group('a11y');
 
 /**
@@ -648,7 +650,7 @@ it('confirms before it suspends a tenant, and says who the operator is', functio
  * features have to be switched ON — a module's routes only exist where its feature is,
  * so an audit that did not say this would 404 rather than audit anything.
  */
-it('has no accessibility issues on the ported module pages', function (string $path, string $heading): void {
+it('has no accessibility issues on the ported module pages', function (string $page, string $heading): void {
     // Stated here rather than borrowed from a Feature test's helper: this file has to be
     // runnable on its own.
     config([
@@ -660,13 +662,13 @@ it('has no accessibility issues on the ported module pages', function (string $p
 
     environmentAdminForAudit();
 
-    visit($path)
+    visit(envConsole($page))
         ->assertSee($heading)
         ->assertNoAccessibilityIssues()
         ->assertNoJavaScriptErrors();
 })->with([
-    'connector catalogue' => ['/admin/connectors', 'Catalog'],
-    'connections' => ['/admin/connectors/connections', 'Connections'],
+    'connector catalogue' => ['/connectors', 'Catalog'],
+    'connections' => ['/connectors/connections', 'Connections'],
 ])->group('a11y');
 
 /**
@@ -679,7 +681,7 @@ it('has no accessibility issues on any tab of an organization\'s page', function
 
     $organization = app(Organizations::class)->create(new NewOrganization('Hub A11y', 'hub-a11y'));
 
-    visit('/admin/organizations/'.$organization->id.$tab)
+    visit(envConsole('/organizations/').$organization->id.$tab)
         ->assertSee('Hub A11y')
         ->assertSee($heading)
         ->assertNoAccessibilityIssues()
@@ -711,7 +713,7 @@ it('audits the environment console detail pages, with rows on them', function ()
     $user = User::query()->where('email', 'a11y-env-user@acme.test')->firstOrFail();
     $organization = Organization::query()->where('slug', 'tenant-a11y')->firstOrFail();
 
-    visit('/admin/users/'.$user->id.'?section=security')
+    visit(envConsole('/users/').$user->id.'?section=security')
         ->assertSee('Security & lifecycle')
         ->assertNoAccessibilityIssues()
         ->click('a[href$="section=access"]')
@@ -721,7 +723,7 @@ it('audits the environment console detail pages, with rows on them', function ()
         ->assertNoAccessibilityIssues()
         ->assertNoJavaScriptErrors();
 
-    visit('/admin/organizations/'.$organization->id.'/members')
+    visit(envConsole('/organizations/').$organization->id.'/members')
         ->assertSee('Members')
         ->assertSee('a11y-env-user@acme.test')
         ->assertNoAccessibilityIssues()
@@ -738,11 +740,13 @@ it('audits the environment console detail pages, with rows on them', function ()
  * about nothing. Those tests now assert what the SERVER decides; this is where what the
  * BROWSER draws is held.
  */
-it('draws the mobile navigation on both console planes', function (string $path, string $heading): void {
-    if (str_starts_with($path, '/admin')) {
+it('draws the mobile navigation on both console planes', function (string $plane, string $page, string $heading): void {
+    if ($plane === 'environment') {
         environmentAdminForAudit();
+        $path = envConsole($page);
     } else {
         signedInForAudit();
+        $path = $page;
     }
 
     /*
@@ -763,8 +767,8 @@ it('draws the mobile navigation on both console planes', function (string $path,
         ->assertPresent('[data-cbox-mobile-nav] [aria-label="Open menu"]')
         ->assertNoJavaScriptErrors();
 })->with([
-    'organization plane' => ['/dashboard', 'Recent activity'],
-    'environment plane' => ['/admin', 'Quick actions'],
+    'organization plane' => ['organization', '/dashboard', 'Recent activity'],
+    'environment plane' => ['environment', '', 'Quick actions'],
 ])->group('a11y');
 
 /**

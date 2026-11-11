@@ -7,6 +7,7 @@ namespace App\Platform\Console;
 use App\Http\Controllers\MovedPageController;
 use App\Http\Middleware\BindOrganizationFromPath;
 use App\Http\Middleware\EnforceImpersonationWindow;
+use App\Http\Middleware\ResolveEnvironmentFromPath;
 use Closure;
 use Illuminate\Support\Facades\Route;
 
@@ -109,27 +110,7 @@ final class ConsoleRoutes
     ): void {
         self::organizationPage($feature, $uri, $component, $name);
 
-        Route::middleware([
-            'web',
-            // `plane:environment` for the same reason the host's own environment console
-            // carries it: this door is opened by an ACCOUNT reaching into an environment
-            // from the account plane, so it is absent on the account plane itself. The
-            // gate that follows is the env-admin session — a subject session grants
-            // nothing here.
-            'plane:environment',
-            // …and the same multi-tenant gate, which this stack was missing. 55 of the
-            // host's 64 environment routes carry it and these did not, so on a
-            // single-tenant deployment a module's environment page answered a redirect
-            // to a sign-in it can never pass while every sibling page 404'd. That
-            // difference is the disclosure `RequireMultiTenant` exists to prevent: it
-            // answers 404 rather than 403 precisely so an unauthenticated caller cannot
-            // learn which shape this deployment runs. A door that cannot open should not
-            // be a door, and it should not be a differently-shaped door either.
-            'multi.tenant',
-            'env.admin',
-            'locale.console',
-            'console.feature:'.$feature,
-        ])->prefix('admin')->group(function () use ($environmentUri, $uri, $component, $name): void {
+        self::environment(function () use ($environmentUri, $uri, $component, $name): void {
             self::get($environmentUri ?? $uri, $component)->name('environment.'.$name);
 
             // …and the same page about ONE organization, under that organization's own
@@ -141,7 +122,35 @@ final class ConsoleRoutes
                 ->group(function () use ($environmentUri, $uri, $component, $name): void {
                     self::get($environmentUri ?? $uri, $component)->name('environment.organizations.'.$name);
                 });
-        });
+        }, ['console.feature:'.$feature]);
+    }
+
+    /**
+     * THE ENVIRONMENT CONSOLE's routes: on the app host, under the environment's own path —
+     * `/orgs/{org}/projects/{project}/environments/{environment}/…`, or `/admin/environment/…`
+     * for the platform root's own environment.
+     *
+     * One place says what that takes, for routes/web.php and for every module page alike:
+     * the path middleware ({@see ResolveEnvironmentFromPath}), which
+     * resolves the environment, makes it the request's context ahead of route model binding
+     * and authorizes the person for it on every request; then `env.admin`, which decides
+     * whether they may change anything. The path is one parameter so the platform root's
+     * console, which has no organization or project, is the same route under the same name.
+     *
+     * @param  Closure(): void  $routes
+     * @param  list<string>  $middleware  more middleware, after the console's own
+     */
+    public static function environment(Closure $routes, array $middleware = []): void
+    {
+        // The impersonation window, ENFORCED here as on the organization plane: the console
+        // reads the app host's own session, the one an impersonation marker lives in, so an
+        // impersonation that outlived its box would otherwise keep reading these pages. AHEAD
+        // of the path middleware, which would otherwise answer for the impersonated person
+        // (a 404 or a sign-in) instead of ending it and sending the administrator back.
+        Route::middleware(['web', EnforceImpersonationWindow::class, 'env.path', 'env.admin', 'locale.console', ...$middleware])
+            ->prefix('{'.EnvironmentConsolePath::PARAMETER.'}')
+            ->where([EnvironmentConsolePath::PARAMETER => EnvironmentConsolePath::PATTERN])
+            ->group($routes);
     }
 
     /**
@@ -205,14 +214,7 @@ final class ConsoleRoutes
     ): void {
         self::organizationAction($feature, $verb, $uri, $action, $name);
 
-        Route::middleware([
-            'web',
-            'plane:environment',
-            'multi.tenant',
-            'env.admin',
-            'locale.console',
-            'console.feature:'.$feature,
-        ])->prefix('admin')->group(function () use ($verb, $environmentUri, $uri, $action, $name): void {
+        self::environment(function () use ($verb, $environmentUri, $uri, $action, $name): void {
             self::verb($verb, $environmentUri ?? $uri, $action)->name('environment.'.$name);
 
             // The write of the page above, about one organization — see {@see page()}.
@@ -221,7 +223,7 @@ final class ConsoleRoutes
                 ->group(function () use ($verb, $environmentUri, $uri, $action, $name): void {
                     self::verb($verb, $environmentUri ?? $uri, $action)->name('environment.organizations.'.$name);
                 });
-        });
+        }, ['console.feature:'.$feature]);
     }
 
     /**

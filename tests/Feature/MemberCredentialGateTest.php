@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\EnvironmentAdminController;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
@@ -14,17 +14,13 @@ use Cbox\Id\Identity\Enums\PasswordRevocationScope;
 use Cbox\Id\Identity\Enums\SsoEnforcement;
 use Cbox\Id\Identity\ValueObjects\AdminPasswordAssignment;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
-use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
-use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Platform\Contracts\EnvironmentAdminHandoff;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -147,19 +143,20 @@ it('locks the account door out at the policy threshold', function (): void {
 })->group('security');
 
 /**
- * The handoff is the SaaS route into the environment admin console. It re-resolved the
- * membership on redemption — catching a revoked membership or a downgraded role — but
- * never asked whether the ACCOUNT behind that member was still active. Every other
- * resolve path does.
+ * The environment console is the SaaS route into an environment's administration. It
+ * re-resolves the membership on every request — catching a revoked membership or a
+ * downgraded role — and must ask, as every other resolve path does, whether the
+ * ORGANIZATION behind that member is still active.
  */
-it('refuses a handoff for a member whose account has been suspended', function (): void {
+it('refuses the console to a member whose organization has been suspended', function (): void {
     $result = anMembership();
     handoffShape($result->environment);
+    signInAsMember($result->owner->id);
 
-    $subjectId = (string) $result->owner->id;
-    $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $result->environment->id);
+    $console = consoleUrlOf($result->environment);
+    $this->get($console)->assertOk();
 
-    // Suspended between the mint and the redemption — the tab that sat open.
+    // Suspended while the tab sat open.
     //
     // IN THE PLATFORM ROOT, because that is where a customer's organization lives. Written
     // under the suite's ambient scope this update matches no rows and suspends nothing, so
@@ -170,28 +167,17 @@ it('refuses a handoff for a member whose account has been suspended', function (
             ->update(['status' => OrganizationStatus::Suspended]),
     );
 
-    // The OUTER wall: `DatabaseEnvironmentResolver::servable()` refuses to resolve an
-    // environment whose OWNER is not active, so the tenant host stops resolving at all,
-    // falls back to the platform root, and `plane:subject` 404s the whole console. The
-    // redemption never reaches a controller.
-    $this->post('/admin/handoff', handoffFields($token, $result->owner->id))->assertNotFound();
+    nextRequest();
 
-    // The INNER check, driven at the controller because the wall above is now the reason
-    // an HTTP request cannot reach it. Not redundant with the wall: host resolution is
-    // cached ({@see \Cbox\Id\Organization\CachedEnvironmentResolver}), so a suspension that
-    // lands between the mint and the redemption can still meet a warm, servable
-    // environment — and this is the check that refuses the token then.
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
-
-    $response = app()->call(
-        [app(EnvironmentAdminController::class), 'handoff'],
-        ['request' => Request::create('/admin/handoff', 'POST', handoffFields($token, $result->owner->id))],
-    );
-
-    expect($response)->toBeInstanceOf(RedirectResponse::class)
-        ->and($response->getTargetUrl())->toBe(route('admin.login'))
+    expect($this->get($console)->status())->not->toBe(200)
         ->and(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
 })->group('security');
+
+/** The console of an environment, on the app host, as a browser addresses it. */
+function consoleUrlOf(Environment $environment, string $page = ''): string
+{
+    return 'https://cboxid.com/'.app(EnvironmentConsolePath::class)->for($environment->id).$page;
+}
 
 /**
  * Walk a redirect chain with a HOP LIMIT and return where it stops.
@@ -201,11 +187,6 @@ it('refuses a handoff for a member whose account has been suspended', function (
  * being hop one of an infinite chain. `followingRedirects()` cannot be used either: its
  * `while` is unbounded, so a cycle hangs the suite instead of failing it.
  *
- * The chain here crosses HOSTS — root, tenant, root — which the harness expresses because
- * every hop is an absolute URL and one session serves both. That is not what a browser
- * does (each host has its own cookies), but it is the loop the browser walks: the tenant
- * half needs no session at all, only the token in the form it is handed.
- *
  * @return array{0: TestResponse, 1: list<string>}
  */
 function chainFrom(TestCase $test, string $url, int $hops = 6): array
@@ -213,19 +194,8 @@ function chainFrom(TestCase $test, string $url, int $hops = 6): array
     $response = $test->get($url);
     $chain = [$url];
 
-    for ($hop = 0; $hop < $hops && ($response->isRedirect() || handoffForm($response) !== null); $hop++) {
+    for ($hop = 0; $hop < $hops && $response->isRedirect(); $hop++) {
         nextRequest();
-
-        // The minting door answers with a self-submitting POST rather than a redirect, so
-        // the token never sits in a URL. A browser submits it at once; so does the walk.
-        $form = handoffForm($response);
-
-        if ($form !== null) {
-            $chain[] = 'POST '.$form['action'];
-            $response = $test->post($form['action'], $form['fields']);
-
-            continue;
-        }
 
         $location = (string) $response->headers->get('Location');
         $chain[] = $location;
@@ -236,52 +206,13 @@ function chainFrom(TestCase $test, string $url, int $hops = 6): array
 }
 
 /**
- * The action and token of the handoff page's self-submitting form, or null when the
- * response is not that page.
+ * THE ENTERPRISE PATH, WHICH ONCE DID NOT EXIST.
  *
- * Every hidden field rides along, as the browser's submission would carry them: the
- * token, and the sealed sign-in it was minted from.
- *
- * @return array{action: string, token: string, fields: array<string, string>}|null
- */
-function handoffForm(TestResponse $response): ?array
-{
-    $html = (string) $response->getContent();
-
-    if (! $response->isOk()
-        || preg_match('#<form method="post" action="([^"]+/admin/handoff)">#', $html, $action) !== 1
-        || preg_match('#name="token" value="([^"]+)"#', $html, $token) !== 1) {
-        return null;
-    }
-
-    preg_match_all('#<input type="hidden" name="([^"]+)" value="([^"]*)">#', $html, $inputs, PREG_SET_ORDER);
-
-    $fields = [];
-
-    foreach ($inputs as $input) {
-        $fields[html_entity_decode($input[1])] = html_entity_decode($input[2]);
-    }
-
-    return [
-        'action' => html_entity_decode($action[1]),
-        'token' => html_entity_decode($token[1]),
-        'fields' => $fields,
-    ];
-}
-
-/**
- * THE ENTERPRISE PATH, WHICH DID NOT EXIST.
- *
- * An account that mandates SSO is the configuration this product is sold on, and it could
- * not reach its own tenant console: the root minted a handoff, the redemption asked
- * whether a PASSWORD would be admitted, the SSO mandate answered no forever, and the
- * refusal went to `admin.login` — which is behind the env-admin gate and bounces to the
- * root's minting door. Three hops and back to hop one, for as long as the browser would
- * follow.
- *
- * The mandate governs a DOOR. The handoff is not that door: it is minted from an account
- * session that has already satisfied whatever the account's policy asked of the door it
- * came through, and the tenant cannot see which door that was.
+ * An account that mandates SSO is the configuration this product is sold on, and it once
+ * could not reach its own tenant console: a handoff redemption asked whether a PASSWORD
+ * would be admitted, the SSO mandate answered no forever, and the refusal bounced back to
+ * the minting door. The console is on the app host now, in the session the member's SSO
+ * sign-in produced, and the old "open" door must still land there in one pass.
  */
 it('opens the tenant console for a member whose account mandates SSO', function (): void {
     $result = anMembership();
@@ -299,13 +230,13 @@ it('opens the tenant console for a member whose account mandates SSO', function 
 
     signInAsMember($result->owner->id);
 
-    // From the door the member actually presses — "open" on the account console — so the
-    // mint and the redemption are both under test, which is where the cycle lived.
+    // From the old door a bookmark still presses — "open" — to the console it names.
     [$response, $chain] = chainFrom($this, 'https://cboxid.com'.route('environment.open', $result->environment->id, false));
 
     expect($response->isRedirect())->toBeFalse('the console bounced instead of opening: '.implode(' -> ', $chain))
         ->and(collect($chain)->filter(fn (string $hop): bool => str_contains($hop, '/open/'))->count())
-        ->toBe(1, 'the chain re-entered the minting door, which is the cycle: '.implode(' -> ', $chain));
+        ->toBe(1, 'the chain re-entered the open door, which is the cycle: '.implode(' -> ', $chain))
+        ->and(end($chain))->toBe(consoleUrlOf($result->environment));
 
     $response->assertSuccessful();
 
@@ -324,7 +255,7 @@ it('opens the tenant console for a member whose account mandates SSO', function 
  * No such revocation existed. It does now, at the write
  * ({@see RevokingAuthPolicies}), and this is the assertion that the two ends
  * meet: a member sitting IN the console when their account's policy stops admitting
- * passwords loses it. Not at the next mint — an admin session is the member's ordinary
+ * passwords loses it. Not at the next sign-in — an admin session is the member's ordinary
  * platform-root subject session and {@see EnvironmentAdminAuth} re-reads that row every
  * request, so the console closes on the next click.
  */
@@ -345,12 +276,7 @@ it('closes an open tenant console when the account\'s policy stops admitting pas
 
     nextRequest();
 
-    // Addressed by the host the fixture actually serves on, not by a literal.
-    // `serveOnTestHost()` takes that host from `app.url`, so a hardcoded `cbox-id.test`
-    // is only right on a machine whose `.env` happens to say so — on CI, which copies
-    // `.env.example`, the environment answered on `localhost` while the request arrived
-    // at `cbox-id.test`, and the chain ended somewhere nobody asserted.
-    [$after, $chain] = chainFrom($this, 'https://'.$result->environment->domain.route('environment.home', [], false));
+    [$after, $chain] = chainFrom($this, consoleUrlOf($result->environment));
 
     expect($after->isRedirect())->toBeFalse('the refusal never landed: '.implode(' -> ', $chain))
         ->and(end($chain))->toBe('https://cboxid.com/login')
@@ -358,18 +284,17 @@ it('closes an open tenant console when the account\'s policy stops admitting pas
 })->group('security');
 
 /**
- * And the refusal that REMAINS on a handoff ends somewhere a person can act.
+ * And the refusal that REMAINS on the console ends somewhere a person can act.
  *
  * An administratively-issued temporary password past its deadline stops opening things,
- * and it is a fact about the subject rather than about a door, so the redemption is right
- * to refuse it. What makes that a refusal rather than a cycle is the other end: the same
- * requirement row holds the member on the account plane's change page, so the bounce back
- * to the minting door lands on the one screen that can end the requirement.
+ * and it is a fact about the subject rather than about a door, so the console is right to
+ * hold them. What makes that a hold rather than a cycle is the other end: the same
+ * requirement row holds the member on the app host's change page, the one screen that can
+ * end the requirement.
  *
- * Asserted as a CHAIN for that reason. The refusal and its landing are two facts, and this
- * file previously asserted only the first.
+ * Asserted as a CHAIN for that reason. The refusal and its landing are two facts.
  */
-it('ends an expired-password handoff on the change page rather than bouncing', function (): void {
+it('ends an expired-password visit to the console on the change page rather than bouncing', function (): void {
     $result = anMembership();
     handoffShape($result->environment);
 
@@ -383,8 +308,6 @@ it('ends an expired-password handoff on the change page rather than bouncing', f
         revoke: PasswordRevocationScope::Nothing,
     )));
 
-    $token = app(EnvironmentAdminHandoff::class)->mint($subjectId, $result->environment->id);
-
     // Past the deadline, and signed in AFTER it — the account session outlives a temporary
     // password's window, which is the whole reason the requirement is standing rather than
     // asked once at the door. (Signing in before travelling would only prove that a
@@ -392,16 +315,10 @@ it('ends an expired-password handoff on the change page rather than bouncing', f
     $this->travel(2)->hours();
     signInAsMember($result->owner->id);
 
-    // Same as above: the host the fixture serves on, not the one this file used to name.
-    $refused = $this->post('https://'.$result->environment->domain.'/admin/handoff', handoffFields($token, $subjectId));
-    $refused->assertRedirect();
-    nextRequest();
-
-    [$response, $chain] = chainFrom($this, (string) $refused->headers->get('Location'));
+    [$response, $chain] = chainFrom($this, consoleUrlOf($result->environment, '/users'));
 
     expect($response->isRedirect())->toBeFalse('the refusal never landed: '.implode(' -> ', $chain))
-        ->and(end($chain))->toBe('https://cboxid.com/password/change')
-        ->and(app(EnvironmentAdminAuth::class)->check())->toBeFalse();
+        ->and(end($chain))->toBe('https://cboxid.com/password/change');
 
     $response->assertSuccessful();
 })->group('security');

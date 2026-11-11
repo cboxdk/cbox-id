@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\EnvironmentConsolePath;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
@@ -109,7 +110,7 @@ it('shrinks an organization console to the organization, its team\'s sign-in, it
 });
 
 it('answers a page an environment owns, reached by URL on the root, with where it is set', function (): void {
-    ['subjectId' => $subjectId] = aWorkspace();
+    ['subjectId' => $subjectId, 'environment' => $environment] = aWorkspace();
     signInAsMember($subjectId);
 
     // Not the workspace's Roles page, which configured the workspace's own record in Cbox's
@@ -121,7 +122,8 @@ it('answers a page an environment owns, reached by URL on the root, with where i
         ->and($page->inertiaProps('label'))->toBe('Roles')
         ->and($page->inertiaProps('samePage'))->toBeTrue()
         // …and the switcher's rows carry that page along, so one click lands on it.
-        ->and(json_encode($page->inertiaProps('shell.context.projects')))->toContain(rawurlencode('/admin/roles'));
+        ->and(json_encode($page->inertiaProps('shell.context.projects'), JSON_UNESCAPED_SLASHES))
+        ->toContain('https://cboxid.com/'.app(EnvironmentConsolePath::class)->for($environment->id).'/roles"');
 
     // The same for Social login, Branding and Sign-in methods — the pages that looked most
     // like the platform's own sign-in.
@@ -142,8 +144,8 @@ it('sends an operator from the root\'s organization pages to the platform enviro
 
     // What an operator means by "Social login on cboxid.com" is the platform's sign-in:
     // the root environment's console, at the same page, with the same query.
-    $this->get('https://cboxid.com/social-sign-in?organization=x')->assertRedirect('https://cboxid.com/admin/social-sign-in?organization=x');
-    $this->get('https://cboxid.com/sign-in-methods')->assertRedirect('https://cboxid.com/admin/sign-in-methods');
+    $this->get('https://cboxid.com/social-sign-in?organization=x')->assertRedirect('https://cboxid.com/admin/environment/social-sign-in?organization=x');
+    $this->get('https://cboxid.com/sign-in-methods')->assertRedirect('https://cboxid.com/admin/environment/sign-in-methods');
 
     // …and the rail on this host is the workspace console's for them too.
     $rail = railOf('https://cboxid.com/settings');
@@ -197,7 +199,7 @@ it('gives the environment console a way back to its organization, on every page'
         ->and($shell['altitude'])->toBe('environment');
 });
 
-it('sends the environment console\'s account links to the organization host, where the person is signed in', function (): void {
+it('sends the environment console\'s account links to the app host\'s own account pages', function (): void {
     ['subjectId' => $subjectId, 'environment' => $environment] = aWorkspace();
 
     serveOnTestHost($environment);
@@ -206,12 +208,10 @@ it('sends the environment console\'s account links to the organization host, whe
 
     $shell = (array) $this->get(route('environment.home'))->assertOk()->inertiaProps('shell');
 
-    // Relative, these were `/account` and `/accounts` on the TENANT host: pages behind a
-    // subject session the administrator does not hold there, which answered by sending
-    // them to the tenant's end-user sign-in form.
+    // The console is on the app host now, in the session that holds the account, so its
+    // account links are that host's own pages — and they open.
     expect($shell['accountHref'])->toBe('https://cboxid.com/settings')
         ->and($shell['switchUserHref'])->toBe('https://cboxid.com/settings/accounts');
 
-    // …and the relative spelling really is the bounce, which is why it had to go.
-    $this->get(route('account'))->assertRedirect();
+    $this->get($shell['accountHref'])->assertOk();
 });

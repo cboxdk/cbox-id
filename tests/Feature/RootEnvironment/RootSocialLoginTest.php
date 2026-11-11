@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Platform\Console\HandoffTarget;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Federation\Models\Connection;
@@ -23,10 +23,10 @@ use Tests\Support\RootGoogle;
 |
 | The owner's sentence, end to end: an operator turns Google on for the platform root's
 | environment, environment-wide, from that environment's console — and the button is on
-| `cboxid.com/login`. Somebody who starts at a tenant's console (`acme.cboxid.com/admin/
-| users`) signed out is sent to that sign-in, signs in with Google, and lands back on the
-| page they asked for — through the one redirect URI the operator registered with Google,
-| on the root, and the signed POST handoff, never a token in a URL.
+| `cboxid.com/login`. Somebody who starts at a tenant's console's old address (`acme.cboxid
+| .com/admin/users`) signed out is sent to the console's address on the root, from there to
+| that sign-in, signs in with Google, and lands back on the page they asked for — through
+| the one redirect URI the operator registered with Google, on the root, in one session.
 |
 | The provider is real OpenID Connect against a faked Google: a real RSA key, a real
 | RS256 id_token carrying the nonce the application issued, and the JWKS that verifies it.
@@ -69,18 +69,10 @@ function signInWithGoogleAtTheRoot(string $email, array $claims = [], ?string $t
     return RootGoogle::signIn($email, $claims, $tamperState);
 }
 
-/** Follow the root's open-environment door into the tenant's console, by its signed POST. */
-function handOffToTheTenant(string $openUrl, string $tenantHost): TestResponse
+/** A page of the tenant's environment console, at its one address on the root. */
+function tenantConsoleUrl(string $page = ''): string
 {
-    $door = test()->get($openUrl)->assertOk();
-    $fields = $door->viewData('fields');
-    $action = (string) $door->viewData('action');
-
-    // The credential travels in a form body to the tenant's own host — never in a URL.
-    expect($action)->toBe('https://'.$tenantHost.'/admin/handoff')
-        ->and($openUrl)->not->toContain('token=');
-
-    return test()->post($action, $fields);
+    return 'https://'.SOCIAL_ROOT_HOST.'/'.app(EnvironmentConsolePath::class)->for(test()->account['environment']->id).$page;
 }
 
 it('puts the platform environment\'s Google on cboxid.com/login, for everybody', function (): void {
@@ -98,7 +90,7 @@ it('puts the platform environment\'s Google on cboxid.com/login, for everybody',
 
     // …and the setup form showed the operator the exact URI to register, on the root.
     rootOperatorSignedIn();
-    $page = $this->get('https://'.SOCIAL_ROOT_HOST.'/admin/social-sign-in')->assertOk();
+    $page = $this->get('https://'.SOCIAL_ROOT_HOST.'/admin/environment/social-sign-in')->assertOk();
 
     expect(json_encode($page->inertiaProps('environmentProviders')))->toContain(str_replace('/', '\/', 'https://'.SOCIAL_ROOT_HOST.'/sso/oidc/'.$google->id.'/callback'))
         ->and($page->inertiaProps('audience.kind'))->toBe('platform');
@@ -108,7 +100,7 @@ it('does not let an organization owner who is not an operator set the platform\'
     signInAsSubject($this->account['subjectId']);
 
     // Not the environment console — it is not theirs…
-    $this->post('https://'.SOCIAL_ROOT_HOST.'/admin/social-sign-in', [
+    $this->post('https://'.SOCIAL_ROOT_HOST.'/admin/environment/social-sign-in', [
         'provider' => 'google', 'clientId' => 'x', 'clientSecret' => 'y', 'parameters' => [], 'forEnvironment' => true,
     ])->assertNotFound();
 
@@ -128,14 +120,12 @@ it('takes somebody who starts at a tenant\'s console signed out through Google a
     turnOnGoogleForThePlatform();
     signedOutBrowser();
 
-    // 1. The tenant's console, signed out: to the root's door, carrying the page.
-    $bounce = $this->get('https://'.$this->tenantHost.'/admin/users');
-    $open = (string) $bounce->headers->get('Location');
+    // 1. The tenant's console's old address: to its address on the root, carrying the page.
+    $console = tenantConsoleUrl('/users');
+    $this->get('https://'.$this->tenantHost.'/admin/users')->assertRedirect($console);
 
-    expect($open)->toBe('https://'.SOCIAL_ROOT_HOST.'/open/'.$this->account['environment']->id.'?to=%2Fadmin%2Fusers');
-
-    // 2. The root's door, signed out: to the root's sign-in.
-    $this->get($open)->assertRedirect('https://'.SOCIAL_ROOT_HOST.'/login');
+    // 2. The console, signed out: to the root's sign-in.
+    $this->get($console)->assertRedirect('https://'.SOCIAL_ROOT_HOST.'/login');
 
     // 3. Google, at the root — the person is new to Cbox ID, and becomes an admin of the
     //    workspace before they open its console (as an invitation would make them).
@@ -145,28 +135,18 @@ it('takes somebody who starts at a tenant\'s console signed out through Google a
     $membership = app(PlatformRoot::class)->run(fn () => app(Memberships::class)->add($this->account['organization']->id, (string) $subject?->id, MembershipRole::Admin));
     grantNativeProductRoles($membership, ['admin']);
 
-    // Back to the door they came through, with the page still on it.
-    expect((string) $callback->headers->get('Location'))->toBe($open);
+    // Back to the page they asked for — on the same host, in the session that just signed in.
+    expect((string) $callback->headers->get('Location'))->toBe($console);
 
-    // 4. The signed POST handoff, and the page they asked for.
-    $landed = handOffToTheTenant($open, $this->tenantHost);
-
-    expect((string) $landed->headers->get('Location'))->toEndWith('/admin/users');
-
-    $this->get('https://'.$this->tenantHost.'/admin/users')->assertOk();
+    $this->get($console)->assertOk();
     expect(app(EnvironmentAdminAuth::class)->subjectId())->toBe($subject?->id);
 });
 
 it('opens a tenant\'s console straight away for somebody already signed in at the root', function (): void {
     signInAsSubject($this->account['subjectId']);
 
-    $open = (string) $this->get('https://'.$this->tenantHost.'/admin/roles')->headers->get('Location');
-
-    expect($open)->toContain('to=%2Fadmin%2Froles');
-
-    $landed = handOffToTheTenant($open, $this->tenantHost);
-
-    expect((string) $landed->headers->get('Location'))->toEndWith('/admin/roles');
+    $this->get('https://'.$this->tenantHost.'/admin/roles')->assertRedirect(tenantConsoleUrl('/roles'));
+    $this->get(tenantConsoleUrl('/roles'))->assertOk();
 });
 
 it('refuses a callback whose state is not the one this browser was given', function (): void {
@@ -184,34 +164,32 @@ it('drops a page to land on that is not one of the environment console\'s own', 
     signInAsSubject($this->account['subjectId']);
     $environmentId = $this->account['environment']->id;
 
+    // The old open-environment door still answers, and lands on the console — but only
+    // ever on one of the console's own pages, on this host.
     foreach (['https://evil.example/admin', '//evil.example/admin', '/admin/../../oauth/authorize', '/dashboard', '/admin/users?x=1'] as $foreign) {
-        $door = $this->get('https://'.SOCIAL_ROOT_HOST.'/open/'.$environmentId.'?'.http_build_query(['to' => $foreign]))->assertOk();
-
-        expect($door->viewData('fields'))->not->toHaveKey('to');
+        $this->get('https://'.SOCIAL_ROOT_HOST.'/open/'.$environmentId.'?'.http_build_query(['to' => $foreign]))
+            ->assertRedirect(tenantConsoleUrl());
     }
 
-    // …and a signature that does not match the page is not honoured on the other side.
-    $door = $this->get('https://'.SOCIAL_ROOT_HOST.'/open/'.$environmentId.'?to=%2Fadmin%2Fusers')->assertOk();
-    $fields = $door->viewData('fields');
-    $fields['to'] = '/admin/roles';
-
-    $landed = $this->post('https://'.$this->tenantHost.'/admin/handoff', $fields);
-
-    expect((string) $landed->headers->get('Location'))->not->toEndWith('/admin/roles');
-    expect(app(HandoffTarget::class)->verify((string) $fields['token'], '/admin/roles', (string) $fields['to_sig']))->toBeNull();
+    $this->get('https://'.SOCIAL_ROOT_HOST.'/open/'.$environmentId.'?to=%2Fadmin%2Fusers')
+        ->assertRedirect(tenantConsoleUrl('/users'));
 })->group('security');
 
-it('tells a root account that administers nothing there so, rather than answering a blank 403', function (): void {
+it('answers a root account that administers nothing there as if the console did not exist', function (): void {
     rootOperatorSignedIn();
     turnOnGoogleForThePlatform();
     signedOutBrowser();
 
-    $open = (string) $this->get('https://'.$this->tenantHost.'/admin/users')->headers->get('Location');
+    $console = tenantConsoleUrl('/users');
+    $this->get('https://'.$this->tenantHost.'/admin/users')->assertRedirect($console);
 
     // Signed in with Google — successfully — as somebody with no part in this workspace.
     signInWithGoogleAtTheRoot('stranger@elsewhere.example');
 
-    $refused = $this->get($open)->assertForbidden();
+    $this->get($console)->assertNotFound();
+
+    // The old door, which names the environment by id, still says why in words.
+    $refused = $this->get('https://'.SOCIAL_ROOT_HOST.'/open/'.$this->account['environment']->id)->assertForbidden();
 
     expect($refused->inertiaPage()['component'])->toBe('console/environment-refused')
         ->and($refused->inertiaProps('refusedEnvironment'))->toBeNull()
@@ -223,12 +201,12 @@ it('keeps a tenant\'s own Google off its console\'s sign-in, which is the root\'
     // The tenant turns on Google for ITS users, environment-wide, in its own console.
     actAsEnvironmentAdmin($this->account['subjectId'], $this->account['environment']->id);
 
-    $this->from('https://'.$this->tenantHost.'/admin/social-sign-in?provider=google')
-        ->post('https://'.$this->tenantHost.'/admin/social-sign-in', [
+    $this->from(envConsole('/social-sign-in?provider=google'))
+        ->post(envConsole('/social-sign-in'), [
             'provider' => 'google', 'clientId' => 'tenant-google', 'clientSecret' => 'tenant-secret', 'parameters' => [], 'forEnvironment' => true,
         ])->assertSessionHasNoErrors();
 
-    $page = $this->get('https://'.$this->tenantHost.'/admin/social-sign-in')->assertOk();
+    $page = $this->get(envConsole('/social-sign-in'))->assertOk();
 
     // The page says whose buttons these are, and that the console is signed in elsewhere.
     expect($page->inertiaProps('audience'))->toMatchArray(['kind' => 'environment', 'consoleHost' => SOCIAL_ROOT_HOST]);
@@ -240,6 +218,6 @@ it('keeps a tenant\'s own Google off its console\'s sign-in, which is the root\'
 
     // …and the console does not offer a tenant sign-in at all: it sends them to the root,
     // whose sign-in page has no tenant's buttons on it.
-    $this->get('https://'.$this->tenantHost.'/admin')->assertRedirect('https://'.SOCIAL_ROOT_HOST.'/open/'.$this->account['environment']->id);
+    $this->get('https://'.$this->tenantHost.'/admin')->assertRedirect(tenantConsoleUrl());
     expect(collect($this->get('https://'.SOCIAL_ROOT_HOST.'/login')->inertiaProps('providers'))->pluck('provider')->all())->not->toContain('google');
 });

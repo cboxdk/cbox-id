@@ -155,31 +155,19 @@ it('refuses a member without the environment-admin capability', function (): voi
     $userId = app(Subjects::class)->create('target@acme.example', 'Target', 'the-original-passphrase')->id;
 
     /*
-     * REFUSED AT THE DOOR AND AT THE WRITE ALIKE. The capability middleware sits on the
-     * whole prefix, so the write is refused before the controller is reached at all — and
-     * this holds BOTH, because "the page 403s" is not a statement about the endpoint the
-     * form posts to.
-     *
-     * The refusal is a bounce back to the account host to re-open an environment this
-     * member cannot administer, so it is FOLLOWED TO THE END rather than asserted as "a
-     * 302": a redirect to the step-up screen would also be a 302, and would mean this
-     * viewer is being invited to confirm their way into a capability they were never
-     * granted. The chain has to terminate in a refusal.
+     * REFUSED AT THE DOOR AND AT THE WRITE ALIKE. The path middleware sits on the whole
+     * console, so the write is refused before the controller is reached at all — and this
+     * holds BOTH, because "the page 404s" is not a statement about the endpoint the form
+     * posts to. A 404, not a bounce: a redirect to the step-up screen would also be a 302,
+     * and would mean this viewer is being invited to confirm their way into a capability
+     * they were never granted.
      */
-    $handoff = 'https://'.config('cbox-id.tenancy.account_host').'/open/'.$environment->id;
-
-    // The page carries itself along (`to`), so the person lands back on it once they may;
-    // the write carries nothing — a POST is never replayed through a sign-in.
-    test()->get(route('environment.users.show', $userId))->assertRedirect($handoff.'?to='.rawurlencode('/admin/users/'.$userId));
-    setUserPassword($userId)->assertRedirect($handoff);
+    test()->get(route('environment.users.show', $userId))->assertNotFound();
+    setUserPassword($userId)->assertNotFound();
 
     expect(app(Subjects::class)->verifyPassword($userId, 'the-original-passphrase'))->toBeTrue();
 
-    // Followed LAST: asking for the handoff moves this client — and the environment
-    // context with it — onto the account host, so everything scoped to the tenant
-    // environment has to have been asked already. Signed in at the account host, as the
-    // person who reached this console was: the console's session is the tenant host's own
-    // ADMIN context, and the account host has its own.
+    // The old open-environment door says so in words, signed in as the person who tried.
     signInAsSubject($viewerSubjectId);
-    test()->get($handoff)->assertForbidden();
+    test()->get('https://'.config('cbox-id.tenancy.account_host').'/open/'.$environment->id)->assertForbidden();
 });

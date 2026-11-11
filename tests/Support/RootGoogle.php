@@ -81,8 +81,8 @@ final class RootGoogle
     /** Google, environment-wide, in the platform root's environment — as an operator does it, in its console. */
     public static function turnOn(): Connection
     {
-        test()->from('https://'.self::HOST.'/admin/social-sign-in?provider=google')
-            ->post('https://'.self::HOST.'/admin/social-sign-in', [
+        test()->from('https://'.self::HOST.'/admin/environment/social-sign-in?provider=google')
+            ->post('https://'.self::HOST.'/admin/environment/social-sign-in', [
                 'provider' => 'google',
                 'clientId' => 'google-client-id',
                 'clientSecret' => 'google-client-secret',
@@ -175,20 +175,6 @@ final class RootGoogle
         self::fakeTokenEndpoint($email, (string) $query['nonce'], $claims);
 
         return test()->get((string) $query['redirect_uri'].'?'.http_build_query(['code' => 'the-code', 'state' => $state]));
-    }
-
-    /** Follow the root's open-environment door into a tenant's console, by its signed POST. */
-    public static function handOff(string $openUrl, string $tenantHost): TestResponse
-    {
-        $door = test()->get($openUrl)->assertOk();
-        $fields = $door->viewData('fields');
-        $action = (string) $door->viewData('action');
-
-        // The credential travels in a form body to the tenant's own host — never in a URL.
-        expect($action)->toBe('https://'.$tenantHost.'/admin/handoff')
-            ->and($openUrl)->not->toContain('token=');
-
-        return test()->post($action, is_array($fields) ? $fields : []);
     }
 
     /** The Google subject a test address signs in as, unless a test names another. */

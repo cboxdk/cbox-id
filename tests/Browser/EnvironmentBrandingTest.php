@@ -43,7 +43,7 @@ it('saves an uploaded logo and favicon from the one Save, keeps them after a rel
     $logo = brandingPng(160, 40, [20, 120, 90]);
     $favicon = brandingPng(32, 32, [200, 60, 30]);
 
-    $page = visit('/admin/branding')
+    $page = visit(envConsole('/branding'))
         ->assertSee('Live preview')
         // Nothing changed, nothing to save: no bar, and no Save in the header any more.
         ->assertScript('document.querySelector(\''.SAVE_BAR.'\') === null', true)
@@ -74,7 +74,7 @@ it('saves an uploaded logo and favicon from the one Save, keeps them after a rel
         ->assertNoJavaScriptErrors();
 
     // A hard refresh: a new page load, nothing carried over in the editor's memory.
-    $page = visit('/admin/branding')
+    $page = visit(envConsole('/branding'))
         ->assertScript('document.querySelector("[data-testid=appearance-preview] img")?.getAttribute("src").startsWith("/brand-assets/")', true)
         ->assertScript('document.querySelector("img[alt=\'Logo\']")?.complete && document.querySelector("img[alt=\'Logo\']").naturalWidth', 160)
         ->assertScript('document.querySelector("img[alt=\'Favicon\']")?.getAttribute("src").startsWith("/brand-assets/")', true)
@@ -99,7 +99,7 @@ it('saves an uploaded logo and favicon from the one Save, keeps them after a rel
 it('discards from the bar, and asks before a link elsewhere drops unsaved changes', function (): void {
     actAsEnvironmentAdminOfATenant();
 
-    $page = visit('/admin/branding')->assertSee('Live preview');
+    $page = visit(envConsole('/branding'))->assertSee('Live preview');
 
     // Discard puts the stored theme back and the bar away.
     $page->click('[aria-label="Warm preset"]')
@@ -110,25 +110,25 @@ it('discards from the bar, and asks before a link elsewhere drops unsaved change
 
     // A change, then a link in the rail: the page asks, and staying keeps the draft.
     $page->click('[aria-label="Warm preset"]')
-        ->click('.cbx-rail a[href$="/admin/settings"]')
+        ->click('.cbx-rail a[href$="'.envConsolePath('/settings').'"]')
         ->assertSee('Leave without saving?')
         ->click('Keep editing')
-        ->assertPathIs('/admin/branding')
+        ->assertPathIs(envConsolePath('/branding'))
         ->assertScript('document.querySelector("[aria-label=\'Warm preset\']")?.getAttribute("aria-pressed")', 'true')
         ->assertSeeIn(SAVE_BAR, 'Unsaved changes');
 
     // Leaving anyway goes where the link pointed.
-    $page->click('.cbx-rail a[href$="/admin/settings"]')
+    $page->click('.cbx-rail a[href$="'.envConsolePath('/settings').'"]')
         ->assertSee('Leave without saving?')
         ->click('Discard and leave')
-        ->assertPathIs('/admin/settings')
+        ->assertPathIs(envConsolePath('/settings'))
         ->assertNoJavaScriptErrors();
 });
 
 it('keeps the save bar above the phone\'s navigation bar at 390px', function (): void {
     actAsEnvironmentAdminOfATenant();
 
-    $page = visit('/admin/branding')->resize(390, 844)->assertSee('Live preview');
+    $page = visit(envConsole('/branding'))->resize(390, 844)->assertSee('Live preview');
 
     // A typeface: a change the preview draws without touching its colours.
     $page->click('Nunito')

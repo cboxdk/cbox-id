@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\CurrentUser;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\NativeProduct\NativeProductAccess;
@@ -494,7 +495,7 @@ it('lists every environment grouped under its project, each with an Open link', 
                 ->pluck('name')
                 ->all() === ['Production', 'Staging'])
             // ...each with its own open link, plus the project's settings entry point.
-            ->where('projects.0.environments.1.openHref', route('environment.open', $staging->id))
+            ->where('projects.0.environments.1.openHref', app(EnvironmentConsolePath::class)->route($staging->id))
             ->where('projects.0.settingsHref', route('orgs.projects.show', $project->id)));
 });
 

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\EnvironmentSudo;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 
 /**
@@ -19,9 +18,9 @@ beforeEach(function (): void {
 
 it('creates an agent key from a preset and shows the key once, with the command to use it', function (): void {
     actAsEnvironmentAdminOfATenant();
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
-    $page = visit('/admin/agents/new');
+    $page = visit(envConsole('/agents/new'));
 
     $page->assertSee('New agent')
         ->assertSee('Support agent')
@@ -62,7 +61,7 @@ it('creates an agent key from a preset and shows the key once, with the command 
 it('draws Connect with a snippet for each client and no JavaScript errors', function (): void {
     actAsEnvironmentAdminOfATenant();
 
-    $page = visit('/admin/agents/connect');
+    $page = visit(envConsole('/agents/connect'));
 
     $page->assertSee('Connect')
         ->assertSee('claude mcp add --transport http cbox-id')
@@ -79,9 +78,9 @@ it('draws Connect with a snippet for each client and no JavaScript errors', func
 
 it('fits the agents pages on a phone', function (): void {
     actAsEnvironmentAdminOfATenant();
-    app(EnvironmentSudo::class)->confirm();
+    confirmEnvironmentStepUp();
 
-    foreach (['/admin/agents', '/admin/agents/new', '/admin/agents/connect', '/admin/approvals'] as $path) {
+    foreach ([envConsole('/agents'), envConsole('/agents/new'), envConsole('/agents/connect'), envConsole('/approvals')] as $path) {
         visit($path)
             ->resize(375, 812)
             ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)

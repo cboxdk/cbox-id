@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\EnvironmentConsolePath;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -55,6 +57,10 @@ final class AuthenticateOperator
         }
 
         abort_unless($this->scope->isPlatformOperator(), 404);
+
+        // Platform admin is drawn in the platform environment's console: its rail links to
+        // that console's pages, which live under `/admin/environment`.
+        URL::defaults(['environmentPath' => EnvironmentConsolePath::ROOT]);
 
         return $next($request);
     }

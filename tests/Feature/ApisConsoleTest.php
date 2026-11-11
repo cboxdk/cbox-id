@@ -10,6 +10,7 @@ use App\Platform\Entitlements;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\PlaneResolver;
+use App\Platform\PlatformAuth;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\OAuthServer\Contracts\Apis;
@@ -281,12 +282,12 @@ it('has no APIs page on the organization console', function (): void {
     expect(Route::has('apis'))->toBeFalse()
         ->and(Route::has('apis.store'))->toBeFalse();
 
-    // The environment console's door does not open for an organization's administrator.
-    test()->post('/admin/apis', [
+    // Nor does the organization console answer the environment console's address for it.
+    test()->post('/apis', [
         'name' => 'Squat',
         'identifier' => 'https://tax.example.com',
         'owner' => 'environment',
-    ]);
+    ])->assertNotFound();
 
     expect(Api::query()->count())->toBe(0);
 })->group('security');
@@ -463,7 +464,7 @@ it('is reached only through the session it was minted for', function (): void {
     crudSetup();
     taxApiThroughConsole();
 
-    session()->forget(EnvironmentAdminAuth::SESSION_KEY);
+    session()->forget(PlatformAuth::SESSION_KEY);
 
     expect(test()->get(route('environment.apis'))->status())->not->toBe(200);
 })->group('security');

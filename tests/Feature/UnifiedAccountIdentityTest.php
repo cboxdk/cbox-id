@@ -210,8 +210,8 @@ it('grants nothing on a session keyed on a subject with no membership', function
     // A real session for that subject, and the anchor — everything an admin session is
     // made of EXCEPT the account membership, which is the one thing being withheld.
     signInAsSubject($subject->id);
-    session()->put(EnvironmentAdminAuth::ENV_KEY, $env->id);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($env->id));
+    useEnvironmentConsole($env->id);
 
     expect(app(EnvironmentAdminAuth::class)->membership())->toBeNull();
 });

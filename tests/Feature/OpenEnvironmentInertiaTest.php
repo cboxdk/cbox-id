@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Platform\Console\EnvironmentConsolePath;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -24,7 +25,7 @@ function inertiaVisit(): array
     return ['X-Inertia' => 'true', 'X-Inertia-Version' => (string) app(HandleInertiaRequests::class)->version(request())];
 }
 
-it('turns an Inertia visit that redirects to the handoff into a real navigation', function (): void {
+it('turns an Inertia visit that redirects to the open-environment door into a real navigation', function (): void {
     ['environment' => $environment] = provisionAccount();
 
     // Signed out at the environment's console: sent to the account host's door, and from
@@ -40,7 +41,7 @@ it('turns an Inertia visit that redirects to the handoff into a real navigation'
     expect($response->headers->get('X-Inertia-Location'))->toContain('/open/'.$environment->id);
 });
 
-it('answers an Inertia visit to the handoff itself with a real navigation, never the form', function (): void {
+it('answers an Inertia visit to the open-environment door itself with a real navigation', function (): void {
     ['subjectId' => $subjectId, 'environment' => $environment] = provisionAccount();
     signInAsMember($subjectId);
 
@@ -49,9 +50,10 @@ it('answers an Inertia visit to the handoff itself with a real navigation, never
         ->assertHeader('X-Inertia-Location', 'https://cboxid.com/open/'.$environment->id);
 });
 
-it('still serves the handoff form to an ordinary browser navigation', function (): void {
+it('sends an ordinary browser navigation straight to the environment\'s console', function (): void {
     ['subjectId' => $subjectId, 'environment' => $environment] = provisionAccount();
     signInAsMember($subjectId);
 
-    test()->get('https://cboxid.com/open/'.$environment->id)->assertOk()->assertSee('<form', false);
+    test()->get('https://cboxid.com/open/'.$environment->id)
+        ->assertRedirect('https://cboxid.com/'.app(EnvironmentConsolePath::class)->for($environment->id));
 });

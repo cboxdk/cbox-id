@@ -6,6 +6,7 @@ namespace App\Platform\Locale;
 
 use App\Http\Controllers\PageController;
 use App\Http\Middleware\ResolveConsoleLocale;
+use App\Http\Middleware\ResolveEnvironmentFromPath;
 use App\Http\Props\Shared\I18nProps;
 use App\Platform\Appearance\BrandContext;
 use Cbox\Id\UserProperties\ValueObjects\PropertySnapshot;
@@ -90,7 +91,7 @@ final class HostedTranslations
         $preference = $snapshot instanceof PropertySnapshot ? [
             'subjectId' => $snapshot->userId,
             'version' => $snapshot->version,
-            'updateUrl' => route(request()->routeIs('platform.*') ? 'platform.locale.update' : (request()->is('admin', 'admin/*') ? 'environment.locale.update' : 'console.locale.update')),
+            'updateUrl' => route(request()->routeIs('platform.*') ? 'platform.locale.update' : (request()->attributes->has(ResolveEnvironmentFromPath::ATTRIBUTE) ? 'environment.locale.update' : 'console.locale.update')),
         ] : null;
 
         return new I18nProps(

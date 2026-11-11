@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Platform\Console\EnvironmentConsolePath;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Identity\NeverBreachedCheck;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -36,6 +37,30 @@ abstract class TestCase extends BaseTestCase
         ApiContract::verify($request, $response);
 
         return parent::createTestResponse($response, $request);
+    }
+
+    /**
+     * A request to an environment console on the app host leaves the URL generator on the app
+     * host, so the relative `route()` or `/api/…` a test reaches for next would go there
+     * too. Put it back on the test host after each such request; the console's own routes
+     * name the app host absolutely anyway (`serveConsoleOn()`).
+     *
+     * @param  string  $method
+     * @param  string  $uri
+     */
+    public function call($method, $uri, $parameters = [], $cookies = [], $files = [], $server = [], $content = null): TestResponse
+    {
+        $response = parent::call($method, $uri, $parameters, $cookies, $files, $server, $content);
+
+        $console = config('cbox-id.tenancy.account_host');
+        $testHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+        if (is_string($console) && $console !== '' && $console !== $testHost && parse_url($uri, PHP_URL_HOST) === $console
+            && preg_match('#\A/(?:'.EnvironmentConsolePath::PATTERN.')(?:/|\z)#', (string) parse_url($uri, PHP_URL_PATH)) === 1) {
+            $this->app->make('url')->setRequest(Request::create((string) config('app.url')));
+        }
+
+        return $response;
     }
 
     protected function setUp(): void

@@ -67,7 +67,7 @@ it('exposes no hard-delete route for a user', function (): void {
      * person surviving the request is the claim that actually matters, because a refusal
      * status that nonetheless deleted the row would pass a status assertion alone.
      */
-    test()->delete("/admin/users/{$user->id}")->assertStatus(405);
+    test()->delete(envConsole("/users/{$user->id}"))->assertStatus(405);
 
     expect(User::query()->whereKey($user->id)->exists())->toBeTrue();
 });
@@ -82,7 +82,7 @@ it('offers deactivation and a real erasure, and nothing called delete', function
      * and the typed address. Never a route named for a delete, which is what the old button
      * pretended to be.
      */
-    $urls = (array) $this->get("/admin/users/{$user->id}")->assertOk()->inertiaProps('urls');
+    $urls = (array) $this->get(envConsole("/users/{$user->id}"))->assertOk()->inertiaProps('urls');
 
     expect($urls)->toHaveKey('deactivate')
         ->and($urls)->toHaveKey('erase')

@@ -14,6 +14,7 @@ use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\EnvironmentOwner;
+use App\Platform\IssuerUrl;
 use App\Platform\SignInAudit;
 use App\Platform\SignInThrough;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -98,8 +99,8 @@ final readonly class SetSignInThrough implements Action
         return ActionResult::item($id, [
             'connection_id' => $id,
             'connection_name' => $connection?->name,
-            'login_url' => url('/login'),
-            'direct_login_url' => url('/login/direct'),
+            'login_url' => IssuerUrl::to('/login'),
+            'direct_login_url' => IssuerUrl::to('/login/direct'),
         ]);
     }
 }

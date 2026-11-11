@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Http\Middleware\HandleInertiaRequests;
-use App\Platform\EnvironmentSudo;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\StepUpPrompt;
 use App\Platform\Sudo;
 use Cbox\Id\Organization\Models\Environment;
@@ -157,6 +157,9 @@ final class ConsoleCrawl
             'api' => $first('oauth_apis'),
             'provider' => $first('saml_service_providers'),
             'action' => self::value(DB::table('app_audit_schemas')->where('environment_id', $environment->id)->value('action')),
+            // The console's own address on the app host — every environment-console route
+            // starts with it ({@see EnvironmentConsolePath}).
+            EnvironmentConsolePath::PARAMETER => app(EnvironmentConsolePath::class)->for($environment->id),
         ];
     }
 
@@ -338,7 +341,7 @@ final class ConsoleCrawl
                 $plane = $response->json('step_up.plane');
 
                 if ($plane === 'environment') {
-                    app(EnvironmentSudo::class)->confirm();
+                    confirmEnvironmentStepUp();
 
                     continue;
                 }
@@ -625,7 +628,10 @@ final class ConsoleCrawl
             $values[$name] = $value;
         }
 
-        $path = preg_replace_callback('#\{(\w+)\??\}#', static fn (array $m): string => rawurlencode($values[$m[1]] ?? ''), $route->uri());
+        // The console's path is several segments; every other parameter is one.
+        $path = preg_replace_callback('#\{(\w+)\??\}#', static fn (array $m): string => $m[1] === EnvironmentConsolePath::PARAMETER
+            ? ($values[$m[1]] ?? '')
+            : rawurlencode($values[$m[1]] ?? ''), $route->uri());
 
         return 'https://'.$host.'/'.ltrim((string) $path, '/');
     }

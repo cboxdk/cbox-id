@@ -159,11 +159,10 @@ it('refuses the console plane on a name that is not the platform root', function
  * The half of the old `plane:subject` that still holds: the platform root is an identity
  * provider for nobody, so the issuer surface is absent there.
  *
- * The ENVIRONMENT CONSOLE is not any more — on the root's own host. The root environment
- * is how every workspace owner and operator signs in, and its operators administer it at
- * `cboxid.com/admin` exactly as a tenant's administrators do theirs. Only on the root's
- * exact host: a name that merely resolves to the root (an unmapped wildcard) serves no
- * environment console, as it serves no sign-in form.
+ * `plane:environment` now gates the environment console's OLD address, `/admin/…`, which
+ * redirects to the console on the app host. On the root's own host it is answered (the
+ * root environment's console moved to `cboxid.com/admin/environment`); a name that merely
+ * resolves to the root (an unmapped wildcard) answers nothing, as it serves no sign-in form.
  */
 it('withholds the issuer surface from the platform root, and serves its environment console only on its own host', function (): void {
     $root = planeGate('env_prod', 'env_prod');
@@ -447,4 +446,37 @@ it('leaves no plane name applied to nothing', function (): void {
     $unknown = array_values(array_diff($applied, $known));
 
     expect($unknown)->toBe([], 'routes apply plane names EnforcePlane does not know: '.implode(', ', $unknown));
+})->group('security');
+
+/**
+ * THE ENVIRONMENT CONSOLE'S BOUNDARY IS THE PATH, ON THE APP HOST ONLY.
+ *
+ * It used to be the host: `{env}.cboxid.com/admin` served that environment's console to a
+ * session of its own. Now every console is on the app host at
+ * `/orgs/{org}/projects/{project}/environments/{env}` (and `/admin/environment` for the
+ * root's), so a tenant's host must serve none of them — not its own, not another's — and
+ * its old address only redirects.
+ */
+it('serves the environment console on the app host only, and a tenant host only redirects to it', function (): void {
+    multiTenantDeployment('cboxid.com');
+    platformRootEnvironment();
+    $account = provisionAccount();
+    $environment = $account['environment']->forceFill(['domain' => 'acme.cboxid.com', 'domain_verified_at' => now()]);
+    $environment->save();
+
+    actAsEnvironmentAdmin($account['subjectId'], $environment->id, consoleHost: 'cboxid.com');
+    $path = envConsolePath();
+
+    // The console, on the app host: served.
+    $this->get('https://cboxid.com'.$path.'/users')->assertOk();
+
+    // The same path on the tenant's own host: no such page, signed in or not.
+    $this->get('https://acme.cboxid.com'.$path.'/users')->assertNotFound();
+    $this->get('https://acme.cboxid.com/admin/environment/users')->assertNotFound();
+
+    // Its old address there: the same page on the app host, and nothing served.
+    $this->get('https://acme.cboxid.com/admin/users?page=2')
+        ->assertStatus(302)
+        ->assertRedirect('https://cboxid.com'.$path.'/users?page=2')
+        ->assertHeader('Deprecation', 'true');
 })->group('security');

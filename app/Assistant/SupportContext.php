@@ -65,7 +65,9 @@ final readonly class SupportContext
         }
         $environment = app(ConsoleScope::class)->plane() === ConsolePlane::Environment;
 
-        return ($environment ? '/admin/support/session' : '/support/session').'?scope='.hash('sha256', implode(':', $identity));
+        $base = $environment ? route('environment.support.session', [], false) : '/support/session';
+
+        return $base.'?scope='.hash('sha256', implode(':', $identity));
     }
 
     public function allowed(ToolContext $context, bool $withEnvironments = false): bool

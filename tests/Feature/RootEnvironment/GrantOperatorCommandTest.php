@@ -76,13 +76,13 @@ it('does not undo a suspension unless told to', function (): void {
 
 it('opens the platform environment\'s console to the person it was granted to', function (): void {
     signInAsSubject($this->account['subjectId']);
-    $this->get('https://cboxid.com/admin')->assertNotFound();
+    $this->get('https://cboxid.com/admin/environment')->assertNotFound();
 
     $this->artisan('cbox-id:operator:grant', ['email' => 'owner@acme.example'])->assertSuccessful();
 
     app()->forgetScopedInstances();
     // Promotion cannot turn an existing password-only session into operator access.
-    $this->get('https://cboxid.com/admin')->assertRedirect(route('login'));
+    $this->get('https://cboxid.com/admin/environment')->assertRedirect('https://cboxid.com/login');
     signInAsStrongOperator($this->account['subjectId']);
-    $this->get('https://cboxid.com/admin')->assertOk();
+    $this->get('https://cboxid.com/admin/environment')->assertOk();
 });

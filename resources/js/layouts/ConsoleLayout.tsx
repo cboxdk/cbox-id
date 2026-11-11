@@ -56,7 +56,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
     const { shell, auth, title, environment, organizationHub, i18n, supportSessionUrl } =
         usePage<SharedProps>().props;
 
-    // A page under `/admin/organizations/{organization}/…` is a tab of that organization's
+    // A page under an environment console's `…/organizations/{organization}/…` is a tab of that organization's
     // page: its header and tabs go around it, whichever page it is.
     const children =
         organizationHub !== undefined && organizationHub !== null ? (
