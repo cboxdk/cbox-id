@@ -45,7 +45,7 @@ export function LinkTabs({ tabs, label, variant = 'main' }: LinkTabsProps) {
                 <Link
                     key={tab.key}
                     href={tab.href}
-                    className="cbx-tab"
+                    className="idc-tab"
                     data-state={tab.current ? 'active' : 'inactive'}
                     aria-current={tab.current ? 'page' : undefined}
                     preserveScroll

@@ -45,7 +45,7 @@ export function Tabs({ value, onValueChange, label, className, children, panels 
 
 export function Tab({ value, children }: { value: string; children: ReactNode }) {
     return (
-        <Primitive.Trigger value={value} className="cbx-tab">
+        <Primitive.Trigger value={value} className="idc-tab">
             {children}
         </Primitive.Trigger>
     );
