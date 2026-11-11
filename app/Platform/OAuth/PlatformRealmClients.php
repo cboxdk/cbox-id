@@ -6,6 +6,8 @@ namespace App\Platform\OAuth;
 
 use App\Http\Middleware\RefuseCustomerClientsInPlatformRealm;
 use App\Platform\PlaneResolver;
+use App\ServiceConnections\OrganizationConnections;
+use App\ServiceConnections\ServiceConnection;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -34,16 +36,27 @@ use Illuminate\Auth\Access\AuthorizationException;
  * registration access token) is not a customer's app and is left to the gate that already
  * confines it to that audience.
  *
+ * A SERVICE CONNECTION'S CLIENT is not a customer's app either. The platform creates it for
+ * an organization when the organization's administrator connects two of the platform's own
+ * services ({@see OrganizationConnections}); the customer never
+ * holds its secret, it has no redirect URI and only the consuming service can lease its
+ * tokens. It is owned by the organization so the grant dies with the organization, and it
+ * is admitted here: created inside {@see forServiceConnection()}, and served for as long as
+ * an unrevoked `service_connections` row names it.
+ *
  * `cbox-id.realm.platform_clients_only`, off by default. A customer's own environment is
  * never asked, and neither is a single-tenant install, where the default environment IS
  * the product and an organization's apps are its ordinary business.
  */
-final readonly class PlatformRealmClients
+final class PlatformRealmClients
 {
+    /** Depth of {@see forServiceConnection()} calls in progress. */
+    private static int $creatingServiceConnection = 0;
+
     public function __construct(
-        private PlaneResolver $planes,
-        private EnvironmentResolver $resolver,
-        private EnvironmentContext $environments,
+        private readonly PlaneResolver $planes,
+        private readonly EnvironmentResolver $resolver,
+        private readonly EnvironmentContext $environments,
     ) {}
 
     public function enabled(): bool
@@ -75,7 +88,42 @@ final readonly class PlatformRealmClients
     /** Whether this client may exist, be changed and be served where it lives. */
     public function admits(Client $client): bool
     {
-        return $client->organization_id === null || ! $this->governs($client->environment_id);
+        return $client->organization_id === null
+            || ! $this->governs($client->environment_id)
+            || $this->isServiceConnection($client->environment_id, $client->client_id);
+    }
+
+    /**
+     * Run `$create`, in which the service-connection feature registers the client of a
+     * connection for an organization. Only that feature calls this: it is the one place the
+     * platform itself writes an organization-owned client into its own realm.
+     *
+     * @template T
+     *
+     * @param  callable(): T  $create
+     * @return T
+     */
+    public static function forServiceConnection(callable $create): mixed
+    {
+        self::$creatingServiceConnection++;
+
+        try {
+            return $create();
+        } finally {
+            self::$creatingServiceConnection--;
+        }
+    }
+
+    /** Whether an unrevoked service connection in `$environmentId` uses `$clientId`. */
+    private function isServiceConnection(string $environmentId, string $clientId): bool
+    {
+        return $this->environments->withoutScope(
+            static fn (): bool => ServiceConnection::query()
+                ->where('environment_id', $environmentId)
+                ->where('service_client_id', $clientId)
+                ->whereNull('revoked_at')
+                ->exists(),
+        ) === true;
     }
 
     /**
@@ -91,13 +139,15 @@ final readonly class PlatformRealmClients
             return false;
         }
 
-        return $this->environments->withoutScope(
+        $theirs = $this->environments->withoutScope(
             static fn (): bool => Client::query()
                 ->where('environment_id', $realm)
                 ->where('client_id', $clientId)
                 ->whereNotNull('organization_id')
                 ->exists(),
         ) === true;
+
+        return $theirs && ! $this->isServiceConnection($realm, $clientId);
     }
 
     /**
@@ -114,6 +164,10 @@ final readonly class PlatformRealmClients
             }
 
             if ($client->exists && ! $client->isDirty('organization_id')) {
+                return;
+            }
+
+            if (self::$creatingServiceConnection > 0 && ! $client->exists) {
                 return;
             }
 

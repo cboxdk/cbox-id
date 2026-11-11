@@ -8,12 +8,17 @@ use App\Platform\Actions\ActionContext;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\OAuth\PlatformRealmClients;
+use App\ServiceConnections\Contracts\Connections;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -194,6 +199,51 @@ it('refuses apps.create for an organization in the platform realm, for the API a
     }
 
     expect(Client::query()->withoutGlobalScopes()->where('name', 'Customer app')->exists())->toBeFalse();
+})->group('security');
+
+it('creates and serves the client of a service connection, which the platform makes for an organization', function (): void {
+    ['rootId' => $rootId, 'workspaceId' => $workspaceId] = prcDeployment();
+
+    [$serviceClient, $connectionId, $admin] = app(PlatformRoot::class)->run(function () use ($workspaceId): array {
+        app(Memberships::class)->add($workspaceId, 'user_admin', MembershipRole::Admin);
+
+        $consumer = app(ClientRegistry::class)->register(new NewClient(
+            name: 'Engage',
+            type: ClientType::Confidential,
+            grantTypes: ['client_credentials', 'authorization_code'],
+            scopes: ['service_connections.manage', 'service_connections.lease'],
+        ))->client->client_id;
+
+        config(['service-connections.consumers' => [$consumer], 'service-connections.services.cbox_billing.client_id' => 'billing-provider']);
+
+        $admin = Introspection::active('user_admin', $consumer, ['service_connections.manage'], ['org' => $workspaceId]);
+        $connection = app(Connections::class)->connect($admin, 'cbox_billing');
+
+        return [$connection->service_client_id, $connection->id, $admin];
+    });
+
+    $row = DB::table('oauth_clients')->where('client_id', $serviceClient)->first();
+
+    // Owned by the organization, in the platform realm, and served all the same.
+    expect($row->organization_id)->toBe($workspaceId)
+        ->and($row->environment_id)->toBe($rootId)
+        ->and(app(PlatformRealmClients::class)->refusesToServe($serviceClient))->toBeFalse()
+        ->and(prcServes(Request::create('https://login.example/oauth/token', 'POST', ['client_id' => $serviceClient])))->toBeTrue();
+
+    // The exemption is the connection's, not the name's: a customer's client that merely
+    // looks like one is still refused, when created and when served.
+    $lookalike = prcClientRow($rootId, $workspaceId);
+    DB::table('oauth_clients')->where('client_id', $lookalike)->update(['name' => 'Service connection: cbox_billing']);
+
+    expect(app(PlatformRealmClients::class)->refusesToServe($lookalike))->toBeTrue()
+        ->and(fn () => app(PlatformRoot::class)->run(
+            fn () => app(ClientRegistry::class)->register(new NewClient(name: 'Service connection: cbox_billing', organizationId: $workspaceId)),
+        ))->toThrow(AuthorizationException::class);
+
+    // Revoked: the client goes with the connection, and a row left behind is not served.
+    DB::table('service_connections')->where('id', $connectionId)->update(['revoked_at' => now()]);
+
+    expect(app(PlatformRealmClients::class)->refusesToServe($serviceClient))->toBeTrue();
 })->group('security');
 
 it('changes nothing while the rule is off, and nothing on a single-tenant install', function (): void {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\ServiceConnections;
 
+use App\Platform\OAuth\PlatformRealmClients;
 use App\ServiceConnections\Contracts\Connections;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
@@ -42,7 +43,11 @@ class OrganizationConnections implements Connections
             if ($connection !== null && $connection->revoked_at === null) {
                 return $connection;
             }
-            $registered = $this->accounts->create($organization, 'Service connection: '.$service, $scopes);
+            // The one organization-owned client the platform's own realm admits: the
+            // platform creates it, and the row saved below is what keeps it served.
+            $registered = PlatformRealmClients::forServiceConnection(
+                fn () => $this->accounts->create($organization, 'Service connection: '.$service, $scopes),
+            );
             $connection ??= new ServiceConnection;
             $connection->fill([
                 'organization_id' => $organization, 'consumer_client_id' => $caller->clientId,
