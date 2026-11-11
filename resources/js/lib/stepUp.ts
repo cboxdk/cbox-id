@@ -28,7 +28,7 @@ import { useSyncExternalStore } from 'react';
  * counted by, the environment plane's.
  */
 
-export type StepUpPlane = 'organization' | 'environment';
+export type StepUpPlane = 'organization' | 'environment' | 'operator';
 
 /** What the server asked for: which plane, where to confirm, and why. */
 export interface StepUpChallenge {
@@ -37,6 +37,11 @@ export interface StepUpChallenge {
     confirm: string;
     /** The sentence the action gave, or null for a route that only says it is protected. */
     reason: string | null;
+    /**
+     * Set when this plane is confirmed with a passkey instead of a password (the operator
+     * plane): where to fetch the WebAuthn challenge. The assertion is posted to `confirm`.
+     */
+    passkeyOptions?: string | null;
 }
 
 export interface StepUpOptions {
@@ -57,7 +62,7 @@ export interface StepUpOptions {
 /** The header that marks a step-up refusal (lower-cased, as both HTTP clients report it). */
 export const STEP_UP_HEADER = 'x-cbox-step-up';
 
-const PLANES: readonly StepUpPlane[] = ['organization', 'environment'];
+const PLANES: readonly StepUpPlane[] = ['organization', 'environment', 'operator'];
 
 /**
  * The challenge in a response, or null for any response that is not one.
@@ -93,10 +98,19 @@ export function challengeFrom(
         return null;
     }
 
+    const passkey = isRecord(stepUp.passkey) ? stepUp.passkey.options : null;
+
+    // The operator plane is never confirmed with a password: without a same-origin
+    // challenge endpoint there is nothing to ask with, so it is not a challenge at all.
+    if (plane === 'operator' && (typeof passkey !== 'string' || !sameOrigin(passkey))) {
+        return null;
+    }
+
     return {
         plane,
         confirm,
         reason: typeof stepUp.reason === 'string' && stepUp.reason !== '' ? stepUp.reason : null,
+        ...(typeof passkey === 'string' && sameOrigin(passkey) ? { passkeyOptions: passkey } : {}),
     };
 }
 

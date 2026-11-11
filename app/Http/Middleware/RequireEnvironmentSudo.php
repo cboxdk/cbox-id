@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware;
 
 use App\Platform\EnvironmentSudo;
+use App\Platform\Operators\OperatorAssurance;
 use App\Platform\StepUpPlane;
 use App\Platform\StepUpPrompt;
 use App\Platform\StepUpReason;
@@ -30,13 +31,21 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class RequireEnvironmentSudo
 {
-    public function __construct(private readonly EnvironmentSudo $sudo) {}
+    public function __construct(private readonly EnvironmentSudo $sudo, private readonly OperatorAssurance $operators) {}
 
     /**
      * @param  Closure(Request): Response  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // On the platform root's console, with the operator rule on, the proof is a fresh
+        // passkey: a password typed into this origin is what a hijacked session can replay.
+        if ($this->operators->governs($request)) {
+            return $this->operators->fresh()
+                ? $next($request)
+                : StepUpPrompt::demand($request, StepUpPlane::Operator, reason: StepUpReason::forRoute($request->route()?->getName()));
+        }
+
         if ($this->sudo->confirmed()) {
             return $next($request);
         }
