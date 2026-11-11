@@ -14,10 +14,11 @@ use Illuminate\Validation\ValidationException;
  * resolved for `api.cboxid.com` — the management API's host — and `app` for the
  * application's. The list is `cbox-id.reserved_environment_slugs`.
  *
- * A slug is derived from a project or environment name nobody typed as a slug, so a derived
- * one that lands on the list gets a suffix rather than refusing a perfectly good name ("API"
- * is a fine project name). Changing an existing environment's slug to a reserved one is
- * refused outright.
+ * No create path takes a slug from its caller: every one (provisioning, the operator's
+ * create, the installer) derives it from a project or environment name, so a slug that
+ * lands on the list gets a suffix rather than refusing a perfectly good name ("API" is a
+ * fine project name). Changing an existing environment's slug to a reserved one is the
+ * only place a person chooses one, and it is refused outright.
  */
 final class ReservedEnvironmentSlugs
 {

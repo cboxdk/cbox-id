@@ -40,7 +40,7 @@ final class DeprecateLegacyApi
         self::mark($response);
 
         try {
-            LegacyApiUsage::record($request);
+            LegacyApiUsage::record($request, $response);
         } catch (Throwable $e) {
             // Counting must never cost a caller its answer.
             report($e);

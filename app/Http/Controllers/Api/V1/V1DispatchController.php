@@ -28,9 +28,11 @@ use Symfony\Component\HttpFoundation\Response;
  *    is not "this credential is not for me" (401, 403, 404) is the answer; when none
  *    succeeds, the most telling refusal is — a 404 or 403 from a door the credential
  *    passed over a 401 from one it did not.
- *  - MADE OF FIELDS (`PATCH /v1/members/{id}`: `roles` and `all_environments`): each
- *    operation whose fields the request carries runs, in order; the first failure stops
- *    the rest.
+ *  - MADE OF FIELDS (`PATCH /v1/members/{id}`: `roles` or `all_environments`): the one
+ *    operation whose fields the request carries runs. A request that carries the fields of
+ *    two is refused before either runs: two actions are two commits, two approvals and two
+ *    idempotency records, and one response cannot report both honestly. Change one at a
+ *    time.
  */
 final readonly class V1DispatchController
 {
@@ -104,29 +106,35 @@ final readonly class V1DispatchController
      */
     private function byFields(Request $request, Route $route, array $operations): Response
     {
-        $response = null;
         $asked = [];
+        $matched = [];
 
         foreach ($operations as $operation) {
             $when = SpecNode::string($operation['when'] ?? null);
             $asked[] = $when;
 
-            if (! self::matches($request, $when)) {
-                continue;
-            }
-
-            $response = $this->run($request, $route, $operation);
-
-            if ($response->getStatusCode() >= 300) {
-                return $response;
+            if (self::matches($request, $when)) {
+                $matched[] = $operation;
             }
         }
 
-        return $response ?? Problem::response(
-            'validation_failed',
-            'Send at least one of the fields this endpoint changes: '.implode('; ', array_map(self::describe(...), $asked)).'.',
-            422,
-        );
+        if (count($matched) > 1) {
+            return Problem::response(
+                'validation_failed',
+                'This request changes more than one thing at once: '
+                    .implode('; ', array_map(static fn (array $operation): string => self::describe(SpecNode::string($operation['when'] ?? null)), $matched))
+                    .'. Send one change per request.',
+                422,
+            );
+        }
+
+        return $matched !== []
+            ? $this->run($request, $route, $matched[0])
+            : Problem::response(
+                'validation_failed',
+                'Send at least one of the fields this endpoint changes: '.implode('; ', array_map(self::describe(...), $asked)).'.',
+                422,
+            );
     }
 
     /** `a+b`: every field present; `!a`: that field absent. */

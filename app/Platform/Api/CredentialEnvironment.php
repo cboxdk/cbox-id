@@ -8,10 +8,11 @@ use App\Platform\Keys\OrganizationKeyPrefixes;
 use Cbox\Id\Kernel\Tenancy\Contracts\Environment;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
-use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Kernel\Tenancy\Scopes\EnvironmentScope;
+use Cbox\Id\Organization\Models\Environment as EnvironmentModel;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\Platform\PlatformRoot;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Which environment a credential belongs to, read from the credential and never from the
@@ -67,7 +68,35 @@ final readonly class CredentialEnvironment
             return null;
         }
 
-        return $this->environments->forKey((string) $key->environment_id) ?? GenericEnvironment::of((string) $key->environment_id);
+        return self::servable(EnvironmentModel::query()->find((string) $key->environment_id));
+    }
+
+    /**
+     * The same liveness gate the host resolver applies (`DatabaseEnvironmentResolver`): the
+     * environment is active and the organization that owns it, through its project, is
+     * active too. The resolver's `forKey()` deliberately skips it (it rehydrates past
+     * events), so a key read here must not lean on it: a suspended environment's key, or a
+     * suspended customer's, pins nothing and its door refuses it. A key whose environment
+     * row is gone pins nothing either.
+     */
+    private static function servable(?EnvironmentModel $environment): ?EnvironmentModel
+    {
+        if ($environment === null || ! $environment->status->canServe()) {
+            return null;
+        }
+
+        if ($environment->project_id === null) {
+            return $environment;
+        }
+
+        // Raw queries: `organizations` is environment-owned, and nothing is current yet.
+        $organizationId = DB::table('projects')->where('id', $environment->project_id)->value('organization_id');
+
+        if (! is_string($organizationId) || $organizationId === '') {
+            return null;
+        }
+
+        return DB::table('organizations')->where('id', $organizationId)->where('status', 'active')->exists() ? $environment : null;
     }
 
     /** The id of the key row behind a `cbid_env_` key, for counting who still calls. */

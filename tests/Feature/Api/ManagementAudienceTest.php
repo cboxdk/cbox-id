@@ -19,7 +19,10 @@ use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\PlatformRoot;
@@ -216,3 +219,19 @@ it('serves an environment key on the application host\'s /mcp, in the key\'s own
     $listed = mcpCall($key, 'organizations_list');
     expect($listed['isError'] ?? false)->toBeFalse();
 });
+
+it('refuses an environment key on the application host\'s /mcp once its environment or organization is suspended', function (string $what): void {
+    multiTenantDeployment((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+    $account = provisionAccount('owner@acme.example');
+
+    $key = app(EnvironmentApiKeys::class)->issue($account['environment']->id, 'agent', ['organizations:read'])->plaintext;
+    expect(mcpTools($key))->toHaveKey('organizations_list');
+
+    if ($what === 'environment') {
+        Environment::query()->whereKey($account['environment']->id)->update(['status' => EnvironmentStatus::Suspended]);
+    } else {
+        Organization::query()->withoutGlobalScopes()->whereKey($account['organization']->id)->update(['status' => 'suspended']);
+    }
+
+    expect(mcpRpc($key, 'tools/list')->status())->toBeIn([401, 404]);
+})->with(['environment', 'organization'])->group('security');

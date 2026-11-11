@@ -6,13 +6,20 @@ use App\Platform\Api\ApiHost;
 use App\Platform\Api\LegacyApiUsage;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\EnvironmentStatus;
+use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 use Cbox\Telemetry\Facades\Telemetry;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
 
 /*
 | Step 5a, expand: `https://api.cboxid.com/v1` next to `/api/v1`. The credential names the
@@ -20,7 +27,12 @@ use Illuminate\Support\Facades\Http;
 | deprecated and counted per caller.
 */
 
-beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]));
+beforeEach(function (): void {
+    Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]);
+    // The suite's default environment, as a real row: a key pins only an environment that
+    // exists and may serve ({@see \App\Platform\Api\CredentialEnvironment::ofKey()}).
+    Environment::query()->firstOrCreate(['id' => 'env_test'], ['name' => 'Test root', 'slug' => 'test-root', 'type' => EnvironmentType::Production, 'status' => EnvironmentStatus::Active, 'is_default' => true, 'settings' => []]);
+});
 
 /** A URL on the API host. */
 function onApi(string $path): string
@@ -63,6 +75,8 @@ it('answers on the API host with the environment the key was minted in', functio
 });
 
 it('never shows one environment\'s records to another environment\'s key', function (): void {
+    // A real, live environment: a key whose environment is gone or cannot serve pins nothing.
+    Environment::query()->create(['id' => 'env_other', 'name' => 'Other', 'slug' => 'other', 'type' => EnvironmentType::Production, 'status' => EnvironmentStatus::Active, 'is_default' => false, 'settings' => []]);
     $ours = apiEnvKey([EnvironmentApiScope::UsersRead]);
     $theirs = apiEnvKey([EnvironmentApiScope::UsersRead], 'env_other');
     $ada = app(Subjects::class)->create('ada@acme.example', 'Ada');
@@ -253,4 +267,69 @@ it('publishes one OpenAPI document and its reference on the API host', function 
         ->assertJsonPath('documentation_url', 'https://'.ApiHost::name().'/docs');
 
     $this->get(onApi('/problems/not_found'))->assertRedirect('https://'.ApiHost::name().'/docs#problem-not_found');
+});
+
+it('registers no /v1 route when the deployment names no API host, so the issuer\'s own RFC 9728 metadata stays', function (): void {
+    config(['cbox-id.hosts.api' => null]);
+    $original = app('router');
+    $fresh = new Router(app('events'), app());
+    Route::swap($fresh);
+
+    try {
+        require base_path('routes/v1.php');
+    } finally {
+        Route::swap($original);
+    }
+
+    expect($fresh->getRoutes()->count())->toBe(0);
+
+    // And in the booted application (API host set), the issuer's metadata route on its own
+    // host is the framework's, not the API host's.
+    $route = $original->getRoutes()->match(Request::create('http://localhost/.well-known/oauth-protected-resource'));
+    expect($route->getName())->not->toBe('v1.resource-metadata')
+        ->and($route->getActionName())->not->toContain('ApiResourceMetadataController');
+});
+
+it('refuses a key of a suspended environment, or of a suspended organization\'s environment, on the API host', function (string $what): void {
+    $account = provisionAccount();
+    $environment = $account['environment'];
+    $key = apiEnvKey([EnvironmentApiScope::OrganizationsRead], $environment->id);
+
+    $this->withToken($key)->getJson(onApi('/v1/organizations'))->assertOk();
+
+    if ($what === 'environment') {
+        Environment::query()->whereKey($environment->id)->update(['status' => EnvironmentStatus::Suspended]);
+    } else {
+        Organization::query()->withoutGlobalScopes()->whereKey($account['organization']->id)->update(['status' => 'suspended']);
+    }
+
+    $status = $this->flushHeaders()->withToken($key)->getJson(onApi('/v1/organizations'))->status();
+    expect($status)->toBeIn([401, 404]);
+})->with(['environment', 'organization'])->group('security');
+
+it('counts a forged or refused token as no named client', function (): void {
+    $telemetry = Telemetry::fake();
+    $forged = 'x.'.rtrim(strtr(base64_encode((string) json_encode(['iss' => 'https://a.example', 'client_id' => 'forged-'.bin2hex(random_bytes(8))])), '+/', '-_'), '=').'.y';
+
+    $this->withToken($forged)->getJson('/api/v1/organizations')->assertUnauthorized();
+
+    $telemetry->assertCounterIncremented(LegacyApiUsage::METRIC, ['caller_kind' => 'client', 'caller' => 'unauthenticated', 'route' => 'GET /api/v1/organizations']);
+})->group('security');
+
+it('refuses a PATCH that changes two things at once before either runs', function (): void {
+    $account = provisionAccount();
+    [$member] = addMember($account['organization']->id, MembershipRole::Developer, 'dev@acme.example');
+    $key = app(OrganizationApiKeys::class)->issue($account['organization']->id, 'CI', MembershipRole::Admin)->plaintext;
+    $before = freshMembership($member);
+
+    $this->withToken($key)->withHeader('Idempotency-Key', 'combined-1')
+        ->patchJson(onApi('/v1/members/'.$member->id), ['roles' => ['admin'], 'all_environments' => ! $before?->all_environments])
+        ->assertUnprocessable()
+        ->assertHeader('Content-Type', 'application/problem+json')
+        ->assertJsonPath('error', 'validation_failed')
+        ->assertJsonPath('detail', fn (string $detail): bool => str_contains($detail, 'more than one thing at once'));
+
+    $after = freshMembership($member);
+    expect($after?->role)->toBe($before?->role)
+        ->and($after?->all_environments)->toBe($before?->all_environments);
 });

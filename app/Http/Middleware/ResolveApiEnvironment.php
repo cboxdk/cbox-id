@@ -61,6 +61,12 @@ final readonly class ResolveApiEnvironment
 
         if ($environment !== null) {
             $this->context->set($environment);
+        } elseif ($kind === 'environment_key') {
+            // A key whose environment cannot serve (suspended, its organization suspended,
+            // gone) acts in none: no environment at all, so every
+            // environment-owned lookup behind it finds nothing, rather than whatever
+            // environment the context last held.
+            $this->context->set(null);
         }
 
         $request->attributes->set(self::PLANE, match (true) {

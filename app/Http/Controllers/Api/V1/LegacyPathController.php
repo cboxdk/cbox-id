@@ -59,7 +59,7 @@ final readonly class LegacyPathController
         DeprecateLegacyApi::mark($response);
 
         try {
-            LegacyApiUsage::record($sub);
+            LegacyApiUsage::record($sub, $response);
         } catch (Throwable $e) {
             report($e);
         }

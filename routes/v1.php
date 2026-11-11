@@ -26,23 +26,22 @@ use Illuminate\Support\Facades\Route;
  * have moved.
  */
 $host = ApiHost::name();
-$group = Route::middleware(['api', V1Responses::class, ResolveApiEnvironment::class, V1Parameters::class]);
 
-if ($host !== null) {
-    $group->domain($host);
+/*
+ * NO API HOST, NO `/v1`. A deployment that names none (production before the cut-over, a
+ * self-hosted install without `CBOX_ID_API_HOST`) keeps `/api/v1` only. Registered on no
+ * domain, these routes would answer on every issuer host and, worse, replace the issuer's
+ * own RFC 9728 `/.well-known/oauth-protected-resource` (same domain, same path).
+ */
+if ($host === null) {
+    return;
 }
 
-$group->group(function (Router $router): void {
+Route::middleware(['api', V1Responses::class, ResolveApiEnvironment::class, V1Parameters::class])->domain($host)->group(function (Router $router): void {
     V1Routes::register($router);
 });
 
-$public = Route::middleware(['api', 'throttle:120,1']);
-
-if ($host !== null) {
-    $public->domain($host);
-}
-
-$public->group(function (): void {
+Route::middleware(['api', 'throttle:120,1'])->domain($host)->group(function (): void {
     // The contract, one document for every plane, and the reference rendered from it.
     // The base itself, which a person may open: what it is and where its reference lives.
     Route::get('v1', ApiIndexController::class)->name('v1.index');
@@ -55,8 +54,4 @@ $public->group(function (): void {
 });
 
 // The transition: an old path on the new base answers as the old path does (see the class).
-$legacy = Route::middleware(['api'])->any('v1/{legacy}', LegacyPathController::class)->where('legacy', '.*')->fallback()->name('v1.legacy');
-
-if ($host !== null) {
-    $legacy->domain($host);
-}
+Route::middleware(['api'])->domain($host)->any('v1/{legacy}', LegacyPathController::class)->where('legacy', '.*')->fallback()->name('v1.legacy');

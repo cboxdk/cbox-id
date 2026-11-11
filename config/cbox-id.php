@@ -588,12 +588,14 @@ return [
 
     /*
      * SLUGS NO ENVIRONMENT MAY HAVE. An environment is served at `{slug}.cboxid.com`, so
-     * one called `api` or `app` would answer for the platform's own hosts. A slug derived
-     * from a project or environment name that lands on one of these gets a suffix instead
-     * ({@see \App\Platform\Environments\ReservedEnvironmentSlugs}); setting one outright is
-     * refused.
+     * one called `api` or `app` would answer for the platform's own hosts. Only the hosts
+     * the platform serves today are listed: the migration that introduces the list refuses
+     * to run while an environment holds one, so adding a name here is a data check on live
+     * first. Every create path derives the slug from a name, and a derived one that lands
+     * here gets a suffix ({@see \App\Platform\Environments\ReservedEnvironmentSlugs});
+     * changing a slug to one is refused.
      */
-    'reserved_environment_slugs' => ['api', 'app', 'www', 'admin', 'mail', 'status', 'docs', 'help', 'support', 'cdn', 'static', 'assets', 'auth', 'id', 'internal'],
+    'reserved_environment_slugs' => ['api', 'app'],
 
     /*
      * THE SHAPE OF THIS DEPLOYMENT, as its manifest declares it — read by `cbox-id:doctor`.
