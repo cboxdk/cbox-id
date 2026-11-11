@@ -161,7 +161,10 @@ it('draws the environment\'s sign-up switch and asks before opening it', functio
 
     $page->click('[aria-label="Self-service sign-up"]')
         ->assertSee('Let people sign up to')
-        ->screenshot(filename: 'sign-in-rules-self-service-confirm')
+        // The viewport only, never the full page, while the dialog is open: a full-page
+        // screenshot reports the viewport as 1×1 for a moment, which is below the shell's
+        // phone width (cbox-ui 0.11), so the page remounts and the dialog is gone.
+        ->screenshot(false, 'sign-in-rules-self-service-confirm')
         ->click('Turn on sign-up')
         ->assertSee('Anyone can create an account')
         ->assertNoJavascriptErrors();
