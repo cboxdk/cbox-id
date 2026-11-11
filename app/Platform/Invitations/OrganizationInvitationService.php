@@ -15,6 +15,7 @@ use App\Platform\Invitations\ValueObjects\InvitationPreview;
 use App\Platform\Invitations\ValueObjects\InvitedRole;
 use App\Platform\Invitations\ValueObjects\Inviter;
 use App\Platform\Invitations\ValueObjects\NewInvitation;
+use App\Platform\Invitations\ValueObjects\OpenInvitation;
 use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
 use App\Platform\Invitations\ValueObjects\ReturnTarget;
 use App\Platform\Invitations\ValueObjects\SentInvitation;
@@ -29,6 +30,7 @@ use Cbox\Id\AccessControl\Exceptions\GrantRefused;
 use Cbox\Id\AccessControl\Exceptions\UnknownRole;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
@@ -38,6 +40,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\InvitationStatus;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Exceptions\InvalidInvitation;
 use Cbox\Id\Organization\Models\Invitation;
 use Illuminate\Support\Facades\DB;
@@ -359,9 +362,93 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
 
         $subject = $this->subjects->findByEmail($invitation->email) ?? $this->subjects->create($invitation->email);
 
+        return $this->redeem($invitation, $token, $subject->id);
+    }
+
+    public function openFor(string $email, int $limit = 20): array
+    {
+        $rows = Invitation::query()
+            ->whereRaw('lower(email) = ?', [mb_strtolower(trim($email))])
+            ->where('status', InvitationStatus::Pending->value)
+            ->where('expires_at', '>', now())
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get();
+
+        if ($rows->isEmpty()) {
+            return [];
+        }
+
+        $organizationIds = [];
+
+        foreach ($rows as $row) {
+            $organizationIds[$row->organization_id] = $row->organization_id;
+        }
+
+        $organizations = $this->organizations->findMany(array_values($organizationIds));
+        $out = [];
+
+        foreach ($rows as $row) {
+            $organization = $organizations[$row->organization_id] ?? null;
+
+            // One row per organization: an app's invitation and the organization's own to
+            // the same address are one decision for the person reading the list.
+            if ($organization === null || $organization->status !== OrganizationStatus::Active || isset($out[$organization->id])) {
+                continue;
+            }
+
+            $inviter = $this->contextFor($organization->id, $row->id)?->invited_by_name;
+
+            if ($inviter === null && is_string($row->invited_by)) {
+                $by = $this->subjects->find($row->invited_by);
+                $inviter = $by->name ?? $by->email ?? null;
+            }
+
+            $out[$organization->id] = new OpenInvitation($row->id, $organization->name, $row->role, $inviter);
+        }
+
+        return array_values($out);
+    }
+
+    public function acceptAs(string $invitationId, Subject $subject): AcceptedInvitation
+    {
+        $email = mb_strtolower(trim((string) $subject->email));
+        $found = Invitation::query()->whereKey($invitationId)->first();
+
+        if (! $subject->emailVerified || $email === '' || $found === null || ! $found->isPending()
+            || mb_strtolower(trim($found->email)) !== $email
+            || $this->organizations->find($found->organization_id)?->status !== OrganizationStatus::Active) {
+            throw InvalidInvitation::make();
+        }
+
+        // Only the token's hash is stored, so there is no link to redeem: a fresh token is
+        // minted for the same address, role and app (superseding the emailed one), what the
+        // old one parked moves over, and it is redeemed at once, all or nothing.
+        $role = in_array($found->role, OrgRoles::assignable(), true) ? $found->role : MembershipRole::Admin;
+
+        return DB::transaction(function () use ($found, $role, $subject): AcceptedInvitation {
+            $pending = $this->invitations->invite($found->organization_id, $found->email, $role, $found->invited_by, $found->app_client_id);
+
+            InvitationRoleGrant::query()
+                ->where('organization_id', $found->organization_id)
+                ->where('invitation_id', $found->id)
+                ->update(['invitation_id' => $pending->invitation->id]);
+
+            InvitationContext::query()
+                ->where('organization_id', $found->organization_id)
+                ->where('invitation_id', $found->id)
+                ->update(['invitation_id' => $pending->invitation->id]);
+
+            return $this->redeem($pending->invitation, $pending->token, $subject->id);
+        });
+    }
+
+    /** Spend a live invitation for this subject: membership, parked roles, way back. */
+    private function redeem(Invitation $invitation, string $token, string $subjectId): AcceptedInvitation
+    {
         // Single-use by the token itself, under a row lock: a replayed or racing accept
         // redeems nothing and throws.
-        $membership = $this->invitations->accept($token, $subject->id);
+        $membership = $this->invitations->accept($token, $subjectId);
 
         // Read BEFORE the context is forgotten, and re-validated rather than trusted: the
         // app's registrations may have changed in the week this invitation was live.
@@ -372,11 +459,11 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
             $context->return_to,
         );
 
-        $withheld = $this->grantParkedRoles($invitation, $subject->id);
+        $withheld = $this->grantParkedRoles($invitation, $subjectId);
 
         $this->forget($invitation->organization_id, [$invitation->id]);
 
-        return new AcceptedInvitation($membership, $subject->id, $target, $withheld);
+        return new AcceptedInvitation($membership, $subjectId, $target, $withheld);
     }
 
     /**

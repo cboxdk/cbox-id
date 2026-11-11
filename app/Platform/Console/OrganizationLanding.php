@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
+use App\Platform\CurrentUser;
+use App\Platform\Organizations\OrganizationRequired;
+
 /**
  * The first usable workspace page follows the current native app permissions.
  * Reading environments opens Projects, financial access opens Billing, and a
@@ -24,6 +27,10 @@ final readonly class OrganizationLanding
             return route('orgs.settings.billing', ['organization' => $this->scope->organizationId()]);
         }
 
-        return route('account');
+        // No product access is a person's own account; no ORGANIZATION at all, in the
+        // Cbox realm, is the screen that gives them one.
+        $required = app(OrganizationRequired::class);
+
+        return $required->appliesTo(app(CurrentUser::class)) ? $required->url() : route('account');
     }
 }

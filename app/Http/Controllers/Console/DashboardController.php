@@ -15,6 +15,7 @@ use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Onboarding\SetupChecklist;
 use App\Platform\Onboarding\SetupProgress;
 use App\Platform\Onboarding\SetupStep;
+use App\Platform\Organizations\OrganizationRequired;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
@@ -66,6 +67,15 @@ final readonly class DashboardController extends ConsoleController
         }
 
         $me = app(CurrentUser::class);
+
+        // The overview has nothing to say to somebody in no organization. In the Cbox realm
+        // they get the screen that gives them one instead of a greeting that says so.
+        $required = app(OrganizationRequired::class);
+
+        if ($required->appliesTo($me)) {
+            return redirect()->to($required->url());
+        }
+
         $organizationId = $me->organizationId();
         $isAdmin = $me->isAdmin();
 

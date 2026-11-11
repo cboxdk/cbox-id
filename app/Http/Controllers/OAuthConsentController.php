@@ -18,6 +18,7 @@ use App\Platform\OAuth\PendingAuthorization;
 use App\Platform\OAuth\PendingAuthorizations;
 use App\Platform\OAuth\RootMcpOAuth;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
+use App\Platform\Organizations\OrganizationRequired;
 use App\Platform\PlatformAuth;
 use App\Platform\SignupPolicy;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
@@ -512,6 +513,25 @@ final readonly class OAuthConsentController extends PageController
          *    hosted steps, which bind the grant and then come back through proceed().
          *  - otherwise the grant carries the session's organization, as it always has.
          */
+        $required = app(OrganizationRequired::class);
+
+        /*
+         * IN THE CBOX REALM, NEVER WITHOUT AN ORGANIZATION. Somebody with none (their last
+         * membership was removed, or they signed up before personal organizations) is not
+         * handed to the app as a person in no organization: they accept an invitation or
+         * continue with a personal organization on one screen, and this request resumes.
+         * Before the `organization` parameter is judged, so an invitation accepted there
+         * can be the organization the app asked for. Silent requests cannot show a screen.
+         */
+        if ($required->appliesTo($me)) {
+            if ($silent) {
+                return $this->redirectError($redirectUri, 'interaction_required', $state,
+                    'The user must choose an organization before continuing.');
+            }
+
+            return $this->interrupt($request, $authorization, $required->url());
+        }
+
         if ($authorization->organizationId !== null) {
             if (app(AuthorizationOrganizations::class)->usableBy($me->id(), $authorization->organizationId) === null) {
                 return $this->redirectError($redirectUri, 'access_denied', $state,

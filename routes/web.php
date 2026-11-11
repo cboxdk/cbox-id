@@ -18,6 +18,7 @@ use App\Http\Controllers\Auth\LinkAccountController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MfaController;
 use App\Http\Controllers\Auth\MobileApprovalController;
+use App\Http\Controllers\Auth\NoOrganizationController;
 use App\Http\Controllers\Auth\OtpStepUpController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\SignedOutController;
@@ -633,6 +634,24 @@ Route::middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpers
         Route::post('/oauth/authorize/{authorization}/organization/new', [OAuthConsentController::class, 'storeOrganization'])
             ->middleware('throttle:20,1')
             ->name('oauth.authorize.organization.store');
+    });
+
+/*
+ * THE "NO ORGANIZATION" SCREEN of the Cbox realm (App\Platform\Organizations\OrganizationRequired): a signed-in
+ * person with no organization accepts an invitation or continues with a personal
+ * organization, and is sent on to the authorization or console page that sent them here.
+ * No plane: it is reached from the issuer's authorize endpoint and from the console alike.
+ * Never during impersonation, which must not found or join anything for the person.
+ */
+Route::middleware([EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth', 'locale'])
+    ->group(function (): void {
+        Route::get('/organization-required', [NoOrganizationController::class, 'show'])->name('organization.required');
+        Route::post('/organization-required/personal', [NoOrganizationController::class, 'personal'])
+            ->middleware('throttle:20,1')
+            ->name('organization.required.personal');
+        Route::post('/organization-required/invitations/{invitation}/accept', [NoOrganizationController::class, 'accept'])
+            ->middleware('throttle:20,1')
+            ->name('organization.required.accept');
     });
 
 /*
