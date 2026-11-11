@@ -15,10 +15,10 @@ Every row below is one action, reached through four doors that run the same code
 
 | | |
 |---|---|
-| REST | `https://<environment-host>/api/v1/…` with `Authorization: Bearer cbid_env_…` (a secret key of that environment), or a token a person delegated. At the platform root, a team member's token names the environment in a `Cbox-Environment` header |
-| MCP | `/mcp` on the environment's host. At the platform root's `/mcp`, every environment tool takes an `environment` argument (an id or slug from `whoami`) |
+| REST | `https://api.cboxid.com/v1/…` with `Authorization: Bearer cbid_env_…` (a secret key, which names its environment), or a token a person delegated (its issuer names the environment). A platform-root team member's token names the environment in a `Cbox-Environment` header. The old `https://<environment-host>/api/v1/…` answers until its callers have moved, marked `Deprecation` |
+| MCP | `https://app.cboxid.com/mcp`, the one MCP server: a key or a token acts in its own environment, and a platform-root token names the environment per tool (`environment`, an id or slug from `whoami`). An environment's own `/mcp` answers too, during the transition |
 | CLI | `cbox login`, `cbox id use <environment>`, then the command below — or `CBOX_ID_ENDPOINT` + `CBOX_ID_TOKEN=cbid_env_…` for CI |
-| OpenAPI | `/api/v1/environment/openapi.yaml` on the host above — public, no key needed ([source](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/environment.yaml)); every operation carries `x-action`, `x-scope` and `x-danger` |
+| OpenAPI | `https://api.cboxid.com/openapi.json`, one document for every plane — public, no key needed ([source](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/openapi.json)); every operation carries `x-action`, `x-scope` and `x-danger`. Reference: `https://api.cboxid.com/docs` |
 
 Danger is how much harm the action can do in the wrong hands: `read` only reads; `write` changes something another write can undo; `destructive` removes or revokes; `critical` mints credentials, takes over access or changes how people sign in. MCP clients are told a destructive or critical tool is destructive, the CLI asks before running one, and an [approval policy](../core-concepts/approvals.md) keys on it.
 
@@ -71,7 +71,7 @@ Create a one-time Admin Portal link an organization's IT administrator uses to s
 
 | | |
 |---|---|
-| REST | `POST /api/v1/organizations/{organization_id}/portal-links` → `201` |
+| REST | `POST /v1/portal-links` (`organization_id` in the query) → `201`; was `POST /api/v1/organizations/{organization_id}/portal-links` |
 | Scope | `portal_links:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `organizations_portal_links_create` |
@@ -92,7 +92,7 @@ List an organization's Admin Portal links from the last 30 days, newest first: w
 
 | | |
 |---|---|
-| REST | `GET /api/v1/organizations/{organization_id}/portal-links` → `200` |
+| REST | `GET /v1/portal-links` (`organization_id` in the query) → `200`; was `GET /api/v1/organizations/{organization_id}/portal-links` |
 | Scope | `portal_links:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `organizations_portal_links_list` |
@@ -108,7 +108,7 @@ Withdraw an Admin Portal link: it can no longer be opened, and a setup session i
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/organizations/{organization_id}/portal-links/{id}` → `204` |
+| REST | `DELETE /v1/portal-links/{id}` (`organization_id` in the query) → `204`; was `DELETE /api/v1/organizations/{organization_id}/portal-links/{id}` |
 | Scope | `portal_links:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `organizations_portal_links_revoke` |
@@ -127,7 +127,7 @@ List the API keys an organization's members created for your apps, a page at a t
 
 | | |
 |---|---|
-| REST | `GET /api/v1/organizations/{organization_id}/api-keys` → `200` |
+| REST | `GET /v1/api-keys` (`organization_id` in the query) → `200`; was `GET /api/v1/organizations/{organization_id}/api-keys` |
 | Scope | `api_keys:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `api_keys_list` |
@@ -146,7 +146,7 @@ Revoke an API key an organization's member created for your app. Whatever uses i
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/api-keys/{id}` → `204` |
+| REST | `DELETE /v1/api-keys/{id}` → `204`; was `DELETE /api/v1/api-keys/{id}` |
 | Scope | `api_keys:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `api_keys_revoke` |
@@ -165,7 +165,7 @@ Register an API (resource server): its identifier becomes the access token audie
 
 | | |
 |---|---|
-| REST | `POST /api/v1/apis` → `201` |
+| REST | `POST /v1/apis` → `201`; was `POST /api/v1/apis` |
 | Scope | `apis:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apis_create` |
@@ -188,7 +188,7 @@ Delete an API and its scopes. Existing tokens keep their audience until they exp
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/apis/{id}` → `204` |
+| REST | `DELETE /v1/apis/{id}` → `204`; was `DELETE /api/v1/apis/{id}` |
 | Scope | `apis:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `apis_delete` |
@@ -204,7 +204,7 @@ Get one registered API and its scopes.
 
 | | |
 |---|---|
-| REST | `GET /api/v1/apis/{id}` → `200` |
+| REST | `GET /v1/apis/{id}` → `200`; was `GET /api/v1/apis/{id}` |
 | Scope | `apis:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `apis_get` |
@@ -220,7 +220,7 @@ List the APIs (resource servers) registered in this environment, with their scop
 
 | | |
 |---|---|
-| REST | `GET /api/v1/apis` → `200` |
+| REST | `GET /v1/apis` → `200`; was `GET /api/v1/apis` |
 | Scope | `apis:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `apis_list` |
@@ -237,7 +237,7 @@ Add a scope to an API, or change the description or tenant access of one it owns
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/apis/{id}/scopes/{key}` → `200` |
+| REST | `PUT /v1/api-scopes/{id}` (`{id}` is the `key`; `api_id` in the query) → `200`; was `PUT /api/v1/apis/{id}/scopes/{key}` |
 | Scope | `apis:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apis_scopes_define` |
@@ -256,7 +256,7 @@ Remove a scope from an API. Apps holding it keep it as a plain scope that no lon
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/apis/{id}/scopes/{key}` → `204` |
+| REST | `DELETE /v1/api-scopes/{id}` (`{id}` is the `key`; `api_id` in the query) → `204`; was `DELETE /api/v1/apis/{id}/scopes/{key}` |
 | Scope | `apis:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `apis_scopes_remove` |
@@ -273,7 +273,7 @@ Rename an API, link or unlink its app, and optionally replace its complete scope
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/apis/{id}` → `200` |
+| REST | `PATCH /v1/apis/{id}` → `200`; was `PATCH /api/v1/apis/{id}` |
 | Scope | `apis:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apis_update` |
@@ -297,7 +297,7 @@ Record 1–100 audit events your app's users caused, each for one of your organi
 
 | | |
 |---|---|
-| REST | `POST /api/v1/audit-logs/events` → `201` |
+| REST | `POST /v1/audit-log-events` → `201`; was `POST /api/v1/audit-logs/events` |
 | Scope | `audit_logs:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `audit_logs_events_create` |
@@ -330,7 +330,7 @@ Read audit events newest first, for one organization or the whole environment, f
 
 | | |
 |---|---|
-| REST | `GET /api/v1/audit-logs/events` → `200` |
+| REST | `GET /v1/audit-log-events` → `200`; was `GET /api/v1/audit-logs/events` |
 | Scope | `audit_logs:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `audit_logs_events_list` |
@@ -354,7 +354,7 @@ Start a CSV export of audit events (same filters as the list). It is written on 
 
 | | |
 |---|---|
-| REST | `POST /api/v1/audit-logs/exports` → `201` |
+| REST | `POST /v1/audit-log-exports` → `201`; was `POST /api/v1/audit-logs/exports` |
 | Scope | `audit_logs:export` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `audit_logs_exports_create` |
@@ -376,7 +376,7 @@ Read an audit-log export's state; once ready it carries a signed download url va
 
 | | |
 |---|---|
-| REST | `GET /api/v1/audit-logs/exports/{id}` → `200` |
+| REST | `GET /v1/audit-log-exports/{id}` → `200`; was `GET /api/v1/audit-logs/exports/{id}` |
 | Scope | `audit_logs:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `audit_logs_exports_get` |
@@ -392,7 +392,7 @@ Define the schema one audit-log action's events must match — allowed target ty
 
 | | |
 |---|---|
-| REST | `POST /api/v1/audit-logs/schemas` → `201` |
+| REST | `POST /v1/audit-log-schemas` → `201`; was `POST /api/v1/audit-logs/schemas` |
 | Scope | `audit_logs:manage` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `audit_logs_schemas_create` |
@@ -413,7 +413,7 @@ Delete an audit-log action's schema. Its events are then accepted unchecked — 
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/audit-logs/schemas/{action}` → `204` |
+| REST | `DELETE /v1/audit-log-schemas/{id}` (`{id}` is the `action`) → `204`; was `DELETE /api/v1/audit-logs/schemas/{action}` |
 | Scope | `audit_logs:manage` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `audit_logs_schemas_delete` |
@@ -429,7 +429,7 @@ Read the schema one audit-log action's events are validated against.
 
 | | |
 |---|---|
-| REST | `GET /api/v1/audit-logs/schemas/{action}` → `200` |
+| REST | `GET /v1/audit-log-schemas/{id}` (`{id}` is the `action`) → `200`; was `GET /api/v1/audit-logs/schemas/{action}` |
 | Scope | `audit_logs:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `audit_logs_schemas_get` |
@@ -445,7 +445,7 @@ List the audit-log schemas this environment validates events against, one per ac
 
 | | |
 |---|---|
-| REST | `GET /api/v1/audit-logs/schemas` → `200` |
+| REST | `GET /v1/audit-log-schemas` → `200`; was `GET /api/v1/audit-logs/schemas` |
 | Scope | `audit_logs:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `audit_logs_schemas_list` |
@@ -462,7 +462,7 @@ Replace an audit-log action's schema with a new version (omitted parts are remov
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/audit-logs/schemas/{action}` → `200` |
+| REST | `PUT /v1/audit-log-schemas/{id}` (`{id}` is the `action`) → `200`; was `PUT /api/v1/audit-logs/schemas/{action}` |
 | Scope | `audit_logs:manage` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `audit_logs_schemas_update` |
@@ -483,7 +483,7 @@ Read this environment's audit-log settings: retention in days and whether strict
 
 | | |
 |---|---|
-| REST | `GET /api/v1/audit-logs/settings` → `200` |
+| REST | `GET /v1/audit-log-settings` → `200`; was `GET /api/v1/audit-logs/settings` |
 | Scope | `audit_logs:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `audit_logs_settings_get` |
@@ -497,7 +497,7 @@ Change this environment's audit-log retention (days, 1–3650) and strict mode. 
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/audit-logs/settings` → `200` |
+| REST | `PATCH /v1/audit-log-settings` → `200`; was `PATCH /api/v1/audit-logs/settings` |
 | Scope | `audit_logs:manage` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `audit_logs_settings_update` |
@@ -514,7 +514,7 @@ Re-hash one organization's audit-event chain (from the oldest event retention ke
 
 | | |
 |---|---|
-| REST | `GET /api/v1/audit-logs/verify` → `200` |
+| REST | `GET /v1/audit-log-events/verify` → `200`; was `GET /api/v1/audit-logs/verify` |
 | Scope | `audit_logs:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `audit_logs_verify` |
@@ -534,7 +534,7 @@ Remove a catalog app without deleting its OAuth clients or user data.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/app-catalog/{key}` → `204` |
+| REST | `DELETE /v1/app-catalog/{id}` (`{id}` is the `key`) → `204`; was `DELETE /api/v1/app-catalog/{key}` |
 | Scope | `app_catalog:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `app_catalog_delete` |
@@ -551,7 +551,7 @@ List the published apps one person sees in one of their organizations, in catalo
 
 | | |
 |---|---|
-| REST | `GET /api/v1/app-catalog/for-user` → `200` |
+| REST | `GET /v1/app-catalog/for-user` → `200`; was `GET /api/v1/app-catalog/for-user` |
 | Scope | `app_catalog:resolve` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `app_catalog_for_user` |
@@ -568,7 +568,7 @@ List catalog apps, including drafts and visibility settings.
 
 | | |
 |---|---|
-| REST | `GET /api/v1/app-catalog` → `200` |
+| REST | `GET /v1/app-catalog` → `200`; was `GET /api/v1/app-catalog` |
 | Scope | `app_catalog:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `app_catalog_list` |
@@ -582,7 +582,7 @@ Create or replace a catalog app, its light and dark icons and visibility. Versio
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/app-catalog/{key}` → `200` |
+| REST | `PUT /v1/app-catalog/{id}` (`{id}` is the `key`) → `200`; was `PUT /api/v1/app-catalog/{key}` |
 | Scope | `app_catalog:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `app_catalog_save` |
@@ -615,7 +615,7 @@ Read a catalog app and its publication settings.
 
 | | |
 |---|---|
-| REST | `GET /api/v1/app-catalog/{key}` → `200` |
+| REST | `GET /v1/app-catalog/{id}` (`{id}` is the `key`) → `200`; was `GET /api/v1/app-catalog/{key}` |
 | Scope | `app_catalog:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `app_catalog_show` |
@@ -633,7 +633,7 @@ Export an app's configuration as a blueprint — no client id, secret, key set o
 
 | | |
 |---|---|
-| REST | `GET /api/v1/apps/{id}/blueprint` → `200` |
+| REST | `GET /v1/apps/{id}/blueprint` → `200`; was `GET /api/v1/apps/{id}/blueprint` |
 | Scope | `apps:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `apps_blueprint` |
@@ -649,7 +649,7 @@ Copy an app into another environment of this project, with a new client id and s
 
 | | |
 |---|---|
-| REST | `POST /api/v1/apps/{id}/copy` → `201` |
+| REST | `POST /v1/apps/{id}/copy` → `201`; was `POST /api/v1/apps/{id}/copy` |
 | Scope | `apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `apps_copy` |
@@ -669,7 +669,7 @@ Register an app (OAuth client) from a short form (name and type) or from another
 
 | | |
 |---|---|
-| REST | `POST /api/v1/apps` → `201` |
+| REST | `POST /v1/apps` → `201`; was `POST /api/v1/apps` |
 | Scope | `apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `apps_create` |
@@ -697,7 +697,7 @@ Delete an app and every secret it holds. Anything signing in as it stops working
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/apps/{id}` → `204` |
+| REST | `DELETE /v1/apps/{id}` → `204`; was `DELETE /api/v1/apps/{id}` |
 | Scope | `apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `apps_delete` |
@@ -713,7 +713,7 @@ Get one app (OAuth client) by its id or its client_id: its kind, grants, redirec
 
 | | |
 |---|---|
-| REST | `GET /api/v1/apps/{id}` → `200` |
+| REST | `GET /v1/apps/{id}` → `200`; was `GET /api/v1/apps/{id}` |
 | Scope | `apps:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `apps_get` |
@@ -729,7 +729,7 @@ List the apps (OAuth clients) registered in this environment. Never a secret.
 
 | | |
 |---|---|
-| REST | `GET /api/v1/apps` → `200` |
+| REST | `GET /v1/apps` → `200`; was `GET /api/v1/apps` |
 | Scope | `apps:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `apps_list` |
@@ -746,7 +746,7 @@ Set or clear the URL an app publishes its roles-and-permissions manifest at. Doe
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/apps/{id}/manifest` → `200` |
+| REST | `PUT /v1/apps/{id}/manifest` → `200`; was `PUT /api/v1/apps/{id}/manifest` |
 | Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_manifest_set` |
@@ -763,7 +763,7 @@ Fetch an app's published manifest now and sync the roles and permissions it decl
 
 | | |
 |---|---|
-| REST | `POST /api/v1/apps/{id}/manifest/sync` → `200` |
+| REST | `POST /v1/apps/{id}/sync-manifest` → `200`; was `POST /api/v1/apps/{id}/manifest/sync` |
 | Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_manifest_sync` |
@@ -779,7 +779,7 @@ Replace an app's complete scope set — the ceiling of what it may request, appl
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/apps/{id}/scopes` → `200` |
+| REST | `PUT /v1/apps/{id}/scopes` → `200`; was `PUT /api/v1/apps/{id}/scopes` |
 | Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_scopes_set` |
@@ -796,7 +796,7 @@ List an app's live client secrets — ids, last characters and dates, never the 
 
 | | |
 |---|---|
-| REST | `GET /api/v1/apps/{id}/secrets` → `200` |
+| REST | `GET /v1/apps/{id}/secrets` → `200`; was `GET /api/v1/apps/{id}/secrets` |
 | Scope | `apps:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `apps_secrets_list` |
@@ -812,7 +812,7 @@ Revoke one of an app's client secrets immediately. Never its last live secret �
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/apps/{id}/secrets/{secret_id}` → `204` |
+| REST | `DELETE /v1/app-secrets/{id}` (`{id}` is the `secret_id`; `app_id` in the query) → `204`; was `DELETE /api/v1/apps/{id}/secrets/{secret_id}` |
 | Scope | `apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `apps_secrets_revoke` |
@@ -829,7 +829,7 @@ Mint a new client secret for an app and retire the current ones after grace_seco
 
 | | |
 |---|---|
-| REST | `POST /api/v1/apps/{id}/secrets` → `201` |
+| REST | `POST /v1/apps/{id}/secrets` → `201`; was `POST /api/v1/apps/{id}/secrets` |
 | Scope | `apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `apps_secrets_rotate` |
@@ -847,7 +847,7 @@ Set the prefix of an app's customer API keys (acme_live), which lets its users c
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/apps/{id}/settings/api-key-prefix` → `200` |
+| REST | `PUT /v1/apps/{id}/api-key-prefix` → `200`; was `PUT /api/v1/apps/{id}/settings/api-key-prefix` |
 | Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_settings_api_key_prefix` |
@@ -864,7 +864,7 @@ Set or clear the URI an app is sent a logout token at when somebody signs out (O
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/apps/{id}/settings/backchannel-logout` → `200` |
+| REST | `PUT /v1/apps/{id}/backchannel-logout` → `200`; was `PUT /api/v1/apps/{id}/settings/backchannel-logout` |
 | Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_settings_backchannel_logout` |
@@ -882,7 +882,7 @@ Turn client-credentials authentication on or off for a confidential app; other g
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/apps/{id}/settings/client-credentials` → `200` |
+| REST | `PUT /v1/apps/{id}/client-credentials` → `200`; was `PUT /api/v1/apps/{id}/settings/client-credentials` |
 | Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_settings_client_credentials` |
@@ -899,7 +899,7 @@ Turn token exchange (RFC 8693) on or off for a confidential app.
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/apps/{id}/settings/token-exchange` → `200` |
+| REST | `PUT /v1/apps/{id}/token-exchange` → `200`; was `PUT /api/v1/apps/{id}/settings/token-exchange` |
 | Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_settings_token_exchange` |
@@ -916,7 +916,7 @@ Set how long an app's access tokens live, in seconds, or null for the install's 
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/apps/{id}/settings/token-lifetime` → `200` |
+| REST | `PUT /v1/apps/{id}/token-lifetime` → `200`; was `PUT /api/v1/apps/{id}/settings/token-lifetime` |
 | Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_settings_token_lifetime` |
@@ -933,7 +933,7 @@ Rename an app and replace its redirect URIs or sign-out redirect URIs. Fields le
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/apps/{id}` → `200` |
+| REST | `PATCH /v1/apps/{id}` → `200`; was `PATCH /api/v1/apps/{id}` |
 | Scope | `apps:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `apps_update` |
@@ -954,7 +954,7 @@ Deny a pending approval request (CIBA) for the person it was raised for: the age
 
 | | |
 |---|---|
-| REST | `POST /api/v1/agent-requests/{request_id}/deny` → `204` |
+| REST | `POST /v1/approvals/{id}/deny` (`{id}` is the `request_id`) → `204`; was `POST /api/v1/agent-requests/{request_id}/deny` |
 | Scope | `approvals:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `approvals_deny` |
@@ -970,7 +970,7 @@ List the pending requests from agents to act as one of this environment's people
 
 | | |
 |---|---|
-| REST | `GET /api/v1/agent-requests` → `200` |
+| REST | `GET /v1/approvals` → `200`; was `GET /api/v1/agent-requests` |
 | Scope | `approvals:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `approvals_list` |
@@ -989,7 +989,7 @@ Read this environment's audit trail oldest first, optionally narrowed by action,
 
 | | |
 |---|---|
-| REST | `GET /api/v1/audit-log` → `200` |
+| REST | `GET /v1/audit-events` → `200`; was `GET /api/v1/audit-log` |
 | Scope | `audit:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `audit_list` |
@@ -1011,7 +1011,7 @@ Read the hosted sign-in theme: the environment default, or one organization's ow
 
 | | |
 |---|---|
-| REST | `GET /api/v1/branding/appearance` → `200` |
+| REST | `GET /v1/appearance` → `200`; was `GET /api/v1/branding/appearance` |
 | Scope | `branding:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `branding_appearance_get` |
@@ -1027,7 +1027,7 @@ Set the hosted sign-in theme (preset, colours, corners, type, uploaded logo and 
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/branding/appearance` → `200` |
+| REST | `PUT /v1/appearance` → `200`; was `PUT /api/v1/branding/appearance` |
 | Scope | `branding:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `branding_appearance_set` |
@@ -1059,7 +1059,7 @@ Read the white-label branding (palette, app name, email sender, logo) of the env
 
 | | |
 |---|---|
-| REST | `GET /api/v1/branding/whitelabel` → `200` |
+| REST | `GET /v1/whitelabel` → `200`; was `GET /api/v1/branding/whitelabel` |
 | Scope | `branding:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `branding_whitelabel_get` |
@@ -1075,7 +1075,7 @@ Save the white-label branding (palette, app name, email sender, welcome email) o
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/branding/whitelabel` → `200` |
+| REST | `PUT /v1/whitelabel` → `200`; was `PUT /api/v1/branding/whitelabel` |
 | Scope | `branding:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `branding_whitelabel_set` |
@@ -1102,7 +1102,7 @@ Connect a Google Workspace or Microsoft Entra directory to sync an organization'
 
 | | |
 |---|---|
-| REST | `POST /api/v1/directories/connect` → `201` |
+| REST | `POST /v1/directories/connect` → `201`; was `POST /api/v1/directories/connect` |
 | Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `directories_connect` |
@@ -1125,7 +1125,7 @@ Register a SCIM directory for an organization. Answers the SCIM base URL and a b
 
 | | |
 |---|---|
-| REST | `POST /api/v1/directories` → `201` |
+| REST | `POST /v1/directories` → `201`; was `POST /api/v1/directories` |
 | Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `directories_create` |
@@ -1143,7 +1143,7 @@ Replace a pull directory's provider credentials, verifying the new ones first. W
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/directories/{id}/credentials` → `200` |
+| REST | `PUT /v1/directories/{id}/credentials` → `200`; was `PUT /api/v1/directories/{id}/credentials` |
 | Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `directories_credentials_replace` |
@@ -1175,7 +1175,7 @@ Delete an inbound directory. Its token stops working; the people it provisioned 
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/directories/{id}` → `204` |
+| REST | `DELETE /v1/directories/{id}` → `204`; was `DELETE /api/v1/directories/{id}` |
 | Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `directories_delete` |
@@ -1192,7 +1192,7 @@ Read one inbound directory: its provider, status, SCIM base URL and last sync er
 
 | | |
 |---|---|
-| REST | `GET /api/v1/directories/{id}` → `200` |
+| REST | `GET /v1/directories/{id}` → `200`; was `GET /api/v1/directories/{id}` |
 | Scope | `directory_sync:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `directories_get` |
@@ -1209,7 +1209,7 @@ List the groups a directory has synced, with the role ids each group is mapped o
 
 | | |
 |---|---|
-| REST | `GET /api/v1/directories/{id}/groups` → `200` |
+| REST | `GET /v1/directories/{id}/groups` → `200`; was `GET /api/v1/directories/{id}/groups` |
 | Scope | `directory_sync:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `directories_groups_list` |
@@ -1228,7 +1228,7 @@ Map a directory group onto a role (everyone in the group holds it as membership 
 
 | | |
 |---|---|
-| REST | `POST /api/v1/directories/{id}/group-roles` → `200` |
+| REST | `POST /v1/directories/{id}/group-roles` → `200`; was `POST /api/v1/directories/{id}/group-roles` |
 | Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `directories_groups_map` |
@@ -1248,7 +1248,7 @@ Connect an HR system (Workday, BambooHR, Rippling, HiBob or Personio) to sync an
 
 | | |
 |---|---|
-| REST | `POST /api/v1/directories/hris` → `201` |
+| REST | `POST /v1/directories/connect-hris` → `201`; was `POST /api/v1/directories/hris` |
 | Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `directories_hris_connect` |
@@ -1280,7 +1280,7 @@ List the directories (SCIM, Google Workspace, Microsoft Entra) syncing people in
 
 | | |
 |---|---|
-| REST | `GET /api/v1/directories` → `200` |
+| REST | `GET /v1/directories` → `200`; was `GET /api/v1/directories` |
 | Scope | `directory_sync:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `directories_list` |
@@ -1298,7 +1298,7 @@ Pause or resume an inbound directory's provisioning.
 
 | | |
 |---|---|
-| REST | `POST /api/v1/directories/{id}/status` → `200` |
+| REST | `POST /v1/directories/{id}/status` → `200`; was `POST /api/v1/directories/{id}/status` |
 | Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `directories_status_set` |
@@ -1316,7 +1316,7 @@ Pull a Google Workspace, Microsoft Entra or HR-system directory now, on a worker
 
 | | |
 |---|---|
-| REST | `POST /api/v1/directories/{id}/sync` → `202` |
+| REST | `POST /v1/directories/{id}/sync` → `202`; was `POST /api/v1/directories/{id}/sync` |
 | Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `directories_sync` |
@@ -1334,7 +1334,7 @@ Set how often a pull directory syncs, and for an HR system which of its fields p
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/directories/{id}/sync-settings` → `200` |
+| REST | `PATCH /v1/directories/{id}/sync-settings` → `200`; was `PATCH /api/v1/directories/{id}/sync-settings` |
 | Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `directories_sync_settings_update` |
@@ -1367,7 +1367,7 @@ Issue a new bearer token for a SCIM directory, returned once. The old token stop
 
 | | |
 |---|---|
-| REST | `POST /api/v1/directories/{id}/rotate` → `200` |
+| REST | `POST /v1/directories/{id}/rotate` → `200`; was `POST /api/v1/directories/{id}/rotate` |
 | Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `directories_token_rotate` |
@@ -1385,7 +1385,7 @@ Rename an inbound directory.
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/directories/{id}` → `200` |
+| REST | `PATCH /v1/directories/{id}` → `200`; was `PATCH /api/v1/directories/{id}` |
 | Scope | `directory_sync:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `directories_update` |
@@ -1405,7 +1405,7 @@ Start serving this environment on a custom domain: returns the DNS TXT record th
 
 | | |
 |---|---|
-| REST | `POST /api/v1/domains` → `200` |
+| REST | `POST /v1/environment-domain` → `200`; was `POST /api/v1/domains` |
 | Scope | `domains:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `domains_add` |
@@ -1421,7 +1421,7 @@ Read this environment's custom domain, and the DNS TXT record that proves a pend
 
 | | |
 |---|---|
-| REST | `GET /api/v1/domains` → `200` |
+| REST | `GET /v1/environment-domain` → `200`; was `GET /api/v1/domains` |
 | Scope | `domains:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `domains_get` |
@@ -1435,7 +1435,7 @@ Stop serving this environment on its custom domain. Anything using that domain s
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/domains` → `204` |
+| REST | `DELETE /v1/environment-domain` → `204`; was `DELETE /api/v1/domains` |
 | Scope | `domains:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `domains_remove` |
@@ -1449,7 +1449,7 @@ Look for the pending domain's DNS TXT record and, once it is visible, serve this
 
 | | |
 |---|---|
-| REST | `POST /api/v1/domains/verify` → `200` |
+| REST | `POST /v1/environment-domain/verify` → `200`; was `POST /api/v1/domains/verify` |
 | Scope | `domains:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `domains_verify` |
@@ -1465,7 +1465,7 @@ Activate an SSO connection: people whose email domain routes to it start signing
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sso/connections/{id}/activate` → `200` |
+| REST | `POST /v1/sso-connections/{id}/activate` → `200`; was `POST /api/v1/sso/connections/{id}/activate` |
 | Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_connections_activate` |
@@ -1482,7 +1482,7 @@ Make a staged SAML signing certificate the connection's primary. The certificate
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sso/connections/{id}/certificates/activate` → `200` |
+| REST | `POST /v1/sso-connections/{id}/activate-certificate` → `200`; was `POST /api/v1/sso/connections/{id}/certificates/activate` |
 | Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_connections_certificates_activate` |
@@ -1500,7 +1500,7 @@ List a SAML connection's signing certificates — primary and staged — with ea
 
 | | |
 |---|---|
-| REST | `GET /api/v1/sso/connections/{id}/certificates` → `200` |
+| REST | `GET /v1/sso-connections/{id}/certificates` → `200`; was `GET /api/v1/sso/connections/{id}/certificates` |
 | Scope | `sso:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `sso_connections_certificates_list` |
@@ -1517,7 +1517,7 @@ Stage a SAML connection's new IdP signing certificate (PEM or IdP metadata) besi
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sso/connections/{id}/certificates` → `200` |
+| REST | `POST /v1/sso-connections/{id}/certificates` → `200`; was `POST /api/v1/sso/connections/{id}/certificates` |
 | Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_connections_certificates_stage` |
@@ -1536,7 +1536,7 @@ Connect an organization's SAML or OIDC identity provider as a draft. Activate it
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sso/connections` → `201` |
+| REST | `POST /v1/sso-connections` → `201`; was `POST /api/v1/sso/connections` |
 | Scope | `sso:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `sso_connections_create` |
@@ -1565,7 +1565,7 @@ Delete an SSO connection and its settings. Where SSO is required, its people can
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/sso/connections/{id}` → `204` |
+| REST | `DELETE /v1/sso-connections/{id}` → `204`; was `DELETE /api/v1/sso/connections/{id}` |
 | Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_connections_delete` |
@@ -1582,7 +1582,7 @@ Disable an SSO connection without deleting it. Where SSO is required, its people
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sso/connections/{id}/disable` → `200` |
+| REST | `POST /v1/sso-connections/{id}/disable` → `200`; was `POST /api/v1/sso/connections/{id}/disable` |
 | Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_connections_disable` |
@@ -1599,7 +1599,7 @@ Read one SSO connection: its type, status, entity ids, URLs, issuer and client i
 
 | | |
 |---|---|
-| REST | `GET /api/v1/sso/connections/{id}` → `200` |
+| REST | `GET /v1/sso-connections/{id}` → `200`; was `GET /api/v1/sso/connections/{id}` |
 | Scope | `sso:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `sso_connections_get` |
@@ -1616,7 +1616,7 @@ List the SAML and OIDC connections organizations sign in through, optionally for
 
 | | |
 |---|---|
-| REST | `GET /api/v1/sso/connections` → `200` |
+| REST | `GET /v1/sso-connections` → `200`; was `GET /api/v1/sso/connections` |
 | Scope | `sso:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `sso_connections_list` |
@@ -1634,7 +1634,7 @@ Require single sign-on for the organization an SSO connection belongs to. Ends e
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sso/connections/{id}/require-sso` → `200` |
+| REST | `POST /v1/sso-connections/{id}/require-sso` → `200`; was `POST /api/v1/sso/connections/{id}/require-sso` |
 | Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_connections_require_sso` |
@@ -1651,7 +1651,7 @@ Change an SSO connection's name or identity-provider settings. Secrets left out 
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/sso/connections/{id}` → `200` |
+| REST | `PATCH /v1/sso-connections/{id}` → `200`; was `PATCH /api/v1/sso/connections/{id}` |
 | Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_connections_update` |
@@ -1678,7 +1678,7 @@ Turn capture on or off for a verified domain: captured, everyone with an address
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sso/domains/{id}/capture` → `200` |
+| REST | `PATCH /v1/organization-domains/{id}` → `200`; was `POST /api/v1/sso/domains/{id}/capture` |
 | Scope | `sso:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sso_domains_capture` |
@@ -1696,7 +1696,7 @@ Claim an email domain for an organization's single sign-on, and get the DNS TXT 
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sso/domains` → `201` |
+| REST | `POST /v1/organization-domains` → `201`; was `POST /api/v1/sso/domains` |
 | Scope | `sso:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `sso_domains_create` |
@@ -1713,7 +1713,7 @@ Remove a claimed email domain. Its people stop being routed to the organization'
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/sso/domains/{id}` → `204` |
+| REST | `DELETE /v1/organization-domains/{id}` → `204`; was `DELETE /api/v1/sso/domains/{id}` |
 | Scope | `sso:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `sso_domains_delete` |
@@ -1730,7 +1730,7 @@ List the email domains organizations claimed for single sign-on, whether each is
 
 | | |
 |---|---|
-| REST | `GET /api/v1/sso/domains` → `200` |
+| REST | `GET /v1/organization-domains` → `200`; was `GET /api/v1/sso/domains` |
 | Scope | `sso:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `sso_domains_list` |
@@ -1748,7 +1748,7 @@ Check a claimed domain's DNS TXT record now. Answers the domain, with verified t
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sso/domains/{id}/verify` → `200` |
+| REST | `POST /v1/organization-domains/{id}/verify` → `200`; was `POST /api/v1/sso/domains/{id}/verify` |
 | Scope | `sso:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `sso_domains_verify` |
@@ -1765,7 +1765,7 @@ Parse an identity provider's SAML metadata (XML or a metadata URL) into the enti
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sso/saml-metadata` → `200` |
+| REST | `POST /v1/saml-metadata-imports` → `200`; was `POST /api/v1/sso/saml-metadata` |
 | Scope | `sso:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `sso_saml_metadata_import` |
@@ -1783,7 +1783,7 @@ Read this environment's domain events (the facts webhooks deliver) oldest first;
 
 | | |
 |---|---|
-| REST | `GET /api/v1/events` → `200` |
+| REST | `GET /v1/events` → `200`; was `GET /api/v1/events` |
 | Scope | `events:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `events_list` |
@@ -1804,7 +1804,7 @@ Define a feature flag: a key apps ask about, its default, and who it is on for �
 
 | | |
 |---|---|
-| REST | `POST /api/v1/feature-flags` → `201` |
+| REST | `POST /v1/feature-flags` → `201`; was `POST /api/v1/feature-flags` |
 | Scope | `feature_flags:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `feature_flags_create` |
@@ -1830,7 +1830,7 @@ Delete a feature flag and its rules. Its key evaluates to off from now on; token
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/feature-flags/{id}` → `204` |
+| REST | `DELETE /v1/feature-flags/{id}` → `204`; was `DELETE /api/v1/feature-flags/{id}` |
 | Scope | `feature_flags:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `feature_flags_delete` |
@@ -1846,7 +1846,7 @@ Evaluate every feature flag for a user in an organization: whether each is on, a
 
 | | |
 |---|---|
-| REST | `GET /api/v1/feature-flags/evaluate` → `200` |
+| REST | `GET /v1/feature-flags/evaluate` → `200`; was `GET /api/v1/feature-flags/evaluate` |
 | Scope | `feature_flags:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `feature_flags_evaluate` |
@@ -1863,7 +1863,7 @@ Read one feature flag: its default, whether it is switched on, and every user, o
 
 | | |
 |---|---|
-| REST | `GET /api/v1/feature-flags/{id}` → `200` |
+| REST | `GET /v1/feature-flags/{id}` → `200`; was `GET /api/v1/feature-flags/{id}` |
 | Scope | `feature_flags:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `feature_flags_get` |
@@ -1879,7 +1879,7 @@ List this environment's feature flags with their default, kill switch and target
 
 | | |
 |---|---|
-| REST | `GET /api/v1/feature-flags` → `200` |
+| REST | `GET /v1/feature-flags` → `200`; was `GET /api/v1/feature-flags` |
 | Scope | `feature_flags:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `feature_flags_list` |
@@ -1896,7 +1896,7 @@ Change a feature flag: switch it on or off for everyone, change its default, or 
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/feature-flags/{id}` → `200` |
+| REST | `PATCH /v1/feature-flags/{id}` → `200`; was `PATCH /api/v1/feature-flags/{id}` |
 | Scope | `feature_flags:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `feature_flags_update` |
@@ -1924,7 +1924,7 @@ Check whether a subject has a relation on a resource — directly, through compu
 
 | | |
 |---|---|
-| REST | `GET /api/v1/fga/check` → `200` |
+| REST | `GET /v1/fga/check` → `200`; was `GET /api/v1/fga/check` |
 | Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_check` |
@@ -1946,7 +1946,7 @@ Run 1–100 checks in one round trip, each written resource#relation@subject (do
 
 | | |
 |---|---|
-| REST | `GET /api/v1/fga/check/batch` → `200` |
+| REST | `GET /v1/fga/check-batch` → `200`; was `GET /api/v1/fga/check/batch` |
 | Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_check_batch` |
@@ -1963,7 +1963,7 @@ List the resources of one type a subject has a relation on (e.g. every document 
 
 | | |
 |---|---|
-| REST | `GET /api/v1/fga/resources` → `200` |
+| REST | `GET /v1/fga/resources` → `200`; was `GET /api/v1/fga/resources` |
 | Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_resources_list` |
@@ -1986,7 +1986,7 @@ Read this environment's fine-grained authorization schema: the source text, its 
 
 | | |
 |---|---|
-| REST | `GET /api/v1/fga/schema` → `200` |
+| REST | `GET /v1/fga/schema` → `200`; was `GET /api/v1/fga/schema` |
 | Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_schema_get` |
@@ -2000,7 +2000,7 @@ Replace this environment's fine-grained authorization schema (types, relations a
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/fga/schema` → `200` |
+| REST | `PUT /v1/fga/schema` → `200`; was `PUT /api/v1/fga/schema` |
 | Scope | `fga:schema` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `fga_schema_update` |
@@ -2016,7 +2016,7 @@ Check a fine-grained authorization schema without saving it: every error by line
 
 | | |
 |---|---|
-| REST | `GET /api/v1/fga/schema/validate` → `200` |
+| REST | `GET /v1/fga/validate-schema` → `200`; was `GET /api/v1/fga/schema/validate` |
 | Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_schema_validate` |
@@ -2032,7 +2032,7 @@ List the subjects of one type that have a relation on a resource (e.g. every use
 
 | | |
 |---|---|
-| REST | `GET /api/v1/fga/subjects` → `200` |
+| REST | `GET /v1/fga/subjects` → `200`; was `GET /api/v1/fga/subjects` |
 | Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_subjects_list` |
@@ -2054,7 +2054,7 @@ Delete 1–100 relationship tuples in one atomic batch. Revokes the access they 
 
 | | |
 |---|---|
-| REST | `POST /api/v1/fga/tuples/delete` → `200` |
+| REST | `POST /v1/fga/delete-tuples` → `200`; was `POST /api/v1/fga/tuples/delete` |
 | Scope | `fga:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `fga_tuples_delete` |
@@ -2077,7 +2077,7 @@ List stored relationship tuples oldest first, filtered by resource type and id, 
 
 | | |
 |---|---|
-| REST | `GET /api/v1/fga/tuples` → `200` |
+| REST | `GET /v1/fga/tuples` → `200`; was `GET /api/v1/fga/tuples` |
 | Scope | `fga:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `fga_tuples_list` |
@@ -2100,7 +2100,7 @@ Write 1–100 relationship tuples (resource#relation@subject) in one atomic batc
 
 | | |
 |---|---|
-| REST | `POST /api/v1/fga/tuples` → `200` |
+| REST | `POST /v1/fga/tuples` → `200`; was `POST /api/v1/fga/tuples` |
 | Scope | `fga:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `fga_tuples_write` |
@@ -2125,7 +2125,7 @@ Close an access review and apply it: every revoke is carried out, and undecided 
 
 | | |
 |---|---|
-| REST | `POST /api/v1/access-reviews/{id}/close` → `200` |
+| REST | `POST /v1/access-reviews/{id}/close` → `200`; was `POST /api/v1/access-reviews/{id}/close` |
 | Scope | `governance:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `access_reviews_close` |
@@ -2142,7 +2142,7 @@ Open an access review of one organization's roles and memberships — or of staf
 
 | | |
 |---|---|
-| REST | `POST /api/v1/access-reviews` → `201` |
+| REST | `POST /v1/access-reviews` → `201`; was `POST /api/v1/access-reviews` |
 | Scope | `governance:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `access_reviews_create` |
@@ -2161,7 +2161,7 @@ Read one access review: its status, due date, pending-item policy and item count
 
 | | |
 |---|---|
-| REST | `GET /api/v1/access-reviews/{id}` → `200` |
+| REST | `GET /v1/access-reviews/{id}` → `200`; was `GET /api/v1/access-reviews/{id}` |
 | Scope | `governance:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `access_reviews_get` |
@@ -2178,7 +2178,7 @@ Certify or revoke one item of an open access review. Revokes are applied when th
 
 | | |
 |---|---|
-| REST | `POST /api/v1/access-reviews/{id}/items/{item_id}` → `200` |
+| REST | `POST /v1/access-review-items/{id}/decide` (`{id}` is the `item_id`; `access_review_id` in the query) → `200`; was `POST /api/v1/access-reviews/{id}/items/{item_id}` |
 | Scope | `governance:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `access_reviews_items_decide` |
@@ -2198,7 +2198,7 @@ List the items an access review asks someone to certify or revoke: who holds wha
 
 | | |
 |---|---|
-| REST | `GET /api/v1/access-reviews/{id}/items` → `200` |
+| REST | `GET /v1/access-reviews/{id}/items` → `200`; was `GET /api/v1/access-reviews/{id}/items` |
 | Scope | `governance:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `access_reviews_items_list` |
@@ -2217,7 +2217,7 @@ List access reviews (certification campaigns), open and closed, optionally those
 
 | | |
 |---|---|
-| REST | `GET /api/v1/access-reviews` → `200` |
+| REST | `GET /v1/access-reviews` → `200`; was `GET /api/v1/access-reviews` |
 | Scope | `governance:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `access_reviews_list` |
@@ -2235,7 +2235,7 @@ Define a role-conflict rule: two or more roles no one person may hold together. 
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sod-policies` → `201` |
+| REST | `POST /v1/sod-policies` → `201`; was `POST /api/v1/sod-policies` |
 | Scope | `governance:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `sod_policies_create` |
@@ -2255,7 +2255,7 @@ Remove a role-conflict rule. Grants it refused are allowed from then on.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/sod-policies/{id}` → `204` |
+| REST | `DELETE /v1/sod-policies/{id}` → `204`; was `DELETE /api/v1/sod-policies/{id}` |
 | Scope | `governance:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sod_policies_delete` |
@@ -2272,7 +2272,7 @@ Read one role-conflict rule: the roles no one person may hold together, and whet
 
 | | |
 |---|---|
-| REST | `GET /api/v1/sod-policies/{id}` → `200` |
+| REST | `GET /v1/sod-policies/{id}` → `200`; was `GET /api/v1/sod-policies/{id}` |
 | Scope | `governance:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `sod_policies_get` |
@@ -2289,7 +2289,7 @@ List role-conflict (segregation of duties) rules: sets of roles no one person ma
 
 | | |
 |---|---|
-| REST | `GET /api/v1/sod-policies` → `200` |
+| REST | `GET /v1/sod-policies` → `200`; was `GET /api/v1/sod-policies` |
 | Scope | `governance:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `sod_policies_list` |
@@ -2307,7 +2307,7 @@ Enforce a role-conflict rule, or stop enforcing it — switched off, grants that
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sod-policies/{id}/status` → `200` |
+| REST | `POST /v1/sod-policies/{id}/status` → `200`; was `POST /api/v1/sod-policies/{id}/status` |
 | Scope | `governance:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `sod_policies_status_set` |
@@ -2327,7 +2327,7 @@ Register a hook at a hook point (token minting, login, registration, password ch
 
 | | |
 |---|---|
-| REST | `POST /api/v1/hooks` → `201` |
+| REST | `POST /v1/hooks` → `201`; was `POST /api/v1/hooks` |
 | Scope | `hooks:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `hooks_create` |
@@ -2347,7 +2347,7 @@ Remove a hook. It is no longer called at its hook point.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/hooks/{id}` → `204` |
+| REST | `DELETE /v1/hooks/{id}` → `204`; was `DELETE /api/v1/hooks/{id}` |
 | Scope | `hooks:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `hooks_delete` |
@@ -2363,7 +2363,7 @@ Get one hook: its URL, hook point, owner and whether it is active. Never its sig
 
 | | |
 |---|---|
-| REST | `GET /api/v1/hooks/{id}` → `200` |
+| REST | `GET /v1/hooks/{id}` → `200`; was `GET /api/v1/hooks/{id}` |
 | Scope | `hooks:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `hooks_get` |
@@ -2379,7 +2379,7 @@ List the hooks — endpoints called during sign-in and token issuance — with t
 
 | | |
 |---|---|
-| REST | `GET /api/v1/hooks` → `200` |
+| REST | `GET /v1/hooks` → `200`; was `GET /api/v1/hooks` |
 | Scope | `hooks:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `hooks_list` |
@@ -2396,7 +2396,7 @@ Pause (active: false) or activate (active: true) a hook.
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/hooks/{id}` → `200` |
+| REST | `PATCH /v1/hooks/{id}` → `200`; was `PATCH /api/v1/hooks/{id}` |
 | Scope | `hooks:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `hooks_update` |
@@ -2415,7 +2415,7 @@ Get an invitation and its acceptance receipt, confined to its organization.
 
 | | |
 |---|---|
-| REST | `GET /api/v1/organizations/{organization_id}/invitations/{invitation_id}` → `200` |
+| REST | `GET /v1/organization-invitations/{id}` (`{id}` is the `invitation_id`; `organization_id` in the query) → `200`; was `GET /api/v1/organizations/{organization_id}/invitations/{invitation_id}` |
 | Scope | `invitations:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `invitations_get` |
@@ -2432,7 +2432,7 @@ List an organization's pending invitations, a page at a time, with the roles eac
 
 | | |
 |---|---|
-| REST | `GET /api/v1/organizations/{organization_id}/invitations` → `200` |
+| REST | `GET /v1/organization-invitations` (`organization_id` in the query) → `200`; was `GET /api/v1/organizations/{organization_id}/invitations` |
 | Scope | `invitations:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `invitations_list` |
@@ -2450,7 +2450,7 @@ Re-send a pending invitation on a fresh link. The answer is the new invitation; 
 
 | | |
 |---|---|
-| REST | `POST /api/v1/organizations/{organization_id}/invitations/{invitation_id}/resend` → `200` |
+| REST | `POST /v1/organization-invitations/{id}/resend` (`{id}` is the `invitation_id`; `organization_id` in the query) → `200`; was `POST /api/v1/organizations/{organization_id}/invitations/{invitation_id}/resend` |
 | Scope | `invitations:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `invitations_resend` |
@@ -2467,7 +2467,7 @@ Withdraw a pending invitation: its link stops working and the roles parked for i
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/organizations/{organization_id}/invitations/{invitation_id}` → `204` |
+| REST | `DELETE /v1/organization-invitations/{id}` (`{id}` is the `invitation_id`; `organization_id` in the query) → `204`; was `DELETE /api/v1/organizations/{organization_id}/invitations/{invitation_id}` |
 | Scope | `invitations:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `invitations_revoke` |
@@ -2484,7 +2484,7 @@ Invite someone into an organization by email, on a tier and with access roles (b
 
 | | |
 |---|---|
-| REST | `POST /api/v1/organizations/{organization_id}/invitations` → `201` |
+| REST | `POST /v1/organization-invitations` (`organization_id` in the query) → `201`; was `POST /api/v1/organizations/{organization_id}/invitations` |
 | Scope | `invitations:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `invitations_send` |
@@ -2508,7 +2508,7 @@ Approve the declared legacy login endpoint: sign-ins for people not yet migrated
 
 | | |
 |---|---|
-| REST | `POST /api/v1/legacy-login/approve` → `200` |
+| REST | `POST /v1/legacy-login/approve` → `200`; was `POST /api/v1/legacy-login/approve` |
 | Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `legacy_login_approve` |
@@ -2522,7 +2522,7 @@ Read the legacy login endpoint an app declared for migration, and whether it is 
 
 | | |
 |---|---|
-| REST | `GET /api/v1/legacy-login` → `200` |
+| REST | `GET /v1/legacy-login` → `200`; was `GET /api/v1/legacy-login` |
 | Scope | `signin:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `legacy_login_get` |
@@ -2536,7 +2536,7 @@ Ask the declared legacy login endpoint whether it knows an address — your own 
 
 | | |
 |---|---|
-| REST | `POST /api/v1/legacy-login/probe` → `200` |
+| REST | `POST /v1/legacy-login/probe` → `200`; was `POST /api/v1/legacy-login/probe` |
 | Scope | `signin:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `legacy_login_probe` |
@@ -2552,7 +2552,7 @@ Withdraw the legacy login approval. People not yet migrated can no longer sign i
 
 | | |
 |---|---|
-| REST | `POST /api/v1/legacy-login/revoke` → `200` |
+| REST | `POST /v1/legacy-login/revoke` → `200`; was `POST /api/v1/legacy-login/revoke` |
 | Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `legacy_login_revoke` |
@@ -2568,7 +2568,7 @@ Stream the audit trail to a SIEM (Splunk, Elastic, Graylog, CEF, JSON), Datadog,
 
 | | |
 |---|---|
-| REST | `POST /api/v1/log-streams` → `201` |
+| REST | `POST /v1/log-streams` → `201`; was `POST /api/v1/log-streams` |
 | Scope | `log_streams:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `log_streams_create` |
@@ -2606,7 +2606,7 @@ Delete an audit log stream. Nothing more is delivered to its endpoint.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/log-streams/{id}` → `204` |
+| REST | `DELETE /v1/log-streams/{id}` → `204`; was `DELETE /api/v1/log-streams/{id}` |
 | Scope | `log_streams:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `log_streams_delete` |
@@ -2622,7 +2622,7 @@ Get one audit log stream: destination, endpoint, auth scheme, owner and health. 
 
 | | |
 |---|---|
-| REST | `GET /api/v1/log-streams/{id}` → `200` |
+| REST | `GET /v1/log-streams/{id}` → `200`; was `GET /api/v1/log-streams/{id}` |
 | Scope | `log_streams:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `log_streams_get` |
@@ -2638,7 +2638,7 @@ List the SIEM destinations this environment's audit trail is streamed to, and wh
 
 | | |
 |---|---|
-| REST | `GET /api/v1/log-streams` → `200` |
+| REST | `GET /v1/log-streams` → `200`; was `GET /api/v1/log-streams` |
 | Scope | `log_streams:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `log_streams_list` |
@@ -2655,7 +2655,7 @@ Send one test event to a log stream now and report whether the destination accep
 
 | | |
 |---|---|
-| REST | `POST /api/v1/log-streams/{id}/test` → `200` |
+| REST | `POST /v1/log-streams/{id}/test` → `200`; was `POST /api/v1/log-streams/{id}/test` |
 | Scope | `log_streams:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `log_streams_test` |
@@ -2671,7 +2671,7 @@ Change an audit log stream's name, destination, endpoint, options or credential 
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/log-streams/{id}` → `200` |
+| REST | `PATCH /v1/log-streams/{id}` → `200`; was `PATCH /api/v1/log-streams/{id}` |
 | Scope | `log_streams:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `log_streams_update` |
@@ -2711,7 +2711,7 @@ Add an existing user to an organization on a tier (`admin` or `member`), optiona
 
 | | |
 |---|---|
-| REST | `POST /api/v1/organizations/{organization_id}/members` → `201` |
+| REST | `POST /v1/organization-memberships` (`organization_id` in the query) → `201`; was `POST /api/v1/organizations/{organization_id}/members` |
 | Scope | `members:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `members_add` |
@@ -2732,7 +2732,7 @@ List an organization's members, a page at a time, with each one's tier, status, 
 
 | | |
 |---|---|
-| REST | `GET /api/v1/organizations/{organization_id}/members` → `200` |
+| REST | `GET /v1/organization-memberships` (`organization_id` in the query) → `200`; was `GET /api/v1/organizations/{organization_id}/members` |
 | Scope | `members:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `members_list` |
@@ -2750,7 +2750,7 @@ Remove a member from an organization, with every role they held there. The last 
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/organizations/{organization_id}/members/{user_id}` → `204` |
+| REST | `DELETE /v1/organization-memberships/{id}` (`{id}` is the `user_id`; `organization_id` in the query) → `204`; was `DELETE /api/v1/organizations/{organization_id}/members/{user_id}` |
 | Scope | `members:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `members_remove` |
@@ -2767,7 +2767,7 @@ Change a member's tier to `admin` or `member`. Ownership moves with transfer-own
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/organizations/{organization_id}/members/{user_id}` → `200` |
+| REST | `PATCH /v1/organization-memberships/{id}` (`{id}` is the `user_id`; `organization_id` in the query) → `200`; was `PATCH /api/v1/organizations/{organization_id}/members/{user_id}` |
 | Scope | `members:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `members_update` |
@@ -2787,7 +2787,7 @@ Read current environment onboarding evidence. Does not certify application secur
 
 | | |
 |---|---|
-| REST | `GET /api/v1/onboarding` → `200` |
+| REST | `GET /v1/onboarding` → `200`; was `GET /api/v1/onboarding` |
 | Scope | `signin:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `onboarding_get` |
@@ -2803,7 +2803,7 @@ Create an organization in this environment, optionally with an existing user as 
 
 | | |
 |---|---|
-| REST | `POST /api/v1/organizations` → `201` |
+| REST | `POST /v1/organizations` → `201`; was `POST /api/v1/organizations` |
 | Scope | `organizations:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `organizations_create` |
@@ -2824,7 +2824,7 @@ Archive an organization: everyone in it loses access at once. The records are ke
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/organizations/{id}` → `200` |
+| REST | `DELETE /v1/organizations/{id}` → `200`; was `DELETE /api/v1/organizations/{id}` |
 | Scope | `organizations:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `organizations_delete` |
@@ -2925,7 +2925,7 @@ Get one organization of this environment by id.
 
 | | |
 |---|---|
-| REST | `GET /api/v1/organizations/{id}` → `200` |
+| REST | `GET /v1/organizations/{id}` → `200`; was `GET /api/v1/organizations/{id}` |
 | Scope | `organizations:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `organizations_get` |
@@ -2941,7 +2941,7 @@ List the organizations in this environment, a page at a time. Narrow by a `q` fr
 
 | | |
 |---|---|
-| REST | `GET /api/v1/organizations` → `200` |
+| REST | `GET /v1/organizations` → `200`; was `GET /api/v1/organizations` |
 | Scope | `organizations:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `organizations_list` |
@@ -2960,7 +2960,7 @@ Lift an organization's suspension so its members can sign in again.
 
 | | |
 |---|---|
-| REST | `POST /api/v1/organizations/{id}/reactivate` → `200` |
+| REST | `POST /v1/organizations/{id}/reactivate` → `200`; was `POST /api/v1/organizations/{id}/reactivate` |
 | Scope | `organizations:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `organizations_reactivate` |
@@ -2976,7 +2976,7 @@ Suspend an organization: its members cannot sign in to it until it is reactivate
 
 | | |
 |---|---|
-| REST | `POST /api/v1/organizations/{id}/suspend` → `200` |
+| REST | `POST /v1/organizations/{id}/suspend` → `200`; was `POST /api/v1/organizations/{id}/suspend` |
 | Scope | `organizations:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `organizations_suspend` |
@@ -2992,7 +2992,7 @@ Make a member the owner of an organization. Every current owner stays on as an a
 
 | | |
 |---|---|
-| REST | `POST /api/v1/organizations/{id}/transfer-ownership` → `200` |
+| REST | `POST /v1/organizations/{id}/transfer-ownership` → `200`; was `POST /api/v1/organizations/{id}/transfer-ownership` |
 | Scope | `organizations:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `organizations_transfer_ownership` |
@@ -3009,7 +3009,7 @@ Rename an organization, change its slug, or replace its metadata. Only what is s
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/organizations/{id}` → `200` |
+| REST | `PATCH /v1/organizations/{id}` → `200`; was `PATCH /api/v1/organizations/{id}` |
 | Scope | `organizations:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `organizations_update` |
@@ -3030,7 +3030,7 @@ Register a downstream app this platform pushes an organization's people to over 
 
 | | |
 |---|---|
-| REST | `POST /api/v1/provisioning-targets` → `201` |
+| REST | `POST /v1/provisioning-targets` → `201`; was `POST /api/v1/provisioning-targets` |
 | Scope | `provisioning:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `provisioning_targets_create` |
@@ -3054,7 +3054,7 @@ Delete a downstream SCIM target. Nothing more is pushed to it.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/provisioning-targets/{id}` → `204` |
+| REST | `DELETE /v1/provisioning-targets/{id}` → `204`; was `DELETE /api/v1/provisioning-targets/{id}` |
 | Scope | `provisioning:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `provisioning_targets_delete` |
@@ -3071,7 +3071,7 @@ Read one downstream SCIM target: its URL, auth scheme, status and last error. Ne
 
 | | |
 |---|---|
-| REST | `GET /api/v1/provisioning-targets/{id}` → `200` |
+| REST | `GET /v1/provisioning-targets/{id}` → `200`; was `GET /api/v1/provisioning-targets/{id}` |
 | Scope | `provisioning:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `provisioning_targets_get` |
@@ -3088,7 +3088,7 @@ List the downstream SCIM targets people are provisioned to, optionally for one o
 
 | | |
 |---|---|
-| REST | `GET /api/v1/provisioning-targets` → `200` |
+| REST | `GET /v1/provisioning-targets` → `200`; was `GET /api/v1/provisioning-targets` |
 | Scope | `provisioning:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `provisioning_targets_list` |
@@ -3106,7 +3106,7 @@ Pause or resume pushing people to a downstream SCIM target.
 
 | | |
 |---|---|
-| REST | `POST /api/v1/provisioning-targets/{id}/status` → `200` |
+| REST | `POST /v1/provisioning-targets/{id}/status` → `200`; was `POST /api/v1/provisioning-targets/{id}/status` |
 | Scope | `provisioning:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `provisioning_targets_status_set` |
@@ -3126,7 +3126,7 @@ Disconnect a person's connected account: revoke it at the provider where support
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/pipes/{id}/connections/{connection_id}` → `204` |
+| REST | `DELETE /v1/pipe-connections/{id}` (`{id}` is the `connection_id`; `pipe_id` in the query) → `204`; was `DELETE /api/v1/pipes/{id}/connections/{connection_id}` |
 | Scope | `pipes:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `pipes_connections_delete` |
@@ -3143,7 +3143,7 @@ List the accounts people connected through a pipe: who, which account, granted s
 
 | | |
 |---|---|
-| REST | `GET /api/v1/pipes/{id}/connections` → `200` |
+| REST | `GET /v1/pipes/{id}/connections` → `200`; was `GET /api/v1/pipes/{id}/connections` |
 | Scope | `pipes:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `pipes_connections_list` |
@@ -3162,7 +3162,7 @@ Configure a pipe: the environment's OAuth app at a third-party provider (GitHub,
 
 | | |
 |---|---|
-| REST | `POST /api/v1/pipes` → `201` |
+| REST | `POST /v1/pipes` → `201`; was `POST /api/v1/pipes` |
 | Scope | `pipes:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `pipes_create` |
@@ -3184,7 +3184,7 @@ Remove a pipe and every connection through it. Their tokens are revoked here, no
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/pipes/{id}` → `204` |
+| REST | `DELETE /v1/pipes/{id}` → `204`; was `DELETE /api/v1/pipes/{id}` |
 | Scope | `pipes:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `pipes_delete` |
@@ -3200,7 +3200,7 @@ Show one pipe: its provider, OAuth client id, scopes, the redirect URI to regist
 
 | | |
 |---|---|
-| REST | `GET /api/v1/pipes/{id}` → `200` |
+| REST | `GET /v1/pipes/{id}` → `200`; was `GET /api/v1/pipes/{id}` |
 | Scope | `pipes:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `pipes_get` |
@@ -3216,7 +3216,7 @@ Grant an app (by OAuth client id) the right to lease fresh access tokens for the
 
 | | |
 |---|---|
-| REST | `POST /api/v1/pipes/{id}/grants` → `200` |
+| REST | `POST /v1/pipes/{id}/grants` → `200`; was `POST /api/v1/pipes/{id}/grants` |
 | Scope | `pipes:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `pipes_grants_create` |
@@ -3233,7 +3233,7 @@ Withdraw an app's right to lease the tokens people connected through this pipe.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/pipes/{id}/grants/{client_id}` → `204` |
+| REST | `DELETE /v1/pipe-grants/{id}` (`{id}` is the `client_id`; `pipe_id` in the query) → `204`; was `DELETE /api/v1/pipes/{id}/grants/{client_id}` |
 | Scope | `pipes:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `pipes_grants_delete` |
@@ -3250,7 +3250,7 @@ List the pipes — the third-party providers people can connect their accounts t
 
 | | |
 |---|---|
-| REST | `GET /api/v1/pipes` → `200` |
+| REST | `GET /v1/pipes` → `200`; was `GET /api/v1/pipes` |
 | Scope | `pipes:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `pipes_list` |
@@ -3267,7 +3267,7 @@ Change a pipe — client id, client secret (sealed), scopes, parameters, or whet
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/pipes/{id}` → `200` |
+| REST | `PATCH /v1/pipes/{id}` → `200`; was `PATCH /api/v1/pipes/{id}` |
 | Scope | `pipes:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `pipes_update` |
@@ -3292,7 +3292,7 @@ Create a publishable frontend key for a browser app, usable only from the origin
 
 | | |
 |---|---|
-| REST | `POST /api/v1/frontend-keys` → `201` |
+| REST | `POST /v1/frontend-keys` → `201`; was `POST /api/v1/frontend-keys` |
 | Scope | `frontend_keys:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `frontend_keys_create` |
@@ -3310,7 +3310,7 @@ List the publishable frontend keys browser apps present to the Frontend API, in 
 
 | | |
 |---|---|
-| REST | `GET /api/v1/frontend-keys` → `200` |
+| REST | `GET /v1/frontend-keys` → `200`; was `GET /api/v1/frontend-keys` |
 | Scope | `frontend_keys:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `frontend_keys_list` |
@@ -3327,7 +3327,7 @@ Revoke a publishable frontend key. Pages still holding it stop working immediate
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/frontend-keys/{id}` → `204` |
+| REST | `DELETE /v1/frontend-keys/{id}` → `204`; was `DELETE /api/v1/frontend-keys/{id}` |
 | Scope | `frontend_keys:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `frontend_keys_revoke` |
@@ -3343,7 +3343,7 @@ Replace the exact list of origins allowed to present a publishable frontend key.
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/frontend-keys/{id}/origins` → `200` |
+| REST | `PUT /v1/frontend-keys/{id}/origins` → `200`; was `PUT /api/v1/frontend-keys/{id}/origins` |
 | Scope | `frontend_keys:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `frontend_keys_set_origins` |
@@ -3362,7 +3362,7 @@ Read one Radar decision: the verdict, whether it was enforced, the deciding rule
 
 | | |
 |---|---|
-| REST | `GET /api/v1/radar/decisions/{id}` → `200` |
+| REST | `GET /v1/radar-decisions/{id}` → `200`; was `GET /api/v1/radar/decisions/{id}` |
 | Scope | `radar:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `radar_decisions_get` |
@@ -3378,7 +3378,7 @@ List this environment's Radar decisions newest first — verdict, deciding rule,
 
 | | |
 |---|---|
-| REST | `GET /api/v1/radar/decisions` → `200` |
+| REST | `GET /v1/radar-decisions` → `200`; was `GET /api/v1/radar/decisions` |
 | Scope | `radar:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `radar_decisions_list` |
@@ -3405,7 +3405,7 @@ Add an entry to this environment's Radar allow or deny list: an IP or CIDR range
 
 | | |
 |---|---|
-| REST | `POST /api/v1/radar/lists` → `201` |
+| REST | `POST /v1/radar-lists` → `201`; was `POST /api/v1/radar/lists` |
 | Scope | `radar:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `radar_lists_add` |
@@ -3425,7 +3425,7 @@ List this environment's Radar allow and deny entries — IPs and CIDR ranges, ad
 
 | | |
 |---|---|
-| REST | `GET /api/v1/radar/lists` → `200` |
+| REST | `GET /v1/radar-lists` → `200`; was `GET /api/v1/radar/lists` |
 | Scope | `radar:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `radar_lists_list` |
@@ -3444,7 +3444,7 @@ Remove an entry from this environment's Radar allow or deny list.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/radar/lists/{id}` → `204` |
+| REST | `DELETE /v1/radar-lists/{id}` → `204`; was `DELETE /api/v1/radar/lists/{id}` |
 | Scope | `radar:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `radar_lists_remove` |
@@ -3460,7 +3460,7 @@ Switch this environment's Radar between `monitor` (verdicts recorded, never acte
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/radar/mode` → `200` |
+| REST | `POST /v1/radar-settings/set-mode` → `200`; was `PUT /api/v1/radar/mode` |
 | Scope | `radar:manage` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `radar_mode_set` |
@@ -3476,7 +3476,7 @@ Add a Radar rule: when EVERY condition (field, operator, value) holds, allow, ch
 
 | | |
 |---|---|
-| REST | `POST /api/v1/radar/rules` → `201` |
+| REST | `POST /v1/radar-rules` → `201`; was `POST /api/v1/radar/rules` |
 | Scope | `radar:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `radar_rules_create` |
@@ -3502,7 +3502,7 @@ Delete a Radar rule. Attempts it decided are decided by the next matching rule, 
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/radar/rules/{id}` → `204` |
+| REST | `DELETE /v1/radar-rules/{id}` → `204`; was `DELETE /api/v1/radar/rules/{id}` |
 | Scope | `radar:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `radar_rules_delete` |
@@ -3518,7 +3518,7 @@ Read one Radar rule: its action, the flows it applies to, its position and its c
 
 | | |
 |---|---|
-| REST | `GET /api/v1/radar/rules/{id}` → `200` |
+| REST | `GET /v1/radar-rules/{id}` → `200`; was `GET /api/v1/radar/rules/{id}` |
 | Scope | `radar:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `radar_rules_get` |
@@ -3534,7 +3534,7 @@ List this environment's own Radar rules in evaluation order (the first whose con
 
 | | |
 |---|---|
-| REST | `GET /api/v1/radar/rules` → `200` |
+| REST | `GET /v1/radar-rules` → `200`; was `GET /api/v1/radar/rules` |
 | Scope | `radar:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `radar_rules_list` |
@@ -3551,7 +3551,7 @@ Set the order Radar rules are evaluated in: `rule_ids` lists every rule of the e
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/radar/rules/order` → `204` |
+| REST | `POST /v1/radar-rules/reorder` → `204`; was `PUT /api/v1/radar/rules/order` |
 | Scope | `radar:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `radar_rules_reorder` |
@@ -3567,7 +3567,7 @@ Change a Radar rule: its name, description, action, flows, enabled state, positi
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/radar/rules/{id}` → `200` |
+| REST | `PATCH /v1/radar-rules/{id}` → `200`; was `PATCH /api/v1/radar/rules/{id}` |
 | Scope | `radar:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `radar_rules_update` |
@@ -3594,7 +3594,7 @@ Read this environment's Radar settings: the mode (monitor or enforce, and whethe
 
 | | |
 |---|---|
-| REST | `GET /api/v1/radar/settings` → `200` |
+| REST | `GET /v1/radar-settings` → `200`; was `GET /api/v1/radar/settings` |
 | Scope | `radar:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `radar_settings_get` |
@@ -3608,7 +3608,7 @@ Tune this environment's built-in Radar rules: `builtin_rules` maps a rule key (c
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/radar/settings` → `200` |
+| REST | `PATCH /v1/radar-settings` → `200`; was `PATCH /api/v1/radar/settings` |
 | Scope | `radar:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `radar_settings_update` |
@@ -3626,7 +3626,7 @@ Replace one app's member roles atomically. Other apps and the organization membe
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/organizations/{organization_id}/members/{user_id}/apps/{client_id}/roles` → `200` |
+| REST | `PUT /v1/organization-memberships/{id}/app-roles` (`{id}` is the `user_id`; `organization_id`, `client_id` in the query) → `200`; was `PUT /api/v1/organizations/{organization_id}/members/{user_id}/apps/{client_id}/roles` |
 | Scope | `roles:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `members_apps_roles_replace` |
@@ -3646,7 +3646,7 @@ Grant a member an access role inside one organization, with the environment's au
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/organizations/{organization_id}/members/{user_id}/roles/{role_id}` → `200` |
+| REST | `PUT /v1/role-assignments/{id}` (`{id}` is the `role_id`; `organization_id`, `user_id` in the query) → `200`; was `PUT /api/v1/organizations/{organization_id}/members/{user_id}/roles/{role_id}` |
 | Scope | `roles:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `members_roles_grant` |
@@ -3665,7 +3665,7 @@ List the access roles a member holds inside one organization (staff roles held e
 
 | | |
 |---|---|
-| REST | `GET /api/v1/organizations/{organization_id}/members/{user_id}/roles` → `200` |
+| REST | `GET /v1/role-assignments` (`organization_id`, `user_id` in the query) → `200`; was `GET /api/v1/organizations/{organization_id}/members/{user_id}/roles` |
 | Scope | `roles:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `members_roles_list` |
@@ -3682,7 +3682,7 @@ Take an access role back from a member inside one organization. Name the role by
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/organizations/{organization_id}/members/{user_id}/roles/{role_id}` → `204` |
+| REST | `DELETE /v1/role-assignments/{id}` (`{id}` is the `role_id`; `organization_id`, `user_id` in the query) → `204`; was `DELETE /api/v1/organizations/{organization_id}/members/{user_id}/roles/{role_id}` |
 | Scope | `roles:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `members_roles_revoke` |
@@ -3701,7 +3701,7 @@ Author a manual `feature:action` permission, shared with the environment (organi
 
 | | |
 |---|---|
-| REST | `POST /api/v1/permissions` → `201` |
+| REST | `POST /v1/permissions` → `201`; was `POST /api/v1/permissions` |
 | Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `permissions_create` |
@@ -3720,7 +3720,7 @@ Delete a manual permission: every role carrying it loses it first.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/permissions/{id}` → `204` |
+| REST | `DELETE /v1/permissions/{id}` → `204`; was `DELETE /api/v1/permissions/{id}` |
 | Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `permissions_delete` |
@@ -3736,7 +3736,7 @@ List the permission catalogue roles are composed from, a page at a time. Narrow 
 
 | | |
 |---|---|
-| REST | `GET /api/v1/permissions` → `200` |
+| REST | `GET /v1/permissions` → `200`; was `GET /api/v1/permissions` |
 | Scope | `roles:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `permissions_list` |
@@ -3756,7 +3756,7 @@ Change a manual permission's description, and on the shared tier whether organiz
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/permissions/{id}` → `200` |
+| REST | `PATCH /v1/permissions/{id}` → `200`; was `PATCH /api/v1/permissions/{id}` |
 | Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `permissions_update` |
@@ -3774,7 +3774,7 @@ Define a role for one organization, or (organization_id null) for the whole envi
 
 | | |
 |---|---|
-| REST | `POST /api/v1/roles` → `201` |
+| REST | `POST /v1/roles` → `201`; was `POST /api/v1/roles` |
 | Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `roles_create` |
@@ -3794,7 +3794,7 @@ Activate a reviewed application role definition for its existing holders.
 
 | | |
 |---|---|
-| REST | `POST /api/v1/roles/{id}/definition/activate` → `200` |
+| REST | `POST /v1/roles/{id}/activate-definition` → `200`; was `POST /api/v1/roles/{id}/definition/activate` |
 | Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `roles_definition_activate` |
@@ -3811,7 +3811,7 @@ Delete a role: everyone who holds it loses it. An app-declared role is removed f
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/roles/{id}` → `204` |
+| REST | `DELETE /v1/roles/{id}` → `204`; was `DELETE /api/v1/roles/{id}` |
 | Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `roles_delete` |
@@ -3827,7 +3827,7 @@ Get one role and the permissions it carries. Name it by id, or by manifest `key`
 
 | | |
 |---|---|
-| REST | `GET /api/v1/roles/{id}` → `200` |
+| REST | `GET /v1/roles/{id}` → `200`; was `GET /api/v1/roles/{id}` |
 | Scope | `roles:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `roles_get` |
@@ -3844,7 +3844,7 @@ List the roles that can be granted in this environment, with their permissions. 
 
 | | |
 |---|---|
-| REST | `GET /api/v1/roles` → `200` |
+| REST | `GET /v1/roles` → `200`; was `GET /api/v1/roles` |
 | Scope | `roles:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `roles_list` |
@@ -3861,7 +3861,7 @@ Add a permission to a role: everyone holding the role gains it. The permission m
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/roles/{id}/permissions/{permission_id}` → `200` |
+| REST | `PUT /v1/role-permissions/{id}` (`{id}` is the `permission_id`; `role_id` in the query) → `200`; was `PUT /api/v1/roles/{id}/permissions/{permission_id}` |
 | Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `roles_permissions_grant` |
@@ -3878,7 +3878,7 @@ Remove a permission from a role: everyone holding the role loses it.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/roles/{id}/permissions/{permission_id}` → `200` |
+| REST | `DELETE /v1/role-permissions/{id}` (`{id}` is the `permission_id`; `role_id` in the query) → `200`; was `DELETE /api/v1/roles/{id}/permissions/{permission_id}` |
 | Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `roles_permissions_revoke` |
@@ -3895,7 +3895,7 @@ Rename a role or change its description. An app-declared role is changed in the 
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/roles/{id}` → `200` |
+| REST | `PATCH /v1/roles/{id}` → `200`; was `PATCH /api/v1/roles/{id}` |
 | Scope | `role_definitions:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `roles_update` |
@@ -3913,7 +3913,7 @@ Whether a user holds a role everywhere in this environment: the grant, or 404. N
 
 | | |
 |---|---|
-| REST | `GET /api/v1/users/{id}/environment-roles/{role_id}` → `200` |
+| REST | `GET /v1/environment-role-assignments/{id}` (`{id}` is the `role_id`; `user_id` in the query) → `200`; was `GET /api/v1/users/{id}/environment-roles/{role_id}` |
 | Scope | `roles:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `users_environment_roles_get` |
@@ -3931,7 +3931,7 @@ Grant a user a staff role: held everywhere in this environment, in every organiz
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/users/{id}/environment-roles/{role_id}` → `200` |
+| REST | `PUT /v1/environment-role-assignments/{id}` (`{id}` is the `role_id`; `user_id` in the query) → `200`; was `PUT /api/v1/users/{id}/environment-roles/{role_id}` |
 | Scope | `roles:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `users_environment_roles_grant` |
@@ -3949,7 +3949,7 @@ List the staff roles a user holds everywhere in this environment (not those held
 
 | | |
 |---|---|
-| REST | `GET /api/v1/users/{id}/environment-roles` → `200` |
+| REST | `GET /v1/users/{id}/environment-roles` → `200`; was `GET /api/v1/users/{id}/environment-roles` |
 | Scope | `roles:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `users_environment_roles_list` |
@@ -3965,7 +3965,7 @@ Take a staff role (held everywhere in this environment) back from a user.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/users/{id}/environment-roles/{role_id}` → `204` |
+| REST | `DELETE /v1/environment-role-assignments/{id}` (`{id}` is the `role_id`; `user_id` in the query) → `204`; was `DELETE /api/v1/users/{id}/environment-roles/{role_id}` |
 | Scope | `roles:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `users_environment_roles_revoke` |
@@ -3985,7 +3985,7 @@ Register a SAML app that signs people in with their account here. Decides where 
 
 | | |
 |---|---|
-| REST | `POST /api/v1/saml-apps` → `201` |
+| REST | `POST /v1/saml-apps` → `201`; was `POST /api/v1/saml-apps` |
 | Scope | `saml_apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `saml_apps_create` |
@@ -4010,7 +4010,7 @@ Remove a SAML app. People can no longer sign in to it with their account here.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/saml-apps/{id}` → `204` |
+| REST | `DELETE /v1/saml-apps/{id}` → `204`; was `DELETE /api/v1/saml-apps/{id}` |
 | Scope | `saml_apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `saml_apps_delete` |
@@ -4026,7 +4026,7 @@ Read one SAML app: its entity id, ACS URL, NameID and attribute mappings. Never 
 
 | | |
 |---|---|
-| REST | `GET /api/v1/saml-apps/{id}` → `200` |
+| REST | `GET /v1/saml-apps/{id}` → `200`; was `GET /api/v1/saml-apps/{id}` |
 | Scope | `saml_apps:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `saml_apps_get` |
@@ -4042,7 +4042,7 @@ List the SAML apps that trust this environment as their identity provider.
 
 | | |
 |---|---|
-| REST | `GET /api/v1/saml-apps` → `200` |
+| REST | `GET /v1/saml-apps` → `200`; was `GET /api/v1/saml-apps` |
 | Scope | `saml_apps:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `saml_apps_list` |
@@ -4059,7 +4059,7 @@ Change a SAML app's entity id, ACS URL, NameID, attribute mappings, signing cert
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/saml-apps/{id}` → `200` |
+| REST | `PATCH /v1/saml-apps/{id}` → `200`; was `PATCH /api/v1/saml-apps/{id}` |
 | Scope | `saml_apps:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `saml_apps_update` |
@@ -4087,7 +4087,7 @@ Mint a management key for this environment, at most as wide as the caller. The v
 
 | | |
 |---|---|
-| REST | `POST /api/v1/keys` → `201` |
+| REST | `POST /v1/environment-keys` → `201`; was `POST /api/v1/keys` |
 | Scope | `keys:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `keys_create` |
@@ -4110,7 +4110,7 @@ List this environment's management keys (names, scopes, parents, expiry, last us
 
 | | |
 |---|---|
-| REST | `GET /api/v1/keys` → `200` |
+| REST | `GET /v1/environment-keys` → `200`; was `GET /api/v1/keys` |
 | Scope | `keys:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `keys_list` |
@@ -4127,7 +4127,7 @@ Revoke a management key and every key it minted, immediately.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/keys/{id}` → `204` |
+| REST | `DELETE /v1/environment-keys/{id}` → `204`; was `DELETE /api/v1/keys/{id}` |
 | Scope | `keys:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `keys_revoke` |
@@ -4143,7 +4143,7 @@ Rotate a management key: mint a successor with the same scopes and retire the ol
 
 | | |
 |---|---|
-| REST | `POST /api/v1/keys/{id}/rotate` → `201` |
+| REST | `POST /v1/environment-keys/{id}/rotate` → `201`; was `POST /api/v1/keys/{id}/rotate` |
 | Scope | `keys:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `keys_rotate` |
@@ -4163,7 +4163,7 @@ Read the authentication policy (password, MFA, SSO, lockout): the environment ba
 
 | | |
 |---|---|
-| REST | `GET /api/v1/sign-in/policy` → `200` |
+| REST | `GET /v1/sign-in/policy` → `200`; was `GET /api/v1/sign-in/policy` |
 | Scope | `signin:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `signin_policy_get` |
@@ -4179,7 +4179,7 @@ Drop one organization's authentication policy override, so it inherits the envir
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/sign-in/policy/organizations/{organization_id}` → `204` |
+| REST | `POST /v1/organizations/{id}/inherit-sign-in-policy` (`{id}` is the `organization_id`) → `204`; was `DELETE /api/v1/sign-in/policy/organizations/{organization_id}` |
 | Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_policy_inherit` |
@@ -4195,7 +4195,7 @@ Change the authentication policy of the environment baseline — including wheth
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/sign-in/policy` → `200` |
+| REST | `PATCH /v1/sign-in/policy` → `200`; was `PATCH /api/v1/sign-in/policy` |
 | Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_policy_update` |
@@ -4223,7 +4223,7 @@ Switch self-service sign-up on or off: whether people can create an account and 
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/sign-in/self-service-signup` → `200` |
+| REST | `PUT /v1/sign-in/self-service-signup` → `200`; was `PUT /api/v1/sign-in/self-service-signup` |
 | Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_self_service_signup_set` |
@@ -4239,7 +4239,7 @@ Read the SMS second-factor policy: whether text-message codes are accepted, for 
 
 | | |
 |---|---|
-| REST | `GET /api/v1/sign-in/sms` → `200` |
+| REST | `GET /v1/sign-in/sms` → `200`; was `GET /api/v1/sign-in/sms` |
 | Scope | `signin:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `signin_sms_get` |
@@ -4253,7 +4253,7 @@ Change the SMS second-factor policy: accept text-message codes or not, the count
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/sign-in/sms` → `200` |
+| REST | `PATCH /v1/sign-in/sms` → `200`; was `PATCH /api/v1/sign-in/sms` |
 | Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_sms_update` |
@@ -4271,7 +4271,7 @@ Stop offering a social login provider. People who used it keep their accounts.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/sign-in/social-providers/{id}` → `204` |
+| REST | `DELETE /v1/social-connections/{id}` → `204`; was `DELETE /api/v1/sign-in/social-providers/{id}` |
 | Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_social_delete` |
@@ -4288,7 +4288,7 @@ Turn a social login provider off without removing it. People who used it keep th
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sign-in/social-providers/{id}/disable` → `200` |
+| REST | `POST /v1/social-connections/{id}/disable` → `200`; was `POST /api/v1/sign-in/social-providers/{id}/disable` |
 | Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_social_disable` |
@@ -4305,7 +4305,7 @@ Turn a social login provider that was turned off back on, with the credentials i
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sign-in/social-providers/{id}/enable` → `200` |
+| REST | `POST /v1/social-connections/{id}/enable` → `200`; was `POST /api/v1/sign-in/social-providers/{id}/enable` |
 | Scope | `signin:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `signin_social_enable` |
@@ -4322,7 +4322,7 @@ Turn one of the environment's social login providers off (or back on) for one or
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/sign-in/social-providers/inherited/{provider}` → `200` |
+| REST | `POST /v1/social-connections/inherit` (`provider` in the query) → `200`; was `PUT /api/v1/sign-in/social-providers/inherited/{provider}` |
 | Scope | `signin:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `signin_social_inherit` |
@@ -4340,7 +4340,7 @@ List the social login providers (Google, GitHub, Apple…) set up in this enviro
 
 | | |
 |---|---|
-| REST | `GET /api/v1/sign-in/social-providers` → `200` |
+| REST | `GET /v1/social-connections` → `200`; was `GET /api/v1/sign-in/social-providers` |
 | Scope | `signin:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `signin_social_list` |
@@ -4359,7 +4359,7 @@ The social login buttons one organization's sign-in page shows (or the plain sig
 
 | | |
 |---|---|
-| REST | `GET /api/v1/sign-in/social-providers/offered` → `200` |
+| REST | `GET /v1/social-connections/offered` → `200`; was `GET /api/v1/sign-in/social-providers/offered` |
 | Scope | `signin:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `signin_social_offered` |
@@ -4375,7 +4375,7 @@ Enable a social login provider (Google, GitHub, Apple…) for the whole environm
 
 | | |
 |---|---|
-| REST | `POST /api/v1/sign-in/social-providers` → `201` |
+| REST | `POST /v1/social-connections` → `201`; was `POST /api/v1/sign-in/social-providers` |
 | Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_social_set` |
@@ -4405,7 +4405,7 @@ Change a social login provider's client credentials, provider values or extra sc
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/sign-in/social-providers/{id}` → `200` |
+| REST | `PATCH /v1/social-connections/{id}` → `200`; was `PATCH /api/v1/sign-in/social-providers/{id}` |
 | Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_social_update` |
@@ -4433,7 +4433,7 @@ Send this environment's sign-in page straight to one of its own OpenID Connect c
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/sign-in/through` → `200` |
+| REST | `PUT /v1/sign-in/through` → `200`; was `PUT /api/v1/sign-in/through` |
 | Scope | `signin:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `signin_through_set` |
@@ -4451,7 +4451,7 @@ End a support session now: every token it issued is revoked.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/support-sessions/{id}` → `204` |
+| REST | `DELETE /v1/support-sessions/{id}` → `204`; was `DELETE /api/v1/support-sessions/{id}` |
 | Scope | `support:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `support_sessions_end` |
@@ -4467,7 +4467,7 @@ Start a support session: a staff member holding the app's support:impersonate ac
 
 | | |
 |---|---|
-| REST | `POST /api/v1/support-sessions` → `201` |
+| REST | `POST /v1/support-sessions` → `201`; was `POST /api/v1/support-sessions` |
 | Scope | `support:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `support_sessions_start` |
@@ -4495,7 +4495,7 @@ Grant an app (by OAuth client id) the right to lease a stored credential.
 
 | | |
 |---|---|
-| REST | `POST /api/v1/token-vault/secrets/{id}/grants` → `200` |
+| REST | `POST /v1/vault-secrets/{id}/grants` → `200`; was `POST /api/v1/token-vault/secrets/{id}/grants` |
 | Scope | `token_vault:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `token_vault_grants_create` |
@@ -4513,7 +4513,7 @@ Withdraw an app's right to lease a stored credential.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/token-vault/secrets/{id}/grants/{client_id}` → `204` |
+| REST | `DELETE /v1/vault-secret-grants/{id}` (`{id}` is the `client_id`; `secret_id` in the query) → `204`; was `DELETE /api/v1/token-vault/secrets/{id}/grants/{client_id}` |
 | Scope | `token_vault:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `token_vault_grants_delete` |
@@ -4531,7 +4531,7 @@ Store a downstream credential (a third-party API key) in an organization's token
 
 | | |
 |---|---|
-| REST | `POST /api/v1/token-vault/secrets` → `201` |
+| REST | `POST /v1/vault-secrets` → `201`; was `POST /api/v1/token-vault/secrets` |
 | Scope | `token_vault:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `token_vault_secrets_create` |
@@ -4550,7 +4550,7 @@ Read one stored credential and the client ids granted to lease it. Never its val
 
 | | |
 |---|---|
-| REST | `GET /api/v1/token-vault/secrets/{id}` → `200` |
+| REST | `GET /v1/vault-secrets/{id}` → `200`; was `GET /api/v1/token-vault/secrets/{id}` |
 | Scope | `token_vault:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `token_vault_secrets_get` |
@@ -4567,7 +4567,7 @@ List the downstream credentials stored in an organization's token vault (or the 
 
 | | |
 |---|---|
-| REST | `GET /api/v1/token-vault/secrets` → `200` |
+| REST | `GET /v1/vault-secrets` → `200`; was `GET /api/v1/token-vault/secrets` |
 | Scope | `token_vault:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `token_vault_secrets_list` |
@@ -4585,7 +4585,7 @@ Revoke a stored credential permanently. No app can lease it again.
 
 | | |
 |---|---|
-| REST | `POST /api/v1/token-vault/secrets/{id}/revoke` → `200` |
+| REST | `DELETE /v1/vault-secrets/{id}` → `200`; was `POST /api/v1/token-vault/secrets/{id}/revoke` |
 | Scope | `token_vault:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `token_vault_secrets_revoke` |
@@ -4602,7 +4602,7 @@ Replace a stored credential's value. Every later lease hands out the new one. Th
 
 | | |
 |---|---|
-| REST | `POST /api/v1/token-vault/secrets/{id}/rotate` → `200` |
+| REST | `POST /v1/vault-secrets/{id}/rotate` → `200`; was `POST /api/v1/token-vault/secrets/{id}/rotate` |
 | Scope | `token_vault:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `token_vault_secrets_rotate` |
@@ -4622,7 +4622,7 @@ Create or replace the app and webhook grants for a user-property namespace. Empt
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/user-property-namespaces/{name}` → `200` |
+| REST | `PUT /v1/user-property-namespaces/{id}` (`{id}` is the `name`) → `200`; was `PUT /api/v1/user-property-namespaces/{name}` |
 | Scope | `user_property_namespaces:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `user_property_namespaces_configure` |
@@ -4641,7 +4641,7 @@ Read the app and webhook grants for a user-property namespace.
 
 | | |
 |---|---|
-| REST | `GET /api/v1/user-property-namespaces/{name}` → `200` |
+| REST | `GET /v1/user-property-namespaces/{id}` (`{id}` is the `name`) → `200`; was `GET /api/v1/user-property-namespaces/{name}` |
 | Scope | `user_property_namespaces:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `user_property_namespaces_show` |
@@ -4659,7 +4659,7 @@ Create a user in this environment, optionally with a password, and optionally ma
 
 | | |
 |---|---|
-| REST | `POST /api/v1/users` → `201` |
+| REST | `POST /v1/users` → `201`; was `POST /api/v1/users` |
 | Scope | `users:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `users_create` |
@@ -4678,7 +4678,7 @@ Deactivate a user: they can no longer sign in, and every OAuth grant they hold i
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/users/{id}` → `200` |
+| REST | `DELETE /v1/users/{id}` → `200`; was `DELETE /api/v1/users/{id}` |
 | Scope | `users:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `users_deactivate` |
@@ -4694,7 +4694,7 @@ Erase a person (GDPR Art. 17): revoke their sessions and tokens, delete their cr
 
 | | |
 |---|---|
-| REST | `POST /api/v1/users/{id}/erase` → `200` |
+| REST | `POST /v1/users/{id}/erase` → `200`; was `POST /api/v1/users/{id}/erase` |
 | Scope | `users:erase` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `users_erase` |
@@ -4710,7 +4710,7 @@ Get one user of this environment by id.
 
 | | |
 |---|---|
-| REST | `GET /api/v1/users/{id}` → `200` |
+| REST | `GET /v1/users/{id}` → `200`; was `GET /api/v1/users/{id}` |
 | Scope | `users:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `users_get` |
@@ -4726,7 +4726,7 @@ List the users in this environment, a page at a time. Narrow by exact `email`, a
 
 | | |
 |---|---|
-| REST | `GET /api/v1/users` → `200` |
+| REST | `GET /v1/users` → `200`; was `GET /api/v1/users` |
 | Scope | `users:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `users_list` |
@@ -4746,7 +4746,7 @@ Reset a user's two-factor authentication: their authenticator and recovery codes
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/users/{id}/mfa` → `204` |
+| REST | `DELETE /v1/users/{id}/mfa` → `204`; was `DELETE /api/v1/users/{id}/mfa` |
 | Scope | `users:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `users_mfa_reset` |
@@ -4762,7 +4762,7 @@ Remove a user's phone number for text-message sign-in codes. Their other factors
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/users/{id}/mfa/sms` → `204` |
+| REST | `DELETE /v1/users/{id}/sms-factor` → `204`; was `DELETE /api/v1/users/{id}/mfa/sms` |
 | Scope | `users:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `users_mfa_sms_remove` |
@@ -4778,7 +4778,7 @@ Set a user's password, temporary by default, and mail it to them unless told not
 
 | | |
 |---|---|
-| REST | `POST /api/v1/users/{id}/password` → `200` |
+| REST | `POST /v1/users/{id}/password` → `200`; was `POST /api/v1/users/{id}/password` |
 | Scope | `users:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `users_password_set` |
@@ -4800,7 +4800,7 @@ Mail a user a password-reset link at their own address.
 
 | | |
 |---|---|
-| REST | `POST /api/v1/users/{id}/password-reset` → `204` |
+| REST | `POST /v1/users/{id}/password-reset` → `204`; was `POST /api/v1/users/{id}/password-reset` |
 | Scope | `users:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `users_password_reset_send` |
@@ -4816,7 +4816,7 @@ Reactivate a deactivated user so they can sign in again. Grants revoked on deact
 
 | | |
 |---|---|
-| REST | `POST /api/v1/users/{id}/reactivate` → `200` |
+| REST | `POST /v1/users/{id}/reactivate` → `200`; was `POST /api/v1/users/{id}/reactivate` |
 | Scope | `users:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `users_reactivate` |
@@ -4832,7 +4832,7 @@ List a user's live sign-in sessions, most recently active first: device, IP and 
 
 | | |
 |---|---|
-| REST | `GET /api/v1/users/{id}/sessions` → `200` |
+| REST | `GET /v1/users/{id}/sessions` → `200`; was `GET /api/v1/users/{id}/sessions` |
 | Scope | `users:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `users_sessions_list` |
@@ -4848,7 +4848,7 @@ End one of a user's sign-in sessions.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/users/{id}/sessions/{session_id}` → `204` |
+| REST | `DELETE /v1/user-sessions/{id}` (`{id}` is the `session_id`; `user_id` in the query) → `204`; was `DELETE /api/v1/users/{id}/sessions/{session_id}` |
 | Scope | `users:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `users_sessions_revoke` |
@@ -4865,7 +4865,7 @@ Sign a user out everywhere: end every session and revoke every OAuth grant they 
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/users/{id}/sessions` → `204` |
+| REST | `DELETE /v1/users/{id}/sessions` → `204`; was `DELETE /api/v1/users/{id}/sessions` |
 | Scope | `users:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `users_sessions_revoke_all` |
@@ -4881,7 +4881,7 @@ Change a user's name and/or email address. A changed address must be verified ag
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/users/{id}` → `200` |
+| REST | `PATCH /v1/users/{id}` → `200`; was `PATCH /api/v1/users/{id}` |
 | Scope | `users:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `users_update` |
@@ -4899,7 +4899,7 @@ Mail a user the link that verifies their email address. Does nothing for an addr
 
 | | |
 |---|---|
-| REST | `POST /api/v1/users/{id}/verification` → `204` |
+| REST | `POST /v1/users/{id}/verification` → `204`; was `POST /api/v1/users/{id}/verification` |
 | Scope | `users:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `users_verification_send` |
@@ -4915,7 +4915,7 @@ Mark a user's email address verified without the emailed link. It can then be us
 
 | | |
 |---|---|
-| REST | `POST /api/v1/users/{id}/verify` → `200` |
+| REST | `POST /v1/users/{id}/verify` → `200`; was `POST /api/v1/users/{id}/verify` |
 | Scope | `users:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `users_verify` |
@@ -4933,7 +4933,7 @@ Register a webhook endpoint for one organization or the whole environment. Retur
 
 | | |
 |---|---|
-| REST | `POST /api/v1/webhooks` → `201` |
+| REST | `POST /v1/webhooks` → `201`; was `POST /api/v1/webhooks` |
 | Scope | `webhooks:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `webhooks_create` |
@@ -4954,7 +4954,7 @@ Delete a webhook endpoint. It stops receiving events at once.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/webhooks/{id}` → `204` |
+| REST | `DELETE /v1/webhooks/{id}` → `204`; was `DELETE /api/v1/webhooks/{id}` |
 | Scope | `webhooks:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `webhooks_delete` |
@@ -4970,7 +4970,7 @@ Get one webhook endpoint: URL, owner, subscribed events, health. Never its signi
 
 | | |
 |---|---|
-| REST | `GET /api/v1/webhooks/{id}` → `200` |
+| REST | `GET /v1/webhooks/{id}` → `200`; was `GET /api/v1/webhooks/{id}` |
 | Scope | `webhooks:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `webhooks_get` |
@@ -4986,7 +4986,7 @@ List the webhook endpoints registered in this environment: URL, owner, subscribe
 
 | | |
 |---|---|
-| REST | `GET /api/v1/webhooks` → `200` |
+| REST | `GET /v1/webhooks` → `200`; was `GET /api/v1/webhooks` |
 | Scope | `webhooks:read` — required of the key or token. |
 | Danger | `read` |
 | MCP tool | `webhooks_list` |
@@ -5003,7 +5003,7 @@ Pause a webhook endpoint: it stops receiving events until resumed.
 
 | | |
 |---|---|
-| REST | `POST /api/v1/webhooks/{id}/pause` → `200` |
+| REST | `POST /v1/webhooks/{id}/pause` → `200`; was `POST /api/v1/webhooks/{id}/pause` |
 | Scope | `webhooks:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `webhooks_pause` |
@@ -5019,7 +5019,7 @@ Resume a paused webhook endpoint: it receives events again.
 
 | | |
 |---|---|
-| REST | `POST /api/v1/webhooks/{id}/resume` → `200` |
+| REST | `POST /v1/webhooks/{id}/resume` → `200`; was `POST /api/v1/webhooks/{id}/resume` |
 | Scope | `webhooks:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `webhooks_resume` |
@@ -5035,7 +5035,7 @@ Issue a new signing secret for a webhook endpoint, returned once. The old secret
 
 | | |
 |---|---|
-| REST | `POST /api/v1/webhooks/{id}/rotate` → `200` |
+| REST | `POST /v1/webhooks/{id}/rotate` → `200`; was `POST /api/v1/webhooks/{id}/rotate` |
 | Scope | `webhooks:write` — required of the key or token. |
 | Danger | `critical` |
 | MCP tool | `webhooks_secret_rotate` |
@@ -5052,7 +5052,7 @@ Change how a webhook endpoint's deliveries are signed (cbox or standard_webhooks
 
 | | |
 |---|---|
-| REST | `POST /api/v1/webhooks/{id}/signature-scheme` → `200` |
+| REST | `POST /v1/webhooks/{id}/signature-scheme` → `200`; was `POST /api/v1/webhooks/{id}/signature-scheme` |
 | Scope | `webhooks:write` — required of the key or token. |
 | Danger | `destructive` |
 | MCP tool | `webhooks_signature_scheme_change` |
@@ -5069,7 +5069,7 @@ Change a webhook endpoint's URL and/or the events it subscribes to.
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/webhooks/{id}` → `200` |
+| REST | `PATCH /v1/webhooks/{id}` → `200`; was `PATCH /api/v1/webhooks/{id}` |
 | Scope | `webhooks:write` — required of the key or token. |
 | Danger | `write` |
 | MCP tool | `webhooks_update` |

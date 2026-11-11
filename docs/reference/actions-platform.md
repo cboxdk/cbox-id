@@ -15,10 +15,10 @@ Every row below is one action, reached through four doors that run the same code
 
 | | |
 |---|---|
-| REST | `https://<root-host>/api/v1/platform/…` with a token the platform root issued a platform operator. No key is accepted |
-| MCP | `/mcp` on the platform root, signed in as a platform operator |
+| REST | `https://api.cboxid.com/v1/admin/…` with a token the platform root issued a platform operator. No key is accepted |
+| MCP | `https://app.cboxid.com/mcp`, signed in as a platform operator |
 | CLI | `cbox login` at the root as an operator, then the command below |
-| OpenAPI | `/api/v1/platform/openapi.yaml` on the host above — public, no key needed ([source](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/platform.yaml)); every operation carries `x-action`, `x-scope` and `x-danger` |
+| OpenAPI | `https://api.cboxid.com/openapi.json`, one document for every plane — public, no key needed ([source](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/openapi.json)); every operation carries `x-action`, `x-scope` and `x-danger`. Reference: `https://api.cboxid.com/docs` |
 
 Danger is how much harm the action can do in the wrong hands: `read` only reads; `write` changes something another write can undo; `destructive` removes or revokes; `critical` mints credentials, takes over access or changes how people sign in. MCP clients are told a destructive or critical tool is destructive, the CLI asks before running one, and an [approval policy](../core-concepts/approvals.md) keys on it.
 
@@ -38,7 +38,7 @@ Create an environment on the deployment, with its own signing key. A domain is v
 
 | | |
 |---|---|
-| REST | `POST /api/v1/platform/environments` → `201` |
+| REST | `POST /v1/admin/environments` → `201`; was `POST /api/v1/platform/environments` |
 | Scope | `operator:environments:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_environments_create` |
@@ -55,7 +55,7 @@ Bootstrap an environment with its first organization and an owner administrator,
 
 | | |
 |---|---|
-| REST | `POST /api/v1/platform/environments/{environment_id}/provision` → `201` |
+| REST | `POST /v1/admin/environments/{id}/provision` (`{id}` is the `environment_id`) → `201`; was `POST /api/v1/platform/environments/{environment_id}/provision` |
 | Scope | `operator:environments:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_environments_provision` |
@@ -77,7 +77,7 @@ Add a platform operator: a person with authority over the whole deployment.
 
 | | |
 |---|---|
-| REST | `POST /api/v1/platform/operators` → `201` |
+| REST | `POST /v1/admin/operators` → `201`; was `POST /api/v1/platform/operators` |
 | Scope | `operator:operators:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_operators_create` |
@@ -95,7 +95,7 @@ Suspend a platform operator, or reactivate one. Never yourself, and never the la
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/platform/operators/{operator_id}/status` → `200` |
+| REST | `PATCH /v1/admin/operators/{id}` (`{id}` is the `operator_id`) → `200`; was `PUT /api/v1/platform/operators/{operator_id}/status` |
 | Scope | `operator:operators:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_operators_set_status` |
@@ -114,7 +114,7 @@ Create an organization with its owner, first project and first environment; the 
 
 | | |
 |---|---|
-| REST | `POST /api/v1/platform/workspaces` → `201` |
+| REST | `POST /v1/admin/organizations` → `201`; was `POST /api/v1/platform/workspaces` |
 | Scope | `operator:workspaces:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_organizations_create` |
@@ -133,7 +133,7 @@ Suspend an organization (its people can no longer sign in, its environments stop
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/platform/workspaces/{workspace_id}/status` → `200` |
+| REST | `PATCH /v1/admin/organizations/{id}` (`{id}` is the `workspace_id`) → `200`; was `PUT /api/v1/platform/workspaces/{workspace_id}/status` |
 | Scope | `operator:workspaces:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_organizations_set_status` |
@@ -150,7 +150,7 @@ Create an organization inside an environment, optionally under a parent organiza
 
 | | |
 |---|---|
-| REST | `POST /api/v1/platform/environments/{environment_id}/organizations` → `201` |
+| REST | `POST /v1/admin/organizations` (`environment_id` in the query) → `201`; was `POST /api/v1/platform/environments/{environment_id}/organizations` |
 | Scope | `operator:organizations:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_tenant_organizations_create` |
@@ -169,7 +169,7 @@ Move an organization under another organization of the same environment, or to t
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/platform/environments/{environment_id}/organizations/{organization_id}/parent` → `200` |
+| REST | `PATCH /v1/admin/organizations/{id}` (`{id}` is the `organization_id`; `environment_id` in the query) → `200`; was `PUT /api/v1/platform/environments/{environment_id}/organizations/{organization_id}/parent` |
 | Scope | `operator:organizations:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_tenant_organizations_move` |
@@ -187,7 +187,7 @@ Suspend an organization inside an environment (its members can no longer sign in
 
 | | |
 |---|---|
-| REST | `PUT /api/v1/platform/environments/{environment_id}/organizations/{organization_id}/status` → `200` |
+| REST | `PATCH /v1/admin/organizations/{id}` (`{id}` is the `organization_id`; `environment_id` in the query) → `200`; was `PUT /api/v1/platform/environments/{environment_id}/organizations/{organization_id}/status` |
 | Scope | `operator:organizations:write` — on an access token delegated by an active platform operator. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `admin_tenant_organizations_set_status` |

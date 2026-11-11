@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Http\Middleware\SetEnvironment;
+use App\Platform\Api\ApiHost;
 use Cbox\Id\Organization\EnvironmentIssuerResolver;
 use Cbox\Id\Organization\EnvironmentResolutionCache;
 use Cbox\Id\Organization\Models\Environment;
@@ -77,6 +78,12 @@ final class TrustedHosts
 
         foreach ($this->planes->formActionHosts() as $host) {
             $patterns[] = $this->exactly($host);
+        }
+
+        $api = ApiHost::name();
+
+        if ($api !== null) {
+            $patterns[] = $this->exactly($api);
         }
 
         $marketing = config('marketing.host');

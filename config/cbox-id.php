@@ -553,6 +553,54 @@ return [
     'cbox_environment' => env('CBOX_ID_CBOX_ENVIRONMENT', 'cbox'),
 
     /*
+     * THE API HOST. `https://{api}/v1` serves every management plane (organization,
+     * environment, account, admin), with the environment taken from the credential rather
+     * than from the host ({@see \App\Http\Middleware\ResolveApiEnvironment}). It answers
+     * nothing else: no session, no CSRF, no pages.
+     *
+     * Production sets `CBOX_ID_API_HOST=api.cboxid.com` (infra, before the deploy; see
+     * docs/operations/v3-api-host-infra.md). Production has no default: until the variable
+     * is set, nothing advertises a host that does not exist — the CLI and the Authenticator
+     * keep being handed the issuer's own `/api/v1`. The local default needs only an
+     * `/etc/hosts` line, and `/api/v1` keeps answering on every host until it is retired.
+     */
+    'hosts' => [
+        // Blank counts as unset: `.env.example` ships `CBOX_ID_API_HOST=` and `env()` reads that as ''.
+        'api' => (is_string(env('CBOX_ID_API_HOST')) && trim((string) env('CBOX_ID_API_HOST')) !== '')
+            ? env('CBOX_ID_API_HOST')
+            : (env('APP_ENV') === 'production' ? null : 'api.cboxid.test'),
+    ],
+
+    /*
+     * THE OLD `/api/v1` PATHS, while callers move to the API host.
+     *
+     * Every `/api/v1` response says it is deprecated (RFC 9745 `Deprecation`, RFC 8594
+     * `Sunset`) and is counted per caller in `cbox_id_legacy_api_requests_total`. The
+     * paths are removed only after seven days with no traffic on that counter, so the
+     * sunset date is the earliest removal, not a promise to remove.
+     *
+     * `legacy_mcp_audience` keeps accepting tokens audienced to an issuer's own `/mcp`
+     * on the management planes. Turning it off is the contract step: such a token is then
+     * refused with a 401 that names the resource to request instead.
+     */
+    'api_transition' => [
+        'deprecated_since' => env('CBOX_ID_API_V1_DEPRECATED_SINCE', '2026-11-11'),
+        'sunset' => env('CBOX_ID_API_V1_SUNSET', '2027-02-01'),
+        'legacy_mcp_audience' => (bool) env('CBOX_ID_LEGACY_MCP_AUDIENCE', true),
+    ],
+
+    /*
+     * SLUGS NO ENVIRONMENT MAY HAVE. An environment is served at `{slug}.cboxid.com`, so
+     * one called `api` or `app` would answer for the platform's own hosts. Only the hosts
+     * the platform serves today are listed: the migration that introduces the list refuses
+     * to run while an environment holds one, so adding a name here is a data check on live
+     * first. Every create path derives the slug from a name, and a derived one that lands
+     * here gets a suffix ({@see \App\Platform\Environments\ReservedEnvironmentSlugs});
+     * changing a slug to one is refused.
+     */
+    'reserved_environment_slugs' => ['api', 'app'],
+
+    /*
      * THE SHAPE OF THIS DEPLOYMENT, as its manifest declares it — read by `cbox-id:doctor`.
      *
      * How many copies of the web process run. The application cannot count its siblings,

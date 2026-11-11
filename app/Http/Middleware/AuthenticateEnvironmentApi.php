@@ -11,6 +11,7 @@ use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\Principal\AppTokenPrincipal;
 use App\Platform\Actions\Principal\EnvironmentMemberPrincipal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
+use App\Platform\Api\ManagementAudience;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\OAuth\DelegatedAccess;
 use App\Platform\OAuth\MachineTokenAuthority;
@@ -147,7 +148,7 @@ final class AuthenticateEnvironmentApi
         // token carrying a management scope ({@see DelegatedAccess::resource()}) — or to the
         // issuer itself, as the other machine endpoints take it ({@see RequireScope}).
         $plane = $this->delegated->resource()?->identifier;
-        $audienced = $introspection->isAudience($this->issuers->issuer()) || ($plane !== null && $introspection->isAudience($plane));
+        $audienced = $introspection->isAudience($this->issuers->issuer()) || ($plane !== null && ManagementAudience::accepts($introspection, $plane));
 
         if (! $introspection->active || $introspection->clientId === null || ! $audienced || ! MachineTokenAuthority::issued($introspection)) {
             return null;

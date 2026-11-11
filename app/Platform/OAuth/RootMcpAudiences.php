@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform\OAuth;
 
+use App\Platform\Api\LegacyAudienceRequest;
+use App\Platform\Api\ManagementAudience;
 use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
 use Cbox\Id\OAuthServer\Enums\ProtocolScope;
 use Cbox\Id\OAuthServer\Exceptions\InvalidAudience;
@@ -47,6 +49,10 @@ final readonly class RootMcpAudiences implements AudienceResolver
      */
     public function resolve(Client $client, array $scopes, ?string $resource): ResolvedAudience
     {
+        // Who still asks for an issuer's own `/mcp` (plan §2.5 rule 4): the same token as
+        // before, and a line in telemetry, so the legacy audience can be retired on data.
+        LegacyAudienceRequest::recordIfLegacy($client, $resource);
+
         // Resolved per call: the framework holds its resolver as a singleton, and what this
         // asks — which environment the request is in — is per request.
         $root = app(RootMcpOAuth::class);
@@ -59,6 +65,12 @@ final readonly class RootMcpAudiences implements AudienceResolver
 
         if ($mcp === null || ! $mcp->dynamicClients) {
             throw InvalidAudience::notOfferedToDynamicClients($resource ?? 'the platform root');
+        }
+
+        // The management plane's current names are the same server under another name
+        // ({@see ManagementAudience}): a root MCP client may be audienced to them too.
+        if ($resource !== null && in_array(rtrim($resource, '/'), ManagementAudience::current(), true)) {
+            return $this->inner->resolve($client, $scopes, rtrim($resource, '/'));
         }
 
         if ($resource !== null && rtrim($resource, '/') !== rtrim($mcp->identifier, '/')) {

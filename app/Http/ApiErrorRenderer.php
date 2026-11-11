@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http;
 
+use App\Platform\Api\Problem;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -89,7 +90,7 @@ final class ApiErrorRenderer
      */
     public static function render(Throwable $e, Request $request): ?JsonResponse
     {
-        if (! $request->is('api/*', 'mcp')) {
+        if (! ApiRequest::is($request)) {
             return null;
         }
 
@@ -191,6 +192,11 @@ final class ApiErrorRenderer
      */
     private static function envelope(string $error, string $message, int $status, array $extra = [], array $headers = []): JsonResponse
     {
+        // On the API host every failure is an RFC 9457 problem; the old paths keep theirs.
+        if (ApiRequest::speaksProblems(request())) {
+            return Problem::response($error, $message, $status, $extra, $headers);
+        }
+
         return new JsonResponse(['error' => $error, 'message' => $message] + $extra, $status, $headers);
     }
 }

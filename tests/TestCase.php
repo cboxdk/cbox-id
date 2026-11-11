@@ -2,6 +2,7 @@
 
 namespace Tests;
 
+use App\Platform\Api\ApiHost;
 use App\Platform\Console\EnvironmentConsolePath;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Identity\NeverBreachedCheck;
@@ -54,6 +55,11 @@ abstract class TestCase extends BaseTestCase
 
         $console = config('cbox-id.tenancy.account_host');
         $testHost = parse_url((string) config('app.url'), PHP_URL_HOST);
+
+        // The API host likewise: the next relative path in the test means the test host.
+        if (ApiHost::name() !== null && parse_url($uri, PHP_URL_HOST) === ApiHost::name()) {
+            $this->app->make('url')->setRequest(Request::create((string) config('app.url')));
+        }
 
         if (is_string($console) && $console !== '' && $console !== $testHost && parse_url($uri, PHP_URL_HOST) === $console
             && preg_match('#\A/(?:'.EnvironmentConsolePath::PATTERN.')(?:/|\z)#', (string) parse_url($uri, PHP_URL_PATH)) === 1) {

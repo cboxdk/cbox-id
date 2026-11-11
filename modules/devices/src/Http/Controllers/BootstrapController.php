@@ -47,8 +47,23 @@ final class BootstrapController
             'client_id' => $client->client_id,
             'scopes' => AuthenticatorClient::SCOPES,
             'redirect_uris' => $client->redirect_uris,
-            'api_base' => rtrim($issuer, '/').'/api/v1',
+            'api_base' => self::apiBase($issuer),
         ]);
+    }
+
+    /**
+     * Where the app calls `/me/approvals` and `/devices`: the API host's `/v1` when the
+     * deployment has one (`cbox-id.hosts.api`), the issuer's own `/api/v1` otherwise. An
+     * installed app that predates `api_base` builds `{issuer}/api/v1` itself, and that keeps
+     * answering until the last installed copy has updated.
+     */
+    private static function apiBase(string $issuer): string
+    {
+        $host = config('cbox-id.hosts.api');
+
+        return is_string($host) && trim($host) !== ''
+            ? 'https://'.mb_strtolower(trim($host)).'/v1'
+            : rtrim($issuer, '/').'/api/v1';
     }
 
     private function notProvisioned(): JsonResponse

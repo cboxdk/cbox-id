@@ -13,6 +13,7 @@ use App\Platform\Agents\ActionApprovalInbox;
 use App\Platform\Agents\AgentRoster;
 use App\Platform\Agents\AgentScope;
 use App\Platform\Agents\AgentScopes;
+use App\Platform\Api\ApiUrls;
 use App\Platform\Console\KeyTabs;
 use App\Platform\Console\ShellContext;
 use App\Platform\Enums\KeyLifetime;
@@ -145,8 +146,9 @@ final readonly class AgentController extends ConsoleController
             'help' => HelpProps::for(HelpTopic::ConnectAgent),
             'mcpUrl' => $mcp->identifier ?? $origin.McpProtectedResources::PATH,
             'metadataUrl' => $mcp?->metadataUrl() ?? $origin.ProtectedResource::WELL_KNOWN.McpProtectedResources::PATH,
-            'restBaseUrl' => $origin.'/api/v1',
-            'openApiUrl' => $origin.'/api/v1/environment/openapi.yaml',
+            // The API host: an environment key or a token names its own environment there.
+            'restBaseUrl' => ApiUrls::base(),
+            'openApiUrl' => ApiUrls::openApi(),
             /*
              * SIGNING IN WITH AN ACCOUNT, rather than pasting a key, is what an MCP client
              * does when the resource lets a self-registered client be issued a token for
@@ -206,7 +208,7 @@ final readonly class AgentController extends ConsoleController
         return [
             'mcpUrl' => $resource->identifier,
             'issuer' => $origin,
-            'restBaseUrl' => $origin.'/api/v1',
+            'restBaseUrl' => ApiUrls::base(),
             'oauth' => RootMcpOAuth::enabled() && $resource->dynamicClients,
             // "Mint one under Keys › Workspace keys" — on the workspace's host, so absolute.
             'organizationKeysHref' => app(PlaneResolver::class)->consoleHost() === null

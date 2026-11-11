@@ -34,6 +34,10 @@ final readonly class ApiEquivalentProps implements Prop
         public string $cli,
         public bool $cliShipped,
         public string $sdk,
+        /** The method on the API host, where it differs from the action's own (a PUT that is a PATCH there). */
+        public ?string $method = null,
+        /** What `path` is below: `/v1` on the API host, `/api/v1` for an action not served there. */
+        public string $base = '/api/v1',
     ) {}
 
     /**
@@ -44,7 +48,8 @@ final readonly class ApiEquivalentProps implements Prop
         return [
             'name' => $this->action->name,
             'summary' => $this->action->summary,
-            'method' => $this->action->method,
+            'method' => $this->method ?? $this->action->method,
+            'base' => $this->base,
             'path' => $this->path,
             'url' => $this->url,
             'scope' => $this->action->scope,

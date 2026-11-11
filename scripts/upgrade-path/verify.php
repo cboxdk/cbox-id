@@ -322,7 +322,9 @@ $call = static function (string $method, string $path, string $token, array $bod
         $server['HTTP_'.strtoupper(str_replace('-', '_', $name))] = $value;
     }
     $kernel = app(HttpKernel::class);
-    $request = Request::create(rtrim((string) config('app.url'), '/').$path, $method, [], [], [], $server, $body === [] ? null : json_encode($body, JSON_THROW_ON_ERROR));
+    // A path is sent to the application's own URL; a full URL (the API host) as it is.
+    $url = str_starts_with($path, 'http') ? $path : rtrim((string) config('app.url'), '/').$path;
+    $request = Request::create($url, $method, [], [], [], $server, $body === [] ? null : json_encode($body, JSON_THROW_ON_ERROR));
     $response = $kernel->handle($request);
     $kernel->terminate($request, $response);
 
@@ -358,10 +360,24 @@ if ($major === 2) {
         return $scopes === $want ?: 'stored '.json_encode($scopes);
     });
 
-    $check('the 2.x agent still reads the organization on /api/v1/workspace, with no Deprecation', function () use ($v2, $call): bool|string {
+    // The PATH is deprecated from v3.0 (its successor is the API host's /v1), never the key.
+    $check('the 2.x agent still reads the organization on /api/v1/workspace, marked deprecated', function () use ($v2, $call): bool|string {
         [$status, , $deprecation] = $call('GET', '/api/v1/workspace', $v2['agent']['plaintext']);
 
-        return ($status === 200 && $deprecation === null) ?: "status {$status}, Deprecation ".var_export($deprecation, true);
+        return ($status === 200 && $deprecation !== null) ?: "status {$status}, Deprecation ".var_export($deprecation, true);
+    });
+
+    $check('the 2.x agent reads the same organization on the API host\'s /v1/organization, with no Deprecation', function () use ($v2, $call, $m): bool|string {
+        $host = config('cbox-id.hosts.api');
+
+        if (! is_string($host) || $host === '') {
+            return 'no API host configured (CBOX_ID_API_HOST)';
+        }
+
+        [$status, $body, $deprecation] = $call('GET', 'http://'.$host.'/v1/organization', $v2['agent']['plaintext']);
+
+        return ($status === 200 && $deprecation === null && ($body['id'] ?? null) === $m['workspace_id'])
+            ?: "status {$status}, id ".var_export($body['id'] ?? null, true).', Deprecation '.var_export($deprecation, true);
     });
 
     $check('the idempotent answer 2.x stored under keys.workspace.create replays', function () use ($v2, $call): bool|string {

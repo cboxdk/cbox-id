@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ActionApprovalRequest;
 use App\Platform\Actions\Approvals\ApprovalInput;
+use App\Platform\Api\ApiHost;
 use App\Platform\EnvironmentSudo;
 use App\Platform\OrganizationActivity;
 use Carbon\CarbonImmutable;
@@ -296,12 +297,13 @@ it('gives the MCP address of this environment and the snippets\' inputs, and off
 
     expect($props['mcpUrl'])->toEndWith('/mcp')
         ->and($props['metadataUrl'])->toEndWith('/.well-known/oauth-protected-resource/mcp')
-        ->and($props['restBaseUrl'])->toEndWith('/api/v1')
-        ->and($props['openApiUrl'])->toEndWith('/api/v1/environment/openapi.yaml')
+        // The API host, where the key or token names the environment (plan §2.3 item 7).
+        ->and($props['restBaseUrl'])->toBe('https://'.ApiHost::name().'/v1')
+        ->and($props['openApiUrl'])->toBe('https://'.ApiHost::name().'/openapi.json')
         ->and($props['urls']['createAgent'])->toContain('preset=read-only')
         // …and the other way in: the platform root's, one connection for the whole workspace.
         ->and($props['organization']['mcpUrl'] ?? null)->toEndWith('/mcp')
-        ->and($props['organization']['restBaseUrl'] ?? null)->toEndWith('/api/v1')
+        ->and($props['organization']['restBaseUrl'] ?? null)->toBe('https://'.ApiHost::name().'/v1')
         // …where an MCP client signs the person in itself, unless the deployment says not.
         ->and($props['organization']['oauth'] ?? null)->toBeTrue();
 

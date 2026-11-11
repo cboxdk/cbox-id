@@ -8,6 +8,7 @@ use App\Http\Middleware\AuthenticateMcp;
 use App\Mcp\McpProtectedResources;
 use App\Platform\Actions\Principal\RootOperatorPrincipal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
+use App\Platform\Api\ManagementAudience;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\NativeProduct\NativeProductAccess;
@@ -168,7 +169,7 @@ final readonly class RootDelegatedAccess
             $audience = $introspection->claims['aud'] ?? null;
             $issuer = $introspection->claims['iss'] ?? null;
 
-            if ($audience === null || $audience === '' || $audience === [] || ! $introspection->isAudience($resource->identifier)
+            if ($audience === null || $audience === '' || $audience === [] || ! ManagementAudience::accepts($introspection, $resource->identifier)
                 || ! is_string($issuer) || ! hash_equals(rtrim($this->issuers->issuer(), '/'), rtrim($issuer, '/'))) {
                 return null;
             }

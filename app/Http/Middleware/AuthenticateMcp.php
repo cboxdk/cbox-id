@@ -13,12 +13,15 @@ use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\Principal\OrganizationKeyPrincipal;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
+use App\Platform\Api\CredentialEnvironment;
+use App\Platform\Api\ManagementAudience;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\Keys\OrganizationKeyPrefixes;
 use App\Platform\OAuth\DelegatedAccess;
 use App\Platform\OAuth\ManagementStepUp;
 use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OrganizationApiContext;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Dpop\DpopResourceGuard;
 use Cbox\Id\OAuthServer\Support\BearerChallenge;
@@ -100,6 +103,15 @@ final class AuthenticateMcp
     {
         // Either scheme: a DPoP-bound access token arrives as `DPoP <token>` (RFC 9449 §7.1).
         $token = $this->dpop->bearer($request);
+
+        if (is_string($token) && CredentialEnvironment::kind($token) === 'token' && ManagementAudience::retired(CredentialEnvironment::claims($token) ?? [])) {
+            return ManagementAudience::retiredChallenge(CredentialEnvironment::claims($token) ?? []);
+        }
+
+        if (is_string($token) && $token !== '' && $this->root->onRootHost()) {
+            $this->pinCredentialEnvironment($token);
+        }
+
         $principal = is_string($token) && $token !== '' ? $this->principalFor($token, $request) : null;
 
         if ($principal === null) {
@@ -125,6 +137,23 @@ final class AuthenticateMcp
             $this->caller->clear();
             $this->context->clear();
             $this->workspace->clear();
+        }
+    }
+
+    /**
+     * THE APPLICATION HOST'S `/mcp` IS THE ONE MCP SERVER (plan §2.3 item 6): a key or a
+     * token of any environment is served there in its own environment, as its own host's
+     * `/mcp` would serve it. An environment key pins the environment it was minted in; a
+     * token another environment issued, the environment of its `iss`. The platform root's
+     * own people keep the root's reading, with the environment named per tool.
+     */
+    private function pinCredentialEnvironment(string $token): void
+    {
+        $credentials = app(CredentialEnvironment::class);
+        $environment = $credentials->of($token);
+
+        if ($environment !== null && ! $credentials->isRoot($environment)) {
+            app(EnvironmentContext::class)->set($environment);
         }
     }
 

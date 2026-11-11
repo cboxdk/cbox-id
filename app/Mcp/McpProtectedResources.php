@@ -9,6 +9,7 @@ use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Actions\PlatformScopes;
+use App\Platform\Api\ManagementAudience;
 use App\Platform\OAuth\DelegatedAccess;
 use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\Scopes\ScopeRegistry;
@@ -62,6 +63,15 @@ final readonly class McpProtectedResources implements ProtectedResources
     public function find(string $identifier): ?ProtectedResource
     {
         foreach ($this->all() as $resource) {
+            if ($resource->identifier === $identifier) {
+                return $resource;
+            }
+        }
+
+        // The management plane's other names (plan §2.5): the API host and the application
+        // host's MCP server. Found when a client NAMES one, never offered by all(), so a
+        // request that names no resource is not made ambiguous by three twins.
+        foreach (ManagementAudience::resources($this->mcp()) as $resource) {
             if ($resource->identifier === $identifier) {
                 return $resource;
             }

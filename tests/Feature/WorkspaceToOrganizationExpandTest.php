@@ -12,6 +12,7 @@ use App\Platform\Actions\Idempotency\IdempotencyRecord;
 use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Actions\Principal\EnvironmentKeyPrincipal;
 use App\Platform\Actions\RenamedActions;
+use App\Platform\Api\ApiHost;
 use App\Platform\Keys\OrganizationKeyPrefixes;
 use App\Platform\OAuth\ConsentScopes;
 use App\Platform\Scopes\ScopeRegistry;
@@ -100,10 +101,18 @@ it('still mints cbid_ws_ keys, resolves cbid_org_ ones too, and deprecates neith
     expect($fresh)->toStartWith('cbid_ws_');
 
     foreach ([$fresh, $v2, $future] as $token) {
-        $this->withToken($token)->getJson('/api/v1/workspace')
+        // No key is deprecated: on the API host, where no PATH is deprecated either, every
+        // prefix answers without a Deprecation header.
+        $this->withToken($token)->getJson('http://'.ApiHost::name().'/v1/organization')
             ->assertOk()
-            ->assertJsonPath('data.id', $account['organization']->id)
+            ->assertJsonPath('id', $account['organization']->id)
             ->assertHeaderMissing('Deprecation');
+
+        // The old path answers for every prefix too. From v3 it carries Deprecation, but for
+        // the path (its successor is `/v1`), the same for every credential (ApiHostTest).
+        $this->flushHeaders()->withToken($token)->getJson('/api/v1/workspace')
+            ->assertOk()
+            ->assertJsonPath('data.id', $account['organization']->id);
     }
 })->group('security');
 
@@ -306,11 +315,14 @@ it('names only scopes the registry knows, on every action and every route', func
 
             // Which parameter is the scope: `delegated.api:<plane>,<scope>`,
             // `env.api:<scope>,<doors>`, `org.api:<scope>`, `scope:<scope>`.
+            // `scope:<a>|<b>` accepts either, and each must be a scope the registry knows.
             $parameters = explode(',', $m[2]);
             $scope = $m[1] === 'delegated.api' ? ($parameters[1] ?? '') : $parameters[0];
 
-            if ($scope !== '' && ! ScopeRegistry::knows($scope)) {
-                $unknown[] = "route {$route->uri()} ({$m[1]}): {$scope}";
+            foreach ($m[1] === 'scope' ? explode('|', $scope) : [$scope] as $one) {
+                if ($one !== '' && ! ScopeRegistry::knows($one)) {
+                    $unknown[] = "route {$route->uri()} ({$m[1]}): {$one}";
+                }
             }
         }
     }
