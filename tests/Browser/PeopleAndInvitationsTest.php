@@ -81,7 +81,7 @@ it('invites someone with the shared form, back to an app, and lists them with bo
         ->click('[role="option"]:has-text("Acme Tasks")')
         ->assertSee('A page on https://tasks.acme.test')
         ->fill('return_to', 'https://tasks.acme.test/welcome')
-        ->screenshot(filename: 'people-invite-form');
+        ->screenshot(false, 'people-invite-form'); // viewport only: a full-page shot remounts the page and closes the form
 
     $page->click('button:has-text("Send invitation")')
         ->assertSee('Invitation sent to newbie@people.test.')
@@ -107,7 +107,7 @@ it('transfers ownership from a row, and offers the owner a way to leave', functi
         ->click('[role="menuitem"]:has-text("Transfer ownership")')
         ->assertSee('Confirm “Transfer ownership” for dana@people.test')
         ->assertSee('Only the new owner can hand it back.')
-        ->screenshot(filename: 'people-transfer-dialog');
+        ->screenshot(false, 'people-transfer-dialog'); // viewport only, as above
 
     $page->assertDisabled('.cbx-dialog button:has-text("Transfer ownership")')
         ->fill('.cbx-dialog input.input', 'dana@people.test')

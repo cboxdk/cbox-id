@@ -81,7 +81,7 @@ it('keeps a billing address draft when a card changes and guards navigation', fu
         ->fill('invoice_name', 'Unsaved invoice name')
         ->click('button:has-text("Make default")')->assertSee('Default')
         ->assertScript('document.querySelector("input[name=invoice_name]").value', 'Unsaved invoice name')
-        ->screenshot(filename: 'polish-billing-desktop');
+        ->screenshot(false, 'polish-billing-desktop'); // viewport only: a full-page shot remounts the page and drops the draft
     $page->click('a.cbx-rail-link[aria-label="Organization"]')
         ->assertSee('Leave without saving?')->click('button:has-text("Keep editing")')
         ->assertScript('document.querySelector("input[name=invoice_name]").value', 'Unsaved invoice name');
