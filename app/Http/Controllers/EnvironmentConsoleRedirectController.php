@@ -8,6 +8,7 @@ use App\Http\Controllers\Console\EnvironmentRefusedController;
 use App\Http\Middleware\ResolveEnvironmentFromPath;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\EnvironmentConsolePath;
+use App\Platform\Deprecations\RetiredNameUse;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -29,8 +30,9 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * GET only, and only a redirect: nothing here signs anybody in or decides access. The page
  * redirected to asks every question itself ({@see ResolveEnvironmentFromPath}).
- * Each answer carries `Deprecation`, so whoever still uses one can be found and told; the
- * old addresses go once they have seen no traffic for seven days.
+ * Each answer carries `Deprecation` and is counted ({@see RetiredNameUse}), so whoever still
+ * uses one can be found and told; the old addresses go once they have seen no traffic for
+ * seven days. Temporary redirects, so a browser keeps asking and the count stays true.
  */
 final class EnvironmentConsoleRedirectController extends Controller
 {
@@ -47,7 +49,11 @@ final class EnvironmentConsoleRedirectController extends Controller
 
         abort_if($console === null, 404);
 
-        return $this->deprecated(redirect()->away($this->appHostUrl($console, $path).$this->query($request), 301));
+        RetiredNameUse::record('console_url', '/admin'.($path === null || $path === '' ? '' : '/'.trim($path, '/')), '/'.$console, ['host' => $request->getHost()]);
+
+        // 302, not 301: a browser caches a permanent redirect and stops asking, and then the
+        // old address's traffic — what decides when it may go — could no longer be counted.
+        return $this->deprecated(redirect()->away($this->appHostUrl($console, $path).$this->query($request), 302));
     }
 
     /** `/open/{environment}` on the app host → the environment's console path. */
@@ -82,6 +88,8 @@ final class EnvironmentConsoleRedirectController extends Controller
         // A page inside the console, from an old "open with ?to=/admin/users" link.
         $to = $request->query('to');
         $page = is_string($to) && preg_match('#\A/admin((?:/[A-Za-z0-9_-]+)*)\z#', $to, $match) === 1 ? ltrim($match[1], '/') : null;
+
+        RetiredNameUse::record('console_url', '/open/{environment}', '/'.$console);
 
         return $this->deprecated(redirect()->to('/'.$console.($page === null || $page === '' ? '' : '/'.$page), 302));
     }

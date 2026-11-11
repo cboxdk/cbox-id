@@ -28,7 +28,7 @@ use Symfony\Component\HttpFoundation\Response;
  * 1. Only on the app host of a multi-tenant deployment. A tenant's host never serves it.
  * 2. The path names one environment, and only when its organization, project and
  *    environment belong together ({@see EnvironmentConsolePath::resolve()}). Anything
- *    else is a 404.
+ *    else is a 404, and so is an environment that is suspended.
  * 3. The environment becomes the request's {@see EnvironmentContext} — BEFORE route model
  *    binding runs, which is why this class sits ahead of `SubstituteBindings` in the
  *    middleware priority (bootstrap/app.php). A record id from another environment in the
@@ -72,7 +72,10 @@ final class ResolveEnvironmentFromPath
 
         $environment = $this->paths->resolve($path);
 
-        abort_if($environment === null, 404);
+        // A suspended environment has no console, as it had none on its own host, where the
+        // resolver refuses whatever cannot serve: an operator's suspension stops its
+        // administrators changing its keys, vault and sign-in as well as its traffic.
+        abort_if($environment === null || ! $environment->status->canServe(), 404);
 
         $this->environments->set($environment);
         $request->attributes->set(self::ATTRIBUTE, $environment->environmentKey());

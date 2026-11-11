@@ -19,6 +19,7 @@ use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Inertia\Testing\AssertableInertia;
 
 uses(RefreshDatabase::class);
@@ -250,12 +251,12 @@ it('redirects a tenant host\'s old /admin addresses to the same page on the app 
     $host = $env->slug.'.cboxid.com';
 
     $this->get('https://'.$host.'/admin')
-        ->assertStatus(301)
+        ->assertStatus(302)
         ->assertHeader('Deprecation', 'true')
         ->assertRedirect('https://'.config('cbox-id.tenancy.account_host').'/'.app(EnvironmentConsolePath::class)->for($env->id));
 
     $this->get('https://'.$host.'/admin/users?page=2')
-        ->assertStatus(301)
+        ->assertStatus(302)
         ->assertRedirect('https://'.config('cbox-id.tenancy.account_host').'/'.app(EnvironmentConsolePath::class)->for($env->id).'/users?page=2');
 
     // Only a page is redirected. Nothing under `/admin` on a tenant's host acts any more.
@@ -270,8 +271,35 @@ it('redirects the root host\'s old /admin addresses to /admin/environment', func
     envAdminSetup();
 
     $this->get('https://cboxid.com/admin/social-sign-in')
-        ->assertStatus(301)
+        ->assertStatus(302)
         ->assertRedirect('https://cboxid.com/admin/environment/social-sign-in');
+});
+
+it('has no console for a suspended environment, not even for its owner', function (): void {
+    ['env' => $env, 'subjectId' => $owner] = envAdminSetup();
+    actAsEnvironmentAdmin($owner, $env->id);
+
+    $this->get(envConsole('/users'))->assertOk();
+
+    // An operator's suspension is a kill switch for the console too, as it was on the
+    // environment's own host: no keys, vault or sign-in to change behind it.
+    app(PlatformRoot::class)->run(fn () => $env->forceFill(['status' => EnvironmentStatus::Suspended])->save());
+
+    $this->get(envConsole('/users'))->assertNotFound();
+    $this->get(envConsole())->assertNotFound();
+})->group('security');
+
+it('counts every use of an old console address', function (): void {
+    ['env' => $env, 'subjectId' => $owner] = envAdminSetup();
+    actAsEnvironmentAdmin($owner, $env->id);
+
+    Log::spy();
+
+    $this->get('https://'.$env->slug.'.cboxid.com/admin/users')->assertStatus(302);
+
+    Log::shouldHaveReceived('notice')->withArgs(
+        fn (string $message, array $context): bool => str_contains($message, '/admin/users') && ($context['surface'] ?? null) === 'console_url',
+    )->once();
 });
 
 it('has no environment console on a single-tenant deployment', function (): void {
