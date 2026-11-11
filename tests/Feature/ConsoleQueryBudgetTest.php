@@ -73,6 +73,7 @@ function queryBudgetAdmin(int $extraMembers = 0): array
         $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd'], '127.0.0.1', 'Symfony');
         session([PlatformAuth::SESSION_KEY => $session->id]);
         app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
+        useOrganizationInUrls($org->id);
 
         return [$org->id];
     }) ?? [];
@@ -162,17 +163,17 @@ it('does not pay a per-row query on the member roster', function (): void {
     // `PlatformRoot`, so the roster rendered nothing and the count FELL as rows were
     // added — 30 at 3 members, 20 at 21. A budget test that does not know whether the
     // page drew anything is measuring the chrome.
-    expect(rosterRows('members'))->toBe(3, 'the roster rendered no rows — the fixture is wrong, not the page');
+    expect(rosterRows('orgs.settings.members'))->toBe(3, 'the roster rendered no rows — the fixture is wrong, not the page');
 
-    $small = queriesFor('members');
+    $small = queriesFor('orgs.settings.members');
 
     // The SAME application and the same page, with eighteen more rows in it. Measuring
     // in one instance on purpose: refreshApplication() would drop the in-memory schema.
     addMembers($orgId, 18);
 
-    expect(rosterRows('members'))->toBe(21);
+    expect(rosterRows('orgs.settings.members'))->toBe(21);
 
-    $large = queriesFor('members');
+    $large = queriesFor('orgs.settings.members');
 
     fwrite(STDERR, "\n  members: {$small} queries at 3 rows, {$large} at 21\n");
 
@@ -200,10 +201,10 @@ it('costs the same on page two as on page one', function (): void {
     // installer's `exists` probes, the platform-root lookup, the auth policies — and
     // measured cold against warm this reads as a ten-query difference that has nothing to
     // do with the page. Diffed properly, the two pages issue the same statements.
-    queriesFor('members');
+    queriesFor('orgs.settings.members');
 
-    $first = queriesFor('members');
-    $second = queriesForUrl(route('members').'?page=2');
+    $first = queriesFor('orgs.settings.members');
+    $second = queriesForUrl(route('orgs.settings.members').'?page=2');
 
     expect(abs($second - $first))->toBeLessThan(3, "page one cost {$first}, page two {$second}");
 })->group('performance');

@@ -47,15 +47,15 @@ it('gives the organization console both of its kinds of key as tabs of one page'
     ['subjectId' => $subjectId] = provisionAccount();
     signInAsMember($subjectId);
 
-    expect(keyTabsOn(route('keys')))->toBe(['management', 'organization'])
-        ->and(keyTabsOn(route('keys.organization')))->toBe(['management', 'organization']);
+    expect(keyTabsOn(route('orgs.settings.api-keys')))->toBe(['management', 'organization'])
+        ->and(keyTabsOn(route('orgs.settings.api-keys.organization')))->toBe(['management', 'organization']);
 
-    $this->get(route('keys'))->assertInertia(fn (AssertableInertia $page) => $page
+    $this->get(route('orgs.settings.api-keys'))->assertInertia(fn (AssertableInertia $page) => $page
         ->component('console/keys/management')
         ->where('title', 'API keys')
         ->where('pickEnvironment', true));
 
-    $this->get(route('keys.organization'))->assertInertia(fn (AssertableInertia $page) => $page
+    $this->get(route('orgs.settings.api-keys.organization'))->assertInertia(fn (AssertableInertia $page) => $page
         ->component('console/keys/organization')
         ->where('title', 'API keys'));
 });
@@ -70,9 +70,9 @@ it('draws only the tabs a person may open', function (): void {
     // A developer mints management keys; the workspace's own keys act with a role across
     // the whole workspace and are a member manager's, so that tab is not drawn — and its
     // URL sends them somewhere they can be rather than to a page that refuses them.
-    expect(keyTabsOn(route('keys')))->toBe(['management']);
+    expect(keyTabsOn(route('orgs.settings.api-keys')))->toBe(['management']);
 
-    $this->get(route('keys.organization'))->assertRedirect(route('projects'));
+    $this->get(route('orgs.settings.api-keys.organization'))->assertRedirect(route('orgs.projects'));
 });
 
 it('gives the environment console its management keys as Agents, and its frontend keys as API keys', function (): void {

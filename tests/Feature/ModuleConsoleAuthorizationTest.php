@@ -49,6 +49,7 @@ function moduleConsoleMember(MembershipRole $role = MembershipRole::Member): voi
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
+    useOrganizationInUrls($org->id);
 }
 
 /**
@@ -65,8 +66,8 @@ function moduleConsoleRoutes(): array
         // the acting ORGANIZATION owns rather than on the membership role this file
         // sweeps for. An org admin who owns no identity providers is correctly refused
         // them, which is the opposite of what "admits an admin" asserts below.
-        'projects', 'members', 'keys.organization', 'keys',
-        'environment-domains', 'billing', 'organization-settings',
+        'orgs.projects', 'orgs.settings.members', 'orgs.settings.api-keys.organization', 'orgs.settings.api-keys',
+        'orgs.environment-domains', 'orgs.settings.billing', 'orgs.settings',
         // The People area's tenant directory — a host page like its Identity-platform
         // sibling above, and gated the same way (`canReadMembers()`), so this sweep's
         // membership-role question is not the one that governs it.

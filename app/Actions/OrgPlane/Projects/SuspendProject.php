@@ -28,7 +28,7 @@ use Cbox\Id\Platform\Contracts\Projects;
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['POST', '/projects/{id}/suspend'],
-    consoleRoutes: ['projects.suspend'],
+    consoleRoutes: ['orgs.projects.suspend'],
     consoleGate: ConsoleGate::ManageEnvironments,
     schema: 'Project',
     tag: 'Projects',

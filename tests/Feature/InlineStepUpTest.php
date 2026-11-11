@@ -189,7 +189,7 @@ it('returns the full-page step-up to the page the person was on, never to an ove
 
     $this->from(route('sudo'))
         ->post(route('sudo.confirm'), ['password' => 'supersecret123'])
-        ->assertRedirect('/account/activity');
+        ->assertRedirect('/settings/activity');
 });
 
 it('never remembers an off-site page to return to', function (): void {

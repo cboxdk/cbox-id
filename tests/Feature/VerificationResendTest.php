@@ -86,8 +86,8 @@ function signUpForResend(string $email = 'dana@acme.example', string $organizati
 function resend(): TestResponse
 {
     return test()
-        ->from(route('projects'))
-        ->post(route('projects.verification.resend'));
+        ->from(route('orgs.projects'))
+        ->post(route('orgs.projects.verification.resend'));
 }
 
 /**
@@ -162,9 +162,10 @@ it('takes no address argument, so a crafted call cannot steer where the mail goe
             ->and((string) $type)->not->toBe(Request::class);
     }
 
-    // …and the route carries no parameter either, so there is nowhere in the URL to put
-    // one. Reflection over the action alone would miss a `{subject}` segment.
-    expect(Route::getRoutes()->getByName('projects.verification.resend')?->parameterNames())->toBe([]);
+    // …and the route carries no parameter but the organization it acts in, so there is
+    // nowhere in the URL to put an address. Reflection over the action alone would miss a
+    // `{subject}` segment.
+    expect(Route::getRoutes()->getByName('orgs.projects.verification.resend')?->parameterNames())->toBe(['org']);
 });
 
 it('offers the resend control on the launchpad while the environment is held back', function (): void {
@@ -174,7 +175,7 @@ it('offers the resend control on the launchpad while the environment is held bac
     // The banner's own state. It is a PROP now rather than copy in the response: the page
     // renders in the browser, and `awaitingVerification` is the single thing that decides
     // whether the way back exists at all.
-    $this->get(route('projects'))
+    $this->get(route('orgs.projects'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/projects/index')

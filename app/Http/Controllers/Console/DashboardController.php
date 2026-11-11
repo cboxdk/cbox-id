@@ -15,6 +15,7 @@ use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Onboarding\SetupChecklist;
 use App\Platform\Onboarding\SetupProgress;
 use App\Platform\Onboarding\SetupStep;
+use App\Platform\PlaneResolver;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -55,8 +56,13 @@ final readonly class DashboardController extends ConsoleController
         // the workspace's own record in Cbox's environment — its team signing in to Cbox —
         // which is not what anybody who owns an identity platform comes here to look at.
         // This is the page every sign-in lands on, so it hands them to where they work.
+        //
+        // On the app host that is `/orgs/{org}` for the organization this browser last
+        // used; elsewhere, the organization's own landing page.
         if ($this->scope->atOrganizationAltitude()) {
-            return redirect()->to($landing->url());
+            return ! app(PlaneResolver::class)->onCustomerEnvironment()
+                ? OrganizationPickerController::home(request())
+                : redirect()->to($landing->url());
         }
 
         $me = app(CurrentUser::class);

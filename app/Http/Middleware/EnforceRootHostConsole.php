@@ -8,8 +8,11 @@ use App\Http\Controllers\Console\ConfiguredInEnvironmentController;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\Console\RootHostConsole;
+use App\Platform\CurrentUser;
+use App\Platform\Organizations\OrganizationDirectory;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -32,12 +35,38 @@ final class EnforceRootHostConsole
     public function __construct(
         private readonly RootHostConsole $console,
         private readonly ConsoleScope $scope,
+        private readonly CurrentUser $user,
+        private readonly OrganizationDirectory $directory,
     ) {}
 
     /**
      * @param  Closure(Request): Response  $next
      */
     public function handle(Request $request, Closure $next): Response
+    {
+        // Every page of the console links into the organization console, and those links
+        // need an organization to name: the one this session is in, by its address. A
+        // page under `/orgs/{org}` replaces it with the one in the path
+        // ({@see BindOrganizationFromPath}).
+        $previous = URL::getDefaultParameters()['org'] ?? null;
+        $organizationId = $this->user->organizationId();
+        $slug = is_string($organizationId) ? $this->directory->slugOf($organizationId) : null;
+
+        if ($slug !== null) {
+            URL::defaults(['org' => $slug]);
+        }
+
+        try {
+            return $this->enforce($request, $next);
+        } finally {
+            URL::defaults(['org' => $previous]);
+        }
+    }
+
+    /**
+     * @param  Closure(Request): Response  $next
+     */
+    private function enforce(Request $request, Closure $next): Response
     {
         $route = $request->route();
         $name = $route?->getName();

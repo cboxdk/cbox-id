@@ -39,7 +39,7 @@ final readonly class EnvironmentRefusedController extends ConsoleController
         return $this->page('console/environment-refused', __('console.you_don_t_administer_this_environment_f9046e00'), [
             'refusedEnvironment' => $model === null ? null : ['name' => $model->name, 'type' => $model->type->value],
             'email' => app(CurrentUser::class)->email(),
-            'projectsHref' => $canRead ? route('projects') : null,
+            'projectsHref' => $canRead ? route('orgs.projects') : null,
             'accountsHref' => route('accounts'),
         ])->toResponse($request)->setStatusCode(403);
     }

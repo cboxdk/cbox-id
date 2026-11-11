@@ -126,7 +126,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
             'keys' => $selected === '' ? [] : $keys->forEnvironment($selected)
                 ->map(fn (EnvironmentApiKey $key): EnvironmentKeyRowProps => EnvironmentKeyRowProps::from(
                     $key,
-                    $this->url('keys.destroy', $key->id),
+                    $this->url('orgs.settings.api-keys.destroy', $key->id),
                     $now,
                 ))
                 ->values()
@@ -145,7 +145,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
                 EnvironmentApiScope::OrganizationsRead->value,
                 EnvironmentApiScope::UsersRead->value,
             ],
-            'storeHref' => $this->url('keys.store'),
+            'storeHref' => $this->url('orgs.settings.api-keys.store'),
         ]);
     }
 
@@ -414,7 +414,7 @@ final readonly class EnvironmentKeyController extends ConsoleController
     private function stepUp(string $reason): ?string
     {
         return app(ConsoleStepUp::class)->challenge(
-            'keys',
+            'orgs.settings.api-keys',
             // Back to where the environment console's keys are now listed.
             'environment.agents',
             [],

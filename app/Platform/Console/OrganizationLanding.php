@@ -18,10 +18,10 @@ final readonly class OrganizationLanding
     {
         $capabilities = $this->scope->capabilities();
         if ($capabilities?->canReadEnvironments() === true) {
-            return route('projects');
+            return route('orgs.projects');
         }
         if ($capabilities?->canReadBilling() === true && config('billing.enabled') === true) {
-            return route('billing', ['organization' => $this->scope->organizationId()]);
+            return route('orgs.settings.billing', ['organization' => $this->scope->organizationId()]);
         }
 
         return route('account');

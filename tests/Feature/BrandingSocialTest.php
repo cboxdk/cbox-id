@@ -62,7 +62,7 @@ it('points org settings at the appearance editor', function () {
 
 it('redirects a member away from org settings to their own account', function () {
     // A full HTTP sign-in (web session key, not just the Volt component context) so
-    // GET /settings runs the real middleware + component mount as this member.
+    // GET /organization runs the real middleware + component mount as this member.
     $subject = app(Subjects::class)->create('plainmember@acme.test', 'Member', 'supersecret123');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-plain'));
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
@@ -73,7 +73,7 @@ it('redirects a member away from org settings to their own account', function ()
     // The member/admin split is enforced at the door: a member who lands on the
     // admin settings surface is sent to their own security centre, so they never
     // reach the (admin-gated) branding or rename controls in the first place.
-    $this->get('/settings')->assertRedirect(route('account'));
+    $this->get('/organization')->assertRedirect(route('account'));
 });
 
 it('lets an admin rename their organization', function () {

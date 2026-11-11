@@ -64,9 +64,9 @@ it('offers an account-less operator no area that needs an account', function ():
     // on what the acting organization owns — an operator's organization owns no identity
     // provider, so the `identity-platform` feature gates empty the area and the layout
     // drops an area with no pages left.
-    expect($routes)->not->toContain('projects')
-        ->and($routes)->not->toContain('billing')
-        ->and($routes)->not->toContain('organization-settings')
+    expect($routes)->not->toContain('orgs.projects')
+        ->and($routes)->not->toContain('orgs.settings.billing')
+        ->and($routes)->not->toContain('orgs.settings')
         // …and the platform section IS there, or the assertions above pass on an empty rail.
         ->and($routes)->toContain('platform.orgs')
         ->and($routes)->toContain('platform.operators');
@@ -83,7 +83,7 @@ it('lands an account-less operator on the platform rather than on an empty Proje
     // Projects is an Identity platform page and an operator's organization owns no IdP,
     // so the page is not theirs — and where they go instead is the platform section,
     // because that is where their work is, not because Projects refuses them.
-    $this->get(route('projects'))->assertRedirect(route('platform.environments'));
+    $this->get('/projects')->assertRedirect(route('platform.environments'));
 });
 
 it('gives an account-less operator their OWN security page, not a sign-in screen', function (): void {
@@ -112,7 +112,7 @@ it('names the section in the title of every platform page', function (): void {
 
     // …and a console page is not a platform page, whoever is reading it.
     polishOwner();
-    expect((string) $this->get(route('projects'))->assertOk()->getContent())
+    expect((string) $this->get(route('orgs.projects'))->assertOk()->getContent())
         ->not->toContain(' · Platform · ');
 });
 
@@ -239,7 +239,7 @@ it('says who the operator is signed in as when there is no account to name', fun
 it('shows an account owner nothing platform-shaped', function (): void {
     polishOwner();
 
-    $response = $this->get(route('projects'))->assertOk();
+    $response = $this->get(route('orgs.projects'))->assertOk();
     $shell = (array) $response->inertiaProps('shell');
 
     expect(json_encode($shell, JSON_THROW_ON_ERROR))->not->toContain(route('platform.environments'))

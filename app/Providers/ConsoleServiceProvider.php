@@ -101,22 +101,22 @@ final class ConsoleServiceProvider extends ServiceProvider
         // The area KEY stays `identity-platform`: it is the socket the billing module
         // plugs into, and a key is not something a person reads.
         $nav->area('identity-platform', 'Organization', 'briefcase', 15)
-            ->page('projects', 'Projects', feature: 'organization.projects', order: 10)
+            ->page('orgs.projects', 'Projects', feature: 'organization.projects', order: 10)
             // TEAM — the people who administer the workspace. Not "Members", which is the
             // People page of every organization, and not "Administrators", which a Viewer on
             // the list is not.
-            ->page('members', Vocabulary::TEAM, feature: 'organization.members', order: 20)
+            ->page('orgs.settings.members', Vocabulary::TEAM, feature: 'organization.members', order: 20)
             // One page, the kind of key as a tab: secret keys for an environment first, the
             // workspace's own keys second. Gated on the first tab's capability, which every
             // role that may see the second also holds. My account's page is "My API keys",
             // so the same words never sit twice on one rail.
-            ->page('keys', Vocabulary::API_KEYS, feature: 'organization.environments', order: 30)
-            ->page('environment-domains', 'Environment domains', feature: 'organization.environments', order: 50)
+            ->page('orgs.settings.api-keys', Vocabulary::API_KEYS, feature: 'organization.environments', order: 30)
+            ->page('orgs.environment-domains', 'Environment domains', feature: 'organization.environments', order: 50)
             // 70 is the BILLING module's, added by its own provider — see modules/billing.
             // Left as a gap rather than closed up: the orders in this area are unique
             // across modules by contract, and renumbering to fill it would collide with a
             // module the host cannot see.
-            ->page('organization-settings', 'Organization settings', feature: 'organization.own', order: 80);
+            ->page('orgs.settings', 'Organization settings', feature: 'organization.own', order: 80);
 
         // Plain-language labels for non-experts (the technical term lives on the page
         // header, not the nav). "Directory" → Members & roles, "Authentication" → Sign-in.

@@ -131,12 +131,21 @@ it('serves each shared page at the same slug on both consoles', function (string
     ['audit-streams', 'environment.audit-streams'],
     ['roles', 'environment.roles'],
     ['permissions', 'environment.permissions'],
-    ['settings', 'environment.settings'],
     ['auth-policy', 'environment.auth-policy'],
     ['branding', 'environment.branding'],
     ['usage', 'environment.usage'],
-    ['keys', 'environment.keys'],
 ]);
+
+it('gives the pages that moved into /orgs/{org} or made way for /settings their own address', function (): void {
+    // `/settings` is the signed-in person's own settings on every Cbox app, so the console
+    // page that sat there is `/organization`, and the environment keeps `/admin/settings`.
+    expect(route('settings', [], false))->toBe('/organization')
+        ->and(route('environment.settings', [], false))->toBe('/admin/settings')
+        ->and(route('account', [], false))->toBe('/settings')
+        // The organization's keys live in its settings; the environment's at `/admin/keys`.
+        ->and(Route::getRoutes()->getByName('orgs.settings.api-keys')?->uri())->toBe('orgs/{org}/settings/api-keys')
+        ->and(route('environment.keys', [], false))->toBe('/admin/keys');
+});
 
 it('no longer routes any old spelling as a page of its own', function (): void {
     // A redirect row and a live page on the same path would be two statements of where

@@ -29,7 +29,7 @@ use App\Platform\NativeProduct\NativeTeamInvitations as TeamInvitations;
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['POST', '/invitations/{id}/resend'],
-    consoleRoutes: ['members.invitations.resend'],
+    consoleRoutes: ['orgs.settings.members.invitations.resend'],
     consoleGate: ConsoleGate::ManageMembers,
     schema: 'TeamInvitationReceipt',
     tag: 'Team',

@@ -1,5 +1,5 @@
 import { useTranslator as useConsoleTranslator } from '@/i18n';
-import { store as storeEnvironment } from '@routes/projects/environments';
+import { store as storeEnvironment } from '@routes/orgs/projects/environments';
 import { router, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
@@ -16,7 +16,7 @@ import {
     Select,
 } from '@/ui';
 import { useState } from 'react';
-import { reactivate, rename, suspend } from '@routes/projects';
+import { reactivate, rename, suspend } from '@routes/orgs/projects';
 
 interface EnvironmentRow {
     id: string;

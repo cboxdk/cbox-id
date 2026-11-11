@@ -61,8 +61,8 @@ final readonly class KeyTabs
 
             // Only where there IS a workspace host to send them to: a single-host deployment
             // has no second origin, and the same path here would be a page this host refuses.
-            if ($this->planes->consoleHost() !== null && Route::has('keys.organization')) {
-                $tabs[] = new LinkTabProps(self::ORGANIZATION, ConsoleLabels::navigation(Vocabulary::ORGANIZATION_KEYS), $this->shell->onOrganizationHost('keys.organization'), false);
+            if ($this->planes->consoleHost() !== null && Route::has('orgs.settings.api-keys.organization')) {
+                $tabs[] = new LinkTabProps(self::ORGANIZATION, ConsoleLabels::navigation(Vocabulary::ORGANIZATION_KEYS), $this->shell->onOrganizationHost('orgs.settings.api-keys.organization'), false);
             }
 
             return $tabs;
@@ -71,11 +71,11 @@ final readonly class KeyTabs
         $can = $this->scope->capabilities();
 
         if ($can?->canManageEnvironments() === true) {
-            $tabs[] = new LinkTabProps(self::MANAGEMENT, ConsoleLabels::navigation(Vocabulary::SECRET_KEYS), route('keys'), $current === self::MANAGEMENT);
+            $tabs[] = new LinkTabProps(self::MANAGEMENT, ConsoleLabels::navigation(Vocabulary::SECRET_KEYS), route('orgs.settings.api-keys'), $current === self::MANAGEMENT);
         }
 
         if ($can?->canManageMembers() === true) {
-            $tabs[] = new LinkTabProps(self::ORGANIZATION, ConsoleLabels::navigation(Vocabulary::ORGANIZATION_KEYS), route('keys.organization'), $current === self::ORGANIZATION);
+            $tabs[] = new LinkTabProps(self::ORGANIZATION, ConsoleLabels::navigation(Vocabulary::ORGANIZATION_KEYS), route('orgs.settings.api-keys.organization'), $current === self::ORGANIZATION);
         }
 
         return $tabs;

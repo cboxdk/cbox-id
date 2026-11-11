@@ -231,7 +231,7 @@ function endUserAnswer(): TestResponse
 {
     nextRequest();
 
-    return test()->get(test()->tenant.'/account');
+    return test()->get(test()->tenant.'/settings');
 }
 
 it('keeps the tenant\'s end user signed in when the administrator signs out of the console', function (): void {

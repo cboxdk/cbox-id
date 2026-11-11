@@ -71,8 +71,8 @@ it('sends the same invitation from the console and from the organization API', f
     ['organization' => $organization, 'ownerId' => $ownerId, 'key' => $key, 'keyId' => $keyId] = teamWorkspace();
 
     signInAsMember($ownerId);
-    test()->from(route('members'))
-        ->post(route('members.invite', ['organization' => $organization->id]), ['email' => 'console@acme.example', 'roles' => ['developer']])
+    test()->from(route('orgs.settings.members'))
+        ->post(route('orgs.settings.members.invite', ['organization' => $organization->id]), ['email' => 'console@acme.example', 'roles' => ['developer']])
         ->assertSessionHasNoErrors();
 
     test()->withToken($key)->postJson('/api/v1/workspace/members', ['email' => 'api@acme.example', 'roles' => ['developer']])
@@ -202,8 +202,8 @@ it('answers a failed mail the same from both doors: nothing is left behind', fun
         ->assertJsonPath('message', InvitationRefused::mailFailed(invitationKept: false)->getMessage());
 
     signInAsMember($ownerId);
-    test()->from(route('members'))
-        ->post(route('members.invite', ['organization' => $organization->id]), ['email' => 'console@acme.example', 'roles' => ['viewer']])
+    test()->from(route('orgs.settings.members'))
+        ->post(route('orgs.settings.members.invite', ['organization' => $organization->id]), ['email' => 'console@acme.example', 'roles' => ['viewer']])
         ->assertSessionHasErrors(['email' => InvitationRefused::mailFailed(invitationKept: false)->getMessage()]);
 
     expect(teamPending($organization->id))->toBe([]);
@@ -218,8 +218,8 @@ it('refuses somebody already on the team with the same sentence from both doors'
         ->assertJsonPath('message', InvitationRefused::alreadyMember()->getMessage());
 
     signInAsMember($ownerId);
-    test()->from(route('members'))
-        ->post(route('members.invite', ['organization' => $organization->id]), ['email' => 'owner@acme.example', 'roles' => ['viewer']])
+    test()->from(route('orgs.settings.members'))
+        ->post(route('orgs.settings.members.invite', ['organization' => $organization->id]), ['email' => 'owner@acme.example', 'roles' => ['viewer']])
         ->assertSessionHasErrors(['email' => InvitationRefused::alreadyMember()->getMessage()]);
 
     Mail::assertNothingSent();

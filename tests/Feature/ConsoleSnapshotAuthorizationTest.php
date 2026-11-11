@@ -86,8 +86,8 @@ it('stops serving a ported console page the request after the capability is take
         : $response->assertRedirect(route($redirectsTo));
 })->with([
     // A Developer may not read the roster (it is PII) and may not manage API keys.
-    'the roster, which is PII' => ['members', MembershipRole::Developer, 'projects'],
-    'the organization API keys' => ['keys.organization', MembershipRole::Developer, 'projects'],
+    'the roster, which is PII' => ['orgs.settings.members', MembershipRole::Developer, 'orgs.projects'],
+    'the organization API keys' => ['orgs.settings.api-keys.organization', MembershipRole::Developer, 'orgs.projects'],
     // Roles are the access itself: who may act as what inside the apps. A Developer may
     // read an app's configuration and may not decide that.
     'the role catalogue' => ['roles', MembershipRole::Developer, null],
@@ -109,7 +109,7 @@ it('refuses a WRITE the request after the capability is taken away', function ()
      * a redirect back to a page they can still see, deliberately, because a 404 there
      * would deny the existence of a row rendered three lines above it.
      */
-    test()->from(route('members'))->delete(route('members.remove', ['member' => $target->id, 'organization' => $organizationId]), ['roles_version' => $before['roles_version']])->assertRedirect(route('members'));
+    test()->from(route('orgs.settings.members'))->delete(route('orgs.settings.members.remove', ['member' => $target->id, 'organization' => $organizationId]), ['roles_version' => $before['roles_version']])->assertRedirect(route('orgs.settings.members'));
 
     expect(freshMembership($target))->not->toBeNull()
         ->and(app(NativeProductMembers::class)->access($target))->toBe($before);

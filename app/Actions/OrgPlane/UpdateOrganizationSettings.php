@@ -38,7 +38,7 @@ use Cbox\Id\Platform\PlatformRoot;
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['PATCH', '/'],
-    consoleRoutes: ['organization-settings.update'],
+    consoleRoutes: ['orgs.settings.update'],
     consoleGate: ConsoleGate::ManageMembers,
     schema: 'Organization',
     tag: 'Organization',

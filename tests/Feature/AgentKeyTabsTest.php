@@ -28,7 +28,7 @@ it('draws the key tabs on the Agents page and on API keys, organization keys on 
             ->where('tabs.0.href', fn (string $href): bool => str_ends_with($href, envConsole('/agents')))
             ->where('tabs.1.key', 'frontend')
             ->where('tabs.2.key', 'organization')
-            ->where('tabs.2.href', 'https://'.$host.'/keys/workspace')
+            ->where('tabs.2.href', fn (string $href): bool => (bool) preg_match('#^https://'.preg_quote((string) $host, '#').'/orgs/[a-z0-9-]+/settings/api-keys/organization$#', $href))
             ->where('tabs.2.current', false)
             ->where('tabs', fn ($tabs): bool => collect($tabs)->where('current', true)->pluck('key')->all() === [$current]));
     }
@@ -40,5 +40,5 @@ it('links Keys › Organization keys on Connect to the organization host', funct
     $host = app(PlaneResolver::class)->consoleHost();
 
     $this->get(envConsole('/agents/connect'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-        ->where('organization.organizationKeysHref', 'https://'.$host.'/keys/workspace'));
+        ->where('organization.organizationKeysHref', fn (string $href): bool => (bool) preg_match('#^https://'.preg_quote((string) $host, '#').'/orgs/[a-z0-9-]+/settings/api-keys/organization$#', $href)));
 });

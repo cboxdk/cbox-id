@@ -26,10 +26,10 @@ it('walks an admin from requesting a custom domain to a verified issuer', functi
     ['member' => $owner, 'subjectId' => $ownerSubjectId, 'organization' => $account, 'environment' => $env] = provisionAccount();
     signInAsMember($ownerSubjectId);
 
-    $on = fn (): string => route('environment-domains', ['environment' => $env->id]);
+    $on = fn (): string => route('orgs.environment-domains', ['environment' => $env->id]);
 
     test()->from($on())
-        ->post(route('environment-domains.store'), [
+        ->post(route('orgs.environment-domains.store'), [
             'environment' => $env->id,
             'domain' => 'id.acme.com',
         ])
@@ -50,7 +50,7 @@ it('walks an admin from requesting a custom domain to a verified issuer', functi
     // Not verified until the record is live — and the refusal says what to DO rather than
     // implying the domain needs correcting.
     test()->from($on())
-        ->post(route('environment-domains.verify'), ['environment' => $env->id])
+        ->post(route('orgs.environment-domains.verify'), ['environment' => $env->id])
         ->assertSessionHasErrors(['verify' => 'The DNS TXT record isn\'t visible yet. DNS can take a few minutes to propagate — try again shortly.']);
 
     expect($env->fresh()->domain)->toBeNull();
@@ -59,7 +59,7 @@ it('walks an admin from requesting a custom domain to a verified issuer', functi
     $this->dns->publish($challenge->recordName, $challenge->recordValue);
 
     test()->from($on())
-        ->post(route('environment-domains.verify'), ['environment' => $env->id])
+        ->post(route('orgs.environment-domains.verify'), ['environment' => $env->id])
         ->assertSessionHasNoErrors();
 
     expect($env->fresh()->domain)->toBe('id.acme.com')
@@ -71,8 +71,8 @@ it('surfaces a validation error for a platform-reserved domain', function (): vo
     ['member' => $owner, 'subjectId' => $ownerSubjectId, 'environment' => $env] = provisionAccount();
     signInAsMember($ownerSubjectId);
 
-    test()->from(route('environment-domains', ['environment' => $env->id]))
-        ->post(route('environment-domains.store'), [
+    test()->from(route('orgs.environment-domains', ['environment' => $env->id]))
+        ->post(route('orgs.environment-domains.store'), [
             'environment' => $env->id,
             'domain' => 'acme.cboxid.com',
         ])
@@ -86,8 +86,8 @@ it('removes a verified domain, falling back to the default issuer', function ():
     $env->update(['domain' => 'id.acme.com']);
     signInAsMember($ownerSubjectId);
 
-    test()->from(route('environment-domains', ['environment' => $env->id]))
-        ->delete(route('environment-domains.destroy'), ['environment' => $env->id])
+    test()->from(route('orgs.environment-domains', ['environment' => $env->id]))
+        ->delete(route('orgs.environment-domains.destroy'), ['environment' => $env->id])
         ->assertSessionHasNoErrors();
 
     expect($env->fresh()->domain)->toBeNull();
@@ -98,7 +98,7 @@ it('refuses the domains page to a member who cannot manage environments', functi
     [$viewer, $viewerSubjectId] = memberWithRole($account->id, MembershipRole::Viewer, 'billing2@acme.example');
 
     signInAsMember($viewerSubjectId);
-    $this->get(route('environment-domains'))
+    $this->get(route('orgs.environment-domains'))
         ->assertRedirect(route('account'));
 });
 
@@ -130,7 +130,7 @@ it('does not leak another account domain challenge through the selected environm
      * the browser says. What must hold is that an id outside the reachable set never
      * reaches a service that resolves it unscoped.
      */
-    test()->get(route('environment-domains', ['environment' => $theirs['environment']->id]))
+    test()->get(route('orgs.environment-domains', ['environment' => $theirs['environment']->id]))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('challenge', null)
@@ -139,9 +139,9 @@ it('does not leak another account domain challenge through the selected environm
             ->where('selected', $mine['environment']->id));
 
     // And no write reaches it either.
-    test()->post(route('environment-domains.verify'), ['environment' => $theirs['environment']->id])
+    test()->post(route('orgs.environment-domains.verify'), ['environment' => $theirs['environment']->id])
         ->assertNotFound();
-    test()->delete(route('environment-domains.destroy'), ['environment' => $theirs['environment']->id])
+    test()->delete(route('orgs.environment-domains.destroy'), ['environment' => $theirs['environment']->id])
         ->assertNotFound();
 
     expect(app(EnvironmentDomains::class)->challenge($theirs['environment']->id))
@@ -150,7 +150,7 @@ it('does not leak another account domain challenge through the selected environm
     // Positive control: their own environment still resolves one.
     app(EnvironmentDomains::class)->request($mine['environment']->id, 'id.acme.example');
 
-    test()->get(route('environment-domains', ['environment' => $mine['environment']->id]))
+    test()->get(route('orgs.environment-domains', ['environment' => $mine['environment']->id]))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('challenge.domain', 'id.acme.example'));

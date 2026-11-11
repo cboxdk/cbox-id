@@ -40,7 +40,7 @@ use Cbox\Id\Platform\PlatformRoot;
     plane: ActionPlane::Organization,
     rest: ['POST', '/members/{id}/transfer-ownership'],
     status: 204,
-    consoleRoutes: ['members.transfer-ownership'],
+    consoleRoutes: ['orgs.settings.members.transfer-ownership'],
     consoleGate: ConsoleGate::ManageMembers,
     tag: 'Team',
 )]

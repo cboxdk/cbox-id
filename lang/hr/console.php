@@ -4771,4 +4771,5 @@ https://staging.example.com',
     'more_226ba18b' => 'Više',
     'opens_in_a_new_tab_1d183356' => 'Otvara se u novoj kartici',
     'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Odaberite aktivnu OpenID Connect vezu koja pripada cijelom okruženju.',
+    'organization_settings_moved_here_7b3e91c4' => 'Tražite postavke svoje organizacije? Sada imaju vlastitu stranicu.',
 ];

@@ -423,7 +423,7 @@ it('signs a suspended operator in as an ordinary person, with no platform author
     // that answers, because asserting only where they were sent is what let a 403 pass for
     // a landing — the redirect was always issued, and it was the arrival that refused.
     nextRequest();
-    $landing = $this->followingRedirects()->get(route('projects'))->assertSuccessful();
+    $landing = $this->followingRedirects()->get('/projects')->assertSuccessful();
 
     expect((string) $landing->inertiaProps('greeting'))->toContain('belong to an organization here yet')
         // THE WAY OUT. Nothing rendered one before: the account rail needed nav areas and
@@ -517,7 +517,7 @@ it('lands an account member in the console too', function (): void {
     // than which door they came through. There was a second door for exactly this, and it
     // authenticated the same subject against the same credential.
     signInAsMember($member->id);
-    $this->get(route('projects'))->assertOk();
+    $this->get(route('orgs.projects'))->assertOk();
 })->group('security');
 
 /**
@@ -653,7 +653,7 @@ it('keeps the no-access landing reachable under an environment-wide MFA mandate'
     // matters is that the chain terminates on a page with a way out, which is the whole
     // property the account console's `no-access` page existed for.
     nextRequest();
-    expect(hasWayOut(arrivalWithin($this, route('projects'))->assertSuccessful()))
+    expect(hasWayOut(arrivalWithin($this, '/projects')->assertSuccessful()))
         ->toBeTrue('the mandate left this person on a page with no way to sign out');
 })->group('security');
 

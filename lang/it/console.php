@@ -4772,4 +4772,5 @@ Le connessioni',
     'no_activity_recorded_fcfa3087' => 'Nessuna attività registrata',
     'last_activity_0c278ed1' => 'Ultima attività ',
     'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Scegli una connessione OpenID Connect attiva che appartenga all’intero ambiente.',
+    'organization_settings_moved_here_7b3e91c4' => 'Cerchi le impostazioni della tua organizzazione? Ora hanno una pagina dedicata.',
 ];

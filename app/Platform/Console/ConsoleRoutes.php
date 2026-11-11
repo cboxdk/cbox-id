@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Console;
 
 use App\Http\Controllers\MovedPageController;
+use App\Http\Middleware\BindOrganizationFromPath;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\ResolveEnvironmentFromPath;
 use Closure;
@@ -223,6 +224,49 @@ final class ConsoleRoutes
                     self::verb($verb, $environmentUri ?? $uri, $action)->name('environment.organizations.'.$name);
                 });
         }, ['console.feature:'.$feature]);
+    }
+
+    /**
+     * A page of the Cbox organization console, under `/orgs/{org}` on the app host — the
+     * organization in the address, bound by `orgs.bind` ({@see BindOrganizationFromPath}).
+     * `$uri` is relative to the organization, and `$name` is the full route name
+     * (`orgs.…`).
+     *
+     * @param  array{0: class-string, 1: string}|class-string  $component  a controller action
+     */
+    public static function orgPage(string $feature, string $uri, array|string $component, string $name): void
+    {
+        self::orgGroup($feature, static function () use ($uri, $component, $name): void {
+            self::get($uri, $component)->name($name);
+        });
+    }
+
+    /**
+     * A write of the Cbox organization console, under `/orgs/{org}`. See {@see orgPage()}.
+     *
+     * @param  string  $verb  post|patch|put|delete
+     * @param  array{0: class-string, 1: string}|class-string  $action  a controller action
+     */
+    public static function orgAction(string $feature, string $verb, string $uri, array|string $action, string $name): void
+    {
+        self::orgGroup($feature, static function () use ($verb, $uri, $action, $name): void {
+            self::verb($verb, $uri, $action)->name($name);
+        });
+    }
+
+    private static function orgGroup(string $feature, Closure $routes): void
+    {
+        Route::middleware([
+            'web',
+            'plane:console',
+            EnforceImpersonationWindow::class,
+            'platform.auth',
+            'locale.console',
+            'console.customer',
+            'console.root',
+            'orgs.bind',
+            'console.feature:'.$feature,
+        ])->prefix('orgs/{org}')->group($routes);
     }
 
     /**

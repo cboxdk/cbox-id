@@ -23,7 +23,7 @@ import {
     Panel,
     Select,
 } from '@/ui';
-import { store } from '@routes/keys/organization';
+import { store } from '@routes/orgs/settings/api-keys/organization';
 
 interface ApiKey {
     id: string;

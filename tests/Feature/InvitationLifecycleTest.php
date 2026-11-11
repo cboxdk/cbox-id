@@ -87,7 +87,7 @@ it('shows the invitations nobody has accepted', function (): void {
     $org = invitingOwner();
     inviteFrom($org, 'waiting@acme.test');
 
-    test()->get(route('members'))
+    test()->get(route('orgs.settings.members'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/members')
@@ -100,8 +100,8 @@ it('sends the invitation again with a fresh link', function (): void {
     $org = invitingOwner();
     $id = inviteFrom($org, 'waiting2@acme.test');
 
-    test()->from(route('members'))->post(route('members.invitations.resend', ['invitation' => $id, 'organization' => $org]))
-        ->assertRedirect(route('members'));
+    test()->from(route('orgs.settings.members'))->post(route('orgs.settings.members.invitations.resend', ['invitation' => $id, 'organization' => $org]))
+        ->assertRedirect(route('orgs.settings.members'));
 
     Mail::assertSent(InvitationMail::class);
 
@@ -119,8 +119,8 @@ it('withdraws an invitation so its link stops working', function (): void {
     $org = invitingOwner();
     $id = inviteFrom($org, 'mistake@acme.test');
 
-    test()->from(route('members'))->delete(route('members.invitations.revoke', ['invitation' => $id, 'organization' => $org]))
-        ->assertRedirect(route('members', ['organization' => $org]));
+    test()->from(route('orgs.settings.members'))->delete(route('orgs.settings.members.invitations.revoke', ['invitation' => $id, 'organization' => $org]))
+        ->assertRedirect(route('orgs.settings.members', ['organization' => $org]));
 
     expect(pendingIn($org))->toHaveCount(0);
 });
@@ -138,8 +138,8 @@ it('refuses to touch an invitation belonging to another organization', function 
 
     $theirs = inviteFrom($other->id, 'theirs@acme.test');
 
-    test()->from(route('members'))->delete(route('members.invitations.revoke', ['invitation' => $theirs, 'organization' => $org]))
-        ->assertRedirect(route('members'));
+    test()->from(route('orgs.settings.members'))->delete(route('orgs.settings.members.invitations.revoke', ['invitation' => $theirs, 'organization' => $org]))
+        ->assertRedirect(route('orgs.settings.members'));
 
     expect(pendingIn($other->id))->toHaveCount(1);
 
@@ -161,8 +161,8 @@ it('creates nothing when the invitation could not be sent', function (): void {
 
     Mail::shouldReceive('to')->andThrow(new RuntimeException('the mail server refused it'));
 
-    test()->from(route('members'))
-        ->post(route('members.invite', ['organization' => $org]), [
+    test()->from(route('orgs.settings.members'))
+        ->post(route('orgs.settings.members.invite', ['organization' => $org]), [
             'email' => 'unreachable@acme.test',
             'roles' => ['viewer'],
         ])
@@ -181,14 +181,14 @@ it('sends at most one invitation mail a minute to the same address', function ()
     $org = invitingOwner();
     $id = inviteFrom($org, 'flooded@acme.test');
 
-    test()->from(route('members'))->post(route('members.invitations.resend', ['invitation' => $id, 'organization' => $org]))
-        ->assertRedirect(route('members'));
+    test()->from(route('orgs.settings.members'))->post(route('orgs.settings.members.invitations.resend', ['invitation' => $id, 'organization' => $org]))
+        ->assertRedirect(route('orgs.settings.members'));
 
     // The second attempt names the NEW invitation, because the first resend superseded
     // the one we started with — replaying against a stale id would be refused for the
     // wrong reason and the throttle would not be what this test measured.
-    test()->from(route('members'))->post(route('members.invitations.resend', ['invitation' => (string) pendingIn($org)->first()?->id, 'organization' => $org]))
-        ->assertRedirect(route('members'));
+    test()->from(route('orgs.settings.members'))->post(route('orgs.settings.members.invitations.resend', ['invitation' => (string) pendingIn($org)->first()?->id, 'organization' => $org]))
+        ->assertRedirect(route('orgs.settings.members'));
 
     Mail::assertSentCount(1);
 });
@@ -207,8 +207,8 @@ it('keeps the invitation alive when a resend cannot be delivered', function (): 
 
     Mail::shouldReceive('to')->andThrow(new RuntimeException('the mail server refused it'));
 
-    test()->from(route('members'))->post(route('members.invitations.resend', ['invitation' => $id, 'organization' => $org]))
-        ->assertRedirect(route('members'));
+    test()->from(route('orgs.settings.members'))->post(route('orgs.settings.members.invitations.resend', ['invitation' => $id, 'organization' => $org]))
+        ->assertRedirect(route('orgs.settings.members'));
 
     expect(pendingIn($org))->toHaveCount(1);
 });
