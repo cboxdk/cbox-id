@@ -416,7 +416,9 @@ final readonly class ShellContext
             return [];
         }
 
-        $organizationSlug = $this->organizations->find($organizationId)?->slug;
+        // The organization's address at `/orgs/{org}` — its linked `cbox` slug — exactly as
+        // {@see EnvironmentConsolePath} builds and resolves it.
+        $organizationSlug = app(OrganizationLinks::class)->addressOf($organizationId)['slug'] ?? null;
 
         if (! is_string($organizationSlug) || $organizationSlug === '') {
             return [];
