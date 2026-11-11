@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\Organizations\OrganizationDirectory;
+use App\Platform\Shell\IdShell;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
@@ -312,3 +313,13 @@ it('reads the account menu\'s regional format and time zone before the first pai
         ->and($shell['preferences'])->not->toHaveKey('timeZone')
         ->and($shell['preferences']['theme'])->toBe('system');
 })->group('shell');
+
+it('keeps a time zone the browser names by its older alias', function (string $zone): void {
+    // Browsers list Intl.supportedValuesOf('timeZone') with the old names (Europe/Kiev, not
+    // Europe/Kyiv); the account menu offers what the browser lists, so the server keeps it.
+    expect(IdShell::timeZone($zone))->toBe($zone);
+})->with(['Europe/Kiev', 'Asia/Calcutta', 'Europe/Kyiv', 'Asia/Kolkata'])->group('shell');
+
+it('drops a time zone that is not one', function (mixed $zone): void {
+    expect(IdShell::timeZone($zone))->toBeNull();
+})->with(['Mars/Olympus', '', str_repeat('A', 65), null, 3])->group('shell');

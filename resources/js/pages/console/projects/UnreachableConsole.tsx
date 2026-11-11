@@ -5,9 +5,17 @@ import { Button } from '@/ui';
 /**
  * In place of "Open console" for an environment whose console has no address (it is in no
  * project of an organization, {@see \App\Platform\Console\EnvironmentConsolePath}): the row
- * stays, says why, and offers the next step, rather than a link that ends in a 404.
+ * stays, says why, and offers the next step, rather than a link that ends in a 404: Cbox's
+ * Assistant where it is set up, else the guide on organizations and projects.
  */
-export function UnreachableConsole({ name }: { name: string }) {
+export function UnreachableConsole({
+    name,
+    guideHref,
+}: {
+    name: string;
+    /** The guide on projects, or null when this deployment links no docs. */
+    guideHref: string | null;
+}) {
     const { t } = useTranslator();
     const help = useShellHelp();
 
@@ -17,7 +25,7 @@ export function UnreachableConsole({ name }: { name: string }) {
             <p className="mt-0.5 text-xs" style={{ color: 'var(--faint)' }}>
                 {t('console.environment_console_unresolved_detail')}
             </p>
-            {help !== null && (
+            {help !== null ? (
                 <Button
                     size="sm"
                     variant="secondary"
@@ -28,6 +36,14 @@ export function UnreachableConsole({ name }: { name: string }) {
                 >
                     {t('console.environment_console_unresolved_ask')}
                 </Button>
+            ) : (
+                guideHref !== null && (
+                    <Button size="sm" variant="secondary" className="mt-2" asChild>
+                        <a href={guideHref} target="_blank" rel="noreferrer">
+                            {t('console.read_the_guide_83b3b277')}
+                        </a>
+                    </Button>
+                )
             )}
         </div>
     );

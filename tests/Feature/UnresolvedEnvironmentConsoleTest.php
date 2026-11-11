@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Platform\Console\EnvironmentConsolePath;
+use App\Platform\Help\DocsLinks;
+use App\Platform\Help\HelpTopic;
 use App\Platform\Organizations\OrganizationLinks;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -54,7 +56,10 @@ it('keeps an environment with no console address on the projects pages, without 
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('environments.0.name', $environment->name)
-            ->where('environments.0.openHref', null));
+            ->where('environments.0.openHref', null)
+            // Where the Assistant is not set up, the row's next step is this guide.
+            ->where('guideHref', app(DocsLinks::class)->url(HelpTopic::Projects))
+            ->where('guideHref', fn (?string $href): bool => $href !== null));
 });
 
 it('sends /open for an environment with no console address back to the projects, saying why', function (): void {

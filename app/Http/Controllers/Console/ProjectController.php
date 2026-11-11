@@ -18,6 +18,7 @@ use App\Platform\Actions\ActionRefused;
 use App\Platform\Billing\ProductBilling;
 use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\CurrentUser;
+use App\Platform\Help\DocsLinks;
 use App\Platform\Help\HelpTopic;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\ServiceAccess\ProductAdmission;
@@ -256,6 +257,7 @@ final readonly class ProjectController extends ConsoleController
                 : null,
             'remaining' => $scoped ? 0 : $projects->remainingEnvironments($model),
             'indexHref' => route('orgs.projects'),
+            'guideHref' => app(DocsLinks::class)->url(HelpTopic::Projects),
             'manageBillingLabel' => __('billing.manage'),
         ]);
     }

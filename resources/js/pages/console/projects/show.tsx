@@ -45,6 +45,8 @@ type Props = PageProps<{
     remaining: number;
     indexHref: string;
     billingHref: string | null;
+    /** The guide on projects, offered where an environment's console has no address. */
+    guideHref: string | null;
 }>;
 
 export default function ProjectDetail({
@@ -55,6 +57,7 @@ export default function ProjectDetail({
     remaining,
     indexHref,
     billingHref,
+    guideHref,
 }: Props) {
     const { t: consoleShortText } = useConsoleTranslator();
     const { t: consoleFinalText } = useConsoleTranslator();
@@ -147,7 +150,10 @@ export default function ProjectDetail({
                                 </div>
 
                                 {environment.openHref === null ? (
-                                    <UnreachableConsole name={environment.name} />
+                                    <UnreachableConsole
+                                        name={environment.name}
+                                        guideHref={guideHref}
+                                    />
                                 ) : (
                                     <Button
                                         asChild

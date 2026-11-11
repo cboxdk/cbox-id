@@ -12,6 +12,7 @@ use App\Platform\Console\ShellPayload;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Theme;
 use Cbox\Console\Kit\Facades\Console;
+use DateTimeZone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
@@ -106,7 +107,7 @@ final readonly class IdShell
     /** An IANA time zone this PHP knows (`Europe/Copenhagen`), or null. */
     public static function timeZone(mixed $value): ?string
     {
-        return is_string($value) && strlen($value) <= 64 && in_array($value, timezone_identifiers_list(), true) ? $value : null;
+        return is_string($value) && strlen($value) <= 64 && in_array($value, timezone_identifiers_list(DateTimeZone::ALL_WITH_BC), true) ? $value : null;
     }
 
     /** The white-labelled customer console's own chrome, on a customer environment's host. */

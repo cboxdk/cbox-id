@@ -315,19 +315,15 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
 
     const onPreferenceChange = useMemo<ShellPreferenceChange>(
         () => (key, value) => {
-            if (key === 'regionalFormat' || key === 'timeZone') {
-                setFormatPreferences({
-                    regionalFormat:
-                        key === 'regionalFormat'
-                            ? (value as string)
-                            : shell?.preferences.regionalFormat,
-                    timeZone: key === 'timeZone' ? (value as string) : shell?.preferences.timeZone,
-                });
-            }
-
             savePreference(key, value, i18n);
+
+            // A format or zone re-reads the shell, whose preferences come from the cookie just
+            // written; the render below then applies them, so dates on screen follow at once.
+            if (key === 'regionalFormat' || key === 'timeZone') {
+                router.reload({ only: ['shell'] });
+            }
         },
-        [i18n, shell],
+        [i18n],
     );
 
     // Dates on every page use the format and zone the shell says this person chose.

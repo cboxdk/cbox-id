@@ -202,6 +202,7 @@ export default function Projects({
                             key={project.id}
                             project={project}
                             canManage={canManage}
+                            guideHref={help.href}
                             creating={creatingIn === project.id}
                             onStartCreate={() => setCreatingIn(project.id)}
                             onCancelCreate={() => setCreatingIn(null)}
@@ -216,12 +217,14 @@ export default function Projects({
 function ProjectCard({
     project,
     canManage,
+    guideHref,
     creating,
     onStartCreate,
     onCancelCreate,
 }: {
     project: ProjectRow;
     canManage: boolean;
+    guideHref: string | null;
     creating: boolean;
     onStartCreate: () => void;
     onCancelCreate: () => void;
@@ -297,7 +300,7 @@ function ProjectCard({
                             </div>
 
                             {environment.openHref === null ? (
-                                <UnreachableConsole name={environment.name} />
+                                <UnreachableConsole name={environment.name} guideHref={guideHref} />
                             ) : (
                                 <Button asChild variant="secondary" size="sm" className="shrink-0">
                                     {/*
