@@ -1435,6 +1435,11 @@ Route::middleware([RefuseReadOfOperatorWrite::class, 'plane:environment', 'multi
         // admin, the moved-page aliases), whatever order they were registered in.
         ->fallback()
         ->name('admin.moved');
+    // A v2 tab's write to the same addresses ({@see EnvironmentConsoleRedirectController::write()}).
+    Route::match(['POST', 'PUT', 'PATCH', 'DELETE'], '/{path?}', [EnvironmentConsoleRedirectController::class, 'write'])
+        ->where('path', '(?!platform(?:/|$)|environment(?:/|$)).*')
+        ->fallback()
+        ->name('admin.moved.write');
 });
 
 ConsoleRoutes::environment(function (): void {
@@ -2052,6 +2057,9 @@ Route::redirect('/operator/login/mfa', '/login/direct');
 // The old addresses: `/admin/platform/…` → `/admin/…`, counted, until a week without traffic.
 Route::get('/admin/platform/{path?}', PlatformAdminMovedController::class)
     ->where('path', '.*')->middleware('plane:operator')->name('platform.moved');
+// A v2 tab's write there: a 308, so the method and body go along.
+Route::match(['POST', 'PUT', 'PATCH', 'DELETE'], '/admin/platform/{path?}', PlatformAdminMovedController::class)
+    ->where('path', '.*')->middleware('plane:operator')->name('platform.moved.write');
 
 Route::prefix('admin')->middleware([RedirectOldEnvironmentConsolePage::class, 'plane:operator'])->group(function (): void {
     // `platform.auth:optional` RESOLVES the one session without requiring one, then
