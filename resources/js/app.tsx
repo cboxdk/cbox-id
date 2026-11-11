@@ -3,6 +3,7 @@ import { createRoot, hydrateRoot } from 'react-dom/client';
 import { AppErrorBoundary } from '@/chrome/AppErrorBoundary';
 import { installStepUp } from '@/lib/stepUp';
 import type { SharedProps } from '@/types';
+import { setUrlDefaults } from '@/wayfinder';
 
 /**
  * THE CLIENT ENTRY. One bundle, one root, one mount.
@@ -93,6 +94,14 @@ void createInertiaApp<SharedProps>({
     },
 
     setup({ el, App, props }) {
+        // `/orgs/{org}/…` helpers called without an organization stay in the one this page
+        // is about, the way `route()` does on the server with its URL default.
+        let organization = (props.initialPage.props as unknown as SharedProps).org?.slug;
+        setUrlDefaults(() => (organization === undefined ? {} : { org: organization }));
+        router.on('navigate', (event) => {
+            organization = (event.detail.page.props as unknown as SharedProps).org?.slug;
+        });
+
         const app = (
             <AppErrorBoundary i18n={(props.initialPage.props as unknown as SharedProps).i18n}>
                 <App {...props} />

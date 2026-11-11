@@ -51,7 +51,7 @@ it('lands an organization member with one environment on Projects, not inside th
     // person into a tenant console they had not asked to open. The console opens when
     // somebody asks for it: Projects › Open console, the switcher, or a sign-in that
     // started at that console's own /admin.
-    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('projects'));
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('orgs.projects'));
 })->group('security');
 
 it('lands an organization with several environments on Projects, where each has its own console', function (): void {
@@ -64,7 +64,7 @@ it('lands an organization with several environments on Projects, where each has 
 
     signInAsMember($subjectId);
 
-    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('projects'));
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('orgs.projects'));
 });
 
 it('does not count a suspended environment as somewhere to work', function (): void {
@@ -73,7 +73,7 @@ it('does not count a suspended environment as somewhere to work', function (): v
     $environment->forceFill(['status' => EnvironmentStatus::Suspended])->save();
     signInAsMember($subjectId);
 
-    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('projects'));
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('orgs.projects'));
 });
 
 it('never hands somebody who may not administer environments to the handoff', function (): void {
@@ -90,21 +90,21 @@ it('shrinks an organization console to the organization, its team\'s sign-in, it
     ['subjectId' => $subjectId] = aWorkspace();
     signInAsMember($subjectId);
 
-    $rail = railOf('https://cboxid.com/projects');
+    $rail = railOf('https://cboxid.com'.orgPath('/projects'));
 
     expect(array_keys($rail))->toBe(['identity-platform', 'authentication', 'audit', 'account'])
         // Single sign-on and sign-in rules for the workspace's OWN team — not social
         // sign-in or directory sync, which are for the people signing in to a product.
         ->and($rail['authentication'])->toBe(['connections', 'auth-policy'])
         ->and($rail['audit'])->toBe(['audit'])
-        ->and($rail['identity-platform'])->toContain('projects', 'members', 'keys', 'organization-settings');
+        ->and($rail['identity-platform'])->toContain('orgs.projects', 'orgs.settings.members', 'orgs.settings.api-keys', 'orgs.settings');
 
-    $shell = (array) $this->get('https://cboxid.com/projects')->inertiaProps('shell');
+    $shell = (array) $this->get('https://cboxid.com'.orgPath('/projects'))->inertiaProps('shell');
     $labels = array_column($shell['areas'], 'label');
 
     expect($labels)->toBe(['Organization', 'Team sign-in', 'Audit log', 'Account'])
         ->and($shell['altitude'])->toBe('org-plane')
-        ->and($shell['brandHref'])->toBe(route('projects'))
+        ->and($shell['brandHref'])->toBe(route('orgs.projects'))
         ->and($shell['notice'])->toBeNull();
 });
 
@@ -146,7 +146,7 @@ it('sends an operator from the root\'s organization pages to the platform enviro
     $this->get('https://cboxid.com/sign-in-methods')->assertRedirect('https://cboxid.com/admin/sign-in-methods');
 
     // …and the rail on this host is the workspace console's for them too.
-    $rail = railOf('https://cboxid.com/account');
+    $rail = railOf('https://cboxid.com/settings');
 
     expect($rail)->not->toHaveKey('developers')
         ->and($rail)->not->toHaveKey('directory');
@@ -190,7 +190,7 @@ it('gives the environment console a way back to its organization, on every page'
             'id' => $workspace->id,
             'label' => $workspace->name,
             'current' => true,
-            'openHref' => 'https://cboxid.com/projects',
+            'openHref' => 'https://cboxid.com/orgs/'.orgSlug($workspace->id).'/projects',
         ])
         // There is no POST from here: the session that holds a workspace is on that host.
         ->and($shell['context']['switchUrl'])->toBeNull()
@@ -209,8 +209,8 @@ it('sends the environment console\'s account links to the organization host, whe
     // Relative, these were `/account` and `/accounts` on the TENANT host: pages behind a
     // subject session the administrator does not hold there, which answered by sending
     // them to the tenant's end-user sign-in form.
-    expect($shell['accountHref'])->toBe('https://cboxid.com/account')
-        ->and($shell['switchUserHref'])->toBe('https://cboxid.com/accounts');
+    expect($shell['accountHref'])->toBe('https://cboxid.com/settings')
+        ->and($shell['switchUserHref'])->toBe('https://cboxid.com/settings/accounts');
 
     // …and the relative spelling really is the bounce, which is why it had to go.
     $this->get(route('account'))->assertRedirect();

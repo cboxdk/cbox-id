@@ -178,5 +178,5 @@ it('serves the subject their own account page on the platform root', function ()
     rootConsoleShape();
     actAsRootSubject();
 
-    rootConsoleLanding('http://cboxid.com/account')->assertSuccessful();
+    rootConsoleLanding('http://cboxid.com/settings')->assertSuccessful();
 });

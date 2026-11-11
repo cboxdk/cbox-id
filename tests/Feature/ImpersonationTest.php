@@ -249,7 +249,7 @@ it('suspends the session an operator signed in with, and puts it back', function
     // a restore that puts back an id without a live session row is a session the plane
     // refuses, and asserting the key alone would not notice.
     nextRequest();
-    $this->get(route('projects'))->assertOk();
+    $this->get(route('orgs.projects'))->assertOk();
 });
 
 /*
@@ -393,7 +393,7 @@ it('blocks switching organizations while impersonating (403)', function (): void
 
     $this->post(route('platform.impersonate', $member->id), ['organization' => $org->id, 'reason' => IMPERSONATION_REASON]);
 
-    $this->post(route('organization.switch'), ['organization' => $other->id])->assertForbidden();
+    $this->post(route('orgs.switch'), ['organization' => $other->id])->assertForbidden();
 });
 
 /*

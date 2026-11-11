@@ -200,7 +200,7 @@ it('leaves the same person\'s other device signed in — that is a different sig
 
     $this->browsers->use('phone@root');
     nextRequest();
-    $this->get($this->root.'/dashboard')->assertRedirect(route('projects'));
+    $this->get($this->root.'/dashboard')->assertRedirect(route('orgs.projects'));
 })->group('security');
 
 it('ends console sessions on every device when all of the person\'s sessions are revoked', function (): void {
@@ -368,7 +368,7 @@ it('lands a plain sign-in at the root on the root, not in a tenant console bounc
 
     // …and the dashboard is the workspace's home, not a handoff into its one environment.
     nextRequest();
-    $this->get($this->root.'/dashboard')->assertRedirect(route('projects'));
+    $this->get($this->root.'/dashboard')->assertRedirect(route('orgs.projects', ['org' => orgSlug($this->account['organization']->id)]));
 })->group('security');
 
 it('still takes somebody who started at a tenant console back to it after signing in at the root', function (): void {
@@ -442,7 +442,7 @@ function endUserAnswer(): TestResponse
 {
     nextRequest();
 
-    return test()->get(test()->tenant.'/account');
+    return test()->get(test()->tenant.'/settings');
 }
 
 /** Whether a session row is still live, wherever it lives. */

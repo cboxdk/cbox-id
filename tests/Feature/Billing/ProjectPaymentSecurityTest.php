@@ -80,6 +80,6 @@ it('compares all quoted consequences and ignores only object key order and effec
             ->once()->andReturn(['ok' => true]);
     }
     app()->instance(ProjectPayments::class, $payments);
-    $quote = $this->postJson(route('billing.preview', $account['project']->id), ['operation' => 'plan', 'plan' => 'id-start'])->assertOk()->json('quote');
-    $this->postJson(route('billing.confirm', $account['project']->id), ['quote' => $quote])->assertStatus($changed ? 409 : 200);
+    $quote = $this->postJson(route('orgs.settings.billing.preview', $account['project']->id), ['operation' => 'plan', 'plan' => 'id-start'])->assertOk()->json('quote');
+    $this->postJson(route('orgs.settings.billing.confirm', $account['project']->id), ['quote' => $quote])->assertStatus($changed ? 409 : 200);
 })->with([true, false]);

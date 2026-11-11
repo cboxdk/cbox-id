@@ -41,7 +41,7 @@ it('offers a return link for a return_to that matches a registered redirect host
     // return at all and what host it names, and that decision is the whole security
     // property here — a page-text match would also pass on a link the server refused and
     // the bundle happened to render from the query string.
-    $returnTo = $this->get('/account?return_to='.urlencode('https://app.acme.com/dashboard'))
+    $returnTo = $this->get('/settings?return_to='.urlencode('https://app.acme.com/dashboard'))
         ->assertOk()
         ->inertiaProps('returnTo');
 
@@ -57,7 +57,7 @@ it('refuses a well-formed https return_to to an UNREGISTERED host (open-redirect
     // A perfectly valid https URL — but no client in this environment redirects to
     // evil.example.com, so it must NOT be offered as a "return" link (the phishing
     // pivot the host allowlist closes).
-    expect($this->get('/account?return_to='.urlencode('https://evil.example.com/phish'))
+    expect($this->get('/settings?return_to='.urlencode('https://evil.example.com/phish'))
         ->assertOk()
         ->inertiaProps('returnTo'))->toBeNull();
 });
@@ -68,7 +68,7 @@ it('never renders a return link for a malformed/unsafe return_to', function (str
     // NULL, not merely absent from the document. The page draws the link from this prop and
     // from nothing else, so a null here is the refusal — and a text match would also pass
     // on a page that rendered the link somewhere this assertion did not look.
-    expect($this->get('/account?return_to='.urlencode($unsafe))
+    expect($this->get('/settings?return_to='.urlencode($unsafe))
         ->assertOk()
         ->inertiaProps('returnTo'))->toBeNull();
 })->with([

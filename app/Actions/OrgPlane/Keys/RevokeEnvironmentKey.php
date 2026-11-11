@@ -40,7 +40,7 @@ use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
     plane: ActionPlane::Organization,
     rest: ['DELETE', '/environments/{environment_id}/keys/{id}'],
     status: 204,
-    consoleRoutes: ['keys.destroy'],
+    consoleRoutes: ['orgs.settings.api-keys.destroy'],
     consoleGate: ConsoleGate::ManageEnvironments,
     tag: 'Keys',
 )]

@@ -21,12 +21,15 @@ use App\Platform\AccountLinking\ConnectFromAccount;
 use App\Platform\AccountLinking\SignInIdentities;
 use App\Platform\AccountLinking\SignInIdentity;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\CustomerConsole;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Mfa\AuthenticatorEnrollment;
 use App\Platform\Passkeys\PasskeyName;
 use App\Platform\Passkeys\RecordsPasskeyUse;
+use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
@@ -100,6 +103,10 @@ final readonly class AccountController extends PageController
         return $this->page('account/security', __('console.security_8f6fb4eb'), [
             'help' => HelpProps::for(HelpTopic::AccountSecurity),
             'returnTo' => $this->validReturnTo($request),
+            // On an environment's host `/settings` was the organization's own settings until v3.
+            // A bookmark to it now opens this page, so an administrator is shown where
+            // those went instead of silently landing somewhere else.
+            'organizationSettingsMoved' => $this->organizationSettingsMoved(),
             'profile' => [
                 'name' => $me->name(),
                 'email' => $me->email(),
@@ -693,6 +700,22 @@ final readonly class AccountController extends PageController
         }
 
         return $model::query()->whereKey($subjectId)->value('password') !== null;
+    }
+
+    private function organizationSettingsMoved(): ?string
+    {
+        $planes = app(PlaneResolver::class);
+
+        // Only on an environment's own host, where `/settings` meant the organization's
+        // page, and only where that page is still served: a customer environment's
+        // admin portal has no organization-settings page to point to.
+        $served = ! $planes->onCustomerEnvironment() || CustomerConsole::servesRoute('settings');
+
+        if (! $planes->servesIssuer() || ! $served || ! app(ConsoleScope::class)->mayAdminister()) {
+            return null;
+        }
+
+        return url(MovedOrganizationSettingsController::SUCCESSOR);
     }
 
     /**

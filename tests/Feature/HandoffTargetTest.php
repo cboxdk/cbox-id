@@ -44,7 +44,7 @@ it('refuses everything that is not an environment console page', function (mixed
     'an absolute URL' => 'https://evil.example/admin/users',
     'a javascript URL' => 'javascript:alert(1)',
     'a relative path' => 'admin/users',
-    'a non-admin path' => '/account',
+    'a non-admin path' => '/settings',
     'a lookalike prefix' => '/administrator',
     'a dot segment' => '/admin/../account',
     'an encoded slash' => '/admin/%2F%2Fevil.example',
@@ -109,7 +109,7 @@ it('carries a valid target from the organization host into the handoff, and drop
         ->and($fields['to'] ?? null)->toBe('/admin/users')
         ->and($fields['to_sig'] ?? null)->toBe(app(HandoffTarget::class)->sign((string) $fields['token'], '/admin/users'));
 
-    foreach (['//evil.example', '\\\\evil.example', 'https://evil.example', '/account', '/admin/nope'] as $bad) {
+    foreach (['//evil.example', '\\\\evil.example', 'https://evil.example', '/settings', '/admin/nope'] as $bad) {
         [$action, $fields] = $open($bad);
 
         // Still a handoff — the target is dropped, not the request.

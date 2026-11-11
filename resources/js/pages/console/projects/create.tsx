@@ -3,7 +3,7 @@ import { Link, useForm } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
 import { Breadcrumb, Button, Field, Input, PageHeader, Panel } from '@/ui';
-import { store } from '@routes/projects';
+import { store } from '@routes/orgs/projects';
 
 type Props = PageProps<{ indexHref: string }>;
 

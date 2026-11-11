@@ -33,7 +33,7 @@ use Cbox\Id\Organization\Contracts\EnvironmentDomains;
     plane: ActionPlane::Organization,
     rest: ['DELETE', '/environments/{environment_id}/domain'],
     status: 204,
-    consoleRoutes: ['environment-domains.destroy'],
+    consoleRoutes: ['orgs.environment-domains.destroy'],
     consoleGate: ConsoleGate::ManageEnvironments,
     tag: 'Environments',
 )]

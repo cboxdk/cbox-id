@@ -4771,4 +4771,5 @@ https://staging.example.com',
     'value0_value1_none_failing_a5d264cb' => ':value0 :value1, všetky fungujú.',
     'detail_fb5f27d5' => 'Detail',
     'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Vyberte aktívne pripojenie OpenID Connect, ktoré patrí celému prostrediu.',
+    'organization_settings_moved_here_7b3e91c4' => 'Hľadáte nastavenia svojej organizácie? Majú teraz vlastnú stránku.',
 ];

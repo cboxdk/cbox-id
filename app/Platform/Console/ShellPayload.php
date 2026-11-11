@@ -246,8 +246,8 @@ final readonly class ShellPayload
             altitude: $workspace ? ConsoleAltitude::OrgPlane : ConsoleAltitude::Organization,
             organizationSettingsHref: $this->scope->membershipRole() !== null
                 && $this->scope->capabilities()?->isOwner() === true
-                && Route::has('organization-settings')
-                    ? route('organization-settings')
+                && Route::has('orgs.settings')
+                    ? $this->context->onOrganizationHost('orgs.settings')
                     : null,
             // Platform admin is in ANOTHER console here — the platform environment's, at
             // `/admin` on this host — so the account menu is the way there. On a
@@ -446,7 +446,7 @@ final readonly class ShellPayload
             switchUserHref: $this->context->onOrganizationHost('accounts'),
             altitude: ConsoleAltitude::Environment,
             organizationSettingsHref: $membership !== null && $membership->role === MembershipRole::Owner
-                ? $this->context->onOrganizationHost('organization-settings')
+                ? $this->context->onOrganizationHost('orgs.settings')
                 : null,
             // Platform admin is one click away from the console of the environment a tenant
             // operator is standing in. On the root's own console it is in the rail.

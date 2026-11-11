@@ -32,7 +32,7 @@ use Cbox\Id\Platform\Contracts\Projects;
     danger: Danger::Write,
     plane: ActionPlane::Organization,
     rest: ['PATCH', '/projects/{id}'],
-    consoleRoutes: ['projects.rename'],
+    consoleRoutes: ['orgs.projects.rename'],
     consoleGate: ConsoleGate::ManageEnvironments,
     schema: 'Project',
     tag: 'Projects',

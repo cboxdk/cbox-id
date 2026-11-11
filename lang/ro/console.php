@@ -4771,4 +4771,5 @@ https://staging.example.com',
     'sign_ins_and_requests_the_platform_scored_as_091fe5e6' => 'Autentificări și cereri considerate de platformă suficient de suspecte pentru a fi semnalate:value0. Cele mai recente primele.',
     'value0_value1_none_failing_a5d264cb' => ':value0 :value1, niciuna în eroare.',
     'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Alegeți o conexiune OpenID Connect activă care aparține întregului mediu.',
+    'organization_settings_moved_here_7b3e91c4' => 'Căutați setările organizației? Acum au propria pagină.',
 ];

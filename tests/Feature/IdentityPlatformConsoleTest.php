@@ -55,7 +55,7 @@ it('renders the console sign-in for guests', function (): void {
 });
 
 it('redirects guests away from the projects page', function (): void {
-    $this->get(route('projects'))->assertRedirect(route('login'));
+    $this->get(route('orgs.projects', ['org' => 'acme']))->assertRedirect(route('login'));
 });
 
 it('remembers the intended destination when a guest hits open-environment (handoff round-trip)', function (): void {
@@ -74,7 +74,7 @@ it('renders the organization home with the account\'s projects', function (): vo
     // Home is the Projects launchpad — the account's default project card, with its
     // environment count.
     signInAsMember($memberSubjectId);
-    $this->get(route('projects'))
+    $this->get(route('orgs.projects'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/projects/index')
@@ -93,7 +93,7 @@ it('links each environment out to its own host-resolved URL on the project detai
     // The project detail lists each environment as a link to its own
     // {slug}.{base_domain} host — no session "current environment" is pinned.
     signInAsMember($memberSubjectId);
-    $this->get(route('projects.show', $project->id))
+    $this->get(route('orgs.projects.show', $project->id))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/projects/show')
@@ -106,7 +106,7 @@ it('renders the members roster with the signed-in member marked', function (): v
     ['member' => $member, 'subjectId' => $memberSubjectId] = provisionAccount('dana@acme.example');
 
     signInAsMember($memberSubjectId);
-    $this->get(route('members'))
+    $this->get(route('orgs.settings.members'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/members')
@@ -124,14 +124,14 @@ it('renders billing with the real environment allowance', function (): void {
     signInAsMember($memberSubjectId);
 
     grantProductEnvironmentAllowance($member->organization_id, 2);
-    $this->get(route('billing', ['organization' => $member->organization_id]))->assertOk()
+    $this->get(route('orgs.settings.billing', ['organization' => $member->organization_id]))->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('environmentAllowance', 2)->missing('projects'));
 
 });
 
 it('guards the members and billing pages behind the account session', function (): void {
-    $this->get(route('members'))->assertRedirect(route('login'));
-    $this->get(route('billing'))->assertRedirect(route('login'));
+    $this->get(route('orgs.settings.members', ['org' => 'acme']))->assertRedirect(route('login'));
+    $this->get(route('orgs.settings.billing', ['org' => 'acme']))->assertRedirect(route('login'));
 });
 
 it('closes the console the moment a customer is suspended', function (): void {
@@ -153,7 +153,7 @@ it('closes the console the moment a customer is suspended', function (): void {
     // case it could not previously see. An off-switch that leaves the operator's own
     // console open to the customer they just switched off was the weaker reading.
     signInAsMember($ownerSubjectId);
-    $this->get(route('projects'))
+    $this->get(route('orgs.projects'))
         ->assertForbidden();
 });
 
@@ -164,17 +164,17 @@ it('redirects a member who cannot read billing away from it', function (): void 
     grantNativeProductRoles($dev, ['developer']);
 
     signInAsMember($devSubjectId);
-    $this->get(route('billing'))->assertForbidden();
+    $this->get(route('orgs.settings.billing'))->assertForbidden();
     signInAsMember($devSubjectId);
-    $this->get(route('members'))->assertRedirect(route('projects'));
+    $this->get(route('orgs.settings.members'))->assertRedirect(route('orgs.projects'));
 
     // A read-only Viewer, by contrast, may read both.
     [$viewer, $viewerSubjectId] = memberWithRole($account->id, MembershipRole::Viewer, 'viewer-billing@acme.example');
     grantNativeProductRoles($viewer, ['viewer']);
     signInAsMember($viewerSubjectId);
-    $this->get(route('billing'))->assertForbidden();
+    $this->get(route('orgs.settings.billing'))->assertForbidden();
     signInAsMember($viewerSubjectId);
-    $this->get(route('members'))->assertOk();
+    $this->get(route('orgs.settings.members'))->assertOk();
 });
 
 it('shows a scoped member only the environments they are granted', function (): void {
@@ -188,11 +188,11 @@ it('shows a scoped member only the environments they are granted', function (): 
 
     // They see the project (it holds a reachable env)…
     signInAsMember($devSubjectId);
-    $this->get(route('projects'))->assertOk()->assertSee('Acme');
+    $this->get(route('orgs.projects'))->assertOk()->assertSee('Acme');
 
     // …and inside it, only their granted environment — production is outside the grant.
     signInAsMember($devSubjectId);
-    $this->get(route('projects.show', $project->id))
+    $this->get(route('orgs.projects.show', $project->id))
         ->assertOk()
         ->assertSee('acme-staging.cboxid.com')
         ->assertDontSee('https://acme.cboxid.com');
@@ -203,8 +203,8 @@ it('lets a manager mint an API key and shows the plaintext once', function (): v
     signInAsMember($ownerSubjectId);
     app(Sudo::class)->confirm();
 
-    $this->from(route('keys.organization'))
-        ->post(route('keys.organization.store'), ['name' => 'CI deploy', 'role' => 'developer'])
+    $this->from(route('orgs.settings.api-keys.organization'))
+        ->post(route('orgs.settings.api-keys.organization.store'), ['name' => 'CI deploy', 'role' => 'developer'])
         ->assertSessionHasNoErrors()
         // ONCE, and on the flash channel: props are written into the history entry, so a
         // full-authority credential there is readable by pressing Back.
@@ -217,7 +217,7 @@ it('lets a manager mint an API key and shows the plaintext once', function (): v
 
     // AND NOT AGAIN. The next render of the page carries no key at all — the flash is
     // one-shot, which is the whole reason it is the channel this uses.
-    $this->get(route('keys.organization'))->assertOk()->assertInertiaFlashMissing('freshKey');
+    $this->get(route('orgs.settings.api-keys.organization'))->assertOk()->assertInertiaFlashMissing('freshKey');
 });
 
 it('redirects a non-manager away from API keys', function (): void {
@@ -226,8 +226,8 @@ it('redirects a non-manager away from API keys', function (): void {
     grantNativeProductRoles($dev, ['developer']);
 
     signInAsMember($devSubjectId);
-    $this->get(route('keys.organization'))
-        ->assertRedirect(route('projects'));
+    $this->get(route('orgs.settings.api-keys.organization'))
+        ->assertRedirect(route('orgs.projects'));
 });
 
 it('lets an owner remove a member and transfer ownership', function (): void {
@@ -239,11 +239,11 @@ it('lets an owner remove a member and transfer ownership', function (): void {
     signInAsMember($ownerSubjectId);
     $members = app(Memberships::class);
 
-    $this->delete(route('members.remove', ['member' => $dev->id, 'organization' => $owner->organization_id]), ['roles_version' => app(NativeProductMembers::class)->access($dev)['roles_version']])->assertRedirect();
+    $this->delete(route('orgs.settings.members.remove', ['member' => $dev->id, 'organization' => $owner->organization_id]), ['roles_version' => app(NativeProductMembers::class)->access($dev)['roles_version']])->assertRedirect();
     expect(freshMembership($dev))->not->toBeNull();
     expect(app(NativeProductMembers::class)->access($dev)['roles'])->toBe([]);
 
-    $this->post(route('members.transfer-ownership', ['member' => $admin->id, 'organization' => $owner->organization_id]))->assertRedirect();
+    $this->post(route('orgs.settings.members.transfer-ownership', ['member' => $admin->id, 'organization' => $owner->organization_id]))->assertRedirect();
     expect(freshMembership($admin)->role)->toBe(MembershipRole::Owner)
         ->and(freshMembership($owner)->role)->toBe(MembershipRole::Admin);
     expect(app(NativeProductAccess::class)->forSubject($ownerSubjectId, $account->id)->any())->toBeFalse()
@@ -259,11 +259,11 @@ it('scopes a member to specific environments via the access editor', function ()
 
     // The editor opens over the URL, so what it shows is a prop this test can read —
     // and what it shows is the grant as it stands, which is "everything" by default.
-    $this->get(route('members', ['editing' => $dev->id]))
+    $this->get(route('orgs.settings.members', ['editing' => $dev->id]))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page->where('editor.all', true));
 
-    $this->put(route('members.access', ['member' => $dev->id, 'organization' => $owner->organization_id]), [
+    $this->put(route('orgs.settings.members.access', ['member' => $dev->id, 'organization' => $owner->organization_id]), [
         'all' => false,
         'environmentIds' => [$staging->id],
         'environment_access_version' => app(NativeEnvironmentAccess::class)->version($dev),
@@ -313,7 +313,7 @@ it('404s a role change aimed at another customer\'s member', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
 
-    $this->patch(route('members.role', ['member' => $theirs->id, 'organization' => $owner->organization_id]), ['role' => MembershipRole::Admin->value])
+    $this->patch(route('orgs.settings.members.role', ['member' => $theirs->id, 'organization' => $owner->organization_id]), ['role' => MembershipRole::Admin->value])
         ->assertNotFound();
 
     expect(freshMembership($theirs)->role)->toBe(MembershipRole::Developer);
@@ -324,7 +324,7 @@ it('404s a member removal aimed at another account', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
 
-    $this->delete(route('members.remove', ['member' => $theirs->id, 'organization' => $owner->organization_id]))->assertNotFound();
+    $this->delete(route('orgs.settings.members.remove', ['member' => $theirs->id, 'organization' => $owner->organization_id]))->assertNotFound();
 
     expect(freshMembership($theirs))->not->toBeNull();
 })->group('security');
@@ -337,7 +337,7 @@ it('404s an environment-access edit aimed at another account', function (): void
     // The READ half. It opened the editor on somebody else's member and disclosed which
     // environments they reach — which is now a URL, so the refusal has to be on the page
     // that honours it rather than on an action nobody calls any more.
-    $this->get(route('members', ['editing' => $theirs->id]))->assertNotFound();
+    $this->get(route('orgs.settings.members', ['editing' => $theirs->id]))->assertNotFound();
 })->group('security');
 
 it('404s an environment-access SAVE aimed at another account', function (): void {
@@ -349,7 +349,7 @@ it('404s an environment-access SAVE aimed at another account', function (): void
     // The write half, asked directly. Opening the editor is a read the save does not
     // depend on, so refusing only the read would leave this reachable by anyone who can
     // form a URL.
-    $this->put(route('members.access', ['member' => $theirs->id, 'organization' => $owner->organization_id]), [
+    $this->put(route('orgs.settings.members.access', ['member' => $theirs->id, 'organization' => $owner->organization_id]), [
         'all' => false,
         'environmentIds' => [$mine->id],
         'environment_access_version' => str_repeat('0', 64),
@@ -364,7 +364,7 @@ it('404s an ownership transfer aimed at another customer', function (): void {
     $theirs = aRivalAccountsMember();
     signInAsMember($ownerSubjectId);
 
-    $this->post(route('members.transfer-ownership', ['member' => $theirs->id, 'organization' => $owner->organization_id]))->assertNotFound();
+    $this->post(route('orgs.settings.members.transfer-ownership', ['member' => $theirs->id, 'organization' => $owner->organization_id]))->assertNotFound();
 
     $members = app(Memberships::class);
     expect(freshMembership($theirs)->role)->toBe(MembershipRole::Developer)
@@ -377,8 +377,8 @@ it('renames the account from settings and redirects non-managers', function (): 
     ['organization' => $account, 'member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount();
     signInAsMember($ownerSubjectId);
 
-    $this->from(route('organization-settings'))
-        ->patch(route('organization-settings.update'), ['name' => 'Renamed Co'])
+    $this->from(route('orgs.settings'))
+        ->patch(route('orgs.settings.update'), ['name' => 'Renamed Co'])
         ->assertSessionHasNoErrors();
     expect(app(PlatformRoot::class)->run(fn () => app(Organizations::class)->find($account->id))->name)->toBe('Renamed Co');
 
@@ -386,7 +386,7 @@ it('renames the account from settings and redirects non-managers', function (): 
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
     grantNativeProductRoles($dev, ['developer']);
     signInAsMember($devSubjectId);
-    $this->get(route('organization-settings'))->assertRedirect(route('projects'));
+    $this->get(route('orgs.settings'))->assertRedirect(route('orgs.projects'));
 });
 
 it('shows a read-only viewer the roster but not the invite form', function (): void {
@@ -395,7 +395,7 @@ it('shows a read-only viewer the roster but not the invite form', function (): v
     grantNativeProductRoles($viewer, ['viewer']);
 
     signInAsMember($viewerSubjectId);
-    $this->get(route('members'))
+    $this->get(route('orgs.settings.members'))
         ->assertOk()
         // "Team" (it was "Administrators") since the People area's directory and this page stopped
         // sharing both a route and a label. This assertion is only confirming the page
@@ -411,7 +411,7 @@ it('adds an environment to a project up to its plan limit, then refuses', functi
     signInAsMember($memberSubjectId);
 
     // The project's limit is 2, one used → adding one succeeds.
-    $this->post(route('projects.environments.store', $project->id), [
+    $this->post(route('orgs.projects.environments.store', $project->id), [
         'name' => 'Staging',
         'type' => 'production',
     ])->assertSessionHasNoErrors();
@@ -419,7 +419,7 @@ it('adds an environment to a project up to its plan limit, then refuses', functi
     expect(Environment::query()->where('project_id', $project->id)->count())->toBe(2);
 
     // The third is refused by the plan, with a friendly error rather than a throw.
-    $this->post(route('projects.environments.store', $project->id), [
+    $this->post(route('orgs.projects.environments.store', $project->id), [
         'name' => 'Dev',
         'type' => 'production',
     ])->assertSessionHasErrors('name');
@@ -437,7 +437,7 @@ it('refuses a scoped member trying to add an environment to a project', function
     app(PlatformRoot::class)->run(fn () => app(Memberships::class)->setEnvironmentAccess($account->id, $devSubjectId, all: false, environmentIds: [$staging->id]));
     signInAsMember($devSubjectId);
 
-    $this->post(route('projects.environments.store', $project->id), [
+    $this->post(route('orgs.projects.environments.store', $project->id), [
         'name' => 'Sneaky',
         'type' => 'production',
     ])->assertForbidden();
@@ -449,10 +449,10 @@ it('suspends and reactivates a project', function (): void {
     ['member' => $member, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     signInAsMember($memberSubjectId);
 
-    $this->post(route('projects.suspend', $project->id))->assertRedirect();
+    $this->post(route('orgs.projects.suspend', $project->id))->assertRedirect();
     expect(Project::query()->whereKey($project->id)->value('status')?->value)->toBe('suspended');
 
-    $this->post(route('projects.reactivate', $project->id))->assertRedirect();
+    $this->post(route('orgs.projects.reactivate', $project->id))->assertRedirect();
     expect(Project::query()->whereKey($project->id)->value('status')?->value)->toBe('active');
 });
 
@@ -460,14 +460,14 @@ it('lets a member create a second project and drills into it empty', function ()
     ['member' => $member, 'subjectId' => $memberSubjectId] = provisionAccount();
     signInAsMember($memberSubjectId);
 
-    $this->post(route('projects.store'), ['name' => 'Product Two'])
+    $this->post(route('orgs.projects.store'), ['name' => 'Product Two'])
         ->assertSessionHasNoErrors();
 
     $project = Project::query()->where('name', 'Product Two')->firstOrFail();
 
     // A brand-new project starts with no environments — the member adds them there.
     signInAsMember($memberSubjectId);
-    $this->get(route('projects.show', $project->id))
+    $this->get(route('orgs.projects.show', $project->id))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/projects/show')
@@ -485,7 +485,7 @@ it('lists every environment grouped under its project, each with an Open link', 
     $staging = app(TenantProvisioner::class)->addEnvironment($project, 'Staging');
 
     signInAsMember($memberSubjectId);
-    $this->get(route('projects'))
+    $this->get(route('orgs.projects'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('projects.0.name', 'Acme')
@@ -495,14 +495,14 @@ it('lists every environment grouped under its project, each with an Open link', 
                 ->all() === ['Production', 'Staging'])
             // ...each with its own open link, plus the project's settings entry point.
             ->where('projects.0.environments.1.openHref', route('environment.open', $staging->id))
-            ->where('projects.0.settingsHref', route('projects.show', $project->id)));
+            ->where('projects.0.settingsHref', route('orgs.projects.show', $project->id)));
 });
 
 it('creates an environment inline from the launchpad', function (): void {
     ['member' => $member, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     signInAsMember($memberSubjectId);
 
-    $this->post(route('projects.environments.store', $project->id), [
+    $this->post(route('orgs.projects.environments.store', $project->id), [
         'name' => 'Staging',
         'type' => 'sandbox',
     ])->assertSessionHasNoErrors();
@@ -522,7 +522,7 @@ it('refuses an inline environment create for a project on another account', func
 
     signInAsMember($memberSubjectId);
 
-    $this->post(route('projects.environments.store', $other->project->id), [
+    $this->post(route('orgs.projects.environments.store', $other->project->id), [
         'name' => 'Sneaky',
         'type' => 'production',
     ])->assertNotFound();
@@ -575,8 +575,8 @@ it('gives a tenant of somebody else\'s IdP no area at all', function (): void {
 
     // …and at the page, not only in the rail — a rail is not an authorization check. They
     // are an OWNER of their own organization, so this is the area refusing them rather
-    // than the console.
-    test()->get(route('billing'))->assertForbidden();
+    // than the console: their own organization's address binds, and the area refuses.
+    test()->get(route('orgs.settings.billing', ['org' => $organization->slug]))->assertForbidden();
 })->group('security');
 
 it('takes the area away from somebody who belongs to no organization', function (): void {
@@ -607,8 +607,9 @@ it('takes the area away from somebody who belongs to no organization', function 
     expect(app(ConsoleScope::class)->membershipRole())->toBeNull()
         ->and(identityPlatformPages())->toBe([]);
 
-    // And at the page too, because a rail is not an authorization check.
-    test()->get(route('billing'))->assertForbidden();
+    // And at the page too, because a rail is not an authorization check: the account's
+    // organization is not theirs, so its address is a page that does not exist for them.
+    test()->get(route('orgs.settings.billing', ['org' => $account->slug]))->assertNotFound();
 })->group('security');
 
 it('takes the area away when the acting organization is not the person\'s own', function (): void {
@@ -684,14 +685,14 @@ it('shows exactly these pages to each role', function (MembershipRole $role, arr
 })->with([
     // Everything. Ownership itself is guarded per-action, not by hiding pages.
     'owner' => [MembershipRole::Owner, [
-        'projects', 'members', 'keys',
-        'environment-domains', 'billing', 'organization-settings',
+        'orgs.projects', 'orgs.settings.members', 'orgs.settings.api-keys',
+        'orgs.environment-domains', 'orgs.settings.billing', 'orgs.settings',
     ]],
 
     // An admin is an owner minus the ownership transfer, which is not a page.
     'admin' => [MembershipRole::Admin, [
-        'projects', 'members', 'keys',
-        'environment-domains', 'billing',
+        'orgs.projects', 'orgs.settings.members', 'orgs.settings.api-keys',
+        'orgs.environment-domains', 'orgs.settings.billing',
     ]],
 
     // THE ONE THE FOLD BREAKS. A developer is a technical credential: environments and
@@ -700,7 +701,7 @@ it('shows exactly these pages to each role', function (MembershipRole $role, arr
     // billing. `MembershipRole` has no read predicate at all, so a naive translation hands
     // both back.
     'developer' => [MembershipRole::Developer, [
-        'projects', 'keys', 'environment-domains',
+        'orgs.projects', 'orgs.settings.api-keys', 'orgs.environment-domains',
     ]],
 
     // NO BILLING ROW, and its absence is the finding.
@@ -719,7 +720,7 @@ it('shows exactly these pages to each role', function (MembershipRole $role, arr
     // Read-only across the account: it may SEE the roster and the bill, and change
     // neither — so no API keys, no environment keys or domains, no settings.
     'viewer' => [MembershipRole::Viewer, [
-        'projects', 'members',
+        'orgs.projects', 'orgs.settings.members',
     ]],
 ])->group('security');
 
@@ -765,7 +766,7 @@ it('keeps native app roles independent of changes to shared membership tiers', f
     // row, and the settings page (a manage-members surface) drops out of the area.
     expect(freshMembership($member)?->role)->toBe(MembershipRole::Viewer)
         ->and(app(ConsoleScope::class)->capabilities()?->canManageMembers())->toBeTrue()
-        ->and(identityPlatformPages())->not->toContain('organization-settings');
+        ->and(identityPlatformPages())->not->toContain('orgs.settings');
 })->group('security');
 
 /**
@@ -845,7 +846,7 @@ it('404s a member action aimed at an id that names no membership', function (): 
     ['member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount();
     signInAsMember($ownerSubjectId);
 
-    $this->patch(route('members.role', ['member' => '01JUNKNOWNMEMBER000000000', 'organization' => $owner->organization_id]), ['role' => MembershipRole::Admin->value])
+    $this->patch(route('orgs.settings.members.role', ['member' => '01JUNKNOWNMEMBER000000000', 'organization' => $owner->organization_id]), ['role' => MembershipRole::Admin->value])
         ->assertNotFound();
-    $this->delete(route('members.remove', ['member' => '01JUNKNOWNMEMBER000000000', 'organization' => $owner->organization_id]))->assertNotFound();
+    $this->delete(route('orgs.settings.members.remove', ['member' => '01JUNKNOWNMEMBER000000000', 'organization' => $owner->organization_id]))->assertNotFound();
 })->group('security');

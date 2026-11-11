@@ -21,7 +21,7 @@ import {
     PendingInvitations,
     type RoleOption,
 } from '@/ui';
-import { access, invite, remove, role, transferOwnership } from '@routes/members';
+import { access, invite, remove, role, transferOwnership } from '@routes/orgs/settings/members';
 
 interface Administrator {
     id: string;

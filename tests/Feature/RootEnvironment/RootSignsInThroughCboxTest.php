@@ -310,7 +310,7 @@ it('links the root account to the cbox user by their stable sub, not by the addr
     expect($callback->status())->toBe(302)
         ->and(session(PlatformAuth::SESSION_KEY))->not->toBeNull();
 
-    $this->get('https://'.RSC_HOST.'/account')->assertOk();
+    $this->get('https://'.RSC_HOST.'/settings')->assertOk();
     expect(app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('sylvester@new-address.example')))->toBeNull();
     expect(rscSignedInSubject())->toBe($subjectId);
 })->group('security');

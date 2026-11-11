@@ -26,13 +26,13 @@ it('invites a teammate with native app roles and an acceptance link', function (
     ['member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount('owner@acme.example');
     signInAsMember($ownerSubjectId);
 
-    $this->from(route('members'))
-        ->post(route('members.invite', ['organization' => $owner->organization_id]), [
+    $this->from(route('orgs.settings.members'))
+        ->post(route('orgs.settings.members.invite', ['organization' => $owner->organization_id]), [
             'email' => 'new@acme.example',
             'name' => 'New Person',
             'roles' => ['viewer'],
         ])
-        ->assertRedirect(route('members'))
+        ->assertRedirect(route('orgs.settings.members'))
         ->assertSessionHasNoErrors();
 
     // NO SUBJECT YET, and that is the change worth naming: the account plane created the
@@ -53,8 +53,8 @@ it('rejects inviting an email that already belongs to a member', function (): vo
     ['member' => $owner, 'subjectId' => $ownerSubjectId] = provisionAccount('owner@acme.example');
     signInAsMember($ownerSubjectId);
 
-    $this->from(route('members'))
-        ->post(route('members.invite', ['organization' => $owner->organization_id]), ['email' => 'owner@acme.example', 'roles' => ['viewer']])
+    $this->from(route('orgs.settings.members'))
+        ->post(route('orgs.settings.members.invite', ['organization' => $owner->organization_id]), ['email' => 'owner@acme.example', 'roles' => ['viewer']])
         ->assertSessionHasErrors('email');
 
     Mail::assertNothingSent();
@@ -160,7 +160,7 @@ it('resets an account member through the console flow and ends their open sessio
     // A pre-existing session, established the way a real sign-in does.
     signInAsMember($ownerSubjectId);
     $sessionId = (string) session(PlatformAuth::SESSION_KEY);
-    $this->get(route('projects'))->assertOk();
+    $this->get(route('orgs.projects'))->assertOk();
     forgetSubjectSession();
 
     $token = app(PlatformRoot::class)->run(
@@ -194,7 +194,7 @@ it('resets an account member through the console flow and ends their open sessio
         ->toBeNull('a session opened before the reset outlived it');
 
     session()->put(PlatformAuth::SESSION_KEY, $sessionId);
-    $this->get(route('projects'))->assertRedirect(route('login'));
+    $this->get(route('orgs.projects'))->assertRedirect(route('login'));
 });
 
 it('turns away an already-accepted invite (replayed link)', function (): void {
@@ -275,5 +275,9 @@ it('does not admit an invited person who has not accepted, even holding a live s
     // Identity platform area simply is not theirs and the console root is where they land.
     // This used to assert a bounce to the sign-in they had just completed, which was the
     // account plane's gate talking rather than the invitation.
-    $this->get(route('projects'))->assertRedirect(route('dashboard'));
+    $this->get('/projects')->assertRedirect(route('dashboard'));
+
+    // …and the organization's own address is somebody else's organization to them: a 404,
+    // exactly like an address that names nothing.
+    $this->get('/orgs/'.orgSlug($account->id).'/projects')->assertNotFound();
 })->group('security');

@@ -3229,6 +3229,7 @@ export type MessageKey =
     | 'console.organization_reactivated_cdae875e'
     | 'console.organization_results_limited'
     | 'console.organization_settings_4fd62541'
+    | 'console.organization_settings_moved_here_7b3e91c4'
     | 'console.organization_settings_saved__efd30954'
     | 'console.organization_suspended_b3cca290'
     | 'console.organization_suspended_its_members_can_no_longer_sign_i_35d8877a'

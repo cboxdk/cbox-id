@@ -169,7 +169,8 @@ it('opens an invitation on a page that says who is inviting whom, and joins on t
 it('offers the owner "Delete organization" under Settings', function (): void {
     anOwnerWithATeam();
 
-    visit('/settings')
+    // `/settings` is the person's own account since v3; the organization's page is `/organization`.
+    visit('/organization')
         ->assertSee('Delete organization')
         ->click('button:has-text("Delete organization")')
         ->assertSee('Confirm “Delete” for Acme People')

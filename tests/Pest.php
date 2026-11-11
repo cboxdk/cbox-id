@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\EnvironmentHandoffController;
+use App\Http\Middleware\BindOrganizationFromPath;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Platform\Appearance\Appearance;
 use App\Platform\Appearance\BrandImageUpload;
@@ -19,6 +20,8 @@ use App\Platform\NativeProduct\NativeProductClient;
 use App\Platform\NativeProduct\NativeProductManifest;
 use App\Platform\NativeProduct\NativeProductMembers;
 use App\Platform\OperatorEnvironment;
+use App\Platform\Organizations\OrganizationDirectory;
+use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
 use App\Platform\SignInLineage;
@@ -85,6 +88,7 @@ use Cbox\Id\SamlIdp\ValueObjects\NewServiceProvider;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 use Inertia\Support\SessionKey;
@@ -1356,7 +1360,7 @@ function issueFrontendKey(array $changes = []): TestResponse
  */
 function reachableEnvironmentId(): string
 {
-    $environments = test()->get(route('keys'))->assertOk()->inertiaProps('environments');
+    $environments = test()->get(route('orgs.settings.api-keys'))->assertOk()->inertiaProps('environments');
 
     expect($environments)->toBeArray()->not->toBeEmpty(
         'the signed-in member reaches no environment, so this test cannot be about the step-up',
@@ -1372,7 +1376,7 @@ function reachableEnvironmentId(): string
  */
 function issueEnvironmentKey(string $environmentId, array $changes = []): TestResponse
 {
-    return test()->from(route('keys'))->post(route('keys.store'), [
+    return test()->from(route('orgs.settings.api-keys'))->post(route('orgs.settings.api-keys.store'), [
         'environment' => $environmentId,
         'name' => 'Provisioner',
         'scopes' => ['users:read'],
@@ -1657,6 +1661,44 @@ function actAsOperator(string $email = 'op@platform.test'): PlatformOperator
 }
 
 /**
+ * A path under the organization console of the organization `route('orgs.…')` currently
+ * names (`/orgs/{org}` + `$path`), for a test that spells a path out rather than a name.
+ */
+function orgPath(string $path = ''): string
+{
+    $slug = URL::getDefaultParameters()['org'] ?? null;
+
+    expect($slug)->toBeString('no organization is named in URLs yet: sign in first');
+
+    return '/orgs/'.$slug.$path;
+}
+
+/** The slug `/orgs/{org}` addresses a platform-root organization by. */
+function orgSlug(string $organizationId): string
+{
+    app(OrganizationLinks::class)->flush();
+    $slug = app(OrganizationDirectory::class)->slugOf($organizationId);
+
+    expect($slug)->toBeString("organization {$organizationId} has no address");
+
+    return (string) $slug;
+}
+
+/**
+ * Build `route('orgs.…')` for this organization: its address at `/orgs/{org}`, the slug a
+ * request into it would bind ({@see BindOrganizationFromPath}).
+ */
+function useOrganizationInUrls(string $organizationId): void
+{
+    app(OrganizationLinks::class)->flush();
+    $slug = app(OrganizationDirectory::class)->slugOf($organizationId);
+
+    if ($slug !== null) {
+        URL::defaults(['org' => $slug]);
+    }
+}
+
+/**
  * Establish the browser session for a PLATFORM-ROOT subject, through the same
  * {@see PlatformAuth::establish()} every real sign-in goes through — so the held-account
  * set, the active pointer and the framework session row all have the shape production
@@ -1693,6 +1735,9 @@ function signInAsSubject(string $subjectId, array $amr = ['pwd']): void
 
         if ($organization !== null) {
             session()->put(PlatformAuth::ORG_KEY, $organization->id);
+            // …and name it in `route('orgs.…')`, as the console does for the organization
+            // a request is in: a test builds the console's own links.
+            useOrganizationInUrls($organization->id);
         }
 
         app(CurrentUser::class)->set($subject, $session, $organization, $membership?->role);
@@ -1819,6 +1864,7 @@ function actingAsRole(MembershipRole $role, bool $emailVerified = true): array
 
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
+    useOrganizationInUrls($org->id);
 
     // AND THE SESSION KEY THE CONSOLE'S OWN GUARD READS, without which an HTTP request
     // made after this helper is anonymous: `CurrentUser` is resolved state for code inside
@@ -1853,6 +1899,7 @@ function gateAdmin(string $slug = 'gate-acme', MembershipRole $role = Membership
 
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
+    useOrganizationInUrls($org->id);
 
     // AND THE SESSION KEY THE CONSOLE'S GUARD READS. `CurrentUser` is resolved state for
     // code already inside the process, which is all a Livewire component ever needed; a
@@ -2232,6 +2279,7 @@ function signInKeyHolder(string $subjectId, Organization $org): void
 
     session([PlatformAuth::SESSION_KEY => $session->id, PlatformAuth::ORG_KEY => $org->id]);
     app(CurrentUser::class)->set($subject, $session, $org, $role);
+    useOrganizationInUrls($org->id);
 }
 
 /**

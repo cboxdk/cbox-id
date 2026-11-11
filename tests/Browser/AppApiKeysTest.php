@@ -24,7 +24,7 @@ it('creates a key on the hosted page from an SDK deep link and shows it once', f
     $fixture = appKeyFixture();
     signInKeyHolder($fixture['ada'], $fixture['org']);
 
-    $page = visit('/account/api-keys?client_id='.$fixture['clientId'].'&return_to='.urlencode('https://tax.example/settings/api'));
+    $page = visit('/settings/api-keys?client_id='.$fixture['clientId'].'&return_to='.urlencode('https://tax.example/settings/api'));
 
     $page->assertSee('Back to Acme Tax')
         ->assertSee('See your tax returns')
@@ -53,7 +53,7 @@ it('draws the key page in the dark', function (): void {
     mintAppKey($fixture, $fixture['ada'], ['returns:read']);
     signInKeyHolder($fixture['ada'], $fixture['org']);
 
-    visit('/account/api-keys')
+    visit('/settings/api-keys')
         ->inDarkMode()
         ->assertSee('Your keys')
         ->assertSee('returns:read')
@@ -67,7 +67,7 @@ it('draws the key page at phone width without a sideways scroll', function (): v
     mintAppKey($fixture, $fixture['ada'], ['returns:read', 'returns:file']);
     signInKeyHolder($fixture['ada'], $fixture['org']);
 
-    visit('/account/api-keys')
+    visit('/settings/api-keys')
         ->resize(375, 812)
         ->assertSee('Your keys')
         ->assertSee('Create key')

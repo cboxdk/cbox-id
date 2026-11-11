@@ -4771,4 +4771,5 @@ https://staging.example.com',
     'plan_fa8ed0bd' => 'Tarif',
     'an_upper_bound_the_file_itself_is_exact_and__1fc09fe1' => 'Horní mez — samotný soubor je přesný a neobsahuje duplicity.',
     'sign_in_through_needs_an_active_environment_oidc_connection_7f3a2c1e' => 'Vyberte aktivní připojení OpenID Connect, které patří celému prostředí.',
+    'organization_settings_moved_here_7b3e91c4' => 'Hledáte nastavení své organizace? Mají nyní vlastní stránku.',
 ];

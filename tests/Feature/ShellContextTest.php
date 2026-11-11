@@ -78,7 +78,7 @@ it('lists the organization, its project and the environments its owner may open 
     $estate = contextEstate();
     signInAsMember($estate['subjectId']);
 
-    $context = organizationContext('projects');
+    $context = organizationContext('orgs.projects');
 
     expect($context['noun'])->toBe('Organization')
         ->and($context['organizations'])->toHaveCount(1)
@@ -88,7 +88,7 @@ it('lists the organization, its project and the environments its owner may open 
             'current' => true,
         ])
         // Switching is a POST on this host — the session lives here.
-        ->and($context['switchUrl'])->toEndWith('/organization/switch')
+        ->and($context['switchUrl'])->toEndWith('/orgs/switch')
         ->and($context['projects'])->toHaveCount(1)
         ->and($context['projects'][0]['id'])->toBe($estate['project']->id)
         // On the workspace's own console no environment is current: this IS the workspace.
@@ -119,7 +119,7 @@ it('names every organization the person belongs to, and only those', function ()
 
     signInAsMember($estate['subjectId']);
 
-    $context = organizationContext('projects');
+    $context = organizationContext('orgs.projects');
 
     expect(collect($context['organizations'])->pluck('label')->sort()->values()->all())->toBe(['Acme', 'Globex'])
         ->and(collect($context['organizations'])->firstWhere('current', true)['label'])->toBe('Acme')
@@ -135,7 +135,7 @@ it('carries the page being read into the environment it opens', function (): voi
 
     // Workspace › Keys is the same capability as an environment's Developers › API keys, so
     // opening production from here opens production's API keys.
-    $environments = contextEnvironments(organizationContext('keys'));
+    $environments = contextEnvironments(organizationContext('orgs.settings.api-keys'));
 
     expect($environments[0]['href'])->toBe('https://cboxid.com/open/'.$estate['production']->id.'?to=%2Fadmin%2Fkeys');
 });
@@ -154,7 +154,7 @@ it('lists only the environments a scoped member was granted', function (): void 
 
     signInAsMember($developerId);
 
-    expect(array_column(contextEnvironments(organizationContext('projects')), 'id'))->toBe([$estate['sandbox']->id]);
+    expect(array_column(contextEnvironments(organizationContext('orgs.projects')), 'id'))->toBe([$estate['sandbox']->id]);
 });
 
 it('offers no operational environment to a Billing-only member', function (): void {
@@ -164,11 +164,11 @@ it('offers no operational environment to a Billing-only member', function (): vo
     grantNativeProductRoles($member, ['billing']);
     signInAsMember($viewerId);
 
-    test()->get('https://cboxid.com/projects')->assertForbidden();
-    $response = test()->get('https://cboxid.com/billing?organization='.$estate['organization']->id)->assertOk();
+    test()->get('https://cboxid.com'.orgPath('/projects'))->assertForbidden();
+    $response = test()->get('https://cboxid.com'.orgPath('/settings/billing').'?organization='.$estate['organization']->id)->assertOk();
     $context = (array) $response->inertiaProps('shell.context');
     expect($response->inertiaProps('shell.brandHref'))
-        ->toBe('https://cboxid.com/billing?organization='.$estate['organization']->id);
+        ->toBe('https://cboxid.com'.orgPath('/settings/billing').'?organization='.$estate['organization']->id);
 
     expect($context['projects'])->toBe([])
         ->and($context['organizations'][0]['label'])->toBe('Acme');
@@ -190,7 +190,7 @@ it('gives the environment console every environment it may switch to, landing on
         ->and($context['organizations'][0])->toMatchArray([
             'label' => 'Acme',
             'current' => true,
-            'openHref' => 'https://cboxid.com/projects',
+            'openHref' => 'https://cboxid.com/orgs/acme/projects',
         ])
         ->and($context['projects'])->toHaveCount(1)
         ->and($context['projects'][0]['current'])->toBeTrue();
