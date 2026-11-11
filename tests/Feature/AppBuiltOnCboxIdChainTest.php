@@ -292,6 +292,8 @@ it('runs the whole app-on-Cbox-ID scenario as one chain', function (): void {
 
     expect($roles->keys()->sort()->values()->all())->toBe(['editor', 'support', 'viewer']);
 
+    // Her People page is the customer console's, which a deployment turns on.
+    withTenantCustomerConsole();
     $people = test()->get(route('directory.members'))->assertOk()->inertiaProps();
     $offered = collect($people['accessRoles'])->pluck('id')->all();
 

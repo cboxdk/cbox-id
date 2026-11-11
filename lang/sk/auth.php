@@ -55,6 +55,7 @@ return [
             'instead' => 'Pokračovať jednotným prihlásením',
         ],
         'forgot_password' => 'Zabudli ste heslo?',
+        'admin_link' => 'Som správca',
         'or' => 'ALEBO',
         'continue_with' => 'Pokračovať s :provider',
         'last_used' => 'Naposledy použité',

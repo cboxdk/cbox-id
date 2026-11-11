@@ -78,6 +78,7 @@ return [
             'instead' => 'Continue with single sign-on instead',
         ],
         'forgot_password' => 'Forgot password?',
+        'admin_link' => 'I\'m an administrator',
         'or' => 'OR',
         'continue_with' => 'Continue with :provider',
         // The badge on the sign-in method this device used last, and what it means said in full

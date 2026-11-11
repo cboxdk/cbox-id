@@ -42,6 +42,10 @@ function aCustomerAdministrator(MembershipRole $role = MembershipRole::Owner, bo
 {
     multiTenantDeployment();
 
+    // The persistent customer console is a deployment setting, off by default: these tests
+    // hold what a deployment that turns it on gets. The default is held at the end.
+    withTenantCustomerConsole();
+
     // The vendor: a workspace, and the product environment it runs.
     $vendor = provisionAccount('vendor@product.example');
 
@@ -278,6 +282,8 @@ it('puts every organization-console route behind the customer console\'s door', 
  * whole of how one list of pages answers for every write a page makes.
  */
 it('judges a route by the most specific rail page it belongs to', function (): void {
+    withTenantCustomerConsole();
+
     expect(CustomerConsole::servesRoute('directory.members.invite'))->toBeTrue()
         ->and(CustomerConsole::servesRoute('connections.domains.verify'))->toBeTrue()
         ->and(CustomerConsole::servesRoute('account.api-keys.store'))->toBeTrue()
@@ -393,3 +399,83 @@ it('lets nothing through on a customer\'s console but the admin portal, the pers
         expect($this->call($method, $uri)->status())->toBe(404, "{$method} {$uri} ({$name}) reached past the door");
     }
 })->group('security');
+
+/**
+ * THE DEFAULT ON A MULTI-TENANT DEPLOYMENT: a customer's environment host serves sign-in,
+ * the person's own pages and the setup link. The customer console above is withheld by the
+ * same list and the same door, and the environment's owner administers the organization in
+ * the environment console instead.
+ */
+function aCustomerAdministratorWithoutAConsole(): array
+{
+    $world = aCustomerAdministrator();
+
+    config(['cbox-id.realm.tenant_customer_console' => false]);
+
+    return $world;
+}
+
+it('leaves only the person\'s own pages on a customer\'s environment host by default', function (): void {
+    everyConsoleModuleOn();
+    aCustomerAdministratorWithoutAConsole();
+
+    $rail = customerRail('account');
+
+    expect(array_keys($rail))->toBe(['overview', 'account'])
+        ->and($rail['overview'])->toBe(['approvals'])
+        ->and($rail['account'])->toContain('account', 'account.activity');
+});
+
+it('serves the person\'s own pages there', function (string $route): void {
+    aCustomerAdministratorWithoutAConsole();
+
+    $this->get(route($route))->assertOk();
+})->with(['approvals', 'account', 'account.activity', 'account.api-keys', 'device']);
+
+it('answers 404 for the customer console\'s pages there, by URL too', function (string $route): void {
+    aCustomerAdministratorWithoutAConsole();
+
+    $this->get(route($route))->assertNotFound();
+})->with([
+    'directory.members', 'roles', 'roles.create', 'connections', 'connections.create', 'domains',
+    'directories', 'audit', 'audit-logs', 'clients', 'branding', 'settings',
+])->group('security');
+
+it('refuses the customer console\'s writes there', function (): void {
+    aCustomerAdministratorWithoutAConsole();
+
+    $this->post(route('directory.members.invite'), ['email' => 'new@customer.example'])->assertNotFound();
+    $this->post(route('roles.store'), ['name' => 'Smuggled'])->assertNotFound();
+})->group('security');
+
+it('sends the landing page to the person\'s account there', function (): void {
+    aCustomerAdministratorWithoutAConsole();
+
+    $this->get(route('dashboard'))->assertRedirect(route('account'));
+});
+
+it('keeps the setup link on a customer\'s environment host', function (): void {
+    aCustomerAdministratorWithoutAConsole();
+
+    expect(CustomerConsole::servesRoute('portal.setup'))->toBeTrue()
+        ->and(CustomerConsole::servesRoute('portal.sso'))->toBeTrue();
+    $this->get(route('portal.expired'))->assertOk();
+});
+
+it('leaves the organization to the environment\'s owner in the environment console', function (string $route): void {
+    ['environmentId' => $environmentId, 'vendorId' => $vendorId, 'organizationId' => $organizationId] = aCustomerAdministratorWithoutAConsole();
+
+    session()->flush();
+    actAsEnvironmentAdmin($vendorId, $environmentId);
+
+    $this->get(route('environment.organizations.'.$route, $organizationId))->assertOk();
+})->with(['members', 'roles', 'sso', 'domains', 'directory-sync', 'audit', 'audit-logs']);
+
+it('does not ask a single-tenant install: its organization console stays whole', function (): void {
+    actingAsRole(MembershipRole::Owner);
+
+    expect(config('cbox-id.realm.tenant_customer_console'))->toBeFalse();
+
+    $this->get(route('directory.members'))->assertOk();
+    $this->get(route('dashboard'))->assertOk();
+});

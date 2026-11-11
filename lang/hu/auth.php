@@ -55,6 +55,7 @@ return [
             'instead' => 'Inkább egyszeri bejelentkezéssel folytatom',
         ],
         'forgot_password' => 'Elfelejtetted a jelszavad?',
+        'admin_link' => 'Rendszergazda vagyok',
         'or' => 'VAGY',
         'continue_with' => 'Folytatás ezzel: :provider',
         'last_used' => 'Utolsó használat',

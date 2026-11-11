@@ -55,6 +55,7 @@ return [
             'instead' => 'Zamiast tego użyj jednokrotnego logowania',
         ],
         'forgot_password' => 'Zapomniałeś hasła?',
+        'admin_link' => 'Jestem administratorem',
         'or' => 'LUB',
         'continue_with' => 'Kontynuuj z :provider',
         'last_used' => 'Ostatnie użycie',

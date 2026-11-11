@@ -55,6 +55,7 @@ return [
             'instead' => 'Gebruik in plaats daarvan eenmalige aanmelding',
         ],
         'forgot_password' => 'Wachtwoord vergeten?',
+        'admin_link' => 'Ik ben beheerder',
         'or' => 'OF',
         'continue_with' => 'Ga verder met :provider',
         'last_used' => 'Laatst gebruikt',

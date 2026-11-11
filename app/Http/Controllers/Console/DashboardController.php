@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Console;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\AppLauncher;
 use App\Platform\AuditNames;
+use App\Platform\Console\CustomerConsole;
 use App\Platform\Console\DashboardCards;
 use App\Platform\Console\OrganizationLanding;
 use App\Platform\CurrentUser;
@@ -64,6 +65,13 @@ final readonly class DashboardController extends ConsoleController
             return ! app(PlaneResolver::class)->onCustomerEnvironment()
                 ? OrganizationPickerController::home(request())
                 : redirect()->to($landing->url());
+        }
+
+        // A CUSTOMER'S ENVIRONMENT HOST HAS NO OVERVIEW EITHER, unless the deployment keeps
+        // the customer console there: it serves the person's own pages, and this is where
+        // every sign-in lands.
+        if ($this->scope->atCustomerAltitude() && ! CustomerConsole::persistent()) {
+            return to_route('account');
         }
 
         $me = app(CurrentUser::class);

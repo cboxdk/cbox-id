@@ -55,6 +55,7 @@ return [
             'instead' => 'Folosiți în schimb autentificarea unică',
         ],
         'forgot_password' => 'Ați uitat parola?',
+        'admin_link' => 'Sunt administrator',
         'or' => 'SAU',
         'continue_with' => 'Continuați cu :provider',
         'last_used' => 'Ultima utilizare',

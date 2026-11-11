@@ -794,6 +794,7 @@ it('offers both planes both of the filters they used to have one each of', funct
 
     // The environment plane's search — which matches the TARGET type too, the half an
     // action filter cannot answer — now on the organization plane.
+    withTenantCustomerConsole();
     [, $org] = actingAsRole(MembershipRole::Owner);
     app(AuditLog::class)->record(new AuditEvent(
         action: 'member.added',
@@ -1983,6 +1984,7 @@ it('offers SCIM and both pull providers on both planes', function (): void {
         ->assertOk()
         ->inertiaProps('providers'))->pluck('label');
 
+    withTenantCustomerConsole();
     actingAsRole(MembershipRole::Owner);
     confirmConsoleStepUp();
     $organization = collect((array) $this->get(route('directories.create'))
@@ -2009,6 +2011,7 @@ it('shows each pull provider its own directory guide, on both planes', function 
     confirmConsoleStepUp();
     $planes = [(array) $this->get(route('environment.directories.create'))->assertOk()->inertiaProps('providers')];
 
+    withTenantCustomerConsole();
     actingAsRole(MembershipRole::Owner);
     confirmConsoleStepUp();
     $planes[] = (array) $this->get(route('directories.create'))->assertOk()->inertiaProps('providers');
