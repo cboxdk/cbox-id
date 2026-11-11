@@ -15,7 +15,6 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
-use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
@@ -362,46 +361,19 @@ it('offers a project on an organization\'s Projects page, and only to who may ma
         ->and($shell['createForms']['project']['url'])->toBe('/orgs/'.$orgs['a'].'/projects');
 })->group('shell');
 
-it('renders Cbox\'s own environment console in the shared shell, with the organization in the session', function (): void {
-    multiTenantDeployment();
-    $cbox = provisionAccount('owner@cbox-console.example');
-    config(['cbox-id.cbox_environment' => $cbox['environment']->slug]);
-    serveOnTestHost($cbox['environment']);
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($cbox['environment']->id));
-    actingAsRole(MembershipRole::Owner);
-
-    $response = $this->get(route('dashboard'))->assertOk();
-    $shell = (array) $response->inertiaProps('shell');
-
-    expect($response->inertiaProps('tenantShell'))->toBeNull()
-        ->and(array_column($shell['context']['levels'], 'key'))->toBe(['organization'])
-        ->and($shell['context']['levels'][0])->not->toHaveKey('settingsUrl')
-        ->and($shell['context']['switchUrl'])->toBe('/orgs/switch')
-        ->and($shell['context']['sessionSwitch'])->toBeTrue()
-        ->and($shell['nav']['areas'])->not->toBe([])
-        ->and($shell['nav']['tabs'])->not->toBe([]);
-})->group('shell');
-
-it('leaves an archived organization out of the switcher (cbox.cboxid.com listed "Cbox" twice)', function (): void {
-    multiTenantDeployment();
-    $cbox = provisionAccount('owner@cbox-archived.example');
-    config(['cbox-id.cbox_environment' => $cbox['environment']->slug]);
-    serveOnTestHost($cbox['environment']);
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($cbox['environment']->id));
-    [$person] = actingAsRole(MembershipRole::Owner);
+it('leaves an archived organization out of the organization switcher (production listed "Cbox" twice)', function (): void {
+    $orgs = shellTwoOrganizations();
+    signInAsMember($orgs['subjectId']);
 
     // The same name twice, as in production: one made by mistake and archived at once. The
     // membership stays when an organization is archived.
-    $kept = app(Organizations::class)->create(new NewOrganization('Cbox', 'cbox-kept'));
-    $archived = app(Organizations::class)->create(new NewOrganization('Cbox', 'cbox-archived'));
-    app(Memberships::class)->add($kept->id, $person, MembershipRole::Owner);
-    app(Memberships::class)->add($archived->id, $person, MembershipRole::Owner);
-    Organization::query()->whereKey($archived->id)->update(['status' => OrganizationStatus::Deleted]);
+    $name = app(PlatformRoot::class)->run(fn () => Organization::query()->whereKey($orgs['aId'])->value('name'));
+    app(PlatformRoot::class)->run(fn () => Organization::query()->whereKey($orgs['bId'])->update(['name' => $name, 'status' => OrganizationStatus::Deleted]));
 
-    $rows = $this->getJson('/shell/context/organization')->assertOk()->json('data');
+    $rows = $this->getJson(onAppHost('/shell/context/organization'))->assertOk()->json('data');
     $ids = array_column($rows, 'id');
 
-    expect($ids)->toContain($kept->id)
-        ->and($ids)->not->toContain($archived->id)
-        ->and(array_count_values(array_column($rows, 'name'))['Cbox'] ?? 0)->toBe(1);
+    expect($ids)->toContain($orgs['aId'])
+        ->and($ids)->not->toContain($orgs['bId'])
+        ->and(array_count_values(array_column($rows, 'name'))[$name] ?? 0)->toBe(1);
 })->group('shell');

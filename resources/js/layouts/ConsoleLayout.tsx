@@ -240,19 +240,6 @@ function navigator(shell: ConsoleShell, i18n: I18n | null | undefined): ShellNav
                 return;
             }
 
-            // Cbox's own console keeps the organization in the session: its switch re-scopes
-            // the session and lands on the dashboard.
-            if (shell.context.sessionSwitch === true) {
-                if (request.select.organization !== undefined) {
-                    router.post(url, {
-                        organization: request.select.organization,
-                        path: request.from ?? window.location.pathname,
-                    });
-                }
-
-                return;
-            }
-
             router.post(url, request);
 
             return;
@@ -324,9 +311,8 @@ function writeCookie(name: string, value: string): void {
  *
  * A persistent Inertia layout, so the rail, Help and its chat survive page visits.
  *
- * A white-labelled customer environment's own console keeps its own chrome
- * ({@see TenantConsoleLayout}); Cbox's own environment (cbox.cboxid.com) renders here. A
- * page with no chrome (mid-sign-in) renders bare.
+ * A customer environment's own console is white-labelled and keeps its own chrome
+ * ({@see TenantConsoleLayout}). A page with no chrome (mid-sign-in) renders bare.
  */
 export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
     const { shell, tenantShell, auth, title, organizationHub, i18n } = usePage<SharedProps>().props;

@@ -336,13 +336,6 @@ export type ConsoleShell = CboxShellProp & {
     section?: string | null;
     /** The create sheet's forms, by creatable key: where each posts and its fields. */
     createForms?: Record<string, { url: string; fields: ShellCreateFieldSpec[] }>;
-    context: CboxShellProp['context'] & {
-        /**
-         * Cbox's own console (cbox.cboxid.com) keeps the organization in the session: a switch
-         * is posted to `switchUrl` (`orgs.switch`) as `{organization, path}`.
-         */
-        sessionSwitch?: boolean;
-    };
 };
 
 /**

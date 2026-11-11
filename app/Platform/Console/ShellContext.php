@@ -126,28 +126,6 @@ final readonly class ShellContext
     }
 
     /**
-     * The person's organizations in the environment this console stands in, the current
-     * one included: Cbox's own console (cbox.cboxid.com) switches between them in the
-     * session, as a customer's console always has.
-     *
-     * @return list<SwitchOptionProps>
-     */
-    public function organizationsHere(): array
-    {
-        $subjectId = $this->user->id();
-
-        if ($subjectId === '') {
-            return [];
-        }
-
-        return $this->organizationOptions(
-            $this->memberships->forUser($subjectId),
-            $this->user->organizationId(),
-            fallbackName: $this->user->organization()?->name,
-        );
-    }
-
-    /**
      * The PLATFORM ROOT's environment as a row of the switcher — under a "Platform" project
      * of its own, opening its console (`/admin/environment/…`) at the same page where there
      * is one.
@@ -320,8 +298,8 @@ final readonly class ShellContext
             // A membership whose organization no longer resolves is not a row somebody
             // can switch to. Skipped rather than rendered blank. Nor is one whose
             // organization was archived or suspended: archiving keeps the memberships, and
-            // listing them drew a second "Cbox" in the switcher on cbox.cboxid.com (an
-            // organization created by mistake and archived four minutes later). The
+            // listing them drew a second "Cbox" in the switcher (an organization created by
+            // mistake and archived four minutes later). The
             // current one stays, so the crumb can still say where you are.
             if ($organization === null || ($membership->organization_id !== $currentId && OrganizationAccess::isRevoked($organization->status))) {
                 continue;

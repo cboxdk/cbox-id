@@ -11,7 +11,6 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 ### Added
 
 - **The shared shell on cbox-ui 0.11 and laravel-console-kit 0.2.6.** The phone layout is the approved V6 design: a context pill, a tab bar of the four main areas (`nav.tabs`) and More. "+" opens the page's own create form in the shell's create sheet: a user or an organization in an environment's console, a project or a team member in an organization's (`App\Platform\Shell\IdCreatables`, posting to the same routes the pages do). Pages declare palette actions. Environments say whether they are live and are grouped Production / Sandbox.
-- **Cbox's own environment console (cbox.cboxid.com) renders in the shared shell**, with the organization as its only level and switched in the session as before. White-labelled customer environments keep their own chrome: cbox-ui 0.11 always draws the Cbox wordmark, the app switcher and Help.
 - **App catalog: purpose, hue and "More from Cbox".** Catalog apps gain `purpose` (one line, 60 characters), `hue` (a cbox-ui hue token), `admission_url` (a public HTTPS signup or waitlist page) and `promote_when_unavailable` (default on); migration `2026_11_11_090000_add_shell_fields_to_app_catalog_entries` is additive, and a save that omits them keeps them. `/api/v1/me/apps`, `/api/v1/app-catalog/for-user` and the console's own catalog feed add `purpose`, `hue` and `available`, and list the apps a person can ask for under `meta.unavailable` (the feed: `unavailable`) with their `admission_url`. A `users`-audience app is never listed to anyone it does not name. `php artisan app-catalog:apply resources/app-catalog/cbox.json` sets purpose and hue for the 14 Cbox products.
 - **UserInfo carries organization slugs.** `org_slug` beside `org`, and `slug` on each entry of the `organizations` claim, read live. `sub`, `org` and token claims are unchanged.
 
@@ -35,7 +34,7 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Fixed
 
-- **An archived organization no longer shows in the organization switchers.** Archiving keeps the memberships, and the switchers listed them, so cbox.cboxid.com showed "Cbox" twice.
+- **An archived organization no longer shows in the organization switchers.** Archiving keeps the memberships, and the switchers listed them, so "Cbox" showed twice.
 
 ## [2.2.0] - 2026-11-08
 

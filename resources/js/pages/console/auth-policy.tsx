@@ -1069,7 +1069,10 @@ function SmsFactorPanel({ setting, scopeName }: { setting: SmsFactorSetting; sco
     // A flag before each name: a country is recognised, then picked by typing its name.
     const options = setting.countries
         .filter((country) => !form.data.allowedCountries.includes(country.value))
-        .map((country) => ({ ...country, label: `${flag(country.value)} ${country.label}` }));
+        .map((country) => ({
+            value: country.value,
+            label: `${flag(country.value)} ${country.label}`,
+        }));
 
     return (
         <Panel

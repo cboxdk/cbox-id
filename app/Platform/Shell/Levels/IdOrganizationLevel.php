@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Platform\Shell\Levels;
 
-use App\Http\Props\Shell\SwitchOptionProps;
-use App\Platform\Console\ShellContext;
 use App\Platform\CurrentUser;
 use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
 use App\Platform\OAuth\Exceptions\OrganizationCreationRefused;
@@ -36,8 +34,6 @@ use Illuminate\Validation\ValidationException;
  */
 final class IdOrganizationLevel implements ContextLevel, CreatesContextItems
 {
-    private const HERE = 'cbox-id.shell.organizations-here';
-
     /*
      * Built once, at boot, and asked on every request: so it holds nothing, and resolves
      * what it reads per call (the directory keeps a per-request address cache).
@@ -60,16 +56,6 @@ final class IdOrganizationLevel implements ContextLevel, CreatesContextItems
 
     public function current(Request $request, array $ancestors): ?ContextItem
     {
-        if (ShellRequest::onCboxConsole()) {
-            foreach (self::here() as $item) {
-                if ($item['current']) {
-                    return $item['item'];
-                }
-            }
-
-            return null;
-        }
-
         if (ShellRequest::onPlatformAdmin($request) || ShellRequest::onTenantConsole()) {
             return null;
         }
@@ -101,16 +87,6 @@ final class IdOrganizationLevel implements ContextLevel, CreatesContextItems
 
     public function find(Request $request, string $id, array $ancestors): ?ContextItem
     {
-        if (ShellRequest::onCboxConsole()) {
-            foreach (self::here() as $item) {
-                if ($item['item']->id === $id) {
-                    return $item['item'];
-                }
-            }
-
-            return null;
-        }
-
         foreach ($this->entries() as $entry) {
             if ($entry->id === $id || $entry->slug === $id) {
                 return self::item($entry);
@@ -123,16 +99,6 @@ final class IdOrganizationLevel implements ContextLevel, CreatesContextItems
     public function list(Request $request, ContextQuery $query): ContextPage
     {
         $term = mb_strtolower(trim((string) $query->search));
-
-        if (ShellRequest::onCboxConsole()) {
-            $items = array_values(array_filter(
-                array_map(static fn (array $row): ContextItem => $row['item'], self::here()),
-                static fn (ContextItem $item): bool => $term === '' || str_contains(mb_strtolower($item->name), $term),
-            ));
-
-            return self::page($items, $query);
-        }
-
         $matches = array_values(array_filter(
             $this->entries(),
             static fn (OrganizationEntry $entry): bool => $term === '' || str_contains(mb_strtolower($entry->name), $term) || str_contains($entry->slug, $term),
@@ -143,21 +109,11 @@ final class IdOrganizationLevel implements ContextLevel, CreatesContextItems
 
     public function url(ContextItem $item, array $ancestors): string
     {
-        // Cbox's own console keeps the organization in the session: the page posts the
-        // choice to `orgs.switch` ({@see \App\Platform\Shell\IdShell}), which lands here.
-        if (ShellRequest::onCboxConsole()) {
-            return route('dashboard', [], false);
-        }
-
         return route('orgs.show', ['org' => $item->routeKey], false);
     }
 
     public function allUrl(array $ancestors): string
     {
-        if (ShellRequest::onCboxConsole()) {
-            return route('dashboard', [], false);
-        }
-
         return route('orgs.index', [], false);
     }
 
@@ -189,35 +145,6 @@ final class IdOrganizationLevel implements ContextLevel, CreatesContextItems
         abort_if($slug === null, 500);
 
         return new CreatedContextItem($choice->id, route('orgs.settings', ['org' => $slug], false).'#finish');
-    }
-
-    /**
-     * Cbox's own console: the person's organizations in the `cbox` environment, read once
-     * per request.
-     *
-     * @return list<array{item: ContextItem, current: bool}>
-     */
-    private static function here(): array
-    {
-        $request = request();
-        $memo = $request->attributes->get(self::HERE);
-
-        if (is_array($memo)) {
-            /** @var list<array{item: ContextItem, current: bool}> $memo */
-            return $memo;
-        }
-
-        $rows = array_map(
-            static fn (SwitchOptionProps $option): array => [
-                'item' => new ContextItem(id: $option->id, name: $option->label, routeKey: $option->id),
-                'current' => $option->current,
-            ],
-            app(ShellContext::class)->organizationsHere(),
-        );
-
-        $request->attributes->set(self::HERE, $rows);
-
-        return $rows;
     }
 
     /** @return list<OrganizationEntry> */

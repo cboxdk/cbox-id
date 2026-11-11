@@ -29,12 +29,10 @@ export interface TenantConsoleLayoutProps {
 /**
  * A CUSTOMER ENVIRONMENT'S OWN ORGANIZATION CONSOLE — its IT admins, on its host.
  *
- * Every other console page is framed by cbox-ui's `CboxShell` ({@see ConsoleLayout}),
- * Cbox's own environment (cbox.cboxid.com) included. This one is white-labelled: the
- * customer's brand, no Cbox app switcher and no Cbox Help (Cbox Assistant is not their
- * support). `CboxShell` (cbox-ui 0.11) always draws the Cbox wordmark, the app switcher and
- * Help, so this surface keeps its own chrome, built from `tenantShell`
- * ({@see \App\Platform\Shell\IdShell}).
+ * Every other console page is framed by cbox-ui's `CboxShell` ({@see ConsoleLayout}). This
+ * one is white-labelled: the customer's brand, no Cbox app switcher and no Cbox Help (Cbox
+ * Assistant is not their support). `CboxShell` cannot leave those out yet, so this surface
+ * keeps its own chrome, built from `tenantShell` ({@see \App\Platform\Shell\IdShell}).
  */
 export function TenantConsoleLayout({ children: page }: TenantConsoleLayoutProps) {
     const { t: consoleShortText } = useConsoleTranslator();

@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Platform\Sudo;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Organization\Enums\MembershipRole;
 use Database\Seeders\DemoEnvironmentSeeder;
 use Pest\Browser\Api\AwaitableWebpage;
 use Pest\Browser\Api\PendingAwaitablePage;
@@ -126,32 +125,4 @@ it('works the phone shell: tabs, More, the context sheet, the palette and "+"', 
         ->assertPathContains('ledger-sandbox')
         ->assertPathContains('/users')
         ->assertNoJavaScriptErrors();
-})->with(['light', 'dark'])->group('shell');
-
-/**
- * CBOX'S OWN ENVIRONMENT (cbox.cboxid.com): the account and organization pages every Cbox
- * user has. Not white-labelled, so the same shell as every other Cbox app, with the
- * organization the only level and kept in the session.
- */
-it('draws Cbox\'s own environment console in the shared shell on a phone', function (string $theme): void {
-    multiTenantDeployment();
-    $cbox = provisionAccount('owner@cbox-phone.example');
-    config(['cbox-id.cbox_environment' => $cbox['environment']->slug]);
-    serveOnTestHost($cbox['environment']);
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($cbox['environment']->id));
-    syncNativeProductCatalog();
-    actingAsRole(MembershipRole::Owner);
-
-    $pending = visit('/account');
-    $page = ($theme === 'dark' ? $pending->inDarkMode() : $pending->inLightMode())->resize(390, 844);
-
-    $page->assertVisible('nav.cbx-tabbar')
-        ->assertVisible('button.cbx-m-pill')
-        ->assertNoJavaScriptErrors();
-
-    shellShot($page, "cbox-account-{$theme}");
-
-    $page->click('button.cbx-m-pill')->assertSee('Acme');
-
-    shellShot($page, "cbox-context-{$theme}");
 })->with(['light', 'dark'])->group('shell');

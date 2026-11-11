@@ -32,11 +32,10 @@ use Illuminate\Support\Facades\URL;
  *  - THE BELL leads to the environment's Approvals page and shows only while something is
  *    waiting there.
  *
- * Null where a page has no chrome (sign-in, an error) and on a white-labelled customer
- * environment's own host: that console has no Cbox app switcher, no Cbox Help and no Cbox
+ * Null where a page has no chrome (sign-in, an error) and on a customer environment's own
+ * host: that console is white-labelled, with no Cbox app switcher, no Cbox Help and no Cbox
  * wordmark, which `CboxShell` (cbox-ui 0.11) always draws, so it keeps its own chrome
- * ({@see tenant()}). Cbox's own environment (cbox.cboxid.com) is not white-labelled and
- * renders in the shared shell ({@see ShellRequest::onCboxConsole()}).
+ * ({@see tenant()}).
  */
 final readonly class IdShell
 {
@@ -53,7 +52,7 @@ final readonly class IdShell
     {
         $legacy = app(ShellPayload::class)->build();
 
-        if (! $legacy instanceof ShellProps || ShellRequest::onWhiteLabelConsole()) {
+        if (! $legacy instanceof ShellProps || ShellRequest::onTenantConsole()) {
             return null;
         }
 
@@ -112,23 +111,6 @@ final readonly class IdShell
             $shell['palette'] = [...$palette, 'searchUrl' => $search.(is_string($query) && $query !== '' ? '?'.$query : '')];
         }
 
-        // Cbox's own console (cbox.cboxid.com) keeps the organization in the session, as a
-        // customer's console always has: the page posts a switch to `orgs.switch`, which
-        // re-scopes the session and lands on the dashboard. It has no organization settings
-        // page, so its menu has no gear.
-        if (ShellRequest::onCboxConsole()) {
-            $context = $built->context->toArray();
-            $shell['context'] = [
-                'levels' => array_map(static function (array $level): array {
-                    unset($level['settingsUrl']);
-
-                    return $level;
-                }, $context['levels']),
-                'switchUrl' => route('orgs.switch', [], false),
-                'sessionSwitch' => true,
-            ];
-        }
-
         return $shell;
     }
 
@@ -147,10 +129,10 @@ final readonly class IdShell
         return is_string($value) && strlen($value) <= 64 && in_array($value, timezone_identifiers_list(DateTimeZone::ALL_WITH_BC), true) ? $value : null;
     }
 
-    /** The white-labelled customer console's own chrome, on a customer environment's host. */
+    /** The customer console's own chrome, on a customer environment's host. */
     public function tenant(): ?ShellProps
     {
-        return ShellRequest::onWhiteLabelConsole() ? app(ShellPayload::class)->build() : null;
+        return ShellRequest::onTenantConsole() ? app(ShellPayload::class)->build() : null;
     }
 
     /**

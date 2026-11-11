@@ -242,7 +242,7 @@ final readonly class ShellPayload
             section: $platformPage ? Vocabulary::PLATFORM : null,
             // Only a customer environment's own console draws this switcher; every other page's
             // context is the shared shell's levels.
-            context: ShellRequest::onWhiteLabelConsole()
+            context: ShellRequest::onTenantConsole()
                 ? $this->context->forOrganizationPlane($this->activePageRoute($active))
                 : ShellContextProps::none(),
             isOperator: $isOperator,
