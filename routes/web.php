@@ -60,7 +60,6 @@ use App\Http\Controllers\Console\GetStartedController;
 use App\Http\Controllers\Console\HookController;
 use App\Http\Controllers\Console\LegacyLoginController;
 use App\Http\Controllers\Console\LegacyOrganizationPathController;
-use App\Http\Controllers\Console\LegacyPlatformOrganizationController;
 use App\Http\Controllers\Console\LogStreamController;
 use App\Http\Controllers\Console\MemberApiKeyController;
 use App\Http\Controllers\Console\MemberController;
