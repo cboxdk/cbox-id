@@ -680,6 +680,35 @@ return [
     ],
 
     /*
+     * THE CONSOLE AS A RELYING PARTY (login-host mode only; unused while
+     * `CBOX_ID_LOGIN_HOST` is unset).
+     *
+     * With a login host, the console on the app host signs people in at the login host as
+     * an OAuth client of its own: authorization code with PKCE, a confidential first-party
+     * client. `php artisan cbox-id:console:client` registers that client (and keeps its
+     * redirect, sign-out and back-channel logout addresses in line with the app host) and
+     * prints its secret once; `client_secret` is where the deployment keeps it. Until both
+     * exist the console answers "sign-in is not set up" instead of a sign-in.
+     *
+     * `step_up` is what a step-up asks the login host for. `max_age` is how old the
+     * authentication may be, in seconds (0: sign in again now). `acr` names, per step-up
+     * plane, the authentication context the answer must reach; a plane left out asks for
+     * freshness alone.
+     */
+    'console' => [
+        'client_secret' => env('CBOX_ID_CONSOLE_CLIENT_SECRET'),
+        'step_up' => [
+            'max_age' => (int) env('CBOX_ID_CONSOLE_STEP_UP_MAX_AGE', 0),
+            'acr' => [
+                'organization' => env('CBOX_ID_CONSOLE_STEP_UP_ACR'),
+                'environment' => env('CBOX_ID_CONSOLE_STEP_UP_ACR'),
+                // The operator plane's step-up proves a passkey or security key.
+                'operator' => env('CBOX_ID_CONSOLE_OPERATOR_STEP_UP_ACR', 'urn:cbox-id:phr'),
+            ],
+        ],
+    ],
+
+    /*
      * THE OLD `/api/v1` PATHS, while callers move to the API host.
      *
      * Every `/api/v1` response says it is deprecated (RFC 9745 `Deprecation`, RFC 8594

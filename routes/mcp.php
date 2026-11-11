@@ -100,9 +100,14 @@ Route::middleware([ResolveEnvironment::class, 'plane:first-party', 'throttle:60,
  */
 Route::middleware([ResolveEnvironment::class, 'plane:mcp-discovery', 'throttle:300,1', CanonicalIssuerHost::class])->group(function (): void {
     Route::get('/.well-known/oauth-authorization-server', AuthorizationServerMetadataController::class);
-    Route::get('/.well-known/oauth-protected-resource/{path}', [ProtectedResourceMetadataController::class, 'show'])
-        ->where('path', '.+');
 });
+
+// The resource's own document, under a gate of its own: in login-host mode the platform's
+// `/mcp` is on the app host and its authorization server on the login host, so the app host
+// serves this and nothing else of the group above ({@see PlaneResolver::servesResourceMetadata()}).
+Route::middleware([ResolveEnvironment::class, 'plane:mcp-resource', 'throttle:300,1', CanonicalIssuerHost::class])
+    ->get('/.well-known/oauth-protected-resource/{path}', [ProtectedResourceMetadataController::class, 'show'])
+    ->where('path', '.+');
 
 Route::middleware([ResolveEnvironment::class, 'plane:mcp-discovery', 'web', 'throttle:30,1', NoStore::class])
     ->withoutMiddleware([PreventRequestForgery::class, ValidateCsrfToken::class, VerifyCsrfToken::class])

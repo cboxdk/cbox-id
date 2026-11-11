@@ -13,6 +13,7 @@ use App\Http\Controllers\AppsController;
 use App\Http\Controllers\AuditLogExportDownloadController;
 use App\Http\Controllers\Auth\AccountsController;
 use App\Http\Controllers\Auth\ChangePasswordController;
+use App\Http\Controllers\Auth\ConsoleSignInController;
 use App\Http\Controllers\Auth\ContinueController;
 use App\Http\Controllers\Auth\InvitationAcceptController;
 use App\Http\Controllers\Auth\LinkAccountController;
@@ -152,6 +153,8 @@ use App\Http\Middleware\RequireSignInMethod;
 use App\Http\Middleware\TargetEnvironment;
 use App\Http\WebRateLimiters;
 use App\Platform\Console\ConsoleRoutes;
+use App\Platform\ConsoleSignIn\ConsoleSignIn;
+use App\Platform\ConsoleSignIn\OrganizationHint;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
 use Cbox\Console\Kit\Facades\Console;
@@ -159,6 +162,7 @@ use Cbox\Id\Api\Http\Middleware\NoStore;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment as ApiResolveEnvironment;
 use Cbox\Id\FrontendApi\Http\Middleware\AuthenticateFrontendApi;
+use Illuminate\Http\Request;
 use Illuminate\Routing\RedirectController;
 use Illuminate\Support\Facades\Route;
 
@@ -274,9 +278,11 @@ Route::post('/locale', LocaleController::class)->middleware('throttle:30,1')->na
  * differ — the issuer endpoints, the environment-admin door. The apex is no longer one
  * of them.
  */
-Route::get('/', fn () => redirect()->route(
-    session()->has(PlatformAuth::SESSION_KEY) ? 'dashboard' : 'login'
-))->name('home');
+Route::get('/', fn (Request $request) => app(ConsoleSignIn::class)->active($request)
+    // Login-host mode: the app host has no `/login`. The console's gate sends a signed-out
+    // browser to the login host, and `?organization=` (the app switcher) rides along.
+    ? redirect()->route('dashboard', $request->only(OrganizationHint::PARAMETER))
+    : redirect()->route(session()->has(PlatformAuth::SESSION_KEY) ? 'dashboard' : 'login'))->name('home');
 // …and `/dashboard` sends a person on the app host to `/orgs/{org}` for the organization
 // this browser last used ({@see OrganizationPickerController::home()}), so `/` lands there.
 
@@ -532,6 +538,21 @@ Route::middleware([BlockDuringImpersonation::class, 'locale'])->group(function (
 });
 
 Route::post('/logout', [SessionController::class, 'destroy'])->name('logout');
+
+/*
+ * LOGIN-HOST MODE: the console's door. The app host serves no sign-in page; the console is
+ * a relying party of the login host ({@see ConsoleSignIn}). `/auth/start` sends the browser
+ * to `{login host}/oauth/authorize` as the console's own client, `/auth/callback` redeems
+ * the code and starts the console's session. The same pair carries a step-up
+ * (`?step_up=`), which is why an impersonator is kept out of it like the sudo screens.
+ * Both answer 404 in single-host mode. `platform.auth:optional` only tells the controller
+ * who, if anybody, this browser already is.
+ */
+Route::middleware(['plane:console', BlockDuringImpersonation::class, 'platform.auth:optional', 'locale', 'throttle:60,1'])
+    ->prefix('auth')->group(function (): void {
+        Route::get('/start', [ConsoleSignInController::class, 'start'])->name('console.auth.start');
+        Route::get('/callback', [ConsoleSignInController::class, 'callback'])->name('console.auth.callback');
+    });
 
 // Where every sign-out lands, on every host — a page, not a door. Sending people to a sign-in
 // door instead let an environment console's gate hand them straight back in

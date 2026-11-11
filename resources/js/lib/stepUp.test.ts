@@ -270,3 +270,58 @@ describe('installStepUp', () => {
         expect(own).toHaveBeenCalled();
     });
 });
+
+describe('step-up by a trip to the login host', () => {
+    const door = `${window.location.origin}/auth/start?step_up=environment`;
+    const redirect = { page: door, popup: `${door}&popup=1` };
+
+    it('reads the redirect a refusal carries, and only one on this origin', () => {
+        const read = (value: unknown) =>
+            challengeFrom(
+                403,
+                { 'x-cbox-step-up': door },
+                body({ plane: 'environment', confirm: door, reason: null, redirect: value }),
+            );
+
+        expect(read(redirect)?.redirect).toEqual(redirect);
+        expect(
+            read({ page: 'https://login.example/x', popup: redirect.popup })?.redirect,
+        ).toBeUndefined();
+        expect(read(undefined)?.redirect).toBeUndefined();
+    });
+
+    it('opens the window, and resolves with what it reports for this plane', async () => {
+        const { confirmStepUpByRedirect, STEP_UP_CHANNEL } = await import('./stepUp');
+        const opened: string[] = [];
+        const popup = { closed: false } as Window;
+
+        const outcome = confirmStepUpByRedirect(
+            { plane: 'environment', confirm: door, reason: null, redirect },
+            (url) => {
+                opened.push(url);
+
+                return popup;
+            },
+        );
+
+        const channel = new BroadcastChannel(STEP_UP_CHANNEL);
+        channel.postMessage({ plane: 'organization', confirmed: true });
+        channel.postMessage({ plane: 'environment', confirmed: true });
+
+        await expect(outcome).resolves.toBe('confirmed');
+        expect(opened).toEqual([redirect.popup]);
+        channel.close();
+    });
+
+    it('says so when the browser blocks the window, or there is nowhere to go', async () => {
+        const { confirmStepUpByRedirect } = await import('./stepUp');
+
+        await expect(
+            confirmStepUpByRedirect(
+                { plane: 'environment', confirm: door, reason: null, redirect },
+                () => null,
+            ),
+        ).resolves.toBe('blocked');
+        await expect(confirmStepUpByRedirect(organization, () => null)).resolves.toBe('blocked');
+    });
+});

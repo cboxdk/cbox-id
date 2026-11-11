@@ -7,6 +7,7 @@ namespace App\Platform;
 use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireSudo;
 use App\Platform\Console\ConsoleStepUp;
+use App\Platform\ConsoleSignIn\ConsoleStepUps;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -74,6 +75,12 @@ final class StepUpPrompt
             StepUpReason::forget($plane->value);
         }
 
+        // Login-host mode: the step-up is a trip to the login host, and the environment it
+        // is for is whatever this gate was asked in, kept here and never read from a URL.
+        if ($plane->redirectUrl() !== null) {
+            app(ConsoleStepUps::class)->remember($request, $plane);
+        }
+
         if (self::inPlace($request)) {
             throw new HttpResponseException(self::response($plane, $reason));
         }
@@ -101,17 +108,27 @@ final class StepUpPrompt
      */
     public static function response(StepUpPlane $plane, ?string $reason): JsonResponse
     {
-        $passkey = $plane->passkeyOptionsUrl();
+        $redirect = $plane->redirectUrl();
+        // A passkey is confirmed on the console's own origin only where the console is the
+        // sign-in host too; in login-host mode the proof is the trip to the login host.
+        $passkey = $redirect === null ? $plane->passkeyOptionsUrl() : null;
 
         return new JsonResponse([
-            'error' => $passkey === null
-                ? 'Confirm it\'s you first — re-enter your password, then try again.'
-                : 'Confirm with your passkey or security key first, then try again.',
+            'error' => match (true) {
+                $redirect !== null => 'Confirm it\'s you first — sign in again, then try again.',
+                $passkey !== null => 'Confirm with your passkey or security key first, then try again.',
+                default => 'Confirm it\'s you first — re-enter your password, then try again.',
+            },
             'sudo' => $plane->pageUrl(),
             'step_up' => [
                 'plane' => $plane->label(),
                 'confirm' => $plane->confirmUrl(),
                 'reason' => $reason,
+                // Login-host mode only: the dialog asks for no password. It opens `popup`
+                // in a window of its own (the login host re-authenticates the person and
+                // the window closes itself), then replays the request it is holding;
+                // `page` is the same trip in this tab, for a browser that blocks the window.
+                ...($redirect === null ? [] : ['redirect' => ['page' => $redirect, 'popup' => $plane->redirectUrl(popup: true)]]),
                 // Present only where the proof is a passkey: the dialog runs a WebAuthn
                 // ceremony against these two endpoints instead of asking for a password.
                 ...($passkey === null ? [] : ['passkey' => ['options' => $passkey]]),

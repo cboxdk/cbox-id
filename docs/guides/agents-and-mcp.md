@@ -7,7 +7,7 @@ description: Connect Claude Code, Cursor, the cbox CLI or another MCP client to 
 # Agents and MCP
 
 **Endpoints:** `https://<environment-host>/mcp` for one environment, and
-`https://<platform-root>/mcp` (`https://cboxid.com/mcp` on the hosted platform) for your
+`https://<app-host>/mcp` (`https://app.cboxid.com/mcp` on the hosted platform) for your
 whole organization.
 
 ![AI agents, Agents, in an environment console](../screenshots/agents.png)

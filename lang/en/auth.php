@@ -228,6 +228,21 @@ return [
         'lead' => 'You have been signed out on this device, including every console you opened from this sign-in. Sign in again to continue.',
     ],
 
+    'console_sign_in' => [
+        'failed_heading' => 'We could not sign you in',
+        'failed_lead' => 'Something went wrong on the way back from sign-in. Nothing was changed. Try again.',
+        'not_set_up_lead' => 'Sign-in for this console is not set up yet. Ask whoever runs this installation.',
+        'second_factor_lead' => 'Your account needs a second sign-in step, and this sign-in did not include one. Try again and complete it.',
+        'step_up_heading' => 'We could not confirm it was you',
+        'step_up_lead' => 'The action was not carried out. Go back to the console and try again.',
+        'try_again' => 'Try again',
+        'back_to_console' => 'Back to the console',
+        'reference' => 'Reference: :reason',
+        'done_heading' => 'Confirmed',
+        'done_lead' => 'You can close this window and carry on where you were.',
+        'not_confirmed_lead' => 'We could not confirm it was you. Close this window and try again.',
+    ],
+
     'accept_invite' => [
         'title' => 'Accept invitation',
         'heading' => 'Accept your invitation',

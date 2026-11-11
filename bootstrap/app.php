@@ -101,6 +101,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // prefix would put `/mcp` somewhere no MCP client looks.
         then: static function (): void {
             Route::group([], __DIR__.'/../routes/mcp.php');
+            // The console's back-channel logout endpoint (login-host mode): stateless, like `/mcp`.
+            Route::group([], __DIR__.'/../routes/relying-party.php');
             // The paths that move on the application host (in-cluster and inbound webhooks),
             // and the API host's `/v1`. Last, because both are read from the routes above.
             Route::group([], __DIR__.'/../routes/internal.php');
