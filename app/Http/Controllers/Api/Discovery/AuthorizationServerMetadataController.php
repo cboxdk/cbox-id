@@ -30,7 +30,7 @@ final class AuthorizationServerMetadataController extends FrameworkMetadataContr
 
     public function __invoke(): JsonResponse
     {
-        if ($this->planes->onAccountPlane()) {
+        if ($this->planes->rootIssuesForMcpOnly()) {
             return response()->json($this->root->document());
         }
 
