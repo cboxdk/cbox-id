@@ -1,5 +1,6 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
+import { ConsoleLanguagePicker } from '@/chrome/ConsoleLanguagePicker';
 import { DoorBrand } from '@/chrome/DoorBrand';
 import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { StepUpDialog } from '@/chrome/StepUpDialog';
@@ -20,8 +21,9 @@ import { Icon, TooltipProvider } from '@/ui';
  * the page is then drawn the way the hosted pages are, with the three things a person
  * needs there: the way back to where they came from, their own pages, and the way out.
  *
- * No language picker: these pages speak the person's saved interface language, which the
- * hosted pages' picker (a cookie for visitors with no account) does not change.
+ * The language picker is the console's: it writes the person's SAVED interface language,
+ * which these pages speak, and not the cookie the hosted pages' picker sets for a visitor
+ * with no account.
  */
 export default function AccountLayout({ children }: { children: ReactNode }) {
     const { accountShell } = usePage<SharedProps>().props;
@@ -77,6 +79,8 @@ function HostedAccount({ shell, children }: { shell: AccountShell; children: Rea
                                     {auth.user.email ?? auth.user.name}
                                 </span>
                             )}
+
+                            <ConsoleLanguagePicker />
 
                             <button
                                 type="button"
