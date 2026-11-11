@@ -44,6 +44,7 @@ return [
         'client_document' => 'This application’s description could not be read. It is published at the address the application gave as its ID, and that document is missing, unreachable or invalid.',
         'redirect_mismatch' => 'The redirect URI does not match any registered for this application.',
         'stale' => 'This authorization request can no longer be completed. Please start again.',
+        'start_over' => 'Start over at :app',
         'account_attention' => 'Your account needs attention before you can continue. Please sign in again.',
         'step_up' => 'This application requires a more recent or stronger sign-in. Please start again.',
         'no_organization' => 'This sign-in connects an agent to an organization on Cbox ID, and your account is not on an organization’s team. Ask an organization owner to invite you, or connect the agent at your environment’s own address instead.',

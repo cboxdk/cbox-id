@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Zaloguj się',
         'purpose' => [
-            'default' => 'Witaj ponownie. Przejdź do konsoli zarządzania tożsamością swojej organizacji.',
+            'default' => 'Witaj ponownie. Zaloguj się, aby kontynuować.',
             'device' => 'Zaloguj się, aby zatwierdzić urządzenie, które czeka.',
+            'app' => 'Zaloguj się, aby przejść do aplikacji :app.',
         ],
         'magic' => [
             'sent_to' => 'Wysłaliśmy jednorazowy link do logowania na adres :email.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Logowanie za pomocą klucza dostępu zakończyło się niepowodzeniem.',
         'new_organization' => 'Nowa organizacja?',
         'create_one' => 'Utwórz',
+        'no_account' => 'Nie masz jeszcze konta?',
+        'create_account' => 'Utwórz konto',
         'invalid_credentials' => 'Adres e-mail lub hasło jest nieprawidłowe.',
         'passkey_errors' => [
             'challenge_expired' => 'Żądanie uwierzytelnienia wygasło. Spróbuj ponownie.',

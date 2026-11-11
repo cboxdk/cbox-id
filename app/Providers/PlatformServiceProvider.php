@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Http\Controllers\HostedEndSessionController;
 use App\Listeners\RevokeTokensOnRoleChange;
 use App\Platform\Appearance\BrandContext;
 use App\Platform\Appearance\BrandImages;
@@ -39,6 +40,7 @@ use App\Platform\Staff\Contracts\StaffRoles;
 use App\Platform\SupportAccess\ConsoleSupportAccess;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\TrustedHosts;
+use Cbox\Id\Api\Http\Controllers\EndSessionController;
 use Cbox\Id\FrontendApi\Contracts\FrontendConfigContributor;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
@@ -72,6 +74,10 @@ final class PlatformServiceProvider extends ServiceProvider
 
         // One instance per request: the authenticated subject + org context.
         $this->app->scoped(CurrentUser::class);
+
+        // RP-initiated logout with nowhere accepted to go ends on the hosted signed-out
+        // page, not on the framework's line of plain text.
+        $this->app->bind(EndSessionController::class, HostedEndSessionController::class);
 
         // WHO IS SIGNED IN, for the package's own logout endpoints. Its default reads
         // Laravel's guard, which this application never populates — see

@@ -262,7 +262,7 @@ it('keeps the console signed in when the tenant\'s end user signs out, or an app
 
     signInTenantEndUser('second.user@customer.example');
     nextRequest();
-    $this->get($this->tenant.'/oauth/logout')->assertSuccessful();
+    $this->get($this->tenant.'/oauth/logout')->assertRedirectContains('/signed-out');
     endUserAnswer()->assertRedirect($this->tenant.'/login');
 
     $this->browsers->use('laptop@root');

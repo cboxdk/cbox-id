@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Autentificare',
         'purpose' => [
-            'default' => 'Bine ați revenit. Accesați consola de gestionare a identității pentru organizația dumneavoastră.',
+            'default' => 'Bine ați revenit. Autentificați-vă pentru a continua.',
             'device' => 'Autentificați-vă pentru a aproba dispozitivul în așteptare.',
+            'app' => 'Autentificați-vă pentru a continua către :app.',
         ],
         'magic' => [
             'sent_to' => 'Am trimis un link de autentificare de unică folosință la :email.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Autentificarea cu cheia de acces a eșuat.',
         'new_organization' => 'O nouă organizație?',
         'create_one' => 'Creați una',
+        'no_account' => 'Nu aveți încă un cont?',
+        'create_account' => 'Creați un cont',
         'invalid_credentials' => 'Adresa de e-mail sau parola este incorectă.',
         'passkey_errors' => [
             'challenge_expired' => 'Solicitarea de autentificare a expirat. Încercați din nou.',

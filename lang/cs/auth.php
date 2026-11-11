@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Přihlásit se',
         'purpose' => [
-            'default' => 'Vítejte zpět. Otevřete konzoli pro správu identit své organizace.',
+            'default' => 'Vítejte zpět. Přihlaste se a pokračujte.',
             'device' => 'Přihlaste se, abyste schválili zařízení, které čeká.',
+            'app' => 'Přihlaste se a pokračujte do aplikace :app.',
         ],
         'magic' => [
             'sent_to' => 'Na adresu :email jsme odeslali jednorázový přihlašovací odkaz.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Přihlášení pomocí přístupového klíče selhalo.',
         'new_organization' => 'Nová organizace?',
         'create_one' => 'Vytvořit',
+        'no_account' => 'Ještě nemáte účet?',
+        'create_account' => 'Vytvořit účet',
         'invalid_credentials' => 'E-mailová adresa nebo heslo není správné.',
         'passkey_errors' => [
             'challenge_expired' => 'Výzva k přihlášení vypršela. Zkuste znovu.',

@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Kirjaudu sisään',
         'purpose' => [
-            'default' => 'Tervetuloa takaisin. Avaa organisaatiosi identiteetinhallinnan konsoli.',
+            'default' => 'Tervetuloa takaisin. Kirjaudu sisään jatkaaksesi.',
             'device' => 'Kirjaudu sisään hyväksymään odottava laite.',
+            'app' => 'Kirjaudu sisään jatkaaksesi sovellukseen :app.',
         ],
         'magic' => [
             'sent_to' => 'Lähetimme kertakäyttöisen kirjautumislinkin osoitteeseen :email.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Pääsyavaimen käyttäminen ei onnistunut.',
         'new_organization' => 'Uusi organisaatio?',
         'create_one' => 'Luo',
+        'no_account' => 'Eikö sinulla ole vielä tiliä?',
+        'create_account' => 'Luo tili',
         'invalid_credentials' => 'Sähköpostiosoite tai salasana on virheellinen.',
         'passkey_errors' => [
             'challenge_expired' => 'Kirjautumispyyntö on vanhentunut. Yritä uudelleen.',

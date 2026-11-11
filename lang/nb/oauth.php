@@ -44,6 +44,7 @@ return [
         'client_document' => 'Beskrivelsen av applikasjonen kunne ikke leses. Den ligger på adressen applikasjonen oppga som sin ID, og dokumentet mangler, kan ikke nås eller er ugyldig.',
         'redirect_mismatch' => 'Omdirigerings-URI-en samsvarer ikke med noen som er registrert for denne applikasjonen.',
         'stale' => 'Denne godkjenningsforespørselen kan ikke lenger fullføres. Start på nytt.',
+        'start_over' => 'Start på nytt i :app',
         'account_attention' => 'Kontoen din må følges opp før du kan fortsette. Logg inn på nytt.',
         'step_up' => 'Denne applikasjonen krever en nyere eller sterkere innlogging. Start på nytt.',
         'no_organization' => 'Denne innloggingen kobler en agent til en organisasjon på Cbox ID, og kontoen din er ikke med i teamet til noe organisasjon. Be en eier av organisasjonen om å invitere deg, eller koble agenten til miljøets egen adresse i stedet.',

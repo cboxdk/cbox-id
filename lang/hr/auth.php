@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Prijava',
         'purpose' => [
-            'default' => 'Dobro došli natrag. Otvorite konzolu za upravljanje identitetima svoje organizacije.',
+            'default' => 'Dobro došli natrag. Prijavite se za nastavak.',
             'device' => 'Prijavite se kako biste odobrili uređaj koji čeka.',
+            'app' => 'Prijavite se za nastavak u aplikaciju :app.',
         ],
         'magic' => [
             'sent_to' => 'Poslali smo jednokratnu poveznicu za prijavu na :email.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Prijava pristupnim ključem nije uspjela.',
         'new_organization' => 'Nova organizacija?',
         'create_one' => 'Stvori',
+        'no_account' => 'Još nemate račun?',
+        'create_account' => 'Izradite račun',
         'invalid_credentials' => 'Adresa e-pošte ili lozinka nije ispravna.',
         'passkey_errors' => [
             'challenge_expired' => 'Zahtjev za provjeru je istekao. Pokušajte ponovno.',
