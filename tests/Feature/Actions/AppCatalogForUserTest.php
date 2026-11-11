@@ -271,4 +271,3 @@ it('keeps the catalog revision and refresh_after on the /v1 list, where laravel-
         ->and($v1->json('has_more'))->toBeFalse()
         ->and($v1->json())->not->toHaveKey('limit');
 });
-
