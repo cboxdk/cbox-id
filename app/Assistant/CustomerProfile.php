@@ -8,7 +8,7 @@ use App\Platform\Console\LikeTerm;
 use App\Platform\Enterprise\EnterpriseAudit;
 use App\Platform\Environments\TenantBaseDomain;
 use App\Platform\NativeProduct\NativeProductAccess;
-use App\Platform\Organizations\OrganizationLinks;
+use App\Platform\Organizations\OrganizationDirectory;
 use Cbox\AiAssistant\Connector\Profile\ResourceItem;
 use Cbox\AiAssistant\Connector\Profile\ResourceStatus;
 use Cbox\AiAssistant\Connector\Profile\Signals;
@@ -237,12 +237,12 @@ final readonly class CustomerProfile
     /** An HTTPS console link; the SDK drops any other scheme, so none is invented here. */
     /**
      * A project's page in the console of the organization that owns it, at that
-     * organization's address ({@see OrganizationLinks::addressOf()}): never the viewer's
+     * organization's address ({@see OrganizationDirectory::addressOf()}): never the viewer's
      * last-used organization, which is not necessarily the project's.
      */
     private function projectUrl(?string $organizationId, string $projectId): ?string
     {
-        $slug = $organizationId === null ? null : app(OrganizationLinks::class)->addressOf($organizationId)['slug'] ?? null;
+        $slug = $organizationId === null ? null : app(OrganizationDirectory::class)->addressOf($organizationId)['slug'] ?? null;
 
         return $slug === null ? null : $this->url('/orgs/'.$slug.'/projects/'.$projectId);
     }

@@ -23,7 +23,6 @@ use App\Platform\NativeProduct\NativeProductManifest;
 use App\Platform\NativeProduct\NativeProductMembers;
 use App\Platform\OperatorEnvironment;
 use App\Platform\Organizations\OrganizationDirectory;
-use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
 use App\Platform\SignInLineage;
@@ -1854,7 +1853,7 @@ function orgPath(string $path = ''): string
 /** The slug `/orgs/{org}` addresses a platform-root organization by. */
 function orgSlug(string $organizationId): string
 {
-    app(OrganizationLinks::class)->flush();
+    app(OrganizationDirectory::class)->flush();
     $slug = app(OrganizationDirectory::class)->slugOf($organizationId);
 
     expect($slug)->toBeString("organization {$organizationId} has no address");
@@ -1868,7 +1867,7 @@ function orgSlug(string $organizationId): string
  */
 function useOrganizationInUrls(string $organizationId): void
 {
-    app(OrganizationLinks::class)->flush();
+    app(OrganizationDirectory::class)->flush();
     $slug = app(OrganizationDirectory::class)->slugOf($organizationId);
 
     if ($slug !== null) {

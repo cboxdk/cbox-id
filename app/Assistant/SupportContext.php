@@ -13,7 +13,7 @@ use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\NativeProduct\NativeProductAccess;
 use App\Platform\Onboarding\IntegrationProgress;
 use App\Platform\OrganizationAccess;
-use App\Platform\Organizations\OrganizationLinks;
+use App\Platform\Organizations\OrganizationDirectory;
 use App\Platform\PlatformAuth;
 use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\AiAssistant\Connector\Support\ToolContext;
@@ -118,7 +118,7 @@ final readonly class SupportContext
             $organization = Organization::query()->findOrFail($account);
             $base = ['organization' => $organization->name,
                 'role' => $this->memberships->activeRole($account, $subject)?->value,
-                'observed_at' => now()->toIso8601String(), 'url' => rtrim(config()->string('app.url'), '/').'/orgs/'.(app(OrganizationLinks::class)->addressOf($organization->id)['slug'] ?? $organization->slug).'/projects'];
+                'observed_at' => now()->toIso8601String(), 'url' => rtrim(config()->string('app.url'), '/').'/orgs/'.(app(OrganizationDirectory::class)->addressOf($organization->id)['slug'] ?? $organization->slug).'/projects'];
             if (! $withEnvironments) {
                 return $base;
             }

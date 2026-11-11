@@ -983,8 +983,8 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     /*
      * THE ORGANIZATION CONSOLE, at `/orgs/{org}` — the same address every Cbox app uses.
      *
-     * `{org}` is the organization's slug (the linked `cbox` organization's, see
-     * {@see \App\Platform\Organizations\OrganizationLinks}), and `orgs.bind` resolves it
+     * `{org}` is the organization's slug (see
+     * {@see \App\Platform\Organizations\OrganizationDirectory}), and `orgs.bind` resolves it
      * against the signed-in person's own memberships: somebody else's organization is a
      * 404, and the session never decides which organization a page acts on.
      *

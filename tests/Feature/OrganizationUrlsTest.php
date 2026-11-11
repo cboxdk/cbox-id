@@ -6,11 +6,9 @@ use App\Http\Middleware\BindOrganizationFromPath;
 use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\CurrentUser;
 use App\Platform\Organizations\LastUsedOrganization;
-use App\Platform\Organizations\OrganizationLinks;
+use App\Platform\Organizations\OrganizationDirectory;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Organization\Contracts\Memberships;
-use Cbox\Id\Organization\Enums\EnvironmentStatus;
-use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\PlatformRoot;
@@ -18,7 +16,6 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 
 /*
@@ -289,196 +286,48 @@ it('serves no Cbox organization console on a customer environment\'s host', func
 
 /*
 |--------------------------------------------------------------------------
-| ONE ORGANIZATION: the platform-root row and the `cbox` organization
+| ONE REALM: an organization exists once, and its own slug is its address
 |--------------------------------------------------------------------------
 */
 
-function cboxEnvironment(): Environment
-{
-    return Environment::query()->create([
-        'name' => 'Cbox',
-        'slug' => 'cbox',
-        'type' => EnvironmentType::Production,
-        'status' => EnvironmentStatus::Active,
-        'is_default' => false,
-        'settings' => [],
-    ]);
-}
-
-function cboxOrganization(Environment $cbox, string $slug, string $name): string
-{
-    $id = Str::lower((string) Str::ulid());
-
-    DB::table('organizations')->insert([
-        'id' => $id,
-        'environment_id' => $cbox->id,
-        'name' => $name,
-        'slug' => $slug,
-        'status' => 'active',
-        'created_at' => now(),
-        'updated_at' => now(),
-    ]);
-
-    return $id;
-}
-
-it('addresses a linked organization by its Cbox slug and name, in the URL and in the picker', function (): void {
-    ['subjectId' => $subjectId, 'organization' => $organization] = provisionAccount();
-    $cbox = cboxEnvironment();
-    $shared = cboxOrganization($cbox, 'lovelace-labs', 'Lovelace Labs');
-
-    $links = app(OrganizationLinks::class);
-    $links->flush();
-    $links->link($organization->id, $shared);
+it('addresses an organization by its own slug and name, in the URL, the picker and the environment console', function (): void {
+    ['subjectId' => $subjectId, 'organization' => $organization, 'project' => $project, 'environment' => $environment] = provisionAccount();
 
     signInAsMember($subjectId);
 
-    expect(orgSlug($organization->id))->toBe('lovelace-labs');
+    expect(orgSlug($organization->id))->toBe($organization->slug)
+        ->and(app(EnvironmentConsolePath::class)->for($environment->id))
+        ->toBe('orgs/'.$organization->slug.'/projects/'.$project->slug.'/environments/'.$environment->slug);
 
-    $this->get('/orgs/lovelace-labs/projects')->assertOk();
-    // The platform-root row's own slug is no longer an address: one organization, one URL.
-    $this->get('/orgs/'.$organization->slug.'/projects')->assertNotFound();
+    $this->get('/orgs/'.$organization->slug.'/projects')->assertOk();
 
     $this->get('/orgs')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-        ->where('organizations.0.slug', 'lovelace-labs')
-        ->where('organizations.0.name', 'Lovelace Labs'));
+        ->has('organizations', 1)
+        ->where('organizations.0.slug', $organization->slug)
+        ->where('organizations.0.name', $organization->name));
 });
 
-/** A user in the `cbox` environment who is an active member of a `cbox` organization. */
-function cboxMember(Environment $cbox, string $cboxOrganizationId, string $email): string
-{
-    $userId = DB::table('users')->where('environment_id', $cbox->id)->where('email', $email)->value('id');
+it('leaves an organization that is no longer active out of the switcher and off its address, and lists no organization twice', function (): void {
+    ['first' => $first, 'second' => $second, 'firstSlug' => $firstSlug, 'secondSlug' => $secondSlug] = twoOrganizations();
 
-    if (! is_string($userId)) {
-        $userId = Str::lower((string) Str::ulid());
-        DB::table('users')->insert([
-            'id' => $userId, 'environment_id' => $cbox->id, 'email' => $email, 'name' => 'Member',
-            'status' => 'active', 'created_at' => now(), 'updated_at' => now(),
-        ]);
-    }
+    $directory = app(OrganizationDirectory::class);
+    $ids = array_map(static fn ($entry): string => $entry->id, $directory->forSubject($first['subjectId']));
 
-    DB::table('memberships')->insert([
-        'id' => Str::lower((string) Str::ulid()), 'environment_id' => $cbox->id, 'organization_id' => $cboxOrganizationId,
-        'user_id' => $userId, 'role' => 'owner', 'status' => 'active', 'created_at' => now(), 'updated_at' => now(),
-    ]);
+    expect($ids)->toHaveCount(2)->and(array_unique($ids))->toHaveCount(2);
 
-    return $userId;
-}
+    // Closing an organization keeps its memberships; it is still nowhere to switch to.
+    DB::table('organizations')->where('id', $second['organization']->id)->update(['status' => 'deleted']);
+    $directory->flush();
 
-it('pairs organizations by slug once, only where the owner is a member there, and refuses a pair that would give two organizations one address', function (): void {
-    ['organization' => $acme] = provisionAccount('a@example.test');
-    ['organization' => $other] = provisionAccount('b@example.test');
-    ['organization' => $stranger] = provisionAccount('s@example.test');
-    ['organization' => $third] = provisionAccount('c@example.test');
-    $cbox = cboxEnvironment();
-    $sharedAcme = cboxOrganization($cbox, $acme->slug, 'Acme');
-    cboxMember($cbox, $sharedAcme, 'A@example.test');
-    $sharedOther = cboxOrganization($cbox, 'unrelated', 'Unrelated');
-    // The same slug, chosen by a customer who has nothing to do with this one.
-    $lookalike = cboxOrganization($cbox, $stranger->slug, 'Somebody else');
-    cboxMember($cbox, $lookalike, 'not-the-owner@example.test');
+    expect(array_map(static fn ($entry): string => $entry->slug, $directory->forSubject($first['subjectId'])))->toBe([$firstSlug])
+        ->and($directory->find($first['subjectId'], $secondSlug))->toBeNull()
+        // Its address is still known, for a link that has to say where something was.
+        ->and($directory->addressOf($second['organization']->id))->toMatchArray(['slug' => $secondSlug, 'active' => false]);
 
-    $links = app(OrganizationLinks::class);
-    $links->flush();
-
-    // The dry run names exactly what would be paired, and writes nothing.
-    expect($links->autoPairs())->toBe([['organization_id' => $acme->id, 'cbox_organization_id' => $sharedAcme, 'slug' => $acme->slug]]);
-    $this->artisan('orgs:link', ['--by-slug' => true, '--dry-run' => true])->assertSuccessful();
-    expect(DB::table('organization_links')->count())->toBe(0);
-
-    expect($links->pairBySlug())->toBe(1)
-        // Safe to run again: nothing new to pair.
-        ->and($links->pairBySlug())->toBe(0)
-        ->and(DB::table('organization_links')->where('organization_id', $acme->id)->value('cbox_organization_id'))->toBe($sharedAcme)
-        ->and(collect($links->unpaired())->pluck('id')->all())->toContain($other->id, $stranger->id);
-
-    // Each side at most once.
-    expect(fn () => $links->link($acme->id, $sharedOther))->toThrow(DomainException::class)
-        ->and(fn () => $links->link($other->id, $sharedAcme))->toThrow(DomainException::class);
-
-    // A Cbox slug that is another unlinked organization's own address.
-    $clash = cboxOrganization($cbox, $other->slug, 'Clash');
-    expect(fn () => $links->link($third->id, $clash))->toThrow(DomainException::class, 'already addresses');
-
-    // The operator's command pairs by hand, and lists what is left.
-    $this->artisan('orgs:link', ['platform' => $other->slug, 'cbox' => 'unrelated'])->assertSuccessful();
-    $this->artisan('orgs:link', ['--unpaired' => true])->assertSuccessful();
-    expect(DB::table('organization_links')->where('organization_id', $other->id)->value('cbox_organization_id'))->toBe($sharedOther);
-
-    // …and undoes a mistake: the organization answers to its own slug again.
-    $this->artisan('orgs:unlink', ['platform' => $other->slug])->assertSuccessful();
-    expect(DB::table('organization_links')->where('organization_id', $other->id)->exists())->toBeFalse()
-        ->and(orgSlug($other->id))->toBe($other->slug);
-    $this->artisan('orgs:unlink', ['platform' => $other->slug])->assertFailed();
-});
-
-it('links a new organization to its cbox organization when it is created, so its address is the same everywhere', function (): void {
-    $cbox = cboxEnvironment();
-    // The owner already signs in to Cbox apps.
-    $ownerId = Str::lower((string) Str::ulid());
-    DB::table('users')->insert([
-        'id' => $ownerId, 'environment_id' => $cbox->id, 'email' => 'new-owner@example.test',
-        'name' => 'Owner', 'status' => 'active', 'created_at' => now(), 'updated_at' => now(),
-    ]);
-    app(OrganizationLinks::class)->flush();
-
-    ['subjectId' => $subjectId, 'organization' => $organization] = provisionAccount('new-owner@example.test');
-
-    $cboxOrganization = DB::table('organization_links')->where('organization_id', $organization->id)->value('cbox_organization_id');
-    expect($cboxOrganization)->toBeString();
-
-    $row = DB::table('organizations')->where('id', $cboxOrganization)->first();
-    expect($row->environment_id)->toBe($cbox->id)
-        ->and($row->slug)->toBe($organization->slug)
-        ->and($row->name)->toBe($organization->name)
-        ->and(DB::table('memberships')->where('organization_id', $cboxOrganization)->where('user_id', $ownerId)->value('role'))->toBe('owner')
-        ->and(orgSlug($organization->id))->toBe($row->slug);
-
-    signInAsMember($subjectId);
-    $this->get('/orgs/'.$row->slug.'/projects')->assertOk();
-});
-
-it('never borrows a stranger\'s cbox organization for a new organization with the same slug', function (): void {
-    $cbox = cboxEnvironment();
-    $stranger = cboxOrganization($cbox, 'acme', 'Somebody else');
-    cboxMember($cbox, $stranger, 'stranger@example.test');
-    app(OrganizationLinks::class)->flush();
-
-    ['organization' => $organization] = provisionAccount('fresh-owner@example.test');
-
-    $cboxOrganization = DB::table('organization_links')->where('organization_id', $organization->id)->value('cbox_organization_id');
-    $slug = DB::table('organizations')->where('id', $cboxOrganization)->value('slug');
-
-    expect($organization->slug)->toBe('acme')
-        ->and($cboxOrganization)->toBeString()->not->toBe($stranger)
-        ->and($slug)->toStartWith('acme-')
-        ->and(orgSlug($organization->id))->toBe($slug)
-        ->and(DB::table('memberships')->where('organization_id', $stranger)->count())->toBe(1);
-});
-
-it('never lets an unlinked organization share the address a link claims', function (): void {
-    ['organization' => $linked] = provisionAccount('l@example.test');
-    ['subjectId' => $subjectId, 'organization' => $unlinked] = provisionAccount('u@example.test');
-    $cbox = cboxEnvironment();
-    $shared = cboxOrganization($cbox, $unlinked->slug, 'Shared');
-
-    $links = app(OrganizationLinks::class);
-    $links->flush();
-    // Linked by hand to the OTHER root organization, whose slug differs: the unlinked
-    // organization's own slug is now claimed. (`link()` refuses this pair when made in the
-    // other order; data written before the rule existed can still look like this.)
-    DB::table('organization_links')->insert([
-        'id' => Str::lower((string) Str::ulid()), 'organization_id' => $linked->id, 'cbox_organization_id' => $shared,
-        'cbox_environment_id' => $cbox->id, 'paired_by' => 'operator', 'created_at' => now(), 'updated_at' => now(),
-    ]);
-
-    signInAsMember($subjectId);
-
-    $address = orgSlug($unlinked->id);
-    expect($address)->not->toBe($unlinked->slug)->toBe(strtolower($unlinked->id));
-    $this->get('/orgs/'.$address.'/projects')->assertOk();
-    // The claimed slug is the linked organization's, which this person is not in.
-    $this->get('/orgs/'.$unlinked->slug.'/projects')->assertNotFound();
+    $this->get('/orgs')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->has('organizations', 1)
+        ->where('organizations.0.slug', $firstSlug));
+    $this->get('/orgs/'.$secondSlug.'/projects')->assertNotFound();
 });
 
 it('keeps the v2 writes of a customer organization\'s own settings answering at /organization', function (): void {
@@ -499,40 +348,4 @@ it('keeps the v2 writes of a customer organization\'s own settings answering at 
     $this->get('/settings')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
         ->where('organizationSettingsMoved', url('/organization')));
     $this->get('/organization')->assertOk();
-});
-
-it('names a linked organization by its Cbox slug in the environment console too, and sends each address to its own console', function (): void {
-    multiTenantDeployment();
-    ['subjectId' => $subjectId, 'organization' => $organization, 'project' => $project, 'environment' => $environment] = provisionAccount();
-    $cbox = cboxEnvironment();
-    $shared = cboxOrganization($cbox, 'lovelace-labs', 'Lovelace Labs');
-
-    $links = app(OrganizationLinks::class);
-    $links->flush();
-    $links->link($organization->id, $shared);
-    expect($organization->slug)->not->toBe('lovelace-labs');
-
-    $consolePaths = app(EnvironmentConsolePath::class);
-    $path = $consolePaths->for($environment->id);
-    $ownSlugPath = 'orgs/'.$organization->slug.'/projects/'.$project->slug.'/environments/'.$environment->slug;
-
-    expect($path)->toBe('orgs/lovelace-labs/projects/'.$project->slug.'/environments/'.$environment->slug)
-        ->and($consolePaths->resolve((string) $path)?->id)->toBe($environment->id)
-        // The platform-root row's own slug is not an address of the organization any more.
-        ->and($consolePaths->resolve($ownSlugPath))->toBeNull();
-
-    // `/orgs/{org}/projects/{project}` is the organization console's project page, and
-    // `…/environments/{environment}` under it is the environment console: neither route
-    // swallows the other.
-    $host = 'http://'.serveConsoleOn();
-    $routes = Route::getRoutes();
-    expect($routes->match(Request::create($host.'/orgs/lovelace-labs/projects/'.$project->id))->getName())->toBe('orgs.projects.show')
-        ->and($routes->match(Request::create($host.'/'.$path))->getName())->toBe('environment.home')
-        ->and($routes->match(Request::create($host.'/'.$path.'/users'))->getName())->toBe('environment.users');
-
-    actAsEnvironmentAdmin($subjectId, $environment->id);
-    expect($this->get($host.'/orgs/lovelace-labs/projects/'.$project->id)->assertOk()->inertiaPage()['component'])->toBe('console/projects/show')
-        ->and($this->get($host.'/'.$path.'/users')->assertOk()->inertiaPage()['component'])->toBe('environment/users/index');
-    $this->get($host.'/'.$ownSlugPath.'/users')->assertNotFound();
-
 });

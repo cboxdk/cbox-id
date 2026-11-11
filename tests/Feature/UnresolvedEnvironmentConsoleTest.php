@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\Help\DocsLinks;
 use App\Platform\Help\HelpTopic;
-use App\Platform\Organizations\OrganizationLinks;
+use App\Platform\Organizations\OrganizationDirectory;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia;
@@ -25,7 +25,7 @@ beforeEach(function (): void {
 /** The console path for nothing: every environment's console is unaddressable. */
 function withoutConsoleAddresses(): void
 {
-    app()->instance(EnvironmentConsolePath::class, new readonly class(app(PlatformRoot::class), app(OrganizationLinks::class)) extends EnvironmentConsolePath
+    app()->instance(EnvironmentConsolePath::class, new readonly class(app(PlatformRoot::class), app(OrganizationDirectory::class)) extends EnvironmentConsolePath
     {
         public function for(string $environmentId): ?string
         {

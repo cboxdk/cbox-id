@@ -14,7 +14,7 @@ use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\OrganizationCapabilities;
-use App\Platform\Organizations\OrganizationLinks;
+use App\Platform\Organizations\OrganizationDirectory;
 use App\Platform\PlaneResolver;
 use App\Platform\Surfaces\PathKind;
 use App\Platform\Surfaces\Surfaces;
@@ -173,7 +173,7 @@ final readonly class ShellContext
         // membership opened it. Neither known, it is the organization picker.
         if (str_starts_with($route, 'orgs.') && ! isset($parameters['org']) && ! isset(URL::getDefaultParameters()['org'])) {
             $organizationId = $this->user->organizationId() ?? app(EnvironmentAdminAuth::class)->membership()?->organization_id;
-            $slug = is_string($organizationId) ? app(OrganizationLinks::class)->addressOf($organizationId)['slug'] ?? null : null;
+            $slug = is_string($organizationId) ? app(OrganizationDirectory::class)->addressOf($organizationId)['slug'] ?? null : null;
 
             if ($slug === null) {
                 $route = 'orgs.index';
@@ -279,9 +279,8 @@ final readonly class ShellContext
         ?string $fallbackName,
         ?Closure $openHref = null,
     ): array {
-        // The organization's address and name as every Cbox app shows them: the linked
-        // `cbox` organization's, where there is one.
-        $addresses = app(OrganizationLinks::class);
+        // The organization's address and name, as every Cbox app shows them.
+        $addresses = app(OrganizationDirectory::class);
 
         if ($memberships->count() <= 1 && $fallbackName !== null && $currentId !== null) {
             $membership = $memberships->first();
@@ -365,9 +364,9 @@ final readonly class ShellContext
             return [];
         }
 
-        // The organization's address at `/orgs/{org}` — its linked `cbox` slug — exactly as
+        // The organization's address at `/orgs/{org}`, its slug, exactly as
         // {@see EnvironmentConsolePath} builds and resolves it.
-        $organizationSlug = app(OrganizationLinks::class)->addressOf($organizationId)['slug'] ?? null;
+        $organizationSlug = app(OrganizationDirectory::class)->addressOf($organizationId)['slug'] ?? null;
 
         if (! is_string($organizationSlug) || $organizationSlug === '') {
             return [];
