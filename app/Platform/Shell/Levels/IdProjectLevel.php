@@ -202,7 +202,7 @@ final class IdProjectLevel implements ContextLevel, CreatesContextItems
     {
         $slugs = request()->attributes->get(self::SLUGS);
 
-        return is_array($slugs) ? $slugs : [];
+        return is_array($slugs) ? array_filter($slugs, static fn (mixed $slug, mixed $key): bool => is_string($slug) && is_string($key), ARRAY_FILTER_USE_BOTH) : [];
     }
 
     private static function item(Project $project): ContextItem

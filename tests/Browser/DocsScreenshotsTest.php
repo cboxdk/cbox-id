@@ -315,7 +315,7 @@ it('pictures the environment console', function (): void {
     // click navigates nowhere and is safe on the demo host.
     $page = docsPage(envConsole())
         ->assertSee('Overview')
-        ->click('nav.cbx-ctx .cbx-ctx-trigger >> nth=-1')
+        ->click('header.cbx-header button.cbx-trigger >> nth=-1')
         ->assertSee('Ledger Sandbox')
         ->wait(0.5);
 

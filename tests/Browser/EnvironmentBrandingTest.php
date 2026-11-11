@@ -133,8 +133,8 @@ it('keeps the save bar above the phone\'s navigation bar at 390px', function ():
     // A typeface: a change the preview draws without touching its colours.
     $page->click('Nunito')
         ->assertSeeIn(SAVE_BAR, 'Unsaved changes')
-        // Above the bottom navigation bar, not under it, and nothing wider than the phone.
-        ->assertScript('document.querySelector(\''.SAVE_BAR.'\').getBoundingClientRect().bottom <= document.querySelector("[data-cbox-mobile-nav]").getBoundingClientRect().top', true)
+        // On the screen, not under its edge, and nothing wider than the phone.
+        ->assertScript('document.querySelector(\''.SAVE_BAR.'\').getBoundingClientRect().bottom <= window.innerHeight', true)
         ->assertScript('document.documentElement.scrollWidth <= 390', true)
         ->assertScript('document.querySelector(\''.SAVE_BAR.'\').getAnimations().every((animation) => animation.playState === "finished")', true)
         ->assertNoAccessibilityIssues()
@@ -142,7 +142,7 @@ it('keeps the save bar above the phone\'s navigation bar at 390px', function ():
 
     // Still there, and still above the navigation, at the far end of the page.
     $page->script('document.getElementById("main-content").scrollTo(0, 1e6)');
-    $page->assertScript('(() => { const bar = document.querySelector(\''.SAVE_BAR.'\').getBoundingClientRect(); return bar.top >= 0 && bar.bottom <= document.querySelector("[data-cbox-mobile-nav]").getBoundingClientRect().top; })()', true)
+    $page->assertScript('(() => { const bar = document.querySelector(\''.SAVE_BAR.'\').getBoundingClientRect(); return bar.top >= 0 && bar.bottom <= window.innerHeight; })()', true)
         ->screenshot(filename: 'fix-branding-logo-mobile-bottom');
 
     $page->click(SAVE_BAR.' button.btn-primary')

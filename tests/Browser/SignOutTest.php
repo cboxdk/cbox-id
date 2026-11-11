@@ -27,7 +27,7 @@ it('lands an environment console\'s sign-out on a page that says so and enters n
 
     $page = visit(envConsole());
 
-    $page->click('button.cbx-avatar-btn');
+    $page->click('button.cbx-rail-account');
     $page->click('[role="menuitem"]:has-text("Sign out")');
 
     $page->assertSee('You\'re signed out')
