@@ -213,7 +213,7 @@ console** beside it. Signing in at `cboxid.com` never opens an environment's con
 itself.
 
 The one exception is a sign-in that started at an environment's console. If you open
-`acme.cboxid.com/admin/users` signed out, you sign in at `cboxid.com` and land back on
+`acme.cboxauth.com/admin/users` signed out, you sign in at `cboxid.com` and land back on
 that page. This only works within 15 minutes of being sent to sign in, and only in the
 browser that was sent.
 

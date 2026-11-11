@@ -128,7 +128,7 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-account'])
 
 /*
  * Environment management plane (SCOPED). Served on an environment's OWN host
- * ({slug}.cboxid.com or a custom domain): ResolveEnvironment pins the environment
+ * ({slug}.cboxauth.com or a custom domain): ResolveEnvironment pins the environment
  * from the host, then a `Bearer cbid_env_…` key is authenticated by `env.api` and
  * checked against the fine-grained scope each route requires. Because the key model
  * is hard environment-scoped, a key minted for another environment can't resolve

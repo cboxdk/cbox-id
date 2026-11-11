@@ -19,7 +19,7 @@ namespace App\Platform\Connect;
  * Every block here is VERBATIM a fenced block of that framework's quickstart page, and
  * `tests/Feature/Console/QuickstartSnippetsTest.php` fails the moment one is not — change
  * the page and this together. The environment block is the page's, less its file-name
- * comment, with the page's placeholders (`https://<environment>.cboxid.com`, `cid_…`,
+ * comment, with the page's placeholders (`https://<environment>.cboxauth.com`, `cid_…`,
  * `cbid_cs_…`) filled in for the app that was just created ({@see ConnectSnippets::quickstart()}).
  *
  * WHAT IS LEFT OUT is the page's sign-out step and its extras: Get started registers no
@@ -28,7 +28,7 @@ namespace App\Platform\Connect;
 final class QuickstartSources
 {
     /** The page's placeholders, which the console fills in for the app it created. */
-    public const string ISSUER_PLACEHOLDER = 'https://<environment>.cboxid.com';
+    public const string ISSUER_PLACEHOLDER = 'https://<environment>.cboxauth.com';
 
     public const string CLIENT_ID_PLACEHOLDER = 'cid_…';
 
@@ -45,7 +45,7 @@ final class QuickstartSources
                 ],
                 envFile: '.env.local',
                 env: <<<'SH'
-                    CBOX_ID_ISSUER=https://<environment>.cboxid.com
+                    CBOX_ID_ISSUER=https://<environment>.cboxauth.com
                     CBOX_ID_CLIENT_ID=cid_…
                     CBOX_ID_CLIENT_SECRET=cbid_cs_…
                     CBOX_ID_REDIRECT_URI=http://localhost:3000/auth/callback
@@ -151,7 +151,7 @@ final class QuickstartSources
                 ],
                 envFile: '.env',
                 env: <<<'SH'
-                    CBOX_ID_ISSUER=https://<environment>.cboxid.com
+                    CBOX_ID_ISSUER=https://<environment>.cboxauth.com
                     CBOX_ID_CLIENT_ID=cid_…
                     CBOX_ID_REDIRECT_URI=http://localhost:5173/callback
                     CBOX_ID_POST_LOGOUT_REDIRECT_URI=http://localhost:5173/
@@ -298,7 +298,7 @@ final class QuickstartSources
                 ],
                 envFile: '.env',
                 env: <<<'ENV'
-                    CBOX_ID_ISSUER=https://<environment>.cboxid.com
+                    CBOX_ID_ISSUER=https://<environment>.cboxauth.com
                     CBOX_ID_CLIENT_ID=cid_…
                     CBOX_ID_CLIENT_SECRET=cbid_cs_…
                     CBOX_ID_REDIRECT=http://localhost:8000/auth/callback
@@ -355,7 +355,7 @@ final class QuickstartSources
                 ],
                 envFile: '.env',
                 env: <<<'ENV'
-                    CBOX_ID_ISSUER=https://<environment>.cboxid.com
+                    CBOX_ID_ISSUER=https://<environment>.cboxauth.com
                     CBOX_ID_CLIENT_ID=cid_…
                     CBOX_ID_CLIENT_SECRET=cbid_cs_…
                     CBOX_ID_REDIRECT_URI=http://localhost:3000/auth/callback
@@ -409,7 +409,7 @@ final class QuickstartSources
                 ],
                 envFile: '.env',
                 env: <<<'SH'
-                    CBOX_ID_ISSUER=https://<environment>.cboxid.com
+                    CBOX_ID_ISSUER=https://<environment>.cboxauth.com
                     CBOX_ID_CLIENT_ID=cid_…
                     CBOX_ID_CLIENT_SECRET=cbid_cs_…
                     CBOX_ID_REDIRECT_URI=http://localhost:8080/auth/callback
@@ -552,7 +552,7 @@ final class QuickstartSources
                 ],
                 envFile: '.env',
                 env: <<<'ENV'
-                    CBOX_ID_ISSUER=https://<environment>.cboxid.com
+                    CBOX_ID_ISSUER=https://<environment>.cboxauth.com
                     CBOX_ID_CLIENT_ID=cid_…
                     CBOX_ID_CLIENT_SECRET=cbid_cs_…
                     CBOX_ID_REDIRECT_URI=http://localhost:5000/auth/callback

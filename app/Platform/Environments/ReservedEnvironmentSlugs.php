@@ -10,9 +10,11 @@ use Illuminate\Validation\ValidationException;
 /**
  * NO ENVIRONMENT ANSWERS FOR THE PLATFORM'S OWN HOSTS.
  *
- * An environment is served at `{slug}.cboxid.com`, so one with the slug `api` would be
- * resolved for `api.cboxid.com` — the management API's host — and `app` for the
- * application's. The list is `cbox-id.reserved_environment_slugs`.
+ * An environment is served at `{slug}.{tenant base domain}`, and an older base domain keeps
+ * resolving, so one with the slug `api` would be resolved for `api.cboxid.com` (the
+ * management API's host), `app` for the application's and `login` for the sign-in host.
+ * The list is `cbox-id.reserved_environment_slugs`, plus the deployment's own
+ * `cbox-id.reserved_environment_slugs_extra`.
  *
  * No create path takes a slug from its caller: every one (provisioning, the operator's
  * create, the installer) derives it from a project or environment name, so a slug that
@@ -26,11 +28,12 @@ final class ReservedEnvironmentSlugs
     public static function all(): array
     {
         $configured = config('cbox-id.reserved_environment_slugs', []);
+        $extra = config('cbox-id.reserved_environment_slugs_extra', []);
 
-        return array_values(array_filter(array_map(
+        return array_values(array_unique(array_filter(array_map(
             static fn (mixed $slug): string => is_string($slug) ? mb_strtolower(trim($slug)) : '',
-            is_array($configured) ? $configured : [],
-        ), static fn (string $slug): bool => $slug !== ''));
+            [...(is_array($configured) ? $configured : []), ...(is_array($extra) ? $extra : [])],
+        ), static fn (string $slug): bool => $slug !== '')));
     }
 
     public static function reserved(?string $slug): bool

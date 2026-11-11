@@ -30,7 +30,7 @@ servers:
   - url: https://{host}/api/v1
     description: Your environment's own host
     variables:
-      host: { default: acme.cboxid.com }
+      host: { default: acme.cboxauth.com }
 security:
   - PersonToken: []
 tags:

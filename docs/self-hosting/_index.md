@@ -8,7 +8,7 @@ description: Run Cbox ID on your own infrastructure — install, configure, depl
 
 Cbox ID is source-available (Elastic License 2.0): you can run the same app that serves
 `cboxid.com` on your own infrastructure. Everything else in these docs applies unchanged;
-where a page writes `cboxid.com` or `<environment>.cboxid.com`, substitute your own hosts.
+where a page writes `cboxid.com` or `<environment>.cboxauth.com`, substitute your own hosts.
 
 ## Get it running
 

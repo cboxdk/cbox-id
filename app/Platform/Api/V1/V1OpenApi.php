@@ -476,7 +476,7 @@ final class V1OpenApi
 
         **A child is addressed directly.** `/v1/organization-memberships/{id}` is a member of an organization; the organization is named in the query (`organization_id`). The same holds for invitations, role assignments, portal links and the other children listed below.
 
-        **The old paths.** `https://{environment}.cboxid.com/api/v1/…` keeps answering, with `Deprecation` and `Sunset` headers, until its callers have moved.
+        **The old paths.** `https://{environment}.cboxauth.com/api/v1/…` keeps answering, with `Deprecation` and `Sunset` headers, until its callers have moved.
         MD;
     }
 }

@@ -10,7 +10,7 @@ The environment console (`/admin` on your environment's host) is grouped by task
 words other identity platforms use.
 
 **Which console am I in?** Every page says, in one line above it: *Environment:
-Production · Environment on acme.cboxid.com*, *Organization: Acme*, or *Platform admin*. On the
+Production · Environment on acme.cboxauth.com*, *Organization: Acme*, or *Platform admin*. On the
 root host (`cboxid.com`) the console without `/admin` is your **organization**: projects,
 team, keys, billing, settings and your team's own sign-in to Cbox ID. How people sign in to
 your apps is set in an **environment's** console. Opening Social login, Branding or Sign-in

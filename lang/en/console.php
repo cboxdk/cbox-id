@@ -142,7 +142,7 @@ return [
     '_part1_organization_0c5d66a6' => ':part1 Organization',
     '_part1_overview_0ade1da7' => ':part1 Overview',
     '_part1_pages_e37b5db1' => ':part1 pages',
-    '_part1_part2_cboxid_com_e4bea547' => ':part1 :part2.cboxid.com',
+    '_part1_part2_cboxid_com_e4bea547' => ':part1 :part2',
     '_part1_part2_left_ecae8383' => '— :part1::part2 left',
     '_part1_part2_nothing_here_is_set_by_part3_yet_change_an_a8ead075' => ':part1 :part2 Nothing here is set by :part3 yet — change anything below and it becomes this organization\'s own rule.',
     '_part1_part2_only_5ce234b9' => ':part1 :part2 only',
