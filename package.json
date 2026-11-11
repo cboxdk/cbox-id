@@ -14,7 +14,7 @@
         "test:watch": "vitest"
     },
     "dependencies": {
-        "@cboxdk/cbox-ui": "^0.10.1",
+        "@cboxdk/cbox-ui": "^0.11.0",
         "@inertiajs/react": "^3.7.0",
         "@stripe/stripe-js": "^10.2.1",
         "@tanstack/react-table": "^9.1.2",

@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:260fa3a0-2af5-44f7-a95b-9dc64167d115",
+    "serialNumber": "urn:uuid:fd5fc131-1da1-48b3-b69b-e1cb70acc1b5",
     "version": 1,
     "metadata": {
         "tools": [
@@ -165,11 +165,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-console-kit@v0.2.3",
+            "bom-ref": "pkg:composer/cboxdk/laravel-console-kit@v0.2.6",
             "group": "cboxdk",
             "name": "laravel-console-kit",
-            "version": "v0.2.3",
-            "purl": "pkg:composer/cboxdk/laravel-console-kit@v0.2.3",
+            "version": "v0.2.6",
+            "purl": "pkg:composer/cboxdk/laravel-console-kit@v0.2.6",
             "description": "Extension hooks for a Cbox admin console \u2014 nav areas, feature gates, UI slots, dashboard cards and per-tenant branding that an optional package registers into via composer, with zero host edits. The plugin pattern behind billing and other drop-in modules.",
             "licenses": [
                 {

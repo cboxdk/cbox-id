@@ -4787,4 +4787,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Запитати Cbox',
     'environment_console_unresolved_question' => 'Середовище :name не має адреси консолі. Як відкрити його консоль?',
     'regional_format' => 'Регіональний формат',
+    'shell_project' => 'Проєкт',
+    'shell_create_project' => 'Створити проєкт',
+    'shell_create_slug_hint' => 'Залиште порожнім, щоб створити з назви.',
+    'shell_team_member' => 'Учасник команди',
 ];

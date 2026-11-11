@@ -4785,4 +4785,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Ask Cbox',
     'environment_console_unresolved_question' => 'The environment :name has no console address. How do I open its console?',
     'regional_format' => 'Regional format',
+    'shell_project' => 'Project',
+    'shell_create_project' => 'Create project',
+    'shell_create_slug_hint' => 'Leave it blank to make one from the name.',
+    'shell_team_member' => 'Team member',
 ];

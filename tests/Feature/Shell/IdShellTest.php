@@ -9,9 +9,12 @@ use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
@@ -323,3 +326,54 @@ it('keeps a time zone the browser names by its older alias', function (string $z
 it('drops a time zone that is not one', function (mixed $zone): void {
     expect(IdShell::timeZone($zone))->toBeNull();
 })->with(['Mars/Olympus', '', str_repeat('A', 65), null, 3])->group('shell');
+
+it('gives the phone four tabs and "+" the console\'s own create forms', function (): void {
+    actAsEnvironmentAdminOfATenant();
+
+    $shell = (array) $this->get(envConsole('/users'))->assertOk()->inertiaProps('shell');
+    $areas = array_column($shell['nav']['areas'], 'key');
+    $creatables = array_column($shell['create']['items'], 'key');
+
+    expect($shell['nav']['tabs'])->toHaveCount(4)
+        ->and(array_diff($shell['nav']['tabs'], $areas))->toBe([])
+        ->and($shell['nav']['tabs'][0])->toBe('Home')
+        ->and($creatables)->toContain('user', 'organization')
+        ->and($shell['create']['default'])->toBe('user')
+        ->and($shell['page']['create'])->toBe('user')
+        ->and($shell['page']['title'])->not->toBe('')
+        ->and(array_column($shell['page']['actions'], 'id'))->toContain('environment.sign-in-methods')
+        ->and($shell['createForms']['user']['url'])->toEndWith('/users')
+        ->and(array_column($shell['createForms']['user']['fields'], 'name'))->toBe(['email', 'name', 'sendLink']);
+
+    foreach ($shell['create']['items'] as $item) {
+        expect($areas)->toContain($item['area']);
+    }
+})->group('shell');
+
+it('offers a project on an organization\'s Projects page, and only to who may make one', function (): void {
+    $orgs = shellTwoOrganizations();
+    signInAsMember($orgs['subjectId']);
+
+    $shell = (array) $this->get(onAppHost('/orgs/'.$orgs['a'].'/projects'))->assertOk()->inertiaProps('shell');
+
+    expect(array_column($shell['create']['items'], 'key'))->toContain('project')
+        ->and($shell['page']['create'])->toBe('project')
+        ->and($shell['createForms']['project']['url'])->toBe('/orgs/'.$orgs['a'].'/projects');
+})->group('shell');
+
+it('leaves an archived organization out of the organization switcher (production listed "Cbox" twice)', function (): void {
+    $orgs = shellTwoOrganizations();
+    signInAsMember($orgs['subjectId']);
+
+    // The same name twice, as in production: one made by mistake and archived at once. The
+    // membership stays when an organization is archived.
+    $name = app(PlatformRoot::class)->run(fn () => Organization::query()->whereKey($orgs['aId'])->value('name'));
+    app(PlatformRoot::class)->run(fn () => Organization::query()->whereKey($orgs['bId'])->update(['name' => $name, 'status' => OrganizationStatus::Deleted]));
+
+    $rows = $this->getJson(onAppHost('/shell/context/organization'))->assertOk()->json('data');
+    $ids = array_column($rows, 'id');
+
+    expect($ids)->toContain($orgs['aId'])
+        ->and($ids)->not->toContain($orgs['bId'])
+        ->and(array_count_values(array_column($rows, 'name'))[$name] ?? 0)->toBe(1);
+})->group('shell');

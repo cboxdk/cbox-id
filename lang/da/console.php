@@ -4785,4 +4785,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Spørg Cbox',
     'environment_console_unresolved_question' => 'Miljøet :name har ingen konsoladresse. Hvordan åbner jeg konsollen?',
     'regional_format' => 'Regionalt format',
+    'shell_project' => 'Projekt',
+    'shell_create_project' => 'Opret projekt',
+    'shell_create_slug_hint' => 'Lad feltet stå tomt for at lave et ud fra navnet.',
+    'shell_team_member' => 'Teammedlem',
 ];

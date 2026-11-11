@@ -4787,4 +4787,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Întreabă Cbox',
     'environment_console_unresolved_question' => 'Mediul :name nu are adresă de consolă. Cum îi deschid consola?',
     'regional_format' => 'Format regional',
+    'shell_project' => 'Proiect',
+    'shell_create_project' => 'Creați proiectul',
+    'shell_create_slug_hint' => 'Lăsați gol pentru a-l crea din nume.',
+    'shell_team_member' => 'Membru al echipei',
 ];

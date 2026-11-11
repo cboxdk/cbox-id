@@ -9,6 +9,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\MembershipStatus;
+use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use DomainException;
@@ -33,7 +34,7 @@ use Illuminate\Support\Str;
  */
 final class OrganizationLinks
 {
-    /** @var array<string, array{slug: string, name: string, linked: bool}> */
+    /** @var array<string, array{slug: string, name: string, linked: bool, active: bool}> */
     private array $addresses = [];
 
     private ?string $cboxEnvironment = null;
@@ -85,7 +86,7 @@ final class OrganizationLinks
      * The slug `/orgs/{slug}` names a platform-root organization by, and the name the
      * console shows for it: the linked `cbox` organization's, or its own.
      *
-     * @return array{slug: string, name: string, linked: bool}|null
+     * @return array{slug: string, name: string, linked: bool, active: bool}|null
      */
     public function addressOf(string $organizationId): ?array
     {
@@ -93,8 +94,11 @@ final class OrganizationLinks
     }
 
     /**
+     * `active` is the platform-root organization's own status: an archived one keeps its
+     * memberships, and is nowhere anybody can work.
+     *
      * @param  list<string>  $organizationIds
-     * @return array<string, array{slug: string, name: string, linked: bool}>
+     * @return array<string, array{slug: string, name: string, linked: bool, active: bool}>
      */
     public function addressesOf(array $organizationIds): array
     {
@@ -105,7 +109,7 @@ final class OrganizationLinks
                 ->leftJoin('organization_links as l', 'l.organization_id', '=', 'o.id')
                 ->leftJoin('organizations as c', 'c.id', '=', 'l.cbox_organization_id')
                 ->whereIn('o.id', $missing)
-                ->get(['o.id', 'o.slug', 'o.name', 'c.slug as cbox_slug', 'c.name as cbox_name']);
+                ->get(['o.id', 'o.slug', 'o.name', 'o.status', 'c.slug as cbox_slug', 'c.name as cbox_name']);
 
             // An unlinked organization's own slug that a link already claims for another
             // organization: two organizations never share an address, so it is addressed
@@ -130,6 +134,7 @@ final class OrganizationLinks
                     'slug' => $linked ? self::str($row->cbox_slug) : ($taken ? strtolower(self::str($row->id)) : $own),
                     'name' => $linked ? self::str($row->cbox_name) : self::str($row->name),
                     'linked' => $linked,
+                    'active' => self::str($row->status) === OrganizationStatus::Active->value,
                 ];
             }
         }

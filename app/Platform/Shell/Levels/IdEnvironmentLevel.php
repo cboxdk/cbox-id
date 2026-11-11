@@ -254,6 +254,10 @@ final class IdEnvironmentLevel implements ContextLevel, CreatesContextItems
                 tone: $sandbox ? Tone::Sandbox : Tone::Production,
                 label: __($sandbox ? 'console.sandbox_67fc6249' : 'console.production_13a7c655'),
                 testData: $sandbox,
+                // A production environment signs in real people; a sandbox holds test data.
+                // Said outright, so the phone's "not production" banner never guesses.
+                live: ! $sandbox,
+                group: __($sandbox ? 'console.sandbox_67fc6249' : 'console.production_13a7c655'),
             );
         }, $environments);
     }

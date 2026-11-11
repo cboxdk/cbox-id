@@ -4787,4 +4787,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Cbox fragen',
     'environment_console_unresolved_question' => 'Die Umgebung :name hat keine Konsolenadresse. Wie öffne ich ihre Konsole?',
     'regional_format' => 'Regionales Format',
+    'shell_project' => 'Projekt',
+    'shell_create_project' => 'Projekt erstellen',
+    'shell_create_slug_hint' => 'Leer lassen, um einen aus dem Namen zu bilden.',
+    'shell_team_member' => 'Teammitglied',
 ];

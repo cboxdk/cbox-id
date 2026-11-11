@@ -318,9 +318,24 @@ export interface CertificateWarning {
  * laravel-console-kit. Null on a page with no console chrome and on a customer
  * environment's own console, which has `tenantShell` instead.
  */
+/** One field of a create form in the shell's create sheet (`App\Platform\Shell\IdCreatables`). */
+export interface ShellCreateFieldSpec {
+    name: string;
+    label: string;
+    type: 'text' | 'email' | 'select' | 'checkbox';
+    required?: boolean;
+    /** Sent as a one-item list (`roles[]`). */
+    array?: boolean;
+    default?: string | boolean;
+    hint?: string;
+    options?: { value: string; label: string }[];
+}
+
 export type ConsoleShell = CboxShellProp & {
     /** "Platform" on the pages about the whole install, for the tab title. */
     section?: string | null;
+    /** The create sheet's forms, by creatable key: where each posts and its fields. */
+    createForms?: Record<string, { url: string; fields: ShellCreateFieldSpec[] }>;
 };
 
 /**

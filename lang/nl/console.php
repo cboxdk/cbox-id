@@ -4787,4 +4787,8 @@ https://staging.example.com',
     'environment_console_unresolved_ask' => 'Vraag het Cbox',
     'environment_console_unresolved_question' => 'De omgeving :name heeft geen consoleadres. Hoe open ik de console?',
     'regional_format' => 'Regionale notatie',
+    'shell_project' => 'Project',
+    'shell_create_project' => 'Project maken',
+    'shell_create_slug_hint' => 'Laat leeg om er een te maken van de naam.',
+    'shell_team_member' => 'Teamlid',
 ];
