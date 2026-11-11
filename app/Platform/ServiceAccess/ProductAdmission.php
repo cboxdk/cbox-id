@@ -83,7 +83,7 @@ final readonly class ProductAdmission
     public function policy(): RegistrationPolicy
     {
         if (! $this->enabled()) {
-            return new RegistrationPolicy(0, 'open', false, 'hidden', [], []);
+            return new RegistrationPolicy('', 'open', false, 'hidden', [], []);
         }
         $kept = $this->snapshots->remember(self::POLICY_KEY, $this->askPolicy(...), RefreshBillingSnapshot::policy(...));
         try {

@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:bbb22617-8817-4a1e-987d-54c5a9556661",
+    "serialNumber": "urn:uuid:9453917a-26b3-46fa-a2ba-5a95559f4b61",
     "version": 1,
     "metadata": {
         "tools": [
@@ -149,11 +149,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-billing-client@v0.4.14",
+            "bom-ref": "pkg:composer/cboxdk/laravel-billing-client@v0.6.0",
             "group": "cboxdk",
             "name": "laravel-billing-client",
-            "version": "v0.4.14",
-            "purl": "pkg:composer/cboxdk/laravel-billing-client@v0.4.14",
+            "version": "v0.6.0",
+            "purl": "pkg:composer/cboxdk/laravel-billing-client@v0.6.0",
             "description": "Cbox Billing \u2014 app-local enforcement SDK: leases allowance from a remote Cbox Billing service and enforces hard limits locally on the hot path, buffering and reporting usage in the background.",
             "licenses": [
                 {
@@ -661,11 +661,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/laravel/framework@v13.40.0",
+            "bom-ref": "pkg:composer/laravel/framework@v13.42.0",
             "group": "laravel",
             "name": "framework",
-            "version": "v13.40.0",
-            "purl": "pkg:composer/laravel/framework@v13.40.0",
+            "version": "v13.42.0",
+            "purl": "pkg:composer/laravel/framework@v13.42.0",
             "description": "The Laravel Framework.",
             "licenses": [
                 {
@@ -693,11 +693,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/laravel/prompts@v0.3.26",
+            "bom-ref": "pkg:composer/laravel/prompts@v0.3.27",
             "group": "laravel",
             "name": "prompts",
-            "version": "v0.3.26",
-            "purl": "pkg:composer/laravel/prompts@v0.3.26",
+            "version": "v0.3.27",
+            "purl": "pkg:composer/laravel/prompts@v0.3.27",
             "description": "Add beautiful and user-friendly forms to your command-line applications.",
             "licenses": [
                 {
@@ -709,11 +709,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/laravel/serializable-closure@v2.1.0",
+            "bom-ref": "pkg:composer/laravel/serializable-closure@v2.2.0",
             "group": "laravel",
             "name": "serializable-closure",
-            "version": "v2.1.0",
-            "purl": "pkg:composer/laravel/serializable-closure@v2.1.0",
+            "version": "v2.2.0",
+            "purl": "pkg:composer/laravel/serializable-closure@v2.2.0",
             "description": "Laravel Serializable Closure provides an easy and secure way to serialize closures in PHP.",
             "licenses": [
                 {

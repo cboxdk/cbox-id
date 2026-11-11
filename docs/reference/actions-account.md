@@ -215,7 +215,7 @@ Join a published service waitlist with your verified email. Does not buy a plan 
 
 | Input | Type | Required | Description |
 |---|---|---|---|
-| `program` | integer (path) | yes | At least 1. |
+| `program` | string (path) | yes | The waitlist program's id at Billing (`acp_…`). At most 64 characters. |
 | `organization` | string, nullable | no | An active team you belong to; required for feature waitlists. At most 64 characters. |
 | `interest` | string, nullable | no | Feature updates or participation in a test group. One of `notify`, `test`. |
 | `country` | string, nullable | no | Optional two-letter country code. At most 2 characters. |
@@ -236,7 +236,7 @@ Withdraw your own feature interest or beta application for a team. Active grants
 
 | Input | Type | Required | Description |
 |---|---|---|---|
-| `program` | integer (path) | yes | At least 1. |
+| `program` | string (path) | yes | The waitlist program's id at Billing (`acp_…`). At most 64 characters. |
 | `organization` | string | yes | At most 64 characters. |
 | `reference` | string (uuid) | yes | At most 36 characters. |
 
