@@ -228,7 +228,7 @@ function ProfilePanel({ profile, href }: { profile: Props['profile']; href: stri
                 }}
             >
                 <span
-                    className="cbx-avatar shrink-0"
+                    className="idc-avatar shrink-0"
                     aria-hidden="true"
                     style={{ width: '3rem', height: '3rem', fontSize: '1.1rem' }}
                 >

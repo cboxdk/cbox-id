@@ -1,6 +1,7 @@
 import type { Translator } from '@/i18n';
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, usePage } from '@inertiajs/react';
+import { rail } from '@/lib/rail';
 import type { SharedProps } from '@/types';
 import { Panel } from './Panel';
 
@@ -63,8 +64,7 @@ const ENTRIES = (t: Translator['t']): Entry[] => [
 export function AccessModelGuide({ current }: { current: AccessModel }) {
     const { t: consoleOptionText } = useConsoleTranslator();
     const { t: consoleT } = useConsoleTranslator();
-    const { shell } = usePage<SharedProps>().props;
-    const pages = (shell?.areas ?? []).flatMap((area) => area.pages);
+    const pages = rail(usePage<SharedProps>().props).areas.flatMap((area) => area.pages);
     const href = (route: string | null): string | undefined =>
         route === null
             ? undefined

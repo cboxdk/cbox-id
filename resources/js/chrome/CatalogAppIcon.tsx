@@ -29,8 +29,8 @@ export function CatalogAppIcon({
             {app.icon_url && failed !== sources ? (
                 dark ? (
                     <>
-                        {image(app.icon_url, 'cbx-app-icon-light')}
-                        {image(dark, 'cbx-app-icon-dark')}
+                        {image(app.icon_url, 'idc-app-icon-light')}
+                        {image(dark, 'idc-app-icon-dark')}
                     </>
                 ) : (
                     image(app.icon_url, '')

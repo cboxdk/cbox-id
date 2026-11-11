@@ -135,7 +135,7 @@ export default function UsersIndex({
                     value={term}
                     onChange={(event) => setTerm(event.target.value)}
                 />
-                <nav className="cbx-segmented" aria-label={t('console.users_6b0cc904')}>
+                <nav className="idc-segmented" aria-label={t('console.users_6b0cc904')}>
                     {filters.map((filter) => (
                         <Link
                             key={filter.value}

@@ -17,7 +17,7 @@ export function Avatar({ name, className }: AvatarProps) {
     const initial = name.trim().charAt(0).toUpperCase() || 'C';
 
     return (
-        <span className={cn('cbx-avatar', className)} aria-hidden="true" title={name}>
+        <span className={cn('idc-avatar', className)} aria-hidden="true" title={name}>
             {initial}
         </span>
     );

@@ -1,3 +1,4 @@
+import type { Shell as CboxShellProp } from '@cboxdk/cbox-ui';
 /**
  * THE SERVER'S CONTRACT, as TypeScript.
  *
@@ -310,7 +311,20 @@ export interface CertificateWarning {
     href: string;
 }
 
-/** `App\Http\Props\Shell\ShellProps` — null on a page with no console chrome. */
+/**
+ * The shared shell (`App\Platform\Shell\IdShell`): cbox-ui's `Shell`, built by
+ * laravel-console-kit. Null on a page with no console chrome and on a customer
+ * environment's own console, which has `tenantShell` instead.
+ */
+export type ConsoleShell = CboxShellProp & {
+    /** "Platform" on the pages about the whole install, for the tab title. */
+    section?: string | null;
+};
+
+/**
+ * `App\Http\Props\Shell\ShellProps` — the chrome of a customer environment's own,
+ * white-labelled organization console (`tenantShell`).
+ */
 export interface Shell {
     areas: NavArea[];
     activeArea: string | null;
@@ -405,7 +419,8 @@ export interface SharedProps {
     environment: CurrentEnvironment;
     impersonation: ImpersonationSession | null;
     flash: Flash;
-    shell: Shell | null;
+    shell: ConsoleShell | null;
+    tenantShell?: Shell | null;
     i18n: I18n | null;
     /**
      * Shared on every page under an environment console's `…/organizations/{organization}/…`: the organization the

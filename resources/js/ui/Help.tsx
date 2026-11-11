@@ -55,8 +55,8 @@ export function Help({ help, label }: HelpProps) {
             )}
 
             <PopoverContent className="cbx-help-content">
-                <p className="cbx-help-title">{help.title}</p>
-                <p className="cbx-help-body">{help.summary}</p>
+                <p className="idc-help-title">{help.title}</p>
+                <p className="idc-help-body">{help.summary}</p>
 
                 {help.href !== null && (
                     <a className="cbx-help-link" href={help.href} target="_blank" rel="noreferrer">

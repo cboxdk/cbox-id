@@ -1,8 +1,6 @@
-import { SupportLauncher } from '@/components/support/SupportLauncher';
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
-import { AppSwitcher } from '@/chrome/AppSwitcher';
 import { AccountMenu } from '@/chrome/AccountMenu';
 import { ConsoleLanguagePicker } from '@/chrome/ConsoleLanguagePicker';
 import { EmailConfirmationBanner, ImpersonationBanner, SandboxBanner } from '@/chrome/Banners';
@@ -24,36 +22,21 @@ import { exit as exitImpersonation } from '@routes/impersonation';
 
 const SUBNAV_KEY = 'cbox-subnav-collapsed';
 
-export interface ConsoleLayoutProps {
+export interface TenantConsoleLayoutProps {
     children: ReactNode;
 }
 
 /**
- * THE CONSOLE'S ONE SHELL — both planes, every page.
+ * A CUSTOMER ENVIRONMENT'S OWN ORGANIZATION CONSOLE — its IT admins, on its host.
  *
- * There were two of these, and the drift between them is written down all over the files
- * they replace: one carried the impersonation banner and the other did not, so an
- * operator who started an impersonation from a page on the wrong layout had no way out;
- * one used the shared mobile navigation and the other hand-rolled a drawer, so the same
- * page behaved differently on a phone depending on which plane served it.
- *
- * The chrome is decided on the SERVER ({@see \App\Platform\Console\ShellPayload}) and
- * arrives as one shared prop. This file is only the arrangement:
- *
- *  - the rail, left: where you can go in this console;
- *  - the topbar: where you ARE (workspace / project / environment), search, and who you
- *    are — and nothing that silently narrows the pages: a page about one organization says
- *    so in its own URL and draws that organization's header itself (`organizationHub`);
- *  - above every page, what it acts on (`ActsOn`) — in the warning colours on the platform's
- *    own environment and on platform admin, whose pages act on the whole deployment.
- *
- * Platform admin is not a layout of its own. It was: a strip across the top, a rail of its
- * own and a way out, so an operator on the root host moved between two consoles. It is an
- * area of the console now, and the line above the page is what says so.
+ * Every other console page is framed by cbox-ui's `CboxShell` ({@see ConsoleLayout}). This
+ * one is white-labelled: the customer's brand, no Cbox app switcher and no Cbox Help (Cbox
+ * Assistant is not their support). `CboxShell` cannot leave those out yet, so this surface
+ * keeps its own chrome, built from `tenantShell` ({@see \App\Platform\Shell\IdShell}).
  */
-export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
+export function TenantConsoleLayout({ children: page }: TenantConsoleLayoutProps) {
     const { t: consoleShortText } = useConsoleTranslator();
-    const { shell, auth, title, environment, organizationHub, i18n, supportSessionUrl } =
+    const { tenantShell: shell, auth, title, environment, organizationHub, i18n } =
         usePage<SharedProps>().props;
 
     // A page under an environment console's `…/organizations/{organization}/…` is a tab of that organization's
@@ -112,7 +95,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
 
     // A page rendered before the shell exists — mid-sign-in, an environment whose admin
     // session has lapsed. Render the page rather than a broken frame around it.
-    if (shell === null || auth.user === null) {
+    if (shell === null || shell === undefined || auth.user === null) {
         return (
             <TooltipProvider>
                 <Head title={title} />
@@ -212,10 +195,8 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                             {/* "</> API": this page's actions as REST, MCP, CLI and SDK calls. */}
                             <PageApiEquivalents />
                             <CommandPalette areas={shell.areas} />
-                            <SupportLauncher sessionUrl={supportSessionUrl ?? null} />
                             <ConsoleLanguagePicker />
 
-                            <AppSwitcher />
                             <AccountMenu
                                 user={auth.user}
                                 logoutUrl={shell.logoutHref ?? logout.url()}

@@ -105,8 +105,8 @@ export function MobileNav({
             </div>
 
             <Primitive.Portal>
-                <Primitive.Overlay className="cbx-overlay lg:hidden" />
-                <Primitive.Content className="cbx-sheet lg:hidden" aria-describedby={undefined}>
+                <Primitive.Overlay className="idc-overlay lg:hidden" />
+                <Primitive.Content className="idc-sheet lg:hidden" aria-describedby={undefined}>
                     <Primitive.Title className="sr-only">
                         {consoleT('console.navigation_3db65f8c')}
                     </Primitive.Title>
@@ -130,7 +130,7 @@ export function MobileNav({
                         {areas.map((area) => (
                             <div key={area.key} className="space-y-0.5">
                                 <p
-                                    className="cbx-nav-group flex items-center gap-2"
+                                    className="idc-nav-group flex items-center gap-2"
                                     style={{ color: 'var(--faint)' }}
                                 >
                                     <Icon name={area.icon} className="w-3.5 h-3.5" />

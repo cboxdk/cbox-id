@@ -1,5 +1,6 @@
 import { usePage } from '@inertiajs/react';
 import type { ReactNode } from 'react';
+import { rail } from '@/lib/rail';
 import type { HelpContent, SharedProps } from '@/types';
 import { Help } from './Help';
 
@@ -44,9 +45,10 @@ export interface PageHeaderProps {
  * with two headings competing to be the title, or with none at all.
  */
 export function PageHeader({ eyebrow, title, badge, help, description, actions }: PageHeaderProps) {
-    const { shell, title: stated, organizationHub } = usePage<SharedProps>().props;
+    const props = usePage<SharedProps>().props;
+    const { title: stated, organizationHub } = props;
 
-    const area = shell?.areas.find((candidate) => candidate.key === shell.activeArea)?.label;
+    const area = rail(props).active?.label;
     // Inside an organization's page the hub's own breadcrumb already says where this is
     // ("Users & orgs / Organizations", then the organization's name). The rail area above
     // a tab's heading would repeat it — or, for a page filed elsewhere on the rail, name

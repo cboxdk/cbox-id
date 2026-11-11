@@ -338,7 +338,7 @@ export default function CreateClient({
                     <div className="space-y-5">
                         {Object.entries(scopeGroups).map(([category, scopes]) => (
                             <div key={category}>
-                                <p className="cbx-nav-group mb-2">{category}</p>
+                                <p className="idc-nav-group mb-2">{category}</p>
                                 <div className="space-y-2">
                                     {scopes.map((scope) => (
                                         <Checkbox

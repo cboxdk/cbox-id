@@ -63,7 +63,7 @@ export function Select<T extends string>({
             </Primitive.Trigger>
 
             <Primitive.Portal>
-                <Primitive.Content position="popper" sideOffset={6} className="cbx-menu">
+                <Primitive.Content position="popper" sideOffset={6} className="idc-menu">
                     <Primitive.Viewport>
                         {options.map((option) => (
                             <Primitive.Item

@@ -72,7 +72,7 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
     const { t: consoleText } = useConsoleTranslator();
     const { rich: consoleRich } = useConsoleTranslator();
     const { t: consoleT } = useConsoleTranslator();
-    const { shell } = usePage<SharedProps>().props;
+    const { tenantShell: shell } = usePage<SharedProps>().props;
     const endpoint = searchHref(shell?.altitude);
     const scope = typeof window === 'undefined' ? '' : window.location.host;
 
@@ -240,7 +240,7 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                 aria-keyshortcuts="Meta+K Control+K"
             >
                 <Icon name="search" className="w-3.5 h-3.5 shrink-0" />
-                <span className="cbx-search-label hidden md:inline">
+                <span className="idc-search-label hidden md:inline">
                     {endpoint === null
                         ? consoleText('console.go_to_d3a27e80')
                         : consoleText('console.search_7336265a')}
@@ -259,8 +259,8 @@ export function CommandPalette({ areas }: CommandPaletteProps) {
                 }}
             >
                 <Primitive.Portal>
-                    <Primitive.Overlay className="cbx-overlay" />
-                    <Primitive.Content className="cbx-palette" aria-describedby={undefined}>
+                    <Primitive.Overlay className="idc-overlay" />
+                    <Primitive.Content className="idc-palette" aria-describedby={undefined}>
                         <Primitive.Title className="sr-only">
                             {endpoint === null
                                 ? consoleText('console.go_to_a_page_abe7ffc8')

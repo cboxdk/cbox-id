@@ -56,7 +56,7 @@ describe('CommandPalette', () => {
         // The environment console's search lives under the console's own path.
         window.history.replaceState({}, '', '/orgs/acme/projects/web/environments/production');
         setPageProps({
-            shell: {
+            tenantShell: {
                 altitude: 'environment',
                 areas: AREAS,
             } as unknown as Shell,
@@ -157,7 +157,7 @@ describe('CommandPalette', () => {
     it('stays navigation-only where the console has no search', async () => {
         setPageProps({
             // No altitude: a page drawn before the console knows which one it is in.
-            shell: {
+            tenantShell: {
                 areas: AREAS,
             } as unknown as Shell,
         });
@@ -246,7 +246,7 @@ describe('CommandPalette', () => {
 
         // Navigation only, so the server's results cannot be what matched.
         setPageProps({
-            shell: { areas } as unknown as Shell,
+            tenantShell: { areas } as unknown as Shell,
         });
 
         render(<CommandPalette areas={areas} />);
@@ -279,7 +279,7 @@ describe('CommandPalette', () => {
         vi.stubGlobal('location', { ...window.location, assign, host: 'cboxid.com' });
 
         setPageProps({
-            shell: {
+            tenantShell: {
                 altitude: 'org-plane',
                 areas: AREAS,
                 context: {
