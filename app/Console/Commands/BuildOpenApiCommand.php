@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\OpenApi\ActionOpenApi;
+use App\Platform\Api\V1\V1OpenApi;
 use Illuminate\Console\Command;
 use Symfony\Component\Yaml\Yaml;
 
@@ -52,6 +53,20 @@ final class BuildOpenApiCommand extends Command
             $this->components->info("Wrote {$outPath}.");
         }
 
+        // The one contract for the API host, built from the plane documents just written
+        // (or, with --check, from what they would be).
+        $v1 = V1OpenApi::encode(app(V1OpenApi::class)->build($this->option('check') ? $this->planeDocuments($openApi) : null));
+        $v1Path = V1OpenApi::path();
+
+        if ((is_file($v1Path) ? (string) file_get_contents($v1Path) : '') !== $v1) {
+            if ($this->option('check')) {
+                $stale[] = $v1Path;
+            } else {
+                file_put_contents($v1Path, $v1);
+                $this->components->info("Wrote {$v1Path}.");
+            }
+        }
+
         if ($stale !== []) {
             $this->components->error('Stale: '.implode(', ', $stale).'. Run `php artisan openapi:build` and commit the result.');
 
@@ -63,5 +78,23 @@ final class BuildOpenApiCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The plane documents as the build would write them, without writing them.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    private function planeDocuments(ActionOpenApi $openApi): array
+    {
+        $documents = [];
+
+        foreach (ActionPlane::cases() as $plane) {
+            $documents[$plane->value] = $openApi->build(Yaml::parseFile(resource_path("openapi/base/{$plane->value}.yaml")), $plane);
+        }
+
+        $documents['app-services'] = Yaml::parseFile(resource_path('openapi/app-services.yaml'));
+
+        return $documents;
     }
 }

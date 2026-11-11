@@ -1,0 +1,198 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Middleware\ResolveApiEnvironment;
+use App\Http\Middleware\V1Parameters;
+use App\Platform\Api\Problem;
+use App\Platform\Api\V1\V1Routes;
+use Illuminate\Container\Container;
+use Illuminate\Http\Request;
+use Illuminate\Routing\Contracts\ControllerDispatcher;
+use Illuminate\Routing\Pipeline;
+use Illuminate\Routing\Route;
+use Illuminate\Routing\Router;
+use Symfony\Component\HttpFoundation\Response;
+
+/**
+ * ONE `/v1` PATH, MORE THAN ONE OPERATION BEHIND IT — each run through its own middleware,
+ * exactly as its own route would run it.
+ *
+ * Two kinds:
+ *
+ *  - SHARED BY PLANES (`GET /v1/approvals/{id}`, `DELETE /v1/environment-keys/{id}`): the
+ *    plane the credential speaks for is tried first, then the others. The first answer that
+ *    is not "this credential is not for me" (401, 403, 404) is the answer; when none
+ *    succeeds, the most telling refusal is — a 404 or 403 from a door the credential
+ *    passed over a 401 from one it did not.
+ *  - MADE OF FIELDS (`PATCH /v1/members/{id}`: `roles` and `all_environments`): each
+ *    operation whose fields the request carries runs, in order; the first failure stops
+ *    the rest.
+ */
+final readonly class V1DispatchController
+{
+    private const array NOT_MINE = [401, 403, 404];
+
+    public function __construct(
+        private Router $router,
+        private Container $container,
+    ) {}
+
+    public function __invoke(Request $request): Response
+    {
+        $route = $request->route();
+        $operations = $route instanceof Route ? ($route->defaults[V1Routes::VARIANTS] ?? []) : [];
+
+        if (! $route instanceof Route || ! is_array($operations) || $operations === []) {
+            return Problem::response('not_found', 'No such resource.', 404);
+        }
+
+        $byFields = array_values(array_filter($operations, static fn (array $operation): bool => ($operation['when'] ?? null) !== null));
+
+        return $byFields !== []
+            ? $this->byFields($request, $route, $byFields)
+            : $this->byPlane($request, $route, $operations);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $operations
+     */
+    private function byPlane(Request $request, Route $route, array $operations): Response
+    {
+        $plane = $request->attributes->get(ResolveApiEnvironment::PLANE);
+
+        usort($operations, static fn (array $a, array $b): int => (int) ($b['plane'] === $plane) <=> (int) ($a['plane'] === $plane));
+
+        $refusals = [];
+
+        foreach ($operations as $operation) {
+            $response = $this->run($request, $route, $operation);
+
+            if (! in_array($response->getStatusCode(), self::NOT_MINE, true)) {
+                return $response;
+            }
+
+            $refusals[] = $response;
+        }
+
+        foreach ([404, 403] as $telling) {
+            foreach ($refusals as $refusal) {
+                if ($refusal->getStatusCode() === $telling) {
+                    return $refusal;
+                }
+            }
+        }
+
+        return $refusals[0];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $operations
+     */
+    private function byFields(Request $request, Route $route, array $operations): Response
+    {
+        $response = null;
+        $asked = [];
+
+        foreach ($operations as $operation) {
+            $when = (string) $operation['when'];
+            $asked[] = $when;
+
+            if (! self::matches($request, $when)) {
+                continue;
+            }
+
+            $response = $this->run($request, $route, $operation);
+
+            if ($response->getStatusCode() >= 300) {
+                return $response;
+            }
+        }
+
+        return $response ?? Problem::response(
+            'validation_failed',
+            'Send at least one of the fields this endpoint changes: '.implode('; ', array_map(self::describe(...), $asked)).'.',
+            422,
+        );
+    }
+
+    /** `a+b`: every field present; `!a`: that field absent. */
+    private static function matches(Request $request, string $when): bool
+    {
+        foreach (explode('+', $when) as $term) {
+            $absent = str_starts_with($term, '!');
+            $field = ltrim($term, '!');
+
+            if ($request->exists($field) === $absent) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function describe(string $when): string
+    {
+        return implode(' with ', array_map(
+            static fn (string $term): string => str_starts_with($term, '!') ? 'no `'.ltrim($term, '!').'`' : '`'.$term.'`',
+            explode('+', $when),
+        ));
+    }
+
+    /**
+     * One operation, through its own middleware, with its own parameters in place.
+     *
+     * @param  array<string, mixed>  $operation
+     */
+    private function run(Request $request, Route $route, array $operation): Response
+    {
+        $snapshot = $route->parameters();
+        $defaults = $route->defaults;
+
+        $route->defaults['action'] = $operation['action'];
+        $route->defaults[V1Routes::ID] = $operation['id'];
+        $route->defaults[V1Routes::INPUTS] = $operation['inputs'];
+
+        foreach (array_keys($route->parameters()) as $name) {
+            $route->forgetParameter($name);
+        }
+
+        foreach ($snapshot as $name => $value) {
+            if (! in_array($name, ['action', V1Routes::VARIANTS], true)) {
+                $route->setParameter($name, $value);
+            }
+        }
+
+        try {
+            V1Parameters::place($request, $route);
+
+            $middleware = $this->router->resolveMiddleware(is_array($operation['middleware']) ? $operation['middleware'] : []);
+
+            return (new Pipeline($this->container))
+                ->send($request)
+                ->through($middleware)
+                ->then(fn (Request $request): Response => $this->router->prepareResponse($request, $this->call($route, (string) $operation['uses'])));
+        } finally {
+            $route->defaults = $defaults;
+
+            foreach (array_keys($route->parameters()) as $name) {
+                $route->forgetParameter($name);
+            }
+
+            foreach ($snapshot as $name => $value) {
+                $route->setParameter($name, $value);
+            }
+        }
+    }
+
+    private function call(Route $route, string $uses): mixed
+    {
+        [$class, $method] = str_contains($uses, '@') ? explode('@', $uses, 2) : [$uses, '__invoke'];
+        $controller = $this->container->make($class);
+
+        return $this->container->make(ControllerDispatcher::class)
+            ->dispatch($route, $controller, $method);
+    }
+}

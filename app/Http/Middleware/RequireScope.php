@@ -56,7 +56,10 @@ final class RequireScope
             return $this->challenge('invalid_token', 'The access token was not issued for this API.', 401);
         }
 
-        if (! ScopeRegistry::satisfiedBy($scope, $token->hasScope(...))) {
+        // `a|b`: either scope admits the request (an endpoint two old ones were folded into).
+        $any = array_filter(explode('|', $scope), static fn (string $one): bool => $one !== '');
+
+        if (! array_any($any, static fn (string $one): bool => ScopeRegistry::satisfiedBy($one, $token->hasScope(...)))) {
             return $this->challenge('insufficient_scope', "This endpoint requires the {$scope} scope.", 403, $scope);
         }
 

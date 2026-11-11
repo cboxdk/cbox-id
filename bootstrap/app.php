@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\ApiErrorRenderer;
+use App\Http\ApiRequest;
 use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\Authenticate;
 use App\Http\Middleware\AuthenticateDelegatedApi;
@@ -9,11 +10,14 @@ use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Http\Middleware\BindConsoleOrganization;
 use App\Http\Middleware\BindOrganizationFromPath;
+use App\Http\Middleware\DeprecateLegacyApi;
 use App\Http\Middleware\EnforceCustomerConsole;
 use App\Http\Middleware\EnforceImpersonationWindow;
 use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\EnforceRootHostConsole;
+use App\Http\Middleware\FenceApiHost;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\InClusterOnly;
 use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\ReadOnlyWhileImpersonating;
@@ -86,6 +90,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // prefix would put `/mcp` somewhere no MCP client looks.
         then: static function (): void {
             Route::group([], __DIR__.'/../routes/mcp.php');
+            // The paths that move on the application host (in-cluster and inbound webhooks),
+            // and the API host's `/v1`. Last, because both are read from the routes above.
+            Route::group([], __DIR__.'/../routes/internal.php');
+            Route::group([], __DIR__.'/../routes/v1.php');
         },
         // No `health:` entry on purpose. Laravel's built-in health route renders an
         // HTML status page at /up, which SHADOWED the framework package's documented
@@ -243,6 +251,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // Global so security headers cover API/JSON + error responses too, not
         // just the web group.
         $middleware->append(SecurityHeaders::class);
+
+        // Every `/api/v1` response is marked deprecated and counted per caller, so the old
+        // paths can be removed once nobody calls them (plan §7.1, 5c).
+        $middleware->append(DeprecateLegacyApi::class);
+
+        // The API host answers the API and nothing else: global, so none of the application's
+        // other routes (bound to no host) can start a session or render a page there.
+        $middleware->append(FenceApiHost::class);
         $middleware->append(ServeMarketingWebsite::class);
 
         // Pin the current environment (session-selected) for the console + hosted UI.
@@ -314,6 +330,8 @@ return Application::configure(basePath: dirname(__DIR__))
             // environment.
             'env.sudo' => RequireEnvironmentSudo::class,
             'scope' => RequireScope::class,
+            // `/internal/v1/*`: callers inside the cluster only (see the class).
+            'internal' => InClusterOnly::class,
             'org.api' => AuthenticateOrganizationApi::class,
             'env.api' => AuthenticateEnvironmentApi::class,
             // The planes only a person reaches (platform, account): a delegated token, never a key.
@@ -344,7 +362,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (SignalsStepUpRequired $e, Request $request): Response {
             // Non-interactive callers receive no authenticated ticket. OAuth token
             // issuance translates this refusal to invalid_grant inside the issuer.
-            if ($request->expectsJson() || $request->is('api/*')) {
+            if ($request->expectsJson() || ApiRequest::is($request)) {
                 return response()->json(['error' => 'stronger_authentication_required', 'message' => 'Sign in with a stronger authentication method.'], 403);
             }
             $auth = app(PlatformAuth::class);
@@ -385,7 +403,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 return null;
             }
 
-            if ($request->isMethodSafe() || $request->is('api/*')) {
+            if ($request->isMethodSafe() || ApiRequest::is($request)) {
                 return null;
             }
 

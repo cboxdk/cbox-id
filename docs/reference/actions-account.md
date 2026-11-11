@@ -15,10 +15,10 @@ Every row below is one action, reached through four doors that run the same code
 
 | | |
 |---|---|
-| REST | `https://<host>/api/v1/me/…` with a token you delegated — on your environment's host, or on the platform root for an organization team member or operator |
-| MCP | `/mcp` on the same host, signed in as yourself |
+| REST | `https://api.cboxid.com/v1/me/…` with a token you delegated: its issuer is the environment you belong to, or the platform root for an organization team member or operator |
+| MCP | `https://app.cboxid.com/mcp`, signed in as yourself |
 | CLI | `cbox login`, then the command below |
-| OpenAPI | `/api/v1/me/openapi.yaml` on the host above — public, no key needed ([source](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/account.yaml)); every operation carries `x-action`, `x-scope` and `x-danger` |
+| OpenAPI | `https://api.cboxid.com/openapi.json`, one document for every plane — public, no key needed ([source](https://github.com/cboxdk/cbox-id/blob/main/resources/openapi/openapi.json)); every operation carries `x-action`, `x-scope` and `x-danger`. Reference: `https://api.cboxid.com/docs` |
 
 Danger is how much harm the action can do in the wrong hands: `read` only reads; `write` changes something another write can undo; `destructive` removes or revokes; `critical` mints credentials, takes over access or changes how people sign in. MCP clients are told a destructive or critical tool is destructive, the CLI asks before running one, and an [approval policy](../core-concepts/approvals.md) keys on it.
 
@@ -45,7 +45,7 @@ Create an API key of your own for one of this environment's apps, in an organiza
 
 | | |
 |---|---|
-| REST | `POST /api/v1/me/organizations/{organization_id}/api-keys` → `201` |
+| REST | `POST /v1/me/api-keys` (`organization_id` in the query) → `201`; was `POST /api/v1/me/organizations/{organization_id}/api-keys` |
 | Scope | `account:api_keys:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `account_api_keys_create` |
@@ -66,7 +66,7 @@ Revoke one of your own API keys.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/me/organizations/{organization_id}/api-keys/{key_id}` → `204` |
+| REST | `DELETE /v1/me/api-keys/{id}` (`{id}` is the `key_id`; `organization_id` in the query) → `204`; was `DELETE /api/v1/me/organizations/{organization_id}/api-keys/{key_id}` |
 | Scope | `account:api_keys:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `destructive` |
 | MCP tool | `account_api_keys_revoke` |
@@ -85,7 +85,7 @@ List the published apps visible to you in this environment. Optional organizatio
 
 | | |
 |---|---|
-| REST | `GET /api/v1/me/apps` → `200` |
+| REST | `GET /v1/me/apps` → `200`; was `GET /api/v1/me/apps` |
 | Scope | `account:apps:read` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `read` |
 | MCP tool | `account_apps_list` |
@@ -103,7 +103,7 @@ Withdraw an application's access to your account; it must ask you again to act a
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/me/applications/{client_id}` → `204` |
+| REST | `DELETE /v1/me/applications/{id}` (`{id}` is the `client_id`) → `204`; was `DELETE /api/v1/me/applications/{client_id}` |
 | Scope | `account:applications:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `destructive` |
 | MCP tool | `account_applications_revoke` |
@@ -121,7 +121,7 @@ Disconnect one of your connected services, revoking the access you gave it.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/me/pipes/{provider}` → `204` |
+| REST | `DELETE /v1/me/pipes/{id}` (`{id}` is the `provider`) → `204`; was `DELETE /api/v1/me/pipes/{provider}` |
 | Scope | `account:pipes:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `destructive` |
 | MCP tool | `account_pipes_disconnect` |
@@ -139,7 +139,7 @@ Remove one of your trusted devices; it is no longer asked to approve anything.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/me/devices/{device_id}` → `204` |
+| REST | `DELETE /v1/me/devices/{id}` (`{id}` is the `device_id`) → `204`; was `DELETE /api/v1/me/devices/{device_id}` |
 | Scope | `account:devices:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `destructive` |
 | MCP tool | `account_devices_remove` |
@@ -157,7 +157,7 @@ Leave one of your own organizations. The last owner cannot leave — transfer ow
 
 | | |
 |---|---|
-| REST | `POST /api/v1/me/organizations/{organization_id}/leave` → `204` |
+| REST | `POST /v1/me/organizations/{id}/leave` (`{id}` is the `organization_id`) → `204`; was `POST /api/v1/me/organizations/{organization_id}/leave` |
 | Scope | `account:organizations:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `destructive` |
 | MCP tool | `account_organizations_leave` |
@@ -175,7 +175,7 @@ Mail yourself a link that confirms your email address.
 
 | | |
 |---|---|
-| REST | `POST /api/v1/me/email/confirmation` → `200` |
+| REST | `POST /v1/me/email/confirmation` → `200`; was `POST /api/v1/me/email/confirmation` |
 | Scope | `account:profile:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `write` |
 | MCP tool | `account_email_confirmation_send` |
@@ -189,7 +189,7 @@ Change the display name on your own account.
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/me/profile` → `200` |
+| REST | `PATCH /v1/me/profile` → `200`; was `PATCH /api/v1/me/profile` |
 | Scope | `account:profile:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `write` |
 | MCP tool | `account_profile_update` |
@@ -207,7 +207,7 @@ Join a published service waitlist with your verified email. Does not buy a plan 
 
 | | |
 |---|---|
-| REST | `POST /api/v1/me/services/{program}/waitlist` → `200` |
+| REST | `POST /v1/me/services/{id}/join-waitlist` (`{id}` is the `program`) → `200`; was `POST /api/v1/me/services/{program}/waitlist` |
 | Scope | `account:waitlists:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `write` |
 | MCP tool | `account_waitlists_join` |
@@ -228,7 +228,7 @@ Withdraw your own feature interest or beta application for a team. Active grants
 
 | | |
 |---|---|
-| REST | `POST /api/v1/me/services/{program}/waitlist/leave` → `200` |
+| REST | `POST /v1/me/services/{id}/leave-waitlist` (`{id}` is the `program`) → `200`; was `POST /api/v1/me/services/{program}/waitlist/leave` |
 | Scope | `account:waitlists:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `write` |
 | MCP tool | `account_waitlists_leave` |
@@ -248,7 +248,7 @@ Sign out one of your own sessions.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/me/sessions/{session_id}` → `204` |
+| REST | `DELETE /v1/me/sessions/{id}` (`{id}` is the `session_id`) → `204`; was `DELETE /api/v1/me/sessions/{session_id}` |
 | Scope | `account:sessions:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `destructive` |
 | MCP tool | `account_sessions_revoke` |
@@ -264,7 +264,7 @@ Sign out every one of your sessions except the one you are using.
 
 | | |
 |---|---|
-| REST | `POST /api/v1/me/sessions/revoke-others` → `200` |
+| REST | `POST /v1/me/sessions/revoke-others` → `200`; was `POST /api/v1/me/sessions/revoke-others` |
 | Scope | `account:sessions:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `account_sessions_revoke_others` |
@@ -280,7 +280,7 @@ Remove your phone number for text-message sign-in codes.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/me/mfa/sms` → `204` |
+| REST | `DELETE /v1/me/mfa/sms` → `204`; was `DELETE /api/v1/me/mfa/sms` |
 | Scope | `account:sign_in:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `account_mfa_sms_remove` |
@@ -294,7 +294,7 @@ Remove one of your passkeys.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/me/passkeys/{passkey_id}` → `204` |
+| REST | `DELETE /v1/me/passkeys/{id}` (`{id}` is the `passkey_id`) → `204`; was `DELETE /api/v1/me/passkeys/{passkey_id}` |
 | Scope | `account:sign_in:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `account_passkeys_remove` |
@@ -310,7 +310,7 @@ Rename one of your passkeys.
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/me/passkeys/{passkey_id}` → `200` |
+| REST | `PATCH /v1/me/passkeys/{id}` (`{id}` is the `passkey_id`) → `200`; was `PATCH /api/v1/me/passkeys/{passkey_id}` |
 | Scope | `account:sign_in:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `write` |
 | MCP tool | `account_passkeys_rename` |
@@ -327,7 +327,7 @@ Disconnect one linked sign-in identity (Google, GitHub, …) from your account �
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/me/sign-in-methods/{identity_id}` → `204` |
+| REST | `DELETE /v1/me/sign-in-methods/{id}` (`{id}` is the `identity_id`) → `204`; was `DELETE /api/v1/me/sign-in-methods/{identity_id}` |
 | Scope | `account:sign_in:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `account_sign_in_methods_disconnect` |
@@ -343,7 +343,7 @@ Disconnect a social account from yours — never the last way you can sign in.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/me/social/{provider}` → `204` |
+| REST | `DELETE /v1/me/social/{id}` (`{id}` is the `provider`) → `204`; was `DELETE /api/v1/me/social/{provider}` |
 | Scope | `account:sign_in:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `account_social_unlink` |
@@ -359,7 +359,7 @@ Remove one of your authenticator apps.
 
 | | |
 |---|---|
-| REST | `DELETE /api/v1/me/two-factor/apps/{factor_id}` → `204` |
+| REST | `DELETE /v1/me/totp-factors/{id}` (`{id}` is the `factor_id`) → `204`; was `DELETE /api/v1/me/two-factor/apps/{factor_id}` |
 | Scope | `account:sign_in:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `critical` |
 | MCP tool | `account_totp_remove` |
@@ -375,7 +375,7 @@ Rename one of your authenticator apps.
 
 | | |
 |---|---|
-| REST | `PATCH /api/v1/me/two-factor/apps/{factor_id}` → `204` |
+| REST | `PATCH /v1/me/totp-factors/{id}` (`{id}` is the `factor_id`) → `204`; was `PATCH /api/v1/me/two-factor/apps/{factor_id}` |
 | Scope | `account:sign_in:write` — on an access token you delegated; it acts on your own account only. No management key is accepted. |
 | Danger | `write` |
 | MCP tool | `account_totp_rename` |

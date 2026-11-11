@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Platform\Api\ApiHost;
 use App\Platform\Install\Contracts\PlatformInstaller;
 use Closure;
 use Illuminate\Http\Request;
@@ -73,8 +74,15 @@ final class PointAtFirstRun
             return false;
         }
 
+        if (ApiHost::serves($request)) {
+            return false;
+        }
+
         return ! $request->is(
             'api/*',
+            'v1/*',
+            'internal/*',
+            'webhooks/*',
             '.well-known/*',
             'up',
             // Protocol front channels. They arrive in a browser and they accept HTML, but

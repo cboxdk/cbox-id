@@ -16,6 +16,8 @@ use App\Platform\Actions\ActionVia;
 use App\Platform\Actions\Approvals\ApprovalRequired;
 use App\Platform\Actions\Principal\OperatorPrincipal;
 use App\Platform\Actions\Principal\Principal;
+use App\Platform\Api\ApiHost;
+use App\Platform\Api\ApiUrls;
 use App\Platform\DelegatedApiContext;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\OAuth\Exceptions\StepUpAuthenticationRequired;
@@ -80,7 +82,7 @@ final readonly class ActionController
                     // environment action runs with URLs pinned to the environment's own
                     // host (EnvironmentOrigin), and the root's token that must poll this
                     // is refused there. The poll belongs where the credential was taken.
-                    'poll_url' => $request->getSchemeAndHttpHost().'/api/v1'.$action->plane->mount().'/action-approvals/'.$held->approvalId,
+                    'poll_url' => self::pollUrl($request, $action->plane, $held->approvalId),
                 ],
             ], 202, ['Retry-After' => (string) $held->interval]);
         } catch (StepUpAuthenticationRequired $stepUp) {
@@ -126,6 +128,23 @@ final readonly class ActionController
             ActionPlane::Platform => ($person = app(DelegatedApiContext::class)->principal()) instanceof OperatorPrincipal ? $person : abort(401),
             ActionPlane::Account => app(DelegatedApiContext::class)->principal() ?? abort(401),
         };
+    }
+
+    /**
+     * Where the approval is polled: on the API host its `/v1` approval (the credential that
+     * asked is the one that polls), on an old path the old poll beside it.
+     */
+    public static function pollUrl(Request $request, ActionPlane $plane, string $approvalId): string
+    {
+        if (ApiHost::serves($request) && ! $request->is('api/*')) {
+            return ApiUrls::to(match ($plane) {
+                ActionPlane::Platform => '/admin/approvals/'.$approvalId,
+                ActionPlane::Account => '/me/approvals/'.$approvalId,
+                ActionPlane::Environment, ActionPlane::Organization => '/approvals/'.$approvalId,
+            });
+        }
+
+        return $request->getSchemeAndHttpHost().'/api/v1'.$plane->mount().'/action-approvals/'.$approvalId;
     }
 
     private function render(ActionResult $result, int $status): JsonResponse|Response

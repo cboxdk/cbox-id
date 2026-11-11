@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\DecisionController;
 use App\Http\Controllers\Api\Discovery\AuthorizationServerMetadataController as AppAuthorizationServerMetadataController;
 use App\Http\Controllers\Api\Discovery\OpenIdConfigurationController;
 use App\Http\Controllers\Api\UserInfoController;
+use App\Http\Middleware\HostAwareResolveEnvironment;
 use App\Http\WebRateLimiters;
 use App\Listeners\SuppressSandboxMail;
 use App\Mcp\McpCaller;
@@ -25,6 +26,7 @@ use App\Platform\CspNonce;
 use App\Platform\DelegatedApiContext;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\EnvironmentKeyAuditLog;
+use App\Platform\Environments\ReservedEnvironmentSlugs;
 use App\Platform\Erasure\AppErasureSteps;
 use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
@@ -40,6 +42,7 @@ use App\SignalsData\Bundled\IdManagedSources;
 use Cbox\Dns\Dns;
 use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
 use Cbox\Id\Api\Http\Controllers\DiscoveryController;
+use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Cbox\Id\Console\HealthChecks;
 use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Identity\Contracts\ErasureSteps;
@@ -88,6 +91,10 @@ class AppServiceProvider extends ServiceProvider
         // root is nobody's identity provider. Both inert everywhere but the root of a
         // multi-tenant deployment. See App\Platform\OAuth\RootMcpOAuth.
         $this->app->extend(AudienceResolver::class, fn (AudienceResolver $inner): AudienceResolver => new RootMcpAudiences($inner));
+
+        // On the API host the credential names the environment, not the host: every route
+        // that resolves its environment through the framework's middleware does so there too.
+        $this->app->bind(ResolveEnvironment::class, HostAwareResolveEnvironment::class);
         $this->app->bind(SelfRegisteredScopes::class, RootMcpSelfRegisteredScopes::class);
 
         // Domain-ownership verification reads the challenge TXT from the domain's
@@ -195,6 +202,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // No environment takes a slug the platform's own hosts use (`api`, `app`, …).
+        ReservedEnvironmentSlugs::guard();
+
         // Contributed to `cbox-id:doctor` rather than shipped as a second health command.
         // A deployment claiming a shape it cannot serve fails silently, so the only thing
         // that makes it visible is a command someone actually runs.

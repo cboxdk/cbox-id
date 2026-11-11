@@ -45,7 +45,7 @@ final class TrustHostsExceptHealth extends TrustHosts
      *
      * @var list<string>
      */
-    private const HEALTH_PATHS = ['up', 'health/ready'];
+    private const HEALTH_PATHS = ['up', 'health/ready', 'internal/v1/health/ready'];
 
     /**
      * Every host is acceptable on the health endpoints; the derived list applies to
