@@ -22,6 +22,7 @@ use Cbox\Id\Platform\Contracts\Projects;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\Support\RealmFlipFixture;
 
 /*
@@ -344,4 +345,92 @@ it('answers for a moved flip through the engine as well as the command', functio
         ->and($report->before['deployment']['default environments'])->toBe(1)
         ->and($report->after['root']['users'])->toBe(0)
         ->and($report->after['deployment']['projects owned by a realm organization'])->toBe(2);
+});
+
+it('carries the console\'s configuration to the surviving organization and person', function (): void {
+    $fixture = RealmFlipFixture::build();
+    $id = static fn (): string => Str::lower((string) Str::ulid());
+    $root = ['environment_id' => $fixture['root']];
+    $nativeRole = DB::table('roles')->where('client_id', $fixture['nativeClient'])->value('id');
+
+    // A second root member, known to the realm by address only, restricted to the sandbox.
+    $rootColleague = $id();
+    $rootColleagueMembership = $id();
+    RealmFlipFixture::insert('users', [...$root, 'id' => $rootColleague, 'email' => 'Colleague@cbox.test', 'status' => 'active']);
+    RealmFlipFixture::insert('memberships', [...$root, 'id' => $rootColleagueMembership, 'organization_id' => $fixture['rootOrganization'], 'user_id' => $rootColleague, 'role' => 'developer', 'status' => 'active', 'all_environments' => false, 'invited_by' => $fixture['rootOwner']]);
+    DB::table('membership_environments')->insert([
+        ['membership_id' => $rootColleagueMembership, 'environment_id' => $fixture['sandbox']],
+        ['membership_id' => $rootColleagueMembership, 'environment_id' => $fixture['realm']],
+    ]);
+
+    RealmFlipFixture::insert('role_assignments', [...$root, 'id' => $id(), 'organization_id' => $fixture['rootOrganization'], 'user_id' => $fixture['rootOwner'], 'role_id' => $nativeRole, 'source' => 'manual']);
+    RealmFlipFixture::insert('environment_api_keys', [...$root, 'id' => $rootKey = $id(), 'token_hash' => 'root-key', 'prefix' => 'cbid_env_a', 'created_by_type' => 'organization_member', 'created_by_id' => $fixture['rootOwner']]);
+    RealmFlipFixture::insert('environment_api_keys', ['environment_id' => $fixture['sandbox'], 'id' => $sandboxKey = $id(), 'token_hash' => 'sandbox-key', 'prefix' => 'cbid_env_b', 'created_by_type' => 'organization_member', 'created_by_id' => $fixture['rootOwner']]);
+
+    // Sign-in policy: the realm has its own baseline; the organization's mandate is the root's.
+    RealmFlipFixture::insert('auth_policies', ['environment_id' => $fixture['realm'], 'id' => $realmBaseline = $id(), 'organization_id' => null]);
+    RealmFlipFixture::insert('auth_policies', [...$root, 'id' => $rootBaseline = $id(), 'organization_id' => null]);
+    RealmFlipFixture::insert('auth_policies', [...$root, 'id' => $mandate = $id(), 'organization_id' => $fixture['rootOrganization']]);
+
+    RealmFlipFixture::insert('connections', [...$root, 'id' => $sso = $id(), 'organization_id' => $fixture['rootOrganization'], 'type' => 'saml', 'name' => 'Team SSO', 'status' => 'active']);
+    RealmFlipFixture::insert('connections', [...$root, 'id' => $rootGoogle = $id(), 'organization_id' => null, 'type' => 'oidc', 'provider' => 'google', 'name' => 'Google', 'status' => 'active']);
+    RealmFlipFixture::insert('connections', ['environment_id' => $fixture['realm'], 'id' => $id(), 'organization_id' => null, 'type' => 'oidc', 'provider' => 'google', 'name' => 'Google', 'status' => 'active']);
+    RealmFlipFixture::insert('connections', [...$root, 'id' => $rootGithub = $id(), 'organization_id' => null, 'type' => 'oauth2', 'provider' => 'github', 'name' => 'GitHub', 'status' => 'active']);
+
+    RealmFlipFixture::insert('verified_domains', [...$root, 'id' => $domain = $id(), 'organization_id' => $fixture['rootOrganization'], 'domain' => 'cbox.test']);
+    RealmFlipFixture::insert('webhook_endpoints', [...$root, 'id' => $webhook = $id(), 'organization_id' => $fixture['rootOrganization'], 'url' => 'https://hooks.cbox.test/id']);
+    RealmFlipFixture::insert('vault_secrets', [...$root, 'id' => $secret = $id(), 'name' => 'org', 'owner_type' => 'organization', 'owner_id' => $fixture['rootOrganization']]);
+    RealmFlipFixture::insert('vault_secrets', [...$root, 'id' => $ownSecret = $id(), 'name' => 'person', 'owner_type' => 'user', 'owner_id' => $fixture['rootOwner']]);
+
+    RealmFlipFixture::insert('feature_flags', [...$root, 'id' => $flag = $id(), 'key' => 'beta']);
+    RealmFlipFixture::insert('feature_flag_targets', [...$root, 'id' => $target = $id(), 'feature_flag_id' => $flag, 'target_type' => 'organization', 'target_id' => $fixture['rootOrganization']]);
+
+    // Rows of other environments that name the console's people and organizations.
+    RealmFlipFixture::insert('app_catalog_entries', ['environment_id' => $fixture['realm'], 'id' => $tile = $id(), 'key' => 'work', 'organization_ids' => json_encode([$fixture['rootOrganization'], $fixture['emptyOrganization']]), 'user_ids' => json_encode([$fixture['rootOwner']])]);
+    RealmFlipFixture::insert('support_sessions', ['environment_id' => $fixture['sandbox'], 'id' => $support = $id(), 'actor_id' => $fixture['rootOwner'], 'actor_kind' => 'environment_admin', 'target_user_id' => 'someone', 'organization_id' => 'theirs', 'expires_at' => now()->addHour()]);
+    RealmFlipFixture::insert('product_billing_usage_outbox', ['event_id' => $usage = $id(), 'workspace_id' => $fixture['rootOrganization'], 'meter' => 'mau', 'occurred_at' => now(), 'value' => 1]);
+
+    [$code, $output] = realmFlip('--execute', '--confirm='.$fixture['root']);
+    expect($code)->toBe(0, $output);
+    expect(realmFlip('--verify')[0])->toBe(0);
+
+    $row = static fn (string $table, string $key, string $column = 'id'): ?object => DB::table($table)->where($column, $key)->first();
+    $realmColleagueMembership = DB::table('memberships')->where('organization_id', $fixture['realmOrganization'])->where('user_id', $fixture['colleague'])->first();
+
+    // The colleague: matched by address whatever its case, keeps the higher role, and
+    // takes the root's environment grants, minus the realm itself.
+    expect($row('users', $rootColleague))->toBeNull()
+        ->and($realmColleagueMembership->role)->toBe('admin')
+        ->and((bool) $realmColleagueMembership->all_environments)->toBeFalse()
+        ->and(DB::table('membership_environments')->where('membership_id', $realmColleagueMembership->id)->pluck('environment_id')->all())->toBe([$fixture['sandbox']])
+        ->and(DB::table('membership_environments')->where('membership_id', $rootColleagueMembership)->count())->toBe(0);
+
+    expect(DB::table('role_assignments')->where('role_id', $nativeRole)->first())
+        ->environment_id->toBe($fixture['realm'])
+        ->organization_id->toBe($fixture['realmOrganization'])
+        ->user_id->toBe($fixture['realmOwner']);
+
+    expect($row('environment_api_keys', $rootKey))->environment_id->toBe($fixture['realm'])->created_by_id->toBe($fixture['realmOwner'])
+        ->and($row('environment_api_keys', $sandboxKey))->environment_id->toBe($fixture['sandbox'])->created_by_id->toBe($fixture['realmOwner']);
+
+    expect($row('auth_policies', $realmBaseline))->not->toBeNull()
+        ->and($row('auth_policies', $rootBaseline))->toBeNull()
+        ->and($row('auth_policies', $mandate))->environment_id->toBe($fixture['realm'])->organization_id->toBe($fixture['realmOrganization']);
+
+    expect($row('connections', $sso))->environment_id->toBe($fixture['realm'])->organization_id->toBe($fixture['realmOrganization'])
+        ->and($row('connections', $rootGoogle))->toBeNull()
+        ->and($row('connections', $rootGithub))->environment_id->toBe($fixture['realm'])
+        ->and(DB::table('connections')->where('environment_id', $fixture['realm'])->where('provider', 'google')->count())->toBe(1);
+
+    expect($row('verified_domains', $domain))->organization_id->toBe($fixture['realmOrganization'])
+        ->and($row('webhook_endpoints', $webhook))->environment_id->toBe($fixture['realm'])->organization_id->toBe($fixture['realmOrganization'])
+        ->and($row('vault_secrets', $secret))->owner_id->toBe($fixture['realmOrganization'])
+        ->and($row('vault_secrets', $ownSecret))->owner_id->toBe($fixture['realmOwner'])
+        ->and($row('feature_flags', $flag))->environment_id->toBe($fixture['realm'])
+        ->and($row('feature_flag_targets', $target))->environment_id->toBe($fixture['realm'])->target_id->toBe($fixture['realmOrganization']);
+
+    expect(json_decode($row('app_catalog_entries', $tile)->organization_ids, true))->toBe([$fixture['realmOrganization'], $fixture['emptyOrganization']])
+        ->and(json_decode($row('app_catalog_entries', $tile)->user_ids, true))->toBe([$fixture['realmOwner']])
+        ->and($row('support_sessions', $support))->actor_id->toBe($fixture['realmOwner'])->ended_at->not->toBeNull()
+        ->and($row('product_billing_usage_outbox', $usage, 'event_id'))->workspace_id->toBe($fixture['realmOrganization']);
 });
