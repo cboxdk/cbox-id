@@ -44,6 +44,7 @@ return [
         'client_document' => 'No se pudo leer la descripción de esta aplicación. Se publicó en la dirección que la aplicación indicó como su ID, y ese documento está ausente, inaccesible o inválido.',
         'redirect_mismatch' => 'El URI de redirección no coincide con ninguno de los registrados para esta aplicación.',
         'stale' => 'Esta solicitud de autorización ya no se puede completar. Empieza de nuevo.',
+        'start_over' => 'Empezar de nuevo en :app',
         'account_attention' => 'Tu cuenta necesita atención antes de continuar. Vuelve a iniciar sesión.',
         'step_up' => 'Esta aplicación requiere un inicio de sesión más reciente o una autenticación más segura. Empieza de nuevo.',
         'no_organization' => 'Este inicio de sesión conecta un agente a una organización en Cbox ID, pero tu cuenta no pertenece al equipo de ninguna organización. Pide a un propietario que te invite o conecta el agente en la dirección propia de tu entorno.',

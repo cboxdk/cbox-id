@@ -44,6 +44,7 @@ return [
         'client_document' => 'Az alkalmazás leírását nem sikerült beolvasni. A leírás az alkalmazás által azonosítóként megadott címen található, de a dokumentum hiányzik, nem érhető el vagy érvénytelen.',
         'redirect_mismatch' => 'Az átirányítási URI nem egyezik az alkalmazáshoz regisztrált címek egyikével sem.',
         'stale' => 'Ez az engedélyezési kérelem már nem teljesíthető. Kezdje újra.',
+        'start_over' => 'Újrakezdés itt: :app',
         'account_attention' => 'A folytatáshoz a fiókja további figyelmet igényel. Jelentkezzen be újra.',
         'step_up' => 'Ez az alkalmazás frissebb bejelentkezést vagy erősebb hitelesítést igényel. Kezdje újra.',
         'no_organization' => 'Ez a bejelentkezés egy ügynököt kapcsol a Cbox ID egyik szervezetéhez, de a fiókja nem tagja egyetlen szervezet csapatának sem. Kérjen meghívást egy szervezet tulajdonosától, vagy csatlakoztassa az ügynököt a saját környezete címén.',

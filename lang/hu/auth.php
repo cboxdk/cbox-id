@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Bejelentkezés',
         'purpose' => [
-            'default' => 'Üdv újra! Nyisd meg a szervezeted identitáskezelési konzolját.',
+            'default' => 'Üdv újra! Jelentkezz be a folytatáshoz.',
             'device' => 'Jelentkezz be a várakozó eszköz jóváhagyásához.',
+            'app' => 'Jelentkezz be a folytatáshoz: :app.',
         ],
         'magic' => [
             'sent_to' => 'Egyszer használható bejelentkezési hivatkozást küldtünk a következő címre: :email.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Nem sikerült bejelentkezni a hozzáférési kulccsal.',
         'new_organization' => 'Új szervezet?',
         'create_one' => 'Létrehozás',
+        'no_account' => 'Még nincs fiókod?',
+        'create_account' => 'Fiók létrehozása',
         'invalid_credentials' => 'A megadott bejelentkezési adatok helytelenek.',
         'passkey_errors' => [
             'challenge_expired' => 'A bejelentkezési kérés lejárt. Próbáld újra.',

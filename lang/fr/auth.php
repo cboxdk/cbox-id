@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Connexion',
         'purpose' => [
-            'default' => 'Bon retour parmi nous. Accédez à la console d’identité de votre organisation.',
+            'default' => 'Bon retour parmi nous. Connectez-vous pour continuer.',
             'device' => 'Connectez-vous pour approuver l’appareil en attente.',
+            'app' => 'Connectez-vous pour continuer vers :app.',
         ],
         'magic' => [
             'sent_to' => 'Nous avons envoyé un lien de connexion à usage unique à :email.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Échec de la connexion avec la clé d’accès.',
         'new_organization' => 'Nouvelle organisation ?',
         'create_one' => 'Créez-en une',
+        'no_account' => 'Pas encore de compte ?',
+        'create_account' => 'Créer un compte',
         'invalid_credentials' => 'L’adresse e-mail ou le mot de passe est incorrect.',
         'passkey_errors' => [
             'challenge_expired' => 'Le défi de connexion a expiré. Réessayez.',

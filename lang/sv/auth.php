@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Logga in',
         'purpose' => [
-            'default' => 'Välkommen tillbaka. Gå till din organisations identitetskonsol.',
+            'default' => 'Välkommen tillbaka. Logga in för att fortsätta.',
             'device' => 'Logga in för att godkänna enheten som väntar.',
+            'app' => 'Logga in för att fortsätta till :app.',
         ],
         'magic' => [
             'sent_to' => 'Vi har skickat en inloggningslänk för engångsbruk till :email.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Inloggningen med lösennyckel misslyckades.',
         'new_organization' => 'Ny organisation?',
         'create_one' => 'Skapa en',
+        'no_account' => 'Har du inget konto än?',
+        'create_account' => 'Skapa ett konto',
         'invalid_credentials' => 'E-postadressen eller lösenordet är felaktigt.',
         'passkey_errors' => [
             'challenge_expired' => 'Inloggningsförfrågan har gått ut. Försök igen.',

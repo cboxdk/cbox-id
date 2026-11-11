@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Giriş yap',
         'purpose' => [
-            'default' => 'Tekrar hoş geldiniz. Kuruluşunuzun kimlik yönetimi konsolunu açın.',
+            'default' => 'Tekrar hoş geldiniz. Devam etmek için giriş yapın.',
             'device' => 'Bekleyen cihazı onaylamak için giriş yapın.',
+            'app' => ':app uygulamasına devam etmek için giriş yapın.',
         ],
         'magic' => [
             'sent_to' => ':email adresine tek kullanımlık bir giriş bağlantısı gönderdik.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Geçiş anahtarıyla giriş yapılamadı.',
         'new_organization' => 'Yeni bir kuruluş mu oluşturacaksınız?',
         'create_one' => 'Oluştur',
+        'no_account' => 'Henüz hesabınız yok mu?',
+        'create_account' => 'Hesap oluşturun',
         'invalid_credentials' => 'E-posta adresi veya şifre yanlış.',
         'passkey_errors' => [
             'challenge_expired' => 'Giriş doğrulama isteğinin süresi doldu. Tekrar deneyin.',

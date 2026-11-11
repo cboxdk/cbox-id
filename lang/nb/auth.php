@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Logg inn',
         'purpose' => [
-            'default' => 'Velkommen tilbake. Få tilgang til identitetskonsollen for organisasjonen din.',
+            'default' => 'Velkommen tilbake. Logg inn for å fortsette.',
             'device' => 'Logg inn for å godkjenne enheten som venter.',
+            'app' => 'Logg inn for å fortsette til :app.',
         ],
         'magic' => [
             'sent_to' => 'Vi har sendt en innloggingslenke til engangsbruk til :email.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Innlogging med passnøkkel mislyktes.',
         'new_organization' => 'Ny organisasjon?',
         'create_one' => 'Opprett en',
+        'no_account' => 'Har du ikke en konto ennå?',
+        'create_account' => 'Opprett en konto',
         'invalid_credentials' => 'E-postadressen eller passordet er feil.',
         'passkey_errors' => [
             'challenge_expired' => 'Innloggingsforespørselen har utløpt. Prøv igjen.',

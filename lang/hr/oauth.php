@@ -44,6 +44,7 @@ return [
         'client_document' => 'Opis ove aplikacije nije moguće pročitati. Aplikacija ga objavljuje na adresi koju koristi kao svoj identifikator, ali dokument nedostaje, nije dostupan ili nije valjan.',
         'redirect_mismatch' => 'URL za preusmjeravanje ne odgovara nijednom URL-u registriranom za ovu aplikaciju.',
         'stale' => 'Ovaj zahtjev za odobrenje pristupa više nije moguće dovršiti. Započnite ponovno.',
+        'start_over' => 'Počnite ispočetka u aplikaciji :app',
         'account_attention' => 'Vaš račun zahtijeva pažnju prije nego što možete nastaviti. Molimo, ponovno se prijavite.',
         'step_up' => 'Ova aplikacija zahtijeva noviju prijavu ili jaču provjeru identiteta. Pokušajte ponovno.',
         'no_organization' => 'Ova prijava povezuje agenta s organizacijom u sustavu Cbox ID, ali vaš račun nije član tima nijedne organizacije. Zatražite poziv od vlasnika organizacije ili povežite agenta putem vlastite adrese svojeg okruženja.',

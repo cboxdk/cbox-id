@@ -10,6 +10,7 @@ use App\Http\Requests\OAuth\CreateOrganizationRequest;
 use App\Platform\CurrentUser;
 use App\Platform\FrontendApi\LoginTickets;
 use App\Platform\FrontendApi\SignInWithTicket;
+use App\Platform\OAuth\AppSignIns;
 use App\Platform\OAuth\ConsentScopes;
 use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
 use App\Platform\OAuth\Enums\AuthorizationPrompt;
@@ -316,7 +317,17 @@ final readonly class OAuthConsentController extends PageController
             organizationId: is_string($organizationParam) ? $organizationParam : null,
             organizationHint: is_string($hintParam) && $hintParam !== '' ? $hintParam : null,
             prompts: $prompts,
+            loginHint: self::emailHint($from('login_hint')),
         );
+
+        /*
+         * WHICH APP THIS BROWSER IS ON ITS WAY TO, for the hosted pages a request may pass
+         * through and for the page that finds a step gone. Not for a silent request, which
+         * shows nobody anything and must not replace what an interactive one noted.
+         */
+        if (! $authorization->asks(AuthorizationPrompt::None)) {
+            app(AppSignIns::class)->remember($request, $authorization, null);
+        }
 
         /*
          * A SUPPORT SESSION this browser holds for this app. An environment administrator
@@ -589,7 +600,7 @@ final readonly class OAuthConsentController extends PageController
         $found = $pending->find($request, $authorization);
 
         if ($found === null || ! app(CurrentUser::class)->check()) {
-            return $this->failure(__('oauth.failure.stale'));
+            return $this->stale($request);
         }
 
         return $this->consentScreen($authorization, $found);
@@ -614,7 +625,7 @@ final readonly class OAuthConsentController extends PageController
         $me = app(CurrentUser::class);
 
         if ($found === null || ! $me->check()) {
-            return $this->failure(__('oauth.failure.stale'));
+            return $this->stale($request);
         }
 
         $choices = $organizations->choicesFor($me->id());
@@ -661,7 +672,7 @@ final readonly class OAuthConsentController extends PageController
         $me = app(CurrentUser::class);
 
         if ($found === null || ! $me->check()) {
-            return $this->failure(__('oauth.failure.stale'));
+            return $this->stale($request);
         }
 
         // The posted id is a CLAIM. Only an organization this person may use right now is
@@ -708,7 +719,7 @@ final readonly class OAuthConsentController extends PageController
         $me = app(CurrentUser::class);
 
         if ($found === null || ! $me->check()) {
-            return $this->failure(__('oauth.failure.stale'));
+            return $this->stale($request);
         }
 
         if (! $organizations->creationOffered()) {
@@ -740,7 +751,7 @@ final readonly class OAuthConsentController extends PageController
         $me = app(CurrentUser::class);
 
         if ($found === null || ! $me->check()) {
-            return $this->failure(__('oauth.failure.stale'));
+            return $this->stale($request);
         }
 
         try {
@@ -770,7 +781,7 @@ final readonly class OAuthConsentController extends PageController
         $authorizing = $this->authorizationClient($bound->clientId);
 
         if ($authorizing === null) {
-            return $this->failure(__('oauth.failure.stale'));
+            return $this->stale($request);
         }
 
         return $this->proceed($request, $bound, $authorizing->client, $clients, $codes, $pending, silent: false, redirectToScreen: true);
@@ -972,7 +983,7 @@ final readonly class OAuthConsentController extends PageController
         $found = $pending->find($request, $authorization);
 
         if ($found === null) {
-            return $this->failure(__('oauth.failure.stale'));
+            return $this->stale($request);
         }
 
         // Spent either way: a second click on a stale tab must not mint a second code from
@@ -987,7 +998,7 @@ final readonly class OAuthConsentController extends PageController
         $found = $pending->find($request, $authorization);
 
         if ($found === null) {
-            return $this->failure(__('oauth.failure.stale'));
+            return $this->stale($request);
         }
 
         $pending->forget($request, $authorization);
@@ -1038,7 +1049,7 @@ final readonly class OAuthConsentController extends PageController
         $me = app(CurrentUser::class);
 
         if (! $me->check()) {
-            return $this->failure(__('oauth.failure.stale'));
+            return $this->stale($request);
         }
 
         /*
@@ -1058,7 +1069,7 @@ final readonly class OAuthConsentController extends PageController
             || ! $this->redirectAllowed($authorizing, $authorization->redirectUri)
             || $authorization->codeChallenge === ''
             || $authorization->codeChallengeMethod !== 'S256') {
-            return $this->failure(__('oauth.failure.stale'));
+            return $this->stale($request);
         }
 
         // …and at the platform root, still somebody who runs a workspace: a membership ended
@@ -1246,7 +1257,12 @@ final readonly class OAuthConsentController extends PageController
 
     private function interrupt(Request $request, PendingAuthorization $authorization, string $to): RedirectResponse
     {
-        $request->session()->put('url.intended', $this->resumeUrl($authorization));
+        $resume = $this->resumeUrl($authorization);
+
+        $request->session()->put('url.intended', $resume);
+
+        // Which app this is for, so the pages on the way can say so and find it again.
+        app(AppSignIns::class)->remember($request, $authorization, $resume);
 
         return redirect()->to($to);
     }
@@ -1309,9 +1325,26 @@ final readonly class OAuthConsentController extends PageController
              */
             'organization' => $authorization->organizationId,
             'organization_hint' => $authorization->organizationHint,
+            'login_hint' => $authorization->loginHint,
             'prompt' => implode(' ', array_map(static fn (AuthorizationPrompt $prompt): string => $prompt->value, $authorization->prompts)),
             'reauthed' => '1',
         ], static fn (?string $value): bool => $value !== null && $value !== ''));
+    }
+
+    /**
+     * OIDC `login_hint`, kept only when it is an email address: that is what the hosted
+     * sign-in asks for first, so that is what it can fill in. The field is filled and
+     * nothing is submitted; the person still presses Continue, and may change it.
+     */
+    private static function emailHint(mixed $hint): ?string
+    {
+        if (! is_string($hint)) {
+            return null;
+        }
+
+        $hint = trim($hint);
+
+        return $hint !== '' && strlen($hint) <= 254 && filter_var($hint, FILTER_VALIDATE_EMAIL) !== false ? $hint : null;
     }
 
     /**
@@ -1523,6 +1556,23 @@ final readonly class OAuthConsentController extends PageController
     private function failure(string $message): Response
     {
         return $this->page('oauth/consent', __('oauth.failure.title'), ['error' => $message]);
+    }
+
+    /**
+     * A STEP THAT IS NO LONGER WAITING: a second tab already answered it, the session
+     * moved on, or the page sat open too long. Nothing can be sent to the app from here
+     * (the request that carried its `state` is gone), so the page offers the one thing
+     * that works: start over at the app, which begins a new request. It used to offer
+     * only the way back to the person's account, which is not where they were going.
+     */
+    private function stale(Request $request): Response
+    {
+        $app = app(AppSignIns::class)->last($request);
+
+        return $this->page('oauth/consent', __('oauth.failure.title'), [
+            'error' => __('oauth.failure.stale'),
+            'startOver' => $app?->homeUrl === null ? null : ['name' => $app->clientName, 'url' => $app->homeUrl],
+        ]);
     }
 
     /**

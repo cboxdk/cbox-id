@@ -44,6 +44,7 @@ return [
         'client_document' => 'Die Beschreibung dieser Anwendung konnte nicht gelesen werden. Sie liegt unter der Adresse, die die Anwendung als ihre ID angegeben hat, und dieses Dokument fehlt, ist nicht erreichbar oder ungültig.',
         'redirect_mismatch' => 'Die Weiterleitungs-URI stimmt mit keiner der für diese Anwendung registrierten URIs überein.',
         'stale' => 'Diese Autorisierungsanfrage kann nicht mehr abgeschlossen werden. Bitte beginnen Sie erneut.',
+        'start_over' => 'In :app neu beginnen',
         'account_attention' => 'Ihr Konto erfordert Ihre Aufmerksamkeit, bevor Sie fortfahren können. Bitte melden Sie sich erneut an.',
         'step_up' => 'Diese Anwendung erfordert eine aktuellere oder stärkere Anmeldung. Bitte beginnen Sie erneut.',
         'no_organization' => 'Diese Anmeldung verbindet einen Agenten mit einer Organisation auf Cbox ID. Ihr Konto gehört zum Team keiner Organisation. Bitten Sie den Inhaber eines Organisation, Sie einzuladen, oder verbinden Sie den Agenten stattdessen über die eigene Adresse Ihrer Umgebung.',

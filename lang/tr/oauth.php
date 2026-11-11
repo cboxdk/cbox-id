@@ -44,6 +44,7 @@ return [
         'client_document' => 'Bu uygulamanın açıklaması okunamıyor. Uygulamanın kimlik adresinde yayımlanan belge eksik, erişilemiyor veya geçersiz.',
         'redirect_mismatch' => 'Yönlendirme URI’si bu uygulama için kayıtlı adreslerden hiçbiriyle eşleşmiyor.',
         'stale' => 'Bu yetkilendirme talebi artık tamamlanamıyor. Lütfen yeniden başlayın.',
+        'start_over' => ':app uygulamasında yeniden başlayın',
         'account_attention' => 'Devam etmeden önce hesabınızla ilgili bir işlemi tamamlamanız gerekiyor. Tekrar giriş yapın.',
         'step_up' => 'Bu uygulama daha yakın zamanda yapılmış veya daha güçlü bir kimlik doğrulama gerektiriyor. Tekrar deneyin.',
         'no_organization' => 'Bu oturum açma işlemi bir ajanı Cbox ID üzerindeki bir kuruluşa bağlar, ancak hesabınız hiçbir kuruluşun ekibine üye değil. Bir kuruluş sahibinden davet isteyin veya ajanı kendi ortamınızın adresinden bağlayın.',

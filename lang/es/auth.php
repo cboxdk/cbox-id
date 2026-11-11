@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Iniciar sesión',
         'purpose' => [
-            'default' => 'Te damos la bienvenida de nuevo. Accede a la consola de identidad de tu organización.',
+            'default' => 'Te damos la bienvenida de nuevo. Inicia sesión para continuar.',
             'device' => 'Inicia sesión para aprobar el dispositivo que está esperando.',
+            'app' => 'Inicia sesión para continuar a :app.',
         ],
         'magic' => [
             'sent_to' => 'Hemos enviado un enlace de inicio de sesión de un solo uso a :email.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Falló el inicio de sesión con la clave de acceso.',
         'new_organization' => '¿Nueva organización?',
         'create_one' => 'Crear',
+        'no_account' => '¿Aún no tienes una cuenta?',
+        'create_account' => 'Crea una cuenta',
         'invalid_credentials' => 'La dirección de correo electrónico o la contraseña es incorrecta.',
         'passkey_errors' => [
             'challenge_expired' => 'La solicitud de autenticación ha caducado. Inténtalo de nuevo.',

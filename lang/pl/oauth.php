@@ -44,6 +44,7 @@ return [
         'client_document' => 'Opis tej aplikacji nie mógł zostać odczytany. Jest opublikowany pod adresem, który aplikacja podała jako swój ID, a ten dokument jest nieobecny, niedostępny lub nieprawidłowy.',
         'redirect_mismatch' => 'Adres przekierowania nie odpowiada żadnemu zarejestrowanemu dla tej aplikacji.',
         'stale' => 'Ta prośba o autoryzację nie może być zakończona. Rozpocznij ponownie.',
+        'start_over' => 'Zacznij od nowa w aplikacji :app',
         'account_attention' => 'Twoje konto wymaga uwagi przed kontynuacją. Zaloguj się ponownie.',
         'step_up' => 'Ta aplikacja wymaga nowszego lub silniejszego logowania. Prosimy o ponowne rozpoczęcie.',
         'no_organization' => 'To logowanie łączy agenta z obszarem roboczym w Cbox ID, ale Twoje konto nie należy do zespołu żadnego obszaru roboczego. Poproś właściciela obszaru roboczego o zaproszenie lub połącz agenta pod adresem własnego środowiska.',

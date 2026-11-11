@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Anmelden',
         'purpose' => [
-            'default' => 'Willkommen zurück. Greifen Sie auf die Identitätskonsole Ihrer Organisation zu.',
+            'default' => 'Willkommen zurück. Melden Sie sich an, um fortzufahren.',
             'device' => 'Melden Sie sich an, um das wartende Gerät zu genehmigen.',
+            'app' => 'Melden Sie sich an, um mit :app fortzufahren.',
         ],
         'magic' => [
             'sent_to' => 'Wir haben einen Anmeldelink zur einmaligen Verwendung an :email gesendet.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Die Anmeldung mit Passkey ist fehlgeschlagen.',
         'new_organization' => 'Neue Organisation?',
         'create_one' => 'Jetzt erstellen',
+        'no_account' => 'Noch kein Konto?',
+        'create_account' => 'Konto erstellen',
         'invalid_credentials' => 'Die E-Mail-Adresse oder das Passwort ist falsch.',
         'passkey_errors' => [
             'challenge_expired' => 'Die Anmeldeanfrage ist abgelaufen. Versuchen Sie es erneut.',

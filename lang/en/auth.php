@@ -42,8 +42,9 @@ return [
     'login' => [
         'title' => 'Sign in',
         'purpose' => [
-            'default' => "Welcome back. Access your organization's identity console.",
+            'default' => 'Welcome back. Sign in to continue.',
             'device' => 'Sign in to approve the device that is waiting.',
+            'app' => 'Sign in to continue to :app.',
         ],
         'magic' => [
             'sent_to' => 'We sent a one-time sign-in link to :email.',
@@ -90,6 +91,8 @@ return [
         'passkey_failed' => 'Passkey sign-in failed.',
         'new_organization' => 'New organization?',
         'create_one' => 'Create one',
+        'no_account' => 'No account yet?',
+        'create_account' => 'Create an account',
         'invalid_credentials' => 'The email address or password is incorrect.',
         // Answered by the passkey sign-in endpoint and shown under its button.
         'passkey_errors' => [

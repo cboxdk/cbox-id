@@ -78,6 +78,11 @@ final readonly class PendingAuthorization
          * consent survive the pages in between.
          */
         public array $prompts = [],
+        /**
+         * `login_hint`, when the app sent an email address: the hosted sign-in fills its
+         * identifier field with it and submits nothing. Any other kind of hint is dropped.
+         */
+        public ?string $loginHint = null,
     ) {}
 
     public function asks(AuthorizationPrompt $prompt): bool
@@ -122,6 +127,7 @@ final readonly class PendingAuthorization
             organizationId: $organizationId,
             organizationHint: $this->organizationHint,
             prompts: $this->prompts,
+            loginHint: $this->loginHint,
         );
     }
 
@@ -162,6 +168,7 @@ final readonly class PendingAuthorization
                 is_array($data['prompts'] ?? null) ? $data['prompts'] : [],
                 static fn (mixed $prompt): bool => is_string($prompt),
             ))),
+            loginHint: is_string($data['loginHint'] ?? null) ? $data['loginHint'] : null,
         );
     }
 
@@ -214,6 +221,7 @@ final readonly class PendingAuthorization
             'organizationId' => $this->organizationId,
             'organizationHint' => $this->organizationHint,
             'prompts' => array_map(static fn (AuthorizationPrompt $prompt): string => $prompt->value, $this->prompts),
+            'loginHint' => $this->loginHint,
         ];
     }
 }

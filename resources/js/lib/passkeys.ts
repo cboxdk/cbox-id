@@ -250,14 +250,44 @@ export function defaultPasskeyName(userAgent: string = navigator.userAgent): str
 }
 
 /**
+ * Whether this browser can offer passkeys in a field's autofill (WebAuthn conditional UI).
+ *
+ * Asked of the browser, never guessed from its name: where the answer is no, or the
+ * question does not exist, nothing is armed and the "Sign in with a passkey" button is
+ * the way, as before.
+ */
+export async function passkeyAutofillSupported(): Promise<boolean> {
+    if (!passkeysSupported()) {
+        return false;
+    }
+
+    try {
+        return (await window.PublicKeyCredential.isConditionalMediationAvailable?.()) === true;
+    } catch {
+        return false;
+    }
+}
+
+/**
  * Sign in with a passkey.
  *
  * Returns where to go next, decided by the server: a passkey can land on a full session,
  * or on a second factor, or on an SSO mandate that refuses it. The browser is told, not
  * asked.
+ *
+ * With `autofill`, nothing is shown: the request waits behind the field that carries
+ * `autocomplete="… webauthn"` and resolves when the person picks a passkey from its
+ * autofill. `signal` ends that wait, which the button's own ceremony must do first: a
+ * browser runs one WebAuthn request at a time.
  */
-export async function signInWithPasskey(base = '/passkeys'): Promise<string | null> {
-    const options = (await post(`${base}/login/options`)) as unknown as RequestOptions;
+export async function signInWithPasskey(
+    base = '/passkeys',
+    { autofill = false, signal }: { autofill?: boolean; signal?: AbortSignal } = {},
+): Promise<string | null> {
+    const options = (await post(
+        `${base}/login/options`,
+        autofill ? { autofill: true } : undefined,
+    )) as unknown as RequestOptions;
 
     const publicKey: PublicKeyCredentialRequestOptions = {
         ...options,
@@ -272,6 +302,8 @@ export async function signInWithPasskey(base = '/passkeys'): Promise<string | nu
 
     const credential = (await navigator.credentials.get({
         publicKey,
+        ...(autofill ? { mediation: 'conditional' as const } : {}),
+        ...(signal === undefined ? {} : { signal }),
     })) as PublicKeyCredential | null;
 
     if (credential === null) {
@@ -353,6 +385,9 @@ export async function confirmWithPasskey(
 export function isCancellation(error: unknown): boolean {
     return (
         error instanceof StepUpDeclined ||
-        (error instanceof DOMException && error.name === 'NotAllowedError')
+        // AbortError: this page ended the wait itself (the autofill request, when the
+        // button's ceremony starts or the page goes away).
+        (error instanceof DOMException &&
+            (error.name === 'NotAllowedError' || error.name === 'AbortError'))
     );
 }
