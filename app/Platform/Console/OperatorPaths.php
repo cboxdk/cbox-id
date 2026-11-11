@@ -18,7 +18,7 @@ use App\Http\Controllers\Console\PlatformAdminMovedController;
 final class OperatorPaths
 {
     /** The first path segment of every operator page under `/admin`. */
-    public const SEGMENTS = ['organizations', 'environments', 'operators', 'usage', 'queues', 'search', 'interface-language'];
+    public const SEGMENTS = ['organizations', 'environments', 'operators', 'usage', 'queues', 'search', 'interface-language', 'confirm'];
 
     /** Whether $path (`/admin/…`) is platform admin rather than an old environment-console address. */
     public static function owns(string $path): bool

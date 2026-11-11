@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use App\Platform\CurrentUser;
 use App\Platform\IntendedUrl;
+use App\Platform\OperatorMfa;
 use App\Platform\OrganizationAccess;
 use App\Platform\PlatformAuth;
 use App\Platform\SessionMetadata;
@@ -217,7 +218,9 @@ final class Authenticate
             && $requiresEnrolment
         ) {
             return redirect()->route('account')
-                ->with('status', 'Your organization requires two-factor authentication. Set it up to continue.');
+                ->with('status', $this->mfaMandate instanceof OperatorMfa && $this->mfaMandate->requiresPasskey($subject->id)
+                    ? 'Platform operators sign in with a passkey or security key. Add one under Security to continue.'
+                    : 'Your organization requires two-factor authentication. Set it up to continue.');
         }
 
         app(IdentityCapture::class)->activity($session, $request);

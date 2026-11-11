@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
+use App\Platform\Operators\OperatorGate;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Closure;
@@ -94,6 +95,16 @@ final class ResolveEnvironmentFromPath
 
         if (! $this->auth->canRead()) {
             return $this->refuse($request);
+        }
+
+        // The platform root's own console is the operator plane too: its administrators are
+        // the operators, and what it configures is how everybody signs in.
+        if ($path === EnvironmentConsolePath::ROOT && $this->auth->rootOperator() !== null) {
+            $asked = app(OperatorGate::class)->admit($request);
+
+            if ($asked !== null) {
+                return $asked;
+            }
         }
 
         return $next($request);

@@ -365,6 +365,36 @@ return [
     ],
 
     /*
+     * The operator plane (`/admin` and the platform root environment's own console).
+     *
+     * `phishing_resistant` (off by default) makes the plane demand a passkey or security
+     * key with user verification: an operator must hold one, the plane opens only after a
+     * passkey sign-in or a passkey confirmation, and a time-based code no longer counts.
+     * See docs/operations/operator-plane.md before turning it on: every operator needs a
+     * passkey first, and `php artisan cbox-id:operator:passkey-link` is the way back in.
+     *
+     * `session` caps how long a passkey proof opens the plane, whatever the deployment's
+     * session lifetime is: `absolute_minutes` since the passkey was used, `idle_minutes`
+     * since the last request on the plane. Past either, the operator confirms with the
+     * passkey again; the session itself is not ended.
+     *
+     * `reconfirm_seconds` is how fresh the passkey proof must be for a destructive or
+     * critical action on the plane, for anything behind a step-up there, and for starting
+     * an impersonation.
+     *
+     * `enrolment_link_minutes` is the default lifetime of a break-glass enrolment link.
+     */
+    'operators' => [
+        'phishing_resistant' => (bool) env('CBOX_ID_OPERATORS_PHISHING_RESISTANT', false),
+        'session' => [
+            'absolute_minutes' => (int) env('CBOX_ID_OPERATORS_SESSION_ABSOLUTE_MINUTES', 60),
+            'idle_minutes' => (int) env('CBOX_ID_OPERATORS_SESSION_IDLE_MINUTES', 15),
+        ],
+        'reconfirm_seconds' => (int) env('CBOX_ID_OPERATORS_RECONFIRM_SECONDS', 300),
+        'enrolment_link_minutes' => (int) env('CBOX_ID_OPERATORS_ENROLMENT_LINK_MINUTES', 15),
+    ],
+
+    /*
      * Entitlement keys that gate the enterprise self-serve surfaces (SSO & SCIM).
      * These are NAMESPACED so they never clash with the entitlements a tenant
      * product pushes through the same billing-fed projection.
@@ -627,6 +657,26 @@ return [
         'login' => (is_string(env('CBOX_ID_LOGIN_HOST')) && trim((string) env('CBOX_ID_LOGIN_HOST')) !== '')
             ? env('CBOX_ID_LOGIN_HOST')
             : null,
+
+        /*
+         * NAMES THE DEFAULT ENVIRONMENT USED TO BE ISSUED UNDER (`CBOX_ID_LEGACY_LOGIN_HOSTS`,
+         * a comma list). Read in login-host mode only.
+         *
+         * Such a host issues nothing and renders nothing. A page (`/login`, `/signup`,
+         * `/settings/*`, discovery, JWKS) answers GET and HEAD with a 308 to the same path
+         * on the host that serves it now, so a bookmark or a mailed link still arrives and
+         * a client that reads discovery there finds a document naming the login host as
+         * issuer. `/oauth/token`, every other write and every call that carries a
+         * credential answer 410 with an RFC 9457 problem naming the new issuer. `/admin`
+         * and the rest of the console are absent (404). See
+         * App\Http\Middleware\RedirectLegacyLoginHost.
+         *
+         * Remove a name from the list to retire it: it then serves the health probes only.
+         */
+        'legacy_login' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('CBOX_ID_LEGACY_LOGIN_HOSTS', '')),
+        ))),
     ],
 
     /*
@@ -689,6 +739,18 @@ return [
          * console is the only console and stays whole.
          */
         'tenant_customer_console' => (bool) env('CBOX_ID_TENANT_CUSTOMER_CONSOLE', false),
+
+        /*
+         * NO CUSTOMER-CREATED OAUTH CLIENTS IN THE PLATFORM'S OWN ENVIRONMENT.
+         *
+         * On, the default environment of a multi-tenant deployment holds only clients the
+         * environment itself owns: creating one for an organization is refused by the
+         * console, the API and MCP, and `/oauth/*` answers 404 for an organization's client
+         * that is already there. Customers' own environments are unaffected, and so is a
+         * single-tenant install. Off by default; the single-realm cutover turns it on.
+         * See {@see \App\Platform\OAuth\PlatformRealmClients}.
+         */
+        'platform_clients_only' => (bool) env('CBOX_ID_REALM_PLATFORM_CLIENTS_ONLY', false),
     ],
 
     /*

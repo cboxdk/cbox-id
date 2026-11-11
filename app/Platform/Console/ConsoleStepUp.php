@@ -7,6 +7,7 @@ namespace App\Platform\Console;
 use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireSudo;
 use App\Platform\EnvironmentSudo;
+use App\Platform\Operators\OperatorAssurance;
 use App\Platform\StepUpPlane;
 use App\Platform\StepUpPrompt;
 use App\Platform\Sudo;
@@ -59,6 +60,7 @@ final class ConsoleStepUp
         private readonly ConsoleScope $scope,
         private readonly Sudo $organization,
         private readonly EnvironmentSudo $environment,
+        private readonly OperatorAssurance $operators,
     ) {}
 
     /**
@@ -84,6 +86,17 @@ final class ConsoleStepUp
      */
     public function challenge(string $organizationRoute, string $environmentRoute, array $parameters, string $reason): ?string
     {
+        // The operator plane asks for a fresh passkey, whichever console drew the page.
+        if ($this->operators->governs()) {
+            return $this->confirmed(
+                $this->operators->fresh(),
+                StepUpPlane::Operator,
+                $this->onEnvironmentPlane() ? $environmentRoute : $organizationRoute,
+                $parameters,
+                $reason,
+            );
+        }
+
         if ($this->onEnvironmentPlane()) {
             return $this->confirmed(
                 $this->environment->confirmed(),

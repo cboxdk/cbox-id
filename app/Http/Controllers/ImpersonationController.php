@@ -10,6 +10,7 @@ use App\Platform\Console\LaunchTicket;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Impersonation;
 use App\Platform\IssuerUrl;
+use App\Platform\Operators\OperatorGate;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -29,6 +30,8 @@ use Illuminate\Support\Facades\URL;
  */
 final class ImpersonationController extends Controller
 {
+    private const string PASSKEY_REASON = 'Signing in as somebody else for support. Confirm with your passkey to start.';
+
     /**
      * Step into a tenant member's session. Reached from the operator org-detail
      * member list. The route sits in the operator group, so an operator session is
@@ -67,6 +70,8 @@ final class ImpersonationController extends Controller
             'reason' => ['required', 'string', 'max:200'],
         ]);
         $reason = $request->string('reason')->toString();
+
+        app(OperatorGate::class)->requireFresh($request, self::PASSKEY_REASON);
 
         $impersonation->start($request, $operatorId, $user, $orgId, $reason);
 
@@ -120,6 +125,9 @@ final class ImpersonationController extends Controller
         }
 
         $request->validate(['reason' => ['required', 'string', 'max:200']]);
+
+        // A no-op unless this is the platform root's console with the operator rule on.
+        app(OperatorGate::class)->requireFresh($request, self::PASSKEY_REASON);
 
         // ON THE PLATFORM ROOT'S OWN CONSOLE the person stepped into lives on this very host:
         // in place, as before.

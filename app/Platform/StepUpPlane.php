@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\Operators\OperatorAssurance;
+
 /**
  * The two step-ups the console can ask for, and everything that differs between them.
  *
@@ -23,12 +25,20 @@ enum StepUpPlane: string
     case Organization = 'sudo';
     case Environment = 'environment.sudo';
 
+    /**
+     * The operator plane, where the proof is a passkey rather than a password
+     * ({@see OperatorAssurance}). Asked for only while
+     * `cbox-id.operators.phishing_resistant` is on.
+     */
+    case Operator = 'operator.sudo';
+
     /** Whether this plane's window is open right now. */
     public function confirmed(): bool
     {
         return match ($this) {
             self::Organization => app(Sudo::class)->confirmed(),
             self::Environment => app(EnvironmentSudo::class)->confirmed(),
+            self::Operator => app(OperatorAssurance::class)->fresh(),
         };
     }
 
@@ -53,6 +63,16 @@ enum StepUpPlane: string
         return match ($this) {
             self::Organization => 'organization',
             self::Environment => 'environment',
+            self::Operator => 'operator',
         };
+    }
+
+    /**
+     * Where the browser fetches the WebAuthn challenge, for a plane confirmed with a
+     * passkey; null for a plane confirmed with a password.
+     */
+    public function passkeyOptionsUrl(): ?string
+    {
+        return $this === self::Operator ? route('operator.sudo.options') : null;
     }
 }

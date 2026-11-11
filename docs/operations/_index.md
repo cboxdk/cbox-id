@@ -20,11 +20,17 @@ running it yourself on a VM, a PaaS or any Kubernetes cluster.
 - [Administering the platform's own environment](platform-environment.md) — the root
   environment's console at `/admin` on the root host, who administers it, the guards that
   keep operators able to sign in, and `cbox-id:operator:grant`.
+- [Passkeys for platform operators](operator-plane.md) — make `/admin` require a passkey or
+  security key, the settings, how to turn it on, and the one-time enrolment link for an
+  operator who is locked out.
 - [Live smoke test](live-smoke-test.md) — a reproducible end-to-end run with the real
   clients (cbox CLI, an MCP client, both SDKs) against a live deployment.
 - [Rehearsing an upgrade](upgrade-rehearsal.md) — prove a release migrates your
   database: the seeded check on PostgreSQL, and a rehearsal on a copy of your
   own data.
+- [The realm flip](realm-flip.md) — the one-time migration that makes the `cbox`
+  environment the platform root: what it does per table, the rehearsal, the cutover and
+  the rollback.
 - [Rotating app client secrets to `cbid_cs_`](secret-rotation-v3.md) — the v3 runbook:
   mint a second secret per app, confirm the app uses it, then revoke the `csec_` one.
 - [Analytics storage](analytics.md) — where authentication analytics are stored

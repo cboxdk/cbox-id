@@ -33,6 +33,7 @@ use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
 use App\Platform\Keys\TransitionalOrganizationApiKeys;
+use App\Platform\OAuth\PlatformRealmClients;
 use App\Platform\OAuth\RootMcpAudiences;
 use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
 use App\Platform\OrganizationApiContext;
@@ -231,6 +232,7 @@ class AppServiceProvider extends ServiceProvider
 
         // No environment takes a slug the platform's own hosts use (`api`, `app`, …).
         ReservedEnvironmentSlugs::guard();
+        PlatformRealmClients::guard();
 
         // Contributed to `cbox-id:doctor` rather than shipped as a second health command.
         // A deployment claiming a shape it cannot serve fails silently, so the only thing

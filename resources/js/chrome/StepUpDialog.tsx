@@ -10,6 +10,7 @@ import {
     stepUpContinued,
     useStepUpPrompt,
 } from '@/lib/stepUp';
+import { confirmWithPasskey, isCancellation } from '@/lib/passkeys';
 import { Button, Dialog, Icon, PasswordField } from '@/ui';
 
 /**
@@ -31,7 +32,98 @@ export function StepUpDialog() {
     const prompt = useStepUpPrompt();
 
     // Keyed by the ask, so a new one starts with an empty field and no old refusal in it.
-    return prompt === null ? null : <StepUpForm key={prompt.id} prompt={prompt} />;
+    if (prompt === null) {
+        return null;
+    }
+
+    // The operator plane is confirmed with a passkey. Its last step (a "Continue" button
+    // for a waiting ceremony) is the same as any plane's, so that stays with the form below.
+    if (typeof prompt.challenge.passkeyOptions === 'string' && prompt.continueLabel === null) {
+        return <PasskeyStepUp key={prompt.id} prompt={prompt} />;
+    }
+
+    return <StepUpForm key={prompt.id} prompt={prompt} />;
+}
+
+/**
+ * The operator plane's ask: one button that runs a WebAuthn ceremony.
+ *
+ * No password field at all, deliberately. A password typed into this page proves nothing
+ * a script injected into the page could not replay; the assertion is made by the
+ * authenticator, for this origin, over a challenge the server issued a moment ago. The
+ * ceremony runs inside the button's own click, which is the gesture WebAuthn needs.
+ */
+function PasskeyStepUp({ prompt }: { prompt: StepUpPrompt }) {
+    const { t } = useConsoleTranslator();
+    const [error, setError] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+    const button = useRef<HTMLButtonElement>(null);
+    const title = t('console.confirm_it_s_you_6176eec2');
+
+    const confirm = async (): Promise<void> => {
+        const options = prompt.challenge.passkeyOptions;
+
+        if (busy || typeof options !== 'string') {
+            return;
+        }
+
+        setBusy(true);
+        setError(null);
+
+        try {
+            await confirmWithPasskey(options, prompt.challenge.confirm);
+        } catch (caught) {
+            setBusy(false);
+
+            // A dismissed system prompt is not a failure: the dialog simply stays open.
+            if (!isCancellation(caught)) {
+                setError(
+                    caught instanceof Error
+                        ? caught.message
+                        : t('console.that_did_not_work_try_again_d38eba7d'),
+                );
+            }
+
+            return;
+        }
+
+        stepUpConfirmed();
+    };
+
+    return (
+        <Dialog
+            open
+            size="sm"
+            initialFocus={button}
+            onOpenChange={(next) => {
+                if (!next) {
+                    stepUpCancelled();
+                }
+            }}
+            title={title}
+            description={prompt.challenge.reason ?? title}
+            footer={
+                <>
+                    <Button onClick={stepUpCancelled}>{t('console.cancel_19766ed6')}</Button>
+                    <Button
+                        ref={button}
+                        variant="primary"
+                        data-step-up-passkey
+                        loading={busy}
+                        onClick={() => void confirm()}
+                    >
+                        {t('console.confirm_eebdd24a')}
+                    </Button>
+                </>
+            }
+        >
+            {error !== null && (
+                <p className="field-error" role="alert">
+                    {error}
+                </p>
+            )}
+        </Dialog>
+    );
 }
 
 function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {

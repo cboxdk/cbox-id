@@ -77,6 +77,17 @@ class LoginHostHealthCheck implements HealthCheck
             );
         }
 
+        foreach ($this->surfaces->legacyLoginHosts() as $legacy) {
+            if (in_array($legacy, [$login, $console, ApiHost::name()], true)) {
+                $results[] = HealthResult::fail(
+                    'A legacy login host is one of the hosts in use',
+                    "{$legacy} is listed in CBOX_ID_LEGACY_LOGIN_HOSTS and is also the login, app or API host. The host in use wins and the name redirects nothing; remove it from the list.",
+                );
+            } else {
+                $results[] = HealthResult::ok('Legacy login host', "{$legacy} redirects pages to {$login} and answers 410 to protocol calls. Remove it from CBOX_ID_LEGACY_LOGIN_HOSTS to retire it.");
+            }
+        }
+
         $rpId = config('cbox-id.webauthn.rp_id');
 
         if (is_string($rpId) && $rpId !== '' && $login !== mb_strtolower($rpId) && ! str_ends_with($login, '.'.mb_strtolower($rpId))) {

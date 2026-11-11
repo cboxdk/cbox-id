@@ -9,6 +9,8 @@ use App\Http\Requests\Auth\ConfirmSudoRequest;
 use App\Platform\CurrentUser;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\EnvironmentSudo;
+use App\Platform\Operators\OperatorAssurance;
+use App\Platform\Operators\OperatorStanding;
 use App\Platform\StepUpPlane;
 use App\Platform\StepUpPrompt;
 use App\Platform\StepUpReason;
@@ -141,6 +143,33 @@ final readonly class SudoController extends PageController
         $sudo->confirm();
 
         return $this->confirmed($request, StepUpPlane::Environment, route('environment.home'));
+    }
+
+    /**
+     * The operator plane's screen: the same page, with a passkey as the proof
+     * ({@see OperatorConfirmController} holds the ceremony). Also where an operator with no
+     * passkey lands, told how to add one and how to recover.
+     */
+    public function showOperator(OperatorAssurance $assurance): Response
+    {
+        $standing = $assurance->standing();
+        $plane = StepUpPlane::Operator;
+
+        return $this->page('auth/sudo', __('console.confirm_it_s_you_6176eec2'), [
+            'reason' => match (true) {
+                $standing->confirmable() && ! $assurance->confirmsHere() => $assurance->elsewhereMessage(),
+                default => StepUpReason::pending($plane->value)
+                    ?? ($standing === OperatorStanding::Admitted ? OperatorStanding::NeedsPasskey : $standing)->message(),
+            },
+            'plane' => $plane->label(),
+            'passkey' => [
+                'options' => route('operator.sudo.options'),
+                'confirm' => route('operator.sudo.confirm'),
+                // Nothing to confirm with: the screen explains instead of offering a button.
+                'blocked' => $standing === OperatorStanding::NoPasskey || $standing === OperatorStanding::Unverifiable || ! $assurance->confirmsHere(),
+                'enrol' => $standing === OperatorStanding::NoPasskey ? route('account') : null,
+            ],
+        ]);
     }
 
     /**
