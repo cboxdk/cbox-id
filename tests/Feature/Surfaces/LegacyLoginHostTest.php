@@ -60,8 +60,12 @@ it('redirects the pages people hold links to, to the same path and query on the 
     '/signup',
     '/forgot-password',
     '/device?user_code=BCDF-GHJK',
+    // A person's own pages are the login host's.
+    '/settings',
+    '/settings/devices',
     '/settings/two-factor',
     '/settings/passkeys/01hx',
+    '/account',
     '/invitations/abc',
     '/app/oauth/callback?code=x&state=y',
     '/authenticator/privacy',
@@ -78,7 +82,7 @@ it('sends a console page people bookmarked to the app host', function (string $p
     legacyLoginHostMode();
 
     legacy('GET', $path)->assertStatus(308)->assertHeader('Location', 'https://'.APP_HOST.$path);
-})->with(['/settings', '/settings/devices', '/account', '/approvals', '/dashboard']);
+})->with(['/approvals', '/dashboard', '/settings/branding']);
 
 it('redirects discovery and the keys, so a client reads a document naming the login host', function (string $path): void {
     legacyLoginHostMode();

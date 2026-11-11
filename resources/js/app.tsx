@@ -104,6 +104,19 @@ void createInertiaApp<SharedProps>({
             organization = (event.detail.page.props as unknown as SharedProps).org?.slug;
         });
 
+        // A link to ANOTHER ORIGIN is a navigation, not a visit. In login-host mode the
+        // console's links to a person's own pages name the login host (and the login
+        // host's links name the console): an XHR there fails on CORS and the click would
+        // look like it did nothing.
+        router.on('before', (event) => {
+            const { url, method } = event.detail.visit;
+
+            if (method === 'get' && url.origin !== window.location.origin) {
+                event.preventDefault();
+                window.location.assign(url.href);
+            }
+        });
+
         const app = (
             <AppErrorBoundary i18n={(props.initialPage.props as unknown as SharedProps).i18n}>
                 <App {...props} />

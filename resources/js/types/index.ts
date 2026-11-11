@@ -390,6 +390,14 @@ export interface CatalogApp {
     version: number;
 }
 
+/** `App\Platform\Surfaces\AccountChrome`: a person's own pages without a console around them. */
+export interface AccountShell {
+    /** Where the person came from: the console, or the app that sent them. Another origin. */
+    back: { url: string; label: string };
+    pages: { label: string; href: string; active: boolean }[];
+    signOutHref: string;
+}
+
 export interface SharedProps {
     /** The organization `/orgs/{org}/…` route helpers default to (the path's, or this session's). */
     org?: { slug: string } | null;
@@ -423,6 +431,11 @@ export interface SharedProps {
     flash: Flash;
     shell: ConsoleShell | null;
     tenantShell?: Shell | null;
+    /**
+     * In login-host mode, the chrome of a person's own pages on the login host
+     * (`App\Platform\Surfaces\AccountChrome`). Null everywhere else.
+     */
+    accountShell?: AccountShell | null;
     i18n: I18n | null;
     /**
      * Shared on every page under an environment console's `…/organizations/{organization}/…`: the organization the

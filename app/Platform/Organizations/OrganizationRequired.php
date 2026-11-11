@@ -8,6 +8,9 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
 use App\Platform\Impersonation;
 use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
+use App\Platform\Surfaces\ReturnUrl;
+use App\Platform\Surfaces\Surface;
+use App\Platform\Surfaces\Surfaces;
 
 /**
  * In the Cbox realm nobody goes on to an app or the console without an organization.
@@ -48,8 +51,16 @@ final readonly class OrganizationRequired
             && $this->organizations->choicesFor($me->id()) === [];
     }
 
+    /**
+     * The screen's address. In login-host mode it is on the login host, and a console page
+     * that sends somebody there says where to come back to.
+     */
     public function url(): string
     {
-        return route('organization.required');
+        $request = request();
+
+        return app(Surfaces::class)->is(Surface::Console) && $request->isMethod('GET')
+            ? route('organization.required', [ReturnUrl::PARAMETER => $request->fullUrl()])
+            : route('organization.required');
     }
 }

@@ -21,6 +21,7 @@ use App\Platform\Enums\PortalIntent;
 use App\Platform\Enums\PortalScope;
 use App\Platform\Locale\HostedLocale;
 use App\Platform\Locale\HostedLocales;
+use App\Platform\MailLinks;
 use Carbon\CarbonImmutable;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Support\Facades\Mail;
@@ -114,7 +115,9 @@ final readonly class CreatePortalLink implements Action
 
         ['link' => $link, 'token' => $token] = $this->portal->issue($organizationId, $scope, $context->principal->id(), $minutes, $emailedTo);
 
-        $url = route('portal.enter', $token);
+        // MailLinks, not route(): this link is mailed and handed out, and its origin is the
+        // host that serves the portal, not the host that asked for it.
+        $url = app(MailLinks::class)->route('portal.enter', $token);
 
         if ($email !== null) {
             // Sent even when it will be suppressed: the listener logs the attempt, which is

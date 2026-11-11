@@ -5,7 +5,12 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Http\Middleware\SetEnvironment;
+use App\Platform\Surfaces\Surface;
+use App\Platform\Surfaces\Surfaces;
+use App\Platform\Surfaces\SurfaceUrls;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Closure;
 use DateInterval;
 use DateTimeInterface;
@@ -42,6 +47,7 @@ final class MailLinks
     public function __construct(
         private readonly EnvironmentResolver $environments,
         private readonly UrlGenerator $url,
+        private readonly Surfaces $surfaces,
     ) {}
 
     /**
@@ -142,6 +148,10 @@ final class MailLinks
             return $pinned;
         }
 
+        if ($this->surfaces->split()) {
+            return $this->rootOfTheSurface();
+        }
+
         if ($this->environments->resolveForHost($this->url->getRequest()->getHost()) !== null) {
             return null;
         }
@@ -159,5 +169,32 @@ final class MailLinks
         return $configured !== '' && parse_url($configured, PHP_URL_HOST) !== null
             ? $configured
             : null;
+    }
+
+    /**
+     * IN LOGIN-HOST MODE the origin follows WHOSE link it is, never the host that happened
+     * to ask and never a worker's `app.url`:
+     *
+     *  - A link of the default environment starts from the login host. A named route then
+     *    takes the host that serves it ({@see SurfaceUrls}): a sign-in, reset, confirmation
+     *    or invitation link stays on the login host, a console link moves to the app host.
+     *  - A link minted while acting in a TENANT'S environment (its console on the app host,
+     *    a job) is on that environment's own issuer: its custom domain, else its
+     *    `{slug}.{base_domain}`. Asked for on the tenant's own host, it stays on that host.
+     */
+    private function rootOfTheSurface(): ?string
+    {
+        if ($this->surfaces->inDefaultEnvironment()) {
+            return $this->surfaces->loginOrigin();
+        }
+
+        if ($this->surfaces->of($this->url->getRequest()->getHost()) === Surface::Tenant) {
+            return null;
+        }
+
+        $environment = app(EnvironmentContext::class)->current()?->environmentKey();
+        $issuer = $environment === null ? '' : rtrim(app(IssuerResolver::class)->forEnvironment($environment), '/');
+
+        return parse_url($issuer, PHP_URL_HOST) !== null ? $issuer : null;
     }
 }
