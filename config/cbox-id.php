@@ -657,6 +657,26 @@ return [
         'login' => (is_string(env('CBOX_ID_LOGIN_HOST')) && trim((string) env('CBOX_ID_LOGIN_HOST')) !== '')
             ? env('CBOX_ID_LOGIN_HOST')
             : null,
+
+        /*
+         * NAMES THE DEFAULT ENVIRONMENT USED TO BE ISSUED UNDER (`CBOX_ID_LEGACY_LOGIN_HOSTS`,
+         * a comma list). Read in login-host mode only.
+         *
+         * Such a host issues nothing and renders nothing. A page (`/login`, `/signup`,
+         * `/settings/*`, discovery, JWKS) answers GET and HEAD with a 308 to the same path
+         * on the host that serves it now, so a bookmark or a mailed link still arrives and
+         * a client that reads discovery there finds a document naming the login host as
+         * issuer. `/oauth/token`, every other write and every call that carries a
+         * credential answer 410 with an RFC 9457 problem naming the new issuer. `/admin`
+         * and the rest of the console are absent (404). See
+         * App\Http\Middleware\RedirectLegacyLoginHost.
+         *
+         * Remove a name from the list to retire it: it then serves the health probes only.
+         */
+        'legacy_login' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', (string) env('CBOX_ID_LEGACY_LOGIN_HOSTS', '')),
+        ))),
     ],
 
     /*

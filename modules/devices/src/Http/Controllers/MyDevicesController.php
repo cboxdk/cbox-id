@@ -18,6 +18,7 @@ use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Devices\Support\AuthenticatorClient;
 use Cbox\Id\Devices\Support\AuthenticatorProvisioner;
+use Cbox\Id\Devices\Support\EnrolmentHost;
 use Cbox\Id\Devices\Support\EnrolmentToken;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Http\RedirectResponse;
@@ -105,7 +106,8 @@ final readonly class MyDevicesController extends ConsoleController
     /**
      * The enrolment code the authenticator app scans.
      *
-     * Carries the host AND a short-lived signed code bound to the signed-in subject.
+     * Carries the issuer's host ({@see EnrolmentHost}) AND a short-lived signed code bound
+     * to the signed-in subject.
      *
      * The host alone used to be the whole payload, described as safe on a screen, in a
      * screenshot, or on a wiki. Safe in the sense that it granted nothing — but it also
@@ -137,7 +139,7 @@ final readonly class MyDevicesController extends ConsoleController
         }
 
         return AuthenticatorClient::SCHEME.'://connect'
-            .'?host='.urlencode(request()->getHost())
+            .'?host='.urlencode(EnrolmentHost::name())
             .'&t='.urlencode(app(EnrolmentToken::class)->mint($subject));
     }
 
@@ -163,7 +165,8 @@ final readonly class MyDevicesController extends ConsoleController
      * The host baked into the claimed-HTTPS redirect URI at first provisioning.
      *
      * Multi-tenant: the request host, which `EnforcePlane` has already resolved to a known
-     * tenant — an unrecognised `Host:` header 404s before reaching this page.
+     * tenant — an unrecognised `Host:` header 404s before reaching this page. In login-host
+     * mode that is the issuer's host, not the app host the page is on ({@see EnrolmentHost}).
      *
      * Single-tenant: the configured `app.url` host, NOT the request host. Every host is
      * served in that shape, so trusting the header would let the first visitor poison the
@@ -172,7 +175,7 @@ final readonly class MyDevicesController extends ConsoleController
     private function provisioningHost(): string
     {
         return app(PlaneResolver::class)->isMultiTenant()
-            ? request()->getHost()
+            ? EnrolmentHost::name()
             : AuthenticatorClient::hostFromAppUrl();
     }
 

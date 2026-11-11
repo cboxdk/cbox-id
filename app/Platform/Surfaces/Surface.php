@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Surfaces;
 
 use App\Http\Middleware\FenceApiHost;
+use App\Http\Middleware\RedirectLegacyLoginHost;
 use App\Http\Middleware\ServeMarketingWebsite;
 
 /**
@@ -29,6 +30,13 @@ enum Surface: string
 
     /** The marketing website's host, answered by {@see ServeMarketingWebsite}. */
     case Marketing = 'marketing';
+
+    /**
+     * A name the default environment used to be issued under (`cbox-id.hosts.legacy_login`).
+     * It issues nothing and renders nothing: a page is sent to the host that serves it now,
+     * and a protocol call is told the name is gone ({@see RedirectLegacyLoginHost}).
+     */
+    case Legacy = 'legacy';
 
     /** A host that is none of the above. It serves the health probes and nothing else. */
     case Unmapped = 'unmapped';

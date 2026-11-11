@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Surfaces;
 
 use App\Http\Middleware\FenceSurfaces;
+use App\Http\Middleware\RedirectLegacyLoginHost;
 use App\Platform\Api\ApiHost;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
@@ -23,6 +24,8 @@ use Symfony\Component\HttpFoundation\Exception\SuspiciousOperationException;
  *  - {@see Surface::Console}: the app host. The console and the operator plane.
  *  - {@see Surface::Api}: the API host.
  *  - {@see Surface::Tenant}: a host that resolves to an environment other than the default.
+ *  - {@see Surface::Legacy}: a name the default environment used to be issued under
+ *    (`cbox-id.hosts.legacy_login`). It only redirects; see {@see RedirectLegacyLoginHost}.
  *  - {@see Surface::Unmapped}: anything else. It issues for nobody.
  *
  * The surface is decided by an EXACT match on the host, never by the environment the
@@ -78,6 +81,9 @@ final class Surfaces
         'magic/*', 'forgot-password', 'reset-password', 'reset-password/*',
         'passkeys/login', 'passkeys/login/*',
         'auth/*/redirect', 'auth/*/callback',
+        // The claimed-HTTPS redirect URI of the Authenticator's client (no route answers it:
+        // the app is handed the URL by the system).
+        'app/oauth/callback',
         'mfa', 'mfa/*',
         'invitations/*', 'invite/*', 'verify-email/*',
         // Inbound federation and the SAML IdP bindings.
@@ -110,6 +116,31 @@ final class Surfaces
         'settings/sign-in-methods/*',
         'settings/accounts', 'settings/accounts/*',
         'settings/email/*',
+    ];
+
+    /**
+     * Pages people hold links to under a legacy name (bookmarks, mailed links, the
+     * Authenticator app's "open my account") that are not on the issuer's lists above. A
+     * legacy host sends them to the host that serves them now; every other console path
+     * is absent there. The two `oauth/*` entries are the pages a browser opens, taken out
+     * of {@see LEGACY_GONE}.
+     *
+     * @var list<string>
+     */
+    public const array LEGACY_PAGES = [
+        'settings', 'settings/*', 'account', 'account/*', 'approvals', 'dashboard',
+        'oauth/logout', 'oauth/device/qr',
+    ];
+
+    /**
+     * What a program calls. A legacy host never redirects these, in any method: a client
+     * that followed would carry its credential, or finish an authorization, at a host it
+     * was not configured for, and one that did not would fail without being told why.
+     *
+     * @var list<string>
+     */
+    public const array LEGACY_GONE = [
+        'oauth/*', 'api/v1', 'api/v1/*', 'v1', 'v1/*', 'mcp', 'mcp/*', 'scim/*', 'frontend/v1/*',
     ];
 
     public function __construct(private readonly EnvironmentResolver $resolver) {}
@@ -156,6 +187,31 @@ final class Surfaces
         $host = config('cbox-id.hosts.login');
 
         return is_string($host) && trim($host) !== '' ? mb_strtolower(trim($host)) : null;
+    }
+
+    /**
+     * The names the default environment used to be issued under, lower-cased. Empty in
+     * single-host mode: there is no login host to send anybody to.
+     *
+     * @return list<string>
+     */
+    public function legacyLoginHosts(): array
+    {
+        $configured = config('cbox-id.hosts.legacy_login', []);
+
+        if (! $this->split() || ! is_array($configured)) {
+            return [];
+        }
+
+        $hosts = [];
+
+        foreach ($configured as $host) {
+            if (is_string($host) && trim($host) !== '') {
+                $hosts[] = mb_strtolower(trim($host));
+            }
+        }
+
+        return array_values(array_unique($hosts));
     }
 
     /** The app host the console is served on, or null when the deployment names none. */
@@ -222,6 +278,12 @@ final class Surfaces
             return Surface::Marketing;
         }
 
+        // Before the resolver: the old name may still resolve to an environment by slug
+        // (the default one, after the flip), and must not answer as it.
+        if (in_array($host, $this->legacyLoginHosts(), true)) {
+            return Surface::Legacy;
+        }
+
         $resolved = $this->resolver->resolveForHost($host)?->environmentKey();
 
         // A host that resolves to the default environment and is none of the hosts above is
@@ -261,7 +323,9 @@ final class Surfaces
 
         return match ($surface) {
             Surface::Api, Surface::Marketing, Surface::Tenant => true,
-            Surface::Unmapped => $kind === PathKind::Infrastructure,
+            // What a legacy host answers beyond the probes is RedirectLegacyLoginHost's,
+            // which runs ahead of the fence; nothing else is served there.
+            Surface::Unmapped, Surface::Legacy => $kind === PathKind::Infrastructure,
             Surface::Login => $kind !== PathKind::Console,
             Surface::Console => $kind !== PathKind::Issuer && $kind !== PathKind::Account,
         };
