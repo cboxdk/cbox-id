@@ -289,6 +289,15 @@ return [
      */
     'signup' => [
         'mode' => env('CBOX_ID_SIGNUP_MODE', 'open'),
+
+        /*
+         * In the Cbox realm (the platform root of a multi-tenant deployment): whether a
+         * person who signs up without an invitation gets a personal organization, and
+         * whether a signed-in person with no organization is shown the "no organization"
+         * screen before an app or the console. Off until the single-realm cutover turns
+         * it on. Customer environments and single-tenant installs never read it.
+         */
+        'personal_organization' => (bool) env('CBOX_ID_SIGNUP_PERSONAL_ORGANIZATION', false),
     ],
 
     /*

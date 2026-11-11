@@ -40,6 +40,7 @@ issuer — resolved per request from the host.
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
 | `CBOX_ID_SIGNUP_MODE` | Who may self-register at `/signup`: `open` (anyone), `invite_only` (public signup closed, admin invitations still work), or `closed` (no self-service at all). Admin/operator provisioning is never gated by this. | `open` | Set to `invite_only` or `closed` for a private/internal deployment. See [Security](../security/_index.md#self-service-signup-modes). |
+| `CBOX_ID_SIGNUP_PERSONAL_ORGANIZATION` | Multi-tenant platform root only: a person who signs up without an invitation gets a personal organization (an ordinary organization named after them, which they own), and a signed-in person with no organization is asked to accept an invitation or continue with a personal organization before an app or the console. Customer environments and single-tenant installs ignore it. | `false` | Turned on by the single-realm cutover. |
 
 Note that a self-serve signup provisions the organization, its owner and its first project
 immediately, but its **environment** only once the owner confirms their email address —
