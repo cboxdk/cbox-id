@@ -82,7 +82,9 @@ void createInertiaApp<SharedProps>({
         const own = title !== '' ? title : (props.title ?? '');
         const suffix = props.brand?.name ?? props.app.name;
 
-        return [own, props.shell?.section ?? props.tenantShell?.section, suffix].filter(Boolean).join(' · ');
+        return [own, props.shell?.section ?? props.tenantShell?.section, suffix]
+            .filter(Boolean)
+            .join(' · ');
     },
 
     progress: {

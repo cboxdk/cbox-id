@@ -137,8 +137,7 @@ function writeCookie(name: string, value: string): void {
  * ({@see TenantConsoleLayout}). A page with no chrome (mid-sign-in) renders bare.
  */
 export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
-    const { shell, tenantShell, auth, title, organizationHub, i18n } =
-        usePage<SharedProps>().props;
+    const { shell, tenantShell, auth, title, organizationHub, i18n } = usePage<SharedProps>().props;
 
     useDocumentLanguage(i18n?.locale ?? 'en');
 

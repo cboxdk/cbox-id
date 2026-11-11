@@ -44,7 +44,11 @@ export function rail(props: Pick<SharedProps, 'shell' | 'tenantShell'>): {
         key: area.key,
         label: area.label,
         href: area.href,
-        pages: area.pages.map((page) => ({ route: page.route, label: page.label, href: page.href })),
+        pages: area.pages.map((page) => ({
+            route: page.route,
+            label: page.label,
+            href: page.href,
+        })),
     }));
 
     return { areas, active: areas.find((area) => area.key === tenant?.activeArea) };

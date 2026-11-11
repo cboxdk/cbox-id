@@ -36,8 +36,14 @@ export interface TenantConsoleLayoutProps {
  */
 export function TenantConsoleLayout({ children: page }: TenantConsoleLayoutProps) {
     const { t: consoleShortText } = useConsoleTranslator();
-    const { tenantShell: shell, auth, title, environment, organizationHub, i18n } =
-        usePage<SharedProps>().props;
+    const {
+        tenantShell: shell,
+        auth,
+        title,
+        environment,
+        organizationHub,
+        i18n,
+    } = usePage<SharedProps>().props;
 
     // A page under an environment console's `…/organizations/{organization}/…` is a tab of that organization's
     // page: its header and tabs go around it, whichever page it is.
