@@ -126,6 +126,13 @@ class AppServiceProvider extends ServiceProvider
         // The scopes a management key may carry: the framework's core set plus the ones
         // this app's actions guard. The framework refuses to mint anything else.
         $this->app->singleton(ManagementScopes::class, AppManagementScopes::class);
+        // NOT YET: ScopeAliases stays laravel-id's NoScopeAliases. RegistryScopeAliases is
+        // ready, but binding it under laravel-id 2.5 (a) makes the device grant refuse any
+        // request naming an old scope (it compares the request to the CANONICALISED grant,
+        // so the released cbox CLI's sign-in fails with invalid_scope), and (b) rewrites
+        // every grant to the v3 names, which v3.0 promises pre-v3 clients it will not
+        // (RootMcpOAuthTest). Bind it once laravel-id fixes (a) and keeps the requested
+        // spelling in grants, or at v3.1 when the old names go.
         // Organization keys: `cbid_ws_` minted through v3.0, `cbid_org_` resolved too.
         $this->app->singleton(OrganizationApiKeys::class, TransitionalOrganizationApiKeys::class);
 

@@ -16,6 +16,7 @@ use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Enterprise\EnterpriseAudit;
 use App\Platform\Enterprise\EnterpriseReach;
+use Cbox\Id\Kernel\Crypto\SecretPrefix;
 
 /**
  * Re-key a SCIM directory: a new bearer token, shown once. The token the customer's
@@ -59,7 +60,9 @@ final readonly class RotateDirectoryToken implements Action
             throw ActionRefused::because('not_scim', new ActionMessage('console.a_pull_directory_authenticates_to_the_provider_and_has_7816b2af'));
         }
 
-        $token = 'scim_'.bin2hex(random_bytes(32));
+        // `cbid_scim_` since laravel-id 2.5. A `scim_` token minted before keeps working:
+        // the directory is found by the hash of the whole token, never by its prefix.
+        $token = SecretPrefix::ScimToken->mint();
         $directory->bearer_token_hash = hash('sha256', $token);
         $directory->save();
 

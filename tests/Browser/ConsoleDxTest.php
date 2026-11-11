@@ -53,7 +53,7 @@ it('runs Get started from a framework to the first sign-in', function (): void {
         ->click('button:has-text("Create the app")')
         ->assertSee('Wire it up')
         ->assertSee('composer require cboxdk/laravel-id-client')
-        ->assertSee('CBOX_ID_CLIENT_SECRET=csec_')
+        ->assertSee('CBOX_ID_CLIENT_SECRET=cbid_cs_')
         ->assertSee('Waiting for your first sign-in')
         ->assertNoJavaScriptErrors()
         // The "created" toast slides in with an opacity animation; axe measuring it mid-fade

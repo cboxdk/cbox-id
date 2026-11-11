@@ -1826,7 +1826,7 @@ it('reveals a new app\'s secret exactly once, and never into the history entry',
     $flash = session()->get(SessionKey::FLASH_DATA, []);
     $secret = is_array($flash) ? ($flash['revealedSecret'] ?? null) : null;
 
-    expect($secret)->toBeString()->toStartWith('csec_');
+    expect($secret)->toBeString()->toStartWith('cbid_cs_');
 
     $revealed = $this->get(route('environment.clients.show', $client->id))
         ->assertOk()
@@ -1905,7 +1905,7 @@ it('never writes a rotated client secret into the page props', function (): void
     $revealed->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('revealedSecret'));
 
     // …and NOT in the props, which it does. Catalogue examples may mention the public prefix.
-    expect($secret)->toBeString()->toStartWith('csec_');
+    expect($secret)->toBeString()->toStartWith('cbid_cs_');
     expect(json_encode($revealed->inertiaProps()))->toBeString()->not->toContain($secret);
 })->group('security');
 

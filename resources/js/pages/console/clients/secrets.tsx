@@ -101,7 +101,7 @@ export default function ClientSecrets({
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <span className="mono text-sm">
                                         {secret.hint !== null
-                                            ? `csec_…${secret.hint}`
+                                            ? `…${secret.hint}`
                                             : consoleText(
                                                   'console.a_secret_from_before_secrets_were_listed_d5e46ffa',
                                               )}

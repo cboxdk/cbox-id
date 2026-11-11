@@ -145,7 +145,7 @@ it('bootstraps an environment from one organization key, down to a supervised na
     $app = $door->approve($held, $owner);
 
     expect($app['status'])->toBe('ok')
-        ->and($app['data']['client_secret'])->toStartWith('csec_');
+        ->and($app['data']['client_secret'])->toStartWith('cbid_cs_');
 
     $appId = $app['data']['id'];
     $redirects = ['https://agent.example/callback', 'https://agent.example/oauth/return'];
@@ -161,7 +161,7 @@ it('bootstraps an environment from one organization key, down to a supervised na
     $rotated = $door->approve($rotation, $owner);
 
     expect($rotated['status'])->toBe('ok')
-        ->and($rotated['data']['client_secret'])->toStartWith('csec_')
+        ->and($rotated['data']['client_secret'])->toStartWith('cbid_cs_')
         ->and($rotated['data']['client_secret'])->not->toBe($app['data']['client_secret']);
 
     // Once: the same request again replays the answer without the secret, and runs nothing.
