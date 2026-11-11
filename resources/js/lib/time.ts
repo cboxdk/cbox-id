@@ -1,3 +1,5 @@
+import { formatLocale, formatTimeZone } from './formats';
+
 /**
  * "4 minutes ago", computed in the browser.
  *
@@ -32,10 +34,14 @@ export function relativeTime(iso: string, locale: string = 'en'): string {
     return format.format(Math.round(value), 'week');
 }
 
-/** An absolute timestamp, in the reader's own locale and time zone. */
+/**
+ * An absolute timestamp, in the reader's regional format (else the interface language) and
+ * their chosen time zone (else the device's), as the account menu set them ({@see ./formats}).
+ */
 export function absoluteTime(iso: string, locale: string = 'en'): string {
-    return new Intl.DateTimeFormat(locale, {
+    return new Intl.DateTimeFormat(formatLocale(locale), {
         dateStyle: 'medium',
         timeStyle: 'short',
+        timeZone: formatTimeZone(),
     }).format(new Date(iso));
 }

@@ -26,7 +26,8 @@ use Symfony\Component\HttpFoundation\Response;
  * somebody can get wrong — silently, because a test never renders the response it
  * followed.
  *
- * So it is decided here, from the destination itself. Two cases:
+ * So it is decided here, from the destination itself (a same-origin 307/308, a moved write,
+ * is always followed as it is). Two cases:
  *
  *  - ANOTHER ORIGIN. An identity provider's redirect endpoint, a signed hand-off to a
  *    tenant's own host. An XHR cannot follow those at all: the fetch fails on CORS and
@@ -57,6 +58,15 @@ final class RedirectOutsideInertia
         }
 
         $target = $response->getTargetUrl();
+
+        // A 307 or 308 is a moved WRITE (a v2 tab's PATCH or DELETE to an old address): the
+        // XHR follows it with the same method and body, and the route there answers that
+        // method, not GET. Turned into a navigation, the browser would GET the new address
+        // and the change would be lost without a word. Same origin only: across origins the
+        // XHR cannot follow it at all, and the navigation below is the honest answer.
+        if (in_array($response->getStatusCode(), [307, 308], true) && $this->sameOrigin($request, $target)) {
+            return $response;
+        }
 
         if ($this->rendersInertia($request, $target)) {
             return $response;

@@ -1429,7 +1429,9 @@ Route::middleware('plane:console')->group(function (): void {
 | (below), until they have seen no traffic for a week.
 */
 Route::middleware([RefuseReadOfOperatorWrite::class, 'plane:environment', 'multi.tenant'])->prefix('admin')->group(function (): void {
-    Route::get('/{path?}', EnvironmentConsoleRedirectController::class)
+    // A read is redirected; a v2 tab's write is answered by
+    // {@see EnvironmentConsoleRedirectController::write()}.
+    Route::match(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'], '/{path?}', EnvironmentConsoleRedirectController::class)
         ->where('path', '(?!platform(?:/|$)|environment(?:/|$)).*')
         // Matched LAST, after every route that still answers under `/admin` (platform
         // admin, the moved-page aliases), whatever order they were registered in.
@@ -2050,7 +2052,8 @@ Route::redirect('/operator/login', '/login/direct');
 Route::redirect('/operator/login/mfa', '/login/direct');
 
 // The old addresses: `/admin/platform/…` → `/admin/…`, counted, until a week without traffic.
-Route::get('/admin/platform/{path?}', PlatformAdminMovedController::class)
+// A v2 tab's write there too: a 308, so the method and body go along.
+Route::match(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'], '/admin/platform/{path?}', PlatformAdminMovedController::class)
     ->where('path', '.*')->middleware('plane:operator')->name('platform.moved');
 
 Route::prefix('admin')->middleware([RedirectOldEnvironmentConsolePage::class, 'plane:operator'])->group(function (): void {

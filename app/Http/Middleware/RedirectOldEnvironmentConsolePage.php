@@ -34,13 +34,20 @@ final class RedirectOldEnvironmentConsolePage
     {
         $host = $request->getHost();
 
-        if ($request->isMethod('GET')
-            && $this->planes->isMultiTenant()
+        if ($this->planes->isMultiTenant()
             && ! $this->planes->onOperatorPlane($host)
             && $this->planes->servesEnvironmentAdmin($host)) {
             $path = trim(substr('/'.ltrim($request->path(), '/'), strlen('/admin')), '/');
+            $redirects = app(EnvironmentConsoleRedirectController::class);
 
-            return app(EnvironmentConsoleRedirectController::class)($request, $this->environments, $path === '' ? null : $path);
+            if ($request->isMethod('GET')) {
+                return $redirects($request, $this->environments, $path === '' ? null : $path);
+            }
+
+            // A v2 tab's write to one of these pages ({@see EnvironmentConsoleRedirectController::write()}).
+            if ($request->header('X-Inertia') !== null) {
+                return $redirects->write($request, $this->environments, $path === '' ? null : $path);
+            }
         }
 
         return $next($request);

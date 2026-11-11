@@ -50,6 +50,8 @@ final class OperatorPaths
         $moved = match (true) {
             $path === 'workspaces', str_starts_with($path, 'workspaces/') => 'organizations'.substr($path, strlen('workspaces')),
             $path === 'organizations', str_starts_with($path, 'organizations/') => 'environments/root/'.$path,
+            // v2's `POST environment/switch`, the operator's target environment.
+            $path === 'environment/switch' => 'environments/switch',
             default => $path,
         };
 
