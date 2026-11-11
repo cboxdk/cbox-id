@@ -293,3 +293,22 @@ it('keeps a customer environment\'s own console in its white-labelled chrome', f
         ->and((array) $response->inertiaProps('tenantShell'))->toHaveKey('areas')
         ->and($response->inertiaProps('tenantShell.areas'))->not->toBe([]);
 })->group('shell');
+
+it('reads the account menu\'s regional format and time zone before the first paint, and ignores a forged one', function (): void {
+    actAsEnvironmentAdminOfATenant();
+
+    $shell = (array) $this->withUnencryptedCookies(['cbox-format' => 'da-DK', 'cbox-time-zone' => 'Europe/Copenhagen'])
+        ->get(envConsole('/users'))->assertOk()->inertiaProps('shell');
+
+    expect($shell['preferences']['regionalFormat'])->toBe('da-DK')
+        ->and($shell['preferences']['timeZone'])->toBe('Europe/Copenhagen');
+
+    app()->forgetScopedInstances(); // a new request, as in a browser
+
+    $shell = (array) $this->withUnencryptedCookies(['cbox-format' => 'da-DK"><script>', 'cbox-time-zone' => 'Mars/Olympus'])
+        ->get(envConsole('/users'))->assertOk()->inertiaProps('shell');
+
+    expect($shell['preferences'])->not->toHaveKey('regionalFormat')
+        ->and($shell['preferences'])->not->toHaveKey('timeZone')
+        ->and($shell['preferences']['theme'])->toBe('system');
+})->group('shell');

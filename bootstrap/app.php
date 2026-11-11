@@ -238,6 +238,10 @@ return Application::configure(basePath: dirname(__DIR__))
             // flipped it afterwards — and `wire:navigate` re-rendered `<html>` without it
             // and dropped the choice mid-walk. {@see \App\Platform\Theme}.
             'cbox-theme',
+            // The account menu's regional format and time zone, for the same reason: written
+            // by the page, read before the first paint ({@see \App\Platform\Shell\IdShell}).
+            'cbox-format',
+            'cbox-time-zone',
         ]);
 
         // Global so security headers cover API/JSON + error responses too, not

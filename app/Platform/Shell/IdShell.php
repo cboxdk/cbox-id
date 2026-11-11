@@ -35,6 +35,12 @@ use Illuminate\Support\Facades\URL;
  */
 final readonly class IdShell
 {
+    /** The account menu's regional format, written by the page (`resources/js/lib/formats.ts`). */
+    public const FORMAT_COOKIE = 'cbox-format';
+
+    /** The account menu's time zone, written by the page. */
+    public const TIME_ZONE_COOKIE = 'cbox-time-zone';
+
     public function __construct(private Request $request) {}
 
     /** @return array<string, mixed>|null */
@@ -58,11 +64,14 @@ final readonly class IdShell
             : ['enabled' => false];
 
         // The app's own cookies, which the root view reads before the first paint.
-        $shell['preferences'] = [
+        $shell['preferences'] = array_filter([
             ...$built->preferences->toArray(),
             'theme' => Theme::preference() ?? 'system',
             'railPinned' => NavPin::pinned($this->request),
-        ];
+            // The account menu's regional format and time zone (`resources/js/lib/formats.ts`).
+            'regionalFormat' => self::regionalFormat($this->request->cookie(self::FORMAT_COOKIE)),
+            'timeZone' => self::timeZone($this->request->cookie(self::TIME_ZONE_COOKIE)),
+        ], static fn (mixed $value): bool => $value !== null);
 
         $shell['apps'] = [...$built->apps->toArray(), 'productsUrl' => 'https://cbox.dk'];
 
@@ -83,6 +92,21 @@ final readonly class IdShell
         }
 
         return $shell;
+    }
+
+    /**
+     * A BCP 47 tag such as `da-DK`, or null. The cookie is written by the page, so it is
+     * matched, not trusted: it goes into the props and from there into `Intl`.
+     */
+    public static function regionalFormat(mixed $value): ?string
+    {
+        return is_string($value) && preg_match('/\A[a-z]{2,3}(-[A-Za-z0-9]{2,8}){0,3}\z/', $value) === 1 ? $value : null;
+    }
+
+    /** An IANA time zone this PHP knows (`Europe/Copenhagen`), or null. */
+    public static function timeZone(mixed $value): ?string
+    {
+        return is_string($value) && strlen($value) <= 64 && in_array($value, timezone_identifiers_list(), true) ? $value : null;
     }
 
     /** The white-labelled customer console's own chrome, on a customer environment's host. */
