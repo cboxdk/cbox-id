@@ -146,6 +146,14 @@ class PasskeySignInController
             return new JsonResponse(['status' => 'sso_required'], 403);
         }
 
+        // A platform operator signs in on the login host only (LoginTickets::refuses()).
+        if ($this->tickets->refuses($subjectId)) {
+            return new JsonResponse([
+                'status' => 'hosted_sign_in_required',
+                'message' => 'Continue through hosted sign-in.',
+            ]);
+        }
+
         // No `pwd`: a passkey IS the factor, and recording a password nobody typed would
         // put an untruth on the session's `amr` — which decides `acr` and, since this week,
         // the SAML assertion's context class too. The vocabulary itself comes from

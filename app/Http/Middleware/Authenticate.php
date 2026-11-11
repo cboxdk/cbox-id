@@ -11,6 +11,7 @@ use App\Platform\PlatformAuth;
 use App\Platform\SessionMetadata;
 use App\Platform\SignedInPage;
 use App\Platform\SsoMandates;
+use App\Platform\Surfaces\SessionSurface;
 use App\SignalsData\IdentityCapture;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
@@ -43,6 +44,7 @@ final class Authenticate
         private readonly AdminPasswords $adminPasswords,
         private readonly PasswordExpiry $passwordExpiry,
         private readonly MfaMandate $mfaMandate,
+        private readonly SessionSurface $surface,
     ) {}
 
     /**
@@ -71,7 +73,10 @@ final class Authenticate
         // prompt=none for the authorize endpoint specifically, a carve-out that could
         // never be reached from a route running in this mode.
         $optional = $mode === 'optional';
-        $sessionId = $request->session()->get(PlatformAuth::SESSION_KEY);
+        // A session minted on another surface is nobody's here (login-host mode).
+        $sessionId = $this->surface->admits($request)
+            ? $request->session()->get(PlatformAuth::SESSION_KEY)
+            : null;
 
         $session = is_string($sessionId) ? $this->sessions->active($sessionId) : null;
 

@@ -608,6 +608,25 @@ return [
         'api' => (is_string(env('CBOX_ID_API_HOST')) && trim((string) env('CBOX_ID_API_HOST')) !== '')
             ? env('CBOX_ID_API_HOST')
             : (env('APP_ENV') === 'production' ? null : 'api.cboxid.test'),
+
+        /*
+         * THE LOGIN HOST. Unset (the default), one host serves sign-in, the issuer and the
+         * console together, exactly as before: single-host mode.
+         *
+         * Set (`CBOX_ID_LOGIN_HOST=login.example.com`), the default environment is issued
+         * from this host and from no other: hosted sign-in, sign-up and consent,
+         * `/oauth/*`, discovery and JWKS, the frontend API and a person's own security
+         * pages live here, and the app host (`CBOX_ID_CONSOLE_HOST`) serves the console
+         * and the operator plane only. A host that is neither, nor the API host, nor a
+         * tenant environment's, serves the health probes and nothing else. Each host keeps
+         * its own session cookie. See App\Platform\Surfaces\Surfaces.
+         *
+         * Set `CBOX_ID_ISSUER` to `https://{login host}` and `CBOX_ID_CONSOLE_HOST` to the
+         * app host with it; `cbox-id:doctor` refuses the combination otherwise.
+         */
+        'login' => (is_string(env('CBOX_ID_LOGIN_HOST')) && trim((string) env('CBOX_ID_LOGIN_HOST')) !== '')
+            ? env('CBOX_ID_LOGIN_HOST')
+            : null,
     ],
 
     /*
