@@ -10,6 +10,7 @@ use App\Platform\OrganizationAccess;
 use App\Platform\PlatformAuth;
 use App\Platform\SessionMetadata;
 use App\Platform\SignedInPage;
+use App\Platform\SsoMandates;
 use App\Platform\Surfaces\SessionSurface;
 use App\SignalsData\IdentityCapture;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
@@ -118,21 +119,42 @@ final class Authenticate
         // Resolve the active org — but ONLY honour one the subject is a member of.
         // A revoked selection must not silently retarget an in-flight write to
         // another organization. Only an unscoped session may choose an initial org.
-        $requestedOrgId = $request->session()->get(PlatformAuth::ORG_KEY) ?? $session->organization_id;
+        $selectedOrgId = $request->session()->get(PlatformAuth::ORG_KEY);
+        $requestedOrgId = $selectedOrgId ?? $session->organization_id;
 
         $organization = null;
         $role = null;
 
+        /*
+         * AND ONLY ONE THIS SESSION MAY ENTER. With SSO mandates per organization
+         * ({@see SsoMandates::perOrganization()}), an organization that requires SSO is
+         * bound only to a session that came through its own connection. A session that
+         * did not is simply not IN that organization: every surface that reads the acting
+         * organization from here (console pages, the authorize endpoint, the SAML IdP,
+         * device approval) then acts in another of the person's organizations or in none,
+         * and their own account pages stay reachable. The doors that NAME an organization
+         * (its console address, the `organization` parameter) send the person through its
+         * connection instead.
+         */
+        $mandates = app(SsoMandates::class);
+
         if (is_string($requestedOrgId)
             && ($membership = $this->memberships->of($requestedOrgId, $subject->id)) !== null
             && $membership->status === MembershipStatus::Active) {
-            $organization = $this->organizations->find($requestedOrgId);
-            $role = $membership->role;
+            if ($mandates->admits($session, $requestedOrgId)) {
+                $organization = $this->organizations->find($requestedOrgId);
+                $role = $membership->role;
+            } elseif ($selectedOrgId === null) {
+                // Nobody chose it: it is only where the session was started. Start
+                // somewhere this session may be instead of nowhere.
+                $requestedOrgId = null;
+            }
         }
 
         if ($requestedOrgId === null) {
             $fallbackOrgId = $this->memberships->forUser($subject->id)
-                ->firstWhere('status', MembershipStatus::Active)?->organization_id;
+                ->first(fn ($candidate): bool => $candidate->status === MembershipStatus::Active
+                    && $mandates->admits($session, $candidate->organization_id))?->organization_id;
 
             if (is_string($fallbackOrgId)) {
                 $organization = $this->organizations->find($fallbackOrgId);

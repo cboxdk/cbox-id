@@ -642,8 +642,10 @@ Route::middleware(['plane:mcp-client', 'throttle:oauth-authorize', EnforceImpers
  * organization, and is sent on to the authorization or console page that sent them here.
  * No plane: it is reached from the issuer's authorize endpoint and from the console alike.
  * Never during impersonation, which must not found or join anything for the person.
+ * Behind the customer console's door like every signed-in page: a customer's own
+ * environment has no such screen, and answers 404.
  */
-Route::middleware([EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth', 'locale'])
+Route::middleware([EnforceImpersonationWindow::class, BlockDuringImpersonation::class, 'platform.auth', 'locale', 'console.customer'])
     ->group(function (): void {
         Route::get('/organization-required', [NoOrganizationController::class, 'show'])->name('organization.required');
         Route::post('/organization-required/personal', [NoOrganizationController::class, 'personal'])

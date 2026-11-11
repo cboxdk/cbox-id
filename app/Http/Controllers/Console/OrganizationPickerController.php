@@ -20,6 +20,7 @@ use Illuminate\Routing\Route as RouteRecord;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
@@ -76,14 +77,14 @@ final readonly class OrganizationPickerController extends ConsoleController
      * person is on. The id is checked against their own memberships, never trusted; an
      * organization they cannot open answers with the picker.
      */
-    public function switch(Request $request, OrganizationDirectory $directory, CurrentUser $me): RedirectResponse
+    public function switch(Request $request, OrganizationDirectory $directory, CurrentUser $me): SymfonyResponse
     {
         // A customer's own console switches between ITS organizations, in the session, as
         // it always has: `/orgs/{org}` addresses Cbox organizations, which it has none of.
         if (app(PlaneResolver::class)->onCustomerEnvironment()) {
             $answer = app()->call([app(SessionController::class), 'switchOrganization']);
 
-            return $answer instanceof RedirectResponse ? $answer : redirect()->route('dashboard');
+            return $answer instanceof SymfonyResponse ? $answer : redirect()->route('dashboard');
         }
 
         $wanted = $request->string('organization')->toString();

@@ -138,9 +138,10 @@ final class CustomerConsole
      * Route-name prefixes withheld the same way: the v2 redirects into `/orgs/{org}`, the
      * v2 writes of the organization-settings page, and the shared shell's endpoints (a
      * customer's console is white-labelled and keeps its own chrome), which a customer's
-     * console does not serve either.
+     * console does not serve either. And the Cbox realm's "no organization" screen: a
+     * customer's own environment has its own rules for who is in what.
      */
-    private const WITHHELD_PREFIXES = ['legacy.orgs.', 'legacy.settings.', 'console.shell.'];
+    private const WITHHELD_PREFIXES = ['legacy.orgs.', 'legacy.settings.', 'console.shell.', 'organization.required'];
 
     /**
      * Whether a customer's environment host serves the PERSISTENT console (the admin portal

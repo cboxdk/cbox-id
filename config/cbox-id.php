@@ -278,6 +278,20 @@ return [
     ],
 
     /*
+     * How an organization's "SSO required" policy is applied.
+     *
+     * Off (per person): any membership of an organization that requires SSO closes every
+     * local sign-in to that person in the whole environment. On (per organization): the
+     * person signs in however the environment allows, and an organization that requires
+     * SSO is entered (its console, an app authorized for it) only on a session established
+     * through that organization's own enterprise connection; a session that was not is
+     * sent through the connection first. The single-realm cutover turns it on.
+     */
+    'sso' => [
+        'mandate_per_organization' => (bool) env('CBOX_ID_SSO_MANDATE_PER_ORGANIZATION', false),
+    ],
+
+    /*
      * Self-service signup mode — who may create an account + organization at
      * /signup:
      *   - 'open'        anyone may sign up (the default).

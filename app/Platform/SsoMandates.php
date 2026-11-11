@@ -8,6 +8,7 @@ use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DomainVerification;
 use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
+use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\PlatformRoot;
@@ -35,6 +36,9 @@ use Cbox\Id\Platform\PlatformRoot;
  */
 final readonly class SsoMandates
 {
+    /** The `amr` value the framework's federation service stamps on an enterprise SSO session. */
+    private const SSO_METHOD = 'sso';
+
     public function __construct(
         private Memberships $memberships,
         private AuthPolicies $policies,
@@ -62,6 +66,76 @@ final readonly class SsoMandates
         // Ambient first: it is the common case and the one that needs no scope switch.
         return $this->mandateIn($subjectId)
             ?? $this->platformRoot->run(fn (): ?SsoMandate => $this->mandateIn($subjectId));
+    }
+
+    /**
+     * Whether a mandate is a rule about ENTERING AN ORGANIZATION rather than about the
+     * person (`cbox-id.sso.mandate_per_organization`).
+     *
+     * Per person, the original rule: any membership of an organization that requires SSO
+     * closes every local door to that person, everywhere. Per organization: the person
+     * signs in to the environment however it allows, and an organization that requires
+     * SSO is entered (its console opened, an app authorized for it) only on a session that
+     * came through that organization's own connection. Their other organizations, and
+     * their own account, are untouched by it.
+     */
+    public static function perOrganization(): bool
+    {
+        return config('cbox-id.sso.mandate_per_organization') === true;
+    }
+
+    /** Whether this organization requires SSO of the people entering it. */
+    public function mandates(string $organizationId): bool
+    {
+        return ! $this->policies->resolve($organizationId)->sso->allowsPasswordLogin();
+    }
+
+    /**
+     * Whether this session may ENTER the organization, as far as its SSO mandate goes.
+     * Always true while mandates are per person: that rule is enforced at the doors.
+     */
+    public function admits(?Session $session, string $organizationId): bool
+    {
+        return $session === null
+            ? ! self::perOrganization() || ! $this->mandates($organizationId)
+            : $this->admitsMethods(array_values($session->amr), $session->organization_id, $organizationId);
+    }
+
+    /**
+     * {@see admits()} for a session described by how it was (or is about to be)
+     * established: its `amr` and the organization it was started for.
+     *
+     * "THROUGH THE ORGANIZATION'S CONNECTION" IS READ FROM TWO FACTS THE SESSION ALREADY
+     * CARRIES. The framework starts an enterprise SSO session with `amr = ['sso']` and
+     * `organization_id` = the connection's organization, and nothing rewrites either
+     * afterwards (switching organization moves the browser's selection, not the row). So
+     * `sso` + this organization means an assertion from one of this organization's
+     * enterprise connections opened it. A catalogue provider scoped to the organization
+     * is `social`, and an environment-wide connection carries no organization: neither
+     * satisfies a mandate, as neither is the door the administrator mandated.
+     *
+     * A support session (`impersonation`) is admitted: it is an operator's authorized
+     * view of one organization, not the person's own sign-in.
+     *
+     * @param  list<mixed>  $amr
+     */
+    public function admitsMethods(array $amr, ?string $sessionOrganizationId, string $organizationId): bool
+    {
+        if (! self::perOrganization() || ! $this->mandates($organizationId)) {
+            return true;
+        }
+
+        if (in_array('impersonation', $amr, true)) {
+            return true;
+        }
+
+        return in_array(self::SSO_METHOD, $amr, true) && $sessionOrganizationId === $organizationId;
+    }
+
+    /** The organization's name and where its people start SSO, for a step-up or a refusal. */
+    public function forOrganization(string $organizationId): SsoMandate
+    {
+        return $this->describe($organizationId);
     }
 
     /** The strictest mandate among this subject's memberships IN THE CURRENT SCOPE. */
