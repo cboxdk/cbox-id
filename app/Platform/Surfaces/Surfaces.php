@@ -88,6 +88,8 @@ final class Surfaces
         'app/oauth/callback',
         'mfa', 'mfa/*',
         'invitations/*', 'invite/*', 'verify-email/*',
+        // On to the app after a hold or a mailed link.
+        'continue',
         // Inbound federation and the SAML IdP bindings.
         'sso/*',
         // The protocol surface.

@@ -27,6 +27,7 @@ use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Mfa\AuthenticatorEnrollment;
+use App\Platform\OAuth\AppSignIns;
 use App\Platform\Passkeys\PasskeyName;
 use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\Platform\PlaneResolver;
@@ -738,6 +739,19 @@ final readonly class AccountController extends PageController
         // ({@see AccountChrome}); a second link here would say the same thing twice.
         if (app(AccountChrome::class)->applies($request)) {
             return null;
+        }
+
+        /*
+         * ON THE WAY TO AN APP. `/oauth/authorize` holds a person here when their
+         * organization requires a second factor they have not enrolled, and the request
+         * waits in the session. Once they have enrolled, this is the way on: the continue
+         * page follows the waiting request. A link and not a redirect, because the
+         * recovery codes are shown on this page exactly once.
+         */
+        $pending = app(AppSignIns::class)->pending($request);
+
+        if ($pending !== null) {
+            return ['url' => route('app.continue'), 'host' => $pending->clientName];
         }
 
         $target = app(ReturnUrl::class)->validated($request->query(ReturnUrl::PARAMETER), $request);

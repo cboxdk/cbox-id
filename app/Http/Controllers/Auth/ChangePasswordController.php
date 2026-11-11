@@ -8,6 +8,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Middleware\Authenticate;
 use App\Http\Requests\Auth\ChangePasswordRequest;
 use App\Platform\CurrentUser;
+use App\Platform\IntendedUrl;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -73,6 +74,10 @@ final readonly class ChangePasswordController extends PageController
         // release the hold on a password the policy might still refuse.
         $admin->clear($me->id());
 
-        return to_route('dashboard')->with('status', __('console.your_password_has_been_updated_cc244a90'));
+        // On to where they were going when the hold caught them: an app's authorization
+        // (`/oauth/authorize` holds for this too, and waits in the session), else the
+        // console. It used to be the console always, and the app never heard back.
+        return redirect()->to(IntendedUrl::pullForSubject() ?? route('dashboard'))
+            ->with('status', __('console.your_password_has_been_updated_cc244a90'));
     }
 }

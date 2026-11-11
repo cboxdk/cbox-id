@@ -9,6 +9,7 @@ use App\Http\Props\Shell\ShellProps;
 use App\Platform\Console\ShellPayload;
 use App\Platform\CurrentUser;
 use App\Platform\Locale\ConsoleLabels;
+use App\Platform\OAuth\AppSignIns;
 use Illuminate\Http\Request;
 
 /**
@@ -54,10 +55,17 @@ final readonly class AccountChrome
 
         $return = $this->returns->remember($request);
 
+        // An app's authorization waiting in this session comes first: `/oauth/authorize`
+        // held the person on one of these pages (a second factor to enrol), and "Back to"
+        // is then the way on, through the page that follows the waiting request.
+        $pending = app(AppSignIns::class)->pending($request);
+
         return [
-            'back' => $return !== null
-                ? ['url' => $return['url'], 'label' => $return['label']]
-                : ['url' => app(ConsoleEntry::class)->url(), 'label' => $this->returns->ownLabel()],
+            'back' => match (true) {
+                $pending !== null => ['url' => route('app.continue'), 'label' => $pending->clientName],
+                $return !== null => ['url' => $return['url'], 'label' => $return['label']],
+                default => ['url' => app(ConsoleEntry::class)->url(), 'label' => $this->returns->ownLabel()],
+            },
             'pages' => $this->pages(),
             'signOutHref' => route('logout', [], false),
         ];

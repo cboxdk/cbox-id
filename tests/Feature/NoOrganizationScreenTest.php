@@ -87,12 +87,17 @@ function noOrgInvitation(string $email): array
     return ['organization' => $acme, 'invitationId' => $sent->invitation->id];
 }
 
-it('leaves a person with no organization alone while the switch is off', function (): void {
+it('leaves a person with no organization alone while the switch is off, except at the realm\'s own apps', function (): void {
     noOrgRealm(switch: false);
     noOrgPerson();
 
-    expect(leftFor(authorizeRequest(['client_id' => noOrgClient(), 'redirect_uri' => 'https://app.test/cb'])))
-        ->toStartWith('https://app.test/cb?code=');
+    // The screen is off for somebody nothing sent to it...
+    $this->get(route('organization.required'))->assertRedirect(route('dashboard'));
+
+    // ...but a first-party app is never handed a person without an organization, whatever
+    // the switch says (tests/Feature/HostedSignIn/ResumeAuthorizationTest.php walks it through).
+    authorizeRequest(['client_id' => noOrgClient(), 'redirect_uri' => 'https://app.test/cb'])
+        ->assertRedirect(route('organization.required'));
 });
 
 it('interrupts an authorization for the screen, and resumes it in a personal organization', function (): void {

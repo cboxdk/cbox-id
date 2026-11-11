@@ -37,6 +37,9 @@ final readonly class AppSignIns
 
     private const string SESSION_KEY = 'cbox.app_sign_in';
 
+    /** The app a mailed link named, for the continue page. */
+    private const string CONTINUE_KEY = 'cbox.continue_to';
+
     /** How long after the request the app is still named on a page that has lost it. */
     private const int REMEMBERED_SECONDS = 3600;
 
@@ -84,10 +87,16 @@ final readonly class AppSignIns
     }
 
     /**
-     * The app a client id names in this environment, or null: for a mailed link opened in
-     * a browser that holds no request.
+     * The app a client id names in this environment, or null.
+     *
+     * Only an app somebody registered here on purpose. One that registered itself (RFC
+     * 7591, or a metadata document) chose its own name and addresses, and a hosted page
+     * that sent people to it would be lending this host's name to a stranger.
+     *
+     * @param  bool  $environmentWide  only an app of the whole environment, never one
+     *                                 organization's own: for an id that arrived in a link
      */
-    public function named(mixed $clientId): ?AppSignIn
+    public function named(mixed $clientId, bool $environmentWide = false): ?AppSignIn
     {
         if (! is_string($clientId) || $clientId === '' || strlen($clientId) > 255) {
             return null;
@@ -95,7 +104,7 @@ final readonly class AppSignIns
 
         $client = Client::query()->where('client_id', $clientId)->first();
 
-        if ($client === null) {
+        if ($client === null || $client->isDynamicallyRegistered() || ($environmentWide && $client->organization_id !== null)) {
             return null;
         }
 
@@ -126,15 +135,32 @@ final readonly class AppSignIns
     }
 
     /**
-     * Where a sign-in that finished in ANOTHER browser goes: the page that sends the
-     * person on to the app a mailed link named, or null when it named none we know a home
-     * for. On this host, so it can stand as an intended URL.
+     * A MAILED LINK OPENED IN ANOTHER BROWSER names its app and holds no request. Note
+     * the app in this session and answer the page that sends the person on to it
+     * ({@see continuation()}), or null when the id names no environment-wide app with a
+     * home we know. The answer is on this host, so it can stand as an intended URL.
+     *
+     * The id came from a link, so it is only ever looked up among the apps the
+     * environment's own administrators registered; and it is kept in the session, so the
+     * continue page sends nobody anywhere because of what its own address says.
      */
-    public function continueUrl(mixed $clientId): ?string
+    public function continueTo(Request $request, mixed $clientId): ?string
     {
-        $app = $this->named($clientId);
+        $app = $this->named($clientId, environmentWide: true);
 
-        return $app?->homeUrl === null ? null : route('app.continue', ['client' => $app->clientId]);
+        if ($app?->homeUrl === null) {
+            return null;
+        }
+
+        $request->session()->put(self::CONTINUE_KEY, $app->clientId);
+
+        return route('app.continue');
+    }
+
+    /** The home of the app {@see continueTo()} noted, once; null when there is none. */
+    public function continuation(Request $request): ?string
+    {
+        return $this->named($request->session()->pull(self::CONTINUE_KEY), environmentWide: true)?->homeUrl;
     }
 
     public function forget(Request $request): void

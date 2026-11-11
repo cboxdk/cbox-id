@@ -13,6 +13,7 @@ use App\Http\Controllers\AppsController;
 use App\Http\Controllers\AuditLogExportDownloadController;
 use App\Http\Controllers\Auth\AccountsController;
 use App\Http\Controllers\Auth\ChangePasswordController;
+use App\Http\Controllers\Auth\ContinueController;
 use App\Http\Controllers\Auth\InvitationAcceptController;
 use App\Http\Controllers\Auth\LinkAccountController;
 use App\Http\Controllers\Auth\LoginController;
@@ -657,6 +658,16 @@ Route::middleware([EnforceImpersonationWindow::class, BlockDuringImpersonation::
             ->middleware('throttle:20,1')
             ->name('organization.required.accept');
     });
+
+/*
+ * ON TO WHERE THIS BROWSER WAS GOING (App\Http\Controllers\Auth\ContinueController): the
+ * authorization waiting in the session, else the app a mailed link named, else the console.
+ * No plane, like the screen above: it is reached from the issuer's pages and from a person's
+ * own. It reads nothing from its address.
+ */
+Route::middleware([EnforceImpersonationWindow::class, 'platform.auth', 'locale'])
+    ->get('/continue', ContinueController::class)
+    ->name('app.continue');
 
 /*
  * Admin Portal — a single-use setup link. An external IT admin opens it with

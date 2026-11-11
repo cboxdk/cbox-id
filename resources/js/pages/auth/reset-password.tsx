@@ -6,7 +6,14 @@ import { Button, PasswordField, PasswordManagerIdentity } from '@/ui';
 import { login } from '@routes';
 import { update } from '@routes/password';
 
-type Props = PageProps<{ token: string }>;
+type Props = PageProps<{
+    token: string;
+    /**
+     * The app the reset was asked for from, as the mailed link names it (a client id), or
+     * null. Posted back with the form; the server looks it up, this page shows nothing of it.
+     */
+    forApp: string | null;
+}>;
 
 /**
  * SETTING A NEW PASSWORD FROM A RESET LINK.
@@ -15,10 +22,11 @@ type Props = PageProps<{ token: string }>;
  * That is not an omission — a page that greets you by name is an account-existence
  * oracle for anybody holding a guessed token.
  */
-export default function ResetPassword({ token }: Props) {
+export default function ResetPassword({ token, forApp }: Props) {
     const { t } = useTranslator();
     const form = useForm({
         token,
+        app: forApp,
         password: '',
         password_confirmation: '',
     });

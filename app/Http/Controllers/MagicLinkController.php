@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Http\Props\Auth\LinkConfirmationProps;
 use App\Platform\Enums\RefusedFactor;
 use App\Platform\IntendedUrl;
+use App\Platform\OAuth\AppSignIns;
 use App\Platform\PlatformAuth;
 use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
@@ -38,14 +39,19 @@ use Inertia\Response;
  */
 final readonly class MagicLinkController extends PageController
 {
-    public function show(string $token): Response
+    public function show(Request $request, string $token): Response
     {
+        // The app the link was asked for from, as the link names it: carried to the
+        // button and looked up only when the link is redeemed.
+        $forApp = $request->query(AppSignIns::PARAMETER);
+        $carried = is_string($forApp) && $forApp !== '' ? [AppSignIns::PARAMETER => $forApp] : [];
+
         return $this->page('auth/confirm-sign-in', __('auth.confirm_sign_in.title'), [
             'confirmation' => new LinkConfirmationProps(
                 heading: __('auth.confirm_sign_in.heading'),
                 lead: __('auth.confirm_sign_in.lead'),
                 actionLabel: __('auth.confirm_sign_in.action'),
-                actionUrl: route('magic.redeem.store', $token),
+                actionUrl: route('magic.redeem.store', ['token' => $token, ...$carried]),
                 note: __('auth.confirm_sign_in.note'),
             ),
         ]);
@@ -68,6 +74,20 @@ final readonly class MagicLinkController extends PageController
             app(IdentityCapture::class)->failed($request, reason: 'invalid_credentials');
 
             return redirect()->route('login')->with('error', __('auth.confirm_sign_in.invalid'));
+        }
+
+        /*
+         * OPENED IN ANOTHER BROWSER than the one that asked for it, the link arrives in a
+         * session with no request waiting. It names the app it was asked for from, so the
+         * sign-in goes on to that app (through the second factor too, which reads the same
+         * intent) instead of to a console the person was never headed for.
+         */
+        if (! $request->session()->has(IntendedUrl::KEY)) {
+            $continue = app(AppSignIns::class)->continueTo($request, $request->query(AppSignIns::PARAMETER));
+
+            if ($continue !== null) {
+                $request->session()->put(IntendedUrl::KEY, $continue);
+            }
         }
 
         // The redemption already STARTED a framework session — the link is spent and the

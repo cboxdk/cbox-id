@@ -7,9 +7,11 @@ namespace App\Http\Controllers;
 use App\Http\Props\Auth\LinkConfirmationProps;
 use App\Http\Props\Auth\LinkFact;
 use App\Platform\Enums\RefusedFactor;
+use App\Platform\IntendedUrl;
 use App\Platform\Invitations\AppReturnTargets;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
 use App\Platform\Invitations\ValueObjects\InvitedRole;
+use App\Platform\OAuth\AppSignIns;
 use App\Platform\PlatformAuth;
 use App\Platform\SsoRefusal;
 use Cbox\Id\Organization\Exceptions\InvalidInvitation;
@@ -29,9 +31,10 @@ use Symfony\Component\HttpFoundation\Response as HttpResponse;
  * and spends nothing; the button POSTs to {@see self::accept()}. Accepting on the GET meant a
  * mail scanner fetching the link accepted the invitation — and was signed in as the invitee.
  *
- * AND THEN BACK TO THE APP. An invitation sent on an app's behalf carries where in that app
- * to land ({@see AppReturnTargets}), re-checked here against the
- * app's registered origins; without one the person lands in this console as before.
+ * AND THEN BACK TO THE APP. An authorization waiting in this browser is resumed first; an
+ * invitation sent on an app's behalf carries where in that app to land
+ * ({@see AppReturnTargets}), re-checked against the app's registered origins, or lands at
+ * the app itself; with neither the person lands in this console.
  *
  * If that organization mandates SSO, the joining still happens and the session does not:
  * they are a member, and their way in is the identity provider their administrator chose.
@@ -104,7 +107,31 @@ final readonly class InvitationController extends PageController
 
         $auth->establish($request, $accepted->subjectId, ['invitation'], $accepted->organizationId());
 
-        $returnTo = $accepted->returnTarget?->url;
+        /*
+         * WHERE THEY WERE GOING, in this order:
+         *
+         *  1. An app's authorization waiting in this browser. They were sent to sign in by
+         *     that app, opened the invitation on the way, and are signed in now: the request
+         *     resumes and the app gets its answer. It used to be dropped for the console,
+         *     and the app's tab waited for a callback that never came.
+         *  2. The address in the app the invitation was sent for (`client_id` + `return_to`,
+         *     re-checked against the app's registration when the invitation was accepted).
+         *  3. The app itself, when the invitation names it without an address: its launch
+         *     address, where its own sign-in starts and this session answers it.
+         *  4. The console.
+         */
+        $apps = app(AppSignIns::class);
+
+        if ($apps->pending($request) !== null) {
+            $resume = IntendedUrl::pullForSubject();
+
+            if ($resume !== null) {
+                return redirect()->to($resume);
+            }
+        }
+
+        $target = $accepted->returnTarget;
+        $returnTo = $target === null ? null : ($target->url ?? $apps->named($target->clientId)?->homeUrl);
 
         // `Inertia::location()`, not a redirect: the button posts over XHR, and an XHR
         // cannot follow a redirect to another origin. This answers with a full-page visit.
