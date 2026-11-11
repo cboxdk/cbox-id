@@ -283,6 +283,9 @@ it('refuses inline create to a member, and to an ancestor from another organizat
 
 it('keeps a customer environment\'s own console in its white-labelled chrome', function (): void {
     multiTenantDeployment();
+    // The persistent customer console, which a deployment turns on; without it a tenant
+    // host serves the person's own pages only and `dashboard` redirects to them.
+    withTenantCustomerConsole();
     $vendor = provisionAccount('vendor@chrome.example');
     serveOnTestHost($vendor['environment']);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($vendor['environment']->id));

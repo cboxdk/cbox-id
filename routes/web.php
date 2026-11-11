@@ -684,9 +684,10 @@ Route::middleware([EnforceImpersonationWindow::class, BlockDuringImpersonation::
  * ON TO WHERE THIS BROWSER WAS GOING (App\Http\Controllers\Auth\ContinueController): the
  * authorization waiting in the session, else the app a mailed link named, else the console.
  * No plane, like the screen above: it is reached from the issuer's pages and from a person's
- * own. It reads nothing from its address.
+ * own. It reads nothing from its address. Through the customer console's door like every
+ * signed-in route, which serves it: it belongs to no page, as a ceremony does.
  */
-Route::middleware([EnforceImpersonationWindow::class, 'platform.auth', 'locale'])
+Route::middleware([EnforceImpersonationWindow::class, 'platform.auth', 'locale', 'console.customer'])
     ->get('/continue', ContinueController::class)
     ->name('app.continue');
 

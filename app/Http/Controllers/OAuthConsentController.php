@@ -541,7 +541,7 @@ final readonly class OAuthConsentController extends PageController
         if ($required->appliesToApp($me, $client)) {
             if ($silent) {
                 return $this->redirectError($redirectUri, 'interaction_required', $state,
-                    'The user must choose an organization before continuing.');
+                    'The user must pick an organization before continuing.');
             }
 
             // So the screen answers for this browser whatever the switch says.
@@ -580,7 +580,7 @@ final readonly class OAuthConsentController extends PageController
              */
             if ($silent) {
                 return $this->redirectError($redirectUri, 'interaction_required', $state,
-                    'The user must choose an organization and sign in through its identity provider.');
+                    'The user must pick an organization and sign in through its identity provider.');
             }
 
             return redirect()->route('oauth.authorize.organization', $pending->put($request, $authorization));
