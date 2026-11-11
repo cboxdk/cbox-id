@@ -8,6 +8,8 @@ use Cbox\Id\AccessControl\Manifest\ManifestParser;
 use Cbox\Id\AccessControl\Models\Permission;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -122,7 +124,7 @@ it('draws "All apps" as the chosen default on the new-role form, not the picker\
 });
 
 it('activates only the app role definition the administrator actually reviewed', function (): void {
-    crudSetup();
+    ['envId' => $environmentId] = crudSetup();
     $manifests = app(AppManifests::class);
     $parser = app(ManifestParser::class);
     $publish = function (array $permissions) use ($manifests, $parser): void {
@@ -138,6 +140,9 @@ it('activates only the app role definition the administrator actually reviewed',
     $page = visit(route('environment.roles.show', $role->id));
     $page->assertSee('sites:publish')->click('button:has-text("Activate reviewed definition")')
         ->fill('.cbx-dialog input.input', 'Site editor');
+    // The browser's requests ran in this process, on the app host, and left its
+    // environment context there; the publish below is this environment's app.
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($environmentId));
     $publish(['sites:read', 'sites:publish', 'sites:delete']);
     $page->click('.cbx-dialog button:has-text("Activate definition")')
         ->assertSee('The pending role definition has changed or is no longer available. Review it again before activating.')
