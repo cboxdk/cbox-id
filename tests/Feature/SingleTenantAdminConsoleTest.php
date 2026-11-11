@@ -60,7 +60,7 @@ it('serves the admin console when the deployment is multi-tenant', function (): 
     // not that the tenant's host renders anything. Asserting the destination proves both
     // halves — the bulkhead let the request through, AND it names this environment.
     $this->get('https://tenant.cboxid.com/admin/login')
-        ->assertStatus(301)
+        ->assertStatus(302)
         ->assertRedirect('https://cboxid.com/'.app(EnvironmentConsolePath::class)->for($env->id).'/login');
 })->group('security');
 

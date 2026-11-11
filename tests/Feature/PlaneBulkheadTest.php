@@ -476,7 +476,7 @@ it('serves the environment console on the app host only, and a tenant host only 
 
     // Its old address there: the same page on the app host, and nothing served.
     $this->get('https://acme.cboxid.com/admin/users?page=2')
-        ->assertStatus(301)
+        ->assertStatus(302)
         ->assertRedirect('https://cboxid.com'.$path.'/users?page=2')
         ->assertHeader('Deprecation', 'true');
 })->group('security');
