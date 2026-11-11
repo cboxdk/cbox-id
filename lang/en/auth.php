@@ -289,6 +289,22 @@ return [
         'token_mismatch' => 'That setup token does not match this deployment’s, or it has expired. Print a fresh one with php artisan cbox-id:setup-token.',
     ],
 
+    // Signed in, in no organization: accept an invitation or continue with a personal one.
+    'no_organization' => [
+        'title' => 'No organization',
+        'heading' => 'You are no longer a member of any organization',
+        'lead' => 'Accept an invitation, or continue with an organization of your own.',
+        'signed_in_as' => 'Signed in as :account',
+        'invitations' => 'Invitations for you',
+        'invited_by' => 'Invited by :name',
+        'accept' => 'Accept',
+        'confirm_first' => 'Confirm your email address to see the invitations sent to it. We sent you a link when you signed up.',
+        'personal' => 'Continue with a personal organization',
+        'personal_hint' => 'An organization of your own, named after you. You can rename it and invite others later.',
+        'sign_out' => 'Sign out',
+        'invitation_invalid' => 'That invitation is no longer valid.',
+    ],
+
     'join_organization' => [
         'title' => 'Join :organization',
         'heading' => 'Join :organization?',

@@ -11,6 +11,7 @@ use App\Platform\CurrentUser;
 use App\Platform\Organizations\LastUsedOrganization;
 use App\Platform\Organizations\OrganizationDirectory;
 use App\Platform\Organizations\OrganizationEntry;
+use App\Platform\Organizations\OrganizationRequired;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Http\RedirectResponse;
@@ -153,7 +154,13 @@ final readonly class OrganizationPickerController extends ConsoleController
         $entry = LastUsedOrganization::resolve($request, app(OrganizationDirectory::class), $me->id(), $me->organizationId());
 
         if ($entry === null) {
-            return redirect()->route('orgs.index');
+            // In the Cbox realm a person with no organization answers one screen first
+            // (an invitation, or a personal organization) and comes back here.
+            $required = app(OrganizationRequired::class);
+
+            return $required->appliesTo($me)
+                ? redirect()->to($required->url())
+                : redirect()->route('orgs.index');
         }
 
         // Straight to its first page when the session is already in it; another
