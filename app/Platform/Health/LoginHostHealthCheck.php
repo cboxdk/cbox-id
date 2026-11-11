@@ -77,6 +77,15 @@ class LoginHostHealthCheck implements HealthCheck
             );
         }
 
+        $rpId = config('cbox-id.webauthn.rp_id');
+
+        if (is_string($rpId) && $rpId !== '' && $login !== mb_strtolower($rpId) && ! str_ends_with($login, '.'.mb_strtolower($rpId))) {
+            $results[] = HealthResult::fail(
+                'The pinned passkey relying party does not cover the login host',
+                "CBOX_ID_WEBAUTHN_RP_ID is {$rpId}, and passkeys are used on {$login}. Pin the login host or a parent domain of it, or unset the pin.",
+            );
+        }
+
         return $results;
     }
 

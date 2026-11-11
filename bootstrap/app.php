@@ -39,6 +39,7 @@ use App\Http\Middleware\ResolveLocale;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\ServeMarketingWebsite;
 use App\Http\Middleware\SetEnvironment;
+use App\Http\Middleware\StatelessFrontendApi;
 use App\Http\Middleware\TrustHostsExceptHealth;
 use App\Http\Middleware\UseSurfaceSessionCookie;
 use App\Platform\EmailNotVerified;
@@ -274,6 +275,9 @@ return Application::configure(basePath: dirname(__DIR__))
         // issuer on the login host, the console on the app host, and only the health probes
         // on a host that is neither. A no-op while no login host is configured.
         $middleware->append(FenceSurfaces::class);
+        // …and the frontend API holds no session there: no cookie read, none set, no
+        // credentialed CORS. See the middleware for what that closes.
+        $middleware->append(StatelessFrontendApi::class);
         $middleware->append(ServeMarketingWebsite::class);
 
         // IN LOGIN-HOST MODE EACH SURFACE HAS ITS OWN SESSION (see SessionSurface). The
