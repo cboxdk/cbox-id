@@ -91,6 +91,21 @@ describe('CommandPalette', () => {
         );
     });
 
+    it('searches the platform environment from an operator page under /admin', async () => {
+        window.history.replaceState({}, '', '/admin/organizations');
+        render(<CommandPalette areas={AREAS} />);
+
+        await userEvent.keyboard('{Meta>}k{/Meta}');
+
+        expect(await screen.findByRole('combobox')).toHaveFocus();
+        await waitFor(() =>
+            expect(fetchMock).toHaveBeenCalledWith(
+                '/admin/environment/search?q=',
+                expect.anything(),
+            ),
+        );
+    });
+
     it('waits for typing to pause, then shows what the server found', async () => {
         render(<CommandPalette areas={AREAS} />);
         await userEvent.click(screen.getByRole('button', { name: 'Search the console' }));

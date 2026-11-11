@@ -70,8 +70,9 @@ export function environmentConsolePrefix(pathname: string): string | null {
  *
  * Platform admin has no search of its own here: it is an area of a console that does — the
  * platform environment's at `/admin/environment`, or a single-tenant install's organization
- * console — and ⌘K searches that. Every environment at once is Platform › Search, a page.
- * An environment console's search is under that console's own path.
+ * console — and ⌘K searches that, from every operator page under `/admin` too. Every
+ * environment at once is Platform › Search (`/admin/search`), a page, not JSON. An
+ * environment console's search is under that console's own path.
  */
 export function searchHref(
     altitude: string | undefined,
@@ -87,7 +88,13 @@ export function searchHref(
 
     const prefix = environmentConsolePrefix(pathname);
 
-    return prefix === null ? null : `${prefix}/search`;
+    if (prefix !== null) {
+        return `${prefix}/search`;
+    }
+
+    // An operator page (`/admin/organizations`, `/admin/environments`, …) is drawn as the
+    // platform environment's console, so it searches that console.
+    return /^\/admin(?:\/|$)/.test(pathname) ? '/admin/environment/search' : null;
 }
 
 export function searchUrl(base: string, query: string): string {
