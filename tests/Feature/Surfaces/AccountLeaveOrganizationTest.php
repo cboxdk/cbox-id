@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Platform\Surfaces\ConsoleEntry;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
@@ -197,10 +196,10 @@ it('lands the old app-picker bookmark on the console in login-host mode, where t
     $this->get('https://'.APP_HOST.'/switch-app')
         ->assertRedirect('https://'.APP_HOST.'/dashboard?switch-app=1');
 
-    // The login host has no console, and no such address.
+    // An app's "switch app" link names the issuer, which is the login host. It has no
+    // console, so it sends the person to the console's switcher through the console's own
+    // sign-in.
     session()->put('cbox.surface', 'login');
-    $this->get('https://'.LOGIN_HOST.'/switch-app')->assertNotFound();
-
-    expect(app(ConsoleEntry::class)->through('https://'.APP_HOST.'/switch-app'))
-        ->toBe('https://'.APP_HOST.'/auth/start?return_to=%2Fswitch-app');
+    $this->get('https://'.LOGIN_HOST.'/switch-app')
+        ->assertRedirect('https://'.APP_HOST.'/auth/start?return_to='.rawurlencode('/dashboard?switch-app=1'));
 });

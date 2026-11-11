@@ -68,6 +68,8 @@ final class Surfaces
     public const array SHARED = [
         '/', 'robots.txt', 'favicon.ico', 'build/*', 'storage/*', 'brand-assets/*', 'app-icons/*',
         'locale', 'interface-language', 'logout', 'signed-out', 'first-run',
+        // The app picker's old address: each surface sends it on to the console's switcher.
+        'switch-app',
         'authenticator/privacy',
         'api/v1', 'api/v1/*',
         '.well-known/oauth-protected-resource', '.well-known/oauth-protected-resource/*',
