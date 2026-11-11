@@ -6,6 +6,7 @@ namespace App\Http\Props\Console;
 
 use App\Http\Props\Prop;
 use App\Http\Props\Shared\LinkTabProps;
+use App\Platform\PublicIds\PublicId;
 
 /**
  * What every tab of an organization's page draws above its own content: the way back to the
@@ -48,6 +49,8 @@ final readonly class OrganizationHeaderProps implements Prop
     {
         return [
             'id' => $this->id,
+            // The form the page's URL carries (plan §3.2), shown and copied as the id.
+            'publicId' => PublicId::encode('organization', $this->id),
             'name' => $this->name,
             'slug' => $this->slug,
             'status' => $this->status,

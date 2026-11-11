@@ -71,10 +71,10 @@ export function OrganizationFrame({
                                 className="text-sm mono"
                                 style={{ color: 'var(--faint)', overflowWrap: 'anywhere' }}
                             >
-                                {hub.id}
+                                {hub.publicId}
                             </span>
                             <CopyButton
-                                value={hub.id}
+                                value={hub.publicId}
                                 label={consoleT('console.copy_organization_id_320d9999')}
                             />
                         </div>

@@ -37,6 +37,9 @@ use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
 use App\Platform\OrganizationApiContext;
 use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\Passkeys\RecordsPasskeyUse;
+use App\Platform\PublicIds\BareIdDeliveryPolicy;
+use App\Platform\PublicIds\WebhookIdFormat;
+use App\Routing\PublicIdUrlGenerator;
 use App\SignalsData\Bundled\IdMachineCredential;
 use App\SignalsData\Bundled\IdManagedSources;
 use Cbox\Dns\Dns;
@@ -57,12 +60,14 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
 use Cbox\Id\Platform\Contracts\OrganizationApiKeys;
+use Cbox\Id\Webhooks\Contracts\WebhookDeliveryPolicy;
 use Cbox\Signals\Contracts\ManagedCredential;
 use Cbox\Signals\Contracts\ManagedSources;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Mail\Events\MessageSending;
+use Illuminate\Routing\UrlGenerator;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Psr\Log\LoggerInterface;
@@ -74,6 +79,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Console URLs carry public ids (`usr_01j…`), wherever a URL is built.
+        $this->app->extend('url', static fn (UrlGenerator $url): PublicIdUrlGenerator => PublicIdUrlGenerator::from($url));
+
         $this->app->bind(\Cbox\Id\Api\Http\Controllers\DecisionController::class, DecisionController::class);
         $this->app->bind(\Cbox\Id\Api\Http\Controllers\UserInfoController::class, UserInfoController::class);
 
@@ -173,6 +181,10 @@ class AppServiceProvider extends ServiceProvider
         // every door a passkey signs in at, because they all go through this contract.
         $this->app->extend(Passkeys::class, fn (Passkeys $inner): Passkeys => new RecordsPasskeyUse($inner));
 
+        // A stored delivery to an endpoint that receives public ids is read with bare ids
+        // again before each attempt, so the policy finds the subject it names.
+        $this->app->extend(WebhookDeliveryPolicy::class, static fn (WebhookDeliveryPolicy $inner): WebhookDeliveryPolicy => new BareIdDeliveryPolicy($inner));
+
         // One CSP nonce per request. `scoped` and not `singleton`: on a long-lived worker
         // a singleton would hand the same value to every request the process ever serves,
         // which is a nonce in name only — anyone who saw one page could predict the value
@@ -202,6 +214,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // An endpoint that asked for public ids receives them (`usr_01j…`); the rest keep bare ids.
+        WebhookIdFormat::register();
+
         // No environment takes a slug the platform's own hosts use (`api`, `app`, …).
         ReservedEnvironmentSlugs::guard();
 

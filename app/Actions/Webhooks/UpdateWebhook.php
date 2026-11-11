@@ -18,6 +18,7 @@ use App\Platform\Actions\Preflight;
 use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\Integrations\IntegrationAudit;
 use App\Platform\Integrations\OutboundUrl;
+use App\Platform\PublicIds\WebhookIdFormat;
 
 /**
  * Repoint an endpoint and/or change what it hears about.
@@ -35,13 +36,13 @@ use App\Platform\Integrations\OutboundUrl;
  */
 #[AsAction(
     name: 'webhooks.update',
-    summary: 'Change a webhook endpoint\'s URL and/or the events it subscribes to.',
+    summary: 'Change a webhook endpoint\'s URL, the events it subscribes to, or the form of the ids its deliveries carry.',
     scope: 'webhooks:write',
     danger: Danger::Write,
     schema: 'Webhook',
     tag: 'Webhooks',
     rest: ['PATCH', '/webhooks/{id}'],
-    consoleRoutes: ['webhooks.update', 'environment.webhooks.update'],
+    consoleRoutes: ['webhooks.update', 'environment.webhooks.update', 'webhooks.id-format', 'environment.webhooks.id-format'],
     consoleGate: ConsoleGate::Administer,
 )]
 final readonly class UpdateWebhook implements Action, Preflight
@@ -54,6 +55,7 @@ final readonly class UpdateWebhook implements Action, Preflight
             Field::string('id')->inPath()->describe('The webhook endpoint id.'),
             Field::string('url')->max(500)->format('uri')->describe('A public HTTPS URL. Left out, unchanged.'),
             Field::list('event_types', Field::string('event_type'))->min(1)->describe('The COMPLETE set of events afterwards. Left out, unchanged.'),
+            Field::string('id_format')->oneOf(WebhookIdFormat::FORMATS)->describe('The ids deliveries carry from now on: `raw` (bare ids) or `prefixed` (public ids, `usr_01j…`). Move a receiver only once it reads the new form. Left out, unchanged.'),
         ]);
     }
 
@@ -73,6 +75,8 @@ final readonly class UpdateWebhook implements Action, Preflight
         $endpoint = WebhookEndpoints::manageable($context);
 
         $before = ['url' => $endpoint->url, 'event_types' => array_values($endpoint->event_types)];
+        $formatBefore = WebhookIdFormat::ofEndpoint($endpoint);
+        $formatAfter = $context->nullableString('id_format') ?? $formatBefore;
 
         // Asked again, not trusted from the preflight: an approval can come minutes later,
         // and the endpoint — or what the URL resolves to — may have moved since.
@@ -86,9 +90,14 @@ final readonly class UpdateWebhook implements Action, Preflight
             }
         }
 
+        if ($formatAfter !== $formatBefore) {
+            $changes['id_format'] = ['from' => $formatBefore, 'to' => $formatAfter];
+        }
+
         if ($changes !== []) {
             $endpoint->url = $after['url'];
             $endpoint->event_types = $after['event_types'];
+            $endpoint->setAttribute('id_format', $formatAfter);
             $endpoint->save();
 
             $this->audit->record(IntegrationAudit::WEBHOOK_UPDATED, 'webhook_endpoint', $endpoint->id, $endpoint->organization_id, $context->actor(), [

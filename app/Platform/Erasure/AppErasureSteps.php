@@ -29,6 +29,8 @@ use Illuminate\Contracts\Foundation\Application;
  *    trail, unlinked (the decision rows stay, they are what thresholds are tuned on).
  *  - {@see RadarErasureStep}: the devices Radar remembers them signing in from, and the
  *    coarse location of the last sign-in on each.
+ *  - {@see PrefixedWebhookDeliveriesErasureStep}: stored deliveries to endpoints that
+ *    receive public ids, which name the person `usr_01j…` rather than by the bare id.
  *
  * The modules register their own beside the tables they add — the devices module its
  * handsets and enrolment codes, risk-plus its review trail — the same way the framework's
@@ -54,6 +56,7 @@ final class AppErasureSteps
         RiskDecisionsErasureStep::class,
         RadarErasureStep::class,
         SourceErasureStep::class,
+        PrefixedWebhookDeliveriesErasureStep::class,
     ];
 
     public static function register(ErasureSteps $steps, Application $app): void

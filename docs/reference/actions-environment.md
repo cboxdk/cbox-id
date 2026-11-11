@@ -4945,6 +4945,7 @@ Register a webhook endpoint for one organization or the whole environment. Retur
 | `url` | string (uri) | yes | A public HTTPS URL. Signed deliveries are POSTed here. At most 500 characters. |
 | `event_types` | list of string | yes | The events it receives. At least 1 items. |
 | `signature_scheme` | string | no | How deliveries are signed: `cbox` (X-Cbox-Signature, the default) or `standard_webhooks` (webhook-id / webhook-timestamp / webhook-signature, verifiable with any Standard Webhooks library; the secret is a `whsec_` secret). One of `cbox`, `standard_webhooks`. |
+| `id_format` | string | no | The ids deliveries carry: `raw` (bare ids, as every endpoint so far) or `prefixed` (public ids, `usr_01j…`). Defaults to `prefixed` on `/v1` and `raw` elsewhere. One of `raw`, `prefixed`. |
 | `organization_id` | string, nullable | no | The organization it belongs to; it carries that organization's traffic only. Send this or environment_wide. At most 64 characters. |
 | `environment_wide` | boolean | no | True to make it the environment's own, carrying EVERY organization's traffic. Send this or organization_id. |
 
@@ -5065,7 +5066,7 @@ Change how a webhook endpoint's deliveries are signed (cbox or standard_webhooks
 
 ### <a id="webhooks.update"></a>webhooks.update
 
-Change a webhook endpoint's URL and/or the events it subscribes to.
+Change a webhook endpoint's URL, the events it subscribes to, or the form of the ids its deliveries carry.
 
 | | |
 |---|---|
@@ -5080,3 +5081,4 @@ Change a webhook endpoint's URL and/or the events it subscribes to.
 | `id` | string (path) | yes | The webhook endpoint id. |
 | `url` | string (uri) | no | A public HTTPS URL. Left out, unchanged. At most 500 characters. |
 | `event_types` | list of string | no | The COMPLETE set of events afterwards. Left out, unchanged. At least 1 items. |
+| `id_format` | string | no | The ids deliveries carry from now on: `raw` (bare ids) or `prefixed` (public ids, `usr_01j…`). Move a receiver only once it reads the new form. Left out, unchanged. One of `raw`, `prefixed`. |

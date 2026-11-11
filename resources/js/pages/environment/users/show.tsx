@@ -69,6 +69,7 @@ interface SupportProps {
 type Props = PageProps<{
     user: {
         id: string;
+        publicId: string;
         name: string | null;
         email: string;
         status: string;
@@ -181,7 +182,7 @@ export default function UserDetail({
                         </Pill>
                     </div>
                     <p className="mt-1 text-sm mono" style={{ color: 'var(--faint)' }}>
-                        {user.id}
+                        {user.publicId}
                     </p>
                 </div>
 

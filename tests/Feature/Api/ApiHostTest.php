@@ -169,7 +169,7 @@ it('serves the organization plane at /v1/organization with an organization key, 
     $this->withToken($key)->getJson(onApi('/v1/organization'))
         ->assertOk()
         ->assertJsonPath('object', 'organization')
-        ->assertJsonPath('id', $account['organization']->id)
+        ->assertJsonPath('id', 'org_'.$account['organization']->id)
         ->assertHeaderMissing('Deprecation');
 
     $this->withToken($key)->getJson('/api/v1/workspace')
