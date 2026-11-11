@@ -26,6 +26,8 @@ export interface ThemeEditorProps {
     presets: ThemeCatalogue;
     fonts: FontStacks;
     radii: string[];
+    /** The tenant base domain the preview's address hangs off; null shows this host. */
+    baseDomain?: string | null;
     help?: HelpContent;
     title?: React.ReactNode;
     description?: React.ReactNode;
@@ -96,6 +98,7 @@ export function ThemeEditor({
     presets,
     fonts,
     radii,
+    baseDomain = null,
     help,
     title,
     description,
@@ -195,10 +198,16 @@ export function ThemeEditor({
         [draft, fonts],
     );
 
-    const host = (draft.name || 'your-app')
+    const slug = (draft.name || 'your-app')
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
+    const host =
+        baseDomain !== null && baseDomain !== ''
+            ? `${slug}.${baseDomain}`
+            : typeof window === 'undefined'
+              ? slug
+              : window.location.host;
 
     return (
         <div>

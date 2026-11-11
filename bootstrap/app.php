@@ -23,6 +23,7 @@ use App\Http\Middleware\PointAtFirstRun;
 use App\Http\Middleware\PortalSession;
 use App\Http\Middleware\ReadOnlyWhileImpersonating;
 use App\Http\Middleware\RedirectIfAuthenticated;
+use App\Http\Middleware\RedirectLegacyTenantHost;
 use App\Http\Middleware\RedirectOutsideInertia;
 use App\Http\Middleware\RequireConsoleAdmin;
 use App\Http\Middleware\RequireEnvironmentSudo;
@@ -268,6 +269,11 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Pin the current environment (session-selected) for the console + hosted UI.
         $middleware->appendToGroup('web', SetEnvironment::class);
+
+        // An environment's address under an older tenant base domain sends a navigating
+        // browser to its canonical host. After SetEnvironment: it asks which environment the
+        // host resolved to.
+        $middleware->appendToGroup('web', RedirectLegacyTenantHost::class);
 
         // An UNINSTALLED deployment has exactly one surface: the first-run screen. In
         // the web group rather than on individual routes because the property is about

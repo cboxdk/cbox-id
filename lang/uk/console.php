@@ -1870,7 +1870,7 @@ return [
     '_begin_certificate_ddddb6cb' => '-----BEGIN CERTIFICATE-----',
     '_o_part1_login_41752fcf' => '/o/:part1/login',
     '_part1_login_cd2b0075' => ':part1/login',
-    '_part1_part2_cboxid_com_e4bea547' => ':part1 :part2.cboxid.com',
+    '_part1_part2_cboxid_com_e4bea547' => ':part1 :part2',
     'amazon_s3_a4f63529' => 'Amazon S3',
     'appearance_contrast_failures' => ':failures',
     'cef_over_http_4e2adc60' => 'CEF over HTTP',

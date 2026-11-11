@@ -34,7 +34,7 @@ servers:
     description: "Your environment's own host"
     variables:
       host:
-        default: acme.cboxid.com
+        default: acme.cboxauth.com
 security:
   -
     PersonToken: []

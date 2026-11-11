@@ -37,7 +37,7 @@ own host, holding your customers' organizations and their people.
 
 **Two kinds of host.** The platform root (`cboxid.com`) serves the organization console, the
 organization and platform APIs, and one MCP server for your whole organization. Each
-environment's own host (`<environment>.cboxid.com`, or a custom domain) is the OpenID
+environment's own host (`<environment>.cboxauth.com`, or a custom domain) is the OpenID
 Connect issuer your apps use, with its hosted sign-in pages, its console at `/admin`, its
 management API and its own MCP server. [More](docs/core-concepts/planes-and-hosts.md).
 

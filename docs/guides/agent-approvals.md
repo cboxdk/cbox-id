@@ -83,7 +83,7 @@ Register the app under [Apps](apps-and-api-keys.md) and answer **AI agent**.
 That gives it a client secret and the backchannel grant. Then ask for approval:
 
 ```bash
-curl -X POST https://<environment>.cboxid.com/oauth/backchannel_authentication \
+curl -X POST https://<environment>.cboxauth.com/oauth/backchannel_authentication \
   -u $CBOX_ID_CLIENT_ID:$CBOX_ID_CLIENT_SECRET \
   -d login_hint=person@example.com \
   -d binding_message="Deploy release 4.2 to production" \

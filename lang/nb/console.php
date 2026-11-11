@@ -3488,7 +3488,7 @@ return [
     '_part1_open_the_setup_guide_a20c5bad' => ':part1 Åpne oppsettsveiledningen',
     '_part1_or_part2_ee970dec' => ':part1 eller :part2',
     '_part1_pages_e37b5db1' => 'Sider: :part1',
-    '_part1_part2_cboxid_com_e4bea547' => ':part1 :part2.cboxid.com',
+    '_part1_part2_cboxid_com_e4bea547' => ':part1 :part2',
     '_part1_part2_left_ecae8383' => '— :part1::part2 igjen',
     '_part1_part2_only_5ce234b9' => 'Bare :part1 :part2',
     '_part1_part2_to_open_an_environment_you_do_administer_4755ab7d' => ':part1 :part2 for å åpne et miljø du administrerer.',

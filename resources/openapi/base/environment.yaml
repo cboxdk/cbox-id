@@ -7,7 +7,7 @@ info:
     its tenancy inside ONE environment: organizations and their owners, members,
     invitations, roles (in one organization, or everywhere for your staff), apps, APIs,
     the API keys customers made for them, and support sessions. It is served on
-    the environment's own host ({slug}.cboxid.com or a custom domain): the host pins
+    the environment's own host ({slug}.cboxauth.com or a custom domain): the host pins
     the environment, and the request is authenticated with an environment API key
     (`cbid_env_…`).
 
@@ -68,7 +68,7 @@ servers:
   - url: https://{host}/api/v1
     description: The environment's own host
     variables:
-      host: { default: acme.cboxid.com }
+      host: { default: acme.cboxauth.com }
 security:
   - EnvironmentApiKey: []
 tags:
@@ -2431,7 +2431,7 @@ paths:
       - url: https://{host}
         description: The environment's own host
         variables:
-          host: { default: acme.cboxid.com }
+          host: { default: acme.cboxauth.com }
     post:
       tags: [API keys]
       summary: Verify an API key presented to your API
@@ -2481,7 +2481,7 @@ paths:
     servers:
       - url: https://{host}
         variables:
-          host: { default: acme.cboxid.com }
+          host: { default: acme.cboxauth.com }
     parameters:
       - name: user
         in: path

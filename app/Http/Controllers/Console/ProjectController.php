@@ -18,6 +18,7 @@ use App\Platform\Actions\ActionRefused;
 use App\Platform\Billing\ProductBilling;
 use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\CurrentUser;
+use App\Platform\Environments\TenantBaseDomain;
 use App\Platform\Help\DocsLinks;
 use App\Platform\Help\HelpTopic;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
@@ -458,9 +459,6 @@ final readonly class ProjectController extends ConsoleController
     /** The host an environment's slug hangs off, for the URL shown beside it. */
     private function baseDomain(): string
     {
-        $bases = config('cbox-id.environments.base_domains', []);
-        $first = is_array($bases) && isset($bases[0]) && is_string($bases[0]) ? $bases[0] : null;
-
-        return $first ?? request()->getHost();
+        return TenantBaseDomain::canonical() ?? request()->getHost();
     }
 }

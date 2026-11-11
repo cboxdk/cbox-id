@@ -597,6 +597,53 @@ curl -sio /dev/null -w '%{http_code}\n' https://<apex>/up                       
 The behaviour is pinned by `tests/Feature/IdpSurfaceBulkheadTest.php` in this app and
 `tests/Feature/Api/SurfaceMiddlewareTest.php` in `cboxdk/laravel-id`.
 
+## Moving the tenant base domain
+
+`CBOX_ID_ENVIRONMENT_BASE_DOMAINS` is an ordered list. The first base is the tenant base
+domain: an environment without a verified custom domain is `https://{slug}.{first}`, and that
+is its issuer. Every later base is an older one that keeps working.
+
+To move every environment to a new domain, list the new base first and keep the old one
+behind it:
+
+```dotenv
+CBOX_ID_ENVIRONMENT_BASE_DOMAINS=cboxauth.com,cboxid.com
+CBOX_ID_CONSOLE_HOST=app.cboxid.com
+```
+
+Set `CBOX_ID_CONSOLE_HOST` whenever more than one base is listed: unset, the account host
+falls back to the first base.
+
+What happens on `{slug}.{old base}` after that:
+
+| Request | Answer |
+| --- | --- |
+| Discovery and other metadata | 302 to the canonical host |
+| A browser navigating to a page (`GET`) | 302 to the same path on the canonical host |
+| API calls, token and SCIM endpoints, form posts | Served where they arrived |
+| A signed link from an email | Served where it arrived |
+| SAML endpoints under `/sso/`, and the sign-in a SAML request started | Served where they arrived |
+
+`CBOX_ID_REDIRECT_LEGACY_BASE_DOMAINS=false` turns the browser redirect off.
+
+Before you reorder the list, know what moves with it:
+
+- **Every environment's `iss` changes at once** (issuers are computed from the list, not
+  stored). Applications that pin the issuer must be updated to the new host; tokens already
+  issued carry the old one.
+- **Passkeys are bound to the host.** A passkey registered on `{slug}.{old base}` is not
+  offered on `{slug}.{new base}`. People sign in another way and register a new one.
+- **SAML service providers** keep their EntityID (it is stored) but should re-import the
+  metadata to pick up the new endpoints.
+- **Redirect URIs at social and enterprise identity providers** name the host and must be
+  added for the new one.
+- The new domain needs DNS, a certificate and an ingress route for `*.{new base}` before the
+  change.
+
+Removing the old base from the list is what stops its names resolving. The slugs `api`,
+`app`, `login`, `admin` and `www` cannot be taken by an environment
+(`CBOX_ID_RESERVED_ENVIRONMENT_SLUGS` adds more).
+
 ## Security headers: the app is the single owner
 
 `App\Http\Middleware\SecurityHeaders` sets `X-Frame-Options`, `X-Content-Type-Options`,

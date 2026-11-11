@@ -18,6 +18,7 @@ use App\Platform\Appearance\ThemeFont;
 use App\Platform\Appearance\ThemePresets;
 use App\Platform\Appearance\ThemeRadius;
 use App\Platform\Console\ConsolePlane;
+use App\Platform\Environments\TenantBaseDomain;
 use App\Platform\Help\HelpTopic;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Models\Environment;
@@ -89,6 +90,9 @@ final readonly class BrandingController extends ConsoleController
             'fonts' => ThemeFont::stacks(),
             'fontLabels' => ThemeFont::labels(),
             'radii' => ThemeRadius::values(),
+            // The domain the preview's address bar hangs the name off: the tenant base domain,
+            // or null where environments have no subdomain (the preview then shows this host).
+            'previewBaseDomain' => TenantBaseDomain::canonical(),
             // THE VIEW HALF asks the SCOPE rather than assuming the plane it was written
             // for, so the control the page draws and the write the server accepts come
             // from one rule.

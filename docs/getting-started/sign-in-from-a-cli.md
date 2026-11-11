@@ -42,7 +42,7 @@ and refresh grants, and no redirect URI, because there is nothing to redirect. Y
 ## 2. Start the flow
 
 ```bash
-curl -s -X POST https://<environment>.cboxid.com/oauth/device_authorization \
+curl -s -X POST https://<environment>.cboxauth.com/oauth/device_authorization \
   -d client_id=cid_… \
   -d scope="openid profile email offline_access"
 ```
@@ -51,8 +51,8 @@ curl -s -X POST https://<environment>.cboxid.com/oauth/device_authorization \
 {
   "device_code": "…",
   "user_code": "WDJB-MJHT",
-  "verification_uri": "https://<environment>.cboxid.com/device",
-  "verification_uri_complete": "https://<environment>.cboxid.com/device?user_code=WDJB-MJHT",
+  "verification_uri": "https://<environment>.cboxauth.com/device",
+  "verification_uri_complete": "https://<environment>.cboxauth.com/device?user_code=WDJB-MJHT",
   "expires_in": 600,
   "interval": 5
 }
@@ -70,7 +70,7 @@ Cbox ID draws one for you at `GET /oauth/device/qr?user_code=…`. See
 ## 3. Poll for the token
 
 ```bash
-curl -s -X POST https://<environment>.cboxid.com/oauth/token \
+curl -s -X POST https://<environment>.cboxauth.com/oauth/token \
   -d grant_type=urn:ietf:params:oauth:grant-type:device_code \
   -d device_code=… \
   -d client_id=cid_…

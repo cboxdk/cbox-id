@@ -546,6 +546,22 @@ return [
          * Unset falls back to the first base domain, so the subdomain shape needs nothing.
          */
         'account_host' => env('CBOX_ID_CONSOLE_HOST'),
+
+        /*
+         * THE TENANT BASE DOMAIN is `environments.base_domains`
+         * (`CBOX_ID_ENVIRONMENT_BASE_DOMAINS`), an ordered comma list: the FIRST base is
+         * canonical (issuers and every printed address are `{slug}.{first}`), every later
+         * one is an older base that keeps resolving. See
+         * {@see \App\Platform\Environments\TenantBaseDomain}. With more than one base
+         * listed, set `CBOX_ID_CONSOLE_HOST` too: unset, the account host falls back to the
+         * first base.
+         *
+         * This decides what a BROWSER gets on `{slug}.{older base}`: true sends a
+         * navigation to the environment's canonical host, false serves the page on the old
+         * name as before. Metadata is redirected either way, and API calls, form posts,
+         * signed links and SAML endpoints are never redirected.
+         */
+        'redirect_legacy_base_domains' => (bool) env('CBOX_ID_REDIRECT_LEGACY_BASE_DOMAINS', true),
     ],
 
     /*
@@ -599,15 +615,28 @@ return [
     ],
 
     /*
-     * SLUGS NO ENVIRONMENT MAY HAVE. An environment is served at `{slug}.cboxid.com`, so
-     * one called `api` or `app` would answer for the platform's own hosts. Only the hosts
-     * the platform serves today are listed: the migration that introduces the list refuses
-     * to run while an environment holds one, so adding a name here is a data check on live
-     * first. Every create path derives the slug from a name, and a derived one that lands
-     * here gets a suffix ({@see \App\Platform\Environments\ReservedEnvironmentSlugs});
+     * SLUGS NO ENVIRONMENT MAY HAVE. An environment is served at `{slug}.{tenant base
+     * domain}`, and every listed base domain resolves, so one called `api`, `app` or `login`
+     * would answer for the platform's own hosts, and `admin` or `www` would pass for them.
+     * A migration refuses to run while an environment holds a listed slug (the platform
+     * root is exempt: it is not served by its slug), so adding a name here is a data check
+     * on live first. Every create path derives the slug from a name, and a derived one that
+     * lands here gets a suffix ({@see \App\Platform\Environments\ReservedEnvironmentSlugs});
      * changing a slug to one is refused.
+     *
+     * `reserved_environment_slugs_extra` (`CBOX_ID_RESERVED_ENVIRONMENT_SLUGS`, a comma
+     * list) adds names per deployment without a release. It is how `cbox` gets reserved:
+     * an environment holds that slug until the single-realm cutover, so the cutover sets
+     * `CBOX_ID_RESERVED_ENVIRONMENT_SLUGS=cbox` once that environment is the platform root.
+     * The extra names are not checked by the migration; they only stop a new environment
+     * taking one and an existing one being renamed to it.
      */
-    'reserved_environment_slugs' => ['api', 'app'],
+    'reserved_environment_slugs' => ['api', 'app', 'login', 'admin', 'www'],
+
+    'reserved_environment_slugs_extra' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('CBOX_ID_RESERVED_ENVIRONMENT_SLUGS', '')),
+    ))),
 
     /*
      * THE SHAPE OF THIS DEPLOYMENT, as its manifest declares it — read by `cbox-id:doctor`.
