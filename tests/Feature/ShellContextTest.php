@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Platform\Console\EnvironmentConsolePath;
-use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -11,7 +10,6 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
-use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
@@ -22,8 +20,6 @@ use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
@@ -227,35 +223,6 @@ it('gives the environment console every environment it may switch to, landing on
     expect($url)->toBe('/'.app(EnvironmentConsolePath::class)->for($estate['sandbox']->id).'/users');
 
     // …and it opens, without a sign-in or a handoff in between.
-    $this->get('http://cboxid.com'.$url)->assertOk();
-});
-
-it('names a linked organization by its Cbox slug in the environment switcher, the address its console answers to', function (): void {
-    $estate = contextEstate();
-
-    $cbox = Environment::query()->create([
-        'name' => 'Cbox', 'slug' => 'cbox', 'type' => EnvironmentType::Production,
-        'status' => EnvironmentStatus::Active, 'is_default' => false, 'settings' => [],
-    ]);
-    $cboxOrganization = Str::lower((string) Str::ulid());
-    DB::table('organizations')->insert([
-        'id' => $cboxOrganization, 'environment_id' => $cbox->id, 'name' => 'Lovelace Labs',
-        'slug' => 'lovelace-labs', 'status' => 'active', 'created_at' => now(), 'updated_at' => now(),
-    ]);
-    $links = app(OrganizationLinks::class);
-    $links->flush();
-    $links->link($estate['organization']->id, $cboxOrganization);
-
-    serveOnTestHost($estate['production']);
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($estate['production']->id));
-    actAsEnvironmentAdmin($estate['subjectId'], $estate['production']->id);
-
-    $this->get(route('environment.users'))->assertOk();
-    $url = switchLandsOn(['environment' => $estate['sandbox']->id], (string) parse_url(route('environment.users'), PHP_URL_PATH), 'http://cboxid.com');
-
-    expect(app(EnvironmentConsolePath::class)->for($estate['sandbox']->id))->toStartWith('orgs/lovelace-labs/')
-        ->and($url)->toBe('/'.app(EnvironmentConsolePath::class)->for($estate['sandbox']->id).'/users');
-
     $this->get('http://cboxid.com'.$url)->assertOk();
 });
 

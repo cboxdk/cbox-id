@@ -8,6 +8,10 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Removed
+
+- **The pairing of platform-root organizations with `cbox` organizations.** `organization_links` is dropped (the migration refuses to run while the table holds a row: flip first), with `OrganizationLinks`, `orgs:link`, `orgs:unlink`, the automatic pairing of a new organization and `CBOX_ID_CBOX_ENVIRONMENT`. An organization is addressed at `/orgs/{slug}` by its own slug. The organization switcher lists active organizations only, each once. `cbox-id:realm:flip` and its runbook are removed with it: deploy this only after the flip has run.
+
 ### Added
 
 - **With a login host, the default environment is an ordinary issuer for self-registered clients, and signs in through nobody.** The rules that held the root of a multi-tenant deployment to its own `/mcp` (the narrowed RFC 8414 document, registration without RFC 7592 management, no `openid`, no audience but the root's `/mcp`, sign-in only for people with standing there) no longer apply in login-host mode: an MCP client of any app that signs in through the realm would otherwise be refused its audience. A sign-in-through connection named on the default environment is ignored there, and `signin.through.set` refuses to name one (`not_available_in_the_realm`); clearing it is allowed. Single-host mode is unchanged.

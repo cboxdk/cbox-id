@@ -10,7 +10,6 @@ use App\Platform\OAuth\Exceptions\OrganizationCreationRefused;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use App\Platform\Organizations\OrganizationDirectory;
 use App\Platform\Organizations\OrganizationEntry;
-use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\Shell\ShellRequest;
 use Cbox\Console\Kit\Contracts\ContextLevel;
 use Cbox\Console\Kit\Contracts\CreatesContextItems;
@@ -23,11 +22,11 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
 /**
- * THE ORGANIZATION LEVEL: the platform-root organizations the person belongs to, addressed
- * by the slug `/orgs/{org}` uses (the linked `cbox` organization's, so Work and Billing name
- * the same organization the same way).
+ * THE ORGANIZATION LEVEL: the active organizations the person belongs to, each once,
+ * addressed by the slug `/orgs/{org}` uses (the same row Work and Billing name, so they
+ * name it the same way).
  *
- * Local: every read is the membership table and the organization links, through
+ * Local: every read is the membership and organization tables, through
  * {@see OrganizationDirectory}. Creating one is name only and self-serve, the way an app's
  * "Create organization" works ({@see AuthorizationOrganizations::create()}), and lands on its
  * settings to finish setting up.
@@ -73,7 +72,7 @@ final class IdOrganizationLevel implements ContextLevel, CreatesContextItems
         $bound = $user->check() && $user->role() !== null ? $user->organizationId() : null;
 
         if ($bound !== null && $user->id() === $subject) {
-            $address = app(OrganizationLinks::class)->addressesOf([$bound])[$bound] ?? null;
+            $address = app(OrganizationDirectory::class)->addressesOf([$bound])[$bound] ?? null;
 
             if ($address !== null && $address['slug'] === $slug) {
                 return new ContextItem(id: $bound, name: $address['name'], routeKey: $address['slug']);

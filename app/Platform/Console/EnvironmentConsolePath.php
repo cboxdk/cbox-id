@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Platform\Console;
 
 use App\Http\Middleware\BindOrganizationFromPath;
-use App\Platform\Organizations\OrganizationLinks;
+use App\Platform\Organizations\OrganizationDirectory;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
@@ -15,9 +15,9 @@ use Cbox\Id\Platform\PlatformRoot;
  *
  * `orgs/{organization}/projects/{project}/environments/{environment}` for a customer's
  * environment, by slug — the organization by the same address the organization console
- * at `/orgs/{org}` uses ({@see OrganizationLinks::addressOf()}): the linked `cbox`
- * organization's slug, or its own when it is unlinked; `admin/environment` for the platform root's own, which belongs to
- * no organization and is administered by the deployment's operators.
+ * at `/orgs/{org}` uses ({@see OrganizationDirectory::addressOf()}): its slug;
+ * `admin/environment` for the platform root's own, which belongs to no organization and
+ * is administered by the deployment's operators.
  *
  * Both directions read the same rows, so a path names exactly one environment and an
  * environment has exactly one path. A path whose organization, project or environment do
@@ -36,7 +36,7 @@ readonly class EnvironmentConsolePath
 
     public function __construct(
         private PlatformRoot $root,
-        private OrganizationLinks $links,
+        private OrganizationDirectory $directory,
     ) {}
 
     /** The console path of an environment, or null when it has none (no project). */
@@ -57,7 +57,7 @@ readonly class EnvironmentConsolePath
                 ? Project::query()->whereKey($environment->project_id)->first(['id', 'slug', 'organization_id'])
                 : null;
 
-            $organizationSlug = $project !== null ? ($this->links->addressOf((string) $project->organization_id)['slug'] ?? null) : null;
+            $organizationSlug = $project !== null ? ($this->directory->addressOf((string) $project->organization_id)['slug'] ?? null) : null;
 
             if ($project === null || $organizationSlug === null) {
                 return null;
@@ -85,14 +85,14 @@ readonly class EnvironmentConsolePath
         return $this->root->run(function () use ($organizationSlug, $projectSlug, $environmentSlug): ?Environment {
             // Read the way `/orgs/{org}` reads it ({@see BindOrganizationFromPath}), so the
             // two consoles never name one organization by two slugs.
-            $organizationIds = $this->links->candidatesFor($organizationSlug);
+            $organizationId = $this->directory->idOf($organizationSlug);
 
-            if ($organizationIds === []) {
+            if ($organizationId === null) {
                 return null;
             }
 
             $projectId = Project::query()
-                ->whereIn('organization_id', $organizationIds)
+                ->where('organization_id', $organizationId)
                 ->where('slug', $projectSlug)
                 ->value('id');
 

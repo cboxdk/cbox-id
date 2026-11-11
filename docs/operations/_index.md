@@ -28,9 +28,6 @@ running it yourself on a VM, a PaaS or any Kubernetes cluster.
 - [Rehearsing an upgrade](upgrade-rehearsal.md) — prove a release migrates your
   database: the seeded check on PostgreSQL, and a rehearsal on a copy of your
   own data.
-- [The realm flip](realm-flip.md) — the one-time migration that makes the `cbox`
-  environment the platform root: what it does per table, the rehearsal, the cutover and
-  the rollback.
 - [Rotating app client secrets to `cbid_cs_`](secret-rotation-v3.md) — the v3 runbook:
   mint a second secret per app, confirm the app uses it, then revoke the `csec_` one.
 - [Analytics storage](analytics.md) — where authentication analytics are stored
