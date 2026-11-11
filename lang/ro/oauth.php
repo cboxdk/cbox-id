@@ -44,6 +44,7 @@ return [
         'client_document' => 'Descrierea acestei aplicații nu a putut fi citită. Este publicată la adresa pe care aplicația a indicat-o ca ID, iar acel document este lipsă, inaccesibil sau invalid.',
         'redirect_mismatch' => 'URI-ul de redirecționare nu corespunde niciunuia dintre URI-urile înregistrate pentru această aplicație.',
         'stale' => 'Această cerere de autorizare nu poate fi finalizată. Începeți din nou.',
+        'start_over' => 'Începeți din nou în :app',
         'account_attention' => 'Contul dumneavoastră necesită atenție înainte de a putea continua. Autentificați-vă din nou.',
         'step_up' => 'Această aplicație necesită autentificare mai recentă sau mai puternică. Vă rugăm să începeți din nou.',
         'no_organization' => 'Această autentificare conectează un agent la o organizație în Cbox ID, dar contul dumneavoastră nu face parte din echipa niciunui organizație. Solicitați unui proprietar de organizație să vă invite sau conectați agentul folosind adresa propriului mediu.',

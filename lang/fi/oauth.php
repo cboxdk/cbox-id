@@ -44,6 +44,7 @@ return [
         'client_document' => 'Sovelluksen kuvausta ei voitu lukea. Se julkaistaan osoitteessa, jonka sovellus antoi tunnisteekseen. Asiakirja puuttuu, ei ole saatavilla tai on virheellinen.',
         'redirect_mismatch' => 'Uudelleenohjauksen URI ei vastaa yhtäkään tälle sovellukselle rekisteröityä URI-osoitetta.',
         'stale' => 'Tätä valtuutuspyyntöä ei voida enää suorittaa. Aloita alusta.',
+        'start_over' => 'Aloita alusta sovelluksessa :app',
         'account_attention' => 'Tilisi vaatii huomiota, jotta voit jatkaa. Kirjaudu sisään uudelleen.',
         'step_up' => 'Tämä sovellus vaatii uudemman tai vahvemman kirjautumisen. Aloita alusta.',
         'no_organization' => 'Tämä kirjautuminen yhdistää agentin Cbox ID:n organisaatioon, mutta tilisi ei kuulu minkään organisaation tiimiin. Pyydä organisaation omistajalta kutsu tai yhdistä agentti sen sijaan ympäristösi omassa osoitteessa.',

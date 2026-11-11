@@ -44,6 +44,7 @@ return [
         'client_document' => 'Popis této aplikace nemohl být přečten. Je publikován na adrese, kterou aplikace sama udala jako ID, a tento dokument chybí, není dostupný nebo je neplatný.',
         'redirect_mismatch' => 'URI pro přesměrování neodpovídá žádnému z URI registrovaných pro tuto aplikaci.',
         'stale' => 'Tento požadavek na povolení přístupu již nelze dokončit. Začněte znovu.',
+        'start_over' => 'Začít znovu v aplikaci :app',
         'account_attention' => 'Než budete moci pokračovat, je třeba vyřešit problém s vaším účtem. Přihlaste se znovu.',
         'step_up' => 'Tato aplikace vyžaduje novější nebo silnější přihlášení. Začněte znovu.',
         'no_organization' => 'Toto přihlášení propojuje agenta s organizací v Cbox ID, ale váš účet není členem týmu žádné organizace. Požádejte vlastníka organizace o pozvánku nebo připojte agenta na vlastní adrese svého prostředí.',

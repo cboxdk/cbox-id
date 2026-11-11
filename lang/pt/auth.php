@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Iniciar sessão',
         'purpose' => [
-            'default' => 'Bem-vindo de volta. Aceda à consola de identidade da sua organização.',
+            'default' => 'Bem-vindo de volta. Inicie sessão para continuar.',
             'device' => 'Inicie sessão para aprovar o dispositivo que está à espera.',
+            'app' => 'Inicie sessão para continuar para :app.',
         ],
         'magic' => [
             'sent_to' => 'Enviámos uma ligação de início de sessão de utilização única para :email.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Não foi possível iniciar sessão com a chave de acesso.',
         'new_organization' => 'Nova organização?',
         'create_one' => 'Criar',
+        'no_account' => 'Ainda não tem conta?',
+        'create_account' => 'Criar uma conta',
         'invalid_credentials' => 'O endereço de e-mail ou a palavra-passe está incorreto.',
         'passkey_errors' => [
             'challenge_expired' => 'O pedido de autenticação expirou. Tente novamente.',

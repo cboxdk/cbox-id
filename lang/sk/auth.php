@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Prihlásiť sa',
         'purpose' => [
-            'default' => 'Vitajte späť. Otvorte konzolu na správu identít svojej organizácie.',
+            'default' => 'Vitajte späť. Prihláste sa a pokračujte.',
             'device' => 'Prihláste sa a schváľte čakajúce zariadenie.',
+            'app' => 'Prihláste sa a pokračujte do aplikácie :app.',
         ],
         'magic' => [
             'sent_to' => 'Na adresu :email sme odoslali jednorazový prihlasovací odkaz.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Prihlásenie prístupovým kľúčom sa nepodarilo.',
         'new_organization' => 'Nová organizácia?',
         'create_one' => 'Vytvoriť',
+        'no_account' => 'Ešte nemáte účet?',
+        'create_account' => 'Vytvoriť účet',
         'invalid_credentials' => 'E-mailová adresa alebo heslo nie je správne.',
         'passkey_errors' => [
             'challenge_expired' => 'Platnosť prihlasovacej výzvy vypršala. Skúste to znova.',

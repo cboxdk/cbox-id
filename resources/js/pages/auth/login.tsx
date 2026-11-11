@@ -1,8 +1,14 @@
 import { Link, router, useForm, usePage } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { CatalogAppIcon } from '@/chrome/CatalogAppIcon';
 import { useTranslator } from '@/i18n';
 import AuthLayout from '@/layouts/AuthLayout';
-import { isCancellation, passkeysSupported, signInWithPasskey } from '@/lib/passkeys';
+import {
+    isCancellation,
+    passkeyAutofillSupported,
+    passkeysSupported,
+    signInWithPasskey,
+} from '@/lib/passkeys';
 import type { PageProps } from '@/types';
 import { Button, Divider, Field, Icon, Input, PasswordField, ProviderMark } from '@/ui';
 import { login as loginRoute, signup } from '@routes';
@@ -18,6 +24,11 @@ interface SocialProvider {
 type Props = PageProps<{
     /** Why this person is being asked to sign in, when the server knows. */
     purpose: string;
+    /**
+     * The app an authorization request sent this person here for, or null when they came
+     * by themselves. Its icon is drawn when the environment's app catalog has one.
+     */
+    signingInTo: { name: string; iconUrl: string | null; iconDarkUrl: string | null } | null;
     /** What the identifier step captured. The server's old-input bag, stated as a prop. */
     email: string;
     signupOpen: boolean;
@@ -39,6 +50,7 @@ const LAST_USED_HINT = 'last-used-hint';
 
 export default function Login({
     purpose,
+    signingInTo,
     email,
     signupOpen,
     adminUrl,
@@ -107,15 +119,81 @@ export default function Login({
         }
     }, [identified, mandate]);
 
+    /*
+     * PASSKEYS IN THE ADDRESS FIELD'S AUTOFILL (WebAuthn conditional UI). Where the
+     * browser can do it, a request waits behind the field (`autocomplete="… webauthn"`)
+     * and the person's passkeys are offered in the same list as their saved addresses:
+     * one tap, no button to find. The button below stays, for browsers that cannot and
+     * for a passkey on another device.
+     *
+     * Nothing is shown and nothing is submitted until the person picks one. A browser
+     * runs ONE WebAuthn request at a time, so the button's ceremony ends this wait first
+     * (`autofill.current`), and the field is armed again when that ceremony ends without
+     * signing anybody in.
+     */
+    const autofill = useRef<AbortController | null>(null);
+    const autofillOffered = methods.passkeys && mandate === undefined;
+    const passkeyFailed = t('auth.login.passkey_failed');
+
+    const armAutofill = useCallback((): void => {
+        autofill.current?.abort();
+        autofill.current = null;
+
+        if (!autofillOffered) {
+            return;
+        }
+
+        const controller = new AbortController();
+        autofill.current = controller;
+
+        void (async () => {
+            if (!(await passkeyAutofillSupported()) || controller.signal.aborted) {
+                return;
+            }
+
+            try {
+                const destination = await signInWithPasskey('/passkeys', {
+                    autofill: true,
+                    signal: controller.signal,
+                });
+
+                if (destination !== null) {
+                    window.location.assign(destination);
+                }
+            } catch (error) {
+                // Ended by this page, or dismissed: nothing to report. A refusal (an
+                // unknown passkey, an expired challenge) is said under the button and the
+                // field is NOT armed again by itself: a failure that repeats would ask
+                // the server for a new challenge in a loop.
+                if (!controller.signal.aborted && !isCancellation(error)) {
+                    setPasskeyMessage({
+                        text: error instanceof Error ? error.message : passkeyFailed,
+                        ok: false,
+                    });
+                }
+            }
+        })();
+    }, [autofillOffered, passkeyFailed]);
+
+    useEffect(() => {
+        armAutofill();
+
+        return () => autofill.current?.abort();
+    }, [armAutofill]);
+
     const signIn = async (): Promise<void> => {
         setPasskeyBusy(true);
         setPasskeyMessage(null);
+        // The field's waiting request first: the browser refuses a second one beside it.
+        autofill.current?.abort();
 
         try {
             const destination = await signInWithPasskey();
 
             if (destination !== null) {
                 window.location.assign(destination);
+
+                return;
             }
         } catch (error) {
             // A dismissed system prompt is not a failure worth reporting: saying "passkey
@@ -130,10 +208,24 @@ export default function Login({
         } finally {
             setPasskeyBusy(false);
         }
+
+        // Still on the page (cancelled, or refused): the field offers passkeys again.
+        armAutofill();
     };
 
     return (
         <>
+            {signingInTo !== null && signingInTo.iconUrl !== null && (
+                <div className="mb-4">
+                    <CatalogAppIcon
+                        app={{
+                            name: signingInTo.name,
+                            icon_url: signingInTo.iconUrl,
+                            icon_dark_url: signingInTo.iconDarkUrl,
+                        }}
+                    />
+                </div>
+            )}
             <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
                 {t('auth.login.title')}
             </h1>
@@ -269,7 +361,7 @@ export default function Login({
                                     scale="lg"
                                     type="email"
                                     inputMode="email"
-                                    autoComplete="username"
+                                    autoComplete="username webauthn"
                                     autoCapitalize="none"
                                     spellCheck={false}
                                     placeholder="you@company.com"
@@ -347,7 +439,7 @@ export default function Login({
                                         scale="lg"
                                         type="email"
                                         inputMode="email"
-                                        autoComplete="username"
+                                        autoComplete="username webauthn"
                                         autoCapitalize="none"
                                         spellCheck={false}
                                         placeholder="you@company.com"
@@ -489,13 +581,25 @@ export default function Login({
                             className="mt-8 text-sm text-center"
                             style={{ color: 'var(--muted-foreground)' }}
                         >
-                            {t('auth.login.new_organization')}{' '}
+                            {/*
+                                On the way to an app the person wants an ACCOUNT for it.
+                                "New organization? Create one" is the console's question.
+                            */}
+                            {t(
+                                signingInTo === null
+                                    ? 'auth.login.new_organization'
+                                    : 'auth.login.no_account',
+                            )}{' '}
                             <Link
                                 href={signup.url()}
                                 className="font-medium underline underline-offset-2"
                                 style={{ color: 'var(--accent-strong)' }}
                             >
-                                {t('auth.login.create_one')}
+                                {t(
+                                    signingInTo === null
+                                        ? 'auth.login.create_one'
+                                        : 'auth.login.create_account',
+                                )}
                             </Link>
                         </p>
                     )}

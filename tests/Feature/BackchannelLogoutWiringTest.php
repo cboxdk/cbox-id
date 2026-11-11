@@ -108,7 +108,7 @@ it('ends this browser\'s own session on a logout that carries no proof of who it
     session([PlatformAuth::SESSION_KEY => $thisBrowser->id]);
     app(CurrentUser::class)->set($subject, $thisBrowser, $org, MembershipRole::Owner);
 
-    $this->get('/oauth/logout')->assertSuccessful();
+    $this->get('/oauth/logout')->assertRedirectContains('/signed-out');
 
     // This browser's session is over — so the apps it signed the person in to are told —
     // and only this one: a request that cannot say who it is about reaches no further.

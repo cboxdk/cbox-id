@@ -1,7 +1,7 @@
 import { Link, router, useForm } from '@inertiajs/react';
 import type { FormEvent, ReactNode } from 'react';
 import { useTranslator, type MessageKey } from '@/i18n';
-import ConsoleLayout from '@/layouts/ConsoleLayout';
+import AccountLayout from '@/layouts/AccountLayout';
 import type { PageProps } from '@/types';
 import { Button, Combobox, Field, Input, PageHeader, Panel, Pill, Textarea } from '@/ui';
 
@@ -458,4 +458,4 @@ function ServiceCard({
     );
 }
 
-Services.layout = (page: ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+Services.layout = (page: ReactNode) => <AccountLayout>{page}</AccountLayout>;

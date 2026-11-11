@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Inloggen',
         'purpose' => [
-            'default' => 'Welkom terug. Open de identiteitsconsole van je organisatie.',
+            'default' => 'Welkom terug. Log in om door te gaan.',
             'device' => 'Log in om het wachtende apparaat goed te keuren.',
+            'app' => 'Log in om door te gaan naar :app.',
         ],
         'magic' => [
             'sent_to' => 'We hebben een eenmalige inloglink naar :email gestuurd.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'Inloggen met een passkey is mislukt.',
         'new_organization' => 'Nieuwe organisatie?',
         'create_one' => 'Aanmaken',
+        'no_account' => 'Nog geen account?',
+        'create_account' => 'Maak een account aan',
         'invalid_credentials' => 'Het e-mailadres of wachtwoord is onjuist.',
         'passkey_errors' => [
             'challenge_expired' => 'De authenticatieaanvraag is verlopen. Probeer het opnieuw.',

@@ -1,7 +1,7 @@
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
-import ConsoleLayout from '@/layouts/ConsoleLayout';
+import AccountLayout from '@/layouts/AccountLayout';
 import type { HelpContent, PageProps } from '@/types';
 import { Button, ConfirmDelete, Dialog, EmptyState, PageHeader, Panel, Pill } from '@/ui';
 
@@ -463,4 +463,4 @@ export default function Activity({
     );
 }
 
-Activity.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+Activity.layout = (page: React.ReactNode) => <AccountLayout>{page}</AccountLayout>;

@@ -44,6 +44,7 @@ return [
         'client_document' => 'La descrizione di questa applicazione non è stata letta. È pubblicata all\'indirizzo che l\'applicazione ha indicato come ID, e quel documento è assente, inaccessibile o non valido.',
         'redirect_mismatch' => 'L’URI di reindirizzamento non corrisponde a nessuno degli URI registrati per questa applicazione.',
         'stale' => 'Questa richiesta di autorizzazione non può più essere completata. Ricomincia.',
+        'start_over' => 'Ricomincia da :app',
         'account_attention' => 'Il tuo account richiede attenzione prima di poter continuare. Accedi di nuovo.',
         'step_up' => 'Questa applicazione richiede un accesso più recente o un’autenticazione più forte. Ricomincia.',
         'no_organization' => 'Questo accesso collega un agente a un\'organizzazione su Cbox ID, e il tuo account non fa parte di un team all\'interno di un\'organizzazione. Chiedi al proprietario dell\'organizzazione di invitarti, oppure connetti l\'agente utilizzando l\'indirizzo specifico del tuo ambiente.',

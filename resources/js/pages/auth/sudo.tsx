@@ -4,7 +4,7 @@ import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { confirmWithPasskey, isCancellation } from '@/lib/passkeys';
-import ConsoleLayout from '@/layouts/ConsoleLayout';
+import AccountLayout from '@/layouts/AccountLayout';
 import type { PageProps } from '@/types';
 import { Button, Icon, PasswordField, Panel } from '@/ui';
 import { confirm } from '@routes/sudo';
@@ -169,4 +169,4 @@ function PasskeyConfirm({ passkey }: { passkey: NonNullable<Props['passkey']> })
     );
 }
 
-Sudo.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+Sudo.layout = (page: React.ReactNode) => <AccountLayout>{page}</AccountLayout>;

@@ -8,8 +8,10 @@ use App\Http\Middleware\FenceSurfaces;
 use App\Http\Middleware\RedirectLegacyLoginHost;
 use App\Platform\Api\ApiHost;
 use App\Platform\PlaneResolver;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Exception\SuspiciousOperationException;
 
 /**
@@ -99,23 +101,46 @@ final class Surfaces
     ];
 
     /**
-     * A person's own security pages. They act on the SSO session, so they live with it: on
-     * the login host and on a tenant's host, absent on the app host.
+     * A person's own pages: who they are, how they sign in, where they are signed in and
+     * what can act as them. They act on the SSO session, so they live with it: on the login
+     * host and on a tenant's host, absent on the app host. What belongs to an ORGANIZATION
+     * (members, roles, its keys, its single sign-on) is the console's and is not here.
+     *
+     * `settings` is the page itself; `settings/organization` and `settings/branding` are
+     * old console addresses and stay the console's, which is why this is not `settings/*`.
      *
      * @var list<string>
      */
     public const array ACCOUNT = [
+        // Confirming it is you, and the password change a hold sends a person to.
         'sudo', 'sudo/*',
         'password/change',
-        'passkeys/register', 'passkeys/register/*',
+        // The security page and each write on it.
+        'settings',
+        'settings/profile',
         'settings/password',
         'settings/two-factor', 'settings/two-factor/*',
-        'settings/passkeys/*',
-        'settings/sessions/*',
+        'settings/passkeys/*', 'passkeys/register', 'passkeys/register/*',
         'settings/social/*', 'settings/connect/*',
         'settings/sign-in-methods/*',
-        'settings/accounts', 'settings/accounts/*',
         'settings/email/*',
+        // Where you are signed in and what can act as you.
+        'settings/activity',
+        'settings/sessions/*',
+        'settings/applications/*',
+        'settings/devices', 'settings/devices/*', 'authenticator/review',
+        // The accounts this browser holds, and switching among them.
+        'settings/accounts', 'settings/accounts/*',
+        // A person's own credentials at the apps built here, and what apps may reach
+        // through them. Apps deep-link to these on the issuer.
+        'settings/api-keys', 'settings/api-keys/*',
+        'settings/connected-services', 'settings/connected-services/*',
+        'settings/services', 'settings/services/*',
+        // Signed in, in no organization: an invitation or a personal organization.
+        'organization-required', 'organization-required/*',
+        // The v2 addresses of all of the above, and the connected-services callback
+        // providers hold as a redirect URI.
+        'account', 'account/*', 'accounts', 'accounts/*',
     ];
 
     /**
@@ -296,13 +321,46 @@ final class Surfaces
     /** Which surfaces a request's path belongs to. */
     public function kindOf(Request $request): PathKind
     {
+        return $this->kindOfPath($request->decodedPath());
+    }
+
+    /** The same question of a path this application serves (`settings/activity`, `/dashboard`). */
+    public function kindOfPath(string $path): PathKind
+    {
+        $path = trim($path, '/');
+        $path = $path === '' ? '/' : $path;
+
         return match (true) {
-            $request->is(...self::INFRASTRUCTURE) => PathKind::Infrastructure,
-            $request->is(...self::SHARED) => PathKind::Shared,
-            $request->is(...self::ISSUER) => PathKind::Issuer,
-            $request->is(...self::ACCOUNT) => PathKind::Account,
+            self::matches(self::INFRASTRUCTURE, $path) => PathKind::Infrastructure,
+            self::matches(self::SHARED, $path) => PathKind::Shared,
+            self::matches(self::ISSUER, $path) => PathKind::Issuer,
+            self::matches(self::ACCOUNT, $path) => PathKind::Account,
             default => PathKind::Console,
         };
+    }
+
+    /** @param list<string> $patterns */
+    private static function matches(array $patterns, string $path): bool
+    {
+        foreach ($patterns as $pattern) {
+            if (Str::is($pattern === '/' ? '/' : trim($pattern, '/'), $path)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Whether what is running acts in the default environment (or in none): the realm the
+     * login host issues for. False while a console page or a job acts in a tenant's
+     * environment, whose own sign-in pages are on its own host.
+     */
+    public function inDefaultEnvironment(): bool
+    {
+        $current = app(EnvironmentContext::class)->current()?->environmentKey();
+
+        return $current === null || $current === $this->defaultEnvironmentKey();
     }
 
     /**
@@ -415,7 +473,7 @@ final class Surfaces
     }
 
     /** Resolved as {@see PlaneResolver} resolves the platform root, so the two agree. */
-    private function defaultEnvironmentKey(): ?string
+    public function defaultEnvironmentKey(): ?string
     {
         $default = $this->resolver->defaultEnvironment()?->environmentKey();
 

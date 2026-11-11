@@ -44,6 +44,7 @@ return [
         'client_document' => 'Appens beskrivelse kunne ikke læses. Den skal ligge på den adresse appen har opgivet som sit ID, men dokumentet mangler, kan ikke nås eller er ugyldigt.',
         'redirect_mismatch' => 'Omdirigeringsadressen matcher ingen af de adresser, der er registreret for denne app.',
         'stale' => 'Anmodningen om godkendelse kan ikke længere gennemføres. Start forfra.',
+        'start_over' => 'Start forfra i :app',
         'account_attention' => 'Der er noget på din konto du skal tage dig af, før du kan fortsætte. Log ind igen.',
         'step_up' => 'Appen kræver et nyere eller stærkere login. Start forfra.',
         'no_organization' => 'Dette login forbinder en agent med en organisation på Cbox ID, men din konto er ikke med i teamet for nogen organisation. Bed en ejer af organisationen om at invitere dig, eller forbind i stedet agenten via dit miljøs egen adresse.',

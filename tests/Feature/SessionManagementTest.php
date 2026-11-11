@@ -92,7 +92,7 @@ it('ends every session the person holds when a relying party asks for global sig
         'exp' => time() + 3600,
     ]);
 
-    $this->get('/oauth/logout?'.http_build_query(['id_token_hint' => $hint]))->assertSuccessful();
+    $this->get('/oauth/logout?'.http_build_query(['id_token_hint' => $hint]))->assertRedirectContains('/signed-out');
 
     // EVERY session, including the one that made the request — "log me out everywhere"
     // means everywhere.
@@ -119,7 +119,7 @@ it('leaves other devices alone when the logout request carries no proof', functi
 
     app(CurrentUser::class)->set($subject, $thisBrowser, $org, MembershipRole::Owner);
 
-    $this->get('/oauth/logout')->assertSuccessful();
+    $this->get('/oauth/logout')->assertRedirectContains('/signed-out');
 
     expect(Session::query()->whereKey($phone->id)->value('revoked_at'))->toBeNull();
 })->group('security');
@@ -154,7 +154,7 @@ it('leaves another person\'s sessions alone', function (): void {
         'exp' => time() + 3600,
     ]);
 
-    $this->get('/oauth/logout?'.http_build_query(['id_token_hint' => $hintForThem]))->assertSuccessful();
+    $this->get('/oauth/logout?'.http_build_query(['id_token_hint' => $hintForThem]))->assertRedirectContains('/signed-out');
 
     expect(Session::query()->whereKey($their->id)->value('revoked_at'))->toBeNull();
 })->group('security');

@@ -44,6 +44,7 @@ return [
         'client_document' => 'Appens beskrivning kunde inte läsas. Den finns på adressen som appen angav som sitt ID, och dokumentet saknas, kan inte nås eller är ogiltigt.',
         'redirect_mismatch' => 'Angiven omdirigerings-URI matchar inte någon av dem som har registrerats för den här applikationen.',
         'stale' => 'Den här auktoriseringsbegäran kan inte längre slutföras. Börja om.',
+        'start_over' => 'Börja om i :app',
         'account_attention' => 'Ditt konto behöver åtgärdas innan du kan fortsätta. Logga in igen.',
         'step_up' => 'Den här applikationen kräver en nyare eller starkare inloggning. Börja om.',
         'no_organization' => 'Den här inloggningen ansluter en agent till en organisation på Cbox ID, och ditt konto ingår inte i någon organisations team. Be en ägare av organisationen att bjuda in dig, eller anslut agenten på din miljös egen adress i stället.',

@@ -26,8 +26,9 @@ return [
     'login' => [
         'title' => 'Accedi',
         'purpose' => [
-            'default' => 'Bentornato. Accedi alla console di gestione delle identità della tua organizzazione.',
+            'default' => 'Bentornato. Accedi per continuare.',
             'device' => 'Accedi per approvare il dispositivo in attesa.',
+            'app' => 'Accedi per continuare su :app.',
         ],
         'magic' => [
             'sent_to' => 'Abbiamo inviato un link di accesso monouso a :email.',
@@ -65,6 +66,8 @@ return [
         'passkey_failed' => 'L’accesso con la passkey non è riuscito.',
         'new_organization' => 'Nuova organizzazione?',
         'create_one' => 'Crea',
+        'no_account' => 'Non hai ancora un account?',
+        'create_account' => 'Crea un account',
         'invalid_credentials' => 'L’indirizzo email o la password non è corretto.',
         'passkey_errors' => [
             'challenge_expired' => 'La richiesta di autenticazione è scaduta. Riprova.',
