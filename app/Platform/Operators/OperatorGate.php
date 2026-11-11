@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Operators;
 
+use App\Platform\Actions\Danger;
 use App\Platform\StepUpPlane;
 use App\Platform\StepUpPrompt;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -23,7 +24,7 @@ use Symfony\Component\HttpFoundation\Response;
 final readonly class OperatorGate
 {
     /**
-     * Actions that need a fresh passkey on the plane although their {@see \App\Platform\Actions\Danger}
+     * Actions that need a fresh passkey on the plane although their {@see Danger}
      * is only `Write`. Each one opens a way to sign in to the realm every first-party app
      * trusts: a draft SSO connection is the first half of a new identity provider, and
      * turning a social provider back on is a new door at once. For a customer's own
