@@ -11,6 +11,7 @@ use App\Http\Middleware\AuthenticateEnvironmentApi;
 use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Http\Middleware\BindConsoleOrganization;
 use App\Http\Middleware\BindOrganizationFromPath;
+use App\Http\Middleware\BindSessionToSurface;
 use App\Http\Middleware\DeprecateLegacyApi;
 use App\Http\Middleware\EnforceCustomerConsole;
 use App\Http\Middleware\EnforceImpersonationWindow;
@@ -26,6 +27,7 @@ use App\Http\Middleware\ReadOnlyWhileImpersonating;
 use App\Http\Middleware\RedirectIfAuthenticated;
 use App\Http\Middleware\RedirectLegacyTenantHost;
 use App\Http\Middleware\RedirectOutsideInertia;
+use App\Http\Middleware\RefuseCrossOriginWrites;
 use App\Http\Middleware\RequireConsoleAdmin;
 use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireMultiTenant;
@@ -38,6 +40,7 @@ use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\ServeMarketingWebsite;
 use App\Http\Middleware\SetEnvironment;
 use App\Http\Middleware\TrustHostsExceptHealth;
+use App\Http\Middleware\UseSurfaceSessionCookie;
 use App\Platform\EmailNotVerified;
 use App\Platform\Locale\LocaleResolver;
 use App\Platform\PlatformAuth;
@@ -61,6 +64,7 @@ use Illuminate\Http\Middleware\TrustHosts;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Support\Facades\Route;
+use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -271,6 +275,18 @@ return Application::configure(basePath: dirname(__DIR__))
         // on a host that is neither. A no-op while no login host is configured.
         $middleware->append(FenceSurfaces::class);
         $middleware->append(ServeMarketingWebsite::class);
+
+        // IN LOGIN-HOST MODE EACH SURFACE HAS ITS OWN SESSION (see SessionSurface). The
+        // cookie is named before `StartSession` reads it, a write to the login host that
+        // another origin made is refused before a session starts, and a session is bound
+        // to the surface that minted it straight after it starts. All three are no-ops
+        // while no login host is configured.
+        $middleware->prependToGroup('web', [UseSurfaceSessionCookie::class, RefuseCrossOriginWrites::class]);
+        $middleware->appendToGroup('web', BindSessionToSurface::class);
+        $middleware->prependToPriorityList(
+            before: ShareErrorsFromSession::class,
+            prepend: BindSessionToSurface::class,
+        );
 
         // Pin the current environment (session-selected) for the console + hosted UI.
         $middleware->appendToGroup('web', SetEnvironment::class);
