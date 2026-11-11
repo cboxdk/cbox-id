@@ -6,7 +6,6 @@ use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Contracts\Projects;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 /**
  * Every environment but the platform root's belongs to a project.
@@ -18,10 +17,11 @@ use Illuminate\Support\Facades\Log;
  * Each one is attached to a project of the ONE organization whose ACTIVE memberships grant
  * access to it (`membership_environments`): that organization's oldest project, or a new one
  * named after it when it has none. An environment no organization grants, or more than one
- * does, is not guessed at — it is left as it is and logged, for a person to decide. Run
+ * does, is not guessed at: the migration FAILS, naming each one, before it writes anything,
+ * so the deploy stops rather than leave an environment without a console nobody notices.
+ * A person decides each such row (gives it a project), and the deploy runs again. Run
  * `SELECT id, slug FROM environments WHERE project_id IS NULL AND is_default = false` on
- * production before this merges: the list of rows it would leave must be empty, or each
- * one decided, first.
+ * production before this merges, so that decision is made before the deploy, not during it.
  *
  * Data only, and forward only: `down()` does not detach anything, because the console
  * addresses that would vanish are already in people's bookmarks.
@@ -35,10 +35,16 @@ return new class extends Migration
             ->where('is_default', false)
             ->get(['id', 'slug']);
 
+        $placements = [];
+        $unplaced = [];
+
         foreach ($orphans as $environment) {
+            $environmentId = is_scalar($environment->id) ? (string) $environment->id : '';
+            $slug = is_scalar($environment->slug) ? (string) $environment->slug : '';
+
             $owners = DB::table('membership_environments')
                 ->join('memberships', 'memberships.id', '=', 'membership_environments.membership_id')
-                ->where('membership_environments.environment_id', $environment->id)
+                ->where('membership_environments.environment_id', $environmentId)
                 // Only a membership that is in force speaks for its organization: an
                 // invitation not yet accepted, or a suspended member, owns nothing.
                 ->where('memberships.status', 'active')
@@ -46,27 +52,29 @@ return new class extends Migration
                 ->pluck('memberships.organization_id')
                 ->all();
 
-            if (count($owners) !== 1) {
-                Log::warning('An environment without a project was left as it is: no single organization grants it.', [
-                    'environment' => $environment->id,
-                    'slug' => $environment->slug,
-                    'organizations' => count($owners),
-                ]);
+            $organizationId = $owners[0] ?? null;
+
+            if (count($owners) !== 1 || ! is_string($organizationId)) {
+                $unplaced[] = sprintf('%s (%s, granted by %d organizations)', $environmentId, $slug, count($owners));
 
                 continue;
             }
 
-            $organizationId = $owners[0];
+            $placements[$environmentId] = $organizationId;
+        }
 
-            if (! is_string($organizationId)) {
-                continue;
-            }
+        if ($unplaced !== []) {
+            throw new RuntimeException(
+                'Environments without a project that no single organization grants; give each a project, then migrate again: '.implode(', ', $unplaced),
+            );
+        }
 
+        foreach ($placements as $environmentId => $organizationId) {
             $name = DB::table('organizations')->where('id', $organizationId)->value('name');
             $project = app(OrganizationProjects::class)->forOrganization($organizationId)->first()
                 ?? app(Projects::class)->createForOrganization($organizationId, is_string($name) && $name !== '' ? $name : 'Default');
 
-            DB::table('environments')->where('id', $environment->id)->update(['project_id' => $project->id]);
+            DB::table('environments')->where('id', $environmentId)->update(['project_id' => $project->id]);
         }
     }
 

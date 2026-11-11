@@ -260,7 +260,7 @@ it('puts every task an operator comes for a few clicks away, in one console on t
 
     foreach ([
         '/admin/environment' => FINDING_YOUR_WAY_OPERATOR_FROM_HOME,
-        '/admin/platform/workspaces' => FINDING_YOUR_WAY_OPERATOR_FROM_PLATFORM,
+        '/admin/organizations' => FINDING_YOUR_WAY_OPERATOR_FROM_PLATFORM,
     ] as $start => $tasks) {
         $depths = findingYourWayWalk($this, $origin.$start, $version, maxDepth: 4, platform: true);
 

@@ -179,27 +179,27 @@ function platformMoves(string $workspace, string $organization): array
     $job = '9b2f7c1e-4d5a-4c3b-8e6f-0a1b2c3d4e5f';
 
     return [
-        '/operator' => '/admin/platform',
-        '/platform' => '/admin/platform/environments',
+        '/operator' => '/admin',
+        '/platform' => '/admin/environments',
         // The query is kept whole — normalised to the order PHP sorts it in, as every
         // moved page's is.
-        '/platform?q=prod&page=2' => '/admin/platform/environments?page=2&q=prod',
-        '/platform/workspaces' => '/admin/platform/workspaces',
-        '/platform/workspaces?q=acme' => '/admin/platform/workspaces?q=acme',
-        '/platform/workspaces/'.$workspace => '/admin/platform/workspaces/'.$workspace,
-        '/platform/workspaces/'.$workspace.'?utm_source=email' => '/admin/platform/workspaces/'.$workspace.'?utm_source=email',
-        '/platform/customers' => '/admin/platform/workspaces',
-        '/platform/customers/'.$workspace.'?ref=ticket-4271' => '/admin/platform/workspaces/'.$workspace.'?ref=ticket-4271',
-        '/platform/organizations' => '/admin/platform/environments/root/organizations',
-        '/platform/organizations?q=acme' => '/admin/platform/environments/root/organizations?q=acme',
-        '/platform/organizations/'.$organization => '/admin/platform/environments/root/organizations/'.$organization,
-        '/platform/operators' => '/admin/platform/operators',
-        '/platform/usage' => '/admin/platform/usage',
-        '/platform/queues' => '/admin/platform/queues',
-        '/platform/queues/monitor' => '/admin/platform/queues/monitor',
-        '/platform/queues/monitor/job/'.$job => '/admin/platform/queues/monitor/job/'.$job,
-        '/platform/search?q=acme' => '/admin/platform/search?q=acme',
-        '/platform/search/jump/'.$organization => '/admin/platform/search/jump/'.$organization,
+        '/platform?q=prod&page=2' => '/admin/environments?page=2&q=prod',
+        '/platform/workspaces' => '/admin/organizations',
+        '/platform/workspaces?q=acme' => '/admin/organizations?q=acme',
+        '/platform/workspaces/'.$workspace => '/admin/organizations/'.$workspace,
+        '/platform/workspaces/'.$workspace.'?utm_source=email' => '/admin/organizations/'.$workspace.'?utm_source=email',
+        '/platform/customers' => '/admin/organizations',
+        '/platform/customers/'.$workspace.'?ref=ticket-4271' => '/admin/organizations/'.$workspace.'?ref=ticket-4271',
+        '/platform/organizations' => '/admin/environments/root/organizations',
+        '/platform/organizations?q=acme' => '/admin/environments/root/organizations?q=acme',
+        '/platform/organizations/'.$organization => '/admin/environments/root/organizations/'.$organization,
+        '/platform/operators' => '/admin/operators',
+        '/platform/usage' => '/admin/usage',
+        '/platform/queues' => '/admin/queues',
+        '/platform/queues/monitor' => '/admin/queues/monitor',
+        '/platform/queues/monitor/job/'.$job => '/admin/queues/monitor/job/'.$job,
+        '/platform/search?q=acme' => '/admin/search?q=acme',
+        '/platform/search/jump/'.$organization => '/admin/search/jump/'.$organization,
     ];
 }
 
@@ -246,7 +246,8 @@ it('names every platform-admin page in the moved-pages table', function (): void
     $pages = collect(app('router')->getRoutes()->getRoutes())
         ->filter(static fn (Route $route): bool => str_starts_with((string) $route->getName(), 'platform.')
             && in_array('GET', $route->methods(), true)
-            && str_starts_with($route->uri(), 'admin/platform/'))
+            && str_starts_with($route->uri(), 'admin/')
+            && ! str_starts_with($route->uri(), 'admin/platform'))
         ->map(static fn (Route $route): string => str_replace('/environments/{}/organizations', '/environments/root/organizations', '/'.preg_replace('/\{[^}]+\}/', '{}', $route->uri())));
 
     expect($pages->count())->toBeGreaterThanOrEqual(9)

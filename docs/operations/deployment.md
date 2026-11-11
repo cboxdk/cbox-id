@@ -328,7 +328,7 @@ prints on any instance of the deployment — so an internet-exposed box cannot b
 whoever finds it first. See [Installation](../getting-started/installation.md).
 
 Sign in at **`/login`** — the install command prints the URL — and open
-**`/admin/platform`**: on a multi-tenant deployment the **Platform** area of the platform
+**`/admin`**: on a multi-tenant deployment the **Platform** area of the platform
 environment's console at `/admin`, on a single-tenant one the **Platform** area of the
 console's rail. From there
 create your remaining environment(s) and use **Provision admin** on each to seed its

@@ -260,7 +260,8 @@ it('redirects a tenant host\'s old /admin addresses to the same page on the app 
         ->assertRedirect('https://'.config('cbox-id.tenancy.account_host').'/'.app(EnvironmentConsolePath::class)->for($env->id).'/users?page=2');
 
     // Only a page is redirected. Nothing under `/admin` on a tenant's host acts any more.
-    $this->post('https://'.$host.'/admin/organizations', ['name' => 'Nope'])->assertStatus(405);
+    // `/admin/organizations` is platform admin's now, which a tenant's host does not serve.
+    $this->post('https://'.$host.'/admin/organizations', ['name' => 'Nope'])->assertNotFound();
     $this->post('https://'.$host.'/admin/handoff', ['token' => 'x'])->assertStatus(405);
 
     // …and the console itself does not answer on a tenant's host.

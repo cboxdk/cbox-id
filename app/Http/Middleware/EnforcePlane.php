@@ -160,8 +160,8 @@ final class EnforcePlane
             // on a customer's own domain is a phishing surface and an unnecessary
             // disclosure. It belongs on the platform root, with the account plane.
             //
-            // It guards platform admin (`/admin/platform/…`) and the queue monitor under it
-            // (`/admin/platform/queues/monitor`): on a multi-tenant deployment both exist on
+            // It guards platform admin (`/admin/…`, see OperatorPaths) and the queue monitor under it
+            // (`/admin/queues/monitor`): on a multi-tenant deployment both exist on
             // the root's own host and nowhere else, and on a single-tenant one on every
             // host, because there is only one. A staff tool has no business on a customer's
             // origin — not even as a sign-in redirect. See routes/web.php and

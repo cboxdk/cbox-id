@@ -204,7 +204,7 @@ icons; the choice is remembered in this browser.
 
 Whoever runs the install reaches the platform pages (organizations, environments, the
 customer organization tree, operators, usage, queues) as the **Platform** area of the platform
-environment's console, `/admin/platform` on the root host — the same console, rail and
+environment's console, `/admin` on the root host — the same console, rail and
 ⌘K as the platform environment's own settings. From the organization console, **Platform
 admin** in the account menu goes there. The line above every Platform page says
 **Platform admin: The whole deployment**, in the warning colours, because a click there

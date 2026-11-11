@@ -39,6 +39,8 @@ describe('console search', () => {
             searchHref('environment', '/orgs/acme/projects/web/environments/production/users/usr1'),
         ).toBe('/orgs/acme/projects/web/environments/production/search');
         expect(searchHref('environment', '/admin/environment')).toBe('/admin/environment/search');
+        expect(searchHref('environment', '/admin/organizations')).toBe('/admin/environment/search');
+        expect(searchHref('environment', '/admin/search')).toBe('/admin/environment/search');
         expect(searchHref('environment', '/projects')).toBeNull();
         expect(searchHref('organization')).toBe('/search');
         expect(searchHref('workspace')).toBe('/search');

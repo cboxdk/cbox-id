@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Console\EnvironmentConsolePath;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
@@ -138,14 +139,17 @@ it('serves each shared page at the same slug on both consoles', function (string
 
 it('gives the pages that moved into /orgs/{org} or made way for /settings their own address', function (): void {
     // `/settings` is the signed-in person's own settings on every Cbox app, so the console
-    // page that sat there is `/organization`, and the environment keeps its own `settings`
-    // under its console path — here the platform root's, `/admin/environment`.
+    // page that sat there is `/organization`, and an environment keeps `settings` under its
+    // own console path.
+    $console = [EnvironmentConsolePath::PARAMETER => 'orgs/acme/projects/web/environments/production'];
+
     expect(route('settings', [], false))->toBe('/organization')
-        ->and(route('environment.settings', ['environmentPath' => 'admin/environment'], false))->toBe('/admin/environment/settings')
+        ->and(route('environment.settings', $console, false))->toBe('/orgs/acme/projects/web/environments/production/settings')
+        ->and(route('environment.settings', [EnvironmentConsolePath::PARAMETER => EnvironmentConsolePath::ROOT], false))->toBe('/admin/environment/settings')
         ->and(route('account', [], false))->toBe('/settings')
-        // The organization's keys live in its settings; the environment's under its console path.
+        // The organization's keys live in its settings; an environment's under its console.
         ->and(Route::getRoutes()->getByName('orgs.settings.api-keys')?->uri())->toBe('orgs/{org}/settings/api-keys')
-        ->and(route('environment.keys', ['environmentPath' => 'admin/environment'], false))->toBe('/admin/environment/keys');
+        ->and(route('environment.keys', $console, false))->toBe('/orgs/acme/projects/web/environments/production/keys');
 });
 
 it('no longer routes any old spelling as a page of its own', function (): void {

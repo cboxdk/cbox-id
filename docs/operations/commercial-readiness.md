@@ -45,7 +45,7 @@ All active platform operators must enroll TOTP or a passkey and complete strong 
 
 Legacy delegated operator tokens without AAL2 are refused: sign the CLI/MCP client in again with MFA. Customer tokens retain their normal policy.
 
-Operator organization URLs include `/admin/platform/environments/{environment}/organizations`. A browser tab carries its own target. Old GET bookmarks redirect to the root view; old unscoped writes are refused. During rollout, reload old forms. Verify two tabs can edit different environments without retargeting one another.
+Operator organization URLs include `/admin/environments/{environment}/organizations`. A browser tab carries its own target. Old GET bookmarks redirect to the root view; old unscoped writes are refused. During rollout, reload old forms. Verify two tabs can edit different environments without retargeting one another.
 
 ## Operational evidence before opening sales
 

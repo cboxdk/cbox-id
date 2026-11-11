@@ -93,7 +93,7 @@ class GrantOperatorCommand extends Command
         }
 
         $this->record($audit, 'operator.granted', (string) $operator->id, $subject->id);
-        $this->info("{$email} is now a platform operator. They must enroll TOTP or a passkey and sign in with strong authentication before opening /admin or /admin/platform on the root host.");
+        $this->info("{$email} is now a platform operator. They must enroll TOTP or a passkey and sign in with strong authentication before opening /admin on the root host.");
 
         return self::SUCCESS;
     }

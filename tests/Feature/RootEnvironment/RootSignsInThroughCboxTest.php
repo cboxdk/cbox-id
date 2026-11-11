@@ -436,7 +436,7 @@ it('keeps an operator the operator, with no second prompt when they used a passk
     rscHop('usr_cbox_ops', 'ops@platform.test', claims: ['amr' => ['passkey', 'made-up']]);
 
     expect(rscSignedInSubject())->toBe($operatorSubject);
-    $this->get('https://'.RSC_HOST.'/admin/platform/environments')->assertOk();
+    $this->get('https://'.RSC_HOST.'/admin/environments')->assertOk();
 
     $amr = app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->active((string) session(PlatformAuth::SESSION_KEY))?->amr);
     expect($amr)->toContain('sso')->toContain('passkey')->not->toContain('made-up');
@@ -445,5 +445,5 @@ it('keeps an operator the operator, with no second prompt when they used a passk
     RootGoogle::signedOutBrowser();
     rscHop('usr_cbox_ops', 'ops@platform.test', claims: ['amr' => ['pwd']]);
 
-    expect((string) $this->get('https://'.RSC_HOST.'/admin/platform/environments')->headers->get('Location'))->toContain('/mfa');
+    expect((string) $this->get('https://'.RSC_HOST.'/admin/environments')->headers->get('Location'))->toContain('/mfa');
 });

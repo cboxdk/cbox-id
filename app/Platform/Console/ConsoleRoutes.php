@@ -50,7 +50,7 @@ final class ConsoleRoutes
      */
     public static function moved(string $from, string $to): void
     {
-        Route::middleware(self::movedGates($to))
+        Route::middleware(self::movedGates($from, $to))
             ->get($from, MovedPageController::class)
             ->defaults('to', $to);
     }
@@ -59,11 +59,12 @@ final class ConsoleRoutes
      * The gates that decide whether the page at $to exists on the requesting host — the
      * same ones its own route group carries, minus who is asking.
      *
-     *  - `/admin/platform/…` is platform admin: `plane:operator`, the root's own host on a
-     *    multi-tenant deployment and any host on a single-tenant one. Checked FIRST, because
-     *    it is under `/admin` without being the environment console — a single-tenant
-     *    install has platform admin and no environment console, and an old `/platform/…`
-     *    bookmark there must still land.
+     *  - `/admin` and `/admin/{organizations,environments,operators,…}` are platform admin
+     *    ({@see OperatorPaths}): `plane:operator`, the root's own host on a multi-tenant
+     *    deployment and any host on a single-tenant one. Checked FIRST, because they are
+     *    under `/admin` without being the environment console — a single-tenant install has
+     *    platform admin and no environment console, and an old `/platform/…` bookmark there
+     *    must still land.
      *  - `/admin/…` is the environment console: `plane:environment` (on a tenant's host and
      *    the root's own) and `multi.tenant` (absent on a single-tenant install), as
      *    {@see page()} and routes/web.php register it.
@@ -71,9 +72,11 @@ final class ConsoleRoutes
      *
      * @return list<string>
      */
-    private static function movedGates(string $to): array
+    private static function movedGates(string $from, string $to): array
     {
-        if ($to === '/admin/platform' || str_starts_with($to, '/admin/platform/')) {
+        // An old `/admin/…` address is an environment-console page by definition, even where
+        // its new spelling now shares a first segment with platform admin (`/admin/usage`).
+        if (OperatorPaths::owns($to) && ! str_starts_with($from, '/admin/')) {
             return ['web', 'plane:operator'];
         }
 

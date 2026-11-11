@@ -314,6 +314,6 @@ it('sends a bookmarked customers page to the organizations one', function (): vo
 
     // Straight to where the workspaces page is now — inside `/admin` — not through
     // `/platform/workspaces`, which moved too.
-    $this->get('/platform/customers?q=acme')->assertStatus(301)->assertRedirect('/admin/platform/workspaces?q=acme');
-    $this->get("/platform/customers/{$workspace->id}")->assertStatus(301)->assertRedirect("/admin/platform/workspaces/{$workspace->id}");
+    $this->get('/platform/customers?q=acme')->assertStatus(301)->assertRedirect('/admin/organizations?q=acme');
+    $this->get("/platform/customers/{$workspace->id}")->assertStatus(301)->assertRedirect("/admin/organizations/{$workspace->id}");
 });

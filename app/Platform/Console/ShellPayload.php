@@ -264,7 +264,7 @@ final readonly class ShellPayload
 
     /**
      * Whether this request is PLATFORM ADMIN drawn inside the platform environment's
-     * console: a platform page (`/admin/platform/…`) on the root's own host of a
+     * console: a platform page (`/admin/…`, {@see OperatorPaths}) on the root's own host of a
      * multi-tenant deployment.
      *
      * Asked of the route and the HOST, not of {@see ConsoleScope::plane()} or the ambient

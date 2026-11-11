@@ -43,7 +43,7 @@ lists them.
 
 The deployment's own pages (organizations, environments, the organization tree, operators,
 usage, queues) are **platform admin**: the **Platform** area of the platform environment's
-console at `/admin/platform` on the root host, for whoever has authority over the
+console at `/admin` on the root host, for whoever has authority over the
 deployment. **Platform admin** in the account menu goes there from the organization console.
 
 ## The rail
@@ -326,7 +326,7 @@ four thousand organizations is a real one.
 ### Platform admin
 
 For whoever runs the install, platform admin is the **Platform** area of the platform
-environment's console (`/admin/platform` on the root host), first on its rail, beside the
+environment's console (`/admin` on the root host), first on its rail, beside the
 environment's own areas. **Platform admin** in the account menu goes there from the
 organization console. The line above every Platform page says **Platform admin: The whole
 deployment**, in the warning colours, because a click there acts on every organization on the

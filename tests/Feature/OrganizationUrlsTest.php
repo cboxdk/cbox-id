@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\BindOrganizationFromPath;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\CurrentUser;
 use App\Platform\Organizations\LastUsedOrganization;
 use App\Platform\Organizations\OrganizationLinks;
@@ -13,6 +14,7 @@ use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\PlatformRoot;
+use Illuminate\Http\Request;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
@@ -497,4 +499,40 @@ it('keeps the v2 writes of a customer organization\'s own settings answering at 
     $this->get('/settings')->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
         ->where('organizationSettingsMoved', url('/organization')));
     $this->get('/organization')->assertOk();
+});
+
+it('names a linked organization by its Cbox slug in the environment console too, and sends each address to its own console', function (): void {
+    multiTenantDeployment();
+    ['subjectId' => $subjectId, 'organization' => $organization, 'project' => $project, 'environment' => $environment] = provisionAccount();
+    $cbox = cboxEnvironment();
+    $shared = cboxOrganization($cbox, 'lovelace-labs', 'Lovelace Labs');
+
+    $links = app(OrganizationLinks::class);
+    $links->flush();
+    $links->link($organization->id, $shared);
+    expect($organization->slug)->not->toBe('lovelace-labs');
+
+    $consolePaths = app(EnvironmentConsolePath::class);
+    $path = $consolePaths->for($environment->id);
+    $ownSlugPath = 'orgs/'.$organization->slug.'/projects/'.$project->slug.'/environments/'.$environment->slug;
+
+    expect($path)->toBe('orgs/lovelace-labs/projects/'.$project->slug.'/environments/'.$environment->slug)
+        ->and($consolePaths->resolve((string) $path)?->id)->toBe($environment->id)
+        // The platform-root row's own slug is not an address of the organization any more.
+        ->and($consolePaths->resolve($ownSlugPath))->toBeNull();
+
+    // `/orgs/{org}/projects/{project}` is the organization console's project page, and
+    // `…/environments/{environment}` under it is the environment console: neither route
+    // swallows the other.
+    $host = 'http://'.serveConsoleOn();
+    $routes = Route::getRoutes();
+    expect($routes->match(Request::create($host.'/orgs/lovelace-labs/projects/'.$project->id))->getName())->toBe('orgs.projects.show')
+        ->and($routes->match(Request::create($host.'/'.$path))->getName())->toBe('environment.home')
+        ->and($routes->match(Request::create($host.'/'.$path.'/users'))->getName())->toBe('environment.users');
+
+    actAsEnvironmentAdmin($subjectId, $environment->id);
+    expect($this->get($host.'/orgs/lovelace-labs/projects/'.$project->id)->assertOk()->inertiaPage()['component'])->toBe('console/projects/show')
+        ->and($this->get($host.'/'.$path.'/users')->assertOk()->inertiaPage()['component'])->toBe('environment/users/index');
+    $this->get($host.'/'.$ownSlugPath.'/users')->assertNotFound();
+
 });
