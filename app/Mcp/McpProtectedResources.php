@@ -13,6 +13,7 @@ use App\Platform\Api\ManagementAudience;
 use App\Platform\OAuth\DelegatedAccess;
 use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\Scopes\ScopeRegistry;
+use App\Platform\Surfaces\Surfaces;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
@@ -135,7 +136,7 @@ final readonly class McpProtectedResources implements ProtectedResources
         sort($scopes);
 
         return new TransitionalProtectedResource(
-            identifier: rtrim($this->issuers->issuer(), '/').self::PATH,
+            identifier: $this->identifier(),
             scopes: $scopes,
             // An MCP client registers itself — that is the whole MCP authorization model —
             // so self-registered clients may be audienced here (`api.mcp.dynamic_clients`).
@@ -145,6 +146,29 @@ final readonly class McpProtectedResources implements ProtectedResources
             dynamicClients: config('api.mcp.dynamic_clients', true) === true,
             name: 'Cbox ID MCP server',
         );
+    }
+
+    /**
+     * The resource's own URL: `{issuer}/mcp`, the host the server is reached on.
+     *
+     * EXCEPT IN LOGIN-HOST MODE, for the default environment. Its issuer is the login host,
+     * which serves sign-in and no `/mcp`; the server is on the app host. So the resource is
+     * `https://{app host}/mcp` there, and its metadata names the login host as its
+     * authorization server (RFC 9728 lets the two be different origins, and RFC 8707 binds
+     * the token to the resource, not to the issuer). A client is then never told to send
+     * its access token to the host that signs people in.
+     */
+    private function identifier(): string
+    {
+        if ($this->servingPlatformRoot() && app(Surfaces::class)->split()) {
+            $onAppHost = ManagementAudience::appMcp();
+
+            if ($onAppHost !== null) {
+                return $onAppHost;
+            }
+        }
+
+        return rtrim($this->issuers->issuer(), '/').self::PATH;
     }
 
     /**

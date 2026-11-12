@@ -11,6 +11,7 @@ use App\Platform\CurrentUser;
 use App\Platform\Organizations\LastUsedOrganization;
 use App\Platform\Organizations\OrganizationDirectory;
 use App\Platform\Organizations\OrganizationEntry;
+use App\Platform\Organizations\OrganizationRequired;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Illuminate\Http\RedirectResponse;
@@ -19,6 +20,7 @@ use Illuminate\Routing\Route as RouteRecord;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
@@ -75,14 +77,14 @@ final readonly class OrganizationPickerController extends ConsoleController
      * person is on. The id is checked against their own memberships, never trusted; an
      * organization they cannot open answers with the picker.
      */
-    public function switch(Request $request, OrganizationDirectory $directory, CurrentUser $me): RedirectResponse
+    public function switch(Request $request, OrganizationDirectory $directory, CurrentUser $me): SymfonyResponse
     {
         // A customer's own console switches between ITS organizations, in the session, as
         // it always has: `/orgs/{org}` addresses Cbox organizations, which it has none of.
         if (app(PlaneResolver::class)->onCustomerEnvironment()) {
             $answer = app()->call([app(SessionController::class), 'switchOrganization']);
 
-            return $answer instanceof RedirectResponse ? $answer : redirect()->route('dashboard');
+            return $answer instanceof SymfonyResponse ? $answer : redirect()->route('dashboard');
         }
 
         $wanted = $request->string('organization')->toString();
@@ -153,7 +155,13 @@ final readonly class OrganizationPickerController extends ConsoleController
         $entry = LastUsedOrganization::resolve($request, app(OrganizationDirectory::class), $me->id(), $me->organizationId());
 
         if ($entry === null) {
-            return redirect()->route('orgs.index');
+            // In the Cbox realm a person with no organization answers one screen first
+            // (an invitation, or a personal organization) and comes back here.
+            $required = app(OrganizationRequired::class);
+
+            return $required->appliesTo($me)
+                ? redirect()->to($required->url())
+                : redirect()->route('orgs.index');
         }
 
         // Straight to its first page when the session is already in it; another

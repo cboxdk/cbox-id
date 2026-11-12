@@ -6,6 +6,9 @@ namespace App\Http\Middleware;
 
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\EnvironmentConsolePath;
+use App\Platform\ConsoleSignIn\ConsoleSignIn;
+use App\Platform\Operators\OperatorAssurance;
+use App\Platform\Operators\OperatorGate;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
@@ -45,7 +48,7 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class AuthenticateOperator
 {
-    public function __construct(private readonly ConsoleScope $scope) {}
+    public function __construct(private readonly ConsoleScope $scope, private readonly OperatorGate $gate) {}
 
     /**
      * @param  Closure(Request): Response  $next
@@ -53,10 +56,23 @@ final class AuthenticateOperator
     public function handle(Request $request, Closure $next): Response
     {
         if (! $this->scope->signedIn()) {
-            return redirect()->route('login');
+            // Login-host mode: the console's door is the login host.
+            return ($door = app(ConsoleSignIn::class))->active($request)
+                ? $door->refuse($request)
+                : redirect()->route('login');
         }
 
         abort_unless($this->scope->isPlatformOperator(), 404);
+
+        // The plane's own proof, on top of the sign-in: a passkey, used recently enough
+        // ({@see OperatorGate}). Off unless `cbox-id.operators.phishing_resistant` is on.
+        $request->attributes->set(OperatorAssurance::PLANE_ATTRIBUTE, true);
+
+        $asked = $this->gate->admit($request);
+
+        if ($asked !== null) {
+            return $asked;
+        }
 
         // Platform admin is drawn in the platform environment's console: its rail links to
         // that console's pages, which live under `/admin/environment`.

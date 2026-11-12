@@ -4,12 +4,18 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Platform\ConsoleSignIn\ConsoleSignIn;
 use App\Platform\CurrentUser;
 use App\Platform\IntendedUrl;
+use App\Platform\OperatorMfa;
 use App\Platform\OrganizationAccess;
 use App\Platform\PlatformAuth;
 use App\Platform\SessionMetadata;
 use App\Platform\SignedInPage;
+use App\Platform\SsoMandates;
+use App\Platform\Surfaces\ReturnUrl;
+use App\Platform\Surfaces\SessionSurface;
+use App\Platform\Surfaces\Surfaces;
 use App\SignalsData\IdentityCapture;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
@@ -42,6 +48,7 @@ final class Authenticate
         private readonly AdminPasswords $adminPasswords,
         private readonly PasswordExpiry $passwordExpiry,
         private readonly MfaMandate $mfaMandate,
+        private readonly SessionSurface $surface,
     ) {}
 
     /**
@@ -70,7 +77,10 @@ final class Authenticate
         // prompt=none for the authorize endpoint specifically, a carve-out that could
         // never be reached from a route running in this mode.
         $optional = $mode === 'optional';
-        $sessionId = $request->session()->get(PlatformAuth::SESSION_KEY);
+        // A session minted on another surface is nobody's here (login-host mode).
+        $sessionId = $this->surface->admits($request)
+            ? $request->session()->get(PlatformAuth::SESSION_KEY)
+            : null;
 
         $session = is_string($sessionId) ? $this->sessions->active($sessionId) : null;
 
@@ -107,27 +117,51 @@ final class Authenticate
                 return $next($request);
             }
 
-            return redirect()->guest(route('login'));
+            // In login-host mode the console has no `/login`: its door is the login host.
+            return ($door = app(ConsoleSignIn::class))->active($request)
+                ? $door->refuse($request)
+                : redirect()->guest(route('login'));
         }
 
         // Resolve the active org — but ONLY honour one the subject is a member of.
         // A revoked selection must not silently retarget an in-flight write to
         // another organization. Only an unscoped session may choose an initial org.
-        $requestedOrgId = $request->session()->get(PlatformAuth::ORG_KEY) ?? $session->organization_id;
+        $selectedOrgId = $request->session()->get(PlatformAuth::ORG_KEY);
+        $requestedOrgId = $selectedOrgId ?? $session->organization_id;
 
         $organization = null;
         $role = null;
 
+        /*
+         * AND ONLY ONE THIS SESSION MAY ENTER. With SSO mandates per organization
+         * ({@see SsoMandates::perOrganization()}), an organization that requires SSO is
+         * bound only to a session that came through its own connection. A session that
+         * did not is simply not IN that organization: every surface that reads the acting
+         * organization from here (console pages, the authorize endpoint, the SAML IdP,
+         * device approval) then acts in another of the person's organizations or in none,
+         * and their own account pages stay reachable. The doors that NAME an organization
+         * (its console address, the `organization` parameter) send the person through its
+         * connection instead.
+         */
+        $mandates = app(SsoMandates::class);
+
         if (is_string($requestedOrgId)
             && ($membership = $this->memberships->of($requestedOrgId, $subject->id)) !== null
             && $membership->status === MembershipStatus::Active) {
-            $organization = $this->organizations->find($requestedOrgId);
-            $role = $membership->role;
+            if ($mandates->admits($session, $requestedOrgId)) {
+                $organization = $this->organizations->find($requestedOrgId);
+                $role = $membership->role;
+            } elseif ($selectedOrgId === null) {
+                // Nobody chose it: it is only where the session was started. Start
+                // somewhere this session may be instead of nowhere.
+                $requestedOrgId = null;
+            }
         }
 
         if ($requestedOrgId === null) {
             $fallbackOrgId = $this->memberships->forUser($subject->id)
-                ->firstWhere('status', MembershipStatus::Active)?->organization_id;
+                ->first(fn ($candidate): bool => $candidate->status === MembershipStatus::Active
+                    && $mandates->admits($session, $candidate->organization_id))?->organization_id;
 
             if (is_string($fallbackOrgId)) {
                 $organization = $this->organizations->find($fallbackOrgId);
@@ -158,10 +192,16 @@ final class Authenticate
         // replace an already enrolled factor. OAuth resolves prompt/PAR itself below.
         $requiresEnrolment = $this->mfaMandate->requiresEnrolment($subject->id);
 
-        if (! $request->routeIs('oauth.authorize', 'oauth.authorize.*', 'logout', 'logout.*')
+        if (! $request->routeIs('oauth.authorize', 'oauth.authorize.*', 'logout', 'logout.*', 'console.auth.*')
             && ! $requiresEnrolment
             && app(MfaVerification::class)->requiresVerification($subject->id, array_values($session->amr))) {
             $this->current->clear();
+
+            // The second factor is asked for where the person signs in. On the console of
+            // login-host mode that is the login host, reached through the console's door.
+            if (($door = app(ConsoleSignIn::class))->active($request)) {
+                return $optional ? $next($request) : redirect()->to($door->startUrl(['mfa' => 1]));
+            }
 
             return redirect()->to(app(PlatformAuth::class)->challengeSession($request, $session));
         }
@@ -173,7 +213,13 @@ final class Authenticate
         }
 
         if ($this->mustChangePassword($request, $subject->id)) {
-            return redirect()->route('password.change');
+            // A person's own security pages live with the SSO session: on the login host
+            // in login-host mode, where the console does not serve them.
+            // The page they were opening goes along (`return_to`), so the change ends there
+            // and not on the console's front page.
+            return app(ConsoleSignIn::class)->active($request)
+                ? redirect()->away(app(Surfaces::class)->loginUrl('/password/change', $this->wayBack($request)))
+                : redirect()->route('password.change');
         }
 
         // A tenant that requires a second factor cannot enforce it by turning people
@@ -189,13 +235,33 @@ final class Authenticate
         if (! $request->routeIs('account', 'account.mfa.*', 'sudo', 'sudo.*', 'passkeys.register', 'passkeys.register.*')
             && $requiresEnrolment
         ) {
-            return redirect()->route('account')
-                ->with('status', 'Your organization requires two-factor authentication. Set it up to continue.');
+            // In login-host mode the security page is on the login host, and the page they
+            // were opening goes along so "Back to …" there leads to it.
+            $account = app(ConsoleSignIn::class)->active($request)
+                ? redirect()->away(app(Surfaces::class)->loginUrl('/settings', $this->wayBack($request)))
+                : redirect()->route('account');
+
+            return $account
+                ->with('status', $this->mfaMandate instanceof OperatorMfa && $this->mfaMandate->requiresPasskey($subject->id)
+                    ? 'Platform operators sign in with a passkey or security key. Add one under Security to continue.'
+                    : 'Your organization requires two-factor authentication. Set it up to continue.');
         }
 
         app(IdentityCapture::class)->activity($session, $request);
 
         return SignedInPage::serve($request, $next);
+    }
+
+    /**
+     * The console page a held request was opening, as the `return_to` the login host's
+     * pages take ({@see ReturnUrl}, which validates it there). Only a page: a write is not
+     * replayed by a link, so it names nothing and the person lands on the console's default.
+     *
+     * @return array<string, string>
+     */
+    private function wayBack(Request $request): array
+    {
+        return $request->isMethod('GET') ? [ReturnUrl::PARAMETER => $request->fullUrl()] : [];
     }
 
     /**
@@ -277,6 +343,9 @@ final class Authenticate
             // port, and a hold that let somebody reach the page but not answer it would
             // strand the relying party's callback rather than protect anything.
             'oauth.authorize', 'oauth.authorize.*',
+            // The console's door in login-host mode: how a hold that sends somebody to
+            // the login host is come back from.
+            'console.auth.*',
         );
     }
 
@@ -323,6 +392,12 @@ final class Authenticate
      */
     private function refuse(Request $request): Response
     {
+        // In login-host mode the console has no `/login`: an unauthenticated request goes
+        // to the login host as the console's own client, and comes back to this page.
+        if (($door = app(ConsoleSignIn::class))->active($request)) {
+            return $door->refuse($request);
+        }
+
         // guest() stashes the intended URL, so a user sent here mid-flow (e.g.
         // /oauth/authorize?…) is returned to complete it after logging in.
         $redirect = redirect()->guest(route('login'));

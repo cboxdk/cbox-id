@@ -9,6 +9,7 @@ use App\Http\Props\Auth\SocialProviderProps;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\SendMagicLinkRequest;
 use App\Mail\MagicLinkMail;
+use App\Platform\AdminSignInLink;
 use App\Platform\Appearance\BrandContext;
 use App\Platform\Enums\AttemptOutcome;
 use App\Platform\Enums\RefusedFactor;
@@ -16,9 +17,12 @@ use App\Platform\IntendedUrl;
 use App\Platform\LastSignInMethod;
 use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
+use App\Platform\OAuth\AppSignIn;
+use App\Platform\OAuth\AppSignIns;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
 use App\Platform\SamlSsoHandoff;
+use App\Platform\SigningInAgain;
 use App\Platform\SignInThrough;
 use App\Platform\SignupPolicy;
 use App\Platform\SsoMandate;
@@ -99,6 +103,13 @@ final readonly class LoginController extends PageController
         ?string $slug,
         bool $direct,
     ): Response|RedirectResponse {
+        // The same page for somebody already signed in (`/settings/accounts/add`): its
+        // buttons post to the guest doors, which let a signed-in browser through only
+        // while this is under way.
+        if ($request->routeIs('accounts.add')) {
+            SigningInAgain::begin($request);
+        }
+
         $upstream = $through->connection();
 
         /*
@@ -136,12 +147,20 @@ final readonly class LoginController extends PageController
         // React exists. See BrandContext.
         $brand->brand($organization);
 
+        // The app this sign-in is on its way to, when an authorization request sent the
+        // person here ({@see AppSignIns}); null for somebody who came by themselves.
+        $app = app(AppSignIns::class)->pending($request);
+
         return $this->page('auth/login', __('auth.login.title'), [
-            'purpose' => $this->purpose(),
+            'purpose' => $this->purpose($app),
+            // The app's name and icon. With one, the page says where the person is going
+            // and its sign-up line offers an account, not a new organization.
+            'signingInTo' => $app?->props(),
             // What the identifier step captured, so the password step renders with the
             // address already in it. Laravel's old-input bag is server-side; a client
-            // page cannot read it, so the server states it.
-            'email' => is_string($old = $request->old('email')) ? $old : '',
+            // page cannot read it, so the server states it. Before anything was typed,
+            // the address the app named (`login_hint`): filled in, never submitted.
+            'email' => is_string($old = $request->old('email')) ? $old : ($app->loginHint ?? ''),
             'signupOpen' => $signup->isOpen(),
             'providers' => $this->providers($organization?->id, $upstream),
             // The environment's own switches under the deployment's: a button for a method
@@ -157,6 +176,9 @@ final readonly class LoginController extends PageController
              * nothing in the browser reads cookies. See {@see LastSignInMethod}.
              */
             'lastUsed' => LastSignInMethod::read($request),
+            // The discreet link for whoever administers this environment: its console on
+            // the app host. Null where the environment hides it or there is no such console.
+            'adminUrl' => app(AdminSignInLink::class)->urlHere($request->getHost(), $request->getScheme()),
         ]);
     }
 
@@ -362,7 +384,9 @@ final readonly class LoginController extends PageController
         $devUrl = null;
 
         if ($signup->isOpen() || $subjects->findByEmail($request->email()) !== null) {
-            $url = $mailLinks->route('magic.redeem', $links->request($request->email()));
+            // Naming the app this sign-in is for, so a link opened in another browser can
+            // still send the person on to it ({@see AppSignIns::carry()}).
+            $url = app(AppSignIns::class)->carry($request, $mailLinks->route('magic.redeem', $links->request($request->email())));
 
             Mail::to($request->email())->locale(app(MailLocale::class)->forRecipient())->queue(new MagicLinkMail($url));
 
@@ -408,7 +432,13 @@ final readonly class LoginController extends PageController
 
         $sso = app(AuthPolicies::class)->resolve($connection->organization_id)->sso;
 
-        if (! $sso->allowsPasswordLogin()) {
+        /*
+         * WITH MANDATES PER ORGANIZATION the address is offered its organization's SSO,
+         * leading, and is not forced onto it: the organization's rule is about entering
+         * the organization, which is asked there, and the person's own account can still
+         * be signed in to another way.
+         */
+        if (! $sso->allowsPasswordLogin() && ! SsoMandates::perOrganization()) {
             // A full navigation away: the destination is the identity provider's own
             // redirect endpoint, which answers with a cross-origin 302.
             return redirect()->away(SsoStart::url($connection));
@@ -416,7 +446,7 @@ final readonly class LoginController extends PageController
 
         return [
             'url' => SsoStart::url($connection),
-            'leads' => $sso === SsoEnforcement::Preferred,
+            'leads' => $sso !== SsoEnforcement::Off,
         ];
     }
 
@@ -457,17 +487,21 @@ final readonly class LoginController extends PageController
     /**
      * Why this person is being asked to sign in, when we know.
      *
-     * "Access your organization's identity console" is right for somebody who typed the
-     * address, and wrong for the one case where we know they were going somewhere else: a
-     * device approval. They followed a link printed by a terminal, on a phone, and the page
-     * that greets them talks about a console they are not going to — a small dissonance at
-     * exactly the moment they are deciding whether this link is legitimate.
+     * The page is the front door of every app that signs in here, and it used to greet
+     * all of them with "Access your organization's identity console": wrong for somebody
+     * on their way to an app, at exactly the moment they are deciding whether this page
+     * is legitimate. So it names the app the authorization request is for, the waiting
+     * device for a device approval, and otherwise says nothing about a destination.
      *
      * READ, never pulled: consuming the intent here would strand them on the dashboard
      * after signing in. {@see IntendedUrl} pulls it, once, after authentication.
      */
-    private function purpose(): string
+    private function purpose(?AppSignIn $app): string
     {
+        if ($app !== null) {
+            return __('auth.login.purpose.app', ['app' => $app->clientName]);
+        }
+
         $intended = session()->get(IntendedUrl::KEY);
         $path = is_string($intended) ? parse_url($intended, PHP_URL_PATH) : null;
 

@@ -70,6 +70,15 @@ final readonly class SetSignInThrough implements Action
 
         $connection = null;
 
+        // The realm signs in through nobody; clearing a value left from before is allowed.
+        if ($id !== null && $this->through->isTheRealm($environment->environmentKey())) {
+            throw ActionRefused::because(
+                'not_available_in_the_realm',
+                new ActionMessage('console.realm_signs_in_through_nobody'),
+                'connection_id',
+            );
+        }
+
         if ($id !== null) {
             // Looked up in THIS environment: another environment's id is a 404 like any other.
             $connection = $this->connections->byId($id) ?? throw ActionRefused::notFound('connection');

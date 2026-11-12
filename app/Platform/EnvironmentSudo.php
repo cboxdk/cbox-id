@@ -60,11 +60,15 @@ final class EnvironmentSudo
 
     /**
      * Confirm the step-up for an environment: the request's own unless named — a caller
-     * running in the platform root names the console's.
+     * running in the platform root names the console's. From now, or from `$at` when the
+     * proof was given earlier (the `auth_time` of a re-authentication at the login host).
      */
-    public function confirm(?string $environment = null): void
+    public function confirm(?string $environment = null, ?int $at = null): void
     {
-        session()->put(self::SESSION_KEY, ['environment' => $environment ?? $this->environment(), 'at' => time()]);
+        session()->put(self::SESSION_KEY, [
+            'environment' => $environment ?? $this->environment(),
+            'at' => $at === null ? time() : min($at, time()),
+        ]);
     }
 
     private function environment(): ?string

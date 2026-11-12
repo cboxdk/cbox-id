@@ -9,6 +9,8 @@ use App\Http\Middleware\ResolveEnvironmentFromPath;
 use App\Http\Middleware\SetEnvironment;
 use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OAuth\RootMcpOAuth;
+use App\Platform\Surfaces\Surface;
+use App\Platform\Surfaces\Surfaces;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
 use Cbox\Id\OAuthServer\Contracts\ClientIdMetadataDocuments;
@@ -43,6 +45,11 @@ use Cbox\Id\Platform\PlatformRoot;
  * name is precisely how the console went missing from the root: "which host serves the
  * console" and "which host is an issuer" were one predicate, so withholding the issuer
  * surface withheld the console with it.
+ *
+ * IN LOGIN-HOST MODE ({@see Surfaces}) every host question here is answered from the
+ * host's SURFACE, by exact match: the login host is the default environment's issuer, the
+ * app host its console and operator plane, and a host that is neither is nothing. What
+ * each method says below describes single-host mode, which is unchanged.
  */
 final class PlaneResolver
 {
@@ -93,6 +100,25 @@ final class PlaneResolver
     }
 
     /**
+     * Whether the platform root signs MCP clients in FOR ITS OWN `/mcp` AND NOTHING ELSE:
+     * the narrowed RFC 8414 document, registration in the `mcp` profile only, no `openid`,
+     * no audience but the root's `/mcp`, and nobody without standing there
+     * ({@see RootMcpOAuth}).
+     *
+     * Those walls exist because the root of a multi-tenant deployment is nobody's identity
+     * provider. In login-host mode it is one: the default environment is the realm every
+     * one of the platform's own apps signs in through, issued from the login host. A client
+     * that registers itself there (an MCP client of any of those apps, a CLI) is then held
+     * to what a tenant's host holds it to, the framework's own rules: a resource server
+     * admits self-registered clients or it does not. Left on, these walls would refuse
+     * every such client any audience but this deployment's own `/mcp`.
+     */
+    public function rootIssuesForMcpOnly(): bool
+    {
+        return $this->onAccountPlane() && ! $this->surfaces()->split();
+    }
+
+    /**
      * Whether the CONSOLE is served here — the sign-in door, and every subject-facing page
      * behind it.
      *
@@ -114,6 +140,12 @@ final class PlaneResolver
      */
     public function servesConsole(string $host): bool
     {
+        // The sign-in door and the console share this plane's name; which of the two a
+        // host serves is the path fence's answer (FenceSurfaces). Here: a host with a name.
+        if (($surface = $this->surfaces()->of($host)) !== null) {
+            return in_array($surface, [Surface::Login, Surface::Console, Surface::Tenant], true);
+        }
+
         return $this->onTenantEnvironment() || $this->isPlatformRootHost($host);
     }
 
@@ -127,6 +159,10 @@ final class PlaneResolver
      */
     public function servesSignup(): bool
     {
+        if (($surface = $this->surfaces()->current()) !== null) {
+            return $surface->issues();
+        }
+
         return $this->onAccountPlane() || $this->onTenantEnvironment();
     }
 
@@ -151,6 +187,12 @@ final class PlaneResolver
      */
     public function servesIssuer(): bool
     {
+        // The login host and a tenant's own host, and no other: a console path names a
+        // tenant environment on the app host, and that makes the app host nobody's issuer.
+        if (($surface = $this->surfaces()->current()) !== null) {
+            return $surface->issues();
+        }
+
         return $this->onTenantEnvironment();
     }
 
@@ -176,6 +218,10 @@ final class PlaneResolver
      */
     public function servesVerificationKeys(): bool
     {
+        if ($this->surfaces()->split()) {
+            return $this->servesIssuer();
+        }
+
         return $this->servesIssuer() || $this->contextIsPlatformRoot();
     }
 
@@ -213,6 +259,12 @@ final class PlaneResolver
     {
         if ($this->servesIssuer()) {
             return true;
+        }
+
+        // In login-host mode the root's issuer is the login host, answered above. The app
+        // host issues for no client, the platform's own included.
+        if ($this->surfaces()->split()) {
+            return false;
         }
 
         $root = $this->platformRootKey();
@@ -268,9 +320,31 @@ final class PlaneResolver
      */
     public function servesRootMcpOAuth(string $host): bool
     {
+        // The authorization server of the root's `/mcp` is the login host.
+        if (($surface = $this->surfaces()->of($host)) !== null) {
+            return $surface === Surface::Login && RootMcpOAuth::enabled();
+        }
+
         return $this->onAccountPlane()
             && RootMcpOAuth::enabled()
             && $this->isPlatformRootHost($host);
+    }
+
+    /**
+     * Whether the RFC 9728 document of a protected resource
+     * (`/.well-known/oauth-protected-resource/…`) is served here.
+     *
+     * Wherever {@see servesIssuer()} or {@see servesRootMcpOAuth()} says so, as before. And
+     * in login-host mode on the APP HOST: the platform's `/mcp` is there while its
+     * authorization server is the login host, and the document is what a client reads after
+     * the `401` at the resource, so it is served from the resource's own host. Nothing else
+     * of the authorization server is: not its metadata, not registration, not a token.
+     */
+    public function servesResourceMetadata(string $host): bool
+    {
+        return $this->servesIssuer()
+            || $this->servesRootMcpOAuth($host)
+            || ($this->surfaces()->of($host) === Surface::Console && RootMcpOAuth::enabled());
     }
 
     /**
@@ -347,6 +421,10 @@ final class PlaneResolver
      */
     public function servesEnvironmentAdmin(string $host): bool
     {
+        if (($surface = $this->surfaces()->of($host)) !== null) {
+            return $surface === Surface::Console || $surface === Surface::Tenant;
+        }
+
         return $this->onTenantEnvironment()
             || ($this->isMultiTenant() && $this->contextIsPlatformRoot() && $this->isPlatformRootHost($host));
     }
@@ -358,6 +436,10 @@ final class PlaneResolver
      */
     public function onRootEnvironmentConsole(string $host): bool
     {
+        if (($surface = $this->surfaces()->of($host)) !== null) {
+            return $surface === Surface::Console && $this->contextIsPlatformRoot();
+        }
+
         return $this->isMultiTenant() && $this->contextIsPlatformRoot() && $this->isPlatformRootHost($host);
     }
 
@@ -382,6 +464,12 @@ final class PlaneResolver
      */
     public function onOperatorPlane(string $host): bool
     {
+        // The app host alone, in either tenancy shape: the operator plane never shares an
+        // origin with the sign-in pages.
+        if (($surface = $this->surfaces()->of($host)) !== null) {
+            return $surface === Surface::Console;
+        }
+
         if (! $this->isMultiTenant()) {
             return true;
         }
@@ -400,6 +488,12 @@ final class PlaneResolver
      */
     public function isPlatformRootHost(string $host): bool
     {
+        // The account plane's and the operator area's origin is the app host. The login
+        // host is the root's ISSUER, which is asked separately (servesIssuer()).
+        if (($surface = $this->surfaces()->of($host)) !== null) {
+            return $surface === Surface::Console;
+        }
+
         // NO fallback to the default environment. `platformRootKey()` resolves through
         // `defaultEnvironment()` itself, so falling back to it here would compare a value
         // to its own source and return true for every host that maps to nothing —
@@ -510,9 +604,13 @@ final class PlaneResolver
     public function formActionHosts(): array
     {
         $account = $this->consoleHost();
+        $login = $this->surfaces()->loginHost();
 
+        // The login host too, when there is one: the console signs out through it and the
+        // hosted pages hand the browser back to the console.
         return array_values(array_unique([
             ...($account === null ? [] : [$account]),
+            ...($login === null ? [] : [$login]),
             ...$this->platformRootHosts(),
         ]));
     }
@@ -556,6 +654,12 @@ final class PlaneResolver
         }
 
         return $this->environments->current() !== null && ! $this->contextIsPlatformRoot();
+    }
+
+    /** Resolved when asked, so the two services can name each other. */
+    private function surfaces(): Surfaces
+    {
+        return app(Surfaces::class);
     }
 
     /** Whether the environment this request RESOLVED TO is the platform root's. */

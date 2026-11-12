@@ -2,7 +2,9 @@ import { MobileApproval } from '@/components/auth/MobileApproval';
 import { useTranslator as usePublicTranslator } from '@/i18n';
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { useForm } from '@inertiajs/react';
-import ConsoleLayout from '@/layouts/ConsoleLayout';
+import { useState } from 'react';
+import { confirmWithPasskey, isCancellation } from '@/lib/passkeys';
+import AccountLayout from '@/layouts/AccountLayout';
 import type { PageProps } from '@/types';
 import { Button, Icon, PasswordField, Panel } from '@/ui';
 import { confirm } from '@routes/sudo';
@@ -19,7 +21,13 @@ type Props = PageProps<{
      * administrator acts on one, so a step-up bought in the cheaper place must not spend
      * in the dearer. The page only needs it to know where to post.
      */
-    plane: 'organization' | 'environment';
+    plane: 'organization' | 'environment' | 'operator';
+    /**
+     * The operator plane only: it is confirmed with a passkey, never a password. `blocked`
+     * when there is nothing to confirm with (no passkey enrolled); the reason then says
+     * what to do, and `enrol` is where a passkey is added.
+     */
+    passkey?: { options: string; confirm: string; blocked: boolean; enrol: string | null };
 }>;
 
 /**
@@ -28,7 +36,7 @@ type Props = PageProps<{
  * The reason is shown because a password prompt with no explanation is one people learn
  * to type through. Whatever raised the step-up says what is waiting on the other side.
  */
-export default function Sudo({ reason, plane }: Props) {
+export default function Sudo({ reason, plane, passkey }: Props) {
     const { t: tc } = usePublicTranslator();
     const { t: consoleUiText } = useConsoleTranslator();
     const form = useForm({ password: '' });
@@ -56,45 +64,109 @@ export default function Sudo({ reason, plane }: Props) {
                 </p>
             </div>
 
-            <Panel>
-                <form
-                    className="space-y-4"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        form.post(
-                            plane === 'environment' ? confirmEnvironment.url() : confirm.url(),
-                        );
-                    }}
-                >
-                    <PasswordField
-                        label={consoleUiText('console.password_e7cf3ef4')}
-                        name="password"
-                        autoComplete="current-password"
-                        error={form.errors.password}
-                        value={form.data.password}
-                        onChange={(event) => form.setData('password', event.target.value)}
-                    />
-
-                    <Button
-                        type="submit"
-                        variant="primary"
-                        size="lg"
-                        className="w-full"
-                        loading={form.processing}
+            {passkey !== undefined ? (
+                <PasskeyConfirm passkey={passkey} />
+            ) : (
+                <Panel>
+                    <form
+                        className="space-y-4"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            form.post(
+                                plane === 'environment' ? confirmEnvironment.url() : confirm.url(),
+                            );
+                        }}
                     >
-                        {consoleUiText('console.confirm_eebdd24a')}
-                    </Button>
-                </form>
-                <MobileApproval
-                    endpoint={
-                        (plane === 'environment' ? confirmEnvironment.url() : confirm.url()) +
-                        '/mobile'
-                    }
-                    onConfirmed={(url) => window.location.assign(url)}
-                />
-            </Panel>
+                        <PasswordField
+                            label={consoleUiText('console.password_e7cf3ef4')}
+                            name="password"
+                            autoComplete="current-password"
+                            error={form.errors.password}
+                            value={form.data.password}
+                            onChange={(event) => form.setData('password', event.target.value)}
+                        />
+
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            size="lg"
+                            className="w-full"
+                            loading={form.processing}
+                        >
+                            {consoleUiText('console.confirm_eebdd24a')}
+                        </Button>
+                    </form>
+                    <MobileApproval
+                        endpoint={
+                            (plane === 'environment' ? confirmEnvironment.url() : confirm.url()) +
+                            '/mobile'
+                        }
+                        onConfirmed={(url) => window.location.assign(url)}
+                    />
+                </Panel>
+            )}
         </div>
     );
 }
 
-Sudo.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+/**
+ * The operator plane's proof: a WebAuthn ceremony in the button's own click. On success
+ * the server says where to go back to.
+ */
+function PasskeyConfirm({ passkey }: { passkey: NonNullable<Props['passkey']> }) {
+    const { t } = useConsoleTranslator();
+    const [error, setError] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    if (passkey.blocked) {
+        return passkey.enrol === null ? null : (
+            <Panel>
+                <a href={passkey.enrol} className="btn btn-primary btn-lg w-full">
+                    {t('console.security_8f6fb4eb')}
+                </a>
+            </Panel>
+        );
+    }
+
+    const confirmNow = async (): Promise<void> => {
+        setBusy(true);
+        setError(null);
+
+        try {
+            const next = await confirmWithPasskey(passkey.options, passkey.confirm);
+
+            window.location.assign(next ?? '/admin');
+        } catch (caught) {
+            setBusy(false);
+
+            if (!isCancellation(caught)) {
+                setError(
+                    caught instanceof Error
+                        ? caught.message
+                        : t('console.that_did_not_work_try_again_d38eba7d'),
+                );
+            }
+        }
+    };
+
+    return (
+        <Panel>
+            <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                loading={busy}
+                onClick={() => void confirmNow()}
+            >
+                {t('console.confirm_eebdd24a')}
+            </Button>
+            {error !== null && (
+                <p className="field-error mt-4" role="alert">
+                    {error}
+                </p>
+            )}
+        </Panel>
+    );
+}
+
+Sudo.layout = (page: React.ReactNode) => <AccountLayout>{page}</AccountLayout>;

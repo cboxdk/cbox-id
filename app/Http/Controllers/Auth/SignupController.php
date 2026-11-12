@@ -10,6 +10,7 @@ use App\Mail\EmailVerificationMail;
 use App\Platform\IntendedUrl;
 use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
+use App\Platform\Organizations\PersonalOrganizations;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
 use App\Platform\SignupPolicy;
@@ -75,6 +76,7 @@ final readonly class SignupController extends PageController
         DomainVerification $domains,
         Turnstile $turnstile,
         MailLinks $links,
+        PersonalOrganizations $personal,
     ): RedirectResponse {
         // Defence in depth: never create an account when signup is not open, even if the
         // form was reached or replayed out of band.
@@ -86,7 +88,7 @@ final readonly class SignupController extends PageController
          *
          * Without the environment in the key, every tenant on the deployment shares one
          * bucket per IP: an office behind a single NAT address burning its ten attempts
-         * on acme.cboxid.com locked out signups on every other tenant reachable from that
+         * on acme.cboxauth.com locked out signups on every other tenant reachable from that
          * office — one customer's traffic denying another's, which is the shape of a
          * cross-tenant fault however benign the cause.
          */
@@ -163,6 +165,11 @@ final readonly class SignupController extends PageController
                 new NewOrganization($request->organization(), $this->uniqueSlug($orgs, $request->organization())),
             );
             $memberships->add($organization->id, $subject->id, MembershipRole::Owner);
+        } elseif ($personal->enabled()) {
+            // In the Cbox realm nobody is left without an organization: this form is the
+            // signup that does NOT come from an invitation (an invitation creates its
+            // person where it is accepted), so the person gets one of their own.
+            $personal->ensureFor($subject);
         }
 
         // The account is usable immediately; verification confirms the address out of

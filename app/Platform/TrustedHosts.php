@@ -6,6 +6,7 @@ namespace App\Platform;
 
 use App\Http\Middleware\SetEnvironment;
 use App\Platform\Api\ApiHost;
+use App\Platform\Surfaces\Surfaces;
 use Cbox\Id\Organization\EnvironmentIssuerResolver;
 use Cbox\Id\Organization\EnvironmentResolutionCache;
 use Cbox\Id\Organization\Models\Environment;
@@ -84,6 +85,11 @@ final class TrustedHosts
 
         if ($api !== null) {
             $patterns[] = $this->exactly($api);
+        }
+
+        // A retired issuer name answers with a redirect, so it has to be let in to be told.
+        foreach (app(Surfaces::class)->legacyLoginHosts() as $legacy) {
+            $patterns[] = $this->exactly($legacy);
         }
 
         $marketing = config('marketing.host');

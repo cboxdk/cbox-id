@@ -7,7 +7,7 @@ description: Connect Claude Code, Cursor, the cbox CLI or another MCP client to 
 # Agents and MCP
 
 **Endpoints:** `https://<environment-host>/mcp` for one environment, and
-`https://<platform-root>/mcp` (`https://cboxid.com/mcp` on the hosted platform) for your
+`https://<app-host>/mcp` (`https://app.cboxid.com/mcp` on the hosted platform) for your
 whole organization.
 
 ![AI agents, Agents, in an environment console](../screenshots/agents.png)
@@ -121,8 +121,9 @@ Two limits apply, and the agent gets only what both allow:
      organization: its apps, webhooks, hooks, log streams, branding, authentication policy and
      audit log. Only that organization's, never another's, and never the environment's own
      (an environment-wide webhook, a first-party app).
-   - On a customer's environment of the hosted platform, a customer's console is a smaller
-     admin portal, and a signed-in agent gets only what it offers.
+   - On a customer's environment of the hosted platform, a signed-in agent gets only the
+     person's own account tools: an organization there is administered in the environment
+     console, not on the environment's host.
    - A member who is not an admin gets no environment tools. They still see `whoami`,
      `list_actions` and `approval_status`, and their own account's tools if they granted
      the `account:*` scopes.

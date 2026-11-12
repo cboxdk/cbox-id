@@ -1,7 +1,7 @@
 import { useTranslator } from '@/i18n';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useCallback, useRef, useState } from 'react';
-import ConsoleLayout from '@/layouts/ConsoleLayout';
+import AccountLayout from '@/layouts/AccountLayout';
 import { countryOptions } from '@/lib/countries';
 import {
     defaultPasskeyName,
@@ -76,6 +76,15 @@ interface TotpRow {
     removeHref: string;
 }
 
+type OrganizationRow = {
+    id: string;
+    name: string;
+    role: string;
+    current: boolean;
+    isOwner: boolean;
+    leaveHref: string;
+};
+
 type TotpSetup = { id: string; name: string; secret: string; qr: string; cancelHref: string };
 
 type Props = PageProps<{
@@ -89,6 +98,8 @@ type Props = PageProps<{
         initial: string;
         organization: { name: string; role: string } | null;
     };
+    /** The organizations this person belongs to, each with the way out of it. */
+    organizations: OrganizationRow[];
     hasPassword: boolean;
     twoFactor: {
         enabled: boolean;
@@ -135,6 +146,7 @@ export default function Security({
     returnTo,
     organizationSettingsMoved,
     profile,
+    organizations,
     hasPassword,
     twoFactor,
     smsFactor,
@@ -190,6 +202,8 @@ export default function Security({
 
             <ProfilePanel profile={profile} href={urls.profile} />
 
+            {organizations.length > 0 && <OrganizationsPanel organizations={organizations} />}
+
             <SignInMethodsPanel
                 methods={signInMethods}
                 hasPassword={hasPassword}
@@ -208,6 +222,87 @@ export default function Security({
 
             <SessionPanel session={session} otherSessions={otherSessions} urls={urls} />
         </div>
+    );
+}
+
+/**
+ * The person's organizations, and leaving one. Their own act on their own membership, so it
+ * is here, on the page every host serves them: the login host has no console around it and
+ * a customer environment's host has no People page.
+ */
+function OrganizationsPanel({ organizations }: { organizations: OrganizationRow[] }) {
+    const { t: tc } = useTranslator();
+    const [leaving, setLeaving] = useState<OrganizationRow | null>(null);
+    const leave = useForm({});
+
+    return (
+        <Panel title={tc('console.organizations_2730183d')} data-test="account-organizations">
+            <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                {organizations.map((organization) => (
+                    <li
+                        key={organization.id}
+                        className="flex flex-wrap items-center justify-between gap-3 py-3"
+                    >
+                        <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                            {organization.name}
+                            <Pill dot={false}>{organization.role}</Pill>
+                        </span>
+                        <Button
+                            size="sm"
+                            onClick={() => {
+                                leave.clearErrors();
+                                setLeaving(organization);
+                            }}
+                        >
+                            {tc('console.leave_fc6e4a40')}
+                        </Button>
+                    </li>
+                ))}
+            </ul>
+
+            <Dialog
+                open={leaving !== null}
+                onOpenChange={(open) => {
+                    if (!open && !leave.processing) setLeaving(null);
+                }}
+                title={tc('console.leave_part1_9c615c04', { part1: leaving?.name ?? '' })}
+                description={
+                    leaving?.isOwner
+                        ? tc(
+                              'console.you_lose_access_immediately_as_its_owner_you_can_only_l_d51a2272',
+                          )
+                        : tc(
+                              'console.you_lose_access_to_this_organization_and_its_apps_immed_47fdba25',
+                          )
+                }
+                footer={
+                    <>
+                        <Button disabled={leave.processing} onClick={() => setLeaving(null)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
+                        <Button
+                            variant="danger"
+                            loading={leave.processing}
+                            onClick={() => {
+                                if (leaving)
+                                    leave.post(leaving.leaveHref, {
+                                        preserveScroll: true,
+                                        onSuccess: () => setLeaving(null),
+                                    });
+                            }}
+                        >
+                            {tc('console.leave_organization_ac8fd777')}
+                        </Button>
+                    </>
+                }
+            >
+                {(leave.errors as Record<string, string>).organization && (
+                    <p className="field-error" role="alert">
+                        {(leave.errors as Record<string, string>).organization}
+                    </p>
+                )}
+            </Dialog>
+        </Panel>
     );
 }
 
@@ -1440,7 +1535,7 @@ function SessionPanel({
     );
 }
 
-Security.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+Security.layout = (page: React.ReactNode) => <AccountLayout>{page}</AccountLayout>;
 
 /**
  * TEXT-MESSAGE CODES — a phone number as a second factor, where the environment offers it.

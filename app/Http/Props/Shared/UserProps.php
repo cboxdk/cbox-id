@@ -6,6 +6,8 @@ namespace App\Http\Props\Shared;
 
 use App\Http\Props\Prop;
 use App\Platform\CurrentUser;
+use App\Platform\Surfaces\Surface;
+use App\Platform\Surfaces\Surfaces;
 use Cbox\Id\Identity\ValueObjects\Subject;
 
 /**
@@ -34,12 +36,17 @@ final readonly class UserProps implements Prop
 
     public static function from(CurrentUser $user): self
     {
+        // In login-host mode the console has no account pages: the link is sent from the
+        // person's account on the login host, which is where the banner leads.
+        $onConsole = app(Surfaces::class)->is(Surface::Console);
+
         return new self(
             id: $user->id(),
             name: $user->name(),
             email: $user->email(),
             emailVerified: $user->emailVerified(),
-            confirmUrl: $user->emailVerified() ? null : route('account.email.confirmation', absolute: false),
+            confirmUrl: $user->emailVerified() || $onConsole ? null : route('account.email.confirmation', absolute: false),
+            accountUrl: ! $user->emailVerified() && $onConsole ? route('account') : null,
         );
     }
 

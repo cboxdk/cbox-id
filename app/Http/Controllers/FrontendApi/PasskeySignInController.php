@@ -6,6 +6,7 @@ namespace App\Http\Controllers\FrontendApi;
 
 use App\Platform\FrontendApi\LoginTickets;
 use App\Platform\FrontendApi\PasskeyChallenges;
+use App\Platform\Passkeys\PasskeyMethods;
 use App\Platform\PlatformAuth;
 use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
@@ -16,7 +17,6 @@ use Cbox\Id\Identity\Exceptions\ClonedAuthenticator;
 use Cbox\Id\Identity\Exceptions\InvalidAssertionResponse;
 use Cbox\Id\Identity\Exceptions\UnknownCredential;
 use Cbox\Id\Kernel\Crypto\Support\Base64Url;
-use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -146,6 +146,14 @@ class PasskeySignInController
             return new JsonResponse(['status' => 'sso_required'], 403);
         }
 
+        // A platform operator signs in on the login host only (LoginTickets::refuses()).
+        if ($this->tickets->refuses($subjectId)) {
+            return new JsonResponse([
+                'status' => 'hosted_sign_in_required',
+                'message' => 'Continue through hosted sign-in.',
+            ]);
+        }
+
         // No `pwd`: a passkey IS the factor, and recording a password nobody typed would
         // put an untruth on the session's `amr` — which decides `acr` and, since this week,
         // the SAML assertion's context class too. The vocabulary itself comes from
@@ -153,7 +161,7 @@ class PasskeySignInController
         // credential differently.
         return new JsonResponse([
             'status' => 'ok',
-            'login_ticket' => $this->tickets->mint($key, $subjectId, AuthMethod::forPasskey()),
+            'login_ticket' => $this->tickets->mint($key, $subjectId, PasskeyMethods::used()),
             'expires_in' => 60,
         ]);
     }

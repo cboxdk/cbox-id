@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Platform\CurrentUser;
 use App\Platform\Enums\RefusedFactor;
 use App\Platform\IntendedUrl;
+use App\Platform\Passkeys\PasskeyMethods;
 use App\Platform\Passkeys\PasskeyProviders;
 use App\Platform\PlatformAuth;
 use App\Platform\Radar\Enums\RadarMethod;
@@ -21,7 +22,6 @@ use Cbox\Id\Identity\Exceptions\UnknownCredential;
 use Cbox\Id\Identity\Exceptions\UnsupportedCredential;
 use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Kernel\Crypto\Support\Base64Url;
-use Cbox\Id\OAuthServer\Enums\AuthMethod;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Throwable;
@@ -41,6 +41,14 @@ final class PasskeyController extends Controller
 
     /** Server-side lifetime of an issued challenge, in seconds. */
     private const CHALLENGE_TTL = 120;
+
+    /**
+     * For a challenge the sign-in page holds behind the address field (WebAuthn
+     * conditional UI): the browser offers the passkey in the field's autofill whenever the
+     * person gets to it, which can be minutes after the page loaded. Still single-use and
+     * still bound to this browser's session.
+     */
+    private const AUTOFILL_CHALLENGE_TTL = 600;
 
     public function registerOptions(Request $request, CurrentUser $me): JsonResponse
     {
@@ -109,15 +117,17 @@ final class PasskeyController extends Controller
 
     public function loginOptions(Request $request): JsonResponse
     {
+        $autofill = $request->boolean('autofill');
+
         $challenge = random_bytes(32);
-        $this->putChallenge($request, self::AUTH_CHALLENGE, $challenge);
+        $this->putChallenge($request, self::AUTH_CHALLENGE, $challenge, $autofill ? self::AUTOFILL_CHALLENGE_TTL : self::CHALLENGE_TTL);
 
         return new JsonResponse([
             'challenge' => Base64Url::encode($challenge),
             'rpId' => $this->rpId(),
             'userVerification' => 'required',
             'allowCredentials' => [],
-            'timeout' => 60000,
+            'timeout' => $autofill ? self::AUTOFILL_CHALLENGE_TTL * 1000 : 60000,
         ]);
     }
 
@@ -184,21 +194,21 @@ final class PasskeyController extends Controller
             return new JsonResponse(['redirect' => route('login')]);
         }
 
-        $auth->establish($request, $subjectId, AuthMethod::forPasskey());
+        $auth->establish($request, $subjectId, PasskeyMethods::used());
 
         // Back to where they were going — a device approval, an app's sign-in — as the
         // password door does; the dashboard only when they were going nowhere.
         return new JsonResponse(['redirect' => IntendedUrl::pullForSubject() ?? route('dashboard')]);
     }
 
-    private function putChallenge(Request $request, string $key, string $challenge): void
+    private function putChallenge(Request $request, string $key, string $challenge, int $ttl = self::CHALLENGE_TTL): void
     {
         // Store the challenge with a server-side expiry so a challenge captured
         // from a stale tab can't be replayed indefinitely (the client `timeout`
         // is advisory only).
         $request->session()->put($key, [
             'c' => base64_encode($challenge),
-            'exp' => time() + self::CHALLENGE_TTL,
+            'exp' => time() + $ttl,
         ]);
     }
 

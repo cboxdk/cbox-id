@@ -364,3 +364,40 @@ it('re-asserts the requirement at issue time, not only when the page is drawn', 
     expect(consentRefusal(answerConsent($props)->assertOk()))
         ->toBe('This application requires a more recent or stronger sign-in. Please start again.');
 });
+
+/*
+ * THE RE-AUTHENTICATION HAS TO BE POSSIBLE. `/oauth/authorize` sends a signed-in person to
+ * the sign-in page for `max_age`, `prompt=login` and a step-up, and every door on that page
+ * sat behind the guest gate, which answers a signed-in browser with the dashboard: the
+ * password was never checked and the application never got its fresh sign-in.
+ */
+it('lets a signed-in person sign in again when a relying party asked for it', function () {
+    [$subjectId, $org] = stepUpUser(sessionAgeSeconds: 86_400);
+    $clientId = stepUpClient($org->id);
+    $before = session(PlatformAuth::SESSION_KEY);
+
+    authorizeRequest(stepUpParams($clientId, ['max_age' => '0']))->assertRedirect(route('accounts.add'));
+    $this->get(route('accounts.add'))->assertOk();
+
+    $signedIn = $this->post(route('login.attempt'), ['email' => 'member@acme.test', 'password' => 'supersecret123']);
+    $signedIn->assertRedirect();
+    $resume = (string) $signedIn->headers->get('Location');
+
+    // A new session for the same person, and back to the authorization that asked.
+    expect($resume)->toContain('/oauth/authorize')
+        ->and(session(PlatformAuth::SESSION_KEY))->toBeString()->not->toBe($before)
+        ->and(app(SessionManager::class)->active(session(PlatformAuth::SESSION_KEY))?->user_id)->toBe($subjectId);
+
+    // …which now goes on to consent (a third-party client) instead of asking again.
+    $this->get($resume)->assertOk()->assertInertia(fn ($page) => $page->component('oauth/consent'));
+});
+
+it('still sends a signed-in person home from the sign-in doors when nothing asked for a sign-in', function () {
+    stepUpUser();
+    $before = session(PlatformAuth::SESSION_KEY);
+
+    $this->post(route('login.attempt'), ['email' => 'member@acme.test', 'password' => 'supersecret123'])
+        ->assertRedirect(route('dashboard'));
+
+    expect(session(PlatformAuth::SESSION_KEY))->toBe($before);
+});

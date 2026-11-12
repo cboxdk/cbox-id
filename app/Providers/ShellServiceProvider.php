@@ -21,6 +21,7 @@ use App\Platform\Shell\Levels\IdEnvironmentLevel;
 use App\Platform\Shell\Levels\IdOrganizationLevel;
 use App\Platform\Shell\Levels\IdProjectLevel;
 use App\Platform\Shell\ShellRequest;
+use App\Platform\Surfaces\Surfaces;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Console\Kit\Shell\BannerKind;
 use Cbox\Console\Kit\Shell\PaletteAction;
@@ -179,9 +180,14 @@ final class ShellServiceProvider extends ServiceProvider
                 PaletteAction::route('orgs.settings', ConsoleLabels::navigation('Organization settings'), icon: 'settings'),
             ])
             ->appCatalogUrl('/switch-app/catalog?include=available')
+            // The account menu's links. The kit writes a route name as a PATH on this host,
+            // and with a login host the person's own pages are not on this host: they are
+            // named by their full address there, as the rail's Account link is
+            // ({@see \App\Platform\Surfaces\SurfaceUrls}). Signing out stays here: it
+            // ends the console's session, which then ends the one at the login host.
             ->account(
-                profileUrl: 'account',
-                switchAccountUrl: 'accounts',
+                profileUrl: static fn (): string => app(Surfaces::class)->split() ? route('account') : 'account',
+                switchAccountUrl: static fn (): string => app(Surfaces::class)->split() ? route('accounts') : 'accounts',
                 signOutUrl: 'logout',
             );
     }

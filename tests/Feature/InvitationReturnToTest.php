@@ -171,7 +171,7 @@ it('accepts a loopback address on any port the app registered, for local develop
         ->assertSessionHasErrors('return_to');
 });
 
-it('re-checks the address at acceptance, and lands in the console when it no longer holds', function (): void {
+it('re-checks the address at acceptance, and lands at the app\'s own address when it no longer holds', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
     $app = returnApp($org->id);
 
@@ -180,6 +180,20 @@ it('re-checks the address at acceptance, and lands in the console when it no lon
 
     // The app moves house in the week the invitation is live.
     $app->forceFill(['redirect_uris' => ['https://tasks.acme.example/auth/callback']])->save();
+
+    // The stored address is not followed. The invitation still names the app, so the
+    // invitee starts at the one origin it is registered on now.
+    $this->post(route('invitation.accept.store', mailedInvitationToken()))->assertRedirect('https://tasks.acme.example');
+});
+
+it('lands in the console when the app the invitation named is gone', function (): void {
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    $app = returnApp($org->id);
+
+    inviteToDirectory(['client_id' => $app->client_id, 'return_to' => 'https://tasks.acme.test/welcome'])
+        ->assertSessionHasNoErrors();
+
+    $app->delete();
 
     $this->post(route('invitation.accept.store', mailedInvitationToken()))->assertRedirect(route('dashboard'));
 });

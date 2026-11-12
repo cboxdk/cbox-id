@@ -1,7 +1,7 @@
 import { useTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
-import ConsoleLayout from '@/layouts/ConsoleLayout';
+import AccountLayout from '@/layouts/AccountLayout';
 import type { HelpContent, PageProps } from '@/types';
 import { Button, Dialog, PageHeader, Panel, Pill, Table, Td, Th } from '@/ui';
 
@@ -260,4 +260,4 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
     );
 }
 
-MyDevices.layout = (page: React.ReactNode) => <ConsoleLayout>{page}</ConsoleLayout>;
+MyDevices.layout = (page: React.ReactNode) => <AccountLayout>{page}</AccountLayout>;

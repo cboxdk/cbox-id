@@ -8,10 +8,13 @@ use App\Http\Controllers\PageController;
 use App\Http\Middleware\Authenticate;
 use App\Http\Requests\Auth\ChangePasswordRequest;
 use App\Platform\CurrentUser;
+use App\Platform\IntendedUrl;
+use App\Platform\Surfaces\ReturnUrl;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Response;
 
 /**
@@ -37,8 +40,12 @@ use Inertia\Response;
  */
 final readonly class ChangePasswordController extends PageController
 {
-    public function edit(CurrentUser $me): Response
+    public function edit(Request $request, CurrentUser $me, ReturnUrl $returns): Response
     {
+        // The console sent them here in the middle of opening a page (`return_to`): kept,
+        // validated, for the redirect that ends the change.
+        $returns->remember($request);
+
         return $this->page('auth/change-password', __('auth.change_password.title'), [
             // For the password manager, so it updates the credential it already holds
             // rather than saving a second one nobody asked for.
@@ -73,6 +80,12 @@ final readonly class ChangePasswordController extends PageController
         // release the hold on a password the policy might still refuse.
         $admin->clear($me->id());
 
-        return to_route('dashboard')->with('status', __('console.your_password_has_been_updated_cc244a90'));
+        // On to where they were going when the hold caught them: an app's authorization
+        // (`/oauth/authorize` holds for this too, and waits in the session), else the
+        // console. It used to be the console always, and the app never heard back.
+        // The console's page comes back through its own start in login-host mode
+        // ({@see \App\Http\Middleware\EnterConsoleThroughStart}).
+        return redirect()->to(IntendedUrl::pullForSubject() ?? app(ReturnUrl::class)->pull($request) ?? route('dashboard'))
+            ->with('status', __('console.your_password_has_been_updated_cc244a90'));
     }
 }

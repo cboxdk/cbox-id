@@ -58,7 +58,7 @@ final class RootMcpSelfRegisteredScopes extends SelfRegisteredScopes
     {
         $allowed = parent::allowed();
 
-        if (! app(PlaneResolver::class)->onAccountPlane()) {
+        if (! app(PlaneResolver::class)->rootIssuesForMcpOnly()) {
             return $allowed;
         }
 

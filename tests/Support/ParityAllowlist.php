@@ -92,6 +92,9 @@ final class ParityAllowlist
             // twin is `support_sessions.start`, which names a staff member as the actor.
             'environment.users.support-sessions.store',
             'sudo.confirm',
+            // The operator plane's step-up: a passkey asserted in this browser, for this origin.
+            'operator.sudo.options',
+            'operator.sudo.confirm',
             // Stepping into somebody's session for support, and back out: a browser session by
             // definition, never a credential an API could hand out.
             'impersonation.exit',
@@ -135,6 +138,11 @@ final class ParityAllowlist
             // Registering a passkey: the authenticator signs a challenge in the browser.
             'passkeys.register',
             'passkeys.register.options',
+            // …and the break-glass link on which a named operator enrols one. The link is
+            // issued at the command line (`cbox-id:operator:passkey-link`); the ceremony is
+            // the authenticator's.
+            'login.direct.passkey.options',
+            'login.direct.passkey.register',
             // A forced password change, forgot-password and reset: typed by the owner.
             'password.change.update',
             'password.email',
@@ -154,6 +162,11 @@ final class ParityAllowlist
             // and redeem the invitation kept in its session. No management of another person.
             'product-signup.team',
             'product-signup.admit',
+            // The realm's "no organization" screen: a signed-in person accepts an invitation
+            // sent to them, or continues with a personal organization of their own, and goes
+            // on to the app that was waiting. Their own act, in the browser that was signing in.
+            'organization.required.accept',
+            'organization.required.personal',
             // Proving an email address is yours, with the link sent to it.
             'verification.verify.store',
         ];

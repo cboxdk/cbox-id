@@ -42,8 +42,9 @@ return [
     'login' => [
         'title' => 'Sign in',
         'purpose' => [
-            'default' => "Welcome back. Access your organization's identity console.",
+            'default' => 'Welcome back. Sign in to continue.',
             'device' => 'Sign in to approve the device that is waiting.',
+            'app' => 'Sign in to continue to :app.',
         ],
         'magic' => [
             'sent_to' => 'We sent a one-time sign-in link to :email.',
@@ -78,6 +79,7 @@ return [
             'instead' => 'Continue with single sign-on instead',
         ],
         'forgot_password' => 'Forgot password?',
+        'admin_link' => 'I\'m an administrator',
         'or' => 'OR',
         'continue_with' => 'Continue with :provider',
         // The badge on the sign-in method this device used last, and what it means said in full
@@ -89,6 +91,8 @@ return [
         'passkey_failed' => 'Passkey sign-in failed.',
         'new_organization' => 'New organization?',
         'create_one' => 'Create one',
+        'no_account' => 'No account yet?',
+        'create_account' => 'Create an account',
         'invalid_credentials' => 'The email address or password is incorrect.',
         // Answered by the passkey sign-in endpoint and shown under its button.
         'passkey_errors' => [
@@ -224,6 +228,21 @@ return [
         'lead' => 'You have been signed out on this device, including every console you opened from this sign-in. Sign in again to continue.',
     ],
 
+    'console_sign_in' => [
+        'failed_heading' => 'We could not sign you in',
+        'failed_lead' => 'Something went wrong on the way back from sign-in. Nothing was changed. Try again.',
+        'not_set_up_lead' => 'Sign-in for this console is not set up yet. Ask whoever runs this installation.',
+        'second_factor_lead' => 'Your account needs a second sign-in step, and this sign-in did not include one. Try again and complete it.',
+        'step_up_heading' => 'We could not confirm it was you',
+        'step_up_lead' => 'The action was not carried out. Go back to the console and try again.',
+        'try_again' => 'Try again',
+        'back_to_console' => 'Back to the console',
+        'reference' => 'Reference: :reason',
+        'done_heading' => 'Confirmed',
+        'done_lead' => 'You can close this window and carry on where you were.',
+        'not_confirmed_lead' => 'We could not confirm it was you. Close this window and try again.',
+    ],
+
     'accept_invite' => [
         'title' => 'Accept invitation',
         'heading' => 'Accept your invitation',
@@ -287,6 +306,22 @@ return [
         'organization_placeholder' => 'Your company',
         'submit' => 'Install this deployment',
         'token_mismatch' => 'That setup token does not match this deployment’s, or it has expired. Print a fresh one with php artisan cbox-id:setup-token.',
+    ],
+
+    // Signed in, in no organization: accept an invitation or continue with a personal one.
+    'no_organization' => [
+        'title' => 'No organization',
+        'heading' => 'You are no longer a member of any organization',
+        'lead' => 'Accept an invitation, or continue with an organization of your own.',
+        'signed_in_as' => 'Signed in as :account',
+        'invitations' => 'Invitations for you',
+        'invited_by' => 'Invited by :name',
+        'accept' => 'Accept',
+        'confirm_first' => 'Confirm your email address to see the invitations sent to it. We sent you a link when you signed up.',
+        'personal' => 'Continue with a personal organization',
+        'personal_hint' => 'An organization of your own, named after you. You can rename it and invite others later.',
+        'sign_out' => 'Sign out',
+        'invitation_invalid' => 'That invitation is no longer valid.',
     ],
 
     'join_organization' => [

@@ -45,6 +45,16 @@ interface SelfServiceSignup {
     href: string;
 }
 
+/** The link for administrators on the sign-in page. Environment plane, multi-tenant only. */
+interface AdminSignInLink {
+    /** What the environment's main address shows now: the choice, else the default. */
+    enabled: boolean;
+    /** False while the default still decides. */
+    chosen: boolean;
+    baseDomain: string | null;
+    href: string;
+}
+
 /** Text-message codes as a second factor. Environment plane only. */
 interface SmsFactorSetting {
     enabled: boolean;
@@ -111,6 +121,7 @@ type Props = PageProps<{
     /** Null on the environment baseline, which inherits from nothing. */
     inheritHref: string | null;
     selfServiceSignup: SelfServiceSignup | null;
+    adminSignInLink: AdminSignInLink | null;
     smsFactor: SmsFactorSetting | null;
     signInMethods: SignInMethodsSetting | null;
     /** The environment's name — what the environment-wide panels are about. */
@@ -134,6 +145,7 @@ export default function AuthPolicyPage({
     saveHref,
     inheritHref,
     selfServiceSignup,
+    adminSignInLink,
     smsFactor,
     signInMethods,
     environmentName,
@@ -511,6 +523,10 @@ export default function AuthPolicyPage({
                 />
             )}
 
+            {adminSignInLink !== null && (
+                <AdminSignInLinkPanel setting={adminSignInLink} scopeName={environmentName} />
+            )}
+
             {smsFactor !== null && (
                 <SmsFactorPanel setting={smsFactor} scopeName={environmentName} />
             )}
@@ -830,6 +846,64 @@ function SelfServiceSignupPanel({
                     },
                 )}
             </p>
+        </Panel>
+    );
+}
+
+/**
+ * Whether the sign-in page carries the discreet link for administrators, which opens this
+ * console. On under the tenant base domain and off on a custom domain until somebody
+ * chooses; the switch then decides for every host of the environment.
+ */
+function AdminSignInLinkPanel({
+    setting,
+    scopeName,
+}: {
+    setting: AdminSignInLink;
+    scopeName: string;
+}) {
+    const { t: consoleT } = useConsoleTranslator();
+    const [saving, setSaving] = useState(false);
+
+    return (
+        <Panel
+            id="admin-link"
+            title={consoleT('console.administrator_link_on_the_sign_in_page_67ce8e75')}
+            description={
+                setting.enabled
+                    ? consoleT(
+                          'console.the_sign_in_page_of_part1_shows_i_m_an_administrator_wh_ca1e1904',
+                          { part1: scopeName },
+                      )
+                    : consoleT(
+                          'console.the_sign_in_page_of_part1_has_no_link_to_this_console_f3a3fe35',
+                          { part1: scopeName },
+                      )
+            }
+            action={
+                <Switch
+                    aria-label={consoleT('console.administrator_link_on_the_sign_in_page_67ce8e75')}
+                    checked={setting.enabled}
+                    disabled={saving}
+                    onCheckedChange={(checked) => {
+                        setSaving(true);
+                        router.put(
+                            setting.href,
+                            { enabled: checked },
+                            { preserveScroll: true, onFinish: () => setSaving(false) },
+                        );
+                    }}
+                />
+            }
+        >
+            {!setting.chosen && setting.baseDomain !== null && (
+                <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                    {consoleT(
+                        'console.until_you_choose_the_link_shows_on_the_environment_s_ad_4ff9421a',
+                        { part1: setting.baseDomain },
+                    )}
+                </p>
+            )}
         </Panel>
     );
 }

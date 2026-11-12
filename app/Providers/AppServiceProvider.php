@@ -28,10 +28,12 @@ use App\Platform\EnvironmentApiContext;
 use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\Environments\ReservedEnvironmentSlugs;
 use App\Platform\Erasure\AppErasureSteps;
+use App\Platform\Health\LoginHostHealthCheck;
 use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
 use App\Platform\Keys\TransitionalOrganizationApiKeys;
+use App\Platform\OAuth\PlatformRealmClients;
 use App\Platform\OAuth\RootMcpAudiences;
 use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
 use App\Platform\OrganizationApiContext;
@@ -39,6 +41,8 @@ use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\Platform\PublicIds\BareIdDeliveryPolicy;
 use App\Platform\PublicIds\WebhookIdFormat;
+use App\Platform\Surfaces\Surfaces;
+use App\Platform\Surfaces\SurfaceUrls;
 use App\Routing\PublicIdUrlGenerator;
 use App\SignalsData\Bundled\IdMachineCredential;
 use App\SignalsData\Bundled\IdManagedSources;
@@ -79,6 +83,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // One per request: it remembers the default environment across a page's URLs.
+        $this->app->scoped(SurfaceUrls::class);
+
         // Console URLs carry public ids (`usr_01j…`), wherever a URL is built.
         $this->app->extend('url', static fn (UrlGenerator $url): PublicIdUrlGenerator => PublicIdUrlGenerator::from($url));
 
@@ -221,11 +228,18 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // In login-host mode a named route's URL carries the host that serves it.
+        SurfaceUrls::register($this->app->make('url'));
+
         // An endpoint that asked for public ids receives them (`usr_01j…`); the rest keep bare ids.
         WebhookIdFormat::register();
 
+        // With a login host, a pinned passkey origin is that host's origin and no other.
+        Surfaces::pinPasskeyOrigin();
+
         // No environment takes a slug the platform's own hosts use (`api`, `app`, …).
         ReservedEnvironmentSlugs::guard();
+        PlatformRealmClients::guard();
 
         // Contributed to `cbox-id:doctor` rather than shipped as a second health command.
         // A deployment claiming a shape it cannot serve fails silently, so the only thing
@@ -247,6 +261,7 @@ class AppServiceProvider extends ServiceProvider
 
         $checks = $this->app->make(HealthChecks::class);
         $checks->add($this->app->make(TenancyHealthCheck::class));
+        $checks->add($this->app->make(LoginHostHealthCheck::class));
         $checks->add($this->app->make(SchedulerDoctorCheck::class));
         $checks->add($this->app->make(ProductionConfigDoctorCheck::class));
 

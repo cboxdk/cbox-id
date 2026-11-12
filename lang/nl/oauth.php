@@ -44,6 +44,7 @@ return [
         'client_document' => 'De beschrijving van deze applicatie kon niet worden gelezen. Deze staat op het adres dat de applicatie als ID heeft opgegeven. Het document ontbreekt, is onbereikbaar of is ongeldig.',
         'redirect_mismatch' => 'De omleidings-URI komt niet overeen met een van de URI’s die voor deze applicatie zijn geregistreerd.',
         'stale' => 'Dit autorisatieverzoek kan niet meer worden voltooid. Begin opnieuw.',
+        'start_over' => 'Opnieuw beginnen in :app',
         'account_attention' => 'Je account vereist aandacht voordat je verder kunt. Log opnieuw in.',
         'step_up' => 'Deze applicatie vereist een recentere aanmelding of sterkere authenticatie. Begin opnieuw.',
         'no_organization' => 'Deze aanmelding verbindt een agent met een organisatie op Cbox ID, maar je account behoort niet tot een team van een organisatie. Vraag de eigenaar van een organisatie om je uit te nodigen of verbind de agent via het eigen adres van je omgeving.',

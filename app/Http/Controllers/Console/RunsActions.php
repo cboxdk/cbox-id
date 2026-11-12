@@ -6,11 +6,13 @@ namespace App\Http\Controllers\Console;
 
 use App\Platform\Actions\Action;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionResult;
 use App\Platform\Actions\ActionRunner;
 use App\Platform\Actions\ActionVia;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Operators\OperatorGate;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\ValidationException;
@@ -132,10 +134,20 @@ trait RunsActions
     protected function runAction(string $action, array $input, bool $asEnvironment = false): ActionResult
     {
         $scope = app(ConsoleScope::class);
+
+        // On the operator plane a destructive or critical action needs a fresh passkey
+        // ({@see OperatorGate}); the action's own {@see Danger} decides, not a route list,
+        // and the gate adds the few writes that open a way to sign in to the root.
+        $definition = app(ActionRegistry::class)->forClass($action);
+
+        if (OperatorGate::guards($definition->name, $definition->danger->destructive())) {
+            app(OperatorGate::class)->requireFresh(request(), $definition->summary);
+        }
+
         $principal = $asEnvironment ? ConsoleSessionPrincipal::forEnvironment($scope) : new ConsoleSessionPrincipal($scope);
 
         try {
-            return app(ActionRunner::class)->run($action, $principal, $input, via: ActionVia::Console);
+            return app(ActionRunner::class)->run($definition, $principal, $input, via: ActionVia::Console);
         } catch (ActionRefused $refused) {
             throw $refused->forConsole();
         }

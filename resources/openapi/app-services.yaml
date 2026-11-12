@@ -9,7 +9,7 @@ servers:
 - url: https://{host}/api/v1
   variables:
     host:
-      default: environment.cboxid.com
+      default: environment.cboxauth.com
 paths:
   /apps/manifest:
     post:
@@ -184,7 +184,7 @@ paths:
     - url: https://{host}
       variables:
         host:
-          default: environment.cboxid.com
+          default: environment.cboxauth.com
     parameters:
     - name: user
       in: path

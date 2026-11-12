@@ -39,6 +39,36 @@ describe('challengeFrom', () => {
         ).toEqual({ plane: 'organization', confirm: organization.confirm, reason: 'Why.' });
     });
 
+    it('reads the operator plane only with a same-origin passkey endpoint', () => {
+        const confirm = '/admin/confirm';
+        const operator = (passkey: unknown): unknown => ({
+            step_up: { plane: 'operator', confirm, reason: 'Why.', passkey },
+        });
+
+        expect(
+            challengeFrom(
+                403,
+                { 'x-cbox-step-up': confirm },
+                operator({ options: '/admin/confirm/options' }),
+            ),
+        ).toEqual({
+            plane: 'operator',
+            confirm,
+            reason: 'Why.',
+            passkeyOptions: '/admin/confirm/options',
+        });
+
+        // Never a password prompt for this plane, and never a ceremony against another origin.
+        expect(challengeFrom(403, { 'x-cbox-step-up': confirm }, operator(undefined))).toBeNull();
+        expect(
+            challengeFrom(
+                403,
+                { 'x-cbox-step-up': confirm },
+                operator({ options: 'https://evil.example/options' }),
+            ),
+        ).toBeNull();
+    });
+
     it('reads one from a Headers object and a JSON string body', () => {
         const headers = new Headers({
             'X-Cbox-Step-Up': '/orgs/acme/projects/web/environments/production/sudo',
@@ -238,5 +268,99 @@ describe('installStepUp', () => {
         handler({ status: 500, headers: {}, data: 'boom' });
 
         expect(own).toHaveBeenCalled();
+    });
+});
+
+describe('step-up by a trip to the login host', () => {
+    const door = `${window.location.origin}/auth/start?step_up=environment`;
+    const redirect = { page: door, popup: `${door}&popup=1` };
+
+    it('reads the redirect a refusal carries, and only one on this origin', () => {
+        const read = (value: unknown) =>
+            challengeFrom(
+                403,
+                { 'x-cbox-step-up': door },
+                body({ plane: 'environment', confirm: door, reason: null, redirect: value }),
+            );
+
+        expect(read(redirect)?.redirect).toEqual(redirect);
+        expect(
+            read({ page: 'https://login.example/x', popup: redirect.popup })?.redirect,
+        ).toBeUndefined();
+        expect(read(undefined)?.redirect).toBeUndefined();
+    });
+
+    it('opens the window, and resolves with what it reports for this plane', async () => {
+        const { confirmStepUpByRedirect, STEP_UP_CHANNEL } = await import('./stepUp');
+        const opened: string[] = [];
+        const popup = { closed: false } as Window;
+
+        const outcome = confirmStepUpByRedirect(
+            { plane: 'environment', confirm: door, reason: null, redirect },
+            (url) => {
+                opened.push(url);
+
+                return popup;
+            },
+        );
+
+        const channel = new BroadcastChannel(STEP_UP_CHANNEL);
+        channel.postMessage({ plane: 'organization', confirmed: true });
+        channel.postMessage({ plane: 'environment', confirmed: true });
+
+        await expect(outcome).resolves.toBe('confirmed');
+        expect(opened).toEqual([redirect.popup]);
+        channel.close();
+    });
+
+    it('does not take the window for closed when the login host isolates it', async () => {
+        const { confirmStepUpByRedirect, STEP_UP_CHANNEL } = await import('./stepUp');
+        vi.useFakeTimers();
+
+        // What the opener sees once the window reaches a host that answers with
+        // Cross-Origin-Opener-Policy: same-origin, although it is still open.
+        const popup = { closed: true } as Window;
+        const settled = vi.fn<() => void>();
+        const outcome = confirmStepUpByRedirect(
+            { plane: 'environment', confirm: door, reason: null, redirect },
+            () => popup,
+        );
+        void outcome.then(settled);
+
+        await vi.advanceTimersByTimeAsync(5_000);
+        expect(settled).not.toHaveBeenCalled();
+        vi.useRealTimers();
+
+        const channel = new BroadcastChannel(STEP_UP_CHANNEL);
+        channel.postMessage({ plane: 'environment', confirmed: true });
+
+        await expect(outcome).resolves.toBe('confirmed');
+        channel.close();
+    });
+
+    it('stops waiting when the caller gives up', async () => {
+        const { confirmStepUpByRedirect } = await import('./stepUp');
+        const wait = new AbortController();
+        const outcome = confirmStepUpByRedirect(
+            { plane: 'environment', confirm: door, reason: null, redirect },
+            () => ({ closed: false }) as Window,
+            wait.signal,
+        );
+
+        wait.abort();
+
+        await expect(outcome).resolves.toBe('closed');
+    });
+
+    it('says so when the browser blocks the window, or there is nowhere to go', async () => {
+        const { confirmStepUpByRedirect } = await import('./stepUp');
+
+        await expect(
+            confirmStepUpByRedirect(
+                { plane: 'environment', confirm: door, reason: null, redirect },
+                () => null,
+            ),
+        ).resolves.toBe('blocked');
+        await expect(confirmStepUpByRedirect(organization, () => null)).resolves.toBe('blocked');
     });
 });

@@ -17,6 +17,9 @@ use App\Platform\OrganizationAccess;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\PlaneResolver;
+use App\Platform\Surfaces\PathKind;
+use App\Platform\Surfaces\Surfaces;
+use App\Platform\Surfaces\SurfaceUrls;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -179,6 +182,20 @@ final readonly class ShellContext
             } else {
                 $parameters['org'] = $slug;
             }
+        }
+
+        // In login-host mode the person's own pages are on the login host and the rest of
+        // this console on the app host. The environment console acts in a tenant's
+        // environment, so the route's own host rule ({@see SurfaceUrls}) stands aside there
+        // and the surface is named here.
+        $surfaces = app(Surfaces::class);
+
+        if ($surfaces->split()) {
+            $path = route($route, $parameters, false);
+
+            return in_array($surfaces->kindOfPath((string) parse_url($path, PHP_URL_PATH)), [PathKind::Account, PathKind::Issuer], true)
+                ? $surfaces->loginUrl($path)
+                : $surfaces->consoleUrl($path);
         }
 
         return $host === null

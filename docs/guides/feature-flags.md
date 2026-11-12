@@ -75,7 +75,7 @@ the **Read feature flags** scope:
 
 ```bash
 curl -H "Authorization: Bearer $CBOX_ID_KEY" \
-  "https://acme.cboxid.com/api/v1/feature-flags/evaluate?user_id=$USER&organization_id=$ORG"
+  "https://acme.cboxauth.com/api/v1/feature-flags/evaluate?user_id=$USER&organization_id=$ORG"
 ```
 
 ```json

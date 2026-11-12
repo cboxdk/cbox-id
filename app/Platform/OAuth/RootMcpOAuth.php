@@ -40,7 +40,8 @@ use Illuminate\Http\Request;
  *    `app.created` entry does not carry) and each consent, in the person's workspace trail.
  *
  * Inert on a single-tenant install, where the one host IS an identity provider for every
- * client it holds, and on a tenant's host, which is one for its own.
+ * client it holds, on a tenant's host, which is one for its own, and in login-host mode,
+ * where the root is the realm the login host issues ({@see PlaneResolver::rootIssuesForMcpOnly()}).
  */
 final readonly class RootMcpOAuth
 {
@@ -76,7 +77,7 @@ final readonly class RootMcpOAuth
      */
     public function governs(Client $client): bool
     {
-        return $client->isDynamicallyRegistered() && $this->planes->onAccountPlane();
+        return $client->isDynamicallyRegistered() && $this->planes->rootIssuesForMcpOnly();
     }
 
     /** The root's `/mcp` — the only audience such a client is ever issued a token for. */

@@ -6,6 +6,7 @@ namespace App\Assistant;
 
 use App\Platform\Console\LikeTerm;
 use App\Platform\Enterprise\EnterpriseAudit;
+use App\Platform\Environments\TenantBaseDomain;
 use App\Platform\NativeProduct\NativeProductAccess;
 use App\Platform\Organizations\OrganizationLinks;
 use Cbox\AiAssistant\Connector\Profile\ResourceItem;
@@ -255,9 +256,6 @@ final readonly class CustomerProfile
 
     private function baseDomain(): string
     {
-        $bases = config('cbox-id.environments.base_domains', []);
-        $first = is_array($bases) && isset($bases[0]) && is_string($bases[0]) ? $bases[0] : null;
-
-        return $first ?? (string) parse_url(config()->string('app.url'), PHP_URL_HOST);
+        return TenantBaseDomain::canonical() ?? (string) parse_url(config()->string('app.url'), PHP_URL_HOST);
     }
 }

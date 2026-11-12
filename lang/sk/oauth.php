@@ -44,6 +44,7 @@ return [
         'client_document' => 'Opis tejto aplikácie sa nepodarilo načítať. Aplikácia ho zverejňuje na adrese, ktorú používa ako svoj identifikátor, ale dokument chýba, nie je dostupný alebo nie je platný.',
         'redirect_mismatch' => 'URL na presmerovanie nezodpovedá žiadnej adrese zaregistrovanej pre túto aplikáciu.',
         'stale' => 'Túto žiadosť o autorizáciu už nemožno dokončiť. Začnite znova.',
+        'start_over' => 'Začať odznova v aplikácii :app',
         'account_attention' => 'Váš účet potrebuje pozornosť, aby ste mohli pokračovať. Prosím, znovu sa prihláste.',
         'step_up' => 'Táto aplikácia vyžaduje novšie prihlásenie alebo silnejšie overenie totožnosti. Skúste to znova.',
         'no_organization' => 'Toto prihlásenie pripája agenta k organizácii v Cbox ID, ale váš účet nie je členom tímu žiadnej organizácie. Požiadajte vlastníka organizácie o pozvánku alebo pripojte agenta cez vlastnú adresu svojho prostredia.',

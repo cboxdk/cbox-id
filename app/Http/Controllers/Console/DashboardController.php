@@ -7,14 +7,18 @@ namespace App\Http\Controllers\Console;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\AppLauncher;
 use App\Platform\AuditNames;
+use App\Platform\Console\CustomerConsole;
 use App\Platform\Console\DashboardCards;
 use App\Platform\Console\OrganizationLanding;
+use App\Platform\ConsoleSignIn\ConsoleSignIn;
+use App\Platform\ConsoleSignIn\OrganizationHint;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Onboarding\SetupChecklist;
 use App\Platform\Onboarding\SetupProgress;
 use App\Platform\Onboarding\SetupStep;
+use App\Platform\Organizations\OrganizationRequired;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
@@ -59,13 +63,38 @@ final readonly class DashboardController extends ConsoleController
         //
         // On the app host that is `/orgs/{org}` for the organization this browser last
         // used; elsewhere, the organization's own landing page.
+        // `?organization=` from the app switcher (login-host mode): open that organization.
+        if (app(ConsoleSignIn::class)->active() && ($hint = OrganizationHint::from(request())) !== null) {
+            $named = app(OrganizationHint::class)->landing(app(CurrentUser::class)->id(), $hint);
+
+            if ($named !== null) {
+                return redirect()->to($named);
+            }
+        }
+
         if ($this->scope->atOrganizationAltitude()) {
             return ! app(PlaneResolver::class)->onCustomerEnvironment()
                 ? OrganizationPickerController::home(request())
                 : redirect()->to($landing->url());
         }
 
+        // A CUSTOMER'S ENVIRONMENT HOST HAS NO OVERVIEW EITHER, unless the deployment keeps
+        // the customer console there: it serves the person's own pages, and this is where
+        // every sign-in lands.
+        if ($this->scope->atCustomerAltitude() && ! CustomerConsole::persistent()) {
+            return to_route('account');
+        }
+
         $me = app(CurrentUser::class);
+
+        // The overview has nothing to say to somebody in no organization. In the Cbox realm
+        // they get the screen that gives them one instead of a greeting that says so.
+        $required = app(OrganizationRequired::class);
+
+        if ($required->appliesTo($me)) {
+            return redirect()->to($required->url());
+        }
+
         $organizationId = $me->organizationId();
         $isAdmin = $me->isAdmin();
 

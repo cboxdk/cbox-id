@@ -12,6 +12,7 @@ use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Apps\AppScopes;
 use App\Platform\Console\ConsoleClients;
+use App\Platform\OAuth\PlatformRealmClients;
 use App\Platform\ScopeCatalog;
 use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
 use Cbox\Id\OAuthServer\Exceptions\ScopeNotGrantable;
@@ -91,6 +92,13 @@ final class AppFields
 
         if ($confinedTo !== null) {
             abort_unless($organizationId === $confinedTo, 403);
+        }
+
+        // The platform's own realm holds no organization's apps, whoever asks and through
+        // whichever door: see PlatformRealmClients. After the confinement check, so a person
+        // confined to another organization is still answered 403 for that.
+        if (! app(PlatformRealmClients::class)->mayCreate($organizationId)) {
+            throw ActionRefused::because('organization_apps_not_allowed', new ActionMessage(PlatformRealmClients::MESSAGE_KEY), 'organization_id');
         }
 
         if ($organizationId !== null && Organization::query()->whereKey($organizationId)->doesntExist()) {

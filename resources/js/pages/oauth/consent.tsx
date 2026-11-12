@@ -26,6 +26,11 @@ interface ClientProps {
 type Props = PageProps<{
     /** Set when the request cannot be answered by redirecting anywhere. */
     error?: string;
+    /**
+     * With `error`, when the request was for an app whose address is known: where a new
+     * request can be started. Without it the page can only lead back to the account.
+     */
+    startOver?: { name: string; url: string } | null;
     client?: ClientProps;
     me?: { name: string; email: string | null; initial: string };
     /** The organization the app will see this person in, when there is one. */
@@ -45,6 +50,7 @@ const NO_SCOPES: ScopeRow[] = [];
 
 export default function Consent({
     error,
+    startOver,
     client,
     me,
     organization,
@@ -56,7 +62,9 @@ export default function Consent({
     const { t } = useTranslator();
 
     if (error !== undefined || client === undefined || me === undefined) {
-        return <Failure message={error ?? t('oauth.failure.generic')} />;
+        return (
+            <Failure message={error ?? t('oauth.failure.generic')} startOver={startOver ?? null} />
+        );
     }
 
     return (
@@ -79,7 +87,13 @@ function useAccountName(): string {
     return brand?.name ?? app.name;
 }
 
-function Failure({ message }: { message: string }) {
+function Failure({
+    message,
+    startOver,
+}: {
+    message: string;
+    startOver: { name: string; url: string } | null;
+}) {
     const accountName = useAccountName();
     const { t } = useTranslator();
     return (
@@ -100,7 +114,18 @@ function Failure({ message }: { message: string }) {
             <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
                 {message}
             </p>
-            <Button asChild className="w-full mt-6">
+            {/*
+                The app first: the person was on their way there, and going back to it
+                starts a new request. A plain anchor, because it leaves for another origin.
+            */}
+            {startOver !== null && (
+                <Button asChild variant="primary" className="w-full mt-6">
+                    <a href={startOver.url}>
+                        {t('oauth.failure.start_over', { app: startOver.name })}
+                    </a>
+                </Button>
+            )}
+            <Button asChild className={startOver === null ? 'w-full mt-6' : 'w-full mt-2.5'}>
                 <a href="/">{t('oauth.failure.back', { name: accountName })}</a>
             </Button>
         </div>

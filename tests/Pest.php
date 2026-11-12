@@ -147,6 +147,41 @@ function platformRootEnvironment(bool $publishNativeCatalog = true): Environment
     return $environment;
 }
 
+const LOGIN_HOST = 'login.cboxid.test';
+const APP_HOST = 'app.cboxid.test';
+const API_HOST = 'api.cboxid.test';
+const TENANT_HOST = 'acme.cboxauth.test';
+
+/**
+ * LOGIN-HOST MODE (App\Platform\Surfaces\Surfaces): the default environment issued from
+ * LOGIN_HOST, the console on APP_HOST, the API on API_HOST, and one tenant environment
+ * (returned) on TENANT_HOST. Request the hosts over https: the session cookies are
+ * `__Host-` ones.
+ */
+function loginHostMode(): Environment
+{
+    config([
+        'cbox-id.tenancy.multi_tenant' => true,
+        'cbox-id.tenancy.account_host' => APP_HOST,
+        'cbox-id.hosts.login' => LOGIN_HOST,
+        'cbox-id.hosts.api' => API_HOST,
+        'cbox-id.environments.base_domains' => ['cboxauth.test'],
+        'cbox-id.issuer' => 'https://'.LOGIN_HOST,
+    ]);
+
+    installedDeployment();
+    platformRootEnvironment();
+
+    return Environment::query()->create([
+        'name' => 'Acme',
+        'slug' => 'acme',
+        'type' => EnvironmentType::Production,
+        'status' => EnvironmentStatus::Active,
+        'is_default' => false,
+        'settings' => [],
+    ]);
+}
+
 /** Install definitions only, exactly as the release command does. */
 function syncNativeProductCatalog(): void
 {
@@ -1966,6 +2001,17 @@ function multiTenantDeployment(string $consoleHost = 'cboxid.com'): void
 {
     config()->set('cbox-id.tenancy.multi_tenant', true);
     config()->set('cbox-id.tenancy.account_host', $consoleHost);
+}
+
+/**
+ * Turn the persistent customer console ON for a customer's environment host
+ * (`cbox-id.realm.tenant_customer_console`). Off by default on a multi-tenant deployment,
+ * where such a host serves only sign-in and the person's own pages; a test that walks the
+ * customer console's Members, Roles, SSO or Audit pages there asks for it first.
+ */
+function withTenantCustomerConsole(): void
+{
+    config()->set('cbox-id.realm.tenant_customer_console', true);
 }
 
 /**

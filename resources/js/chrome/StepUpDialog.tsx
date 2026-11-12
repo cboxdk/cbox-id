@@ -4,12 +4,14 @@ import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import {
     confirmStepUp,
+    confirmStepUpByRedirect,
     type StepUpPrompt,
     stepUpCancelled,
     stepUpConfirmed,
     stepUpContinued,
     useStepUpPrompt,
 } from '@/lib/stepUp';
+import { confirmWithPasskey, isCancellation } from '@/lib/passkeys';
 import { Button, Dialog, Icon, PasswordField } from '@/ui';
 
 /**
@@ -31,7 +33,98 @@ export function StepUpDialog() {
     const prompt = useStepUpPrompt();
 
     // Keyed by the ask, so a new one starts with an empty field and no old refusal in it.
-    return prompt === null ? null : <StepUpForm key={prompt.id} prompt={prompt} />;
+    if (prompt === null) {
+        return null;
+    }
+
+    // The operator plane is confirmed with a passkey. Its last step (a "Continue" button
+    // for a waiting ceremony) is the same as any plane's, so that stays with the form below.
+    if (typeof prompt.challenge.passkeyOptions === 'string' && prompt.continueLabel === null) {
+        return <PasskeyStepUp key={prompt.id} prompt={prompt} />;
+    }
+
+    return <StepUpForm key={prompt.id} prompt={prompt} />;
+}
+
+/**
+ * The operator plane's ask: one button that runs a WebAuthn ceremony.
+ *
+ * No password field at all, deliberately. A password typed into this page proves nothing
+ * a script injected into the page could not replay; the assertion is made by the
+ * authenticator, for this origin, over a challenge the server issued a moment ago. The
+ * ceremony runs inside the button's own click, which is the gesture WebAuthn needs.
+ */
+function PasskeyStepUp({ prompt }: { prompt: StepUpPrompt }) {
+    const { t } = useConsoleTranslator();
+    const [error, setError] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+    const button = useRef<HTMLButtonElement>(null);
+    const title = t('console.confirm_it_s_you_6176eec2');
+
+    const confirm = async (): Promise<void> => {
+        const options = prompt.challenge.passkeyOptions;
+
+        if (busy || typeof options !== 'string') {
+            return;
+        }
+
+        setBusy(true);
+        setError(null);
+
+        try {
+            await confirmWithPasskey(options, prompt.challenge.confirm);
+        } catch (caught) {
+            setBusy(false);
+
+            // A dismissed system prompt is not a failure: the dialog simply stays open.
+            if (!isCancellation(caught)) {
+                setError(
+                    caught instanceof Error
+                        ? caught.message
+                        : t('console.that_did_not_work_try_again_d38eba7d'),
+                );
+            }
+
+            return;
+        }
+
+        stepUpConfirmed();
+    };
+
+    return (
+        <Dialog
+            open
+            size="sm"
+            initialFocus={button}
+            onOpenChange={(next) => {
+                if (!next) {
+                    stepUpCancelled();
+                }
+            }}
+            title={title}
+            description={prompt.challenge.reason ?? title}
+            footer={
+                <>
+                    <Button onClick={stepUpCancelled}>{t('console.cancel_19766ed6')}</Button>
+                    <Button
+                        ref={button}
+                        variant="primary"
+                        data-step-up-passkey
+                        loading={busy}
+                        onClick={() => void confirm()}
+                    >
+                        {t('console.confirm_eebdd24a')}
+                    </Button>
+                </>
+            }
+        >
+            {error !== null && (
+                <p className="field-error" role="alert">
+                    {error}
+                </p>
+            )}
+        </Dialog>
+    );
 }
 
 function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
@@ -46,6 +139,45 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
     const carryOn = useRef<HTMLButtonElement>(null);
 
     const continuing = prompt.continueLabel !== null;
+    // Login-host mode: no password here. The step-up is a window at the login host.
+    const redirect = prompt.challenge.redirect ?? null;
+    const [waiting, setWaiting] = useState(false);
+    const [blocked, setBlocked] = useState(false);
+
+    // The wait for the window in progress, so a second click or closing the dialog ends it.
+    const waitingFor = useRef<AbortController | null>(null);
+
+    useEffect(() => () => waitingFor.current?.abort(), []);
+
+    const leave = async (): Promise<void> => {
+        // Asked again while waiting: the window was closed by hand or lost behind others.
+        // The same named window is opened (or brought back) and the wait starts over.
+        waitingFor.current?.abort();
+
+        const wait = new AbortController();
+        waitingFor.current = wait;
+
+        setWaiting(true);
+        setError(null);
+
+        // Called inside the click, so the browser lets the window open.
+        const outcome = await confirmStepUpByRedirect(prompt.challenge, undefined, wait.signal);
+
+        if (waitingFor.current !== wait) {
+            return;
+        }
+
+        waitingFor.current = null;
+        setWaiting(false);
+
+        if (outcome === 'confirmed') {
+            stepUpConfirmed();
+        } else if (outcome === 'blocked') {
+            setBlocked(true);
+        } else if (outcome === 'declined') {
+            setError(consoleT('console.step_up_redirect_not_confirmed'));
+        }
+    };
 
     /*
      * The password field goes away when it has done its job, and focus would go with it —
@@ -133,9 +265,24 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
                         <Button onClick={stepUpCancelled}>
                             {consoleT('console.cancel_19766ed6')}
                         </Button>
-                        <Button type="submit" form="cbx-step-up" variant="primary" loading={busy}>
-                            {consoleT('console.confirm_eebdd24a')}
-                        </Button>
+                        {redirect === null ? (
+                            <Button
+                                type="submit"
+                                form="cbx-step-up"
+                                variant="primary"
+                                loading={busy}
+                            >
+                                {consoleT('console.confirm_eebdd24a')}
+                            </Button>
+                        ) : (
+                            <Button
+                                variant="primary"
+                                data-step-up-redirect
+                                onClick={() => void leave()}
+                            >
+                                {consoleT('console.step_up_redirect_continue')}
+                            </Button>
+                        )}
                     </>
                 )
             }
@@ -149,6 +296,30 @@ function StepUpForm({ prompt }: { prompt: StepUpPrompt }) {
                     />
                     {consoleT('console.you_are_confirmed_for_the_next_few_minutes_7b76614c')}
                 </output>
+            ) : redirect !== null ? (
+                <div className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                    <p>
+                        {waiting
+                            ? consoleT('console.step_up_redirect_waiting')
+                            : consoleT('console.step_up_redirect_lead')}
+                    </p>
+                    {error !== null && (
+                        <p role="alert" className="mt-2" style={{ color: 'var(--danger)' }}>
+                            {error}
+                        </p>
+                    )}
+                    {(blocked || waiting) && (
+                        // A plain link: this tab leaves for the login host and comes back
+                        // to the page, where the action can be repeated. Offered while
+                        // waiting too: this page cannot tell a window that was closed by
+                        // hand from one that is still open (see confirmStepUpByRedirect).
+                        <p className="mt-2">
+                            <a href={redirect.page} className="underline">
+                                {consoleT('console.step_up_redirect_same_tab')}
+                            </a>
+                        </p>
+                    )}
+                </div>
             ) : (
                 <form id="cbx-step-up" noValidate onSubmit={(event) => void submit(event)}>
                     <PasswordField

@@ -23,6 +23,7 @@ use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\Dpop\DpopResourceGuard;
 use Cbox\Id\OAuthServer\Enums\AuthenticationContextClass;
 use Cbox\Id\OAuthServer\Exceptions\InvalidDpopProof;
+use Cbox\Id\OAuthServer\ValueObjects\AuthenticationRequirement;
 use Cbox\Id\OAuthServer\ValueObjects\ProtectedResource;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
@@ -134,7 +135,13 @@ final readonly class RootDelegatedAccess
 
         // Existing password-only tokens must not acquire platform authority, including
         // when their subject is promoted after the token was issued.
-        if ($operatorId !== null && $signIn->token?->acr() !== AuthenticationContextClass::Aal2->value) {
+        //
+        // By LEVEL, not by name: a stronger class (a passkey's phishing-resistant one)
+        // reaches the second-factor class, and an operator who signs in with a passkey
+        // must not lose the CLI and MCP for it.
+        if ($operatorId !== null && ! AuthenticationRequirement::of(AuthenticationContextClass::Aal2)
+            ->assess($signIn->token?->acr(), null)
+            ->isSatisfied()) {
             return null;
         }
 

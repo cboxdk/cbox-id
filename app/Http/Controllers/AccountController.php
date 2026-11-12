@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Actions\Account\DisconnectSignInMethod;
+use App\Actions\Account\LeaveOrganization;
 use App\Actions\Account\RemovePasskey;
 use App\Actions\Account\RemoveSmsFactor;
 use App\Actions\Account\RemoveTotpDevice;
@@ -27,10 +28,13 @@ use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Mfa\AuthenticatorEnrollment;
+use App\Platform\OAuth\AppSignIns;
 use App\Platform\Passkeys\PasskeyName;
 use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
+use App\Platform\Surfaces\AccountChrome;
+use App\Platform\Surfaces\ReturnUrl;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -53,6 +57,10 @@ use Cbox\Id\Identity\Models\WebAuthnCredential;
 use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\Identity\ValueObjects\TotpDevice;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Otp\Exceptions\OtpRateLimitExceeded;
 use Cbox\Id\Otp\Sms\Exceptions\SmsDeliveryFailed;
 use Cbox\Id\Otp\Sms\Exceptions\SmsSendRefused;
@@ -116,6 +124,7 @@ final readonly class AccountController extends PageController
                     'role' => ConsoleLabels::navigation($me->role()?->label() ?? 'Member'),
                 ],
             ],
+            'organizations' => $this->organizations($subjectId, $organization?->id),
             'hasPassword' => $this->hasPassword($subjectId),
             'twoFactor' => [
                 'enabled' => $mfa->hasConfirmedTotp($subjectId),
@@ -178,6 +187,91 @@ final readonly class AccountController extends PageController
                 'activity' => route('account.activity'),
             ],
         ]);
+    }
+
+    /**
+     * The organizations this person belongs to, each with the way out of it.
+     *
+     * On the page because it is the one place a person can leave from wherever they are: the
+     * login host has no console around these pages, and a customer environment's host has no
+     * People page. Open organizations only; a closed one has nothing left to leave.
+     *
+     * @return list<array{id: string, name: string, role: string, current: bool, isOwner: bool, leaveHref: string}>
+     */
+    private function organizations(string $subjectId, ?string $currentId): array
+    {
+        $organizations = app(Organizations::class);
+        $rows = [];
+
+        foreach (app(Memberships::class)->forUser($subjectId) as $membership) {
+            if ($membership->status !== MembershipStatus::Active) {
+                continue;
+            }
+
+            $organization = $organizations->find($membership->organization_id);
+
+            if ($organization === null || $organization->status->revokesAccess()) {
+                continue;
+            }
+
+            $rows[] = [
+                'id' => $organization->id,
+                'name' => $organization->name,
+                'role' => ConsoleLabels::navigation($membership->role->label()),
+                'current' => $organization->id === $currentId,
+                'isOwner' => $membership->role === MembershipRole::Owner,
+                'leaveHref' => route('account.organizations.leave', $organization->id),
+            ];
+        }
+
+        usort($rows, static fn (array $a, array $b): int => strcasecmp($a['name'], $b['name']));
+
+        return $rows;
+    }
+
+    /**
+     * Leave one of your organizations through {@see LeaveOrganization}, which keeps its own
+     * rules (the last owner cannot; a roster administered elsewhere is refused). One you are
+     * not a member of is a 404.
+     *
+     * The person stays on their own page, signed in. When the organization they left was
+     * the one this session acted in, the session moves to another of theirs; with none
+     * left the account is still theirs, and the next door that needs an organization
+     * (an app, the console) asks for one.
+     */
+    public function leaveOrganization(Request $request, string $organization, PlatformAuth $auth): RedirectResponse
+    {
+        $me = app(CurrentUser::class);
+
+        abort_unless($me->check(), 403);
+
+        $subjectId = $me->id();
+        $wasCurrent = $me->organizationId() === $organization;
+        $name = null;
+
+        foreach ($this->organizations($subjectId, null) as $row) {
+            if ($row['id'] === $organization) {
+                $name = $row['name'];
+            }
+        }
+
+        $result = $this->act(LeaveOrganization::class, ['organization_id' => $organization], ['organization_id' => 'organization'], 'organization');
+
+        if ($result instanceof RedirectResponse) {
+            return $result;
+        }
+
+        if ($wasCurrent) {
+            $next = $this->organizations($subjectId, null)[0]['id'] ?? null;
+
+            if ($next !== null) {
+                $auth->switchOrganization($request, $next);
+            }
+        }
+
+        return back()->with('status', $name !== null
+            ? __('console.organization_left_status', ['name' => $name])
+            : __('console.organization_left_status_unnamed'));
     }
 
     /** Change the display name through {@see UpdateProfile}, the account plane's action. */
@@ -732,38 +826,27 @@ final readonly class AccountController extends PageController
      */
     private function validReturnTo(Request $request): ?array
     {
-        $url = $request->query('return_to');
-
-        if (! is_string($url)) {
+        // On the login host the page's chrome carries "Back to …" on every page
+        // ({@see AccountChrome}); a second link here would say the same thing twice.
+        if (app(AccountChrome::class)->applies($request)) {
             return null;
         }
 
-        $parts = parse_url($url);
+        /*
+         * ON THE WAY TO AN APP. `/oauth/authorize` holds a person here when their
+         * organization requires a second factor they have not enrolled, and the request
+         * waits in the session. Once they have enrolled, this is the way on: the continue
+         * page follows the waiting request. A link and not a redirect, because the
+         * recovery codes are shown on this page exactly once.
+         */
+        $pending = app(AppSignIns::class)->pending($request);
 
-        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host'])) {
-            return null;
+        if ($pending !== null) {
+            return ['url' => route('app.continue'), 'host' => $pending->clientName];
         }
 
-        $isLocal = in_array($parts['host'], ['localhost', '127.0.0.1'], true);
+        $target = app(ReturnUrl::class)->validated($request->query(ReturnUrl::PARAMETER), $request);
 
-        if ($parts['scheme'] !== 'https' && ! ($isLocal && $parts['scheme'] === 'http')) {
-            return null;
-        }
-
-        // Client is environment-scoped, so this is the current realm's registered set.
-        /** @var Collection<int, string> $redirectHosts */
-        $redirectHosts = Client::query()
-            ->get(['redirect_uris'])
-            ->flatMap(fn (Client $client): array => $client->redirect_uris)
-            ->map(static fn (string $uri): ?string => parse_url($uri, PHP_URL_HOST) ?: null)
-            ->filter();
-
-        $allowedHosts = $redirectHosts->push($request->getHost())->unique();
-
-        if (! $allowedHosts->contains($parts['host'])) {
-            return null;
-        }
-
-        return ['url' => $url, 'host' => $parts['host']];
+        return $target === null ? null : ['url' => $target['url'], 'host' => $target['host']];
     }
 }

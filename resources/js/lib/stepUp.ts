@@ -28,7 +28,7 @@ import { useSyncExternalStore } from 'react';
  * counted by, the environment plane's.
  */
 
-export type StepUpPlane = 'organization' | 'environment';
+export type StepUpPlane = 'organization' | 'environment' | 'operator';
 
 /** What the server asked for: which plane, where to confirm, and why. */
 export interface StepUpChallenge {
@@ -37,7 +37,26 @@ export interface StepUpChallenge {
     confirm: string;
     /** The sentence the action gave, or null for a route that only says it is protected. */
     reason: string | null;
+    /**
+     * Set when this plane is confirmed with a passkey instead of a password (the operator
+     * plane): where to fetch the WebAuthn challenge. The assertion is posted to `confirm`.
+     */
+    passkeyOptions?: string | null;
+    /**
+     * Set in login-host mode, where the console asks for no password: the step-up is a
+     * trip to the login host. `popup` is opened in a window of its own, so this page
+     * keeps the request it is holding; `page` is the same trip in this tab.
+     */
+    redirect?: StepUpRedirect;
 }
+
+export interface StepUpRedirect {
+    page: string;
+    popup: string;
+}
+
+/** The channel the step-up window tells this page its outcome on (same origin only). */
+export const STEP_UP_CHANNEL = 'cbox-step-up';
 
 export interface StepUpOptions {
     /**
@@ -57,7 +76,7 @@ export interface StepUpOptions {
 /** The header that marks a step-up refusal (lower-cased, as both HTTP clients report it). */
 export const STEP_UP_HEADER = 'x-cbox-step-up';
 
-const PLANES: readonly StepUpPlane[] = ['organization', 'environment'];
+const PLANES: readonly StepUpPlane[] = ['organization', 'environment', 'operator'];
 
 /**
  * The challenge in a response, or null for any response that is not one.
@@ -93,10 +112,33 @@ export function challengeFrom(
         return null;
     }
 
+    const redirect = isRecord(stepUp.redirect) ? stepUp.redirect : null;
+    const page = redirect !== null && typeof redirect.page === 'string' ? redirect.page : null;
+    const popup = redirect !== null && typeof redirect.popup === 'string' ? redirect.popup : null;
+    const followed =
+        page !== null && popup !== null && sameOrigin(page) && sameOrigin(popup)
+            ? { page, popup }
+            : null;
+    const passkey = isRecord(stepUp.passkey) ? stepUp.passkey.options : null;
+
+    // The operator plane is never confirmed with a password: without a same-origin
+    // challenge endpoint, or a trip to the login host, there is nothing to ask with.
+    if (
+        plane === 'operator' &&
+        followed === null &&
+        (typeof passkey !== 'string' || !sameOrigin(passkey))
+    ) {
+        return null;
+    }
+
     return {
         plane,
         confirm,
         reason: typeof stepUp.reason === 'string' && stepUp.reason !== '' ? stepUp.reason : null,
+        // On this origin, or not a redirect we follow: it is the console's own door,
+        // which is what sends the browser on to the login host.
+        ...(followed !== null ? { redirect: followed } : {}),
+        ...(typeof passkey === 'string' && sameOrigin(passkey) ? { passkeyOptions: passkey } : {}),
     };
 }
 
@@ -327,6 +369,73 @@ export async function confirmStepUp(
     }
 
     return { ok: false, error: messages.failed };
+}
+
+/** How a step-up window ended. `closed` is the caller giving up on it (see `signal`). */
+export type RedirectOutcome = 'confirmed' | 'declined' | 'blocked' | 'closed';
+
+/**
+ * Confirm by a trip to the login host, in a window of its own (login-host mode).
+ *
+ * MUST BE CALLED FROM A CLICK: a window opened outside a user gesture is blocked. The
+ * window signs the person in again at the login host and lands on a console page that
+ * says how it went on `STEP_UP_CHANNEL` and closes. This page never leaves, so the request
+ * it is holding is replayed exactly as it was, body included.
+ *
+ * The message only says when to try again. The server decides: a replay without an open
+ * window is answered with the same refusal, and the dialog asks once more.
+ *
+ * THE WINDOW'S OWN `closed` IS NEVER READ. The login host answers with
+ * `Cross-Origin-Opener-Policy: same-origin`, so the moment the window navigates there the
+ * browser moves it to another browsing-context group and this page's handle to it reads
+ * `closed === true`, while the person is still looking at the sign-in page. Watching it
+ * ended every step-up half a second after it began. The channel is the only word on how
+ * it went; `signal` is how the caller stops waiting (the dialog was cancelled, or the
+ * person asked for the window again).
+ */
+export function confirmStepUpByRedirect(
+    challenge: StepUpChallenge,
+    open: (url: string) => Window | null = (url) =>
+        window.open(url, 'cbox-step-up', 'popup,width=520,height=720'),
+    signal?: AbortSignal,
+): Promise<RedirectOutcome> {
+    const target = challenge.redirect?.popup;
+
+    if (target === undefined || !sameOrigin(target)) {
+        return Promise.resolve('blocked');
+    }
+
+    const popup = open(target);
+
+    if (popup === null) {
+        return Promise.resolve('blocked');
+    }
+
+    return new Promise<RedirectOutcome>((resolve) => {
+        const channel = new BroadcastChannel(STEP_UP_CHANNEL);
+        const abandon = (): void => finish('closed');
+
+        const finish = (outcome: RedirectOutcome): void => {
+            signal?.removeEventListener('abort', abandon);
+            channel.close();
+            resolve(outcome);
+        };
+
+        channel.onmessage = (event: MessageEvent<unknown>) => {
+            const data = event.data;
+
+            if (isRecord(data) && data.plane === challenge.plane) {
+                finish(data.confirmed === true ? 'confirmed' : 'declined');
+            }
+        };
+
+        // The caller stopped waiting: nothing was said, and nothing will be acted on.
+        if (signal?.aborted === true) {
+            abandon();
+        } else {
+            signal?.addEventListener('abort', abandon, { once: true });
+        }
+    });
 }
 
 type Router = typeof InertiaRouter;
