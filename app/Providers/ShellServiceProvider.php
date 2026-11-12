@@ -85,8 +85,11 @@ final class ShellServiceProvider extends ServiceProvider
                     $actions[] = PaletteAction::url($legacy->platformHref, __('console.platform_admin_69652f55'), 'platform.admin');
                 }
 
-                if ($legacy?->platformEnvironmentHref !== null) {
-                    $actions[] = PaletteAction::url($legacy->platformEnvironmentHref, __('console.platform_environment_2676dfe4'), 'platform.environment');
+                // Whichever environment is the default today ({@see IdShell::defaultEnvironmentUrl()}).
+                $root = $legacy?->platformEnvironmentHref !== null ? IdShell::defaultEnvironmentUrl() : null;
+
+                if ($root !== null) {
+                    $actions[] = PaletteAction::url($root, __('console.platform_environment_2676dfe4'), 'platform.environment');
                 }
 
                 return $actions;

@@ -108,14 +108,15 @@ it('keeps the Platform area lit on every page of it, detail pages included', fun
     }
 });
 
-it('leaves platform admin off the root host\'s organization console, and offers it in the palette', function (): void {
+it('links the root host\'s organization console to platform admin from the rail and the palette, without drawing its pages there', function (): void {
     rootPlatformWorld();
 
     $response = $this->get('https://cboxid.com/settings')->assertOk();
     $routes = collect(consoleRail($response)['areas'])->flatMap(static fn (array $area): array => array_column($area['pages'], 'route'));
     $actions = collect($response->inertiaProps('shell.palette.actions'))->pluck('url', 'id');
 
-    expect($routes->filter(static fn (string $route): bool => str_starts_with($route, 'platform.'))->all())->toBe([])
+    // Two links into `/admin` (OperatorPlatformAreaTest), not platform admin's own pages.
+    expect($routes->filter(static fn (string $route): bool => str_starts_with($route, 'platform.'))->values()->all())->toBe(['platform.orgs', 'platform.environment'])
         ->and($actions['platform.admin'] ?? null)->toBe('https://cboxid.com/admin/organizations')
         ->and($actions['platform.environment'] ?? null)->toBe('https://cboxid.com/admin/environment');
 });
