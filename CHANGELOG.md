@@ -10,6 +10,7 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Fixed
 
+- **An operator's CIBA approval mints its token again.** After the single realm made the operator and the app account one person, `/oauth/token` refused every approval they gave with `invalid_grant: a second factor is required`: the operator rule asked for AAL2 methods on a grant that records none. A grant with no recorded methods (CIBA, device) now follows the framework's rule; the approval is the second factor.
 - **`/continue` on a customer environment's host passes the customer console's door** (it was registered beside it), and the environment console no longer reads the session row twice on every request while the per-organization SSO mandate is off.
 - `/v1` lists keep the fields their `meta` carried beyond paging. The app catalog's `GET /v1/app-catalog/for-user` lost `revision` and `refresh_after`, so laravel-id-client rejected every answer as malformed, and apps with `CBOX_ID_API_URL` served a stale switcher or none.
 

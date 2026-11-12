@@ -28,6 +28,14 @@ it('requires strong authentication on an enrolled operator session, including so
     $this->get(route('platform.environments'))->assertOk();
 });
 
+it('does not ask an operator for a second factor on a grant that records no methods', function (): void {
+    // A CIBA approval or a device grant: the answer came from a surface that already
+    // passed the operator rule, and the token endpoint sees an empty amr.
+    $operator = actAsOperator();
+
+    expect(app(MfaVerification::class)->requiresVerification($operator->subject_id, []))->toBeFalse();
+});
+
 it('holds an operator again when their last strong factor is removed', function (): void {
     $operator = actAsOperator();
     app(PlatformRoot::class)->run(fn () => app(Mfa::class)->disable($operator->subject_id));
