@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:60facd49-b4fe-4c62-9643-8a6c70c95a80",
+    "serialNumber": "urn:uuid:7bb9cdc5-6022-4764-8231-84b190acc9b5",
     "version": 1,
     "metadata": {
         "tools": [
@@ -299,6 +299,22 @@
             "version": "v1.11.0",
             "purl": "pkg:composer/cboxdk/laravel-queue-monitor@v1.11.0",
             "description": "Laravel queue monitoring with individual job tracking, payload storage, replay, and analytics",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/cboxdk/laravel-relay-client@v0.2.1",
+            "group": "cboxdk",
+            "name": "laravel-relay-client",
+            "version": "v0.2.1",
+            "purl": "pkg:composer/cboxdk/laravel-relay-client@v0.2.1",
+            "description": "Cbox Relay client for Laravel: publish events, send mail and push, judge content, read inbound mail and verify Relay's webhooks, with an in-memory fake for tests.",
             "licenses": [
                 {
                     "license": {

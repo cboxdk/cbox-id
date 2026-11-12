@@ -8,6 +8,10 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Added
+
+- **System mail can go through Cbox Relay, with Resend as the failover.** `cboxdk/laravel-relay-client` adds a `relay` mailer (`RELAY_URL`, `RELAY_PROJECT`, `RELAY_KEY`), and the `failover` mailer now tries `relay` first and `resend` second (it was `smtp`, then `log`). Nothing changes until `MAIL_MAILER=failover` is set; production sends with `resend` until then.
+
 ### Performance
 
 - **OIDC discovery is built once a minute, not once a request.** Building `/.well-known/openid-configuration` read the public scopes, the platform root and the sign-up setting on every request: 18 ms of a 73 ms request on production, plus two queries and four cache reads. The document is now kept for 60 seconds per environment, issuer, host and release. A changed issuer (a verified custom domain) is a new document at once; a new public scope or a changed sign-up setting shows within the minute.
