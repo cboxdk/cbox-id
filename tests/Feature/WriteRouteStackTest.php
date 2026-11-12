@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Middleware\EnforcePlane;
 use App\Http\Middleware\ReadOnlyWhileImpersonating;
 use App\Http\Middleware\ResolveLocale;
+use App\Http\Middleware\ThrottleInOneRoundTrip;
 use Illuminate\Foundation\Http\Kernel;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Route as RoutedRoute;
@@ -63,6 +64,14 @@ function appGuards(RoutedRoute $route): array
         // The hosted pages' language is not a guard: it refuses nothing, so a write that
         // does not resolve one is not looser than a page that does.
         if ($middleware === ResolveLocale::class) {
+            continue;
+        }
+
+        // Nor is the rate limiter, and it was never part of this comparison: `throttle` was
+        // the framework's class, which the prefix check above skips, until it became this
+        // application's own (one round trip to Redis instead of five). A page and a write
+        // have different budgets by design, so comparing them here would be inventing policy.
+        if (str_starts_with($middleware, ThrottleInOneRoundTrip::class)) {
             continue;
         }
 

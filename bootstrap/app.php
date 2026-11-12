@@ -43,6 +43,7 @@ use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\ServeMarketingWebsite;
 use App\Http\Middleware\SetEnvironment;
 use App\Http\Middleware\StatelessFrontendApi;
+use App\Http\Middleware\ThrottleInOneRoundTrip;
 use App\Http\Middleware\TrustHostsExceptHealth;
 use App\Http\Middleware\UseSurfaceSessionCookie;
 use App\Platform\EmailNotVerified;
@@ -380,6 +381,10 @@ return Application::configure(basePath: dirname(__DIR__))
         );
 
         $middleware->alias([
+            // `throttle` everywhere (the framework package's routes name it too), with the
+            // check and the count done in one round trip to Redis instead of five per
+            // limit. Same limits, same keys, same headers: see the class.
+            'throttle' => ThrottleInOneRoundTrip::class,
             'platform.auth' => Authenticate::class,
             'platform.guest' => RedirectIfAuthenticated::class,
             'portal.session' => PortalSession::class,
