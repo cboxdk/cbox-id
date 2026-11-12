@@ -6,6 +6,7 @@ namespace App\Platform\Console;
 
 use App\Http\Middleware\EnforceRootHostConsole;
 use App\Platform\PlaneResolver;
+use App\Platform\Shell\IdShell;
 use Cbox\Console\Kit\Facades\Console;
 use Illuminate\Support\Facades\Route;
 
@@ -28,10 +29,11 @@ use Illuminate\Support\Facades\Route;
  *    settings, the team's own sign-in to Cbox, its activity log), the person's account and
  *    the landing pages are served as they were — except that an OPERATOR's every sign-in
  *    page is the platform environment's, the team's own included;
- *  - platform admin is not on this console's rail at all: it is the Platform area of the
- *    platform environment's console (`/admin/…`), and the account menu's
- *    "Platform admin" is the way there. Its pages carry their own operator gate and never
- *    this console's door, so only the rail has to leave them out;
+ *  - platform admin's pages are not drawn on this console's rail: they are the Platform
+ *    area of the platform environment's console (`/admin/…`). An operator's rail here ends
+ *    in a Platform area of two links into it ({@see IdShell}), and ⌘K offers the same two.
+ *    Its pages carry their own operator gate and never this console's door, so only the
+ *    rail has to leave them out;
  *  - a page that sets something an ENVIRONMENT owns — social login, sign-in methods,
  *    branding, apps, webhooks, roles… — is not served as the workspace's. An operator is
  *    sent to the same page of the platform root's own environment console
