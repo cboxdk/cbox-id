@@ -8,6 +8,10 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Performance
+
+- **The PostgreSQL connection is kept between requests, and a query is one round trip.** Under php-fpm every request opened a new connection (19-23 ms on production before the first query, SCRAM-SHA-256), ran `set search_path`, and sent each query as prepare, execute and deallocate: three round trips at 1.2-1.5 ms each from a pod on another node than the database. The connection is now persistent under php-fpm (`DB_PERSISTENT`, default on; never in a command-line process, which may fork), `config/database.php` sends a query as one parameterised message (`DB_DISABLE_PREPARES`, default on; the parameters still travel apart from the SQL) and states the search path in the connection's start-up packet. Each php-fpm worker holds one connection, so size `max_connections` for `pm.max_children` times the replicas: [Database connections](docs/operations/deployment.md#database-connections).
+
 ### Fixed
 
 - **An operator's CIBA approval mints its token again.** After the single realm made the operator and the app account one person, `/oauth/token` refused every approval they gave with `invalid_grant: a second factor is required`: the operator rule asked for AAL2 methods on a grant that records none. A grant with no recorded methods (CIBA, device) now follows the framework's rule; the approval is the second factor.
