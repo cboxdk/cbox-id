@@ -313,6 +313,34 @@ Re-run these on every deploy after the code and `.env` are in place. The image's
 entrypoint does this at container start, against the container's own environment, when
 `LARAVEL_AUTO_OPTIMIZE=true`.
 
+### Database connections
+
+Under php-fpm a PHP application opens its database connection again on every request. On
+production (2026-11-12) that cost 19-23 ms before the first query, and every query was three
+round trips (prepare, execute, deallocate). `config/database.php` therefore asks for three
+things on PostgreSQL, all on by default:
+
+| Setting | Variable | What it does |
+|---|---|---|
+| A persistent connection | `DB_PERSISTENT` (default `true`) | Each php-fpm worker keeps its connection between requests. |
+| One message per query | `DB_DISABLE_PREPARES` (default `true`) | A query is sent as one parameterised message instead of prepare, execute and deallocate. The parameters still travel apart from the SQL; this is not client-side emulation. |
+| The search path at connect | none | `public` is stated in the start-up packet (`server_options`) instead of a `set search_path` statement on every request. |
+
+**Size `max_connections` for it.** Every php-fpm worker holds one connection for as long as it
+lives: `pm.max_children` times the web replicas, plus one more replica while a release rolls
+out, plus the queue workers and the scheduler. Production runs 10 workers on 2 replicas (30
+during a rollout) against `max_connections = 100`.
+
+**What makes it safe.** PHP rolls back a transaction that a request left open before the
+connection is used again. Nothing in the application or the framework keeps state on the
+session: every advisory lock is transaction-scoped (`pg_advisory_xact_lock`), every `set` is
+`set transaction`, and no temporary table or `LISTEN` is used. A change that needs session
+state (a session-level advisory lock, `SET` without `LOCAL`) must release it in the same
+request, or turn `DB_PERSISTENT` off.
+
+Behind a transaction-mode pooler (PgBouncer) keep `DB_DISABLE_PREPARES=true` and set
+`DB_PERSISTENT=false`; the pooler keeps the connections.
+
 ## 4. Create the first platform operator
 
 Step 2 already did this: `cbox-id:install` creates the **platform operator** — the
