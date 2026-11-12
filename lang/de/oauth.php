@@ -31,6 +31,7 @@ return [
             'organizations' => 'Organisationen, denen Sie angehören',
             'groups' => 'Ihre Rollen',
             'feature_flags' => 'Für Sie aktivierte Funktionen',
+            'identity_claims' => 'Diese Angaben bei der Anmeldung erhalten',
         ],
     ],
     'failure' => [

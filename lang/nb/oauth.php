@@ -31,6 +31,7 @@ return [
             'organizations' => 'Hvilke organisasjoner du tilhører',
             'groups' => 'Rollene dine',
             'feature_flags' => 'Hvilke funksjoner som er slått på for deg',
+            'identity_claims' => 'Motta disse opplysningene når du logger inn',
         ],
     ],
     'failure' => [

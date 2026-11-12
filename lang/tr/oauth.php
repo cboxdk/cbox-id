@@ -31,6 +31,7 @@ return [
             'organizations' => 'Ait olduğunuz kuruluşlar',
             'groups' => 'Rolleriniz',
             'feature_flags' => 'Sizin için etkin olan özellikleri görme',
+            'identity_claims' => 'Giriş yaptığınızda bu bilgileri almak',
         ],
     ],
     'failure' => [

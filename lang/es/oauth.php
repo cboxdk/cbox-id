@@ -31,6 +31,7 @@ return [
             'organizations' => 'Las organizaciones a las que perteneces',
             'groups' => 'Tus roles',
             'feature_flags' => 'Las funciones que tienes activadas',
+            'identity_claims' => 'Recibir estos datos cuando inicias sesión',
         ],
     ],
     'failure' => [

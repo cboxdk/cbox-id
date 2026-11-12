@@ -31,6 +31,7 @@ return [
             'organizations' => 'Organisaatiot, joihin kuulut',
             'groups' => 'Roolisi',
             'feature_flags' => 'Mitkä ominaisuudet ovat sinulle käytössä',
+            'identity_claims' => 'Vastaanottaa nämä tiedot, kun kirjaudut sisään',
         ],
     ],
     'failure' => [

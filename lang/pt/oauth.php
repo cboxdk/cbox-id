@@ -31,6 +31,7 @@ return [
             'organizations' => 'As organizações a que pertence',
             'groups' => 'As suas funções',
             'feature_flags' => 'Quais funcionalidades estão ativadas para si',
+            'identity_claims' => 'Receber estes dados quando inicia sessão',
         ],
     ],
     'failure' => [

@@ -15,6 +15,15 @@ UserInfo also returns `org_slug`, the organization's slug, and a `slug` on each 
 `organizations` claim (scope `organizations`). Use it for `/orgs/{slug}` URLs: it is the same
 slug in every Cbox app. Keep keying your own records by `org`, which never changes; a slug can.
 
+An app that holds the **Full identity on the ID token** scope (`identity_claims`) and asks
+for it gets all of this on the ID token too: `email`, `name`, `org_slug`, `roles`,
+`permissions` and `organizations`, under the same scopes as at UserInfo, so its backend does
+not call UserInfo after the code exchange. An administrator gives an app the scope on its
+Scopes tab or with `PUT /api/v1/apps/{id}/scopes`; an app cannot give it to itself, and asking
+for it without holding it is answered `invalid_scope`. Give it only to an app that sends
+`id_token_hint` at sign-out by POST or not at all: that token names the person, and a token
+in a URL is written to access logs. See [Keys and tokens](../core-concepts/keys-and-tokens.md#the-id-token-and-userinfo).
+
 The SDKs (`@cboxdk/id-js` and the React, Vue and Nuxt wrappers, `cboxdk/laravel-id-client`,
 `id-go`) already send everything below. The raw parameters are listed for anyone building
 the request by hand.

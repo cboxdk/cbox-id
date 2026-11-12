@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "cd9ec3d2f8378a7d7b9703e87a246455",
+    "content-hash": "1fd60930b19c20cfb69daf6a3e1b7505",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -915,16 +915,16 @@
         },
         {
             "name": "cboxdk/laravel-id",
-            "version": "v2.6.0",
+            "version": "v2.7.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-id.git",
-                "reference": "1bd72bd90bc8a68d02a7b9aaa2de1371f6583699"
+                "reference": "0d5964c92006634b4257fb6b1da6e1a1b830fb83"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/1bd72bd90bc8a68d02a7b9aaa2de1371f6583699",
-                "reference": "1bd72bd90bc8a68d02a7b9aaa2de1371f6583699",
+                "url": "https://api.github.com/repos/cboxdk/laravel-id/zipball/0d5964c92006634b4257fb6b1da6e1a1b830fb83",
+                "reference": "0d5964c92006634b4257fb6b1da6e1a1b830fb83",
                 "shasum": ""
             },
             "require": {
@@ -987,9 +987,9 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-id/issues",
-                "source": "https://github.com/cboxdk/laravel-id/tree/v2.6.0"
+                "source": "https://github.com/cboxdk/laravel-id/tree/v2.7.0"
             },
-            "time": "2026-11-11T22:11:35+00:00"
+            "time": "2026-11-12T18:21:12+00:00"
         },
         {
             "name": "cboxdk/laravel-postal",

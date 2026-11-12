@@ -58,6 +58,32 @@ person may do themselves, here, right now. A scope never gives more than the per
 Every [critical](actions.md#danger) action a delegated token tries **waits for the
 person's approval** on their device, whatever its scopes. See [Approvals](approvals.md).
 
+## The ID token and UserInfo
+
+After a sign-in your app holds an ID token and can ask `/oauth/userinfo` about the person.
+By default the ID token is small: who signed in (`sub`), the organization the sign-in is for
+(`org`, `org_name`, `org_role`) and, under their own scopes, `groups` and `feature_flags`.
+The person's `email` and `name`, their `roles` and `permissions` in your app, `org_slug` and
+the `organizations` list are answered by UserInfo.
+
+An app that holds the `identity_claims` scope and asks for it gets those claims on the ID
+token as well, each under the scope it needs at UserInfo (`email`, `profile`,
+`organizations`), so its backend makes one call at sign-in instead of two.
+
+| | |
+|---|---|
+| Who gives it | An environment administrator, on the app's Scopes tab ("Full identity on the ID token") or with `PUT /api/v1/apps/{id}/scopes` (`apps.scopes.set`, also an MCP tool and a `cbox id` command). The same in the platform's own environment. |
+| Who cannot | The app itself. The scope is not in discovery's `scopes_supported`, and a self-registering client is not allowed it. |
+| Asking without holding it | `error=invalid_scope` back to the app's callback, like any scope the app is not registered for. |
+| Holding it without asking | Nothing changes: the ID token stays small. |
+
+**Sign-out.** The ID token is what an app sends back as `id_token_hint` to end the person's
+session. With `identity_claims` that token names the person, so it must not travel in a
+URL, which is written to access logs, kept in browser history and sent on as `Referer`.
+`/oauth/logout` takes the same parameters by POST (OIDC RP-Initiated Logout 1.0 §2): send
+the hint in the request body, or leave it out and send `client_id`. Give the scope only to
+an app that does one of the two.
+
 ## Which one do I want?
 
 | You are… | Use |

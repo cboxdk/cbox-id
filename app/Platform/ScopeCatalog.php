@@ -91,6 +91,14 @@ final class ScopeCatalog
             // dynamic-registration allow-list from the start, so it does not repeat the
             // `organizations` / `groups` story above.
             ['key' => 'feature_flags', 'label' => 'Their feature flags', 'description' => 'Puts the keys of the feature flags that are on for the person, in the organization they signed in to, on the access token, the ID token and UserInfo as a `feature_flags` claim.', 'category' => self::SIGN_IN, 'recommended' => false, 'consent' => 'Which features are turned on for you'],
+            // The ID token carries what UserInfo answers (laravel-id 2.7), so the app's backend
+            // skips the UserInfo call after the code exchange. In this picker and NOT in the
+            // dynamic-registration allow-list or discovery, deliberately: the ID token comes
+            // back as `id_token_hint` at sign-out, and one that names the person must not sit
+            // in a URL. So somebody who knows how the app signs out gives it, and a client
+            // cannot give it to itself. It hands the app nothing UserInfo does not already
+            // answer for its other scopes, so a management key may give it too.
+            ['key' => 'identity_claims', 'label' => 'Full identity on the ID token', 'description' => 'Puts everything UserInfo answers for the app’s scopes (email, name, roles, permissions, organizations) on the ID token, so the app can skip the UserInfo call at sign-in. Only for an app that sends `id_token_hint` at sign-out by POST or not at all: a token in a URL is written to access logs.', 'category' => self::SIGN_IN, 'recommended' => false, 'consent' => 'Receive these details when you sign in'],
             ['key' => 'user_properties:read', 'label' => 'Read user preferences and metadata', 'description' => 'Read user properties only in namespaces explicitly granted to this app.', 'category' => self::PLATFORM_API, 'recommended' => false, 'consent' => 'Your shared preferences and app metadata'],
             ['key' => 'user_properties:write', 'label' => 'Update user preferences and metadata', 'description' => 'Update user properties only in namespaces explicitly granted to this app.', 'category' => self::PLATFORM_API, 'recommended' => false, 'consent' => 'Update your shared preferences and app metadata'],
             ['key' => 'vault.manage', 'label' => 'Manage stored secrets', 'description' => 'Create, rotate and revoke downstream credentials in the Token Vault.', 'category' => self::PLATFORM_API, 'recommended' => false],
