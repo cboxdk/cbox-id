@@ -24,7 +24,8 @@ it('adds, corrects, renames and cancels independent apps on a phone-sized screen
     signInAsMember($subjectId);
     app(PlatformRoot::class)->run(fn () => app(SessionManager::class)->active(session(PlatformAuth::SESSION_KEY))->forceFill(['amr' => ['pwd', 'otp', 'mfa']])->save());
     app(Sudo::class)->confirm();
-    $panel = 'section:has(h2:has-text("Authenticator apps"))';
+    // Authenticator apps are a group of the two-step verification panel.
+    $panel = 'section#two-factor';
     $page = visit('/settings')->resize(390, 844);
     $page->assertSee('Existing app')
         ->click('button:has-text("Add authenticator app")')
@@ -52,14 +53,16 @@ it('adds, corrects, renames and cancels independent apps on a phone-sized screen
         ->assertNoAccessibilityIssues();
     expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
     $page->screenshotElement($panel, 'named-authenticator-apps-phone');
-    $page->click('button[aria-label="Rename Cbox ID on my iPhone"]')
+    $page->click('button[aria-label="More actions for Cbox ID on my iPhone"]')
+        ->click('[role="menuitem"]:has-text("Rename")')
         ->fill('.cbx-dialog input', 'Spare iPhone')
         ->click('.cbx-dialog button:has-text("Save")')
         ->assertSee('Authenticator app renamed.')
         ->assertSee('Spare iPhone');
 
     // Removal meets the real step-up gate after confirmation rotated the session.
-    $page->click('button[aria-label="Remove Spare iPhone"]')
+    $page->click('button[aria-label="More actions for Spare iPhone"]')
+        ->click('[role="menuitem"]:has-text("Remove")')
         ->click('.cbx-dialog button:has-text("Remove")')
         ->assertSee("Confirm it's you")
         ->fill('.cbx-dialog input[name="password"]', 'supersecret123')
@@ -83,7 +86,7 @@ it('adds, corrects, renames and cancels independent apps on a phone-sized screen
             ->assertNoJavaScriptErrors();
         expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
         if (in_array($locale, ['da', 'de', 'fi'], true)) {
-            $page->screenshotElement('section:has(h2:has-text("'.__('console.totp_apps', [], $locale).'"))', 'named-authenticator-apps-'.$locale);
+            $page->screenshotElement($panel, 'named-authenticator-apps-'.$locale);
         }
     }
 })->group('a11y');

@@ -13,6 +13,7 @@ use App\Platform\CurrentUser;
 use App\Platform\DeviceLabel;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Locale\ConsoleStrings;
+use App\Platform\Locale\SignInMethodLabels;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
@@ -165,21 +166,10 @@ final readonly class AccountActivityController extends PageController
         ]);
     }
 
+    /** "Password · Approved on your phone", in the reader's language; never the `amr` codes. */
     private function signInMethod(Session $session): ?string
     {
-        $labels = [
-            'pwd' => 'Password',
-            'passkey' => 'Passkey',
-            'magic_link' => 'Email link',
-            'otp' => 'One-time code',
-            'sms' => 'Text message',
-            'sso' => __('console.enterprise_sso_0f8d7e8e'),
-            'social' => __('console.social_login_267d75d3'),
-            'mfa' => 'Two-factor authentication',
-            'impersonation' => 'Support access',
-            'invitation' => 'Invitation',
-        ];
-        $methods = array_values(array_intersect_key($labels, array_flip($session->amr ?? [])));
+        $methods = SignInMethodLabels::for($session->amr);
 
         return $methods === [] ? null : implode(' · ', $methods);
     }

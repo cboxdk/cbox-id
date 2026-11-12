@@ -69,7 +69,9 @@ final class Surfaces
         '/', 'robots.txt', 'favicon.ico', 'build/*', 'storage/*', 'brand-assets/*', 'app-icons/*',
         'locale', 'interface-language', 'logout', 'signed-out', 'first-run',
         // The app picker's old address: each surface sends it on to the console's switcher.
-        'switch-app',
+        // Its catalog feed is the person's own list, read by Switch app in the header of
+        // the console and of a person's own pages on the login host.
+        'switch-app', 'switch-app/catalog',
         'authenticator/privacy',
         'api/v1', 'api/v1/*',
         '.well-known/oauth-protected-resource', '.well-known/oauth-protected-resource/*',

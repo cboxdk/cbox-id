@@ -3,7 +3,9 @@ import { router } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import AccountLayout from '@/layouts/AccountLayout';
 import type { HelpContent, PageProps } from '@/types';
-import { Button, Dialog, PageHeader, Panel, Pill, Table, Td, Th } from '@/ui';
+import { SettingRow } from '@/chrome/AccountRows';
+import { relativeTime } from '@/lib/time';
+import { Button, Dialog, EmptyState, PageHeader, Panel, Pill } from '@/ui';
 
 interface DeviceRow {
     id: string;
@@ -11,6 +13,7 @@ interface DeviceRow {
     platform: string;
     status: string;
     active: boolean;
+    /** ISO 8601; drawn in the reader's language. */
     lastSeen: string | null;
     removeHref: string;
 }
@@ -23,7 +26,7 @@ type Props = PageProps<{
 }>;
 
 export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Props) {
-    const { t: tc } = useTranslator();
+    const { t: tc, locale } = useTranslator();
 
     const [removing, setRemoving] = useState<DeviceRow | null>(null);
 
@@ -163,68 +166,48 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
                 </div>
             )}
 
-            <div className="card">
-                <Table
-                    caption={tc('console.the_phones_enrolled_in_the_authenticator_app_00b01bfd')}
-                >
-                    <thead>
-                        <tr>
-                            <Th>{tc('console.device_6ba0bdec')}</Th>
-                            <Th>{tc('console.platform_c78ffe19')}</Th>
-                            <Th>{tc('console.status_920e413c')}</Th>
-                            <Th>{tc('console.last_seen_21fd79c7')}</Th>
-                            <Th>
-                                <span className="sr-only">{tc('console.actions_ff8059dc')}</span>
-                            </Th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {devices.length === 0 ? (
-                            <tr>
-                                <Td
-                                    colSpan={5}
-                                    className="py-10 text-center"
-                                    style={{ color: 'var(--muted-foreground)' }}
-                                >
-                                    {tc(
-                                        'console.no_devices_enrolled_yet_use_the_card_above_t_b9a12da2',
-                                    )}
-                                </Td>
-                            </tr>
-                        ) : (
-                            devices.map((device) => (
-                                <tr key={device.id}>
-                                    <Td className="font-medium">{device.name}</Td>
-                                    <Td style={{ color: 'var(--muted)' }}>{device.platform}</Td>
-                                    <Td>
-                                        <Pill tone={device.active ? 'success' : 'warning'}>
-                                            {device.status}
-                                        </Pill>
-                                    </Td>
-                                    <Td
-                                        className="whitespace-nowrap mono"
-                                        style={{ color: 'var(--muted)' }}
+            <Panel title={tc('console.trusted_devices_7d989273')} flush>
+                {devices.length === 0 ? (
+                    <EmptyState
+                        icon="phone"
+                        title={tc('console.no_devices_enrolled_yet_use_the_card_above_t_b9a12da2')}
+                    />
+                ) : (
+                    <ul className="acct-list">
+                        {devices.map((device) => (
+                            <SettingRow
+                                key={device.id}
+                                icon="phone"
+                                title={device.name}
+                                badge={
+                                    <Pill tone={device.active ? 'success' : 'warning'}>
+                                        {device.status}
+                                    </Pill>
+                                }
+                                meta={[
+                                    device.platform,
+                                    device.lastSeen === null
+                                        ? null
+                                        : `${tc('console.last_seen_21fd79c7')} ${relativeTime(device.lastSeen, locale)}`,
+                                ]
+                                    .filter((part) => part !== null)
+                                    .join(' · ')}
+                                actions={
+                                    <Button
+                                        size="sm"
+                                        aria-label={tc('console.remove_value0_b597e5fb', {
+                                            value0: device.name,
+                                        })}
+                                        onClick={() => setRemoving(device)}
                                     >
-                                        {device.lastSeen ?? '—'}
-                                    </Td>
-                                    <Td className="text-right">
-                                        <Button
-                                            size="sm"
-                                            variant="danger"
-                                            aria-label={tc('console.remove_value0_b597e5fb', {
-                                                value0: device.name,
-                                            })}
-                                            onClick={() => setRemoving(device)}
-                                        >
-                                            {tc('console.remove_c3812fc4')}
-                                        </Button>
-                                    </Td>
-                                </tr>
-                            ))
-                        )}
-                    </tbody>
-                </Table>
-            </div>
+                                        {tc('console.remove_c3812fc4')}
+                                    </Button>
+                                }
+                            />
+                        ))}
+                    </ul>
+                )}
+            </Panel>
 
             <Dialog
                 open={removing !== null}

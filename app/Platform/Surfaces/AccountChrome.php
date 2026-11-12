@@ -4,24 +4,32 @@ declare(strict_types=1);
 
 namespace App\Platform\Surfaces;
 
+use App\Http\Props\Shell\NavAreaProps;
 use App\Http\Props\Shell\NavPageProps;
 use App\Http\Props\Shell\ShellProps;
+use App\Platform\Console\NavPin;
 use App\Platform\Console\ShellPayload;
 use App\Platform\CurrentUser;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\OAuth\AppSignIns;
+use App\Platform\Shell\IdShell;
+use App\Platform\Theme;
+use Cbox\Console\Kit\Facades\Console;
 use Illuminate\Http\Request;
 
 /**
- * THE CHROME OF A PERSON'S OWN PAGES ON THE LOGIN HOST: no organization or environment
- * switcher, no ⌘K. The login host has no console to put around them.
+ * THE CHROME OF A PERSON'S OWN PAGES ON THE LOGIN HOST.
  *
- * The layout draws it with the console's own chrome (the rail, the top bar, the account
- * menu), holding only what a person needs here: where they came from ("Back to …"), their own
- * pages, and the account menu with language, theme, switching account and signing out.
- * Null everywhere else — the console and a tenant's host keep the chrome they have, the
- * tenant's host with its own "Back to …" ({@see tenantBack()}) — and null for a guest,
- * whose page is a door.
+ * The same `CboxShell` every Cbox app has ({@see shell()}): the rail with the person's own
+ * pages and the account menu at its foot, Switch app in the header, ⌘K. What the console's
+ * shell carries beyond that is left out, because the login host is not the console: no
+ * organization or environment switcher, no records search, no "+", no bell. Each of those
+ * acts in the console, and on this host its address would be a 404.
+ *
+ * Beside it, {@see toProps()}: where the person came from ("Back to …"), drawn over the
+ * page. Null everywhere else — the console and a tenant's host keep the chrome they
+ * have, the tenant's host with its own "Back to …" ({@see tenantBack()}) — and null for a
+ * guest, whose page is a door.
  *
  *  - BACK leads to the address the console or an app sent along (`?return_to=`), else to
  *    the page that linked here, both validated by {@see ReturnUrl}, else to the console.
@@ -107,27 +115,141 @@ final readonly class AccountChrome
         };
     }
 
+    /**
+     * The `shell` prop on the login host: console-kit's shell for this person, with the
+     * rail narrowed to their own pages. Null where {@see toProps()} is.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function shell(Request $request): ?array
+    {
+        if (! $this->applies($request) || $this->surfaces->kindOf($request) !== PathKind::Account) {
+            return null;
+        }
+
+        $area = $this->area();
+
+        if ($area === null) {
+            return null;
+        }
+
+        $shell = Console::shell()->build($request)->toArray();
+
+        $pages = array_map(static fn (NavPageProps $page): array => [
+            'key' => $page->route,
+            'label' => ConsoleLabels::navigation($page->label),
+            // The page is on this host: a path, so the visit stays inside the app.
+            'url' => route($page->route, [], false),
+            'href' => route($page->route, [], false),
+        ], $area->pages);
+        $active = array_values(array_filter($area->pages, static fn (NavPageProps $page): bool => $page->active))[0] ?? null;
+        $home = route('account', [], false);
+
+        $shell['app'] = [...self::part($shell, 'app'), 'homeUrl' => $home];
+        $shell['nav'] = array_filter([
+            'areas' => [[
+                'key' => $area->key,
+                'label' => ConsoleLabels::navigation($area->label),
+                'url' => $home,
+                'href' => $home,
+                'icon' => $area->icon,
+                'pages' => $pages,
+            ]],
+            'activeArea' => $area->key,
+            'activePage' => $active?->route,
+            'tabs' => [$area->key],
+        ], static fn (mixed $value): bool => $value !== null);
+        $shell['section'] = null;
+
+        if ($active !== null) {
+            $shell['page'] = ['title' => ConsoleLabels::navigation($active->label), 'route' => $active->route];
+        } else {
+            unset($shell['page']);
+        }
+
+        // No organization, project or environment: these pages are the person's own.
+        $shell['context'] = [...self::part($shell, 'context'), 'levels' => []];
+        // ⌘K goes to the person's own pages (the layout adds the preferences). The
+        // console's actions and its records search are the console's, on the app host.
+        $shell['palette'] = [
+            'actions' => array_map(static fn (array $page): array => [
+                'id' => 'account.'.$page['key'],
+                'label' => $page['label'],
+                'url' => $page['url'],
+                'icon' => 'user',
+            ], $pages),
+        ];
+        unset($shell['create'], $shell['createForms']);
+        // The account menu at the rail's foot. Paths on this host: profile is the page
+        // these are, switching account is the login host's own chooser, and signing out
+        // ends the session this host holds, the person's, never the console's.
+        $shell['account'] = [
+            ...self::part($shell, 'account'),
+            'profileUrl' => $home,
+            'switchAccountUrl' => route('accounts', [], false),
+            'signOutUrl' => route('logout', [], false),
+        ];
+        $email = $this->user->email();
+
+        if (is_string($email) && $email !== '') {
+            $shell['person'] = [...self::part($shell, 'person'), 'email' => $email];
+        }
+
+        $shell['notifications'] = ['enabled' => false];
+        $shell['apps'] = [...self::part($shell, 'apps'), 'productsUrl' => 'https://cbox.dk'];
+        $shell['preferences'] = array_filter([
+            ...self::part($shell, 'preferences'),
+            'theme' => Theme::preference() ?? 'system',
+            'railPinned' => NavPin::pinned($request),
+            'regionalFormat' => IdShell::regionalFormat($request->cookie(IdShell::FORMAT_COOKIE)),
+            'timeZone' => IdShell::timeZone($request->cookie(IdShell::TIME_ZONE_COOKIE)),
+        ], static fn (mixed $value): bool => $value !== null);
+
+        return $shell;
+    }
+
+    /**
+     * One part of the kit's shell, to build on.
+     *
+     * @param  array<string, mixed>  $shell
+     * @return array<array-key, mixed>
+     */
+    private static function part(array $shell, string $key): array
+    {
+        return is_array($shell[$key] ?? null) ? $shell[$key] : [];
+    }
+
     /** @return list<array{route: string, label: string, href: string, active: bool}> */
     private function pages(): array
+    {
+        return array_map(static fn (NavPageProps $page): array => [
+            'route' => $page->route,
+            'label' => ConsoleLabels::navigation($page->label),
+            // The page is on this host: a path, so the visit stays inside the app.
+            'href' => route($page->route, [], false),
+            'active' => $page->active,
+        ], $this->area()->pages ?? []);
+    }
+
+    /**
+     * The console rail's own "account" area, decided by the same code ({@see ShellPayload}):
+     * a module's personal page, a feature that is switched off and a page this deployment
+     * does not offer are answered once, there.
+     */
+    private function area(): ?NavAreaProps
     {
         $shell = app(ShellPayload::class)->build();
 
         if (! $shell instanceof ShellProps) {
-            return [];
+            return null;
         }
 
         foreach ($shell->areas as $area) {
             if ($area->key === self::AREA) {
-                return array_map(static fn (NavPageProps $page): array => [
-                    'route' => $page->route,
-                    'label' => ConsoleLabels::navigation($page->label),
-                    // The page is on this host: a path, so the visit stays inside the app.
-                    'href' => route($page->route, [], false),
-                    'active' => $page->active,
-                ], $area->pages);
+                return $area;
             }
         }
 
-        return [];
+        return null;
     }
 }

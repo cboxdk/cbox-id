@@ -165,7 +165,8 @@ it('refuses a wrong password in the dialog and runs nothing', function (): void 
 
     $page = visit('/settings');
 
-    $page->click('button[aria-label^="Disconnect Google"]')
+    $page->click('button[aria-label^="More actions for Google"]')
+        ->click('[role="menuitem"]:has-text("Disconnect")')
         ->click('.cbx-dialog button:has-text("Disconnect")');
 
     $page->assertSee("Confirm it's you")
@@ -188,7 +189,8 @@ it('replays a gated write once the password is in, and stays on the page', funct
 
     $page = visit('/settings');
 
-    $page->click('button[aria-label^="Disconnect Google"]')
+    $page->click('button[aria-label^="More actions for Google"]')
+        ->click('[role="menuitem"]:has-text("Disconnect")')
         ->click('.cbx-dialog button:has-text("Disconnect")');
 
     $page->assertSee("Confirm it's you")

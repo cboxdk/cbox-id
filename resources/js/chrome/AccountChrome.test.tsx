@@ -1,7 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { accountAreas } from '@/layouts/AccountLayout';
 import { AccountMenu } from './AccountMenu';
 import { BackLink } from './BackLink';
 
@@ -48,28 +47,6 @@ describe('BackLink', () => {
         const link = screen.getByRole('link', { name: /Billing/ });
 
         expect(link).toHaveAttribute('href', 'https://billing.example/invoices');
-    });
-});
-
-describe('accountAreas', () => {
-    it("makes each of the person's pages a rail entry, with its own icon", () => {
-        const areas = accountAreas([
-            { route: 'account', label: 'Security', href: '/settings', active: true },
-            {
-                route: 'devices.mine',
-                label: 'Trusted devices',
-                href: '/settings/devices',
-                active: false,
-            },
-            { route: 'module.page', label: 'Something new', href: '/settings/new', active: false },
-        ]);
-
-        expect(areas.map((area) => [area.key, area.icon, area.active])).toEqual([
-            ['account', 'shield', true],
-            ['devices.mine', 'device', false],
-            ['module.page', 'user', false],
-        ]);
-        expect(areas.every((area) => area.pages.length === 0)).toBe(true);
     });
 });
 

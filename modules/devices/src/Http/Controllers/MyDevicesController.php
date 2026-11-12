@@ -85,7 +85,8 @@ final readonly class MyDevicesController extends ConsoleController
                     'platform' => $device->platform->label(),
                     'status' => $device->status->label(),
                     'active' => $device->status === DeviceStatus::Active,
-                    'lastSeen' => $device->last_seen_at?->diffForHumans(),
+                    // ISO 8601: the page says "2 hours ago" in the reader's own language.
+                    'lastSeen' => $device->last_seen_at?->toIso8601String(),
                     'removeHref' => route('devices.mine.destroy', $device->id),
                 ])->values()->all(),
         ]);

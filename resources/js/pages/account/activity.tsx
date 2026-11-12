@@ -2,6 +2,7 @@ import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import AccountLayout from '@/layouts/AccountLayout';
+import { absoluteTime, relativeTime } from '@/lib/time';
 import type { HelpContent, PageProps } from '@/types';
 import { Button, ConfirmDelete, Dialog, EmptyState, PageHeader, Panel, Pill } from '@/ui';
 
@@ -66,7 +67,12 @@ export default function Activity({
 
     const { t: consoleText } = useConsoleTranslator();
     const { rich: consoleRich } = useConsoleTranslator();
-    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleUiText, locale } = useConsoleTranslator();
+    // In the reader's language, regional format and time zone, computed in the browser so
+    // "2 minutes ago" stays true while the page is open.
+    const relative = (iso: string | null, fallback: string | null) =>
+        iso !== null ? relativeTime(iso, locale) : fallback;
+    const exact = (iso: string | null) => (iso !== null ? absoluteTime(iso, locale) : undefined);
     const [signingOut, setSigningOut] = useState<SessionRow | null>(null);
     const [signingOutOthers, setSigningOutOthers] = useState(false);
     const [withdrawing, setWithdrawing] = useState<ApplicationRow | null>(null);
@@ -132,7 +138,6 @@ export default function Activity({
                                 </div>
                                 <Button
                                     size="sm"
-                                    variant="danger"
                                     className="shrink-0"
                                     aria-label={session.revokeLabel}
                                     onClick={() => setSigningOut(session)}
@@ -140,7 +145,7 @@ export default function Activity({
                                     {consoleUiText('console.sign_out_48f0d3d3')}
                                 </Button>
                             </div>
-                            <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-4 text-sm">
+                            <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 xl:grid-cols-4 text-sm">
                                 <div className="min-w-0">
                                     <dt
                                         className="text-xs"
@@ -182,9 +187,9 @@ export default function Activity({
                                     <dd className="mt-1">
                                         <time
                                             dateTime={session.signedInIso ?? undefined}
-                                            title={session.signedInIso ?? undefined}
+                                            title={exact(session.signedInIso)}
                                         >
-                                            {session.signedIn ??
+                                            {relative(session.signedInIso, session.signedIn) ??
                                                 consoleRuntimeText('console.not_recorded_b37c7879')}
                                         </time>
                                     </dd>
@@ -199,9 +204,9 @@ export default function Activity({
                                     <dd className="mt-1">
                                         <time
                                             dateTime={session.lastActiveIso ?? undefined}
-                                            title={session.lastActiveIso ?? undefined}
+                                            title={exact(session.lastActiveIso)}
                                         >
-                                            {session.lastActive ??
+                                            {relative(session.lastActiveIso, session.lastActive) ??
                                                 consoleRuntimeText('console.not_recorded_b37c7879')}
                                         </time>
                                     </dd>
@@ -359,9 +364,9 @@ export default function Activity({
                                 className="text-xs shrink-0"
                                 style={{ color: 'var(--faint)' }}
                                 dateTime={entry.atIso ?? undefined}
-                                title={entry.atExact ?? undefined}
+                                title={exact(entry.atIso)}
                             >
-                                {entry.at ?? '—'}
+                                {relative(entry.atIso, entry.at) ?? '—'}
                             </time>
                         </div>
                     ))
