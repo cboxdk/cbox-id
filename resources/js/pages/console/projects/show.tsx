@@ -1,6 +1,6 @@
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { store as storeEnvironment } from '@routes/orgs/projects/environments';
-import { router, useForm } from '@inertiajs/react';
+import { router, useForm, usePage } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import { UnreachableConsole } from './UnreachableConsole';
 import type { PageProps } from '@/types';
@@ -17,7 +17,7 @@ import {
     Select,
 } from '@/ui';
 import { useState } from 'react';
-import { reactivate, rename, suspend } from '@routes/orgs/projects';
+import { destroy, reactivate, rename, suspend } from '@routes/orgs/projects';
 
 interface EnvironmentRow {
     id: string;
@@ -37,6 +37,8 @@ type Props = PageProps<{
         status: string;
         suspended: boolean;
         limit: number;
+        /** No environment is left in it, counted over all of them, so it may be deleted. */
+        deletable: boolean;
     };
     environments: EnvironmentRow[];
     canManage: boolean;
@@ -67,6 +69,10 @@ export default function ProjectDetail({
     const { rich: consoleRich } = useConsoleTranslator();
     const { t: consoleT } = useConsoleTranslator();
     const [suspending, setSuspending] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    // A refused delete (a plan that still renews, an environment added meanwhile) comes
+    // back on the page-level error, said beside the button that asked.
+    const refusal = usePage().props.errors.form;
 
     const environmentForm = useForm({ name: '', type: 'production' });
     const nameForm = useForm({ name: project.name });
@@ -378,6 +384,50 @@ export default function ProjectDetail({
                                 />
                             </>
                         )}
+                    </div>
+
+                    <div
+                        className="mt-5 pt-5 flex items-center justify-between gap-4"
+                        style={{ borderTop: '1px solid var(--border)' }}
+                    >
+                        <div>
+                            <p className="text-sm font-medium">
+                                {consoleText('console.delete_project')}
+                            </p>
+                            <p className="mt-1 text-xs" style={{ color: 'var(--faint)' }}>
+                                {project.deletable
+                                    ? consoleText('console.delete_project_description')
+                                    : consoleText('console.delete_project_blocked')}
+                            </p>
+                            {typeof refusal === 'string' && (
+                                <p role="alert" className="field-error">
+                                    {refusal}
+                                </p>
+                            )}
+                        </div>
+
+                        <Button
+                            size="sm"
+                            variant="danger"
+                            className="shrink-0"
+                            disabled={!project.deletable}
+                            onClick={() => setDeleting(true)}
+                        >
+                            {consoleT('console.delete_e2d0a549')}
+                        </Button>
+
+                        <ConfirmDelete
+                            open={deleting}
+                            onOpenChange={setDeleting}
+                            name={project.name}
+                            consequence={consoleUiText('console.delete_project_consequence')}
+                            onConfirm={() => {
+                                setDeleting(false);
+                                router.delete(destroy.url({ project: project.id }), {
+                                    preserveScroll: true,
+                                });
+                            }}
+                        />
                     </div>
                 </Panel>
             )}

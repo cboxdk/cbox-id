@@ -59,6 +59,7 @@ final readonly class CustomerProfile
         'organization.project_renamed' => 'Project renamed',
         'organization.project_suspended' => 'Project suspended',
         'organization.project_reactivated' => 'Project reactivated',
+        'organization.project_deleted' => 'Project deleted',
         'organization.environment_created' => 'Environment created',
         'organization.custom_domain_verified' => 'Custom domain verified',
         'organization.custom_domain_removed' => 'Custom domain removed',

@@ -2168,6 +2168,59 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
   '/workspace/projects/{id}':
+    delete:
+      tags:
+        - Projects
+      summary: 'Delete a project that holds no environments. One that still has environments, or a plan that still renews, is refused.'
+      description: 'Requires scope `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. Danger: destructive.'
+      operationId: projects_delete
+      x-action: projects.delete
+      x-scope: 'id:projects:write'
+      x-scope-aliases:
+        - 'projects:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          name: Cbox-Organization
+          in: header
+          required: false
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+        503:
+          description: 'Product admission could not be verified. The request is refused; retry later.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - Projects

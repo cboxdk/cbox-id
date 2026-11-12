@@ -341,7 +341,7 @@ lists each old name beside its new one.
 | Scope | Lets the key | Role must be able to |
 |---|---|---|
 | `id:organization:read` | read the organization, its projects and environments | — |
-| `id:projects:write` | create, rename, suspend and reactivate projects | manage environments |
+| `id:projects:write` | create, rename, suspend, reactivate and delete projects (`DELETE /projects/{id}` takes a project with no environments) | manage environments |
 | `id:environments:write` | create environments, optionally with a first key, and serve them on a custom domain (`/environments/{id}/domain`) | manage environments |
 | `id:members:read` | list members and pending invitations | read members |
 | `id:members:write` | invite, re-role, scope and remove members | manage members |

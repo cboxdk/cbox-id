@@ -1063,6 +1063,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
             ->name('projects.environments.store');
         Route::post('/projects/{project}/suspend', [ProjectController::class, 'suspend'])->name('projects.suspend');
         Route::post('/projects/{project}/reactivate', [ProjectController::class, 'reactivate'])->name('projects.reactivate');
+        Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
 
         Route::get('/settings', [AccountSettingsController::class, 'edit'])->name('settings');
         Route::patch('/settings', [AccountSettingsController::class, 'update'])->name('settings.update');

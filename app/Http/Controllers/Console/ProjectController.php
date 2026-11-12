@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Console;
 
 use App\Actions\OrgPlane\Environments\CreateEnvironment;
 use App\Actions\OrgPlane\Projects\CreateProject;
+use App\Actions\OrgPlane\Projects\DeleteProject;
 use App\Actions\OrgPlane\Projects\ReactivateProject;
 use App\Actions\OrgPlane\Projects\RenameProject;
 use App\Actions\OrgPlane\Projects\ResendVerification;
@@ -239,6 +240,9 @@ final readonly class ProjectController extends ConsoleController
                 'status' => $model->status->value,
                 'suspended' => $model->status === ProjectStatus::Suspended,
                 'limit' => app(ProductBilling::class)->projectLimit($model),
+                // Counted over EVERY environment, not the ones this member reaches: the
+                // delete rule is the project's, and a hidden environment still blocks it.
+                'deletable' => ! Environment::query()->where('project_id', $model->id)->exists(),
             ],
             'environments' => $query->get()->map(fn (Environment $environment): array => [
                 'id' => $environment->id,
@@ -316,6 +320,24 @@ final readonly class ProjectController extends ConsoleController
         $result = $this->act(ReactivateProject::class, ['id' => $this->owned($project)->id]);
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.project_reactivated_971073d7'));
+    }
+
+    /**
+     * Delete a project that holds no environments.
+     *
+     * The page it was asked from is gone with the project, so a success lands on the list;
+     * a refusal (it still has environments, or a plan that renews) goes back to the page
+     * with the reason.
+     */
+    public function destroy(string $project, Memberships $members): RedirectResponse
+    {
+        $this->assertMayManage($members);
+
+        $result = $this->act(DeleteProject::class, ['id' => $this->owned($project)->id]);
+
+        return $result instanceof RedirectResponse
+            ? $result
+            : to_route('orgs.projects')->with('status', __('console.project_deleted'));
     }
 
     /**
