@@ -88,6 +88,33 @@ final readonly class Appearance
     }
 
     /**
+     * Whether this is the default `cbox` preset exactly as shipped — no colour, corner or
+     * typeface changed. Such a theme says nothing the stylesheet does not already say, and
+     * says it worse: the preset is hex, the design system is oklch. So it emits no override
+     * ({@see BrandContext::css()}) and the page paints with the real tokens in both modes.
+     *
+     * Also true for the preset as earlier releases shipped it, which is what an environment
+     * that saved its Branding page without changing anything has stored.
+     */
+    public function isPlatformDefault(): bool
+    {
+        if ($this->preset !== ThemePresets::default()) {
+            return false;
+        }
+
+        foreach ([ThemePresets::get(ThemePresets::default()), ThemePresets::legacyDefault()] as $preset) {
+            if ($this->radius === $preset->radius
+                && $this->font === $preset->font
+                && $this->light->toArray() === $preset->light->toArray()
+                && $this->dark->toArray() === $preset->dark->toArray()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @param  array<mixed>  $raw
      */
     public static function fromArray(array $raw): self

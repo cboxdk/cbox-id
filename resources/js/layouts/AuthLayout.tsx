@@ -69,7 +69,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
                         <div
                             className="mt-10 flex flex-wrap items-center justify-between gap-3 text-xs"
-                            style={{ color: 'var(--faint)' }}
+                            style={{ color: 'var(--muted-foreground)' }}
                         >
                             <span className="inline-flex items-center gap-1.5">
                                 <Icon name="shield" className="w-3.5 h-3.5" />{' '}
@@ -83,10 +83,9 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
                                     type="button"
                                     onClick={() => toggleTheme()}
                                     aria-label={t('hosted.layout.toggle_theme')}
-                                    className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 transition hover:opacity-80"
-                                    style={{ border: '1px solid var(--border)' }}
+                                    className="auth-footer-control"
                                 >
-                                    <Icon name="sun" className="w-3.5 h-3.5" />{' '}
+                                    <Icon name="sun" className="w-3.5 h-3.5" />
                                     {t('hosted.layout.theme')}
                                 </button>
                             </span>

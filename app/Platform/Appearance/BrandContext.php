@@ -96,7 +96,9 @@ final class BrandContext
     {
         $appearance = $this->appearance();
 
-        return $appearance !== null ? AppearanceCss::render($appearance) : null;
+        // The untouched default preset is the design system itself: emit nothing, so the
+        // page paints with app.css's own tokens instead of a hex approximation of them.
+        return $appearance !== null && ! $appearance->isPlatformDefault() ? AppearanceCss::render($appearance) : null;
     }
 
     /**

@@ -118,7 +118,10 @@ served by Cbox ID itself at `/brand-assets/…`. A logo used to be an https URL 
 and every visitor's browser then reported to whoever hosted it — so a remote logo URL saved
 before is no longer drawn, and the Branding page asks for an upload until one is made.
 Every typeface on offer (System, Inter, Plus Jakarta Sans, Nunito, Source Serif) is
-self-hosted for the same reason: no hosted page loads anything from another origin.
+self-hosted for the same reason: no hosted page loads anything from another origin. The
+default, **System + Plus Jakarta Sans**, is the Cbox pairing: the system face for text and
+Plus Jakarta Sans for headings. A theme left on the default `cbox` preset without changes
+sends no colours of its own, so the page is drawn in the Cbox design system's tokens.
 
 ### Joining by invitation
 

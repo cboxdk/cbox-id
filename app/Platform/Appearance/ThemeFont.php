@@ -30,17 +30,23 @@ namespace App\Platform\Appearance;
  */
 enum ThemeFont: string
 {
+    /**
+     * THE CBOX PAIRING, and the default preset's: system-ui for the body and Plus Jakarta
+     * Sans for headings only — what the design system specifies and what the console
+     * renders. Every other choice is one face for the whole page.
+     */
+    case Cbox = 'cbox';
     case System = 'system';
     case Inter = 'inter';
     case Geometric = 'geometric';
     case Rounded = 'rounded';
     case Serif = 'serif';
 
-    /** The CSS font-family stack this choice maps to — the family first, then fallbacks. */
+    /** The CSS font-family stack for BODY text — the family first, then fallbacks. */
     public function stack(): string
     {
         return match ($this) {
-            self::System => "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+            self::Cbox, self::System => "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
             self::Inter => "'Inter', ui-sans-serif, system-ui, sans-serif",
             self::Geometric => "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif",
             self::Rounded => "'Nunito', ui-rounded, ui-sans-serif, system-ui, sans-serif",
@@ -48,10 +54,20 @@ enum ThemeFont: string
         };
     }
 
+    /**
+     * The stack for HEADINGS (`--font-display`). The same face as the body for every
+     * choice except the Cbox pairing, whose headings are Plus Jakarta Sans.
+     */
+    public function displayStack(): string
+    {
+        return $this === self::Cbox ? self::Geometric->stack() : $this->stack();
+    }
+
     /** A short human label for the editor: the face's own name, which is what people compare. */
     public function label(): string
     {
         return match ($this) {
+            self::Cbox => 'System + Plus Jakarta Sans',
             self::System => 'System',
             self::Inter => 'Inter',
             self::Geometric => 'Plus Jakarta Sans',

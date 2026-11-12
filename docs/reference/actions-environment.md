@@ -1039,7 +1039,7 @@ Set the hosted sign-in theme (preset, colours, corners, type, uploaded logo and 
 | `theme` | object | yes | The theme. Both modes must be readable: text needs 4.5:1 against the background, muted text 3:1. |
 | `theme.preset` | string | no | A preset id: cbox, midnight, minimal, warm, contrast. At most 64 characters. |
 | `theme.radius` | string | no | Corner radius: 0rem, 0.25rem, 0.375rem, 0.5rem, 0.75rem, 1rem. At most 32 characters. |
-| `theme.font` | string | no | Type family: system, inter, geometric, rounded, serif. At most 32 characters. |
+| `theme.font` | string | no | Type family: cbox, system, inter, geometric, rounded, serif. At most 32 characters. |
 | `theme.light` | object | no | Colours as #rrggbb. One left out takes the preset's. |
 | `theme.light.primary` | string | no | At most 32 characters. |
 | `theme.light.background` | string | no | At most 32 characters. |

@@ -45,7 +45,7 @@ final class AppearanceCss
             // stayed in the platform's face — the typeface control looked broken because,
             // for the most visible text on the page, it was.
             .'--font-sans:'.$appearance->fontStack().';'
-            .'--font-display:'.$appearance->fontStack().';';
+            .'--font-display:'.$appearance->font->displayStack().';';
 
         $css = ":root{{$root}}"
             ."@media(prefers-color-scheme:dark){:root:not([data-theme='light']){{$dark}}}"

@@ -282,6 +282,60 @@ it('leaves the platform default when an org has no custom appearance', function 
         ->assertDontSee('cbox-appearance');
 });
 
+it('treats the untouched cbox preset as the platform default, then and now', function (): void {
+    expect(Appearance::fromPreset('cbox')->isPlatformDefault())->toBeTrue();
+
+    // What an environment that saved its Branding page unchanged under an earlier release
+    // has stored: the old hex guesses and Plus Jakarta Sans for the body.
+    $legacy = Appearance::fromArray([
+        'preset' => 'cbox', 'radius' => '0.75rem', 'font' => 'geometric',
+        'light' => ['primary' => '#2f62ea', 'background' => '#ffffff', 'foreground' => '#1a1714', 'muted' => '#6b6459'],
+        'dark' => ['primary' => '#7ba0ff', 'background' => '#141210', 'foreground' => '#f2ece3', 'muted' => '#9a9082'],
+    ]);
+    expect($legacy->isPlatformDefault())->toBeTrue();
+
+    // Any one change is a customer's choice, and keeps its override.
+    $recoloured = Appearance::fromPreset('cbox')->toArray();
+    $recoloured['light']['primary'] = '#0055ff';
+    $refont = Appearance::fromPreset('cbox')->toArray();
+    $refont['font'] = 'geometric';
+    $reradius = Appearance::fromPreset('cbox')->toArray();
+    $reradius['radius'] = '0rem';
+
+    foreach ([$recoloured, $refont, $reradius] as $changed) {
+        expect(Appearance::fromArray($changed)->isPlatformDefault())->toBeFalse();
+    }
+
+    expect(Appearance::fromPreset('midnight')->isPlatformDefault())->toBeFalse()
+        ->and(Appearance::fromSettings(['brand_color' => '#ab12cd'])->isPlatformDefault())->toBeFalse();
+});
+
+it('draws the cbox pairing: system body, Plus Jakarta Sans headings', function (): void {
+    $css = (string) AppearanceCss::render(Appearance::fromArray([...Appearance::fromPreset('cbox')->toArray(), 'radius' => '0.5rem']));
+
+    expect($css)->toContain('--font-sans:'.ThemeFont::System->stack().';')
+        ->toContain("--font-display:'Plus Jakarta Sans'");
+    // Every other choice is one face for the whole page.
+    expect(ThemeFont::Serif->displayStack())->toBe(ThemeFont::Serif->stack());
+});
+
+it('emits no override for an untouched cbox preset, so the page paints with the design tokens', function (): void {
+    $org = app(Organizations::class)->create(new NewOrganization('Default look', 'default-look'));
+    app(Organizations::class)->updateSettings($org->id, ['appearance' => Appearance::fromPreset('cbox')->toArray()]);
+
+    $this->get(route('login.branded', $org->slug))
+        ->assertOk()
+        ->assertDontSee('cbox-appearance');
+
+    $changed = Appearance::fromPreset('cbox')->toArray();
+    $changed['dark']['primary'] = '#22aaff';
+    app(Organizations::class)->updateSettings($org->id, ['appearance' => $changed]);
+
+    $this->get(route('login.branded', $org->slug))
+        ->assertOk()
+        ->assertSee('cbox-appearance');
+});
+
 // ─────────────────────────── feature: environment-level theme ───────────────────────────
 
 if (! function_exists('appearanceEnvSetup')) {

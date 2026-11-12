@@ -946,11 +946,41 @@
         transform: translateY(0);
     }
 
-    /* ── Auth surface — calm accent glow, refined split hero. */
+    /* ── Auth surface — the shell's own main canvas (references/main-canvas.md), the
+     * same blue wash at the same geometry as every console scroll column, in both themes.
+     * It reads --accent-soft and --canvas, so a customer's theme re-tints it too. */
     .auth-shell {
         background:
-            radial-gradient(120% 80% at 50% -10%, var(--accent-soft) 0%, transparent 60%),
-            var(--canvas);
+            radial-gradient(ellipse at 30% 0, var(--accent-soft), transparent 48%), var(--canvas);
+    }
+    /* The footer's small controls (language, theme): one height, the control stroke and
+     * the control radius, so they read as a pair of Cbox controls rather than an OS select
+     * beside a hand-drawn button. Focus is the global :focus-visible ring. */
+    .auth-footer-control {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 28px;
+        padding: 0 10px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--control-border);
+        background: var(--card);
+        color: var(--muted-foreground);
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1;
+        cursor: pointer;
+        transition:
+            border-color var(--dur-hover) var(--ease),
+            color var(--dur-hover) var(--ease);
+    }
+    .auth-footer-control:hover:not(:disabled) {
+        border-color: var(--border-strong);
+        color: var(--foreground);
+    }
+    .auth-footer-control:disabled {
+        opacity: 0.6;
+        cursor: progress;
     }
     /* Branded hero — a consistent DEEP blue in both light and dark, always with
      * near-white text (never tied to --primary, which lightens in dark mode). */
@@ -970,17 +1000,8 @@
             );
         color: oklch(0.985 0.005 250);
     }
-    .auth-hero::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        z-index: -1;
-        background-image: radial-gradient(currentColor 1px, transparent 1.4px);
-        background-size: 22px 22px;
-        opacity: 0.09;
-        -webkit-mask-image: radial-gradient(80% 80% at 70% 30%, #000 0%, transparent 75%);
-        mask-image: radial-gradient(80% 80% at 70% 30%, #000 0%, transparent 75%);
-    }
+    /* No dot grid: the design system keeps patterns and textures off product surfaces
+     * (grain exists only on cbox.dk). The panel is the gradient alone. */
     .hero-feature {
         display: flex;
         align-items: center;
