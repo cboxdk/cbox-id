@@ -37,7 +37,7 @@ final class AppearanceConfig implements FrontendConfigContributor
     {
         $appearance = $this->forCurrentEnvironment();
 
-        if ($appearance === null) {
+        if ($appearance === null || $appearance->isPlatformDefault()) {
             // No override: the platform default applies, and saying nothing is how the
             // SDK knows to use its own. An empty object here would read as "themed, with
             // no colours", which renders a blank sign-in box.

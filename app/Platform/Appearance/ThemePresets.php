@@ -22,11 +22,15 @@ final class ThemePresets
     public static function all(): array
     {
         return self::$cache ??= [
+            // The Cbox design system's own tokens (app.css), as the nearest sRGB hex: the
+            // editor works in hex, the page does not. A theme left on this preset untouched
+            // emits NO override at all ({@see Appearance::isPlatformDefault()}), so the page
+            // paints with the real oklch tokens rather than this approximation of them.
             'cbox' => new ThemePreset(
-                'cbox', 'Cbox', 'The signature look — a confident blue on warm neutrals.',
-                ThemeRadius::Large, ThemeFont::Geometric,
-                new ThemeMode('#2f62ea', '#ffffff', '#1a1714', '#6b6459'),
-                new ThemeMode('#7ba0ff', '#141210', '#f2ece3', '#9a9082'),
+                'cbox', 'Cbox', 'The Cbox design system — deep blue on warm neutrals.',
+                ThemeRadius::Large, ThemeFont::Cbox,
+                new ThemeMode('#0850ab', '#fcfaf6', '#1f1a13', '#5f574c'),
+                new ThemeMode('#418dfa', '#15120f', '#f5f3ef', '#a39e93'),
             ),
             'midnight' => new ThemePreset(
                 'midnight', 'Midnight', 'Deep indigo, built for the dark.',
@@ -63,6 +67,20 @@ final class ThemePresets
     public static function has(string $id): bool
     {
         return array_key_exists($id, self::all());
+    }
+
+    /**
+     * Earlier releases' `cbox` preset — hex guesses at the design system, Plus Jakarta Sans
+     * for the body. An appearance saved untouched from it is still the platform default.
+     */
+    public static function legacyDefault(): ThemePreset
+    {
+        return new ThemePreset(
+            'cbox', 'Cbox', '',
+            ThemeRadius::Large, ThemeFont::Geometric,
+            new ThemeMode('#2f62ea', '#ffffff', '#1a1714', '#6b6459'),
+            new ThemeMode('#7ba0ff', '#141210', '#f2ece3', '#9a9082'),
+        );
     }
 
     public static function default(): string

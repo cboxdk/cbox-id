@@ -53,6 +53,7 @@ export const HEX = /^#[0-9a-fA-F]{6}$/;
 
 /** The twin of `ThemeFont::label()` — the face's own name, which is what people compare. */
 const FONT_LABELS: Record<string, string> = {
+    cbox: 'System + Plus Jakarta Sans',
     system: 'System',
     inter: 'Inter',
     geometric: 'Plus Jakarta Sans',
@@ -79,6 +80,14 @@ export function radiusLabel(radius: string): string {
 
 export function fontStack(fonts: FontStacks, font: string): string {
     return fonts[font] ?? fonts.system ?? 'system-ui, sans-serif';
+}
+
+/**
+ * The twin of `ThemeFont::displayStack()`: headings share the body's face for every
+ * choice except the Cbox pairing, whose headings are Plus Jakarta Sans.
+ */
+export function displayFontStack(fonts: FontStacks, font: string): string {
+    return fontStack(fonts, font === 'cbox' ? 'geometric' : font);
 }
 
 /**
@@ -261,7 +270,7 @@ export function themeVars(
          * the preview root also sets `font-family: var(--font-sans)`; see `ThemeEditor`.
          */
         '--font-sans': fontStack(fonts, theme.font),
-        '--font-display': fontStack(fonts, theme.font),
+        '--font-display': displayFontStack(fonts, theme.font),
     };
 }
 

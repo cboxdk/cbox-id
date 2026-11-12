@@ -5198,7 +5198,7 @@ paths:
                       maxLength: 32
                     font:
                       type: string
-                      description: 'Type family: system, inter, geometric, rounded, serif.'
+                      description: 'Type family: cbox, system, inter, geometric, rounded, serif.'
                       maxLength: 32
                     light:
                       type: object

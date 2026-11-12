@@ -18,6 +18,7 @@ use App\Platform\Appearance\BrandImage;
 use App\Platform\Appearance\BrandImages;
 use App\Platform\Appearance\BrandImageUpload;
 use App\Platform\Appearance\Color;
+use App\Platform\Appearance\ThemePresets;
 use App\Platform\Locale\HostedLocale;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Identity\NeverBreachedCheck;
@@ -253,7 +254,7 @@ it('falls back to the deployment’s own name, colour, monogram and sender witho
     $html = (string) $email->getHtmlBody();
 
     expect($html)->toContain('Northwind Identity')
-        ->and($html)->toContain('#2f62ea')
+        ->and($html)->toContain(ThemePresets::get(ThemePresets::default())->light->primary)
         ->and($html)->not->toContain('<img')
         // The monogram: the brand's initial on the brand's colour, hidden from a screen
         // reader because the name is written out beside it.
