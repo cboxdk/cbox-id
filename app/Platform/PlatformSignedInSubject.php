@@ -28,6 +28,7 @@ final class PlatformSignedInSubject implements SignedInSubject
     public function __construct(
         private readonly CurrentUser $me,
         private readonly Impersonation $impersonation,
+        private readonly BrowserSession $browser,
     ) {}
 
     public function id(): ?string
@@ -46,7 +47,9 @@ final class PlatformSignedInSubject implements SignedInSubject
             return null;
         }
 
-        $id = $this->me->id();
+        // The person whose session this browser holds. CurrentUser when the authentication
+        // middleware ran; the session itself where it does not (`/oauth/logout`).
+        $id = $this->me->id() !== '' ? $this->me->id() : (string) $this->browser->current()?->user_id;
 
         // `CurrentUser::id()` answers '' rather than null for "nobody", and an empty
         // string reaching `revokeAllForUser()` is a query with no predicate.

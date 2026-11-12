@@ -16,8 +16,8 @@ use Cbox\Id\Identity\Contracts\SignedInSession;
  * (OIDC Back-Channel Logout never fired). Answering with the session the auth middleware
  * resolved for this request lets the package end it properly.
  *
- * From {@see CurrentUser}, which is populated from the server-side session this browser
- * has already proven, never from a request parameter.
+ * From {@see BrowserSession}: the server-side session this browser has already proven,
+ * never a request parameter. Not from CurrentUser alone, which the logout route never fills.
  *
  * WHILE IMPERSONATING it answers the impersonation session, deliberately — unlike
  * {@see PlatformSignedInSubject}, which answers nobody. That one's caller ends EVERY
@@ -27,11 +27,11 @@ use Cbox\Id\Identity\Contracts\SignedInSession;
  */
 final class PlatformSignedInSession implements SignedInSession
 {
-    public function __construct(private readonly CurrentUser $me) {}
+    public function __construct(private readonly BrowserSession $browser) {}
 
     public function id(): ?string
     {
-        $id = $this->me->session()?->id;
+        $id = $this->browser->current()?->id;
 
         return is_string($id) && $id !== '' ? $id : null;
     }
