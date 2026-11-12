@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Actions\OrgPlane\Environments\CreateEnvironment;
+use App\Actions\OrgPlane\Environments\DeleteEnvironment;
 use App\Actions\OrgPlane\Projects\CreateProject;
 use App\Actions\OrgPlane\Projects\DeleteProject;
 use App\Actions\OrgPlane\Projects\ReactivateProject;
@@ -19,6 +20,7 @@ use App\Platform\Actions\ActionRefused;
 use App\Platform\Billing\ProductBilling;
 use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\CurrentUser;
+use App\Platform\Environments\EnvironmentErasure;
 use App\Platform\Environments\TenantBaseDomain;
 use App\Platform\Help\DocsLinks;
 use App\Platform\Help\HelpTopic;
@@ -33,6 +35,7 @@ use Cbox\Id\Platform\Enums\ProjectStatus;
 use Cbox\Id\Platform\Models\Project;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Response;
 
@@ -231,6 +234,12 @@ final readonly class ProjectController extends ConsoleController
         }
 
         $baseDomain = $this->baseDomain();
+        $environments = $query->get();
+        $manages = ! $scoped && $this->mayManage($members);
+        $erasure = app(EnvironmentErasure::class);
+        // What the delete confirmation says goes with each environment. Counted only for
+        // somebody who is offered the button.
+        $contents = $manages ? $erasure->contentsOf(array_values($environments->modelKeys())) : [];
 
         return $this->page('console/projects/show', $model->name, [
             'project' => [
@@ -244,7 +253,7 @@ final readonly class ProjectController extends ConsoleController
                 // delete rule is the project's, and a hidden environment still blocks it.
                 'deletable' => ! Environment::query()->where('project_id', $model->id)->exists(),
             ],
-            'environments' => $query->get()->map(fn (Environment $environment): array => [
+            'environments' => $environments->map(fn (Environment $environment): array => [
                 'id' => $environment->id,
                 'name' => $environment->name,
                 'sandbox' => $environment->isSandbox(),
@@ -253,9 +262,14 @@ final readonly class ProjectController extends ConsoleController
                 // to a colleague — not a route on this console.
                 'url' => 'https://'.($environment->domain ?? $environment->slug.'.'.$baseDomain),
                 'openHref' => app(EnvironmentConsolePath::class)->route($environment->id),
+                // Null where it is not offered: to somebody who may not manage, and for an
+                // environment the platform never deletes.
+                'delete' => $manages && $erasure->protection($environment) === null
+                    ? ($contents[$environment->id] ?? ['people' => 0, 'apps' => 0, 'organizations' => 0])
+                    : null,
             ])->values()->all(),
             // A management surface requires the capability AND full access.
-            'canManage' => ! $scoped && $this->mayManage($members),
+            'canManage' => $manages,
             'scoped' => $scoped,
             'billingHref' => config('billing.enabled') === true && $this->scope->capabilities()->canReadBilling()
                 ? route('orgs.settings.billing', ['organization' => $model->organization_id])
@@ -299,6 +313,35 @@ final readonly class ProjectController extends ConsoleController
         );
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.environment_created_fcc0ee4c'));
+    }
+
+    /**
+     * Delete one of the project's environments, with everything in it.
+     *
+     * The typed name travels to the action and is compared THERE, so the API and the
+     * console confirm the same way. The environment is looked up inside the project the
+     * address names: an id from another project, or another organization, is a 404.
+     */
+    public function destroyEnvironment(Request $request, string $project, string $environment, Memberships $members): RedirectResponse
+    {
+        $this->assertMayManage($members);
+
+        $owner = $this->owned($project);
+
+        abort_unless(Environment::query()->whereKey($environment)->where('project_id', $owner->id)->exists(), 404);
+
+        $name = $request->input('name');
+
+        $result = $this->act(
+            DeleteEnvironment::class,
+            ['environment_id' => $environment, 'name' => is_string($name) ? $name : ''],
+            ['name' => 'environment'],
+            'environment',
+        );
+
+        return $result instanceof RedirectResponse
+            ? $result
+            : to_route('orgs.projects.show', $owner->id)->with('status', __('console.environment_deleted'));
     }
 
     public function suspend(string $project, Memberships $members): RedirectResponse

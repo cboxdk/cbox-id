@@ -1,5 +1,8 @@
 import { useTranslator as useConsoleTranslator } from '@/i18n';
-import { store as storeEnvironment } from '@routes/orgs/projects/environments';
+import {
+    destroy as destroyEnvironment,
+    store as storeEnvironment,
+} from '@routes/orgs/projects/environments';
 import { router, useForm, usePage } from '@inertiajs/react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import { UnreachableConsole } from './UnreachableConsole';
@@ -27,6 +30,11 @@ interface EnvironmentRow {
     url: string;
     /** Null when the console has no address: the row says why instead. */
     openHref: string | null;
+    /**
+     * What deleting it removes, for the confirmation. Null where deleting is not offered:
+     * to a member who may not manage, and for an environment the platform never deletes.
+     */
+    delete: { people: number; apps: number; organizations: number } | null;
 }
 
 type Props = PageProps<{
@@ -70,9 +78,13 @@ export default function ProjectDetail({
     const { t: consoleT } = useConsoleTranslator();
     const [suspending, setSuspending] = useState(false);
     const [deleting, setDeleting] = useState(false);
+    const [removing, setRemoving] = useState<EnvironmentRow | null>(null);
     // A refused delete (a plan that still renews, an environment added meanwhile) comes
     // back on the page-level error, said beside the button that asked.
-    const refusal = usePage().props.errors.form;
+    const errors = usePage().props.errors;
+    const refusal = errors.form;
+    // A refused environment delete (a protected environment, a name that did not match).
+    const environmentRefusal = errors.environment;
 
     const environmentForm = useForm({ name: '', type: 'production' });
     const nameForm = useForm({ name: project.name });
@@ -155,32 +167,78 @@ export default function ProjectDetail({
                                     </a>
                                 </div>
 
-                                {environment.openHref === null ? (
-                                    <UnreachableConsole
-                                        name={environment.name}
-                                        guideHref={guideHref}
-                                    />
-                                ) : (
-                                    <Button
-                                        asChild
-                                        variant="primary"
-                                        size="sm"
-                                        className="shrink-0"
-                                    >
-                                        {/* A signed handoff to another host — a navigation, not a page. */}
-                                        <a href={environment.openHref}>
-                                            {consoleRich('console.open_part1_10c0f8b9', {
-                                                part1: (
-                                                    <Icon name="external" className="w-3.5 h-3.5" />
-                                                ),
-                                            })}
-                                        </a>
-                                    </Button>
-                                )}
+                                <div className="flex items-center gap-2 shrink-0">
+                                    {environment.delete !== null && (
+                                        <Button
+                                            size="sm"
+                                            style={{ color: 'var(--destructive)' }}
+                                            onClick={() => setRemoving(environment)}
+                                        >
+                                            {consoleT('console.delete_e2d0a549')}
+                                        </Button>
+                                    )}
+                                    {environment.openHref === null ? (
+                                        <UnreachableConsole
+                                            name={environment.name}
+                                            guideHref={guideHref}
+                                        />
+                                    ) : (
+                                        <Button asChild variant="primary" size="sm">
+                                            {/* A signed handoff to another host — a navigation, not a page. */}
+                                            <a href={environment.openHref}>
+                                                {consoleRich('console.open_part1_10c0f8b9', {
+                                                    part1: (
+                                                        <Icon
+                                                            name="external"
+                                                            className="w-3.5 h-3.5"
+                                                        />
+                                                    ),
+                                                })}
+                                            </a>
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
                         ))
                     )}
                 </div>
+
+                {typeof environmentRefusal === 'string' && (
+                    <p role="alert" className="field-error mt-2">
+                        {environmentRefusal}
+                    </p>
+                )}
+
+                {removing !== null && removing.delete !== null && (
+                    <ConfirmDelete
+                        open
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setRemoving(null);
+                            }
+                        }}
+                        name={removing.name}
+                        // The dialog names the environment being deleted, not the one the
+                        // console page is served in.
+                        environment={removing.name}
+                        consequence={consoleFinalText('console.delete_environment_consequence', {
+                            people: removing.delete.people,
+                            apps: removing.delete.apps,
+                            organizations: removing.delete.organizations,
+                        })}
+                        onConfirm={() => {
+                            const environment = removing;
+                            setRemoving(null);
+                            router.delete(
+                                destroyEnvironment.url({
+                                    project: project.id,
+                                    environment: environment.id,
+                                }),
+                                { data: { name: environment.name }, preserveScroll: true },
+                            );
+                        }}
+                    />
+                )}
 
                 {canManage && (
                     <>

@@ -182,6 +182,27 @@ beside it: what people may do once they are in. The URLs did not change when pag
 renamed or re-filed, so bookmarks and links keep working. [Finding your
 way](../getting-started/finding-your-way.md) walks the common tasks click by click.
 
+## Deleting an environment or a project
+
+Both are on the project's page (**Projects**, then the project), for a member who may
+manage environments and reaches all of them.
+
+**Delete** on an environment's row removes the environment and everything in it: its
+people, apps and clients, keys, sessions and tokens, connections, directories, branding and
+settings. Apps that sign in through it stop working at that moment, and its address stops
+answering. There is no trash and no grace period, so the console asks you to sign in again
+and to type the environment's name, and shows how many people, apps and organizations go
+with it. The API equivalent is `DELETE /environments/{id}` with the environment's `name` in
+the body.
+
+Two things are kept. The organization's log records the deletion (who, which environment,
+how much was in it). The platform's own tamper-evident audit trail of the environment stays
+in the database, unread by any console, because that trail is append-only.
+
+**Delete project** removes a project that has no environments left, suspended or not. A
+project that still has environments, or a plan that still renews under **Billing**, is
+refused with the reason. Deleting a project never deletes environments for you.
+
 ## Moving between them
 
 Every console has the same topbar: where you are on the left, search and your account on

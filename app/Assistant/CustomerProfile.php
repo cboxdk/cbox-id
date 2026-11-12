@@ -61,6 +61,7 @@ final readonly class CustomerProfile
         'organization.project_reactivated' => 'Project reactivated',
         'organization.project_deleted' => 'Project deleted',
         'organization.environment_created' => 'Environment created',
+        'organization.environment_deleted' => 'Environment deleted',
         'organization.custom_domain_verified' => 'Custom domain verified',
         'organization.custom_domain_removed' => 'Custom domain removed',
         'organization.member_added' => 'Member added as',

@@ -1061,6 +1061,11 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
         Route::patch('/projects/{project}', [ProjectController::class, 'rename'])->name('projects.rename');
         Route::post('/projects/{project}/environments', [ProjectController::class, 'storeEnvironment'])
             ->name('projects.environments.store');
+        // Behind the step-up, like closing an organization: it removes the environment's
+        // people, apps and keys for good, and a stale session must not be enough for that.
+        Route::delete('/projects/{project}/environments/{environment}', [ProjectController::class, 'destroyEnvironment'])
+            ->middleware('sudo')
+            ->name('projects.environments.destroy');
         Route::post('/projects/{project}/suspend', [ProjectController::class, 'suspend'])->name('projects.suspend');
         Route::post('/projects/{project}/reactivate', [ProjectController::class, 'reactivate'])->name('projects.reactivate');
         Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
