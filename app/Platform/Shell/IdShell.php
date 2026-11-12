@@ -7,13 +7,18 @@ namespace App\Platform\Shell;
 use App\Http\Props\Shell\NavAreaProps;
 use App\Http\Props\Shell\NavPageProps;
 use App\Http\Props\Shell\ShellProps;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\Console\NavPin;
 use App\Platform\Console\ShellPayload;
+use App\Platform\Console\Vocabulary;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Theme;
+use App\Providers\ShellServiceProvider;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Console\Kit\Shell\ShellCreatable;
 use Cbox\Console\Kit\Shell\ShellCreate;
+use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Platform\PlatformRoot;
 use DateTimeZone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -60,6 +65,14 @@ final readonly class IdShell
         $shell = $built->toArray();
         $shell['nav'] = self::nav($legacy);
         $shell['section'] = $legacy->section;
+
+        // An operator standing outside platform admin: the way to it. Never a second
+        // Platform area where the rail already draws one.
+        $operator = in_array('platform', array_column($shell['nav']['areas'], 'key'), true) ? null : self::operatorArea($legacy);
+
+        if ($operator !== null) {
+            $shell['nav']['areas'][] = $operator;
+        }
 
         // The page's title is the rail's: console-kit's own nav is not the one drawn here.
         if ($built->page !== null) {
@@ -163,6 +176,69 @@ final readonly class IdShell
         }
 
         return array_slice($tabs, 0, 4);
+    }
+
+    /**
+     * PLATFORM ADMIN AND THE PLATFORM'S OWN ENVIRONMENT, for an operator on a console that
+     * does not hold them: the root host's workspace console, or a tenant's environment
+     * console. The old chrome's account menu linked both; cbox-ui's account menu takes no
+     * links of an app's own, so they are a rail area here (under More on a phone), beside
+     * the two palette actions {@see ShellServiceProvider} adds. On `/admin` itself the Platform area is already in the rail, and the
+     * payload offers neither link there.
+     *
+     * Who is offered it is the payload's decision ({@see ShellPayload}: an operator, and
+     * not on platform admin's own console). The environment is the deployment's DEFAULT one,
+     * read now: it is whichever row carries `is_default`, never a slug or an id kept here.
+     *
+     * @return array{key: string, label: string, url: string, href: string, icon: string, pages: list<array{key: string, label: string, url: string, href: string, icon: string}>}|null
+     */
+    private static function operatorArea(ShellProps $legacy): ?array
+    {
+        if ($legacy->platformHref === null) {
+            return null;
+        }
+
+        $pages = [[
+            'key' => 'platform.orgs',
+            'label' => ConsoleLabels::navigation(Vocabulary::ORGANIZATIONS),
+            'url' => $legacy->platformHref,
+            'href' => $legacy->platformHref,
+            'icon' => 'rocket',
+        ]];
+
+        $root = $legacy->platformEnvironmentHref !== null ? self::defaultEnvironmentUrl() : null;
+
+        if ($root !== null) {
+            $pages[] = [
+                'key' => 'platform.environment',
+                'label' => __('console.platform_environment_2676dfe4'),
+                'url' => $root,
+                'href' => $root,
+                'icon' => 'layers',
+            ];
+        }
+
+        return [
+            'key' => 'platform',
+            'label' => ConsoleLabels::navigation(Vocabulary::PLATFORM),
+            'url' => $legacy->platformHref,
+            'href' => $legacy->platformHref,
+            'icon' => 'rocket',
+            'pages' => $pages,
+        ];
+    }
+
+    /**
+     * The console of the deployment's default environment, built by route() from the row
+     * that carries `is_default` today; null when no row does.
+     */
+    public static function defaultEnvironmentUrl(): ?string
+    {
+        $id = app(PlatformRoot::class)->run(
+            static fn (): mixed => Environment::query()->where('is_default', true)->value('id'),
+        );
+
+        return is_string($id) ? app(EnvironmentConsolePath::class)->route($id) : null;
     }
 
     /** @param array{areas: list<array<string, mixed>>, activeArea: string, activePage?: string, tabs: list<string>} $nav */
