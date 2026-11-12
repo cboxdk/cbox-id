@@ -57,11 +57,29 @@ use Throwable;
  */
 final readonly class MailBrands
 {
-    public function __construct(
-        private EnvironmentContext $environments,
-        private PlaneResolver $planes,
-        private MailLinks $links,
-    ) {}
+    /*
+     * NOTHING ABOUT THE CURRENT ENVIRONMENT IS HELD. The environment context is one
+     * instance per request or queued job, and this service is kept by objects that live
+     * longer than either: the one-time-code channel is cached by the framework's channel
+     * registry for the life of the process. Built with the context of whichever
+     * environment asked first, it branded every later environment's sign-in code as the
+     * first one (LongLivedProcessTenantStateTest). So the context, and the two services
+     * that are themselves built on it, are asked for when a brand is resolved.
+     */
+    private function environments(): EnvironmentContext
+    {
+        return app(EnvironmentContext::class);
+    }
+
+    private function planes(): PlaneResolver
+    {
+        return app(PlaneResolver::class);
+    }
+
+    private function links(): MailLinks
+    {
+        return app(MailLinks::class);
+    }
 
     /**
      * The brand for a mail sent now — for `$organizationId` when the flow knows it, else
@@ -106,7 +124,7 @@ final readonly class MailBrands
     private function environment(): ?Environment
     {
         try {
-            $key = $this->environments->current()?->environmentKey();
+            $key = $this->environments()->current()?->environmentKey();
 
             return $key !== null ? Environment::query()->find($key) : null;
         } catch (Throwable) {
@@ -130,7 +148,7 @@ final readonly class MailBrands
     private function onCustomerEnvironment(): bool
     {
         try {
-            return $this->planes->onCustomerEnvironment();
+            return $this->planes()->onCustomerEnvironment();
         } catch (Throwable) {
             return false;
         }
@@ -143,7 +161,7 @@ final readonly class MailBrands
      */
     private function profile(?string $organizationId): ?BrandProfile
     {
-        if (! app()->bound(BrandProfiles::class) || ! $this->environments->has()) {
+        if (! app()->bound(BrandProfiles::class) || ! $this->environments()->has()) {
             return null;
         }
 
@@ -189,7 +207,7 @@ final readonly class MailBrands
 
             // A path is served by this application: made absolute on the canonical origin,
             // never the Host header. Anything else is the deployment's own CDN, as stored.
-            return str_starts_with($url, '/') ? $this->links->to($url) : $url;
+            return str_starts_with($url, '/') ? $this->links()->to($url) : $url;
         } catch (Throwable) {
             return null;
         }

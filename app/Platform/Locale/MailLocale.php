@@ -27,12 +27,22 @@ use App\Http\Middleware\ResolveLocale;
  */
 final readonly class MailLocale
 {
-    public function __construct(private HostedLocales $locales) {}
+    /**
+     * The environment's hosted languages, asked for at send time. `HostedLocales` is one
+     * instance per request or queued job and remembers the environment it resolved for;
+     * this service is kept by objects that outlive both (the approval mail behind the
+     * back-channel authentication singleton), and held the first environment's languages
+     * for every later one (LongLivedProcessTenantStateTest).
+     */
+    private function locales(): HostedLocales
+    {
+        return app(HostedLocales::class);
+    }
 
     public function forRecipient(bool $recipientIsRequester = true): string
     {
         if (! $recipientIsRequester) {
-            return $this->locales->default()->value;
+            return $this->locales()->default()->value;
         }
 
         // The CURRENT request, read at send time rather than injected: a service that holds
@@ -43,6 +53,6 @@ final readonly class MailLocale
             return $hosted->value;
         }
 
-        return $this->locales->default()->value;
+        return $this->locales()->default()->value;
     }
 }
