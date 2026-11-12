@@ -51,6 +51,7 @@ final readonly class StepUpReason
         'account.sign-in-methods.destroy' => 'Disconnecting an account changes how you sign in.',
         'account.sessions.revoke-others' => 'Signing out everywhere else ends every other session at once.',
         'settings.organization.destroy' => 'Closing the organization removes it for everyone in it.',
+        'orgs.projects.environments.destroy' => 'Deleting an environment removes its people, apps and keys for good.',
     ];
 
     public function __construct(

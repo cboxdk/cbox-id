@@ -20,6 +20,8 @@ use App\Platform\Actions\Principal\OAuthDelegatedTokens;
 use App\Platform\Agents\ApprovalMail;
 use App\Platform\Agents\MailingBackchannelAuthentication;
 use App\Platform\AuthoritativeDnsResolver;
+use App\Platform\Billing\NoProjectSubscriptions;
+use App\Platform\Billing\ProjectSubscriptions;
 use App\Platform\Connect\ActionSnippets;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
@@ -85,6 +87,10 @@ class AppServiceProvider extends ServiceProvider
     {
         // One per request: it remembers the default environment across a page's URLs.
         $this->app->scoped(SurfaceUrls::class);
+
+        // A deployment without the billing module has no per-project plans; the module
+        // binds its own answer over this one.
+        $this->app->bindIf(ProjectSubscriptions::class, NoProjectSubscriptions::class);
 
         // Console URLs carry public ids (`usr_01j…`), wherever a URL is built.
         $this->app->extend('url', static fn (UrlGenerator $url): PublicIdUrlGenerator => PublicIdUrlGenerator::from($url));

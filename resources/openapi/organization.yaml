@@ -858,6 +858,73 @@ paths:
       x-scope-aliases:
         - 'environments:write'
       x-danger: critical
+  '/workspace/environments/{environment_id}':
+    delete:
+      tags:
+        - Environments
+      summary: "Delete one of the organization's environments with everything in it: its people, apps, keys, sessions and settings. Apps that sign in through it stop working at once. This cannot be undone."
+      description: 'Requires scope `id:environments:write` (until v3.1 also accepted as `environments:write`) and a role that may `manage-environments`. Danger: critical.'
+      operationId: environments_delete
+      x-action: environments.delete
+      x-scope: 'id:environments:write'
+      x-scope-aliases:
+        - 'environments:write'
+      x-danger: critical
+      parameters:
+        -
+          name: environment_id
+          in: path
+          required: true
+          schema:
+            type: string
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          name: Cbox-Organization
+          in: header
+          required: false
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
+          schema:
+            type: string
+            minLength: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: "The environment's name, exactly as it is, to confirm which one is deleted."
+                  maxLength: 255
+              required:
+                - name
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+        503:
+          description: 'Product admission could not be verified. The request is refused; retry later.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   '/workspace/environments/{environment_id}/domain':
     delete:
       tags:
@@ -2168,6 +2235,59 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
   '/workspace/projects/{id}':
+    delete:
+      tags:
+        - Projects
+      summary: 'Delete a project that holds no environments. One that still has environments, or a plan that still renews, is refused.'
+      description: 'Requires scope `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. Danger: destructive.'
+      operationId: projects_delete
+      x-action: projects.delete
+      x-scope: 'id:projects:write'
+      x-scope-aliases:
+        - 'projects:write'
+      x-danger: destructive
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          name: Cbox-Organization
+          in: header
+          required: false
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+        503:
+          description: 'Product admission could not be verified. The request is refused; retry later.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - Projects

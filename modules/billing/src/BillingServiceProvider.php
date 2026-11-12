@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Cbox\Id\Billing;
 
 use App\Platform\Billing\CaptureProductUsage;
+use App\Platform\Billing\ProjectSubscriptions;
 use App\Platform\Console\ConsoleRoutes;
 use App\Platform\Console\ConsoleScope;
 use Cbox\Console\Kit\Facades\Console;
@@ -57,6 +58,8 @@ class BillingServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(ProjectPayments::class, HttpProjectPayments::class);
+        // What a project's deletion asks before it goes: is a plan still renewing on it?
+        $this->app->bind(ProjectSubscriptions::class, BilledProjectSubscriptions::class);
     }
 
     public function boot(): void
