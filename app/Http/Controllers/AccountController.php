@@ -34,7 +34,9 @@ use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
 use App\Platform\Surfaces\AccountChrome;
+use App\Platform\Surfaces\ConsoleEntry;
 use App\Platform\Surfaces\ReturnUrl;
+use App\Platform\Surfaces\SurfaceUrls;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -809,7 +811,14 @@ final readonly class AccountController extends PageController
             return null;
         }
 
-        return url(MovedOrganizationSettingsController::SUCCESSOR);
+        // The page's own route, not a path on this host: in login-host mode this page is
+        // on the login host and the organization's page is in the console on the app
+        // host ({@see SurfaceUrls} gives the route that host). Crossing into the console
+        // goes through its start, so it opens as the person who is signed in here
+        // ({@see ConsoleEntry}); on a host that serves both, the link stays on it.
+        $settings = route('settings');
+
+        return app(ConsoleEntry::class)->through($settings) ?? $settings;
     }
 
     /**
