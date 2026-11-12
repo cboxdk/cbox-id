@@ -52,6 +52,7 @@ Pulled in automatically by `composer install`:
 | `cboxdk/laravel-id` | `^2.7` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
 | `cboxdk/laravel-signals-client` | `dev-sd/signals-managed-integration` | Public Signals assessment client (feature disabled until configured). |
 | `cboxdk/laravel-postal` | `^0.1.1` | Transactional mail delivery via Postal. |
+| `cboxdk/laravel-relay-client` | `^0.2` | System mail through Cbox Relay (the `relay` mailer; `failover` tries it before Resend). |
 | `cboxdk/laravel-ssrf` | `^1.1.1` | The outbound URL guard: DNS pinning and private-range refusal. |
 | `firebase/php-jwt` | `^7.0` | JWT encode/verify beneath the token signer (vetted, not hand-rolled). |
 | `cboxdk/laravel-health` | `^2.0` | Health/readiness reporting. |

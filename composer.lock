@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "1fd60930b19c20cfb69daf6a3e1b7505",
+    "content-hash": "b341556038c47513e82f76ba571b0bf2",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -1338,6 +1338,90 @@
                 }
             ],
             "time": "2026-09-07T12:18:48+00:00"
+        },
+        {
+            "name": "cboxdk/laravel-relay-client",
+            "version": "v0.2.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/cboxdk/laravel-relay-client.git",
+                "reference": "83990dc67e68c3cd47f572741adc2d258fb84b62"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/cboxdk/laravel-relay-client/zipball/83990dc67e68c3cd47f572741adc2d258fb84b62",
+                "reference": "83990dc67e68c3cd47f572741adc2d258fb84b62",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/bus": "^12.0 || ^13.0",
+                "illuminate/console": "^12.0 || ^13.0",
+                "illuminate/contracts": "^12.0 || ^13.0",
+                "illuminate/database": "^12.0 || ^13.0",
+                "illuminate/http": "^12.0 || ^13.0",
+                "illuminate/mail": "^12.0 || ^13.0",
+                "illuminate/notifications": "^12.0 || ^13.0",
+                "illuminate/queue": "^12.0 || ^13.0",
+                "illuminate/routing": "^12.0 || ^13.0",
+                "illuminate/support": "^12.0 || ^13.0",
+                "php": "^8.4",
+                "symfony/mailer": "^7.2 || ^8.0",
+                "symfony/mime": "^7.2 || ^8.0"
+            },
+            "require-dev": {
+                "cboxdk/laravel-health": "^2.0",
+                "larastan/larastan": "^3.12",
+                "laravel/pint": "^1.32",
+                "orchestra/testbench": "^10.0 || ^11.0",
+                "pestphp/pest": "^4.0 || ^5.0"
+            },
+            "suggest": {
+                "cboxdk/laravel-health": "Register Cbox\\Relay\\Client\\Health\\RelayConnectionCheck in health.checks to watch every configured Relay connection"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Relay": "Cbox\\Relay\\Client\\Facades\\Relay"
+                    },
+                    "providers": [
+                        "Cbox\\Relay\\Client\\RelayServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Cbox\\Relay\\Client\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Sylvester Damgaard",
+                    "email": "sn@cbox.dk",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Cbox Relay client for Laravel: publish events, send mail and push, judge content, read inbound mail and verify Relay's webhooks, with an in-memory fake for tests.",
+            "homepage": "https://github.com/cboxdk/laravel-relay-client",
+            "keywords": [
+                "Relay",
+                "cbox",
+                "client",
+                "delivery",
+                "laravel",
+                "mail",
+                "web-push",
+                "webhooks"
+            ],
+            "support": {
+                "issues": "https://github.com/cboxdk/laravel-relay-client/issues",
+                "source": "https://github.com/cboxdk/laravel-relay-client"
+            },
+            "time": "2026-11-12T20:00:24+00:00"
         },
         {
             "name": "cboxdk/laravel-risk",

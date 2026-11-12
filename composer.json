@@ -26,6 +26,7 @@
         "cboxdk/laravel-queue-autoscale": "^4.3",
         "cboxdk/laravel-queue-metrics": "^3.4",
         "cboxdk/laravel-queue-monitor": "^1.11",
+        "cboxdk/laravel-relay-client": "^0.2",
         "cboxdk/laravel-risk": "^1.1",
         "cboxdk/laravel-signals-client": "dev-sd/signals-managed-integration",
         "cboxdk/laravel-ssrf": "^1.1.1",

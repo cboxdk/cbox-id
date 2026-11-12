@@ -45,6 +45,13 @@ return [
             'transport' => 'postal',
         ],
 
+        // Cbox Relay, our own outbound mail (cboxdk/laravel-relay-client). Configured by
+        // RELAY_URL, RELAY_PROJECT and RELAY_KEY. System mail goes here first, with Resend
+        // as the failover below while Relay's IPs warm up (Brain mem_m6t1SZR3lZfoK8zdq4LDt1).
+        'relay' => [
+            'transport' => 'relay',
+        ],
+
         'smtp' => [
             'transport' => 'smtp',
             'scheme' => env('MAIL_SCHEME'),
@@ -90,8 +97,8 @@ return [
         'failover' => [
             'transport' => 'failover',
             'mailers' => [
-                'smtp',
-                'log',
+                'relay',
+                'resend',
             ],
             'retry_after' => 60,
         ],
