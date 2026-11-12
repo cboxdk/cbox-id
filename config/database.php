@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Str;
 use Pdo\Mysql;
+use Pdo\Pgsql;
 
 return [
 
@@ -95,8 +96,38 @@ return [
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
             'prefix_indexes' => true,
-            'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+
+            // The search path is stated in the connection's start-up packet. As a
+            // `search_path` key Laravel runs `set search_path` on every request, which
+            // is one or two round trips before the first query. The schema builder
+            // reads the same default (`public`) when the key is absent.
+            'server_options' => ['search_path' => 'public'],
+
+            // Measured on production (2026-11-12): opening a connection costs 19-23 ms
+            // (SCRAM-SHA-256) and a prepared query three round trips. Both are paid on
+            // every request under php-fpm unless:
+            //
+            // - the connection is PERSISTENT: one per php-fpm worker, kept between
+            //   requests. `persistent` is this application's own key, read at boot by
+            //   App\Platform\Database\PersistentDatabaseConnections, which sets
+            //   PDO::ATTR_PERSISTENT under php-fpm only (never in a command-line
+            //   process, which may fork). PHP rolls back a transaction a request left
+            //   open before the next request gets the connection, and nothing here keeps
+            //   state on the session: every advisory lock is `pg_advisory_xact_lock` and
+            //   the search path is the same for every request. Size PostgreSQL's
+            //   `max_connections` for php-fpm's `pm.max_children` times the web replicas
+            //   (plus one more replica during a rollout), plus the queue workers and the
+            //   scheduler.
+            // - a query is sent as ONE parameterised message (PQexecParams) instead of
+            //   prepare, execute and deallocate. The parameters still travel apart
+            //   from the SQL text; this is not client-side emulation.
+            //
+            // docs/operations/deployment.md, "Database connections".
+            'persistent' => (bool) env('DB_PERSISTENT', true),
+            'options' => extension_loaded('pdo_pgsql') ? array_filter([
+                Pgsql::ATTR_DISABLE_PREPARES => (bool) env('DB_DISABLE_PREPARES', true),
+            ]) : [],
         ],
 
         'sqlsrv' => [
