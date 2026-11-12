@@ -322,7 +322,7 @@ things on PostgreSQL, all on by default:
 
 | Setting | Variable | What it does |
 |---|---|---|
-| A persistent connection | `DB_PERSISTENT` (default `true`) | Each php-fpm worker keeps its connection between requests. |
+| A persistent connection | `DB_PERSISTENT` (default `true`) | Each php-fpm worker keeps its connection between requests. Applied under php-fpm only: a command-line process (queue worker, scheduler) keeps its connection for its lifetime anyway, and may fork. |
 | One message per query | `DB_DISABLE_PREPARES` (default `true`) | A query is sent as one parameterised message instead of prepare, execute and deallocate. The parameters still travel apart from the SQL; this is not client-side emulation. |
 | The search path at connect | none | `public` is stated in the start-up packet (`server_options`) instead of a `set search_path` statement on every request. |
 
@@ -333,8 +333,8 @@ during a rollout) against `max_connections = 100`.
 
 **What makes it safe.** PHP rolls back a transaction that a request left open before the
 connection is used again. Nothing in the application or the framework keeps state on the
-session: every advisory lock is transaction-scoped (`pg_advisory_xact_lock`), every `set` is
-`set transaction`, and no temporary table or `LISTEN` is used. A change that needs session
+session: every advisory lock is transaction-scoped (`pg_advisory_xact_lock`), and no
+session-level `SET`, temporary table or `LISTEN` is used. A change that needs session
 state (a session-level advisory lock, `SET` without `LOCAL`) must release it in the same
 request, or turn `DB_PERSISTENT` off.
 

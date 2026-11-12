@@ -1,6 +1,9 @@
 <?php
 
 declare(strict_types=1);
+
+use App\Platform\Database\PersistentDatabaseConnections;
+use Illuminate\Config\Repository;
 use Pdo\Pgsql;
 
 /*
@@ -13,7 +16,8 @@ use Pdo\Pgsql;
 | round trips, and every query three (prepare, execute, deallocate) at 1.2-1.5 ms each from a
 | pod on another node. A request that asked one question paid 35-45 ms for it.
 |
-| These tests hold the three settings that remove that: the connection is persistent, a query
+| These tests hold the three settings that remove that: the connection is persistent under
+| php-fpm (and only there: a command-line process gains nothing and may fork), a query
 | goes out as one parameterised message (the parameters still travel apart from the SQL, so
 | nothing is escaped into the statement), and the search path is part of the connection's
 | start-up packet instead of a statement on every request.
@@ -49,11 +53,35 @@ function pgsqlConnectionUnder(array $env): array
     }
 }
 
-it('keeps the PostgreSQL connection between requests', function (): void {
-    $options = pgsqlConnectionUnder([])['options'];
+it('keeps the PostgreSQL connection between requests under php-fpm', function (): void {
+    $config = new Repository(['database' => ['connections' => ['pgsql' => pgsqlConnectionUnder([])]]]);
 
-    expect($options)->toBeArray()
-        ->and($options[PDO::ATTR_PERSISTENT] ?? null)->toBeTrue();
+    PersistentDatabaseConnections::apply($config, 'fpm-fcgi');
+
+    expect($config->get('database.connections.pgsql.options')[PDO::ATTR_PERSISTENT] ?? null)->toBeTrue()
+        // The other options stay.
+        ->and($config->get('database.connections.pgsql.options')[Pgsql::ATTR_DISABLE_PREPARES] ?? null)->toBeTrue();
+});
+
+it('does not keep it in a command-line process, which may fork and outlives a request anyway', function (string $sapi): void {
+    $config = new Repository(['database' => ['connections' => ['pgsql' => pgsqlConnectionUnder([])]]]);
+
+    PersistentDatabaseConnections::apply($config, $sapi);
+
+    expect($config->get('database.connections.pgsql.options'))->not->toHaveKey(PDO::ATTR_PERSISTENT);
+})->with(['cli', 'phpdbg', 'frankenphp', 'embed']);
+
+it('is not persistent in this test process, and the provider is what decides', function (): void {
+    expect(config('database.connections.pgsql.options'))->not->toHaveKey(PDO::ATTR_PERSISTENT)
+        ->and(config('database.connections.pgsql.persistent'))->toBeTrue();
+});
+
+it('leaves other drivers alone', function (): void {
+    $config = new Repository(['database' => ['connections' => ['sqlite' => ['driver' => 'sqlite', 'persistent' => true]]]]);
+
+    PersistentDatabaseConnections::apply($config, 'fpm-fcgi');
+
+    expect($config->get('database.connections.sqlite'))->not->toHaveKey('options');
 });
 
 it('sends a query as one parameterised message instead of prepare, execute and deallocate', function (): void {
@@ -73,8 +101,11 @@ it('states the search path when the connection opens, not with a statement on ev
 });
 
 it('lets a deployment turn either setting off', function (): void {
-    $options = pgsqlConnectionUnder(['DB_PERSISTENT' => 'false', 'DB_DISABLE_PREPARES' => 'false'])['options'];
+    $connection = pgsqlConnectionUnder(['DB_PERSISTENT' => 'false', 'DB_DISABLE_PREPARES' => 'false']);
+    $config = new Repository(['database' => ['connections' => ['pgsql' => $connection]]]);
 
-    expect($options)->not->toHaveKey(PDO::ATTR_PERSISTENT)
-        ->and($options)->not->toHaveKey(Pgsql::ATTR_DISABLE_PREPARES);
+    PersistentDatabaseConnections::apply($config, 'fpm-fcgi');
+
+    expect($config->get('database.connections.pgsql.options'))->not->toHaveKey(PDO::ATTR_PERSISTENT)
+        ->and($config->get('database.connections.pgsql.options'))->not->toHaveKey(Pgsql::ATTR_DISABLE_PREPARES);
 });

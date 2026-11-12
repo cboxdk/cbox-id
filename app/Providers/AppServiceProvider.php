@@ -25,6 +25,7 @@ use App\Platform\Billing\ProjectSubscriptions;
 use App\Platform\Connect\ActionSnippets;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
+use App\Platform\Database\PersistentDatabaseConnections;
 use App\Platform\DelegatedApiContext;
 use App\Platform\EnvironmentApiContext;
 use App\Platform\EnvironmentKeyAuditLog;
@@ -85,6 +86,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // Before anything asks for the database: the connection is kept between requests
+        // under php-fpm. See the class for why it is decided here and not in the config.
+        PersistentDatabaseConnections::apply($this->app->make('config'), PHP_SAPI);
+
         // One per request: it remembers the default environment across a page's URLs.
         $this->app->scoped(SurfaceUrls::class);
 

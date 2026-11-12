@@ -109,20 +109,23 @@ return [
             // every request under php-fpm unless:
             //
             // - the connection is PERSISTENT: one per php-fpm worker, kept between
-            //   requests. PHP rolls back a transaction a request left open before the
-            //   next request gets the connection, and nothing here keeps state on the
-            //   session: every advisory lock is `pg_advisory_xact_lock`, every `set` is
-            //   `set transaction`, and the search path is the same for every request.
-            //   Size PostgreSQL's `max_connections` for php-fpm's `pm.max_children`
-            //   times the web replicas (plus one more replica during a rollout), plus
-            //   the queue workers and the scheduler.
+            //   requests. `persistent` is this application's own key, read at boot by
+            //   App\Platform\Database\PersistentDatabaseConnections, which sets
+            //   PDO::ATTR_PERSISTENT under php-fpm only (never in a command-line
+            //   process, which may fork). PHP rolls back a transaction a request left
+            //   open before the next request gets the connection, and nothing here keeps
+            //   state on the session: every advisory lock is `pg_advisory_xact_lock` and
+            //   the search path is the same for every request. Size PostgreSQL's
+            //   `max_connections` for php-fpm's `pm.max_children` times the web replicas
+            //   (plus one more replica during a rollout), plus the queue workers and the
+            //   scheduler.
             // - a query is sent as ONE parameterised message (PQexecParams) instead of
             //   prepare, execute and deallocate. The parameters still travel apart
             //   from the SQL text; this is not client-side emulation.
             //
             // docs/operations/deployment.md, "Database connections".
+            'persistent' => (bool) env('DB_PERSISTENT', true),
             'options' => extension_loaded('pdo_pgsql') ? array_filter([
-                PDO::ATTR_PERSISTENT => (bool) env('DB_PERSISTENT', true),
                 Pgsql::ATTR_DISABLE_PREPARES => (bool) env('DB_DISABLE_PREPARES', true),
             ]) : [],
         ],
