@@ -529,7 +529,7 @@ it('emails a sign-in link when an environment user is created', function (): voi
         'sendLink' => true,
     ])->assertSessionHasNoErrors();
 
-    Mail::assertSent(MagicLinkMail::class, fn ($mail): bool => $mail->hasTo('newcomer@acme.example'));
+    Mail::assertQueued(MagicLinkMail::class, fn ($mail): bool => $mail->hasTo('newcomer@acme.example'));
 });
 
 /**
@@ -566,7 +566,7 @@ it('refuses to create a user for an administrator who has not confirmed their ow
     // Neither the row nor the mail: a refusal that created the account and merely skipped
     // the email would leave a stranger's address claimed inside this environment.
     expect(User::query()->where('email', 'stranger@elsewhere.example')->exists())->toBeFalse();
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 })->group('security');
 
 /**
@@ -595,7 +595,7 @@ it('says so when a user is created with no way to sign in', function (): void {
         'sendLink' => false,
     ])->assertSessionHasNoErrors();
 
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 /**

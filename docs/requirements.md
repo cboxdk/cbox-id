@@ -52,7 +52,7 @@ Pulled in automatically by `composer install`:
 | `cboxdk/laravel-id` | `^2.7` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
 | `cboxdk/laravel-signals-client` | `dev-sd/signals-managed-integration` | Public Signals assessment client (feature disabled until configured). |
 | `cboxdk/laravel-postal` | `^0.1.1` | Transactional mail delivery via Postal. |
-| `cboxdk/laravel-relay-client` | `^0.2` | System mail through Cbox Relay (the `relay` mailer; `failover` tries it before Resend). |
+| `cboxdk/laravel-relay-client` | `^0.2.2` | All system mail, through Cbox Relay (`MAIL_MAILER=relay` with `RELAY_URL`, `RELAY_KEY` and optionally `RELAY_PROJECT`). Every mail is queued and retried through an outage. |
 | `cboxdk/laravel-ssrf` | `^1.1.1` | The outbound URL guard: DNS pinning and private-range refusal. |
 | `firebase/php-jwt` | `^7.0` | JWT encode/verify beneath the token signer (vetted, not hand-rolled). |
 | `cboxdk/laravel-health` | `^2.0` | Health/readiness reporting. |
@@ -73,7 +73,6 @@ Pulled in automatically by `composer install`:
 | `laravel/mcp` | `^1.0` | The MCP server at `/mcp` on each environment host. See [Agents and MCP](guides/agents-and-mcp.md). |
 | `laravel/tinker` | `^3.0` | REPL for operations/debugging. |
 | `maxmind-db/reader` | `^1.12` | Reads MaxMind GeoLite2/GeoIP2 database files locally for Radar's IP intelligence, when `CBOX_ID_RADAR_IP_INTELLIGENCE=maxmind`. Pure PHP; inert otherwise. |
-| `resend/resend-php` | `^1.16` | The client Laravel's `resend` mailer needs, for `MAIL_MAILER=resend` with `RESEND_API_KEY`. Inert with any other mailer. |
 
 > Social and enterprise sign-in needs **no third-party package**. Google, Entra, Okta,
 > GitHub, Apple and the rest are the framework's own `Federation` stack in

@@ -120,7 +120,7 @@ it('sends an administrator’s invitation in the hosted pages’ default languag
     test()->withHeader('Accept-Language', 'de');
     inviteToDirectory()->assertSessionHasNoErrors();
 
-    Mail::assertSent(InvitationMail::class, fn (InvitationMail $mail): bool => $mail->locale === 'nb');
+    Mail::assertQueued(InvitationMail::class, fn (InvitationMail $mail): bool => $mail->locale === 'nb');
 });
 
 it('says organization, never workspace, in English and in Danish', function (Closure $make): void {

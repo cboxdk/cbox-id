@@ -263,7 +263,7 @@ it('mails the owner of a key whose action was held, with a link to their Approva
         ->postJson('/api/v1/keys', ['name' => 'Child', 'scopes' => ['keys:read']])
         ->assertStatus(202);
 
-    Mail::assertSent(ApprovalRequestMail::class, fn (ApprovalRequestMail $mail): bool => $mail->hasTo('owner@workspace.test')
+    Mail::assertQueued(ApprovalRequestMail::class, fn (ApprovalRequestMail $mail): bool => $mail->hasTo('owner@workspace.test')
         && str_ends_with($mail->url, '/approvals')
         && str_contains($mail->app, 'Deploy agent'));
 

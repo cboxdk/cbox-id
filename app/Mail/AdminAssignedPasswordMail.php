@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Mail;
 
 use Carbon\CarbonInterface;
+use DateTimeInterface;
 
 /**
  * Delivers a password an administrator set for a user directly to that user.
@@ -25,6 +26,12 @@ final class AdminAssignedPasswordMail extends BrandedMailable
          */
         public ?CarbonInterface $expiresAt = null,
     ) {}
+
+    /** A temporary password with an expiry is not mailed after it stops working. */
+    protected function lifetime(): ?DateTimeInterface
+    {
+        return $this->temporary ? $this->expiresAt : null;
+    }
 
     protected function subjectLine(): string
     {

@@ -103,7 +103,7 @@ it('sends the invitation again with a fresh link', function (): void {
     test()->from(route('orgs.settings.members'))->post(route('orgs.settings.members.invitations.resend', ['invitation' => $id, 'organization' => $org]))
         ->assertRedirect(route('orgs.settings.members'));
 
-    Mail::assertSent(InvitationMail::class);
+    Mail::assertQueued(InvitationMail::class);
 
     // A NEW invitation, not the old one: the mailed link is signed over a token this
     // server only stores hashed, so there is nothing to re-send — and re-issuing is the
@@ -190,7 +190,7 @@ it('sends at most one invitation mail a minute to the same address', function ()
     test()->from(route('orgs.settings.members'))->post(route('orgs.settings.members.invitations.resend', ['invitation' => (string) pendingIn($org)->first()?->id, 'organization' => $org]))
         ->assertRedirect(route('orgs.settings.members'));
 
-    Mail::assertSentCount(1);
+    Mail::assertQueuedCount(1);
 });
 
 /**

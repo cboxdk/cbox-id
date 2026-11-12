@@ -104,7 +104,7 @@ it('sends each environment\'s approval mail in its own language from one process
     $gunnar = asJobIn($environments['globex'], fn (): string => app(Subjects::class)->create('gunnar@globex.test', 'Gunnar', 'a-strong-password-1234')->id);
     asJobIn($environments['globex'], fn () => $approvals->notify($gunnar, 'Agent', 'https://globex.test/approve', new DateTimeImmutable('+5 minutes')));
 
-    $sent = Mail::sent(ApprovalRequestMail::class)
+    $sent = Mail::queued(ApprovalRequestMail::class)
         ->mapWithKeys(fn (ApprovalRequestMail $mail): array => [$mail->to[0]['address'] => $mail->locale])
         ->all();
 

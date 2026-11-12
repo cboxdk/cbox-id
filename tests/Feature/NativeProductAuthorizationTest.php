@@ -92,7 +92,7 @@ it('invites multiple native roles without changing an existing shared membership
     $invitation = $service->send($account['organization']->id, 'native-invite@example.test', ['viewer', 'billing'], $inviter, $actor);
     expect($service->countPending($account['organization']->id))->toBe(1)
         ->and($service->pending($account['organization']->id)[0]->id)->toBe($invitation->id);
-    $mail = Mail::sent(InvitationMail::class)->last();
+    $mail = Mail::queued(InvitationMail::class)->last();
     preg_match('#/invitations/([^/]+)/accept#', $mail->url, $matches);
     $accepted = app(PlatformRoot::class)->run(fn () => app(OrganizationInvitations::class)->accept($matches[1]));
     expect($accepted->membership->role)->toBe(MembershipRole::Admin)

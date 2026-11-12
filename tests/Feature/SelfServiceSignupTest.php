@@ -137,7 +137,7 @@ it('mints no magic link for an unknown address when the environment has sign-up 
 
     test()->from(route('login'))->post(route('login.magic-link'), ['email' => 'stranger@example.com']);
 
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 })->group('security');
 
 it('keeps the deployment\'s kill switch above the environment\'s switch', function (): void {

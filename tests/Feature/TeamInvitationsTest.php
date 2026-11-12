@@ -82,12 +82,12 @@ it('sends the same invitation from the console and from the organization API', f
     // The same mail — the TEAM's, never an organization member's — with the role in it,
     // signed by whoever sent it, and the same signed accept link.
     $mails = [];
-    Mail::assertSent(InvitationMail::class, function (InvitationMail $mail) use (&$mails): bool {
+    Mail::assertQueued(InvitationMail::class, function (InvitationMail $mail) use (&$mails): bool {
         $mails[$mail->to[0]['address']] = $mail;
 
         return true;
     });
-    Mail::assertNotSent(OrganizationInviteMail::class);
+    Mail::assertNotQueued(OrganizationInviteMail::class);
 
     expect($mails)->toHaveKeys(['console@acme.example', 'api@acme.example'])
         ->and($mails['console@acme.example']->role)->toBe('Editor')
@@ -124,7 +124,7 @@ it('names the key that sent it on the page the invitee lands on', function (): v
         ->assertCreated();
 
     $url = null;
-    Mail::assertSent(InvitationMail::class, function (InvitationMail $mail) use (&$url): bool {
+    Mail::assertQueued(InvitationMail::class, function (InvitationMail $mail) use (&$url): bool {
         $url = $mail->url;
 
         return true;
@@ -222,7 +222,7 @@ it('refuses somebody already on the team with the same sentence from both doors'
         ->post(route('orgs.settings.members.invite', ['organization' => $organization->id]), ['email' => 'owner@acme.example', 'roles' => ['viewer']])
         ->assertSessionHasErrors(['email' => InvitationRefused::alreadyMember()->getMessage()]);
 
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 it('never invites an owner, whoever asks', function (): void {
@@ -261,7 +261,7 @@ it('keeps an organization\'s invitation and a team invitation apart', function (
     // A team invitation is accepted on the team's own door (set a password, into the
     // console) — the tenant organization's accept page does not know it.
     $url = null;
-    Mail::assertSent(OrganizationInviteMail::class, function (OrganizationInviteMail $mail) use (&$url): bool {
+    Mail::assertQueued(OrganizationInviteMail::class, function (OrganizationInviteMail $mail) use (&$url): bool {
         $url = $mail->url;
 
         return true;

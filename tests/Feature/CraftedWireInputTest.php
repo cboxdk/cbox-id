@@ -220,7 +220,7 @@ it('refuses a crafted invite role on the org members form instead of throwing', 
     }
 
     expect(app(Invitations::class)->pending($orgId))->toHaveCount(0);
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 it('refuses a crafted role on the org members roster select without changing it', function (): void {
@@ -259,7 +259,7 @@ it('refuses a crafted role on the env-admin organization member forms', function
 
     expect(app(Memberships::class)->of($org->id, $user->id))->toBeNull()
         ->and(app(Invitations::class)->pending($org->id))->toHaveCount(0);
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 
     // …and the JS-invoked roster select refuses without demoting anyone.
     app(Memberships::class)->add($org->id, $user->id, MembershipRole::Admin);

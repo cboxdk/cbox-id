@@ -77,7 +77,7 @@ it('refuses a challenged signup that carries no CAPTCHA token, with a field erro
         ->assertInertia(fn (AssertableInertia $page) => $page->hasFlash('challenged', true));
 
     expect(app(Subjects::class)->findByEmail('dana@acme.example'))->toBeNull();
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
     Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'siteverify'));
 });
 
@@ -107,7 +107,7 @@ it('refuses a challenged signup whose token Cloudflare rejects', function (): vo
         ->assertSessionHasErrors('email');
 
     expect(app(Subjects::class)->findByEmail('dana@acme.example'))->toBeNull();
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 it('never challenges a low-risk signup', function (): void {

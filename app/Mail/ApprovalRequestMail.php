@@ -28,6 +28,12 @@ final class ApprovalRequestMail extends BrandedMailable
         public DateTimeInterface $expiresAt,
     ) {}
 
+    /** The request lapses at {@see $expiresAt}; a mail about it after that is noise. */
+    protected function lifetime(): DateTimeInterface
+    {
+        return $this->expiresAt;
+    }
+
     protected function subjectLine(): string
     {
         $subject = __('mail.approval_request.subject', ['app' => $this->app]);

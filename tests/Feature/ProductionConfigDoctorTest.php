@@ -28,7 +28,9 @@ function soundProductionConfig(): array
         'billing-client.base_url' => 'https://billing.example.test',
         'billing-client.api_token' => 'fixture-feature-reader',
         'service-access.product_billing_token' => 'fixture-admission-reader',
-        'mail.default' => 'smtp',
+        'mail.default' => 'relay',
+        'relay.url' => 'https://127.0.0.1',
+        'relay.key' => 'fixture-relay-key',
         'cache.default' => 'redis',
         'session.driver' => 'redis',
         'queue.default' => 'redis',
@@ -225,6 +227,28 @@ it('passes a mail server that resolves', function (): void {
     ]);
 
     expect($verdicts)->toHaveKey('Mail', 'ok');
+});
+
+it('fails production on a mailer this deployment does not define', function (): void {
+    // Resend is gone; a deployment still on MAIL_MAILER=resend sends nothing.
+    expect(productionVerdicts([...soundProductionConfig(), 'mail.default' => 'resend']))
+        ->toHaveKey('Mail is not sent', 'fail')
+        ->and(productionVerdicts([...soundProductionConfig(), 'mail.default' => 'nonexistent']))
+        ->toHaveKey('Mail is not sent', 'fail');
+});
+
+it('fails production on relay without its address or key', function (string $key): void {
+    expect(productionVerdicts([...soundProductionConfig(), $key => null]))
+        ->toHaveKey('Mail is not sent', 'fail');
+})->with(['relay.url', 'relay.key']);
+
+it('fails production when Relay\'s name does not resolve', function (): void {
+    expect(productionVerdicts([...soundProductionConfig(), 'relay.url' => 'https://relay.cbox-id-doctor-test.invalid']))
+        ->toHaveKey('Mail server unreachable', 'fail');
+});
+
+it('passes relay with its address and key', function (): void {
+    expect(productionVerdicts(soundProductionConfig()))->toHaveKey('Mail', 'ok');
 });
 
 it('fails metered production without a working billing configuration', function (): void {

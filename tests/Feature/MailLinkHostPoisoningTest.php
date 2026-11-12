@@ -105,7 +105,7 @@ it('refuses a poisoned Host outright, so no reset link is ever minted on it', fu
         ->post('/forgot-password', ['email' => $account->owner->email])
         ->assertNotFound();
 
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 it('refuses a poisoned Host outright, so no magic link is ever minted on it', function (): void {
@@ -118,7 +118,7 @@ it('refuses a poisoned Host outright, so no magic link is ever minted on it', fu
         ->post('/login/magic-link', ['email' => $account->owner->email])
         ->assertNotFound();
 
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 it('mints on the deployment host when the request host resolves to nothing', function (): void {

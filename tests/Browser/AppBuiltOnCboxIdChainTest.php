@@ -200,7 +200,7 @@ it('walks sign-up, a second team and an invitation back to the app, page by page
         ->assertNoJavaScriptErrors();
 
     // ── 3. Bo, in his own browser, opens the link and accepts ───────────────────────
-    $link = (string) parse_url((string) Mail::sent(InvitationMail::class)->last()?->url, PHP_URL_PATH);
+    $link = (string) parse_url((string) Mail::queued(InvitationMail::class)->last()?->url, PHP_URL_PATH);
 
     $bo = visit($link);
 

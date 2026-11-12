@@ -69,7 +69,7 @@ it('sends the invitee back to the app after they accept', function (): void {
         ->return_to->toBe('https://tasks.acme.test/welcome?team=acme');
 
     // The mail and the page both say which app this is for.
-    Mail::assertSent(InvitationMail::class, fn (InvitationMail $mail): bool => $mail->app === 'Acme Tasks');
+    Mail::assertQueued(InvitationMail::class, fn (InvitationMail $mail): bool => $mail->app === 'Acme Tasks');
 
     $token = mailedInvitationToken();
     app(PlatformAuth::class)->logout(request());
@@ -126,7 +126,7 @@ it('refuses a return address that is not on one of the app\'s registered origins
     expect($refused?->reason)->toBe($reason)
         ->and(app(Invitations::class)->pending($org->id))->toHaveCount(0);
 
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 })->with([
     'another host' => ['https://evil.example/welcome', InvitationRefusalReason::ReturnToNotRegistered],
     'a lookalike subdomain' => ['https://tasks.acme.test.evil.example/', InvitationRefusalReason::ReturnToNotRegistered],
@@ -262,7 +262,7 @@ it('lets the environment console resend too', function (): void {
         ->post(route('environment.organizations.invitations.resend', [$org->id, $invitation->id]))
         ->assertSessionHas('status', 'Invitation sent again to newbie@acme.example.');
 
-    Mail::assertSent(InvitationMail::class, 2);
+    Mail::assertQueued(InvitationMail::class, 2);
 });
 
 it('withdraws only its own organization\'s invitations, and their parked roles with them', function (): void {
@@ -311,7 +311,7 @@ it('normalises origins the way a browser compares them', function (): void {
 /** The token in the newest invitation mail's link. */
 function mailedInvitationToken(): string
 {
-    $mail = Mail::sent(InvitationMail::class)->last();
+    $mail = Mail::queued(InvitationMail::class)->last();
 
     expect($mail)->not->toBeNull('no invitation was mailed');
 

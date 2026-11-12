@@ -156,7 +156,7 @@ it('invites members only with a manage-members key', function (): void {
         ->assertJsonPath('data.status', 'invited')
         ->assertJsonPath('data.roles', ['developer']);
 
-    Mail::assertSent(InvitationMail::class);
+    Mail::assertQueued(InvitationMail::class);
 
     // A developer key can't manage members.
     $this->withToken($developer)->postJson('/api/v1/workspace/members', ['email' => 'x@acme.example', 'roles' => ['viewer']])

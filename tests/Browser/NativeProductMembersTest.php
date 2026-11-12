@@ -37,7 +37,7 @@ it('edits multiple native roles and invites with app roles on desktop and mobile
         ->check('form label:has-text("Billing") input')->click('button:has-text("Send invitation")')
         ->assertSee('native-new@example.test')->assertSee('Billing, Reader')
         ->assertNoJavaScriptErrors()->screenshot(filename: 'native-members-phone');
-    Mail::assertSent(InvitationMail::class, 1);
+    Mail::assertQueued(InvitationMail::class, 1);
     $artifacts = getenv('NATIVE_BROWSER_ARTIFACTS');
     if (is_string($artifacts) && is_dir($artifacts)) {
         foreach (['desktop', 'phone'] as $size) {

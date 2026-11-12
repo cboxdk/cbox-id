@@ -133,6 +133,35 @@ class ProductionConfigDoctorCheck implements HealthCheck
             );
         }
 
+        // A mailer this deployment does not define is not a slow mailer: every send throws.
+        // `resend` is one: Laravel still lists its stock entry, but the client it needs is
+        // gone (Cbox services do not send through Resend).
+        if ($mailer === null || ! is_array(config("mail.mailers.{$mailer}")) || $transport === 'resend') {
+            return HealthResult::fail(
+                'Mail is not sent',
+                'MAIL_MAILER names `'.($mailer ?? '').'`, a mailer this deployment does not define, so no magic link, '
+                .'invitation, password reset or confirmation can be sent. System mail goes through Cbox Relay: set '
+                .'MAIL_MAILER=relay with RELAY_URL and RELAY_KEY.',
+            );
+        }
+
+        // Relay with no address or no key cannot take a single mail: every one is retried
+        // for hours and then fails.
+        if ($transport === 'relay') {
+            $missing = array_keys(array_filter(
+                ['RELAY_URL' => $this->string('relay.url'), 'RELAY_KEY' => $this->string('relay.key')],
+                static fn (?string $value): bool => $value === null,
+            ));
+
+            if ($missing !== []) {
+                return HealthResult::fail(
+                    'Mail is not sent',
+                    'MAIL_MAILER is `relay`, but '.implode(' and ', $missing).(count($missing) === 1 ? ' is' : ' are')
+                    .' not set, so Cbox Relay refuses every magic link, invitation, password reset and confirmation.',
+                );
+            }
+        }
+
         // A configured mailer is not a working one. Production named a Postal server whose
         // DNS name had disappeared, this check said "sent with postal", and every link —
         // confirmations, magic links, invitations — failed with a 500. The name, at least,
@@ -144,7 +173,7 @@ class ProductionConfigDoctorCheck implements HealthCheck
                 'Mail server unreachable',
                 "Mail goes through `{$transport}` at {$host}, but that name does not resolve from this server, so no "
                 .'magic link, invitation, password reset or confirmation can be sent. Fix the DNS record or the mailer '
-                .'settings (for Postal: POSTAL_URL), then run `php artisan postal:ping`.',
+                .'settings (for Relay: RELAY_URL; for Postal: POSTAL_URL, then run `php artisan postal:ping`).',
             );
         }
 
@@ -155,6 +184,7 @@ class ProductionConfigDoctorCheck implements HealthCheck
     private function mailHost(string $transport): ?string
     {
         $url = match ($transport) {
+            'relay' => $this->string('relay.url'),
             'postal' => $this->string('postal.servers.default.url'),
             'smtp' => $this->string('mail.mailers.smtp.host'),
             default => null,

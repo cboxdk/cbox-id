@@ -26,5 +26,5 @@ it('emails an invitation when an admin invites a member', function () {
 
     inviteToDirectory(['email' => 'invitee@acme.test'])->assertSessionHasNoErrors();
 
-    Mail::assertSent(InvitationMail::class, fn (InvitationMail $mail) => $mail->hasTo('invitee@acme.test'));
+    Mail::assertQueued(InvitationMail::class, fn (InvitationMail $mail) => $mail->hasTo('invitee@acme.test'));
 });

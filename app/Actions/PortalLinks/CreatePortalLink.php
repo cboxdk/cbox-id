@@ -137,9 +137,10 @@ final readonly class CreatePortalLink implements Action
     }
 
     /**
-     * Send the link to the IT contact. Sent INSIDE the action's transaction on purpose: a
-     * mail that cannot be handed to the mailer fails the whole mint, rather than leaving a
-     * link that exists, is recorded as sent, and reached nobody.
+     * Send the link to the IT contact. Asked for INSIDE the action's transaction on purpose:
+     * the mail is queued once the transaction commits, so a rolled-back mint mails nothing,
+     * and a Relay outage is retried by the queue until the link expires (at most six hours
+     * — see BrandedMailable).
      */
     private function mail(string $email, string $organizationId, PortalScope $scope, string $url, CarbonImmutable $expiresAt, ?string $locale): void
     {

@@ -30,7 +30,7 @@ return [
     | your mailers below. You may also add additional mailers if needed.
     |
     | Supported: "smtp", "sendmail", "mailgun", "ses", "ses-v2",
-    |            "postmark", "resend", "log", "array",
+    |            "postmark", "relay", "postal", "log", "array",
     |            "failover", "roundrobin"
     |
     */
@@ -46,8 +46,9 @@ return [
         ],
 
         // Cbox Relay, our own outbound mail (cboxdk/laravel-relay-client). Configured by
-        // RELAY_URL, RELAY_PROJECT and RELAY_KEY. System mail goes here first, with Resend
-        // as the failover below while Relay's IPs warm up (Brain mem_m6t1SZR3lZfoK8zdq4LDt1).
+        // RELAY_URL, RELAY_PROJECT and RELAY_KEY. All system mail goes through Relay and
+        // nothing else (Brain mem_MeQkGzrwgYRrXMWJJtSECE): every mail is queued, so a Relay
+        // outage delays it through the job's retries instead of failing over elsewhere.
         'relay' => [
             'transport' => 'relay',
         ],
@@ -76,10 +77,6 @@ return [
             // ],
         ],
 
-        'resend' => [
-            'transport' => 'resend',
-        ],
-
         'sendmail' => [
             'transport' => 'sendmail',
             'path' => env('MAIL_SENDMAIL_PATH', '/usr/sbin/sendmail -bs -i'),
@@ -97,8 +94,8 @@ return [
         'failover' => [
             'transport' => 'failover',
             'mailers' => [
-                'relay',
-                'resend',
+                'smtp',
+                'log',
             ],
             'retry_after' => 60,
         ],

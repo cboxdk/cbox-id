@@ -7,6 +7,7 @@ namespace App\Mail;
 use App\Actions\PortalLinks\CreatePortalLink;
 use App\Platform\Enums\PortalIntent;
 use Carbon\CarbonInterface;
+use DateTimeInterface;
 
 /**
  * An Admin Portal link, sent to the customer's IT contact by whoever minted it
@@ -28,6 +29,12 @@ final class PortalLinkMail extends BrandedMailable
         public array $intents,
         public CarbonInterface $expiresAt,
     ) {}
+
+    /** The link dies at {@see $expiresAt}; it is not mailed after that. */
+    protected function lifetime(): DateTimeInterface
+    {
+        return $this->expiresAt;
+    }
 
     protected function subjectLine(): string
     {

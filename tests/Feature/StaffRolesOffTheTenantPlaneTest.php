@@ -148,7 +148,7 @@ it('does not park a staff role on an invitation, from either console', function 
 
     expect(InvitationRoleGrant::query()->where('organization_id', $org->id)->exists())->toBeFalse()
         ->and(Invitation::query()->where('organization_id', $org->id)->exists())->toBeFalse();
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 
     // The same invitation without it goes, carrying exactly what was asked.
     inviteToDirectory(['accessRoles' => [$own->id]])->assertSessionHasNoErrors();

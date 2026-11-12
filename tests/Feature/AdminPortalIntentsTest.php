@@ -158,7 +158,7 @@ it('mints a link over REST with intents, a lifetime of its own, and mails it in 
         ->and($link->emailed_to)->toBe('it@acme.example')
         ->and((int) round(now()->diffInMinutes($link->expires_at)))->toBe(1440);
 
-    Mail::assertSent(PortalLinkMail::class, fn (PortalLinkMail $mail): bool => $mail->hasTo('it@acme.example')
+    Mail::assertQueued(PortalLinkMail::class, fn (PortalLinkMail $mail): bool => $mail->hasTo('it@acme.example')
         && $mail->locale === 'da'
         && $mail->url === $response->json('data.url')
         && $mail->intents === ['sso', 'domain_verification', 'log_streams']);

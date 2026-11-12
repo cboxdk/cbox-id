@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b341556038c47513e82f76ba571b0bf2",
+    "content-hash": "c3ffaf5aae5e3060951525a83c9a5d5e",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -1341,16 +1341,16 @@
         },
         {
             "name": "cboxdk/laravel-relay-client",
-            "version": "v0.2.1",
+            "version": "v0.2.2",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-relay-client.git",
-                "reference": "83990dc67e68c3cd47f572741adc2d258fb84b62"
+                "reference": "6c1efa05dfde8d5acc597dbde6a47dfc0f3f7014"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-relay-client/zipball/83990dc67e68c3cd47f572741adc2d258fb84b62",
-                "reference": "83990dc67e68c3cd47f572741adc2d258fb84b62",
+                "url": "https://api.github.com/repos/cboxdk/laravel-relay-client/zipball/6c1efa05dfde8d5acc597dbde6a47dfc0f3f7014",
+                "reference": "6c1efa05dfde8d5acc597dbde6a47dfc0f3f7014",
                 "shasum": ""
             },
             "require": {
@@ -1421,7 +1421,7 @@
                 "issues": "https://github.com/cboxdk/laravel-relay-client/issues",
                 "source": "https://github.com/cboxdk/laravel-relay-client"
             },
-            "time": "2026-11-12T20:00:24+00:00"
+            "time": "2026-11-12T23:07:58+00:00"
         },
         {
             "name": "cboxdk/laravel-risk",
@@ -2682,22 +2682,22 @@
         },
         {
             "name": "guzzlehttp/guzzle",
-            "version": "8.3.1",
+            "version": "8.4.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/guzzle/guzzle.git",
-                "reference": "7d9b1f430bb65ac664e120af227bf9a795ad6333"
+                "reference": "d3d6055e1b7c9b640170be6341d8b4582f36fd14"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guzzle/guzzle/zipball/7d9b1f430bb65ac664e120af227bf9a795ad6333",
-                "reference": "7d9b1f430bb65ac664e120af227bf9a795ad6333",
+                "url": "https://api.github.com/repos/guzzle/guzzle/zipball/d3d6055e1b7c9b640170be6341d8b4582f36fd14",
+                "reference": "d3d6055e1b7c9b640170be6341d8b4582f36fd14",
                 "shasum": ""
             },
             "require": {
                 "ext-json": "*",
                 "guzzlehttp/promises": "^3.1",
-                "guzzlehttp/psr7": "^3.2",
+                "guzzlehttp/psr7": "^3.3",
                 "php": "^7.4 || ^8.0",
                 "psr/http-client": "^1.0",
                 "psr/http-factory": "^1.0",
@@ -2788,7 +2788,7 @@
             ],
             "support": {
                 "issues": "https://github.com/guzzle/guzzle/issues",
-                "source": "https://github.com/guzzle/guzzle/tree/8.3.1"
+                "source": "https://github.com/guzzle/guzzle/tree/8.4.0"
             },
             "funding": [
                 {
@@ -2804,7 +2804,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-25T21:35:34+00:00"
+            "time": "2026-11-12T18:55:45+00:00"
         },
         {
             "name": "guzzlehttp/promises",
@@ -2892,16 +2892,16 @@
         },
         {
             "name": "guzzlehttp/psr7",
-            "version": "3.2.0",
+            "version": "3.3.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/guzzle/psr7.git",
-                "reference": "cdc139396207a5eba10c242d241fb014cb098390"
+                "reference": "8b0a7e7db965a687eebe18333a128edac95db246"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/guzzle/psr7/zipball/cdc139396207a5eba10c242d241fb014cb098390",
-                "reference": "cdc139396207a5eba10c242d241fb014cb098390",
+                "url": "https://api.github.com/repos/guzzle/psr7/zipball/8b0a7e7db965a687eebe18333a128edac95db246",
+                "reference": "8b0a7e7db965a687eebe18333a128edac95db246",
                 "shasum": ""
             },
             "require": {
@@ -2991,7 +2991,7 @@
             ],
             "support": {
                 "issues": "https://github.com/guzzle/psr7/issues",
-                "source": "https://github.com/guzzle/psr7/tree/3.2.0"
+                "source": "https://github.com/guzzle/psr7/tree/3.3.0"
             },
             "funding": [
                 {
@@ -3007,7 +3007,7 @@
                     "type": "tidelift"
                 }
             ],
-            "time": "2026-10-17T23:57:19+00:00"
+            "time": "2026-11-12T16:40:06+00:00"
         },
         {
             "name": "guzzlehttp/uri-template",
@@ -6115,65 +6115,6 @@
                 "source": "https://github.com/ramsey/uuid/tree/4.9.4"
             },
             "time": "2026-09-16T11:39:30+00:00"
-        },
-        {
-            "name": "resend/resend-php",
-            "version": "v1.16.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/resend/resend-php.git",
-                "reference": "9ebdef978287dcd8cd17a399eebc977aa21cb402"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/resend/resend-php/zipball/9ebdef978287dcd8cd17a399eebc977aa21cb402",
-                "reference": "9ebdef978287dcd8cd17a399eebc977aa21cb402",
-                "shasum": ""
-            },
-            "require": {
-                "guzzlehttp/guzzle": "^7.8.2 || ^8.0",
-                "guzzlehttp/psr7": "^2.6.3 || ^3.0",
-                "php": "^8.1.0",
-                "psr/http-client": "^1.0"
-            },
-            "require-dev": {
-                "friendsofphp/php-cs-fixer": "^3.13",
-                "mockery/mockery": "^1.6",
-                "pestphp/pest": "^1.0|^2.0|^3.0|^4.0|^5.0"
-            },
-            "type": "library",
-            "autoload": {
-                "files": [
-                    "src/Resend.php"
-                ],
-                "psr-4": {
-                    "Resend\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Resend and contributors",
-                    "homepage": "https://github.com/resend/resend-php/contributors"
-                }
-            ],
-            "description": "Resend PHP library.",
-            "homepage": "https://resend.com/",
-            "keywords": [
-                "api",
-                "client",
-                "php",
-                "resend",
-                "sdk"
-            ],
-            "support": {
-                "issues": "https://github.com/resend/resend-php/issues",
-                "source": "https://github.com/resend/resend-php/tree/v1.16.0"
-            },
-            "time": "2026-09-25T18:18:55+00:00"
         },
         {
             "name": "robrichards/xmlseclibs",

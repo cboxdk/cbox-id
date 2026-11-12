@@ -10,7 +10,7 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
-- **System mail can go through Cbox Relay, with Resend as the failover.** `cboxdk/laravel-relay-client` adds a `relay` mailer (`RELAY_URL`, `RELAY_PROJECT`, `RELAY_KEY`), and the `failover` mailer now tries `relay` first and `resend` second (it was `smtp`, then `log`). Nothing changes until `MAIL_MAILER=failover` is set; production sends with `resend` until then.
+- **System mail goes through Cbox Relay, and only Relay.** `cboxdk/laravel-relay-client` (`^0.2.2`) adds a `relay` mailer (`RELAY_URL`, `RELAY_KEY`, optionally `RELAY_PROJECT`); set `MAIL_MAILER=relay`. There is no failover to another provider: the `failover` mailer is back to Laravel's `smtp`, then `log`.
 
 ### Performance
 
@@ -20,7 +20,16 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Changed
 
+- **Every mail is queued, and a Relay outage delays it instead of losing it.** Every mail Cbox ID sends (`App\Mail\BrandedMailable`) is now queued, also where the code said `send()`: invitations, portal links, admin-set passwords, console-sent resets and confirmations, approval requests and certificate warnings went out during the request before. A refused send is retried after 10 s, 30 s, 1, 2, 5 and 10 minutes, then every 15 minutes, for up to 6 hours, then the job fails into `failed_jobs` (it was 5 tries in about 7 minutes). The worker's `--tries` no longer applies to mail.
+- **A link or code is not mailed after it stops working.** Retries stop at the expiry of what the mail carries: a sign-in link after 15 minutes, a password reset after an hour, a one-time code, an approval request, a portal link, an invitation and a temporary password at their own expiry.
+- **A Relay outage no longer withdraws a new invitation or fails a portal link.** The mail is queued once the invitation or link is saved and retried as above; an invitation is withdrawn only when its mail cannot be queued at all.
+- **`cbox-id:doctor` checks Relay.** In production it fails when `MAIL_MAILER` names a mailer the deployment does not define (`resend`), when it is `relay` without `RELAY_URL` or `RELAY_KEY`, or when Relay's host does not resolve.
+
 - **UserInfo's `org_slug` and each `organizations` entry's `slug` come from the framework** (laravel-id 2.7 answers them itself). The app's own `UserInfoController`, which added them over the framework's answer with one more query, is removed; the answer is the same (`UserInfoOrganizationSlugTest`).
+
+### Removed
+
+- **Resend.** `resend/resend-php`, the `resend` mailer and `services.resend` (`RESEND_API_KEY`) are gone; Cbox services do not send through Resend. A deployment with `MAIL_MAILER=resend` must switch to `relay` before upgrading.
 
 ### Fixed
 

@@ -329,7 +329,7 @@ it('runs the whole app-on-Cbox-ID scenario as one chain', function (): void {
         ->and(InvitationRoleGrant::query()->where('invitation_id', $invitation->id)->pluck('role_id')->all())
         ->toBe([$roles['editor']['id']]);
 
-    preg_match('#/invitations/([^/?]+)/accept#', (string) Mail::sent(InvitationMail::class)->last()?->url, $link);
+    preg_match('#/invitations/([^/?]+)/accept#', (string) Mail::queued(InvitationMail::class)->last()?->url, $link);
     $inviteToken = $link[1] ?? '';
 
     // ── 3. Bo opens the link, accepts, lands in the app, and signs in to it ─────────
