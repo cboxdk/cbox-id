@@ -31,6 +31,7 @@ return [
             'organizations' => 'Which organizations you belong to',
             'groups' => 'Your roles',
             'feature_flags' => 'Which features are turned on for you',
+            'identity_claims' => 'Receive these details when you sign in',
         ],
     ],
     'failure' => [

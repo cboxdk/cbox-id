@@ -31,6 +31,7 @@ return [
             'organizations' => 'Organizacije kojima pripadate',
             'groups' => 'Vaše uloge',
             'feature_flags' => 'Koje su vam značajke omogućene',
+            'identity_claims' => 'Primanje ovih podataka kada se prijavite',
         ],
     ],
     'failure' => [

@@ -31,6 +31,7 @@ return [
             'organizations' => 'Organizațiile din care faceți parte',
             'groups' => 'Rolurile dumneavoastră',
             'feature_flags' => 'Ce funcții sunt activate pentru dumneavoastră',
+            'identity_claims' => 'Primirea acestor date când vă autentificați',
         ],
     ],
     'failure' => [

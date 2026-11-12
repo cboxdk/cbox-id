@@ -31,6 +31,7 @@ return [
             'organizations' => 'Organizace, jejichž jste členem',
             'groups' => 'Vaše role',
             'feature_flags' => 'Jaké funkce jsou pro vás aktivní',
+            'identity_claims' => 'Získat tyto údaje při vašem přihlášení',
         ],
     ],
     'failure' => [

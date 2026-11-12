@@ -31,6 +31,7 @@ return [
             'organizations' => 'Szervezetek, amelyeknek Ön tagja',
             'groups' => 'Az Ön szerepkörei',
             'feature_flags' => 'Az Ön számára engedélyezett funkciók',
+            'identity_claims' => 'Ezen adatok fogadása, amikor Ön bejelentkezik',
         ],
     ],
     'failure' => [

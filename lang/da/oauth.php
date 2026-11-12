@@ -31,6 +31,7 @@ return [
             'organizations' => 'Se hvilke organisationer du er medlem af',
             'groups' => 'Se dine roller',
             'feature_flags' => 'Se hvilke funktioner der er slået til for dig',
+            'identity_claims' => 'Modtage disse oplysninger, når du logger ind',
         ],
     ],
     'failure' => [

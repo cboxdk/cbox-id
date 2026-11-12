@@ -89,6 +89,7 @@ final class ConsoleScopeCopy
         'organizations' => 'console.their_organizations_8ca28570',
         'groups' => 'console.their_roles_as_a_groups_claim_9241eaa1',
         'feature_flags' => 'console.their_feature_flags_0ee98117',
+        'identity_claims' => 'console.full_identity_on_the_id_token_6903338b',
         'vault.manage' => 'console.manage_stored_secrets_5e6a07cd',
         'vault.lease' => 'console.use_stored_secrets_5c6109c2',
         'apps.manifest' => 'console.publish_its_own_manifest_0261dd08',
@@ -174,6 +175,7 @@ final class ConsoleScopeCopy
         'organizations' => 'console.the_organizations_this_person_belongs_to_so_the_app_can_d08d803e',
         'groups' => 'console.puts_the_person_s_roles_on_the_id_token_under_the_name_1df84dc6',
         'feature_flags' => 'console.puts_the_keys_of_the_feature_flags_that_are_on_for_the_70599dc3',
+        'identity_claims' => 'console.puts_everything_userinfo_answers_for_the_app_s_scopes_e_db47369d',
         'vault.manage' => 'console.create_rotate_and_revoke_downstream_credentials_in_the_fcf61c09',
         'vault.lease' => 'console.fetch_a_stored_credential_to_call_a_downstream_service_597a2503',
         'apps.manifest' => 'console.let_this_app_push_its_own_roles_and_permissions_manifes_95ca651a',
@@ -260,6 +262,7 @@ final class ConsoleScopeCopy
         'organizations' => 'console.which_organizations_you_belong_to_94151584',
         'groups' => 'console.your_roles_0c0e9ba3',
         'feature_flags' => 'console.which_features_are_turned_on_for_you_0fc938a5',
+        'identity_claims' => 'console.receive_these_details_when_you_sign_in_6b875782',
     ];
 
     public static function consent(string $scope): ?string

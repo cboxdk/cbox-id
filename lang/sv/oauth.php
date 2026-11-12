@@ -31,6 +31,7 @@ return [
             'organizations' => 'Vilka organisationer du tillhör',
             'groups' => 'Dina roller',
             'feature_flags' => 'Vilka funktioner som är aktiverade för dig',
+            'identity_claims' => 'Ta emot dessa uppgifter när du loggar in',
         ],
     ],
     'failure' => [

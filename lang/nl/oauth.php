@@ -31,6 +31,7 @@ return [
             'organizations' => 'De organisaties waarvan je lid bent',
             'groups' => 'Je rollen',
             'feature_flags' => 'Welke functies voor je zijn ingeschakeld',
+            'identity_claims' => 'Deze gegevens ontvangen wanneer je je aanmeldt',
         ],
     ],
     'failure' => [
