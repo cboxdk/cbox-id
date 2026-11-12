@@ -101,6 +101,17 @@ final readonly class OperatorMfa implements MfaMandate, MfaVerification
 
     public function requiresVerification(string $subjectId, array $amr, ?string $organizationId = null): bool
     {
+        // NO RECORDED METHODS is not a weak sign-in. A CIBA approval and a device grant
+        // carry no `amr`: the person answered them from a surface that already passed
+        // this rule (the Authenticator app on their enrolled device, or a signed-in
+        // session), and that answer IS the second factor. Demanding one here refused
+        // every approval an operator gave ("a second factor is required") once the
+        // operator and the app account became the same person. The framework's own rule
+        // decides for them, as it does for everybody else.
+        if ($amr === []) {
+            return $this->inner->requiresVerification($subjectId, $amr, $organizationId);
+        }
+
         return $this->isOperator($subjectId)
             ? ! AuthenticationContextClass::Aal2->isSatisfiedBy($amr)
             : $this->inner->requiresVerification($subjectId, $amr, $organizationId);
