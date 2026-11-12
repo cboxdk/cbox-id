@@ -143,7 +143,7 @@ it('opens an invitation on a page that says who is inviting whom, and joins on t
     )));
 
     // The token rides in the mailed link; read it back off the fake.
-    $url = (string) Mail::sent(InvitationMail::class)->last()?->url;
+    $url = (string) Mail::queued(InvitationMail::class)->last()?->url;
     $path = (string) parse_url($url, PHP_URL_PATH);
 
     expect($sent)->not->toBeNull();

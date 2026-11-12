@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Mail;
 
 use App\Platform\Otp\BrandedEmailOtpChannel;
+use DateTimeInterface;
+use Illuminate\Support\Carbon;
 
 /**
  * A ONE-TIME CODE, by email — for every flow that proves "you have this inbox" with a code
@@ -49,6 +51,12 @@ final class OneTimeCodeMail extends BrandedMailable
             'link_identity' => 'link',
             default => 'verify',
         };
+    }
+
+    /** The code dies when the OTP challenge does; the channel hands over its exact expiry. */
+    protected function lifetime(): DateTimeInterface
+    {
+        return $this->usableUntil ?? Carbon::now()->addMinutes($this->minutes);
     }
 
     protected function subjectLine(): string

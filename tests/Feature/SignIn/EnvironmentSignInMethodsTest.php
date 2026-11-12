@@ -120,7 +120,7 @@ it('refuses to send or redeem a magic link where they are off — a link mailed 
         ->assertRedirect(route('login'))
         ->assertSessionHasErrors(['email' => __('auth.login.method_off.magic_link')]);
 
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 
     $this->get(route('magic.redeem', $token))->assertRedirect(route('login'));
     $this->post(route('magic.redeem.store', $token))->assertRedirect(route('login'));
@@ -152,7 +152,7 @@ it('refuses to mail a new user a sign-in link where magic links are off, before 
         ->assertJsonPath('error', 'magic_link_disabled');
 
     expect(app(Subjects::class)->findByEmail('new@acme.test'))->toBeNull();
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 it('stops offering a passkey to add where passkeys are off, and keeps the ones people have', function (): void {

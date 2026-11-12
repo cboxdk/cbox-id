@@ -515,7 +515,7 @@ it('mails the links of an environment action taken at the root on that environme
         ->postJson("/api/v1/organizations/{$organization}/invitations", ['email' => 'new.admin@initech.example', 'role' => 'admin'], $headers)
         ->assertCreated();
 
-    Mail::assertSent(InvitationMail::class, static fn (InvitationMail $mail): bool => str_starts_with($mail->url, 'https://acme-staging.id.example/invitations/'));
+    Mail::assertQueued(InvitationMail::class, static fn (InvitationMail $mail): bool => str_starts_with($mail->url, 'https://acme-staging.id.example/invitations/'));
 
     expect(EnvironmentOrigin::pinned())->toBeNull()
         ->and(url('/after'))->toBe(rtrim((string) config('app.url'), '/').'/after');

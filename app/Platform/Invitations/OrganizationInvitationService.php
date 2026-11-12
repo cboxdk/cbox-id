@@ -135,10 +135,12 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
         });
 
         /*
-         * A TRANSPORT FAILURE IS NOT A SUCCESSFUL INVITE. The row is committed by the time
-         * the mailer runs, so an SMTP outage used to leave an invitation nobody received —
-         * and inviting the same address again then superseded it silently. Withdrawn, so the
-         * obvious next step (try again) works and the screen tells the truth.
+         * A MAIL THAT CANNOT EVEN BE QUEUED IS NOT A SUCCESSFUL INVITE. The mail is queued
+         * (a Relay outage is retried by the queue until the invitation expires, at most six
+         * hours — see BrandedMailable), but a queue that refuses the job leaves an invitation
+         * nobody will receive, and inviting the same address again then superseded it
+         * silently. Withdrawn, so the obvious next step (try again) works and the screen
+         * tells the truth.
          */
         try {
             $this->mail($pending->invitation, $pending->token, $invitation->inviter, $target);
@@ -579,7 +581,7 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
             url: $this->links->route('invitation.accept', $token),
             role: $roleLabel,
             app: $target?->appName,
-        )->forOrganization($invitation->organization_id));
+        )->forOrganization($invitation->organization_id)->usableUntil($invitation->expires_at));
     }
 
     /** The pending invitation with this id IN this organization — bound in the WHERE clause. */

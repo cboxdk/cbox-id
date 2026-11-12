@@ -167,7 +167,7 @@ function resumeInvitation(string $email, ?string $clientId = null, ?string $retu
     ));
 
     // The token exists only in the mailed link.
-    $mailed = Mail::sent(InvitationMail::class)->last() ?? Mail::queued(InvitationMail::class)->last();
+    $mailed = Mail::queued(InvitationMail::class)->last() ?? Mail::queued(InvitationMail::class)->last();
     preg_match('#/invitations/([^/?]+)/accept#', (string) $mailed?->url, $link);
 
     return $link[1] ?? '';

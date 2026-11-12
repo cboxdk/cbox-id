@@ -54,14 +54,17 @@ final readonly class BrandedEmailOtpChannel implements OtpChannel
     public function deliver(OtpDelivery $delivery): void
     {
         $mail = (new OneTimeCodeMail($delivery->code, $delivery->purpose, $delivery->ttlMinutes()))
-            ->inBrand($this->brands->current());
+            ->inBrand($this->brands->current())
+            // Retried through a Relay outage only while the code still works.
+            ->usableUntil($delivery->expiresAt);
 
         $this->applySender($mail);
 
         // The mailer is asked for at send time, not injected: the channel is cached for the
         // life of the registry, and the mailer it would have captured is not necessarily the
         // one in place when the code is sent. Queued: the person waiting for the code never
-        // waits on the mail provider, and an outage is retried by the queue.
+        // waits on the mail provider, and an outage is retried by the queue until the code
+        // expires.
         Mail::to($delivery->recipient)
             ->locale(HostedLocale::fromTag($delivery->locale)->value ?? $this->locales->forRecipient())
             ->queue($mail);

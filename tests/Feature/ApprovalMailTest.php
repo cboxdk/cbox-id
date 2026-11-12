@@ -72,7 +72,7 @@ it('mails a person with no phone a link to their Approvals page, without what th
 
     app(BackchannelAuthentication::class)->request(approvalMailAgent(), ['openid'], $subjectId, 'Transfer DKK 4,200 to ACME ApS');
 
-    Mail::assertSent(ApprovalRequestMail::class, function (ApprovalRequestMail $mail): bool {
+    Mail::assertQueued(ApprovalRequestMail::class, function (ApprovalRequestMail $mail): bool {
         $html = $mail->render();
 
         return $mail->hasTo('alex@acme.test')
@@ -90,7 +90,7 @@ it('leaves the mail to the phone when one is enrolled', function (): void {
 
     app(BackchannelAuthentication::class)->request(approvalMailAgent(), ['openid'], $subjectId, 'Deploy');
 
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 it('mails anyway when the devices module would refuse this client a push', function (): void {
@@ -100,7 +100,7 @@ it('mails anyway when the devices module would refuse this client a push', funct
 
     app(BackchannelAuthentication::class)->request(approvalMailAgent(), ['openid'], $subjectId, 'Deploy');
 
-    Mail::assertSent(ApprovalRequestMail::class, 1);
+    Mail::assertQueued(ApprovalRequestMail::class, 1);
 });
 
 it('mails every request when set to always, and none when off', function (): void {
@@ -110,11 +110,11 @@ it('mails every request when set to always, and none when off', function (): voi
 
     config()->set('cbox-id.approvals.email', 'always');
     app(BackchannelAuthentication::class)->request($client, ['openid'], $subjectId, 'Deploy');
-    Mail::assertSent(ApprovalRequestMail::class, 1);
+    Mail::assertQueued(ApprovalRequestMail::class, 1);
 
     config()->set('cbox-id.approvals.email', 'off');
     app(BackchannelAuthentication::class)->request(approvalMailAgent('Other agent'), ['openid'], approvalMailPerson('sam@acme.test'), 'Deploy');
-    Mail::assertSent(ApprovalRequestMail::class, 1);
+    Mail::assertQueued(ApprovalRequestMail::class, 1);
 });
 
 it('withholds the mail past the per-person limit but still files the request', function (): void {
@@ -125,7 +125,7 @@ it('withholds the mail past the per-person limit but still files the request', f
         app(BackchannelAuthentication::class)->request($client, ['openid'], $subjectId, 'Request '.$i);
     }
 
-    Mail::assertSent(ApprovalRequestMail::class, ApprovalMail::ATTEMPTS);
+    Mail::assertQueued(ApprovalRequestMail::class, ApprovalMail::ATTEMPTS);
     expect(BackchannelAuthRequest::query()->where('user_id', $subjectId)->count())->toBe(ApprovalMail::ATTEMPTS + 2);
 })->group('security');
 

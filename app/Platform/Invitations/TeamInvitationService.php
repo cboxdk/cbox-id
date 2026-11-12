@@ -265,7 +265,8 @@ final readonly class TeamInvitationService implements TeamInvitations
     }
 
     /**
-     * Mail the link; on a transport failure, withdraw what was just created and refuse.
+     * Mail the link; when the mail cannot even be queued, withdraw what was just created
+     * and refuse. (Queued, a Relay outage is retried by the queue — see BrandedMailable.)
      *
      * A TRANSPORT FAILURE IS NOT A SUCCESSFUL INVITE. The console used to 500 while the row
      * sat in the database, and the API answered 201 about a mail nobody got. Withdrawn, so
@@ -294,7 +295,7 @@ final readonly class TeamInvitationService implements TeamInvitations
             // from the Host header of whoever asked to send it — browser or API caller.
             url: $this->links->temporarySignedRoute('organization.invite.accept', now()->addDays(self::LINK_DAYS), ['token' => $token]),
             role: $invitation->role->label(),
-        )->forOrganization($invitation->organization_id));
+        )->forOrganization($invitation->organization_id)->usableUntil($invitation->expires_at));
     }
 
     private function remember(Invitation $invitation, Inviter $inviter): void

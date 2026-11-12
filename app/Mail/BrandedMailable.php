@@ -8,16 +8,21 @@ use App\Listeners\SuppressSandboxMail;
 use App\Platform\Locale\MailLocale;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
+use DateTimeInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Mail\Factory;
 use Illuminate\Contracts\Mail\Mailer;
 use Illuminate\Contracts\Queue\Factory as Queue;
 use Illuminate\Contracts\Queue\ShouldBeEncrypted;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Address;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * EVERY MAIL A PERSON GETS FROM CBOX ID, AND WHAT EACH ONE OWES THEM.
@@ -44,15 +49,31 @@ use Illuminate\Queue\SerializesModels;
  * brand rather than falling back to ours. It also keeps the ENVIRONMENT it was asked in, so
  * the worker sends it inside that environment and a sandbox's mail is still suppressed
  * ({@see SuppressSandboxMail}). Queued mail is encrypted on the queue (it carries sign-in
- * links and codes), leaves only after the request's transaction commits, and is retried.
+ * links and codes) and leaves only after the request's transaction commits.
+ *
+ * EVERY MAIL IS QUEUED ({@see ShouldQueue}), whether the send site says `send()` or
+ * `queue()`, and goes out through the one mailer, Cbox Relay. There is no second provider
+ * to fail over to (Brain mem_MeQkGzrwgYRrXMWJJtSECE): a Relay outage is ridden out by the
+ * queue instead. A refused try is retried with a growing pause ({@see self::backoff()})
+ * for up to {@see self::RETRY_HOURS} hours, then the job fails into `failed_jobs`. Inside
+ * that window the attempt count is no limit — Laravel ignores the worker's `--tries` once
+ * a job has a {@see self::retryUntil()} — so an outage shorter than the window delays a
+ * mail and never loses it.
+ *
+ * A mail whose link or code dies sooner stops trying when it dies
+ * ({@see self::lifetime()}): nobody should get a sign-in code hours after it stopped
+ * working.
  */
-abstract class BrandedMailable extends Mailable implements ShouldBeEncrypted
+abstract class BrandedMailable extends Mailable implements ShouldBeEncrypted, ShouldQueue
 {
     use Queueable;
     use SerializesModels;
 
-    /** A provider outage is retried, not lost. */
-    public int $tries = 5;
+    /** How long a mail is retried through a mail-provider outage, at most. */
+    public const int RETRY_HOURS = 6;
+
+    /** When what this mail carries stops working, where the send site knows it. */
+    protected ?DateTimeInterface $usableUntil = null;
 
     /** The environment the mail was asked in, for a worker that has none. */
     protected ?string $environmentKey = null;
@@ -126,7 +147,7 @@ abstract class BrandedMailable extends Mailable implements ShouldBeEncrypted
     }
 
     /**
-     * @param  \DateTimeInterface|\DateInterval|int  $delay
+     * @param  DateTimeInterface|\DateInterval|int  $delay
      */
     public function later($delay, Queue $queue): mixed
     {
@@ -135,10 +156,48 @@ abstract class BrandedMailable extends Mailable implements ShouldBeEncrypted
         return parent::later($delay, $queue);
     }
 
-    /** @return list<int> */
+    /**
+     * Stop retrying when what the mail carries stops working: a link or code past its
+     * expiry is worth nothing to the person, so it is not sent at all.
+     */
+    public function usableUntil(?DateTimeInterface $until): static
+    {
+        $this->usableUntil = $until;
+
+        return $this;
+    }
+
+    /**
+     * When to stop trying: {@see self::RETRY_HOURS} from now, or sooner when the link or
+     * code inside dies sooner. Read once, when the mail is queued.
+     */
+    public function retryUntil(): DateTimeInterface
+    {
+        $window = Carbon::now()->addHours(self::RETRY_HOURS);
+        $lifetime = $this->lifetime();
+
+        return $lifetime !== null && $lifetime < $window ? Carbon::instance($lifetime) : $window;
+    }
+
+    /**
+     * Seconds to wait before each retry; the last pause repeats until {@see retryUntil()}.
+     * The pauses grow to 15 minutes and stay there: a mail goes out at most 15 minutes
+     * after Relay recovers, and a long outage costs four tries an hour, not a tight loop.
+     *
+     * @return list<int>
+     */
     public function backoff(): array
     {
-        return [10, 30, 60, 300];
+        return [10, 30, 60, 120, 300, 600, 900];
+    }
+
+    /** The mail gave up. The job and its exception are in `failed_jobs`. */
+    public function failed(Throwable $e): void
+    {
+        Log::warning('A mail was not delivered.', [
+            'mail' => static::class,
+            'exception' => $e->getMessage(),
+        ]);
     }
 
     /**
@@ -161,6 +220,15 @@ abstract class BrandedMailable extends Mailable implements ShouldBeEncrypted
         $this->brand();
         $this->environmentKey = app(EnvironmentContext::class)->current()?->environmentKey();
         $this->afterCommit();
+    }
+
+    /**
+     * When the link or code this mail carries stops working, or null for a mail with
+     * nothing that expires. A subclass with its own clock overrides it.
+     */
+    protected function lifetime(): ?DateTimeInterface
+    {
+        return $this->usableUntil;
     }
 
     /** The subject, in the recipient's language. */

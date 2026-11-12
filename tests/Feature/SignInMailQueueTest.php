@@ -77,7 +77,10 @@ it('encrypts a queued sign-in mail and sends it later inside the environment it 
     expect($job)->toBeInstanceOf(SendQueuedMailable::class)
         ->and($job->shouldBeEncrypted)->toBeTrue()
         ->and($job->afterCommit)->toBeTrue()
-        ->and($job->tries)->toBe(5);
+        // Retried through a Relay outage until the link dies (15 minutes), not by try count.
+        ->and($job->tries)->toBeNull()
+        ->and($job->retryUntil())->toBeInstanceOf(DateTimeInterface::class)
+        ->and($job->backoff())->toBe([10, 30, 60, 120, 300, 600, 900]);
 
     $context->set(null);
     $job->handle(app(MailFactory::class));

@@ -24,7 +24,16 @@ waits:
 | Outbound user sync and audit streaming | `DrainProvisioningConnection`, `PumpAuditStream`, `PumpStreamDeliveries` | the default queue (`SIEM_QUEUE*` for the last) |
 | Push notifications to trusted devices | `DeliverPushNotification` | `CBOX_ID_DEVICES_QUEUE_CONNECTION` / `CBOX_ID_DEVICES_QUEUE` |
 | Postal webhooks and inbound mail | `ProcessWebhook`, `ProcessInboundMessage` | `POSTAL_WEBHOOK_*`, `POSTAL_INBOUND_*` |
-| Queued mail, notifications and listeners | the framework's own | the default queue |
+| Every mail Cbox ID sends, notifications and listeners | the framework's own | the default queue |
+
+Mail is always queued, through Cbox Relay (`MAIL_MAILER=relay`). There is no second mail
+provider to fail over to; a Relay outage is ridden out by the queue. A mail Relay refuses
+is retried after 10 s, 30 s, 1, 2, 5 and 10 minutes, then every 15 minutes, for up to
+6 hours, and then fails into `failed_jobs` (`php artisan queue:retry` sends it again). A
+mail carrying a link or code that dies sooner stops when it dies: a sign-in link after
+15 minutes, a password reset after an hour, a one-time code, an approval request, a portal
+link or a temporary password at its own expiry. The worker's `--tries` does not cut this
+short: Laravel ignores it for a job with a retry deadline.
 
 A blank setting means "the default queue of the default connection" (`QUEUE_CONNECTION`
 and its `REDIS_QUEUE`/`DB_QUEUE`, normally `default`). Out of the box every job lands on

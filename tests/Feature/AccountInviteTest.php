@@ -45,7 +45,7 @@ it('invites a teammate with native app roles and an acceptance link', function (
     expect(app(PlatformRoot::class)->run(fn () => app(Invitations::class)->pending($owner->organization_id)))
         ->toHaveCount(1);
 
-    Mail::assertSent(InvitationMail::class, fn (InvitationMail $m): bool => $m->hasTo('new@acme.example'));
+    Mail::assertQueued(InvitationMail::class, fn (InvitationMail $m): bool => $m->hasTo('new@acme.example'));
 });
 
 it('rejects inviting an email that already belongs to a member', function (): void {
@@ -57,7 +57,7 @@ it('rejects inviting an email that already belongs to a member', function (): vo
         ->post(route('orgs.settings.members.invite', ['organization' => $owner->organization_id]), ['email' => 'owner@acme.example', 'roles' => ['viewer']])
         ->assertSessionHasErrors('email');
 
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 it('requires a valid signature to reach the accept page', function (): void {

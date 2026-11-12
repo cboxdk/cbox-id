@@ -137,7 +137,7 @@ it('shows the invitee the app role beside the built-in one, in both themes and o
         clientId: $client->client_id,
     ));
 
-    $page = visit((string) parse_url((string) Mail::sent(InvitationMail::class)->last()?->url, PHP_URL_PATH));
+    $page = visit((string) parse_url((string) Mail::queued(InvitationMail::class)->last()?->url, PHP_URL_PATH));
 
     $page->assertSee('Join Hansen Revision?')
         ->assertSee('Built-in role')

@@ -149,7 +149,7 @@ it('stands up an organization over the API and emails its owner a link, never a 
     expect($created->json('data.project_id'))->toBeString()
         ->and(Environment::query()->whereKey($created->json('data.environment_id'))->value('project_id'))->toBe($created->json('data.project_id'));
 
-    Mail::assertSent(PasswordResetMail::class, fn ($mail): bool => $mail->hasTo('ada@northwind.example'));
+    Mail::assertQueued(PasswordResetMail::class, fn ($mail): bool => $mail->hasTo('ada@northwind.example'));
 
     // An allowance the console does not offer is refused, as the form refuses it.
     $this->withToken($token)->postJson('/api/v1/platform/workspaces', [

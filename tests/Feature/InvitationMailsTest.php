@@ -25,7 +25,7 @@ it('names the organization and the inviter when inviting somebody to join it', f
 
     inviteToDirectory()->assertSessionHasNoErrors();
 
-    Mail::assertSent(InvitationMail::class, function (InvitationMail $mail): bool {
+    Mail::assertQueued(InvitationMail::class, function (InvitationMail $mail): bool {
         $mail->assertHasSubject('Owner invited you to join Acme');
         $mail->assertSeeInHtml('as <b>Member</b>', false);
         // The mailed link opens a page; it does not accept anything by itself.
@@ -43,7 +43,7 @@ it('names the native app and selected role when inviting a teammate', function (
         ->post(route('orgs.settings.members.invite', ['organization' => $organization->id]), ['email' => 'new@acme.example', 'roles' => ['developer', 'billing']])
         ->assertSessionHasNoErrors();
 
-    Mail::assertSent(InvitationMail::class, function (InvitationMail $mail) use ($ownerId): bool {
+    Mail::assertQueued(InvitationMail::class, function (InvitationMail $mail) use ($ownerId): bool {
         $mail->assertHasSubject('Owner invited you to join Acme');
         expect($mail->app)->toBe('Cbox ID')->and($mail->role)->toBe('Billing, Editor');
 
@@ -53,5 +53,5 @@ it('names the native app and selected role when inviting a teammate', function (
         return true;
     });
 
-    Mail::assertNotSent(OrganizationInviteMail::class);
+    Mail::assertNotQueued(OrganizationInviteMail::class);
 });

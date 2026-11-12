@@ -383,7 +383,7 @@ it('mints a link from the organization hub with intents, lifetime and the IT con
         ->and($link->emailed_to)->toBe('it@tenant.example')
         ->and((int) round(now()->diffInMinutes($link->expires_at)))->toBe(4320);
 
-    Mail::assertSent(PortalLinkMail::class, fn (PortalLinkMail $mail): bool => $mail->locale === 'fr');
+    Mail::assertQueued(PortalLinkMail::class, fn (PortalLinkMail $mail): bool => $mail->locale === 'fr');
 
     // Nothing ticked is a field error, not a link.
     $this->from(route('environment.organizations.show', $orgId))

@@ -96,7 +96,7 @@ it('emails the password instead when the admin chooses that delivery', function 
         'delivery' => 'email',
     ])->assertSessionHasNoErrors();
 
-    Mail::assertSent(AdminAssignedPasswordMail::class);
+    Mail::assertQueued(AdminAssignedPasswordMail::class);
 
     // The credential must NOT also be revealed on screen when it was emailed.
     test()->get(route('environment.users.show', $userId))

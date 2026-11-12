@@ -567,7 +567,7 @@ it('sets a password without ever answering with it, and mails it unless told not
         ->and(uoaAudit('user.password_set_by_admin')?->actor_id)->toBe($keyId)
         ->and(uoaAudit('user.password_set_by_admin')?->context['reason'] ?? null)->toBe('Locked out');
 
-    Mail::assertSent(AdminAssignedPasswordMail::class, 1);
+    Mail::assertQueued(AdminAssignedPasswordMail::class, 1);
 
     $this->withToken($key)->postJson("/api/v1/users/{$ada}/password", ['password' => 'x', 'reason' => 'Too short'])
         ->assertUnprocessable();

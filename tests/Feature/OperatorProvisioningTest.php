@@ -72,7 +72,7 @@ it('stands up the whole customer from the operator console', function (): void {
 it('emails the owner a link instead of choosing their password', function (): void {
     createCustomer(['ownerEmail' => 'ada@northwind.example'])->assertSessionHasNoErrors();
 
-    Mail::assertSent(PasswordResetMail::class, fn ($mail): bool => $mail->hasTo('ada@northwind.example'));
+    Mail::assertQueued(PasswordResetMail::class, fn ($mail): bool => $mail->hasTo('ada@northwind.example'));
 })->group('security');
 
 it('reuses the identity an address already holds rather than minting a second', function (): void {
@@ -123,12 +123,12 @@ it('refuses to create a customer for anyone who is not an operator', function ()
         expect(Organization::query()->where('name', 'Should Not Exist')->exists())->toBeFalse();
     });
 
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 })->group('security');
 
 it('refuses a blank form rather than provisioning an unnamed customer', function (): void {
     createCustomer(['name' => '', 'ownerEmail' => '', 'ownerName' => ''])
         ->assertSessionHasErrors(['name', 'ownerEmail', 'ownerName']);
 
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });

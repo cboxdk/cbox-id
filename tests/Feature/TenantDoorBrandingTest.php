@@ -159,7 +159,7 @@ it('paints every door on a customer environment in its brand', function (): void
         inviter: new Inviter($anna->id, 'Anna Hansen'),
     ));
 
-    preg_match('#/invitations/([^/?]+)/accept#', (string) Mail::sent(InvitationMail::class)->last()?->url, $link);
+    preg_match('#/invitations/([^/?]+)/accept#', (string) Mail::queued(InvitationMail::class)->last()?->url, $link);
 
     assertEnvironmentDoor(test()->get(route('invitation.accept', $link[1] ?? '')), 'auth/join-organization');
 

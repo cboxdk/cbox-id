@@ -96,7 +96,7 @@ it('sends a password reset email from the user detail page', function (): void {
 
     test()->post(route('environment.users.password-reset', $user->id))->assertSessionHasNoErrors();
 
-    Mail::assertSent(PasswordResetMail::class);
+    Mail::assertQueued(PasswordResetMail::class);
 });
 
 it('assigns a user to an organization', function (): void {
@@ -217,7 +217,7 @@ it('sends an organization invitation and lists it as pending', function (): void
 
     inviteOrganizationMember($org->id)->assertSessionHasNoErrors();
 
-    Mail::assertSent(InvitationMail::class);
+    Mail::assertQueued(InvitationMail::class);
     expect(app(Invitations::class)->pending($org->id))->toHaveCount(1);
 });
 

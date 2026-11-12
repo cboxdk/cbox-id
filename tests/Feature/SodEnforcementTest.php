@@ -129,7 +129,7 @@ it('refuses an invitation whose chosen access roles are themselves a toxic combi
         ->assertSessionHasErrors('accessRoles');
 
     expect(InvitationRoleGrant::query()->where('email', 'newbie@acme.test')->exists())->toBeFalse();
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 it('accepts an invitation whose chosen access roles do not conflict', function (): void {

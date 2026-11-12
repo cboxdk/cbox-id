@@ -400,7 +400,7 @@ it('invites with the app\'s manifest roles by key, a way back to the app, and li
         ->assertJsonPath('data.return_to', 'https://tax.example/welcome')
         ->json('data.id');
 
-    Mail::assertSent(InvitationMail::class, fn (InvitationMail $mail): bool => $mail->hasTo('new@acme.test') && $mail->inviter === 'Tax');
+    Mail::assertQueued(InvitationMail::class, fn (InvitationMail $mail): bool => $mail->hasTo('new@acme.test') && $mail->inviter === 'Tax');
 
     $this->withToken($key)->getJson("/api/v1/organizations/{$org->id}/invitations")
         ->assertOk()
@@ -430,7 +430,7 @@ it('refuses a staff role on an invitation instead of quietly dropping it', funct
         ->assertJsonPath('message', 'The role [Support] is a staff role. Staff roles are never granted by invitation — grant it to the member after they join.');
 
     expect(Invitation::query()->count())->toBe(0);
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 it('re-sends on a fresh link and withdraws, only within the invitation\'s own organization', function (): void {

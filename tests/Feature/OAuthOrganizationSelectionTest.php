@@ -630,7 +630,7 @@ it('binds the app\'s next authorization to the organization an invitation just j
         returnTo: 'https://app.test/welcome',
     ));
 
-    preg_match('#/invitations/([^/]+)/accept#', (string) Mail::sent(InvitationMail::class)->last()?->url, $token);
+    preg_match('#/invitations/([^/]+)/accept#', (string) Mail::queued(InvitationMail::class)->last()?->url, $token);
 
     test()->post(route('invitation.accept.store', $token[1] ?? ''))->assertRedirect('https://app.test/welcome');
 

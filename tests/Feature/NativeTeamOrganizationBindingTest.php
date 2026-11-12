@@ -30,19 +30,19 @@ it('keeps an old invitation form bound to its displayed organization after anoth
     // organization in the body still has to match the one in the address.
     $this->post(route('orgs.settings.members.invite', ['org' => $firstSlug]), ['organization' => $second['organization']->id, 'email' => 'mixed-tab@example.test', 'roles' => ['viewer']])->assertForbidden();
     $this->post(route('orgs.settings.members.invite', ['org' => $firstSlug]), ['email' => 'no-workspace@example.test', 'roles' => ['viewer']])->assertForbidden();
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 
     $this->from(route('orgs.settings.members', ['org' => $firstSlug]))->post(route('orgs.settings.members.invite', ['org' => $firstSlug]), [
         'organization' => $first['organization']->id, 'email' => 'old-tab@example.test', 'roles' => ['viewer'],
     ])->assertSessionHasNoErrors();
-    Mail::assertSent(InvitationMail::class, fn (InvitationMail $mail): bool => $mail->hasTo('old-tab@example.test'));
+    Mail::assertQueued(InvitationMail::class, fn (InvitationMail $mail): bool => $mail->hasTo('old-tab@example.test'));
     expect(app(PlatformRoot::class)->run(fn () => DB::table('invitations')->where('email', 'old-tab@example.test')->value('organization_id')))
         ->toBe($first['organization']->id);
 
     $this->from(route('orgs.settings.members', ['org' => $secondSlug]))->post(route('orgs.settings.members.invite', ['org' => $secondSlug]), [
         'organization' => $second['organization']->id, 'email' => 'right-tab@example.test', 'roles' => ['viewer'],
     ])->assertSessionHasNoErrors();
-    Mail::assertSent(InvitationMail::class, fn (InvitationMail $mail): bool => $mail->hasTo('right-tab@example.test'));
+    Mail::assertQueued(InvitationMail::class, fn (InvitationMail $mail): bool => $mail->hasTo('right-tab@example.test'));
 });
 
 it('refuses member role writes without the displayed organization or with a foreign one', function (): void {

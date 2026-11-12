@@ -96,14 +96,14 @@ it('alerts once at 30 days: a webhook event, a trail entry and a mail to the org
     expect($entry->actor_type)->toBe(ActorType::System)
         ->and($entry->organization_id)->toBe($org);
 
-    Mail::assertSent(CertificateExpiringMail::class, fn (CertificateExpiringMail $mail): bool => $mail->connectionName === 'Okta' && $mail->locale === 'en');
+    Mail::assertQueued(CertificateExpiringMail::class, fn (CertificateExpiringMail $mail): bool => $mail->connectionName === 'Okta' && $mail->locale === 'en');
 
     // The next morning: nothing new to say.
     $this->artisan('cbox-id:sso:certificate-expiry')->assertSuccessful();
 
     expect(Event::query()->where('type', 'connection.certificate_expiring')->count())->toBe(1)
         ->and(CertificateAlert::query()->count())->toBe(1);
-    Mail::assertSentCount(1);
+    Mail::assertQueuedCount(1);
 });
 
 it('says it again, once, at 7 days — and for a lapsed certificate', function (): void {
@@ -137,7 +137,7 @@ it('stays quiet for a healthy certificate, a renewal already staged, a draft, or
 
     expect(app(CertificateExpiryAlerts::class)->run())->toBe(1)
         ->and(Event::query()->where('type', 'connection.certificate_expiring')->sole()->payload['id'])->toBe($alone->id);
-    Mail::assertNothingSent();
+    Mail::assertNothingOutgoing();
 });
 
 it('offers connection.certificate_expiring to webhooks and accepts a subscription to it', function (): void {
