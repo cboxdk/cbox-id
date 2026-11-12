@@ -171,6 +171,36 @@ it('draws those pages without the console, with the way back to it', function ()
     expect($this->get('https://'.ACCOUNT_LOGIN_HOST.'/settings')->inertiaProps('accountShell.back.url'))->toBe($from);
 });
 
+it('points "organization settings have moved" at the console that serves them, never at the login host', function (): void {
+    splitHosts();
+    splitHostsPerson();
+
+    $href = $this->get('https://'.ACCOUNT_LOGIN_HOST.'/settings')->assertOk()->inertiaProps('organizationSettingsMoved');
+
+    // Into the console through its start, landing on the organization's page there.
+    expect($href)->toBe('https://'.ACCOUNT_APP_HOST.'/auth/start?return_to=%2Forganization');
+
+    $target = (string) parse_url($href, PHP_URL_QUERY);
+    parse_str($target, $query);
+
+    expect(parse_url($href, PHP_URL_HOST))->toBe(ACCOUNT_APP_HOST)
+        ->and(accountServed(ACCOUNT_APP_HOST, '/auth/start'))->toBeTrue()
+        ->and(accountServed(ACCOUNT_APP_HOST, $query['return_to']))->toBeTrue()
+        // The address the link used to name.
+        ->and(accountServed(ACCOUNT_LOGIN_HOST, '/organization'))->toBeFalse();
+})->group('security');
+
+it('sends an old tab\'s organization-settings write on the login host to the console page, not to a 404', function (): void {
+    splitHosts();
+    splitHostsPerson();
+
+    $this->patch('https://'.ACCOUNT_LOGIN_HOST.'/settings', ['name' => 'Acme'])
+        ->assertStatus(303)
+        ->assertRedirect('https://'.ACCOUNT_APP_HOST.'/auth/start?return_to=%2Forganization')
+        ->assertHeader('Deprecation', 'true')
+        ->assertHeader('Link', '<https://'.ACCOUNT_APP_HOST.'/organization>; rel="successor-version"');
+})->group('security');
+
 it('names the login host in every console link to a person\'s own page', function (): void {
     splitHosts();
     splitHostsPerson('console');
