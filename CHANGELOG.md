@@ -8,6 +8,10 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Performance
+
+- **A rate limit is checked and counted in one round trip.** Laravel's limiter asked the shared cache five times per limit on an allowed request, and `/oauth/token` and the `api-*` limiters carry two limits: ten round trips of about 1 ms on production before the endpoint ran. `throttle` is now `App\Http\Middleware\ThrottleInOneRoundTrip`, which runs the same check and count as one script on the same keys in the same format. The limits, the headers and the refusal are unchanged, `RateLimiter::attempts()` and `clear()` read the same counters, and a refused request still counts against nothing. Two requests racing for the last attempt can no longer both pass. On a store that is not Redis it is the stock middleware.
+
 ### Fixed
 
 - **An operator's CIBA approval mints its token again.** After the single realm made the operator and the app account one person, `/oauth/token` refused every approval they gave with `invalid_grant: a second factor is required`: the operator rule asked for AAL2 methods on a grant that records none. A grant with no recorded methods (CIBA, device) now follows the framework's rule; the approval is the second factor.
