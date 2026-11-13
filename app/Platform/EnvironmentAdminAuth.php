@@ -362,6 +362,33 @@ final class EnvironmentAdminAuth
     }
 
     /**
+     * Whether $subjectId may CHANGE $environmentId right now: {@see administers()}, and the
+     * write authority {@see check()} asks of a console request on top of it.
+     *
+     * {@see administers()} is read admission, enough to open the console. Starting a support
+     * session needs write authority, so everything that acts on one later (its launch, every
+     * code it mints) asks this: a member demoted to a read-only role mid-session stops acting
+     * as the customer, as their console stopped writing.
+     */
+    public function managesNow(string $subjectId, string $environmentId): bool
+    {
+        $root = $this->platformRoot->environment()?->environmentKey();
+
+        if ($root !== null && $root === $environmentId) {
+            return $this->administers($subjectId, $environmentId);
+        }
+
+        try {
+            $membership = $this->membershipFor($subjectId, $environmentId);
+        } catch (HttpExceptionInterface) {
+            return false;
+        }
+
+        return $membership !== null && app(NativeProductAccess::class)
+            ->forSubject($subjectId, $membership->organization_id)->canManageEnvironments();
+    }
+
+    /**
      * The membership through which $subjectId administers the customer environment
      * $environmentId, or null — THE chain every environment-console request runs
      * ({@see resolve()}), and the one a later check runs again ({@see administers()}), so

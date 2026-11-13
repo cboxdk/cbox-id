@@ -8,6 +8,7 @@ use App\Models\AdminPortalLink;
 use App\Platform\Actions\Principal\PortalPrincipal;
 use App\Platform\Enums\PortalIntent;
 use App\Platform\Enums\PortalScope;
+use App\Platform\OAuth\OrganizationStanding;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
@@ -314,10 +315,21 @@ final class AdminPortal
     }
 
     /**
-     * Whether the organization may use $intent: always, for an intent no plan gates.
+     * Whether the organization may use $intent: always, for an intent no plan gates —
+     * and never while it is suspended or archived.
+     *
+     * Every portal door asks this (redemption, the session check on every request, and
+     * each action's own authorization through {@see PortalPrincipal}), so a link or an open
+     * setup session for an organization that has since been closed changes nothing about
+     * it: no domain claimed, no connection activated, no directory token minted. Asked live,
+     * so reactivation reopens a session still inside its window.
      */
     public function intentUsable(string $organizationId, PortalIntent $intent): bool
     {
+        if (OrganizationStanding::isClosed($organizationId)) {
+            return false;
+        }
+
         $feature = $intent->entitlement();
 
         return $feature === null || $this->entitlements->entitled($organizationId, $feature);

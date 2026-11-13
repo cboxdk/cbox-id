@@ -149,6 +149,8 @@ it('rings the bell for an approval waiting for this person, and not for one wait
 
     // Somebody else's first: the admin's bell stays quiet.
     $colleague = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->create('colleague@acme.example', 'Colleague', 'a-strong-unbreached-passphrase')->id);
+    // A colleague who runs the workspace: an approver must still hold it.
+    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->add($account['organization']->id, $colleague, MembershipRole::Owner));
     shellHeldActionFor($account['environment']->id, $colleague);
     actAsEnvironmentAdmin($account['subjectId'], $account['environment']->id);
 
