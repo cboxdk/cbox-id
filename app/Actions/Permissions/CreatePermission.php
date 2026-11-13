@@ -33,6 +33,10 @@ use Illuminate\Validation\ValidationException;
  * is refused (it would put two identical keys in the role editor), and one with a peer's
  * private key is not — that would make this an existence oracle for other tenants' keys.
  * The key is lower-cased, so `Invoices:Create` is the same key as `invoices:create`.
+ *
+ * NEVER a key an app declares. That one belongs to the app, and a manual row spelled the
+ * same would put it in the app's tokens without the app's say — refused with the same
+ * answer as any other taken key.
  */
 #[AsAction(
     name: 'permissions.create',
@@ -79,7 +83,7 @@ final readonly class CreatePermission implements Action
             ->where('name', $name)
             ->exists();
 
-        if ($taken) {
+        if ($taken || self::declaredByAnApp($environmentId, $name)) {
             throw ActionRefused::because('permission_taken', new ActionMessage('console.a_permission_with_that_key_already_exists_here_fa53c60f'), 'name');
         }
 
@@ -98,5 +102,23 @@ final readonly class CreatePermission implements Action
         ]);
 
         return ActionResult::item($permission, PermissionFields::present($permission->refresh()));
+    }
+
+    /**
+     * Whether an app in this environment declares this key. Tokens carry permission NAMES,
+     * so a manual row spelled like an app's key would read to that app as its own — and an
+     * app keeps a privileged key off the tenant plane by NOT marking it tenant-assignable,
+     * which a same-named manual row would walk straight around. A tombstoned declaration
+     * counts too: the app may declare it again on its next manifest.
+     */
+    private static function declaredByAnApp(string $environmentId, string $name): bool
+    {
+        return Permission::query()
+            ->withoutGlobalScope('environmentVisible')
+            ->whereNotNull('client_id')
+            ->where(fn ($query) => $query->where('environment_id', $environmentId)->orWhereNull('environment_id'))
+            // Declared keys keep the case the manifest gave them; this one is lower-cased.
+            ->whereRaw('lower(name) = ?', [$name])
+            ->exists();
     }
 }
