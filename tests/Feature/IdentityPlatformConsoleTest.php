@@ -238,6 +238,7 @@ it('lets an owner remove a member and transfer ownership', function (): void {
     [$admin, $adminSubjectId] = memberWithRole($account->id, MembershipRole::Admin, 'admin@acme.example');
     grantNativeProductRoles($admin, ['admin']);
     signInAsMember($ownerSubjectId);
+    confirmStepUp();
     $members = app(Memberships::class);
 
     $this->delete(route('orgs.settings.members.remove', ['member' => $dev->id, 'organization' => $owner->organization_id]), ['roles_version' => app(NativeProductMembers::class)->access($dev)['roles_version']])->assertRedirect();
@@ -257,6 +258,7 @@ it('scopes a member to specific environments via the access editor', function ()
     [$dev, $devSubjectId] = memberWithRole($account->id, MembershipRole::Developer, 'dev@acme.example');
     grantNativeProductRoles($dev, ['developer']);
     signInAsMember($ownerSubjectId);
+    confirmStepUp();
 
     // The editor opens over the URL, so what it shows is a prop this test can read —
     // and what it shows is the grant as it stands, which is "everything" by default.
@@ -410,6 +412,7 @@ it('shows a read-only viewer the roster but not the invite form', function (): v
 it('adds an environment to a project up to its plan limit, then refuses', function (): void {
     ['member' => $member, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     signInAsMember($memberSubjectId);
+    confirmStepUp();
 
     // The project's limit is 2, one used → adding one succeeds.
     $this->post(route('orgs.projects.environments.store', $project->id), [
@@ -502,6 +505,7 @@ it('lists every environment grouped under its project, each with an Open link', 
 it('creates an environment inline from the launchpad', function (): void {
     ['member' => $member, 'subjectId' => $memberSubjectId, 'project' => $project] = provisionAccount();
     signInAsMember($memberSubjectId);
+    confirmStepUp();
 
     $this->post(route('orgs.projects.environments.store', $project->id), [
         'name' => 'Staging',

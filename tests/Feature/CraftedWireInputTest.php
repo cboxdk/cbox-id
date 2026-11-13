@@ -157,6 +157,7 @@ it('accepts an invitation to another organization owner and protects this organi
     ));
 
     signInAsMember($mine->owner->id);
+    confirmStepUp();
 
     Mail::fake();
 

@@ -31,7 +31,9 @@ use App\Platform\Radar\RadarTrail;
     name: 'radar.settings.update',
     summary: 'Tune this environment\'s built-in Radar rules: `builtin_rules` maps a rule key (credential_stuffing, bot_velocity, account_attack, impossible_travel, new_device, anonymous_network, hosting_network, disposable_email, risk_score_reject, risk_score_elevated) to any of enabled, action and threshold.',
     scope: 'radar:write',
-    danger: Danger::Write,
+    // Critical, as `radar.mode.set`: switching every built-in rule off is protection off by
+    // another name, so tuning waits for the same approval and step-up.
+    danger: Danger::Critical,
     schema: 'RadarSettings',
     tag: 'Radar',
     rest: ['PATCH', '/radar/settings'],

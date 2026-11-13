@@ -30,6 +30,10 @@ final readonly class AsAction
      * @param  list<string>  $redact  `data` fields that are SECRETS (a key's value), dotted for a nested
      *                                one (`initial_key.token`): shown once, and never kept for an
      *                                idempotent replay.
+     * @param  bool  $consoleStepUp  Whether a Critical run from the console asks for the plane's fresh
+     *                               confirmation first (see ConsoleSessionPrincipal::confirmStepUp()).
+     *                               True for every action but the few whose page decided otherwise
+     *                               and says why — never turned off to make a test pass.
      */
     public function __construct(
         public string $name,
@@ -44,5 +48,6 @@ final readonly class AsAction
         public ?string $schema = null,
         public ?string $tag = null,
         public array $redact = [],
+        public bool $consoleStepUp = true,
     ) {}
 }

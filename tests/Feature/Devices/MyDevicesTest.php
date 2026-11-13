@@ -61,6 +61,7 @@ function myDevice(string $subjectId, string $name): Device
 
 it('lets a plain member enrol — the code is personal, not org administration', function (): void {
     signInMemberAs(MembershipRole::Member, 'member-enrol@acme.test');
+    confirmStepUp();
 
     $enrolment = myDevices()['enrolment'];
 
@@ -71,6 +72,33 @@ it('lets a plain member enrol — the code is personal, not org administration',
         // markup into itself.
         ->and($enrolment['qr'])->toStartWith('data:image/svg+xml;base64,');
 });
+
+/**
+ * A CODE IS A WAY TO ADD AN APPROVAL DEVICE, so it waits for the step-up adding a passkey
+ * waits for. Audit finding: any live session rendered it, the authenticator signed in from
+ * that cookie with no consent and no password, and a handset of the session-holder's own
+ * became a standing approver that outlived a password reset.
+ */
+it('shows no enrolment code until the person confirms it is them (finding 33)', function (): void {
+    signInMemberAs(MembershipRole::Member, 'member-locked@acme.test');
+
+    $props = myDevices();
+
+    expect($props['enrolment'])->toBeNull()
+        ->and($props['unlockHref'])->toBe(route('devices.mine.enrolment'));
+
+    // The button's request asks for the step-up and mints nothing.
+    test()->from(route('devices.mine'))->post(route('devices.mine.enrolment'))->assertRedirect(route('sudo'));
+
+    confirmStepUp();
+
+    test()->from(route('devices.mine'))->post(route('devices.mine.enrolment'))->assertRedirect(route('devices.mine'));
+
+    $props = myDevices();
+
+    expect($props['unlockHref'])->toBeNull()
+        ->and($props['enrolment']['uri'] ?? null)->toStartWith('com.cboxid.authenticator://connect');
+})->group('security');
 
 it('provisions the authenticator client itself on first view — no command required', function (): void {
     signInMemberAs(MembershipRole::Member, 'member-provision@acme.test');
@@ -114,6 +142,7 @@ it('never mints a second client on later views', function (): void {
  */
 it('carries a subject-bound single-use token and no durable credential', function (): void {
     signInMemberAs(MembershipRole::Member, 'member-secret@acme.test');
+    confirmStepUp();
 
     $uri = myDevices()['enrolment']['uri'];
 

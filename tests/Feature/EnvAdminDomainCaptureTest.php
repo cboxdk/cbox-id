@@ -24,6 +24,7 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
  */
 it('refuses to enable capture on a domain that is not verified', function (): void {
     ['envId' => $envId] = crudSetup();
+    confirmEnvironmentStepUp();
 
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-capture'));
     $domain = app(DomainVerification::class)->add($org->id, 'unproven.test');
@@ -41,6 +42,7 @@ it('refuses to enable capture on a domain that is not verified', function (): vo
 
 it('allows capture once the domain is verified, and allows turning it back off', function (): void {
     ['envId' => $envId] = crudSetup();
+    confirmEnvironmentStepUp();
 
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-capture-ok'));
     $domain = app(DomainVerification::class)->add($org->id, 'proven.test');

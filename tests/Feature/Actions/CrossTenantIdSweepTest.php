@@ -438,6 +438,9 @@ it('answers 404 to every id from another organization, for every principal confi
     $theirs = CrossTenantSweep::world('env_test', 'Theirs');
     $mine = CrossTenantSweep::world('env_test', 'Mine');
     [$subjectId, $organization] = sweepOrganizationOwner($mine['organization']);
+    // The console asks a fresh step-up of every Critical run; this sweep is about whose ids
+    // answer, so the window is open, as it is for an administrator who just confirmed.
+    confirmStepUp();
 
     $wrong = [];
     $blind = [];

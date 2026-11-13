@@ -95,6 +95,7 @@ it('warns before requiring SSO, and writes nothing until the warning is answered
 
 it('applies the mandate when the warning is accepted', function (): void {
     $organizationId = anOwnerOfSignInRules();
+    confirmStepUp();
 
     visit('/sign-in-rules')
         ->click('[aria-label="Enterprise SSO"]')

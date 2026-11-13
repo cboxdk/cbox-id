@@ -181,6 +181,7 @@ it('ends the environment\'s sessions when the sign-in rules page mandates SSO', 
     serveOnTestHost($r->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($r->environment->id));
     actAsEnvironmentAdmin($r->owner->id, $r->environment->id);
+    confirmEnvironmentStepUp();
 
     // A tenant subject of the environment being administered.
     $tenantSession = aPasswordSession('tenant-user@acme.test');

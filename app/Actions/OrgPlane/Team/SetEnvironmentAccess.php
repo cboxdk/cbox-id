@@ -36,7 +36,9 @@ use Cbox\Id\Platform\PlatformRoot;
     name: 'team.environment_access',
     summary: 'Set which of the organization\'s environments a team member reaches: all of them, or the listed ones.',
     scope: 'id:members:write',
-    danger: Danger::Write,
+    // Critical: widening a member's reach hands an Editor or Admin environment-administrator
+    // authority in more environments — standing persistence, like a role-bearing key.
+    danger: Danger::Critical,
     plane: ActionPlane::Organization,
     rest: ['PUT', '/members/{id}/access'],
     consoleRoutes: ['orgs.settings.members.access'],

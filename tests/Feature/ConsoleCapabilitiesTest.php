@@ -223,6 +223,7 @@ it('serves outbound sync from the same controller on the organization plane', fu
 it('registers an outbound connection against the organization from the scope', function (): void {
     config(['cbox-id.provisioning.verify_url' => false]);
     $orgId = anEnvironmentAdminActingOn('tenant-sync-scoped');
+    confirmEnvironmentStepUp();
 
     registerOutboundSync([], 'environment.provisioning')->assertSessionHasNoErrors();
 
@@ -245,6 +246,7 @@ it('keeps environment-wide registration on the environment plane', function (): 
     // capability, so it survives as its own explicit choice on this plane alone.
     config(['cbox-id.provisioning.verify_url' => false]);
     anEnvironmentAdminActingOn('tenant-sync-wide');
+    confirmEnvironmentStepUp();
 
     registerOutboundSync([
         'name' => 'Everything',
@@ -416,6 +418,7 @@ it('refuses environment-wide registration from the organization plane', function
 it('runs the whole hook lifecycle on the environment plane', function (): void {
     config(['cbox-id.external_actions.verify_url' => false]);
     $orgId = anEnvironmentAdminActingOn('tenant-hooks-lifecycle');
+    confirmEnvironmentStepUp();
 
     $endpoint = app(ExternalActions::class)
         ->register(HookPoint::TokenMinting, 'https://hooks.example.test/token', $orgId)->endpoint;
@@ -563,6 +566,7 @@ it('gives the organization plane the evaluate and delete it never had', function
     // Both existed only on the environment plane. An organization's own rule is its own to
     // evaluate and to remove — the environment-wide one still is not.
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
     $a = app(Roles::class)->define($org->id, 'create-po');
     $b = app(Roles::class)->define($org->id, 'approve-pay');
     $policy = app(SegregationOfDuties::class)->definePolicy($org->id, 'PO vs pay', [$a->id, $b->id]);
@@ -1053,6 +1057,7 @@ it('gives the organization plane the resume, rotate, edit and delete it never ha
     // way at all to re-key one whose signing secret had leaked.
     config(['cbox-id.webhooks.verify_url' => false]);
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     $endpoint = app(WebhookRegistry::class)
         ->register($org->id, 'https://hooks.example.test/mine', ['user.created'])->endpoint;
@@ -2339,6 +2344,7 @@ it('gives the organization plane the edit, disable and delete it never had', fun
     // tenant admin cannot correct a rotated certificate, cannot switch a misconfigured
     // IdP off, and cannot remove one at all.
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
     grantFeature($org->id, 'cbox-id-sso');
     $connection = aSamlConnection($org->id);
 
@@ -2370,6 +2376,7 @@ it('gives the environment plane domain verification and the Admin Portal invite,
     // which is the thing that routes their people to the IdP at all. Both are about ONE
     // organization, so they live on its SSO tab, under its own URL.
     $orgId = anEnvironmentAdminActingOn('tenant-sso-domains');
+    confirmEnvironmentStepUp();
     grantFeature($orgId, 'cbox-id-sso');
     $tab = route('environment.organizations.sso', $orgId);
 
@@ -2403,6 +2410,7 @@ it('attributes an Admin Portal link to the environment administrator who minted 
     // the organization page's reader would have recorded '' as the creator of a link
     // that hands SSO configuration to an outsider.
     $orgId = anEnvironmentAdminActingOn('tenant-sso-actor');
+    confirmEnvironmentStepUp();
     grantFeature($orgId, 'cbox-id-sso');
     $actor = app(ConsoleScope::class)->actorId();
 
@@ -2842,6 +2850,7 @@ it('serves social sign-in on the environment plane, not only the organization on
 
 it('turns a provider on for the whole environment when the form names no organization', function (): void {
     anEnvironmentAdminActingOn('tenant-social-unchosen');
+    confirmEnvironmentStepUp();
 
     // The READ renders — the environment's providers and every organization's, with the
     // setup form asking who it is for, the whole environment first.

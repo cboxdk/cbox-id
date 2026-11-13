@@ -3665,7 +3665,7 @@ Tune this environment's built-in Radar rules: `builtin_rules` maps a rule key (c
 |---|---|
 | REST | `PATCH /v1/radar-settings` → `200`; was `PATCH /api/v1/radar/settings` |
 | Scope | `radar:write` — required of the key or token. |
-| Danger | `write` |
+| Danger | `critical` |
 | MCP tool | `radar_settings_update` |
 | CLI | `cbox id radar settings update` |
 
@@ -4378,7 +4378,7 @@ Turn a social login provider that was turned off back on, with the credentials i
 |---|---|
 | REST | `POST /v1/social-connections/{id}/enable` → `200`; was `POST /api/v1/sign-in/social-providers/{id}/enable` |
 | Scope | `signin:write` — required of the key or token. |
-| Danger | `write` |
+| Danger | `critical` |
 | MCP tool | `signin_social_enable` |
 | CLI | `cbox id signin social enable <id>` |
 
@@ -4954,7 +4954,7 @@ Change a user's name and/or email address. A changed address must be verified ag
 |---|---|
 | REST | `PATCH /v1/users/{id}` → `200`; was `PATCH /api/v1/users/{id}` |
 | Scope | `users:write` — required of the key or token. |
-| Danger | `critical` |
+| Danger | `write` |
 | MCP tool | `users_update` |
 | CLI | `cbox id users update <id>` |
 

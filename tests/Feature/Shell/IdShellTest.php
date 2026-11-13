@@ -258,6 +258,7 @@ it('answers an environment console\'s "Go to" without calling another service', 
 it('creates from the header by name alone and lands on the details', function (): void {
     $orgs = shellTwoOrganizations();
     signInAsMember($orgs['subjectId']);
+    confirmStepUp();
 
     $organization = $this->postJson(onAppHost('/shell/context/organization'), ['name' => 'Initech'])->assertCreated()->json();
     expect($organization['detailsUrl'])->toEndWith('/settings#finish')->toStartWith('/orgs/');

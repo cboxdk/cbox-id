@@ -81,6 +81,7 @@ function openSupportSession(array $world): void
 
 it('lists staff grants per app and grants one from the Staff page', function (): void {
     staffAndSupportWorld();
+    confirmEnvironmentStepUp();
 
     $page = visit(envConsole('/staff'));
 

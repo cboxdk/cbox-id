@@ -251,6 +251,7 @@ it('advertises the prompt values the environment actually honours', function (bo
 it('lets the environment administrator switch sign-up on and off, and records who did', function (): void {
     ['environment' => $environment, 'ownerId' => $ownerId] = selfServiceTenant(enabled: false);
     actAsEnvironmentAdmin($ownerId, $environment->id);
+    confirmEnvironmentStepUp();
 
     test()->get(route('environment.auth-policy'))->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page

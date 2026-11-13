@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Mail\ApprovalRequestMail;
+use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ActionApprovalRequest;
+use App\Platform\Actions\Danger;
 use App\Platform\Api\ApiHost;
 use App\Platform\Console\WebhookEventCatalogue;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -297,4 +299,70 @@ it('keeps the ids a held webhook create asked for: the surface it was asked on, 
 
     $this->withToken($key)->withHeader('Cbox-Approval', $heldOnV1)->postJson($v1, [...$body, 'url' => 'https://v1.acme.example/in'])
         ->assertCreated()->assertJsonPath('id_format', 'prefixed');
+})->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| A Write action that reaches a Critical sibling's effect waits like the sibling.
+|--------------------------------------------------------------------------
+| Audit finding: `webhooks.update`, `apps.update`, `radar.lists.add`, `radar.settings.update`,
+| `signin.social.enable` and `apps.settings.client_credentials` were rated Write, so a key or
+| an agent token whose policy holds Critical actions repointed a webhook, added a redirect
+| URI or allow-listed 0.0.0.0/0 with nobody asked. The run is rated by what it changes now.
+*/
+
+it('holds repointing a webhook like creating one, and lets an events-only edit through', function (): void {
+    $owner = keyOwner();
+    [$free] = supervisedKey($owner, null, PREFLIGHT_SCOPES);
+    [$key] = supervisedKey($owner, ['min_danger' => 'critical', 'actions' => []], PREFLIGHT_SCOPES);
+    $events = WebhookEventCatalogue::offered();
+    $id = $this->withToken($free)->postJson('/api/v1/webhooks', ['url' => 'https://a.acme.example/in', 'event_types' => [$events[0]], 'environment_wide' => true])
+        ->assertCreated()->json('data.id');
+
+    $this->withToken($key)->patchJson("/api/v1/webhooks/{$id}", ['url' => 'https://attacker.example/collect'])
+        ->assertStatus(202)->assertJsonPath('error', 'approval_required');
+    $this->withToken($key)->patchJson("/api/v1/webhooks/{$id}", ['url' => 'https://a.acme.example/in', 'event_types' => [$events[0], $events[1]]])
+        ->assertOk();
+
+    $this->withToken($free)->getJson("/api/v1/webhooks/{$id}")->assertOk()->assertJsonPath('data.url', 'https://a.acme.example/in');
+})->group('security');
+
+it('holds adding a redirect URI to an app like creating one, and lets a rename through', function (): void {
+    $owner = keyOwner();
+    [$free] = supervisedKey($owner, null, ['apps:read', 'apps:write']);
+    [$key] = supervisedKey($owner, ['min_danger' => 'critical', 'actions' => []], ['apps:read', 'apps:write']);
+    $id = $this->withToken($free)->postJson('/api/v1/apps', ['name' => 'Shop', 'type' => 'spa', 'redirect_uris' => ['https://shop.acme.example/callback']])
+        ->assertCreated()->json('data.id');
+
+    $this->withToken($key)->patchJson("/api/v1/apps/{$id}", ['redirect_uris' => ['https://shop.acme.example/callback', 'https://attacker.example/cb']])
+        ->assertStatus(202)->assertJsonPath('error', 'approval_required');
+    $this->withToken($key)->patchJson("/api/v1/apps/{$id}", ['name' => 'Shop 2', 'redirect_uris' => ['https://shop.acme.example/callback']])
+        ->assertOk()->assertJsonPath('data.name', 'Shop 2');
+
+    $this->withToken($free)->getJson("/api/v1/apps/{$id}")->assertOk()->assertJsonPath('data.redirect_uris', ['https://shop.acme.example/callback']);
+})->group('security');
+
+it('holds a Radar allow entry and every change to the built-in rules, and lets a deny entry through', function (): void {
+    $owner = keyOwner();
+    [$key] = supervisedKey($owner, ['min_danger' => 'critical', 'actions' => []], ['radar:read', 'radar:write']);
+
+    $this->withToken($key)->postJson('/api/v1/radar/lists', ['list' => 'allow', 'kind' => 'ip', 'value' => '0.0.0.0/0'])
+        ->assertStatus(202)->assertJsonPath('error', 'approval_required');
+    $this->withToken($key)->patchJson('/api/v1/radar/settings', ['builtin_rules' => ['bot_velocity' => ['enabled' => false]]])
+        ->assertStatus(202)->assertJsonPath('error', 'approval_required');
+    $this->withToken($key)->postJson('/api/v1/radar/lists', ['list' => 'deny', 'kind' => 'ip', 'value' => '203.0.113.0/24'])
+        ->assertCreated();
+})->group('security');
+
+it('rates the sign-in door and the machine grant as their Critical siblings are', function (): void {
+    $registry = app(ActionRegistry::class);
+
+    expect($registry->named('signin.social.enable')->danger)->toBe(Danger::Critical)
+        ->and($registry->named('radar.settings.update')->danger)->toBe(Danger::Critical)
+        // Rated by the input: these may be Critical, so consent flags their scopes and an
+        // approval page asks for a fresh credential before approving a held run.
+        ->and($registry->named('apps.settings.client_credentials')->mayBeCritical())->toBeTrue()
+        ->and($registry->named('webhooks.update')->mayBeCritical())->toBeTrue()
+        ->and($registry->named('apps.update')->mayBeCritical())->toBeTrue()
+        ->and($registry->named('radar.lists.add')->mayBeCritical())->toBeTrue();
 })->group('security');

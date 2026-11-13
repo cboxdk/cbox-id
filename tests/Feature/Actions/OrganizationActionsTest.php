@@ -321,6 +321,7 @@ it('runs the same actions from the organization console, recorded as the person'
     $workspace = $account['organization'];
 
     signInAsMember($account['subjectId']);
+    confirmStepUp();
 
     // Projects › new environment: the action, the console's own wording on a refusal.
     $this->from(route('orgs.projects.show', $account['project']->id))

@@ -2242,6 +2242,16 @@ function confirmEnvironmentStepUp(): void
 }
 
 /**
+ * Confirm the step-up on the PLATFORM ROOT's environment console (`/admin/environment/…`),
+ * for an operator about to make a Critical change there — bound to the root, as the
+ * confirmation the console itself records is.
+ */
+function confirmRootEnvironmentStepUp(): void
+{
+    app(EnvironmentContext::class)->runAs(app(PlatformRoot::class)->model(), static fn () => app(EnvironmentSudo::class)->confirm());
+}
+
+/**
  * Leave the console session behind, keeping everything `actingAsRole()` set up.
  *
  * For the pages an ANONYMOUS visitor sees — a branded sign-in page, a public consent
