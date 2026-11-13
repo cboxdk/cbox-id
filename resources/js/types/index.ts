@@ -421,6 +421,18 @@ export interface AccountBack {
     label: string;
 }
 
+/** Where a page connects for live updates, and the channels it may listen on. */
+export interface RealtimeConfig {
+    key: string;
+    /** Null: the host the page came from (a same-origin socket). */
+    host: string | null;
+    port: number;
+    scheme: 'http' | 'https';
+    /** A path on this host, behind the same gates as the page, that signs a subscription. */
+    authUrl: string;
+    channels: string[];
+}
+
 export interface SharedProps {
     /** The organization `/orgs/{org}/…` route helpers default to (the path's, or this session's). */
     org?: { slug: string } | null;
@@ -451,6 +463,11 @@ export interface SharedProps {
     brand: Brand | null;
     environment: CurrentEnvironment;
     impersonation: ImpersonationSession | null;
+    /**
+     * Live updates (`App\Http\Props\Shared\RealtimeProps`): where this page may connect and
+     * the channels it may join. Null when live updates are off or the page has none.
+     */
+    realtime?: RealtimeConfig | null;
     flash: Flash;
     shell: ConsoleShell | null;
     tenantShell?: Shell | null;

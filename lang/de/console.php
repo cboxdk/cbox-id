@@ -4953,4 +4953,7 @@ https://staging.example.com',
     'app_and_custom_roles_in_part1' => 'App- und benutzerdefinierte Rollen in :part1',
     'user_access_reaches' => 'Gilt für',
     // end console-polish
+    // Live updates: what changed while the person was editing waits for them.
+    'live_new_data' => 'Neue Daten auf dieser Seite',
+    'live_refresh' => 'Aktualisieren',
 ];

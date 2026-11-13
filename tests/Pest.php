@@ -2742,3 +2742,25 @@ function pickConsoleLanguage(mixed $page, string $name, bool $phone = false): mi
 
     return $page->click('.cbx-menu-account [role="option"]:has-text("'.$name.'")');
 }
+
+/*
+ * LIVE UPDATES ON, as a deployment with Reverb configured has them. The suite runs with
+ * BROADCAST_CONNECTION=null ({@see tests/bootstrap.php}), which is also the shape every
+ * other test asserts: live updates fully inert.
+ */
+function enableLiveUpdates(): void
+{
+    config([
+        'broadcasting.default' => 'reverb',
+        'broadcasting.connections.reverb.key' => 'live-test-key',
+        'broadcasting.connections.reverb.secret' => 'live-test-secret',
+        'broadcasting.connections.reverb.app_id' => 'live-test',
+        'realtime.enabled' => true,
+    ]);
+}
+
+/** The signature Reverb expects for this socket and channel, computed independently. */
+function liveSignature(string $socketId, string $channel): string
+{
+    return 'live-test-key:'.hash_hmac('sha256', $socketId.':'.$channel, 'live-test-secret');
+}

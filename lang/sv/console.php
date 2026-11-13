@@ -4953,4 +4953,7 @@ https://staging.example.com',
     'app_and_custom_roles_in_part1' => 'App- och anpassade roller i :part1',
     'user_access_reaches' => 'Gäller',
     // end console-polish
+    // Live updates: what changed while the person was editing waits for them.
+    'live_new_data' => 'Ny data på sidan',
+    'live_refresh' => 'Uppdatera',
 ];

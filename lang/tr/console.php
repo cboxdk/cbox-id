@@ -4953,4 +4953,7 @@ https://staging.example.com',
     'app_and_custom_roles_in_part1' => ':part1 içindeki uygulama ve özel roller',
     'user_access_reaches' => 'Kapsam',
     // end console-polish
+    // Live updates: what changed while the person was editing waits for them.
+    'live_new_data' => 'Bu sayfada yeni veriler var',
+    'live_refresh' => 'Yenile',
 ];

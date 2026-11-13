@@ -4953,4 +4953,7 @@ https://staging.example.com',
     'app_and_custom_roles_in_part1' => 'Ρόλοι εφαρμογών και προσαρμοσμένοι ρόλοι στο :part1',
     'user_access_reaches' => 'Ισχύει για',
     // end console-polish
+    // Live updates: what changed while the person was editing waits for them.
+    'live_new_data' => 'Νέα δεδομένα σε αυτή τη σελίδα',
+    'live_refresh' => 'Ανανέωση',
 ];

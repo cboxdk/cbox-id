@@ -10,6 +10,8 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ### Added
 
+- **Console and account pages update live.** A trusted device enrolled on a phone appears on the open Trusted devices page; sign-ins, sessions, grants and API keys, members, invitations and roles, apps, approvals and audit entries appear or go on the pages that show them, without a reload. Off by default (`BROADCAST_CONNECTION=null`); on with `BROADCAST_CONNECTION=reverb`, the `REVERB_APP_*` keys and `php artisan reverb:start` as its own process (`laravel/reverb ^1.10`). What is sent is an invalidation signal (the kind of record, its id and the action, never a value) on one of three private channels: an environment's (whoever may open its console), an organization's (its owners and administrators) and a person's own. Each is signed by `GET …/realtime/auth` inside the gates of the pages that listen, never while impersonating. Changes publish after commit from a queued job, only to channels a page is listening on, at most once a second per topic; a page reloads its own props, never under a form being edited (it offers "New data on this page — Refresh" instead). See [Live updates](docs/operations/realtime.md).
+
 - **System mail goes through Cbox Relay, and only Relay.** `cboxdk/laravel-relay-client` (`^0.2.2`) adds a `relay` mailer (`RELAY_URL`, `RELAY_KEY`, optionally `RELAY_PROJECT`); set `MAIL_MAILER=relay`. There is no failover to another provider: the `failover` mailer is back to Laravel's `smtp`, then `log`.
 
 ### Performance

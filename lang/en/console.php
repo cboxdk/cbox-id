@@ -4951,4 +4951,7 @@ https://staging.example.com',
     'app_and_custom_roles_in_part1' => 'App and custom roles in :part1',
     'user_access_reaches' => 'Reaches',
     // end console-polish
+    // Live updates: what changed while the person was editing waits for them.
+    'live_new_data' => 'New data on this page',
+    'live_refresh' => 'Refresh',
 ];

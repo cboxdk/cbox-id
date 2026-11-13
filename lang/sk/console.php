@@ -4953,4 +4953,7 @@ https://staging.example.com',
     'app_and_custom_roles_in_part1' => 'Roly aplikácií a vlastné roly v :part1',
     'user_access_reaches' => 'Platí pre',
     // end console-polish
+    // Live updates: what changed while the person was editing waits for them.
+    'live_new_data' => 'Na stránke sú nové údaje',
+    'live_refresh' => 'Obnoviť',
 ];

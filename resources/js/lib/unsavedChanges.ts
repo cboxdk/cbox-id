@@ -27,6 +27,16 @@ export function leavesPage(visit: VisitShape): boolean {
     );
 }
 
+/**
+ * How many guarded forms on screen hold unsaved changes right now. Live updates read it so
+ * a page is never reloaded under somebody's draft ({@see useLiveReload}).
+ */
+let dirtyForms = 0;
+
+export function hasUnsavedChanges(): boolean {
+    return dirtyForms > 0;
+}
+
 export interface UnsavedChangesGuard {
     /** Where the person was going when they were stopped, or null. */
     pending: string | null;
@@ -49,6 +59,18 @@ export function useUnsavedChangesGuard(dirty: boolean): UnsavedChangesGuard {
     const [pending, setPending] = useState<string | null>(null);
     const dirtyRef = useRef(dirty);
     const bypass = useRef(false);
+
+    useEffect(() => {
+        if (!dirty) {
+            return;
+        }
+
+        dirtyForms += 1;
+
+        return () => {
+            dirtyForms -= 1;
+        };
+    }, [dirty]);
 
     useEffect(() => {
         dirtyRef.current = dirty;
