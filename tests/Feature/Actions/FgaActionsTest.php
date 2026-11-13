@@ -161,6 +161,42 @@ it('defines a schema, writes tuples and answers checks through inheritance over 
         ->assertJsonCount(2, 'data');
 });
 
+/*
+ * AN ID NO TUPLE CAN HOLD IS REFUSED, NOT ASKED. A plain subject id `eng#member` rendered
+ * the same question, and so the same cached answer, as the userset `group:eng#member`: an
+ * fga:read key could ask it first and fix the denial every later userset check got for the
+ * revision (security finding #49). Ids and the list cursor take the tuple's own id rule.
+ */
+it('refuses check and list ids, and a cursor, that no tuple could hold', function (): void {
+    $key = fgaKey();
+    fgaModelOverRest($key);
+
+    $this->withToken($key)->getJson('/api/v1/fga/check?'.http_build_query([
+        'resource_type' => 'folder', 'resource_id' => 'policies', 'relation' => 'viewer',
+        'subject_type' => 'group', 'subject_id' => 'eng#member',
+    ]))->assertUnprocessable()->assertJsonPath('error', 'invalid_id')
+        ->assertJsonPath('message', '`subject_id` is not a valid id: 1–128 printable characters without spaces, `#` or `@`.');
+
+    // The userset it would have shadowed still answers from the model.
+    fgaCheckOverRest($key, 'folder:policies#viewer@group:eng#member')->assertOk()->assertJsonPath('data.allowed', true);
+
+    $this->withToken($key)->getJson('/api/v1/fga/check?'.http_build_query([
+        'resource_type' => 'document', 'resource_id' => 'leave@x', 'relation' => 'viewer',
+        'subject_type' => 'user', 'subject_id' => 'alice',
+    ]))->assertUnprocessable()->assertJsonPath('error', 'invalid_id')
+        ->assertJsonPath('message', '`resource_id` is not a valid id: 1–128 printable characters without spaces, `#` or `@`.');
+
+    $this->withToken($key)->getJson('/api/v1/fga/resources?'.http_build_query([
+        'resource_type' => 'document', 'relation' => 'viewer', 'subject_type' => 'user', 'subject_id' => 'alice', 'after' => 'x y',
+    ]))->assertUnprocessable()->assertJsonPath('error', 'invalid_id')
+        ->assertJsonPath('message', '`after` is not a valid id: 1–128 printable characters without spaces, `#` or `@`.');
+
+    $this->withToken($key)->getJson('/api/v1/fga/subjects?'.http_build_query([
+        'resource_type' => 'document', 'resource_id' => 'leave#x', 'relation' => 'viewer', 'subject_type' => 'user',
+    ]))->assertUnprocessable()->assertJsonPath('error', 'invalid_id')
+        ->assertJsonPath('message', '`resource_id` is not a valid id: 1–128 printable characters without spaces, `#` or `@`.');
+})->group('security');
+
 it('deletes tuples and revokes what was inherited through them, at once', function (): void {
     $key = fgaKey();
     fgaModelOverRest($key);
