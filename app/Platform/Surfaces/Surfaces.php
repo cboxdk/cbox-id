@@ -71,7 +71,9 @@ final class Surfaces
         // Live updates: a signed-in page asks whether it may listen, on whichever host drew it.
         'realtime/auth',
         // The app picker's old address: each surface sends it on to the console's switcher.
-        'switch-app',
+        // Its catalog feed is the person's own list, read by Switch app in the header of
+        // the console and of a person's own pages on the login host.
+        'switch-app', 'switch-app/catalog',
         'authenticator/privacy',
         // The Authenticator's Universal Link and the documents that let the app claim it.
         'authenticator/approve/*', '.well-known/apple-app-site-association', '.well-known/assetlinks.json',
@@ -135,6 +137,8 @@ final class Surfaces
         'settings/social/*', 'settings/connect/*',
         'settings/sign-in-methods/*',
         'settings/email/*',
+        // The person's apps, and how the pages are shown to them.
+        'settings/apps', 'settings/preferences', 'settings/invitations/*',
         // Where you are signed in and what can act as you.
         'settings/activity',
         'settings/sessions/*',

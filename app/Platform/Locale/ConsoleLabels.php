@@ -81,11 +81,14 @@ final class ConsoleLabels
         'Secret keys' => 'console.secret_keys_d1512a94',
         'Security' => 'console.security_8f6fb4eb',
         'Sessions & activity' => 'console.sessions_activity_96d8d278',
+        // A person's own pages that a module or a feature adds to the account area.
+        'Services' => 'service_access.title',
         'Settings' => 'console.settings_74a883a0',
         'Sign-in' => 'console.sign_in_5bbbe531',
         'Sign-in methods' => 'console.sign_in_methods_477be867',
         'Social login' => 'console.social_login_267d75d3',
         'Team' => 'console.team_5985039f',
+        'Trusted devices' => 'console.trusted_devices_7d989273',
         'Token vault' => 'console.token_vault_1d74ef9e',
         'Usage' => 'console.usage_8d59829c',
         'Users' => 'console.users_6b0cc904',
@@ -117,9 +120,9 @@ final class ConsoleLabels
         'After a password change' => 'console.after_a_password_change_9b158424',
         'Production' => 'console.production_13a7c655',
         'Sandbox' => 'console.sandbox_67fc6249',
-        'Trusted devices' => 'console.trusted_devices_7d989273',
-        // A person's own page of Cbox services and waitlists: the page's own title.
-        'Services' => 'service_access.title',
+        // The person's launcher and their preferences, the account area's first and last pages.
+        'Your apps' => 'console.account_apps_title',
+        'Preferences' => 'console.account_preferences_title',
     ];
 
     /**

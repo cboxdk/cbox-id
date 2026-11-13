@@ -77,9 +77,29 @@ it('lists a person\'s organizations on their account page on the login host, eac
         ->has('organizations', 2)
         ->where('organizations.0.name', 'Acme')
         ->where('organizations.0.isOwner', true)
+        // An owner hands the organization over before leaving: the page says so instead
+        // of offering a button the action refuses.
+        ->where('organizations.0.leaveBlocked', 'owner')
         ->where('organizations.1.id', $side)
+        ->where('organizations.1.leaveBlocked', null)
         // The address carries the organization's public id, on the host the page is on.
         ->where('organizations.1.leaveHref', 'https://'.LOGIN_HOST.'/settings/organizations/org_'.$side.'/leave'));
+});
+
+it('says a customer\'s team is administered in its own console rather than offering to leave it', function (): void {
+    $account = aloPersonOnLoginHost();
+    $customer = provisionAccount('someone-else@acme.example')['organization']->id;
+
+    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->add($customer, $account['subjectId'], MembershipRole::Member));
+
+    $row = collect($this->get('https://'.LOGIN_HOST.'/settings')->assertOk()->inertiaProps('organizations'))->firstWhere('id', $customer);
+
+    expect($row['leaveBlocked'])->toBe('managed');
+
+    // The same answer the action gives.
+    $this->from('https://'.LOGIN_HOST.'/settings')
+        ->post($row['leaveHref'])
+        ->assertSessionHasErrors('organization');
 });
 
 it('leaves an organization from the login host and keeps the person signed in on their page', function (): void {

@@ -45,3 +45,11 @@ export function absoluteTime(iso: string, locale: string = 'en'): string {
         timeZone: formatTimeZone(),
     }).format(new Date(iso));
 }
+
+/** A date without the time ("12 Nov 2026", "12. nov. 2026"), in the reader's regional format and time zone. */
+export function absoluteDate(iso: string, locale: string = 'en'): string {
+    return new Intl.DateTimeFormat(formatLocale(locale), {
+        dateStyle: 'medium',
+        timeZone: formatTimeZone(),
+    }).format(new Date(iso));
+}

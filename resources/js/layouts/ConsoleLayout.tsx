@@ -1,6 +1,9 @@
 import {
     applyTheme,
+    CboxLocalizationProvider,
     CboxShell,
+    type CboxTranslator,
+    interpolate,
     type PaletteAction,
     parseShellCatalog,
     readKnownAppCatalog,
@@ -11,7 +14,7 @@ import {
     type ShellPreferenceChange,
 } from '@cboxdk/cbox-ui';
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { type ComponentProps, type ReactNode, useEffect, useMemo } from 'react';
+import { type ComponentProps, type ReactNode, useCallback, useEffect, useMemo } from 'react';
 import { EmailConfirmationBanner } from '@/chrome/Banners';
 import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { StepUpDialog } from '@/chrome/StepUpDialog';
@@ -27,6 +30,8 @@ import {
     writeFormatCookie,
 } from '@/lib/formats';
 import { setNavPinned, setThemePreference } from '@/lib/theme';
+import { absoluteTime } from '@/lib/time';
+import { SHELL_MESSAGES } from '@/i18n/shell';
 import { TenantConsoleLayout } from '@/layouts/TenantConsoleLayout';
 import { ShellCreateFormFields } from '@/chrome/ShellCreateForm';
 import { OrganizationFrame } from '@/pages/environment/organizations/frame';
@@ -135,7 +140,7 @@ export function preferenceAction(url: string): { key: string; value: string } | 
 }
 
 /** One choice, wherever it was made: the cookie the server reads before the first paint, and the request that saves it. */
-function savePreference(key: string, value: unknown, i18n: I18n | null | undefined): void {
+export function savePreference(key: string, value: unknown, i18n: I18n | null | undefined): void {
     if (key === 'theme') {
         setThemePreference(value as 'system' | 'light' | 'dark');
     } else if (key === 'railPinned') {
@@ -320,7 +325,20 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
 
     useDocumentLanguage(i18n?.locale ?? 'en');
 
-    const { t } = useTranslator();
+    const { t, locale } = useTranslator();
+
+    // The shell's own words (rail, header, account menu, ⌘K, Help) in the page's language:
+    // cbox-ui asks in English, the catalogue answers ({@see SHELL_MESSAGES}). A line the
+    // catalogue does not hold stays English rather than showing a key.
+    const translateShell = useCallback<CboxTranslator>(
+        (message, values) => {
+            const key = SHELL_MESSAGES[message];
+
+            return interpolate(key === undefined ? message : t(key), values);
+        },
+        [t],
+    );
+    const formatShellDate = useCallback((value: string) => absoluteTime(value, locale), [locale]);
 
     useAppMark(shell?.app.key, shell?.apps.catalogUrl);
 
@@ -413,37 +431,47 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
     return (
         <TooltipProvider>
             {chrome}
-            <CboxShell
-                shell={{
-                    ...shell,
-                    palette,
-                    account: { ...shell.account, languages, formats },
-                    preferences: { ...shell.preferences, locale: i18n?.locale ?? 'en' },
-                }}
-                navigate={navigator(shell, i18n)}
-                LinkComponent={ShellLink}
-                icons={ID_ICONS}
-                onPreferenceChange={onPreferenceChange}
-                renderCreate={(form) => {
-                    const spec = shell.createForms?.[form.creatable.key];
-
-                    return spec === undefined ? null : (
-                        <ShellCreateFormFields form={form} url={spec.url} fields={spec.fields} />
-                    );
-                }}
+            <CboxLocalizationProvider
+                locale={locale}
+                translate={translateShell}
+                formatDate={formatShellDate}
             >
-                <EmailConfirmationBanner />
-                <div
-                    className="cbx-page-frame p-6 pb-24 lg:p-8 mx-auto w-full"
-                    style={{ maxWidth: '72rem' }}
+                <CboxShell
+                    shell={{
+                        ...shell,
+                        palette,
+                        account: { ...shell.account, languages, formats },
+                        preferences: { ...shell.preferences, locale: i18n?.locale ?? 'en' },
+                    }}
+                    navigate={navigator(shell, i18n)}
+                    LinkComponent={ShellLink}
+                    icons={ID_ICONS}
+                    onPreferenceChange={onPreferenceChange}
+                    renderCreate={(form) => {
+                        const spec = shell.createForms?.[form.creatable.key];
+
+                        return spec === undefined ? null : (
+                            <ShellCreateFormFields
+                                form={form}
+                                url={spec.url}
+                                fields={spec.fields}
+                            />
+                        );
+                    }}
                 >
-                    {/* "</> API": this page's actions as REST, MCP, CLI and SDK calls. */}
-                    <div className="cbx-page-tools">
-                        <PageApiEquivalents />
+                    <EmailConfirmationBanner />
+                    <div
+                        className="cbx-page-frame p-6 pb-24 lg:p-8 mx-auto w-full"
+                        style={{ maxWidth: '72rem' }}
+                    >
+                        {/* "</> API": this page's actions as REST, MCP, CLI and SDK calls. */}
+                        <div className="cbx-page-tools">
+                            <PageApiEquivalents />
+                        </div>
+                        {children}
                     </div>
-                    {children}
-                </div>
-            </CboxShell>
+                </CboxShell>
+            </CboxLocalizationProvider>
         </TooltipProvider>
     );
 }

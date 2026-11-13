@@ -1,6 +1,8 @@
-import { useTranslator } from '@/i18n';
+import { initialsOf } from '@cboxdk/cbox-ui';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useCallback, useRef, useState } from 'react';
+import { useTranslator } from '@/i18n';
+import { RowMenu, SettingRow } from '@/chrome/AccountRows';
 import AccountLayout from '@/layouts/AccountLayout';
 import { countryOptions } from '@/lib/countries';
 import {
@@ -10,17 +12,17 @@ import {
     passkeysSupported,
     registerPasskey,
 } from '@/lib/passkeys';
+import { absoluteDate, absoluteTime, relativeTime } from '@/lib/time';
 import type { HelpContent, PageProps } from '@/types';
 import {
     Button,
     Combobox,
     CopyButton,
     Dialog,
+    DropdownMenuItem,
     Field,
     Icon,
     Input,
-    Kv,
-    KvList,
     PageHeader,
     Panel,
     PasswordField,
@@ -32,8 +34,9 @@ import {
 interface PasskeyRow {
     id: string;
     name: string;
+    /** ISO 8601; drawn in the reader's own format and zone. */
     added: string | null;
-    /** "2 days ago", or null when it has not signed in since this was recorded. */
+    /** ISO 8601, or null when it has not signed in since this was recorded. */
     lastUsed: string | null;
     renameHref: string;
     removeHref: string;
@@ -54,8 +57,9 @@ interface SignInIdentityRow {
     label: string;
     /** The address the provider gave when it was linked; null when it gave none. */
     email: string | null;
+    /** ISO 8601. */
     linkedOn: string | null;
-    /** "2 days ago", or null when it has not signed in since this was recorded. */
+    /** ISO 8601, or null when it has not signed in since this was recorded. */
     lastUsed: string | null;
     /** Null for an organization's single sign-on, which is not this page's to remove. */
     disconnectHref: string | null;
@@ -71,6 +75,7 @@ interface ConnectableProvider {
 interface TotpRow {
     id: string;
     name: string;
+    /** ISO 8601. */
     added: string | null;
     renameHref: string;
     removeHref: string;
@@ -82,7 +87,21 @@ type OrganizationRow = {
     role: string;
     current: boolean;
     isOwner: boolean;
+    /**
+     * Why leaving is not offered, said rather than refused after the click: an owner hands
+     * the organization over first, and a customer's team is administered in its own console.
+     */
+    leaveBlocked: 'owner' | 'managed' | null;
     leaveHref: string;
+};
+
+/** An invitation waiting for this person's (confirmed) address. */
+type InvitationRow = {
+    id: string;
+    organization: string;
+    role: string;
+    inviter: string | null;
+    acceptHref: string;
 };
 
 type TotpSetup = { id: string; name: string; secret: string; qr: string; cancelHref: string };
@@ -100,6 +119,7 @@ type Props = PageProps<{
     };
     /** The organizations this person belongs to, each with the way out of it. */
     organizations: OrganizationRow[];
+    invitations: InvitationRow[];
     hasPassword: boolean;
     twoFactor: {
         enabled: boolean;
@@ -124,6 +144,7 @@ type Props = PageProps<{
         identities: SignInIdentityRow[];
         connectable: ConnectableProvider[];
     };
+    /** `methods` are labels in the reader's language ("Password", "Approved on your phone"). */
     session: { id: string; methods: string[]; signedIn: string | null } | null;
     otherSessions: number;
     urls: {
@@ -147,6 +168,7 @@ export default function Security({
     organizationSettingsMoved,
     profile,
     organizations,
+    invitations,
     hasPassword,
     twoFactor,
     smsFactor,
@@ -167,18 +189,12 @@ export default function Security({
                     already redirects to — the server decides both. An IdP page that follows
                     `?return_to=` on its own is an open redirect with a sign-in form on it.
                 */
-                <a
-                    href={returnTo.url}
-                    className="inline-flex items-center gap-2 text-sm font-medium"
-                    style={{ color: 'var(--accent-strong)' }}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-4 h-4"
-                        style={{ transform: 'rotate(90deg)' }}
-                    />
-                    {tc('console.return_to_353f0e89')}
-                    {returnTo.host}
+                <a href={returnTo.url} className="cbx-back-link">
+                    <Icon name="arrow-left" className="w-4 h-4" />
+                    <span>
+                        {tc('console.return_to_353f0e89')}
+                        {returnTo.host}
+                    </span>
                 </a>
             )}
 
@@ -188,128 +204,75 @@ export default function Security({
             />
 
             {organizationSettingsMoved !== null && (
-                <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    {tc('console.organization_settings_moved_here_7b3e91c4')}{' '}
-                    <a
-                        href={organizationSettingsMoved}
-                        className="font-medium"
-                        style={{ color: 'var(--accent-strong)' }}
-                    >
-                        {tc('console.organization_settings_4fd62541')}
-                    </a>
+                <p className="acct-notice">
+                    <Icon name="info" className="w-4 h-4 shrink-0" />
+                    <span>
+                        {tc('console.organization_settings_moved_here_7b3e91c4')}{' '}
+                        <a href={organizationSettingsMoved}>
+                            {tc('console.organization_settings_4fd62541')}
+                        </a>
+                    </span>
                 </p>
             )}
 
             <ProfilePanel profile={profile} href={urls.profile} />
 
-            {organizations.length > 0 && <OrganizationsPanel organizations={organizations} />}
-
             <SignInMethodsPanel
                 methods={signInMethods}
                 hasPassword={hasPassword}
-                passkeys={passkeys.length}
+                email={profile.email}
+                passwordHref={urls.password}
+                passkeys={passkeys}
+                passkeysEnabled={passkeysEnabled}
             />
 
-            <PasswordPanel hasPassword={hasPassword} email={profile.email} href={urls.password} />
-
-            <TwoFactorPanel twoFactor={twoFactor} urls={urls} />
-
-            {smsFactor !== null && (
-                <SmsPanel sms={smsFactor} totpEnabled={twoFactor.enabled} urls={urls} />
-            )}
-
-            <PasskeyPanel passkeys={passkeys} enabled={passkeysEnabled} />
+            <TwoStepPanel twoFactor={twoFactor} smsFactor={smsFactor} urls={urls} />
 
             <SessionPanel session={session} otherSessions={otherSessions} urls={urls} />
+
+            {(organizations.length > 0 || invitations.length > 0) && (
+                <OrganizationsPanel organizations={organizations} invitations={invitations} />
+            )}
         </div>
     );
 }
 
-/**
- * The person's organizations, and leaving one. Their own act on their own membership, so it
- * is here, on the page every host serves them: the login host has no console around it and
- * a customer environment's host has no People page.
- */
-function OrganizationsPanel({ organizations }: { organizations: OrganizationRow[] }) {
-    const { t: tc } = useTranslator();
-    const [leaving, setLeaving] = useState<OrganizationRow | null>(null);
-    const leave = useForm({});
+/* ─── Shared pieces ──────────────────────────────────────────────────────── */
 
-    return (
-        <Panel title={tc('console.organizations_2730183d')} data-test="account-organizations">
-            <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                {organizations.map((organization) => (
-                    <li
-                        key={organization.id}
-                        className="flex flex-wrap items-center justify-between gap-3 py-3"
-                    >
-                        <span className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                            {organization.name}
-                            <Pill dot={false}>{organization.role}</Pill>
-                        </span>
-                        <Button
-                            size="sm"
-                            onClick={() => {
-                                leave.clearErrors();
-                                setLeaving(organization);
-                            }}
-                        >
-                            {tc('console.leave_fc6e4a40')}
-                        </Button>
-                    </li>
-                ))}
-            </ul>
+/** "Added 12 Nov 2026 · last used 5 minutes ago", in the reader's language, format and zone. */
+function useDates() {
+    const { t: tc, locale } = useTranslator();
 
-            <Dialog
-                open={leaving !== null}
-                onOpenChange={(open) => {
-                    if (!open && !leave.processing) setLeaving(null);
-                }}
-                title={tc('console.leave_part1_9c615c04', { part1: leaving?.name ?? '' })}
-                description={
-                    leaving?.isOwner
-                        ? tc(
-                              'console.you_lose_access_immediately_as_its_owner_you_can_only_l_d51a2272',
-                          )
-                        : tc(
-                              'console.you_lose_access_to_this_organization_and_its_apps_immed_47fdba25',
-                          )
-                }
-                footer={
-                    <>
-                        <Button disabled={leave.processing} onClick={() => setLeaving(null)}>
-                            {tc('console.cancel_19766ed6')}
-                        </Button>
-                        <Button
-                            variant="danger"
-                            loading={leave.processing}
-                            onClick={() => {
-                                if (leaving)
-                                    leave.post(leaving.leaveHref, {
-                                        preserveScroll: true,
-                                        onSuccess: () => setLeaving(null),
-                                    });
-                            }}
-                        >
-                            {tc('console.leave_organization_ac8fd777')}
-                        </Button>
-                    </>
-                }
-            >
-                {(leave.errors as Record<string, string>).organization && (
-                    <p className="field-error" role="alert">
-                        {(leave.errors as Record<string, string>).organization}
-                    </p>
-                )}
-            </Dialog>
-        </Panel>
-    );
+    return {
+        date: (iso: string) => absoluteDate(iso, locale),
+        added: (iso: string | null) =>
+            iso === null
+                ? null
+                : tc('console.account_added_date', { date: absoluteDate(iso, locale) }),
+        linked: (iso: string | null) =>
+            iso === null
+                ? null
+                : tc('console.account_linked_date', { date: absoluteDate(iso, locale) }),
+        lastUsed: (iso: string | null) =>
+            iso === null
+                ? tc('console.not_used_to_sign_in_yet_12293a9f')
+                : tc('console.account_last_used_when', { when: relativeTime(iso, locale) }),
+    };
 }
+
+function joinMeta(parts: (string | null | undefined)[]): string {
+    return parts
+        .filter((part): part is string => part !== null && part !== undefined && part !== '')
+        .join(' · ');
+}
+
+/* ─── Profile ────────────────────────────────────────────────────────────── */
 
 function ProfilePanel({ profile, href }: { profile: Props['profile']; href: string }) {
     const { t: tc } = useTranslator();
 
     const form = useForm({ displayName: profile.name });
+    const changed = form.data.displayName.trim() !== profile.name;
 
     return (
         <Panel
@@ -317,62 +280,259 @@ function ProfilePanel({ profile, href }: { profile: Props['profile']; href: stri
             description={tc('console.how_you_appear_across_cbox_id_84b2789d')}
         >
             <form
-                className="flex items-start gap-4"
+                className="acct-profile"
                 onSubmit={(event) => {
                     event.preventDefault();
                     form.patch(href, { preserveScroll: true });
                 }}
             >
-                {/* The initial is decoration: on a phone the name field needs the width. */}
-                <span
-                    className="idc-avatar shrink-0 hidden sm:inline-flex"
-                    aria-hidden="true"
-                    style={{ width: '3rem', height: '3rem', fontSize: '1.1rem' }}
-                >
-                    {profile.initial}
+                <span className="acct-avatar" aria-hidden="true">
+                    {initialsOf(profile.name !== '' ? profile.name : (profile.email ?? ''))}
                 </span>
 
-                <div className="min-w-0 flex-1 space-y-4">
+                <div className="acct-profile-fields">
                     <Field label={tc('console.name_dcd1d522')} error={form.errors.displayName}>
-                        <Input
-                            name="displayName"
-                            maxLength={120}
-                            autoComplete="name"
-                            value={form.data.displayName}
-                            onChange={(event) => form.setData('displayName', event.target.value)}
-                        />
+                        <div className="acct-inline-field">
+                            <Input
+                                name="displayName"
+                                maxLength={120}
+                                autoComplete="name"
+                                value={form.data.displayName}
+                                onChange={(event) =>
+                                    form.setData('displayName', event.target.value)
+                                }
+                            />
+                            <Button
+                                type="submit"
+                                variant={changed ? 'primary' : 'secondary'}
+                                disabled={!changed}
+                                loading={form.processing}
+                            >
+                                {tc('console.save_name_b7297226')}
+                            </Button>
+                        </div>
                     </Field>
 
-                    <KvList>
-                        {/*
-                            Read-only on purpose. The email is the sign-in identifier, and
-                            changing it without re-proving control of the new address is how
-                            an account gets taken over — so it moves through a verification
-                            flow, not a text field on this page.
-                        */}
-                        <Kv label={tc('console.email_969ccbd3')}>{profile.email ?? '—'}</Kv>
-                        {profile.organization !== null && (
-                            <Kv label={tc('console.organization_d764d425')} prose>
-                                {profile.organization.name}{' '}
-                                <Pill dot={false}>{profile.organization.role}</Pill>
-                            </Kv>
-                        )}
-                    </KvList>
-
-                    <Button type="submit" variant="primary" loading={form.processing}>
-                        {tc('console.save_name_b7297226')}
-                    </Button>
+                    {/*
+                        Read-only on purpose. The email is the sign-in identifier, and
+                        changing it without re-proving control of the new address is how an
+                        account gets taken over — so it moves through a verification flow,
+                        not a text field on this page.
+                    */}
+                    <div>
+                        <p className="label">{tc('console.email_address_f2488fd4')}</p>
+                        <p className="acct-readonly">{profile.email ?? '—'}</p>
+                        <p className="acct-hint">{tc('console.account_email_hint')}</p>
+                    </div>
                 </div>
             </form>
         </Panel>
     );
 }
 
-function PasswordPanel({
+/* ─── Sign-in methods: password, passkeys, linked accounts ───────────────── */
+
+/**
+ * MY ACCOUNT › SIGN-IN METHODS — every way in to this account, in one place, each with its
+ * own management right where it is listed: the password's change, each passkey's rename
+ * and removal, each linked account's disconnect. One list, so nothing is shown twice.
+ *
+ * Connect is an Inertia link: the visit clears the step-up in place, and the server then
+ * answers it with a real navigation (`Inertia::location`), because the provider's consent
+ * page is another origin a client-side visit cannot follow. Disconnect asks first, and the
+ * server refuses it when it would leave no way in — the refusal is shown here.
+ */
+function SignInMethodsPanel({
+    methods,
+    hasPassword,
+    email,
+    passwordHref,
+    passkeys,
+    passkeysEnabled,
+}: {
+    methods: Props['signInMethods'];
+    hasPassword: boolean;
+    email: string | null;
+    passwordHref: string;
+    passkeys: PasskeyRow[];
+    passkeysEnabled: boolean;
+}) {
+    const { t: tc } = useTranslator();
+    const dates = useDates();
+    const { errors } = usePage().props;
+    const [disconnecting, setDisconnecting] = useState<SignInIdentityRow | null>(null);
+    // A link to `#password` (the hold that asks for a new password, a bookmark) opens it.
+    const [changingPassword, setChangingPassword] = useState(
+        () => typeof window !== 'undefined' && window.location.hash === '#password',
+    );
+    const error = typeof errors.signInMethods === 'string' ? errors.signInMethods : null;
+
+    return (
+        <Panel
+            id="sign-in-methods"
+            title={tc('console.sign_in_methods_477be867')}
+            description={tc('console.every_way_you_can_sign_in_linking_is_always__bcef066d')}
+            flush
+        >
+            <ul className="acct-list">
+                <SettingRow
+                    id="password"
+                    icon="key"
+                    title={tc('console.password_e7cf3ef4')}
+                    badge={
+                        hasPassword ? (
+                            <Pill tone="success">{tc('console.set_b6f6f3ad')}</Pill>
+                        ) : (
+                            <Pill tone="neutral">{tc('console.not_set_4895f731')}</Pill>
+                        )
+                    }
+                    meta={
+                        hasPassword
+                            ? tc('console.change_the_password_you_use_to_sign_in_b5425719')
+                            : tc('console.set_a_password_to_sign_in_without_a_social_a_fd2b9dae')
+                    }
+                    actions={
+                        <Button size="sm" onClick={() => setChangingPassword(true)}>
+                            {hasPassword
+                                ? tc('console.account_change_password')
+                                : tc('console.set_password_4e411687')}
+                        </Button>
+                    }
+                />
+            </ul>
+
+            <PasskeyGroup passkeys={passkeys} enabled={passkeysEnabled} />
+
+            {methods.identities.length > 0 && (
+                <ul className="acct-list">
+                    {methods.identities.map((identity) => (
+                        <SettingRow
+                            key={identity.id}
+                            mark={<ProviderMark provider={identity.provider} size={16} />}
+                            title={identity.label}
+                            badge={<Pill tone="success">{tc('console.linked_bfda026e')}</Pill>}
+                            meta={joinMeta([
+                                identity.email,
+                                dates.linked(identity.linkedOn),
+                                identity.lastUsed === null
+                                    ? null
+                                    : dates.lastUsed(identity.lastUsed),
+                            ])}
+                            actions={
+                                identity.disconnectHref !== null ? (
+                                    <RowMenu
+                                        name={`${identity.label}${identity.email === null ? '' : ` (${identity.email})`}`}
+                                    >
+                                        <DropdownMenuItem
+                                            destructive
+                                            onSelect={() => setDisconnecting(identity)}
+                                        >
+                                            {tc('console.disconnect_acfc5be7')}
+                                        </DropdownMenuItem>
+                                    </RowMenu>
+                                ) : (
+                                    <span className="acct-hint">
+                                        {tc('console.managed_by_your_organization_54508019')}
+                                    </span>
+                                )
+                            }
+                        />
+                    ))}
+                </ul>
+            )}
+
+            {error !== null && (
+                <p className="field-error acct-section-pad" role="alert">
+                    {error}
+                </p>
+            )}
+
+            {methods.connectable.length > 0 && (
+                <div className="acct-section acct-section-pad">
+                    <h3 className="cbx-section-title">
+                        {tc('console.connect_another_way_to_sign_in_81600aea')}
+                    </h3>
+                    <p className="acct-hint mt-1">
+                        {tc('console.you_sign_in_to_the_provider_and_it_is_linked_59410359')}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        {methods.connectable.map((provider) => (
+                            /*
+                                An Inertia visit, so a lapsed step-up is asked for HERE, in
+                                the "Confirm it's you" dialog, and the click carries on once
+                                it is answered; the server then sends the browser to the
+                                provider for real. Still an anchor: it can be opened in a new
+                                tab, which takes the full-page step-up instead.
+                            */
+                            <Link
+                                key={provider.provider}
+                                href={provider.connectHref}
+                                className="btn btn-ghost btn-sm"
+                            >
+                                <ProviderMark provider={provider.provider} size={16} />
+                                <span>
+                                    {tc('console.connect_3b887c98')}
+                                    {provider.label}
+                                </span>
+                            </Link>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <PasswordDialog
+                open={changingPassword}
+                onClose={() => setChangingPassword(false)}
+                hasPassword={hasPassword}
+                email={email}
+                href={passwordHref}
+            />
+
+            <Dialog
+                open={disconnecting !== null}
+                onOpenChange={(open) => !open && setDisconnecting(null)}
+                title={
+                    disconnecting === null
+                        ? ''
+                        : tc('console.disconnect_value0_1d09db11', { value0: disconnecting.label })
+                }
+                description={tc('console.you_stop_being_able_to_sign_in_with_it_if_it_66b928b9')}
+                footer={
+                    <>
+                        <Button onClick={() => setDisconnecting(null)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
+                        <Button
+                            variant="danger"
+                            onClick={() => {
+                                const identity = disconnecting;
+                                setDisconnecting(null);
+
+                                if (identity?.disconnectHref != null) {
+                                    router.delete(identity.disconnectHref, {
+                                        preserveScroll: true,
+                                    });
+                                }
+                            }}
+                        >
+                            {tc('console.disconnect_acfc5be7')}
+                        </Button>
+                    </>
+                }
+            />
+        </Panel>
+    );
+}
+
+function PasswordDialog({
+    open,
+    onClose,
     hasPassword,
     email,
     href,
 }: {
+    open: boolean;
+    onClose: () => void;
     hasPassword: boolean;
     email: string | null;
     href: string;
@@ -385,24 +545,57 @@ function PasswordPanel({
         newPasswordConfirmation: '',
     });
 
+    const close = () => {
+        if (form.processing) return;
+        form.reset();
+        form.clearErrors();
+        onClose();
+    };
+
     return (
-        <Panel
-            id="password"
-            title={tc('console.password_e7cf3ef4')}
+        <Dialog
+            open={open}
+            onOpenChange={(next) => !next && close()}
+            title={
+                hasPassword
+                    ? tc('console.account_change_password')
+                    : tc('console.set_password_4e411687')
+            }
             description={
                 hasPassword
                     ? tc('console.change_the_password_you_use_to_sign_in_b5425719')
                     : tc('console.set_a_password_to_sign_in_without_a_social_a_fd2b9dae')
             }
+            footer={
+                <>
+                    <Button disabled={form.processing} onClick={close}>
+                        {tc('console.cancel_19766ed6')}
+                    </Button>
+                    <Button
+                        type="submit"
+                        form="cbx-password-form"
+                        variant="primary"
+                        loading={form.processing}
+                    >
+                        {hasPassword
+                            ? tc('console.update_password_fe45b401')
+                            : tc('console.set_password_4e411687')}
+                    </Button>
+                </>
+            }
         >
             <form
+                id="cbx-password-form"
                 className="grid gap-4"
-                style={{ maxWidth: '28rem' }}
                 onSubmit={(event) => {
                     event.preventDefault();
                     form.post(href, {
                         preserveScroll: true,
-                        onSuccess: () => form.reset(),
+                        preserveState: true,
+                        onSuccess: () => {
+                            form.reset();
+                            onClose();
+                        },
                     });
                 }}
             >
@@ -444,477 +637,14 @@ function PasswordPanel({
                         form.setData('newPasswordConfirmation', event.target.value)
                     }
                 />
-
-                <div>
-                    <Button type="submit" variant="primary" loading={form.processing}>
-                        {hasPassword
-                            ? tc('console.update_password_fe45b401')
-                            : tc('console.set_password_4e411687')}
-                    </Button>
-                </div>
             </form>
-        </Panel>
+        </Dialog>
     );
 }
 
-function setupFromFlash(flash: ReturnType<typeof usePage>['flash']): TotpSetup | null {
-    const { mfaSecret, mfaQrCode, mfaFactorId, mfaDeviceName, mfaCancelHref } = flash;
-    return mfaSecret && mfaQrCode && mfaFactorId && mfaCancelHref
-        ? {
-              id: mfaFactorId,
-              name: mfaDeviceName ?? '',
-              secret: mfaSecret,
-              qr: mfaQrCode,
-              cancelHref: mfaCancelHref,
-          }
-        : null;
-}
-
-function TwoFactorPanel({
-    twoFactor,
-    urls,
-}: {
-    twoFactor: Props['twoFactor'];
-    urls: Props['urls'];
-}) {
+function PasskeyGroup({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: boolean }) {
     const { t: tc } = useTranslator();
-    const flash = usePage().flash;
-    const { recoveryCodes } = flash;
-    const [setup, setSetup] = useState<TotpSetup | null>(() => setupFromFlash(flash));
-    const [adding, setAdding] = useState(false);
-    const [renaming, setRenaming] = useState<TotpRow | null>(null);
-    const [removing, setRemoving] = useState<TotpRow | null>(null);
-    const [regenerating, setRegenerating] = useState(false);
-    const add = useForm({ name: '' });
-    const form = useForm({ code: '' });
-    const rename = useForm({ name: '' });
-    const remove = useForm({ form: '' });
-    const cancel = useForm({ form: '' });
-    const codes = Array.isArray(recoveryCodes) ? (recoveryCodes as string[]) : null;
-
-    // Keep a pending QR in component memory after a mistyped code. It is never remembered
-    // in Inertia history, local storage or page props; leaving this page discards it.
-
-    return (
-        <Panel
-            title={tc('console.totp_apps')}
-            description={tc('console.totp_description')}
-            action={
-                twoFactor.enabled && <Pill tone="success">{tc('console.enabled_92c1cdfd')}</Pill>
-            }
-        >
-            {twoFactor.devices.length > 0 && (
-                <ul className="mb-5 divide-y divide-[var(--border)]">
-                    {twoFactor.devices.map((device) => (
-                        <li
-                            key={device.id}
-                            className="flex flex-col items-stretch justify-between gap-3 py-3 first:pt-0 sm:flex-row sm:items-center"
-                        >
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                                <Icon name="key" className="w-5 h-5 shrink-0" />
-                                <div className="min-w-0">
-                                    <p className="text-sm font-medium break-words">{device.name}</p>
-                                    {device.added && (
-                                        <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                                            {tc('console.totp_added_on', { date: device.added })}
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex gap-2 shrink-0 self-end sm:self-auto">
-                                <Button
-                                    size="sm"
-                                    aria-label={tc('console.totp_rename_named', {
-                                        name: device.name,
-                                    })}
-                                    onClick={() => {
-                                        rename.setData('name', device.name);
-                                        rename.clearErrors();
-                                        setRenaming(device);
-                                    }}
-                                >
-                                    {tc('console.totp_rename')}
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="danger"
-                                    disabled={twoFactor.devices.length === 1}
-                                    aria-label={tc('console.totp_remove_named', {
-                                        name: device.name,
-                                    })}
-                                    onClick={() => {
-                                        remove.clearErrors();
-                                        setRemoving(device);
-                                    }}
-                                >
-                                    {tc('console.totp_remove')}
-                                </Button>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            )}
-            {twoFactor.devices.length === 1 && (
-                <p className="text-xs mb-4" style={{ color: 'var(--muted)' }}>
-                    {tc('console.totp_last_device')}
-                </p>
-            )}
-
-            {setup !== null ? (
-                <div
-                    className="space-y-4 rounded-xl p-4 sm:p-5"
-                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
-                >
-                    <h3 className="font-medium break-words">
-                        {tc('console.totp_setup_named', { name: setup.name })}
-                    </h3>
-                    <ol className="text-sm space-y-1" style={{ color: 'var(--muted)' }}>
-                        <li>
-                            {tc('console.1_scan_the_qr_code_with_your_authenticator_a_3150598a')}
-                        </li>
-                        <li>{tc('console.2_enter_the_6_digit_code_it_shows_3e5b7922')}</li>
-                    </ol>
-                    <div className="flex flex-col sm:flex-row gap-4 items-start">
-                        <div
-                            className="shrink-0 rounded-xl p-3"
-                            style={{ background: '#fff', lineHeight: 0 }}
-                        >
-                            {/*
-                                An <img> over a data: URI, not injected SVG markup. The
-                                server generates it from the provisioning URI, so nothing
-                                untrusted is involved either way — but an <img> cannot
-                                execute what it is handed, and that stays true if the code
-                                ever moves. On a white plate because a QR must be
-                                dark-on-light to scan.
-                            */}
-                            <img
-                                src={setup.qr}
-                                alt={tc('console.authenticator_setup_qr_code_f154e1f3')}
-                                width={220}
-                                height={220}
-                            />
-                        </div>
-
-                        <div className="min-w-0 flex-1 w-full">
-                            <span className="label">
-                                {tc('console.setup_key_manual_entry_39842f55')}
-                            </span>
-                            <div className="flex items-stretch gap-2">
-                                <p
-                                    className="mono text-sm p-3 rounded-lg select-all break-all flex-1 min-w-0"
-                                    style={{
-                                        background: 'var(--surface-2)',
-                                        border: '1px solid var(--border)',
-                                    }}
-                                >
-                                    {setup.secret}
-                                </p>
-                                <CopyButton
-                                    value={setup.secret}
-                                    className="shrink-0"
-                                    aria-label={tc('console.copy_setup_key_44ea66fd')}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <form
-                        className="flex flex-wrap items-end gap-3"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            form.transform((data) => ({ ...data, factor_id: setup.id }));
-                            form.post(urls.confirmMfa, {
-                                preserveScroll: true,
-                                onSuccess: () => {
-                                    setSetup(null);
-                                    form.reset();
-                                    add.reset();
-                                },
-                            });
-                        }}
-                    >
-                        <div className="w-full sm:w-44">
-                            <Field
-                                label={tc('console.6_digit_code_0d1fa0df')}
-                                error={form.errors.code}
-                            >
-                                <Input
-                                    name="code"
-                                    inputMode="numeric"
-                                    autoComplete="one-time-code"
-                                    maxLength={6}
-                                    className="mono"
-                                    placeholder="000000"
-                                    value={form.data.code}
-                                    required
-                                    onChange={(event) => form.setData('code', event.target.value)}
-                                />
-                            </Field>
-                        </div>
-                        <Button
-                            type="submit"
-                            variant="primary"
-                            loading={form.processing}
-                            disabled={cancel.processing}
-                        >
-                            {tc('console.confirm_eebdd24a')}
-                        </Button>
-                        <Button
-                            type="button"
-                            loading={cancel.processing}
-                            disabled={form.processing}
-                            onClick={() =>
-                                cancel.delete(setup.cancelHref, {
-                                    preserveScroll: true,
-                                    onSuccess: () => {
-                                        setSetup(null);
-                                        form.reset();
-                                        add.reset();
-                                    },
-                                })
-                            }
-                        >
-                            {tc('console.cancel_19766ed6')}
-                        </Button>
-                        {cancel.errors.form && (
-                            <p className="field-error w-full" role="alert">
-                                {cancel.errors.form}
-                            </p>
-                        )}
-                    </form>
-                    <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                        {tc('console.totp_setup_expires')}
-                    </p>
-                </div>
-            ) : !twoFactor.offered ? (
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                    {tc('console.your_administrator_has_turned_off_two_factor_e8143f3a')}
-                </p>
-            ) : twoFactor.devices.length >= 10 ? (
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                    {tc('console.totp_limit_reached')}
-                </p>
-            ) : adding ? (
-                <form
-                    className="space-y-3"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        form.clearErrors();
-                        cancel.clearErrors();
-                        add.post(urls.enrolMfa, {
-                            preserveScroll: true,
-                            onSuccess: (page) => {
-                                setSetup(setupFromFlash(page.flash));
-                                setAdding(false);
-                            },
-                        });
-                    }}
-                >
-                    <Field label={tc('console.totp_name')} error={add.errors.name}>
-                        <Input
-                            name="name"
-                            required
-                            maxLength={120}
-                            autoComplete="off"
-                            placeholder={tc('console.totp_name_example')}
-                            value={add.data.name}
-                            onChange={(event) => add.setData('name', event.target.value)}
-                        />
-                    </Field>
-                    <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                        {tc('console.totp_name_hint')}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                        <Button type="submit" variant="primary" loading={add.processing}>
-                            {tc('console.totp_show_qr')}
-                        </Button>
-                        <Button
-                            type="button"
-                            disabled={add.processing}
-                            onClick={() => setAdding(false)}
-                        >
-                            {tc('console.cancel_19766ed6')}
-                        </Button>
-                    </div>
-                </form>
-            ) : (
-                <Button
-                    variant="primary"
-                    onClick={() => {
-                        add.clearErrors();
-                        setAdding(true);
-                    }}
-                >
-                    <Icon name="plus" className="w-4 h-4" />
-                    {tc('console.totp_add')}
-                </Button>
-            )}
-
-            {twoFactor.enabled && (
-                <>
-                    <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--border)' }}>
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <h3 className="font-medium text-sm">
-                                {tc('console.recovery_codes_36880d15')}
-                            </h3>
-                            <Pill dot={false}>
-                                {tc('console.recovery_codes_remaining_count', {
-                                    count: twoFactor.recoveryRemaining,
-                                })}
-                            </Pill>
-                        </div>
-                        <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                            {tc('console.single_use_codes_to_sign_in_if_you_lose_your_c578fbcf')}
-                        </p>
-
-                        {codes !== null && <RecoveryCodes codes={codes} />}
-
-                        <Button className="mt-3" onClick={() => setRegenerating(true)}>
-                            <Icon name="refresh" className="w-4 h-4" />
-                            {twoFactor.recoveryRemaining > 0
-                                ? tc('console.regenerate_codes_67b3a892')
-                                : tc('console.generate_codes_b36ae7c7')}
-                        </Button>
-                    </div>
-
-                    <Dialog
-                        open={regenerating}
-                        onOpenChange={setRegenerating}
-                        title={tc('console.generate_new_recovery_codes_1b0cf5b6')}
-                        description={tc(
-                            'console.your_existing_codes_stop_working_immediately_c2dbcb02',
-                        )}
-                        footer={
-                            <>
-                                <Button onClick={() => setRegenerating(false)}>
-                                    {tc('console.cancel_19766ed6')}
-                                </Button>
-                                <Button
-                                    variant="primary"
-                                    onClick={() => {
-                                        setRegenerating(false);
-                                        router.post(
-                                            urls.recoveryCodes,
-                                            {},
-                                            { preserveScroll: true },
-                                        );
-                                    }}
-                                >
-                                    {tc('console.generate_49e49bb4')}
-                                </Button>
-                            </>
-                        }
-                    />
-                </>
-            )}
-
-            <Dialog
-                open={renaming !== null}
-                onOpenChange={(open) => {
-                    if (!open && !rename.processing) setRenaming(null);
-                }}
-                title={tc('console.totp_rename')}
-            >
-                <form
-                    className="space-y-4"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        if (renaming)
-                            rename.patch(renaming.renameHref, {
-                                preserveScroll: true,
-                                onSuccess: () => setRenaming(null),
-                            });
-                    }}
-                >
-                    <Field label={tc('console.totp_name')} error={rename.errors.name}>
-                        <Input
-                            required
-                            maxLength={120}
-                            value={rename.data.name}
-                            onChange={(event) => rename.setData('name', event.target.value)}
-                        />
-                    </Field>
-                    <div className="flex justify-end gap-2">
-                        <Button
-                            type="button"
-                            disabled={rename.processing}
-                            onClick={() => setRenaming(null)}
-                        >
-                            {tc('console.cancel_19766ed6')}
-                        </Button>
-                        <Button type="submit" variant="primary" loading={rename.processing}>
-                            {tc('console.totp_save')}
-                        </Button>
-                    </div>
-                </form>
-            </Dialog>
-            <Dialog
-                open={removing !== null}
-                onOpenChange={(open) => {
-                    if (!open && !remove.processing) setRemoving(null);
-                }}
-                title={tc('console.totp_remove_named', { name: removing?.name ?? '' })}
-                description={tc('console.totp_remove_explanation')}
-                footer={
-                    <>
-                        <Button disabled={remove.processing} onClick={() => setRemoving(null)}>
-                            {tc('console.cancel_19766ed6')}
-                        </Button>
-                        <Button
-                            variant="danger"
-                            loading={remove.processing}
-                            onClick={() => {
-                                if (removing)
-                                    remove.delete(removing.removeHref, {
-                                        preserveScroll: true,
-                                        onSuccess: () => setRemoving(null),
-                                    });
-                            }}
-                        >
-                            {tc('console.totp_remove')}
-                        </Button>
-                    </>
-                }
-            >
-                {remove.errors.form && (
-                    <p className="field-error" role="alert">
-                        {remove.errors.form}
-                    </p>
-                )}
-            </Dialog>
-        </Panel>
-    );
-}
-
-function RecoveryCodes({ codes }: { codes: string[] }) {
-    const { t: tc } = useTranslator();
-
-    return (
-        <>
-            <div
-                className="mt-3 p-3 rounded-lg grid grid-cols-2 gap-x-6 gap-y-1 mono text-sm select-all"
-                style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
-            >
-                {codes.map((code) => (
-                    <span key={code}>{code}</span>
-                ))}
-            </div>
-            <div className="mt-2 flex items-center gap-3 flex-wrap">
-                <CopyButton
-                    value={codes.join('\n')}
-                    label={tc('console.copy_all_codes_17220f23')}
-                    aria-label={tc('console.copy_all_recovery_codes_71d3af0d')}
-                />
-                <p className="text-xs" style={{ color: 'var(--destructive-strong)' }}>
-                    {tc('console.shown_only_once_save_them_now_b44e87b6')}
-                </p>
-            </div>
-        </>
-    );
-}
-
-function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: boolean }) {
-    const { t: tc } = useTranslator();
+    const dates = useDates();
 
     /*
      * READ ONCE, LAZILY, rather than in an effect.
@@ -969,110 +699,82 @@ function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: 
     }, [tc]);
 
     /*
-     * THE PANEL STAYS EVEN WHERE PASSKEYS DO NOT WORK — only the enrolment button goes.
+     * THE LIST STAYS EVEN WHERE PASSKEYS DO NOT WORK — only the enrolment button goes.
      *
-     * The old page hid the whole section on a browser without WebAuthn, which meant
-     * somebody who enrolled a passkey on their phone could not SEE it, let alone remove
-     * it, from a work desktop whose browser lacks the API. Revoking a credential is
-     * exactly what you want to do from the machine that cannot use it. So the list is
-     * always here, and what is withheld is the affordance that would fail: adding one.
+     * Somebody who enrolled a passkey on their phone must be able to SEE it, and remove it,
+     * from a work desktop whose browser lacks the API. Revoking a credential is exactly what
+     * you want to do from the machine that cannot use it. So the list is always here, and
+     * what is withheld is the affordance that would fail: adding one.
      */
+    const note = !enabled
+        ? tc('console.passkeys_are_turned_off_here_so_you_cannot_a_9b3b4401')
+        : !supported
+          ? tc('console.this_browser_cannot_create_a_passkey_so_ther_2fac1ac0')
+          : null;
+
     return (
-        <Panel
-            id="passkeys"
-            title={tc('console.passkeys_c87ccdb4')}
-            description={tc('console.sign_in_with_face_id_touch_id_windows_hello__97a33786')}
-            action={
-                supported &&
-                enabled && (
-                    <Button variant="primary" className="shrink-0" loading={busy} onClick={add}>
-                        <Icon name="plus" className="w-4 h-4" />
-                        {tc('console.add_passkey_a323d84f')}
-                    </Button>
-                )
-            }
-        >
-            <output className="text-xs block mb-2" style={{ minHeight: '1rem' }}>
-                {message}
-            </output>
+        <ul className="acct-list" id="passkeys">
+            <SettingRow
+                icon="fingerprint"
+                title={tc('console.passkeys_c87ccdb4')}
+                badge={
+                    passkeys.length > 0 ? (
+                        <Pill tone="success">
+                            {passkeys.length === 1
+                                ? tc('console.1_passkey_02e9a8d3')
+                                : tc('console.value0_passkeys_ab6cc0db', {
+                                      value0: passkeys.length,
+                                  })}
+                        </Pill>
+                    ) : (
+                        <Pill tone="neutral">{tc('console.none_yet_adb85cf2')}</Pill>
+                    )
+                }
+                meta={note ?? tc('console.sign_in_with_face_id_touch_id_windows_hello__97a33786')}
+                actions={
+                    supported &&
+                    enabled && (
+                        <Button size="sm" icon="plus" loading={busy} onClick={add}>
+                            {tc('console.add_passkey_a323d84f')}
+                        </Button>
+                    )
+                }
+            />
 
-            {!enabled && (
-                <p className="text-sm mb-3" style={{ color: 'var(--muted-foreground)' }}>
-                    {tc('console.passkeys_are_turned_off_here_so_you_cannot_a_9b3b4401')}
-                </p>
+            {message !== null && (
+                <li className="acct-row acct-row--nested">
+                    <p className="field-error" role="alert">
+                        {message}
+                    </p>
+                </li>
             )}
 
-            {enabled && !supported && (
-                <p className="text-sm mb-3" style={{ color: 'var(--muted-foreground)' }}>
-                    {tc('console.this_browser_cannot_create_a_passkey_so_ther_2fac1ac0')}
-                </p>
-            )}
-
-            {passkeys.length === 0 ? (
-                <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                    {tc('console.no_passkeys_registered_yet_8a414b8f')}
-                </p>
-            ) : (
-                <ul className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                    {passkeys.map((passkey) => (
-                        <li
-                            key={passkey.id}
-                            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3"
-                        >
-                            <div className="flex items-center gap-3 min-w-0">
-                                <Icon
-                                    name="fingerprint"
-                                    className="w-4 h-4 shrink-0"
-                                    style={{ color: 'var(--success-strong)' }}
-                                />
-                                <div className="min-w-0">
-                                    <p className="text-sm font-medium break-words">
-                                        {passkey.name}
-                                    </p>
-                                    <p
-                                        className="text-xs"
-                                        style={{ color: 'var(--muted-foreground)' }}
-                                    >
-                                        {[
-                                            `Added ${passkey.added ?? tc('console.on_an_unknown_date_c30b1ac5')}`,
-                                            passkey.lastUsed === null
-                                                ? tc('console.not_used_to_sign_in_yet_12293a9f')
-                                                : `last used ${passkey.lastUsed}`,
-                                        ].join(' · ')}
-                                    </p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                                <Button
-                                    size="sm"
-                                    aria-label={tc('console.rename_value0_b709cc6f', {
-                                        value0: passkey.name,
-                                    })}
-                                    onClick={() =>
-                                        setNaming({
-                                            name: passkey.name,
-                                            renameHref: passkey.renameHref,
-                                            fresh: false,
-                                        })
-                                    }
-                                >
-                                    {tc('console.rename_3064d79a')}
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    variant="danger"
-                                    aria-label={tc('console.remove_value0_b597e5fb', {
-                                        value0: passkey.name,
-                                    })}
-                                    onClick={() => setRemoving(passkey)}
-                                >
-                                    {tc('console.remove_c3812fc4')}
-                                </Button>
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            )}
+            {passkeys.map((passkey) => (
+                <SettingRow
+                    key={passkey.id}
+                    nested
+                    title={passkey.name}
+                    meta={joinMeta([dates.added(passkey.added), dates.lastUsed(passkey.lastUsed)])}
+                    actions={
+                        <RowMenu name={passkey.name}>
+                            <DropdownMenuItem
+                                onSelect={() =>
+                                    setNaming({
+                                        name: passkey.name,
+                                        renameHref: passkey.renameHref,
+                                        fresh: false,
+                                    })
+                                }
+                            >
+                                {tc('console.rename_3064d79a')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem destructive onSelect={() => setRemoving(passkey)}>
+                                {tc('console.remove_c3812fc4')}
+                            </DropdownMenuItem>
+                        </RowMenu>
+                    }
+                />
+            ))}
 
             {naming !== null && (
                 // Keyed, so each passkey's dialog starts from its own name — never from the
@@ -1087,7 +789,7 @@ function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: 
             {/*
                 An ordinary confirm rather than type-to-confirm: this is the reader's own
                 account, where the two-identical-tabs hazard that dialog exists for does not
-                apply — and a passkey can be added again from this very panel.
+                apply — and a passkey can be added again from this very list.
             */}
             <Dialog
                 open={removing !== null}
@@ -1119,7 +821,7 @@ function PasskeyPanel({ passkeys, enabled }: { passkeys: PasskeyRow[]; enabled: 
                     </>
                 }
             />
-        </Panel>
+        </ul>
     );
 }
 
@@ -1224,213 +926,722 @@ function PasskeyNameDialog({ naming, onClose }: { naming: Naming; onClose: () =>
     );
 }
 
-/**
- * MY ACCOUNT › SIGN-IN METHODS — every way in to this account, in one place.
- *
- * It replaced "Connected accounts", which listed only the deployment operator's own
- * providers and was absent entirely where Google was the environment's — so the sign-in
- * page's "connect it from your account settings" pointed at nothing. This lists what the
- * account HAS (password, passkeys, every linked provider account, whichever door it came
- * through) and offers what the sign-in page offers.
- *
- * Connect is an Inertia link: the visit clears the step-up in place, and the server then
- * answers it with a real navigation (`Inertia::location`), because the provider's consent
- * page is another origin a client-side visit cannot follow. Disconnect asks first, and the
- * server refuses it when it would leave no way in — the refusal is shown here.
- */
-function SignInMethodsPanel({
-    methods,
-    hasPassword,
-    passkeys,
+/* ─── Two-step verification: authenticator apps, text messages, recovery ── */
+
+function setupFromFlash(flash: ReturnType<typeof usePage>['flash']): TotpSetup | null {
+    const { mfaSecret, mfaQrCode, mfaFactorId, mfaDeviceName, mfaCancelHref } = flash;
+    return mfaSecret && mfaQrCode && mfaFactorId && mfaCancelHref
+        ? {
+              id: mfaFactorId,
+              name: mfaDeviceName ?? '',
+              secret: mfaSecret,
+              qr: mfaQrCode,
+              cancelHref: mfaCancelHref,
+          }
+        : null;
+}
+
+function TwoStepPanel({
+    twoFactor,
+    smsFactor,
+    urls,
 }: {
-    methods: Props['signInMethods'];
-    hasPassword: boolean;
-    passkeys: number;
+    twoFactor: Props['twoFactor'];
+    smsFactor: Props['smsFactor'];
+    urls: Props['urls'];
 }) {
     const { t: tc } = useTranslator();
-
-    const { errors } = usePage().props;
-    const [disconnecting, setDisconnecting] = useState<SignInIdentityRow | null>(null);
-    const error = typeof errors.signInMethods === 'string' ? errors.signInMethods : null;
+    const on = twoFactor.enabled || smsFactor?.enrolled === true;
 
     return (
         <Panel
-            id="sign-in-methods"
-            title={tc('console.sign_in_methods_477be867')}
-            description={tc('console.every_way_you_can_sign_in_linking_is_always__bcef066d')}
+            id="two-factor"
+            title={tc('console.account_two_step_title')}
+            description={tc('console.account_two_step_description')}
+            action={
+                on ? (
+                    <Pill tone="success">{tc('console.on_13001175')}</Pill>
+                ) : (
+                    <Pill tone="warning">{tc('console.off_ca7981b4')}</Pill>
+                )
+            }
+            flush
         >
-            <ul className="divide-y divide-[color:var(--border)]">
-                <li className="flex items-center justify-between gap-4 py-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <Icon name="key" className="w-4 h-4 shrink-0" />
-                        <span className="text-sm font-medium">
-                            {tc('console.password_e7cf3ef4')}
-                        </span>
-                        {hasPassword ? (
-                            <Pill tone="success">{tc('console.set_b6f6f3ad')}</Pill>
-                        ) : (
-                            <Pill tone="neutral">{tc('console.not_set_4895f731')}</Pill>
-                        )}
-                    </div>
-                    <a
-                        href="#password"
-                        className="text-sm font-medium underline underline-offset-2 shrink-0"
-                        style={{ color: 'var(--accent-strong)' }}
-                    >
-                        {hasPassword
-                            ? tc('console.change_c0bf75bd')
-                            : tc('console.set_a_password_1b10004d')}
-                    </a>
-                </li>
+            <AuthenticatorGroup twoFactor={twoFactor} urls={urls} />
 
-                <li className="flex items-center justify-between gap-4 py-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                        <Icon name="shield" className="w-4 h-4 shrink-0" />
-                        <span className="text-sm font-medium">
-                            {tc('console.passkeys_c87ccdb4')}
-                        </span>
-                        <span className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                            {passkeys === 0
-                                ? tc('console.none_yet_adb85cf2')
-                                : passkeys === 1
-                                  ? tc('console.1_passkey_02e9a8d3')
-                                  : tc('console.value0_passkeys_ab6cc0db', { value0: passkeys })}
-                        </span>
-                    </div>
-                    <a
-                        href="#passkeys"
-                        className="text-sm font-medium underline underline-offset-2 shrink-0"
-                        style={{ color: 'var(--accent-strong)' }}
-                    >
-                        {tc('console.manage_5a234448')}
-                    </a>
-                </li>
-
-                {methods.identities.map((identity) => (
-                    <li
-                        key={identity.id}
-                        className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-3"
-                    >
-                        <div className="flex items-center gap-3 min-w-0">
-                            <ProviderMark provider={identity.provider} />
-                            <div className="min-w-0">
-                                <p className="text-sm font-medium">
-                                    {identity.label}{' '}
-                                    <Pill tone="success">{tc('console.linked_bfda026e')}</Pill>
-                                </p>
-                                <p
-                                    className="text-xs break-all"
-                                    style={{ color: 'var(--muted-foreground)' }}
-                                >
-                                    {[
-                                        identity.email,
-                                        identity.linkedOn === null
-                                            ? null
-                                            : `Linked ${identity.linkedOn}`,
-                                        identity.lastUsed === null
-                                            ? null
-                                            : `last used ${identity.lastUsed}`,
-                                    ]
-                                        .filter((part): part is string => part !== null)
-                                        .join(' · ')}
-                                </p>
-                            </div>
-                        </div>
-                        {identity.disconnectHref !== null ? (
-                            <Button
-                                size="sm"
-                                variant="danger"
-                                aria-label={tc('console.disconnect_value0_value1_28fdb90f', {
-                                    value0: identity.label,
-                                    value1: identity.email === null ? '' : ` (${identity.email})`,
-                                })}
-                                onClick={() => setDisconnecting(identity)}
-                            >
-                                {tc('console.disconnect_acfc5be7')}
-                            </Button>
-                        ) : (
-                            <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                                {tc('console.managed_by_your_organization_54508019')}
-                            </span>
-                        )}
-                    </li>
-                ))}
-            </ul>
-
-            {error !== null && (
-                <p className="field-error mt-2" role="alert">
-                    {error}
-                </p>
+            {smsFactor !== null && (
+                <SmsGroup sms={smsFactor} totpEnabled={twoFactor.enabled} urls={urls} />
             )}
 
-            {methods.connectable.length > 0 && (
-                <div className="mt-4">
-                    <h3 className="text-sm font-medium">
-                        {tc('console.connect_another_way_to_sign_in_81600aea')}
-                    </h3>
-                    <p className="mt-1 text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        {tc('console.you_sign_in_to_the_provider_and_it_is_linked_59410359')}
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2.5">
-                        {methods.connectable.map((provider) => (
-                            /*
-                                An Inertia visit, so a lapsed step-up is asked for HERE, in
-                                the "Confirm it's you" dialog, and the click carries on once
-                                it is answered; the server then sends the browser to the
-                                provider for real. Still an anchor: it can be opened in a new
-                                tab, which takes the full-page step-up instead.
-                            */
-                            <Link
-                                key={provider.provider}
-                                href={provider.connectHref}
-                                className="btn btn-ghost"
+            {twoFactor.enabled && (
+                <RecoveryGroup remaining={twoFactor.recoveryRemaining} href={urls.recoveryCodes} />
+            )}
+        </Panel>
+    );
+}
+
+function AuthenticatorGroup({
+    twoFactor,
+    urls,
+}: {
+    twoFactor: Props['twoFactor'];
+    urls: Props['urls'];
+}) {
+    const { t: tc } = useTranslator();
+    const dates = useDates();
+    const flash = usePage().flash;
+    const [setup, setSetup] = useState<TotpSetup | null>(() => setupFromFlash(flash));
+    const [adding, setAdding] = useState(false);
+    const [renaming, setRenaming] = useState<TotpRow | null>(null);
+    const [removing, setRemoving] = useState<TotpRow | null>(null);
+    const add = useForm({ name: '' });
+    const form = useForm({ code: '' });
+    const rename = useForm({ name: '' });
+    const remove = useForm({ form: '' });
+    const cancel = useForm({ form: '' });
+    const last = twoFactor.devices.length === 1;
+    const canAdd = twoFactor.offered && twoFactor.devices.length < 10 && setup === null && !adding;
+
+    // Keep a pending QR in component memory after a mistyped code. It is never remembered
+    // in Inertia history, local storage or page props; leaving this page discards it.
+
+    return (
+        <ul className="acct-list">
+            <SettingRow
+                icon="phone"
+                title={tc('console.totp_apps')}
+                badge={
+                    twoFactor.devices.length > 0 ? (
+                        <Pill tone="success">{tc('console.on_13001175')}</Pill>
+                    ) : undefined
+                }
+                meta={
+                    !twoFactor.offered
+                        ? tc('console.your_administrator_has_turned_off_two_factor_e8143f3a')
+                        : twoFactor.devices.length >= 10
+                          ? tc('console.totp_limit_reached')
+                          : tc('console.account_totp_description')
+                }
+                actions={
+                    canAdd && (
+                        <Button
+                            size="sm"
+                            icon="plus"
+                            onClick={() => {
+                                add.clearErrors();
+                                setAdding(true);
+                            }}
+                        >
+                            {tc('console.totp_add')}
+                        </Button>
+                    )
+                }
+            />
+
+            {twoFactor.devices.map((device) => (
+                <SettingRow
+                    key={device.id}
+                    nested
+                    title={device.name}
+                    meta={joinMeta([
+                        dates.added(device.added),
+                        last ? tc('console.totp_last_device') : null,
+                    ])}
+                    actions={
+                        <RowMenu name={device.name}>
+                            <DropdownMenuItem
+                                onSelect={() => {
+                                    rename.setData('name', device.name);
+                                    rename.clearErrors();
+                                    setRenaming(device);
+                                }}
                             >
-                                <ProviderMark provider={provider.provider} />
-                                <span>
-                                    {tc('console.connect_3b887c98')}
-                                    {provider.label}
+                                {tc('console.totp_rename')}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                destructive
+                                disabled={last}
+                                onSelect={() => {
+                                    remove.clearErrors();
+                                    setRemoving(device);
+                                }}
+                            >
+                                {tc('console.totp_remove')}
+                            </DropdownMenuItem>
+                        </RowMenu>
+                    }
+                />
+            ))}
+
+            {setup !== null && (
+                <li className="acct-row acct-row--nested acct-row--block">
+                    <div className="acct-setup">
+                        <h3 className="cbx-section-title break-words">
+                            {tc('console.totp_setup_named', { name: setup.name })}
+                        </h3>
+                        <ol className="acct-hint space-y-1">
+                            <li>
+                                {tc(
+                                    'console.1_scan_the_qr_code_with_your_authenticator_a_3150598a',
+                                )}
+                            </li>
+                            <li>{tc('console.2_enter_the_6_digit_code_it_shows_3e5b7922')}</li>
+                        </ol>
+                        <div className="flex flex-col sm:flex-row gap-4 items-start">
+                            <div className="acct-qr">
+                                {/*
+                                    An <img> over a data: URI, not injected SVG markup. The
+                                    server generates it from the provisioning URI, so nothing
+                                    untrusted is involved either way — but an <img> cannot
+                                    execute what it is handed, and that stays true if the code
+                                    ever moves. On a white plate because a QR must be
+                                    dark-on-light to scan.
+                                */}
+                                <img
+                                    src={setup.qr}
+                                    alt={tc('console.authenticator_setup_qr_code_f154e1f3')}
+                                    width={180}
+                                    height={180}
+                                />
+                            </div>
+
+                            <div className="min-w-0 flex-1 w-full">
+                                <span className="label">
+                                    {tc('console.setup_key_manual_entry_39842f55')}
                                 </span>
-                            </Link>
-                        ))}
+                                <div className="flex items-stretch gap-2">
+                                    <p className="acct-secret mono select-all">{setup.secret}</p>
+                                    <CopyButton
+                                        value={setup.secret}
+                                        className="shrink-0"
+                                        aria-label={tc('console.copy_setup_key_44ea66fd')}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <form
+                            className="flex flex-wrap items-end gap-3"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                form.transform((data) => ({ ...data, factor_id: setup.id }));
+                                form.post(urls.confirmMfa, {
+                                    preserveScroll: true,
+                                    onSuccess: () => {
+                                        setSetup(null);
+                                        form.reset();
+                                        add.reset();
+                                    },
+                                });
+                            }}
+                        >
+                            <div className="w-full sm:w-44">
+                                <Field
+                                    label={tc('console.6_digit_code_0d1fa0df')}
+                                    error={form.errors.code}
+                                >
+                                    <Input
+                                        name="code"
+                                        inputMode="numeric"
+                                        autoComplete="one-time-code"
+                                        maxLength={6}
+                                        className="mono"
+                                        placeholder="000000"
+                                        value={form.data.code}
+                                        required
+                                        onChange={(event) =>
+                                            form.setData('code', event.target.value)
+                                        }
+                                    />
+                                </Field>
+                            </div>
+                            <Button
+                                type="submit"
+                                variant="primary"
+                                loading={form.processing}
+                                disabled={cancel.processing}
+                            >
+                                {tc('console.confirm_eebdd24a')}
+                            </Button>
+                            <Button
+                                type="button"
+                                loading={cancel.processing}
+                                disabled={form.processing}
+                                onClick={() =>
+                                    cancel.delete(setup.cancelHref, {
+                                        preserveScroll: true,
+                                        onSuccess: () => {
+                                            setSetup(null);
+                                            form.reset();
+                                            add.reset();
+                                        },
+                                    })
+                                }
+                            >
+                                {tc('console.cancel_19766ed6')}
+                            </Button>
+                            {cancel.errors.form && (
+                                <p className="field-error w-full" role="alert">
+                                    {cancel.errors.form}
+                                </p>
+                            )}
+                        </form>
+                        <p className="acct-hint">{tc('console.totp_setup_expires')}</p>
                     </div>
-                </div>
+                </li>
+            )}
+
+            {adding && setup === null && (
+                <li className="acct-row acct-row--nested acct-row--block">
+                    <form
+                        className="acct-setup"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            form.clearErrors();
+                            cancel.clearErrors();
+                            add.post(urls.enrolMfa, {
+                                preserveScroll: true,
+                                onSuccess: (page) => {
+                                    setSetup(setupFromFlash(page.flash));
+                                    setAdding(false);
+                                },
+                            });
+                        }}
+                    >
+                        <Field
+                            label={tc('console.totp_name')}
+                            hint={tc('console.totp_name_hint')}
+                            error={add.errors.name}
+                        >
+                            <Input
+                                name="name"
+                                required
+                                maxLength={120}
+                                autoComplete="off"
+                                placeholder={tc('console.totp_name_example')}
+                                value={add.data.name}
+                                onChange={(event) => add.setData('name', event.target.value)}
+                            />
+                        </Field>
+                        <div className="flex flex-wrap gap-2">
+                            <Button type="submit" variant="primary" loading={add.processing}>
+                                {tc('console.totp_show_qr')}
+                            </Button>
+                            <Button
+                                type="button"
+                                disabled={add.processing}
+                                onClick={() => setAdding(false)}
+                            >
+                                {tc('console.cancel_19766ed6')}
+                            </Button>
+                        </div>
+                    </form>
+                </li>
             )}
 
             <Dialog
-                open={disconnecting !== null}
-                onOpenChange={(open) => !open && setDisconnecting(null)}
-                title={
-                    disconnecting === null
-                        ? ''
-                        : tc('console.disconnect_value0_1d09db11', { value0: disconnecting.label })
-                }
-                description={tc('console.you_stop_being_able_to_sign_in_with_it_if_it_66b928b9')}
+                open={renaming !== null}
+                onOpenChange={(open) => {
+                    if (!open && !rename.processing) setRenaming(null);
+                }}
+                title={tc('console.totp_rename')}
+            >
+                <form
+                    className="space-y-4"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        if (renaming)
+                            rename.patch(renaming.renameHref, {
+                                preserveScroll: true,
+                                onSuccess: () => setRenaming(null),
+                            });
+                    }}
+                >
+                    <Field label={tc('console.totp_name')} error={rename.errors.name}>
+                        <Input
+                            required
+                            maxLength={120}
+                            value={rename.data.name}
+                            onChange={(event) => rename.setData('name', event.target.value)}
+                        />
+                    </Field>
+                    <div className="flex justify-end gap-2">
+                        <Button
+                            type="button"
+                            disabled={rename.processing}
+                            onClick={() => setRenaming(null)}
+                        >
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
+                        <Button type="submit" variant="primary" loading={rename.processing}>
+                            {tc('console.totp_save')}
+                        </Button>
+                    </div>
+                </form>
+            </Dialog>
+            <Dialog
+                open={removing !== null}
+                onOpenChange={(open) => {
+                    if (!open && !remove.processing) setRemoving(null);
+                }}
+                title={tc('console.totp_remove_named', { name: removing?.name ?? '' })}
+                description={tc('console.totp_remove_explanation')}
                 footer={
                     <>
-                        <Button onClick={() => setDisconnecting(null)}>
+                        <Button disabled={remove.processing} onClick={() => setRemoving(null)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
+                        <Button
+                            variant="danger"
+                            loading={remove.processing}
+                            onClick={() => {
+                                if (removing)
+                                    remove.delete(removing.removeHref, {
+                                        preserveScroll: true,
+                                        onSuccess: () => setRemoving(null),
+                                    });
+                            }}
+                        >
+                            {tc('console.totp_remove')}
+                        </Button>
+                    </>
+                }
+            >
+                {remove.errors.form && (
+                    <p className="field-error" role="alert">
+                        {remove.errors.form}
+                    </p>
+                )}
+            </Dialog>
+        </ul>
+    );
+}
+
+function RecoveryGroup({ remaining, href }: { remaining: number; href: string }) {
+    const { t: tc, choice } = useTranslator();
+    const { recoveryCodes } = usePage().flash;
+    const [regenerating, setRegenerating] = useState(false);
+    const codes = Array.isArray(recoveryCodes) ? (recoveryCodes as string[]) : null;
+
+    return (
+        <ul className="acct-list">
+            <SettingRow
+                icon="lock"
+                title={tc('console.recovery_codes_36880d15')}
+                badge={
+                    remaining > 0 ? (
+                        <Pill tone={remaining <= 3 ? 'warning' : 'neutral'} dot={remaining <= 3}>
+                            {choice('console.account_recovery_codes_left', remaining, {
+                                count: remaining,
+                            })}
+                        </Pill>
+                    ) : (
+                        <Pill tone="warning">{tc('console.account_recovery_codes_none')}</Pill>
+                    )
+                }
+                meta={tc('console.single_use_codes_to_sign_in_if_you_lose_your_c578fbcf')}
+                actions={
+                    <Button size="sm" icon="refresh" onClick={() => setRegenerating(true)}>
+                        {remaining > 0
+                            ? tc('console.regenerate_codes_67b3a892')
+                            : tc('console.generate_codes_b36ae7c7')}
+                    </Button>
+                }
+            />
+
+            {codes !== null && (
+                <li className="acct-row acct-row--nested acct-row--block">
+                    <RecoveryCodes codes={codes} />
+                </li>
+            )}
+
+            <Dialog
+                open={regenerating}
+                onOpenChange={setRegenerating}
+                title={tc('console.generate_new_recovery_codes_1b0cf5b6')}
+                description={tc('console.your_existing_codes_stop_working_immediately_c2dbcb02')}
+                footer={
+                    <>
+                        <Button onClick={() => setRegenerating(false)}>
+                            {tc('console.cancel_19766ed6')}
+                        </Button>
+                        <Button
+                            variant="primary"
+                            onClick={() => {
+                                setRegenerating(false);
+                                router.post(href, {}, { preserveScroll: true });
+                            }}
+                        >
+                            {tc('console.generate_49e49bb4')}
+                        </Button>
+                    </>
+                }
+            />
+        </ul>
+    );
+}
+
+function RecoveryCodes({ codes }: { codes: string[] }) {
+    const { t: tc } = useTranslator();
+
+    return (
+        <div className="w-full">
+            <div className="acct-codes mono select-all">
+                {codes.map((code) => (
+                    <span key={code}>{code}</span>
+                ))}
+            </div>
+            <div className="mt-2 flex items-center gap-3 flex-wrap">
+                <CopyButton
+                    value={codes.join('\n')}
+                    label={tc('console.copy_all_codes_17220f23')}
+                    aria-label={tc('console.copy_all_recovery_codes_71d3af0d')}
+                />
+                <p className="text-xs" style={{ color: 'var(--destructive-strong)' }}>
+                    {tc('console.shown_only_once_save_them_now_b44e87b6')}
+                </p>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * TEXT-MESSAGE CODES — a phone number as a second factor, where the environment offers it.
+ *
+ * Adding one is a ceremony like the authenticator app's: the number is texted a code and
+ * the code proves it. The number is shown masked even here — it is stored sealed, and the
+ * page has no reason to hold more of it than the person needs to recognise it.
+ *
+ * The trade-off is said on the row: this is the factor a SIM swap defeats, so it is
+ * offered next to the stronger ones rather than instead of them.
+ */
+function SmsGroup({
+    sms,
+    totpEnabled,
+    urls,
+}: {
+    sms: NonNullable<Props['smsFactor']>;
+    totpEnabled: boolean;
+    urls: Props['urls'];
+}) {
+    const { t: tc, locale: smsLocale } = useTranslator();
+
+    const { smsEnrolmentSentTo, recoveryCodes } = usePage().flash;
+    const enrol = useForm({ phone: '', country: sms.countries[0] ?? '' });
+    const confirm = useForm({ smsCode: '' });
+    const [removing, setRemoving] = useState(false);
+    const [adding, setAdding] = useState(false);
+
+    // The flash lives one render; a mistyped code must not lose the confirmation step.
+    const awaitingCode = smsEnrolmentSentTo !== undefined || sms.pending;
+    const codes = !totpEnabled && Array.isArray(recoveryCodes) ? (recoveryCodes as string[]) : null;
+    const offerable = !sms.enrolled && !sms.blocked && sms.countries.length > 0;
+    const showForm = offerable && (adding || awaitingCode);
+
+    return (
+        <ul className="acct-list">
+            <SettingRow
+                icon="message"
+                title={tc('console.text_message_codes_9f1561f0')}
+                badge={
+                    sms.enrolled ? (
+                        <Pill tone="success">{tc('console.on_13001175')}</Pill>
+                    ) : undefined
+                }
+                meta={
+                    sms.enrolled ? (
+                        <>
+                            {tc('console.codes_are_sent_to_fd74684d')}
+                            <span className="mono">{sms.maskedNumber}</span>.
+                        </>
+                    ) : sms.blocked ? (
+                        tc('console.as_an_administrator_set_up_an_authenticator__17d31053')
+                    ) : sms.countries.length === 0 ? (
+                        tc('console.text_message_codes_are_no_longer_offered_her_1a9ddf89')
+                    ) : (
+                        tc('console.text_messages_are_the_weakest_second_step_so_fad83e4a')
+                    )
+                }
+                actions={
+                    sms.enrolled ? (
+                        <RowMenu name={tc('console.text_message_codes_9f1561f0')}>
+                            <DropdownMenuItem destructive onSelect={() => setRemoving(true)}>
+                                {tc('console.remove_phone_number_935b9204')}
+                            </DropdownMenuItem>
+                        </RowMenu>
+                    ) : (
+                        offerable &&
+                        !showForm && (
+                            <Button size="sm" icon="plus" onClick={() => setAdding(true)}>
+                                {tc('console.account_add_phone_number')}
+                            </Button>
+                        )
+                    )
+                }
+            />
+
+            {sms.needsStrongerFactor && (
+                <li className="acct-row acct-row--nested">
+                    <p className="text-sm" style={{ color: 'var(--warning-strong)' }}>
+                        {tc('console.as_an_administrator_add_an_authenticator_app_935b1e4e')}
+                    </p>
+                </li>
+            )}
+
+            {codes !== null && (
+                <li className="acct-row acct-row--nested acct-row--block">
+                    <RecoveryCodes codes={codes} />
+                </li>
+            )}
+
+            {showForm && (
+                <li className="acct-row acct-row--nested acct-row--block">
+                    <div className="acct-setup">
+                        <form
+                            className="space-y-4"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                enrol.post(urls.enrolSms, { preserveScroll: true });
+                            }}
+                        >
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                {sms.countries.length > 1 && (
+                                    <Field
+                                        label={tc('console.country_701d021d')}
+                                        error={enrol.errors.country}
+                                    >
+                                        {/* A flag and a name, found by typing; never an ISO code. */}
+                                        <Combobox
+                                            aria-label={tc('console.country_701d021d')}
+                                            value={enrol.data.country || undefined}
+                                            onValueChange={(code) => enrol.setData('country', code)}
+                                            options={countryOptions(sms.countries, smsLocale)}
+                                        />
+                                    </Field>
+                                )}
+                                <Field
+                                    label={tc('console.phone_number_306f1bb2')}
+                                    hint={tc(
+                                        'console.international_format_works_anywhere_e_g_45_1_e06a0cd1',
+                                    )}
+                                    error={enrol.errors.phone}
+                                    className="flex-1"
+                                >
+                                    <Input
+                                        name="phone"
+                                        type="tel"
+                                        inputMode="tel"
+                                        autoComplete="tel"
+                                        maxLength={32}
+                                        value={enrol.data.phone}
+                                        onChange={(event) =>
+                                            enrol.setData('phone', event.target.value)
+                                        }
+                                    />
+                                </Field>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                                <Button
+                                    type="submit"
+                                    variant={awaitingCode ? 'secondary' : 'primary'}
+                                    loading={enrol.processing}
+                                >
+                                    {awaitingCode
+                                        ? tc('console.send_a_new_code_9200fc2f')
+                                        : tc('console.text_me_a_code_54b10aea')}
+                                </Button>
+                                {!awaitingCode && (
+                                    <Button
+                                        type="button"
+                                        disabled={enrol.processing}
+                                        onClick={() => setAdding(false)}
+                                    >
+                                        {tc('console.cancel_19766ed6')}
+                                    </Button>
+                                )}
+                            </div>
+                        </form>
+
+                        {awaitingCode && (
+                            <form
+                                className="space-y-4 pt-4"
+                                style={{ borderTop: '1px solid var(--border)' }}
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    confirm.post(urls.confirmSms, { preserveScroll: true });
+                                }}
+                            >
+                                <p className="acct-hint">
+                                    {smsEnrolmentSentTo !== undefined ? (
+                                        <>
+                                            {tc('console.we_sent_a_code_to_a2377ce0')}{' '}
+                                            <span className="mono">{smsEnrolmentSentTo}</span>.
+                                        </>
+                                    ) : (
+                                        <>
+                                            {tc('console.a_code_was_sent_to_522746c2')}{' '}
+                                            <span className="mono">{sms.maskedNumber}</span>.
+                                        </>
+                                    )}{' '}
+                                    {tc('console.enter_it_to_turn_on_text_message_codes_1d7162aa')}
+                                </p>
+                                <Field
+                                    label={tc('console.code_340f4630')}
+                                    error={confirm.errors.smsCode}
+                                >
+                                    <Input
+                                        name="smsCode"
+                                        className="mono"
+                                        inputMode="numeric"
+                                        autoComplete="one-time-code"
+                                        maxLength={10}
+                                        value={confirm.data.smsCode}
+                                        onChange={(event) =>
+                                            confirm.setData('smsCode', event.target.value)
+                                        }
+                                    />
+                                </Field>
+                                <Button
+                                    type="submit"
+                                    variant="primary"
+                                    loading={confirm.processing}
+                                >
+                                    {tc('console.confirm_phone_number_3afac393')}
+                                </Button>
+                            </form>
+                        )}
+                    </div>
+                </li>
+            )}
+
+            <Dialog
+                open={removing}
+                onOpenChange={setRemoving}
+                title={tc('console.remove_your_phone_number_06f081f0')}
+                description={tc('console.you_will_no_longer_be_able_to_sign_in_with_a_a575bedf')}
+                footer={
+                    <>
+                        <Button onClick={() => setRemoving(false)}>
                             {tc('console.cancel_19766ed6')}
                         </Button>
                         <Button
                             variant="danger"
                             onClick={() => {
-                                const identity = disconnecting;
-                                setDisconnecting(null);
-
-                                if (identity?.disconnectHref != null) {
-                                    router.delete(identity.disconnectHref, {
-                                        preserveScroll: true,
-                                    });
-                                }
+                                setRemoving(false);
+                                router.delete(urls.removeSms, { preserveScroll: true });
                             }}
                         >
-                            {tc('console.disconnect_acfc5be7')}
+                            {tc('console.remove_c3812fc4')}
                         </Button>
                     </>
                 }
             />
-        </Panel>
+        </ul>
     );
 }
+
+/* ─── This session ───────────────────────────────────────────────────────── */
 
 function SessionPanel({
     session,
@@ -1441,7 +1652,7 @@ function SessionPanel({
     otherSessions: number;
     urls: Props['urls'];
 }) {
-    const { t: tc } = useTranslator();
+    const { t: tc, choice, locale } = useTranslator();
 
     const [signingOut, setSigningOut] = useState(false);
 
@@ -1449,66 +1660,91 @@ function SessionPanel({
         <Panel
             title={tc('console.current_session_a32789d2')}
             description={tc('console.the_session_you_are_signed_in_with_right_now_258bbe06')}
+            flush
         >
-            {session === null ? (
-                <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                    {tc('console.no_active_session_details_are_available_869756b3')}
-                </p>
-            ) : (
-                <KvList>
-                    <Kv label={tc('console.authentication_methods_22dfd75d')} prose>
-                        <span className="flex flex-wrap gap-1.5">
-                            {session.methods.length === 0 ? (
-                                <span className="text-sm" style={{ color: 'var(--faint)' }}>
-                                    —
-                                </span>
-                            ) : (
-                                session.methods.map((method) => (
-                                    <Pill key={method} dot={false}>
-                                        {method}
-                                    </Pill>
-                                ))
-                            )}
-                        </span>
-                    </Kv>
-                    <Kv label={tc('console.signed_in_ca566c89')}>{session.signedIn ?? '—'}</Kv>
-                    <Kv label={tc('console.session_id_cb9ac5c5')}>{session.id}</Kv>
-                </KvList>
-            )}
+            <ul className="acct-list">
+                {session === null ? (
+                    <li className="acct-row">
+                        <p className="acct-hint">
+                            {tc('console.no_active_session_details_are_available_869756b3')}
+                        </p>
+                    </li>
+                ) : (
+                    <SettingRow
+                        icon="device"
+                        title={
+                            session.signedIn === null
+                                ? tc('console.signed_in_ca566c89')
+                                : tc('console.account_signed_in_when', {
+                                      when: relativeTime(session.signedIn, locale),
+                                  })
+                        }
+                        badge={<Pill tone="success">{tc('console.this_device_d052579c')}</Pill>}
+                        meta={joinMeta([
+                            session.signedIn === null
+                                ? null
+                                : absoluteTime(session.signedIn, locale),
+                            session.methods.length === 0
+                                ? null
+                                : tc('console.account_signed_in_with', {
+                                      methods: session.methods.join(', '),
+                                  }),
+                        ])}
+                    />
+                )}
+                <SettingRow
+                    icon="layers"
+                    title={
+                        otherSessions > 0
+                            ? choice('console.account_other_sessions', otherSessions, {
+                                  count: otherSessions,
+                              })
+                            : tc('console.account_no_other_sessions')
+                    }
+                    actions={
+                        <Link href={urls.activity} className="btn btn-ghost btn-sm">
+                            {tc('console.account_see_all_sessions')}
+                        </Link>
+                    }
+                />
+            </ul>
 
-            <div
-                className="mt-5 pt-4 flex flex-wrap items-center gap-3"
-                style={{ borderTop: '1px solid var(--border)' }}
-            >
+            <div className="acct-footer">
                 <form method="POST" action={urls.logout}>
-                    <Button type="submit" variant="danger">
-                        <Icon name="logout" className="w-4 h-4" />
+                    <Button type="submit" size="sm" variant="danger" icon="logout">
                         {tc('console.sign_out_b4ea0920')}
                     </Button>
                 </form>
 
                 {otherSessions > 0 && (
-                    <Button onClick={() => setSigningOut(true)}>
-                        <Icon name="logout" className="w-4 h-4" />
+                    <Button size="sm" onClick={() => setSigningOut(true)}>
                         {tc('console.sign_out_other_sessions_action_count', {
                             count: otherSessions,
                         })}
                     </Button>
                 )}
-
-                {/*
-                    The fuller view — every session named by device, and what can act as you
-                    — is its own page. Linked from here so somebody who came looking for it
-                    on the security page is not left thinking the count is all there is.
-                */}
-                <Link
-                    href={urls.activity}
-                    className="text-sm underline"
-                    style={{ color: 'var(--muted-foreground)' }}
-                >
-                    {tc('console.see_where_you_are_signed_in_5fd7f027')}
-                </Link>
             </div>
+
+            {session !== null && (
+                // For support: what identifies this session, out of the way of everyone else.
+                <details className="acct-details">
+                    <summary>
+                        {tc('console.account_technical_details')}
+                        <Icon name="chevron" className="w-3.5 h-3.5" />
+                    </summary>
+                    <div className="acct-details-body">
+                        <span style={{ color: 'var(--muted-foreground)' }}>
+                            {tc('console.session_id_cb9ac5c5')}
+                        </span>
+                        <code className="mono text-xs break-all">{session.id}</code>
+                        <CopyButton
+                            value={session.id}
+                            size="sm"
+                            aria-label={tc('console.account_copy_session_id')}
+                        />
+                    </div>
+                </details>
+            )}
 
             <Dialog
                 open={signingOut}
@@ -1536,201 +1772,173 @@ function SessionPanel({
     );
 }
 
-Security.layout = (page: React.ReactNode) => <AccountLayout>{page}</AccountLayout>;
+/* ─── Organizations ──────────────────────────────────────────────────────── */
 
 /**
- * TEXT-MESSAGE CODES — a phone number as a second factor, where the environment offers it.
+ * The person's organizations, and leaving one. Their own act on their own membership, so it
+ * is here, on the page every host serves them: the login host has no console around it and
+ * a customer environment's host has no People page.
  *
- * Adding one is a ceremony like the authenticator app's: the number is texted a code and
- * the code proves it. The number is shown masked even here — it is stored sealed, and the
- * page has no reason to hold more of it than the person needs to recognise it.
- *
- * The trade-off is said on the panel: this is the factor a SIM swap defeats, so it is
- * offered next to the stronger ones rather than instead of them.
+ * Leaving is offered only where it can succeed. An owner hands the organization over
+ * first (one owner, moved by transfer) and a customer's team is administered in its own
+ * console; both are said on the row rather than refused after the click.
  */
-function SmsPanel({
-    sms,
-    totpEnabled,
-    urls,
+function OrganizationsPanel({
+    organizations,
+    invitations,
 }: {
-    sms: NonNullable<Props['smsFactor']>;
-    totpEnabled: boolean;
-    urls: Props['urls'];
+    organizations: OrganizationRow[];
+    invitations: InvitationRow[];
 }) {
-    const { t: tc, locale: smsLocale } = useTranslator();
-
-    const { smsEnrolmentSentTo, recoveryCodes } = usePage().flash;
-    const enrol = useForm({ phone: '', country: sms.countries[0] ?? '' });
-    const confirm = useForm({ smsCode: '' });
-    const [removing, setRemoving] = useState(false);
-
-    // The flash lives one render; a mistyped code must not lose the confirmation step.
-    const awaitingCode = smsEnrolmentSentTo !== undefined || sms.pending;
-    const codes = !totpEnabled && Array.isArray(recoveryCodes) ? (recoveryCodes as string[]) : null;
+    const { t: tc } = useTranslator();
+    const [leaving, setLeaving] = useState<OrganizationRow | null>(null);
+    const leave = useForm({});
+    const accept = useForm({});
+    const invitationError = (usePage().props.errors as Record<string, string>).invitation;
 
     return (
         <Panel
-            title={tc('console.text_message_codes_9f1561f0')}
-            description={tc('console.a_code_sent_to_your_phone_by_sms_as_a_second_074a279a')}
-            action={sms.enrolled && <Pill tone="success">{tc('console.on_13001175')}</Pill>}
+            title={tc('console.account_your_organizations')}
+            description={tc('console.account_organizations_description')}
+            data-test="account-organizations"
+            flush
         >
-            {sms.needsStrongerFactor && (
-                <p className="mb-4 text-sm" style={{ color: 'var(--warning-strong)' }}>
-                    {tc('console.as_an_administrator_add_an_authenticator_app_935b1e4e')}
-                </p>
-            )}
-
-            {sms.enrolled ? (
-                <>
-                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                        {tc('console.codes_are_sent_to_fd74684d')}
-                        <b className="mono">{sms.maskedNumber}</b>.
-                    </p>
-
-                    {codes !== null && <RecoveryCodes codes={codes} />}
-
-                    <Button className="mt-4" variant="danger" onClick={() => setRemoving(true)}>
-                        {tc('console.remove_phone_number_935b9204')}
-                    </Button>
-
-                    <Dialog
-                        open={removing}
-                        onOpenChange={setRemoving}
-                        title={tc('console.remove_your_phone_number_06f081f0')}
-                        description={tc(
-                            'console.you_will_no_longer_be_able_to_sign_in_with_a_a575bedf',
-                        )}
-                        footer={
-                            <>
-                                <Button onClick={() => setRemoving(false)}>
-                                    {tc('console.cancel_19766ed6')}
-                                </Button>
+            {invitations.length > 0 && (
+                <ul className="acct-list" data-test="account-invitations">
+                    {invitations.map((invitation) => (
+                        <SettingRow
+                            key={invitation.id}
+                            icon="mail"
+                            title={invitation.organization}
+                            badge={
+                                <Pill tone="info" dot={false}>
+                                    {tc('console.account_invitation_pill')}
+                                </Pill>
+                            }
+                            meta={
+                                invitation.inviter !== null
+                                    ? tc('console.account_invitation_from', {
+                                          inviter: invitation.inviter,
+                                          role: invitation.role,
+                                      })
+                                    : tc('console.account_invitation_as', { role: invitation.role })
+                            }
+                            actions={
                                 <Button
-                                    variant="danger"
-                                    onClick={() => {
-                                        setRemoving(false);
-                                        router.delete(urls.removeSms, { preserveScroll: true });
-                                    }}
+                                    size="sm"
+                                    variant="primary"
+                                    loading={accept.processing}
+                                    aria-label={tc('console.account_invitation_join_named', {
+                                        organization: invitation.organization,
+                                    })}
+                                    onClick={() =>
+                                        accept.post(invitation.acceptHref, { preserveScroll: true })
+                                    }
                                 >
-                                    {tc('console.remove_c3812fc4')}
+                                    {tc('console.account_invitation_join')}
                                 </Button>
+                            }
+                        />
+                    ))}
+                    {invitationError !== undefined && (
+                        <li className="acct-row">
+                            <p className="field-error" role="alert">
+                                {invitationError}
+                            </p>
+                        </li>
+                    )}
+                </ul>
+            )}
+            <ul className="acct-list">
+                {organizations.map((organization) => (
+                    <SettingRow
+                        key={organization.id}
+                        mark={
+                            <span className="acct-org-chip">{initialsOf(organization.name)}</span>
+                        }
+                        title={organization.name}
+                        badge={
+                            <>
+                                <Pill dot={false}>{organization.role}</Pill>
+                                {organization.current && (
+                                    <Pill tone="info" dot={false}>
+                                        {tc('console.current_e0d1b682')}
+                                    </Pill>
+                                )}
                             </>
                         }
+                        meta={
+                            organization.leaveBlocked === 'owner'
+                                ? tc('console.account_owner_cannot_leave')
+                                : organization.leaveBlocked === 'managed'
+                                  ? tc(
+                                        'console.this_organization_has_its_own_cbox_id_console_its_team__94b76d94',
+                                    )
+                                  : undefined
+                        }
+                        actions={
+                            organization.leaveBlocked === null ? (
+                                <RowMenu name={organization.name}>
+                                    <DropdownMenuItem
+                                        destructive
+                                        onSelect={() => {
+                                            leave.clearErrors();
+                                            setLeaving(organization);
+                                        }}
+                                    >
+                                        {tc('console.leave_organization_ac8fd777')}
+                                    </DropdownMenuItem>
+                                </RowMenu>
+                            ) : undefined
+                        }
                     />
-                </>
-            ) : sms.blocked ? (
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                    {tc('console.as_an_administrator_set_up_an_authenticator__17d31053')}
-                </p>
-            ) : sms.countries.length === 0 ? (
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                    {tc('console.text_message_codes_are_no_longer_offered_her_1a9ddf89')}
-                </p>
-            ) : (
-                <div className="space-y-4">
-                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                        {tc('console.text_messages_are_the_weakest_second_step_so_fad83e4a')}
-                    </p>
+                ))}
+            </ul>
 
-                    <form
-                        className="space-y-4"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            enrol.post(urls.enrolSms, { preserveScroll: true });
-                        }}
-                    >
-                        <div className="flex flex-col sm:flex-row gap-3">
-                            {sms.countries.length > 1 && (
-                                <Field
-                                    label={tc('console.country_701d021d')}
-                                    error={enrol.errors.country}
-                                >
-                                    {/* A flag and a name, found by typing; never an ISO code. */}
-                                    <Combobox
-                                        aria-label={tc('console.country_701d021d')}
-                                        value={enrol.data.country || undefined}
-                                        onValueChange={(code) => enrol.setData('country', code)}
-                                        options={countryOptions(sms.countries, smsLocale)}
-                                    />
-                                </Field>
-                            )}
-                            <Field
-                                label={tc('console.phone_number_306f1bb2')}
-                                hint={tc(
-                                    'console.international_format_works_anywhere_e_g_45_1_e06a0cd1',
-                                )}
-                                error={enrol.errors.phone}
-                                className="flex-1"
-                            >
-                                <Input
-                                    name="phone"
-                                    type="tel"
-                                    inputMode="tel"
-                                    autoComplete="tel"
-                                    maxLength={32}
-                                    value={enrol.data.phone}
-                                    onChange={(event) => enrol.setData('phone', event.target.value)}
-                                />
-                            </Field>
-                        </div>
-
-                        <Button
-                            type="submit"
-                            variant={awaitingCode ? 'secondary' : 'primary'}
-                            loading={enrol.processing}
-                        >
-                            {awaitingCode
-                                ? tc('console.send_a_new_code_9200fc2f')
-                                : tc('console.text_me_a_code_54b10aea')}
+            <Dialog
+                open={leaving !== null}
+                onOpenChange={(open) => {
+                    if (!open && !leave.processing) setLeaving(null);
+                }}
+                title={tc('console.leave_part1_9c615c04', { part1: leaving?.name ?? '' })}
+                description={
+                    leaving?.isOwner
+                        ? tc(
+                              'console.you_lose_access_immediately_as_its_owner_you_can_only_l_d51a2272',
+                          )
+                        : tc(
+                              'console.you_lose_access_to_this_organization_and_its_apps_immed_47fdba25',
+                          )
+                }
+                footer={
+                    <>
+                        <Button disabled={leave.processing} onClick={() => setLeaving(null)}>
+                            {tc('console.cancel_19766ed6')}
                         </Button>
-                    </form>
-
-                    {awaitingCode && (
-                        <form
-                            className="space-y-4 pt-4"
-                            style={{ borderTop: '1px solid var(--border)' }}
-                            onSubmit={(event) => {
-                                event.preventDefault();
-                                confirm.post(urls.confirmSms, { preserveScroll: true });
+                        <Button
+                            variant="danger"
+                            loading={leave.processing}
+                            onClick={() => {
+                                if (leaving)
+                                    leave.post(leaving.leaveHref, {
+                                        preserveScroll: true,
+                                        onSuccess: () => setLeaving(null),
+                                    });
                             }}
                         >
-                            <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                                {smsEnrolmentSentTo !== undefined ? (
-                                    <>
-                                        {tc('console.we_sent_a_code_to_a2377ce0')}{' '}
-                                        <b className="mono">{smsEnrolmentSentTo}</b>.
-                                    </>
-                                ) : (
-                                    <>
-                                        {tc('console.a_code_was_sent_to_522746c2')}{' '}
-                                        <b className="mono">{sms.maskedNumber}</b>.
-                                    </>
-                                )}{' '}
-                                {tc('console.enter_it_to_turn_on_text_message_codes_1d7162aa')}
-                            </p>
-                            <Field
-                                label={tc('console.code_340f4630')}
-                                error={confirm.errors.smsCode}
-                            >
-                                <Input
-                                    name="smsCode"
-                                    className="mono"
-                                    inputMode="numeric"
-                                    autoComplete="one-time-code"
-                                    maxLength={10}
-                                    value={confirm.data.smsCode}
-                                    onChange={(event) =>
-                                        confirm.setData('smsCode', event.target.value)
-                                    }
-                                />
-                            </Field>
-                            <Button type="submit" variant="primary" loading={confirm.processing}>
-                                {tc('console.confirm_phone_number_3afac393')}
-                            </Button>
-                        </form>
-                    )}
-                </div>
-            )}
+                            {tc('console.leave_organization_ac8fd777')}
+                        </Button>
+                    </>
+                }
+            >
+                {(leave.errors as Record<string, string>).organization && (
+                    <p className="field-error" role="alert">
+                        {(leave.errors as Record<string, string>).organization}
+                    </p>
+                )}
+            </Dialog>
         </Panel>
     );
 }
+
+Security.layout = (page: React.ReactNode) => <AccountLayout>{page}</AccountLayout>;

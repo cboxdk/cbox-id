@@ -35,7 +35,7 @@ final class HostedTranslations
      *
      * @var list<string>
      */
-    public const CLIENT_NAMESPACES = ['hosted', 'auth', 'oauth', 'portal', 'console', 'service_access', 'billing', 'errors'];
+    public const CLIENT_NAMESPACES = ['hosted', 'auth', 'oauth', 'portal', 'console', 'service_access', 'billing', 'errors', 'shell'];
 
     /** @var list<string>|null */
     private ?array $namespaces = null;
@@ -60,13 +60,15 @@ final class HostedTranslations
     public static function namespacesFor(string $component): array
     {
         return [...match (true) {
-            in_array($component, ['billing::billing', 'console/projects/show'], true) => ['hosted', 'console', 'billing'],
-            $component === 'account/services' => ['hosted', 'console', 'service_access'],
-            $component === 'auth/sudo' => ['hosted', 'console'],
+            // `shell`: the words of cbox-ui's `CboxShell` (rail, header, account menu, ⌘K),
+            // on every page drawn inside it. The doors below have no shell.
+            in_array($component, ['billing::billing', 'console/projects/show'], true) => ['hosted', 'console', 'billing', 'shell'],
+            $component === 'account/services' => ['hosted', 'console', 'service_access', 'shell'],
+            $component === 'auth/sudo' => ['hosted', 'console', 'shell'],
             str_starts_with($component, 'auth/') => ['hosted', 'auth', 'console'],
             str_starts_with($component, 'oauth/') => ['hosted', 'oauth', 'console'],
             str_starts_with($component, 'portal/') => ['hosted', 'portal', 'console'],
-            default => ['hosted', 'console'],
+            default => ['hosted', 'console', 'shell'],
         }, 'errors'];
     }
 

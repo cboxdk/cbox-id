@@ -14,6 +14,8 @@ use App\Actions\Account\RenameTotpDevice;
 use App\Actions\Account\SendEmailConfirmation;
 use App\Actions\Account\UnlinkSocialAccount;
 use App\Actions\Account\UpdateProfile;
+use App\Actions\Members\TenantRoster;
+use App\Http\Controllers\Auth\NoOrganizationController;
 use App\Http\Controllers\Console\RunsActions;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Account\ChangeOwnPasswordRequest;
@@ -26,15 +28,20 @@ use App\Platform\Actions\ActionRefused;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\CustomerConsole;
 use App\Platform\CurrentUser;
+use App\Platform\Enums\RefusedFactor;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Invitations\Contracts\OrganizationInvitations;
+use App\Platform\Invitations\ValueObjects\OpenInvitation;
 use App\Platform\Lifecycle\EndOtherSessions;
 use App\Platform\Locale\ConsoleLabels;
+use App\Platform\Locale\SignInMethodLabels;
 use App\Platform\Mfa\AuthenticatorEnrollment;
 use App\Platform\OAuth\AppSignIns;
 use App\Platform\Passkeys\PasskeyName;
 use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
+use App\Platform\SsoRefusal;
 use App\Platform\Surfaces\AccountChrome;
 use App\Platform\Surfaces\ConsoleEntry;
 use App\Platform\Surfaces\ReturnUrl;
@@ -66,6 +73,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\MembershipStatus;
+use Cbox\Id\Organization\Exceptions\InvalidInvitation;
 use Cbox\Id\Otp\Exceptions\OtpRateLimitExceeded;
 use Cbox\Id\Otp\Sms\Exceptions\SmsDeliveryFailed;
 use Cbox\Id\Otp\Sms\Exceptions\SmsSendRefused;
@@ -130,6 +138,7 @@ final readonly class AccountController extends PageController
                 ],
             ],
             'organizations' => $this->organizations($subjectId, $organization?->id),
+            'invitations' => $this->invitations($me),
             'hasPassword' => $this->hasPassword($subjectId),
             'twoFactor' => [
                 'enabled' => $mfa->hasConfirmedTotp($subjectId),
@@ -146,7 +155,8 @@ final readonly class AccountController extends PageController
                 'devices' => array_map(static fn (TotpDevice $device): array => [
                     'id' => $device->id,
                     'name' => $device->name !== '' ? $device->name : __('console.totp_app'),
-                    'added' => $device->addedAt?->format('Y-m-d'),
+                    // ISO 8601: the page draws it in the reader's own format and time zone.
+                    'added' => $device->addedAt?->format(DATE_ATOM),
                     'renameHref' => route('account.mfa.totp.update', $device->id),
                     'removeHref' => route('account.mfa.totp.destroy', $device->id),
                 ], app(TotpDevices::class)->devices($subjectId)),
@@ -159,11 +169,13 @@ final readonly class AccountController extends PageController
                 ->map(static fn (WebAuthnCredential $passkey): array => [
                     'id' => $passkey->id,
                     'name' => $passkey->name ?? PasskeyName::FALLBACK,
+                    // ISO 8601, both: the page draws them in the reader's own language,
+                    // format and time zone ("Added 12. nov. 2026 · last used 5 minutes ago").
                     'added' => $passkey->getAttribute('created_at') instanceof CarbonInterface
-                        ? $passkey->getAttribute('created_at')->format('M j, Y')
+                        ? $passkey->getAttribute('created_at')->toIso8601String()
                         : null,
-                    // "2 days ago", or null when it has not signed in since this was recorded.
-                    'lastUsed' => RecordsPasskeyUse::lastUsedAt($passkey)?->diffForHumans(),
+                    // Null when it has not signed in since this was recorded.
+                    'lastUsed' => RecordsPasskeyUse::lastUsedAt($passkey)?->toIso8601String(),
                     'renameHref' => route('account.passkeys.update', $passkey->id),
                     'removeHref' => route('account.passkeys.destroy', $passkey->id),
                 ])->values()->all(),
@@ -174,8 +186,9 @@ final readonly class AccountController extends PageController
             'signInMethods' => $this->signInMethods($identities, $subjectId, $organization?->id),
             'session' => $session === null ? null : [
                 'id' => $session->id,
-                'methods' => $session->amr ?? [],
-                'signedIn' => $session->created_at?->format('M j, Y g:i A'),
+                // In words, never the `amr` codes ("pwd device mfa").
+                'methods' => SignInMethodLabels::for($session->amr),
+                'signedIn' => $session->created_at?->toIso8601String(),
             ],
             'otherSessions' => $this->otherSessions($subjectId, $session?->id)->count(),
             'urls' => [
@@ -201,7 +214,11 @@ final readonly class AccountController extends PageController
      * login host has no console around these pages, and a customer environment's host has no
      * People page. Open organizations only; a closed one has nothing left to leave.
      *
-     * @return list<array{id: string, name: string, role: string, current: bool, isOwner: bool, leaveHref: string}>
+     * `leaveBlocked` says why leaving is not offered, so the page shows the reason instead of
+     * a button {@see LeaveOrganization} refuses: the owner (an organization has one, moved
+     * only by a transfer) and a customer's roster, administered in its own console.
+     *
+     * @return list<array{id: string, name: string, role: string, current: bool, isOwner: bool, leaveBlocked: 'owner'|'managed'|null, leaveHref: string}>
      */
     private function organizations(string $subjectId, ?string $currentId): array
     {
@@ -225,6 +242,11 @@ final readonly class AccountController extends PageController
                 'role' => ConsoleLabels::navigation($membership->role->label()),
                 'current' => $organization->id === $currentId,
                 'isOwner' => $membership->role === MembershipRole::Owner,
+                'leaveBlocked' => match (true) {
+                    $membership->role === MembershipRole::Owner => 'owner',
+                    TenantRoster::managedElsewhere($organization->id) => 'managed',
+                    default => null,
+                },
                 'leaveHref' => route('account.organizations.leave', $organization->id),
             ];
         }
@@ -232,6 +254,61 @@ final readonly class AccountController extends PageController
         usort($rows, static fn (array $a, array $b): int => strcasecmp($a['name'], $b['name']));
 
         return $rows;
+    }
+
+    /**
+     * Invitations waiting for this person's address, so joining another organization is a
+     * click on their own page rather than a hunt for the email. Only for a CONFIRMED
+     * address: an invitation trusts whoever holds the mailbox, and an unconfirmed account
+     * has not shown that it does (the same rule as {@see NoOrganizationController}).
+     *
+     * @return list<array{id: string, organization: string, role: string, inviter: string|null, acceptHref: string}>
+     */
+    private function invitations(CurrentUser $me): array
+    {
+        $email = $me->email();
+
+        if (! $me->emailVerified() || $email === null) {
+            return [];
+        }
+
+        return array_map(static fn (OpenInvitation $invitation): array => [
+            'id' => $invitation->id,
+            'organization' => $invitation->organizationName,
+            'role' => ConsoleLabels::navigation($invitation->role->label()),
+            'inviter' => $invitation->inviterName,
+            'acceptHref' => route('account.invitations.accept', $invitation->id),
+        ], app(OrganizationInvitations::class)->openFor($email));
+    }
+
+    /**
+     * Accept one of the invitations listed on the page, as the person it was sent to. The
+     * session stays in the organization it is in; the new one is in the organization list
+     * and the switcher. An organization that requires single sign-on is entered through
+     * its identity provider, as the emailed link would.
+     */
+    public function acceptInvitation(Request $request, string $invitation, PlatformAuth $auth): RedirectResponse
+    {
+        $subject = app(CurrentUser::class)->subject();
+
+        abort_if($subject === null, 403);
+
+        try {
+            $accepted = app(OrganizationInvitations::class)->acceptAs($invitation, $subject);
+        } catch (InvalidInvitation) {
+            return back()->withErrors(['invitation' => __('auth.no_organization.invitation_invalid')]);
+        }
+
+        if (! $auth->localSignInAllowedFor($subject->id)) {
+            $auth->logout($request);
+            SsoRefusal::hold($subject->id, RefusedFactor::Invitation);
+
+            return redirect()->route('login');
+        }
+
+        $name = app(Organizations::class)->find($accepted->organizationId())->name ?? '';
+
+        return back()->with('status', __('console.account_invitation_accepted', ['organization' => $name]));
     }
 
     /**
@@ -780,9 +857,10 @@ final readonly class AccountController extends PageController
         return [
             'identities' => array_map(static fn (SignInIdentity $identity): array => [
                 ...$identity->toArray(),
-                // Drawn as dates a person reads; the ISO forms above are the API's.
-                'linkedOn' => $identity->linkedAt?->format('M j, Y'),
-                'lastUsed' => $identity->lastUsedAt?->diffForHumans(),
+                // ISO 8601: the page draws them in the reader's own language, format and
+                // time zone.
+                'linkedOn' => $identity->linkedAt?->toIso8601String(),
+                'lastUsed' => $identity->lastUsedAt?->toIso8601String(),
                 'disconnectHref' => $identity->removable ? route('account.sign-in-methods.destroy', $identity->id) : null,
             ], $linked),
             'connectable' => $identities->connectable($linked, $organizationId),

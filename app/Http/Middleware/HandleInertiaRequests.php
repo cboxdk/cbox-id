@@ -174,14 +174,14 @@ final class HandleInertiaRequests extends Middleware
              * membership lookups behind it. See {@see ShellPayload} for what goes in.
              */
             'supportSessionUrl' => fn (): ?string => app(SupportContext::class)->sessionUrl($request),
-            // cbox-ui's `CboxShell`, built by laravel-console-kit ({@see IdShell}).
-            // Null on the login host too: it has no console, and a person's own pages
-            // there are drawn with `accountShell` instead.
-            'shell' => fn (): ?array => app(AccountChrome::class)->applies($request) ? null : app(IdShell::class)->build(),
+            // cbox-ui's `CboxShell`, built by laravel-console-kit ({@see IdShell}). On the
+            // login host, which has no console, a person's own pages are drawn in the same
+            // shell with only those pages in it ({@see AccountChrome::shell()}).
+            'shell' => fn (): ?array => app(AccountChrome::class)->applies($request) ? app(AccountChrome::class)->shell($request) : app(IdShell::class)->build(),
             // A customer environment's white-labelled console keeps its own chrome.
             'tenantShell' => fn (): ?ShellProps => app(IdShell::class)->tenant(),
-            // In login-host mode, the chrome of a person's own pages on the login host:
-            // "Back to …", their pages and the way out ({@see AccountChrome}).
+            // In login-host mode, the way back from a person's own pages on the login host
+            // to where they came from ("Back to …", {@see AccountChrome}).
             'accountShell' => fn (): ?array => app(AccountChrome::class)->toProps($request),
             // On a customer environment's own host, the way back to the app that sent the
             // person to their own pages; the console chrome there draws it in its topbar.

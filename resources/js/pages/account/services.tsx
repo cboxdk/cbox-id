@@ -81,9 +81,10 @@ export default function Services({
                     kind === 'feature' ? 'service_access.feature_lead' : 'service_access.lead',
                 )}
             />
+            {/* Services or features: two pages of the same list, so tabs that are links. */}
             <LinkTabs
-                variant="sub"
                 label={t('service_access.title')}
+                variant="sub"
                 tabs={[
                     {
                         key: 'service',

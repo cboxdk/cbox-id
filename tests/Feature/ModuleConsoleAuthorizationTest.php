@@ -88,7 +88,7 @@ function moduleConsoleRoutes(): array
     // disconnected by the person who holds them. ConnectedServicesTest pins it open to a
     // plain member and proves they reach nobody else's connection.
     // ServiceWaitlistsTest proves the directory is personal and needs no team or admin role.
-    $personal = ['devices.mine', 'account.activity', 'account.api-keys', 'account.pipes', 'account.services'];
+    $personal = ['devices.mine', 'account.apps', 'account.activity', 'account.api-keys', 'account.pipes', 'account.services', 'account.preferences'];
 
     // THE PLATFORM SECTION, which refuses a plain member HARDER than this sweep asserts
     // and so cannot be swept by it. `AuthenticateOperator` answers 404 rather than 403 on

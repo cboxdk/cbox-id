@@ -144,19 +144,41 @@ it('answers the v2 account addresses on the login host', function (): void {
     $this->get('https://'.ACCOUNT_APP_HOST.'/account')->assertNotFound();
 });
 
-it('draws those pages without the console, with the way back to it', function (): void {
+it('draws those pages in the Cbox shell with only the person\'s own pages in it, and the way back', function (): void {
     splitHosts();
     splitHostsPerson();
 
     $props = $this->get('https://'.ACCOUNT_LOGIN_HOST.'/settings')->assertOk()->inertiaProps();
+    $shell = $props['shell'];
+    $pages = $shell['nav']['areas'];
 
-    expect($props['shell'])->toBeNull()
+    // Each of the person's own pages is a rail entry of its own, with its own icon and no
+    // second column under it, each a path this host serves.
+    expect(array_column($pages, 'key'))->toContain('account', 'account.activity', 'account.preferences')
+        ->and(array_column($pages, 'url'))->toContain('/settings', '/settings/activity', '/settings/preferences')
+        ->and(collect($pages)->every(static fn (array $page): bool => $page['pages'] === [] && $page['icon'] !== ''))->toBeTrue()
+        ->and(collect($pages)->every(static fn (array $page): bool => accountServed(ACCOUNT_LOGIN_HOST, $page['url'])))->toBeTrue()
+        ->and($shell['nav']['activeArea'])->toBe('account')
+        // Nothing that acts in the console: no organization, no records search, no "+", no bell.
+        ->and($shell['context']['levels'])->toBe([])
+        ->and($shell['palette'])->not->toHaveKey('searchUrl')
+        ->and($shell)->not->toHaveKey('create')
+        ->and($shell['notifications'])->toBe(['enabled' => false])
+        // The account menu stays on this host, and signing out ends this host's session.
+        ->and($shell['account']['signOutUrl'])->toBe('/logout')
+        ->and(accountServed(ACCOUNT_LOGIN_HOST, $shell['account']['profileUrl']))->toBeTrue()
+        ->and(accountServed(ACCOUNT_LOGIN_HOST, $shell['account']['switchAccountUrl']))->toBeTrue()
         ->and($props['apiEquivalents'])->toBe([])
         ->and($props['accountShell']['back'])->toBe(['url' => 'https://'.ACCOUNT_APP_HOST.'/auth/start', 'label' => 'Cbox ID'])
         ->and($props['accountShell']['signOutHref'])->toBe('/logout')
         ->and(array_column($props['accountShell']['pages'], 'href'))->toContain('/settings', '/settings/activity')
         // The chrome carries the way back; the page does not say it a second time.
         ->and($props['returnTo'])->toBeNull();
+
+    // Switch app reads the person's catalog from this host.
+    $this->getJson('https://'.ACCOUNT_LOGIN_HOST.$shell['apps']['catalogUrl'])
+        ->assertOk()
+        ->assertJsonStructure(['apps', 'unavailable', 'revision']);
 
     // The page that sent them, kept across their pages.
     $from = 'https://'.ACCOUNT_APP_HOST.'/orgs/acme/projects?tab=1';

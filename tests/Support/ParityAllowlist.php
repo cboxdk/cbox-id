@@ -170,6 +170,9 @@ final class ParityAllowlist
             // on to the app that was waiting. Their own act, in the browser that was signing in.
             'organization.required.accept',
             'organization.required.personal',
+            // The same acceptance from the person's own security page, for an invitation
+            // waiting for their confirmed address while they already belong somewhere.
+            'account.invitations.accept',
             // Proving an email address is yours, with the link sent to it.
             'verification.verify.store',
         ];

@@ -48,7 +48,10 @@ export function PageHeader({ eyebrow, title, badge, help, description, actions }
     const props = usePage<SharedProps>().props;
     const { title: stated, organizationHub } = props;
 
-    const area = rail(props).active?.label;
+    const label = rail(props).active?.label;
+    // An area named like the page itself (a person's own pages on the login host, each its
+    // own rail entry) would print the heading twice, once in mono caps above it.
+    const area = label !== undefined && label === (title ?? stated) ? undefined : label;
     // Inside an organization's page the hub's own breadcrumb already says where this is
     // ("Users & orgs / Organizations", then the organization's name). The rail area above
     // a tab's heading would repeat it — or, for a page filed elsewhere on the rail, name

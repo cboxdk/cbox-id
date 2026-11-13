@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Http\Controllers\AccountAppsController;
 use App\Http\Props\Shell\ShellActsOnProps;
 use App\Platform\ApiKeys\ApiKeyPresence;
 use App\Platform\Console\ConsoleArea;
@@ -216,6 +217,9 @@ final class ConsoleServiceProvider extends ServiceProvider
         // Every user's own security — shown to members and admins alike (the app
         // layout gates the admin-only areas above by role, this one is universal).
         $nav->area('account', 'Account', 'user', 90)
+            // The apps this person may open, first: where the account's home leads when
+            // the environment publishes any.
+            ->page('account.apps', 'Your apps', feature: 'account.apps', order: 5)
             ->page('account', 'Security', order: 10)
             // Beside it, because "change my password" and "sign that laptop out" are the
             // two halves of the same worry and people arrive looking for either.
@@ -228,7 +232,8 @@ final class ConsoleServiceProvider extends ServiceProvider
             // may act through them — present only where the environment offers a pipe or the
             // person still holds a connection.
             ->page('account.pipes', Vocabulary::CONNECTED_SERVICES, feature: 'account.pipes', order: 40)
-            ->page('account.services', 'Services', feature: 'account.services', order: 50);
+            ->page('account.services', 'Services', feature: 'account.services', order: 50)
+            ->page('account.preferences', 'Preferences', order: 60);
 
         $this->platformAreas($nav);
     }
@@ -369,6 +374,7 @@ final class ConsoleServiceProvider extends ServiceProvider
 
             return $offered;
         });
+        $features->register('account.apps', static fn (): bool => AccountAppsController::offered());
         $features->register('account.services', static fn (): bool => app(CurrentUser::class)->check() && app(ServiceAccessSettings::class)->enabled());
         $features->register('organization.api-keys', static function (): bool {
             $me = app(CurrentUser::class);

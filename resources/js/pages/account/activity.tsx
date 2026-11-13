@@ -2,6 +2,7 @@ import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import AccountLayout from '@/layouts/AccountLayout';
+import { absoluteTime, relativeTime } from '@/lib/time';
 import type { HelpContent, PageProps } from '@/types';
 import { Button, ConfirmDelete, Dialog, EmptyState, PageHeader, Panel, Pill } from '@/ui';
 
@@ -28,9 +29,12 @@ interface ApplicationRow {
     clientId: string;
     name: string;
     actsOffline: boolean;
-    scopes: string[];
+    /** What it may do, in the reader's words ("Your email address"). */
+    permissions: string[];
     approved: string | null;
+    approvedIso: string | null;
     lastUsed: string | null;
+    lastUsedIso: string | null;
     withdrawHref: string;
 }
 
@@ -66,7 +70,12 @@ export default function Activity({
 
     const { t: consoleText } = useConsoleTranslator();
     const { rich: consoleRich } = useConsoleTranslator();
-    const { t: consoleUiText } = useConsoleTranslator();
+    const { t: consoleUiText, locale } = useConsoleTranslator();
+    // In the reader's language, regional format and time zone, computed in the browser so
+    // "2 minutes ago" stays true while the page is open.
+    const relative = (iso: string | null, fallback: string | null) =>
+        iso !== null ? relativeTime(iso, locale) : fallback;
+    const exact = (iso: string | null) => (iso !== null ? absoluteTime(iso, locale) : undefined);
     const [signingOut, setSigningOut] = useState<SessionRow | null>(null);
     const [signingOutOthers, setSigningOutOthers] = useState(false);
     const [withdrawing, setWithdrawing] = useState<ApplicationRow | null>(null);
@@ -132,7 +141,6 @@ export default function Activity({
                                 </div>
                                 <Button
                                     size="sm"
-                                    variant="danger"
                                     className="shrink-0"
                                     aria-label={session.revokeLabel}
                                     onClick={() => setSigningOut(session)}
@@ -140,7 +148,7 @@ export default function Activity({
                                     {consoleUiText('console.sign_out_48f0d3d3')}
                                 </Button>
                             </div>
-                            <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 xl:grid-cols-4 text-sm">
+                            <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 xl:grid-cols-4 text-sm">
                                 <div className="min-w-0">
                                     <dt
                                         className="text-xs"
@@ -182,9 +190,9 @@ export default function Activity({
                                     <dd className="mt-1">
                                         <time
                                             dateTime={session.signedInIso ?? undefined}
-                                            title={session.signedInIso ?? undefined}
+                                            title={exact(session.signedInIso)}
                                         >
-                                            {session.signedIn ??
+                                            {relative(session.signedInIso, session.signedIn) ??
                                                 consoleRuntimeText('console.not_recorded_b37c7879')}
                                         </time>
                                     </dd>
@@ -199,9 +207,9 @@ export default function Activity({
                                     <dd className="mt-1">
                                         <time
                                             dateTime={session.lastActiveIso ?? undefined}
-                                            title={session.lastActiveIso ?? undefined}
+                                            title={exact(session.lastActiveIso)}
                                         >
-                                            {session.lastActive ??
+                                            {relative(session.lastActiveIso, session.lastActive) ??
                                                 consoleRuntimeText('console.not_recorded_b37c7879')}
                                         </time>
                                     </dd>
@@ -232,11 +240,11 @@ export default function Activity({
                         {applications.map((application) => (
                             <div
                                 key={application.clientId}
-                                className="flex items-center gap-3 rounded-lg border px-3 py-2"
+                                className="flex items-center gap-3 rounded-lg border px-4 py-3"
                                 style={{ borderColor: 'var(--border)' }}
                             >
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-sm truncate">
+                                    <p className="text-sm font-medium">
                                         {application.name}
                                         {/*
                                             The distinction that matters to a person: this
@@ -251,29 +259,55 @@ export default function Activity({
                                         )}
                                     </p>
                                     <p
-                                        className="text-xs truncate"
-                                        style={{ color: 'var(--faint)' }}
+                                        className="text-xs mt-0.5"
+                                        style={{ color: 'var(--muted-foreground)' }}
                                     >
                                         {consoleRich(
                                             'console.approved_part1_last_used_part2_part3_e3a21893',
                                             {
-                                                part1:
-                                                    application.approved ??
-                                                    consoleUiText('console.unknown_b764cdc0'),
+                                                part1: (
+                                                    <time
+                                                        dateTime={
+                                                            application.approvedIso ?? undefined
+                                                        }
+                                                        title={exact(application.approvedIso)}
+                                                    >
+                                                        {relative(
+                                                            application.approvedIso,
+                                                            application.approved,
+                                                        ) ??
+                                                            consoleUiText(
+                                                                'console.unknown_b764cdc0',
+                                                            )}
+                                                    </time>
+                                                ),
                                                 part2: ' ',
-                                                part3:
-                                                    application.lastUsed ??
-                                                    consoleUiText('console.never_6300ef80'),
+                                                part3: (
+                                                    <time
+                                                        dateTime={
+                                                            application.lastUsedIso ?? undefined
+                                                        }
+                                                        title={exact(application.lastUsedIso)}
+                                                    >
+                                                        {relative(
+                                                            application.lastUsedIso,
+                                                            application.lastUsed,
+                                                        ) ??
+                                                            consoleUiText('console.never_6300ef80')}
+                                                    </time>
+                                                ),
                                             },
                                         )}
                                     </p>
-                                    {application.scopes.length > 0 && (
-                                        <p
-                                            className="text-xs mt-1 mono truncate"
-                                            style={{ color: 'var(--faint)' }}
+                                    {application.permissions.length > 0 && (
+                                        <ul
+                                            className="acct-permissions"
+                                            aria-label={application.name}
                                         >
-                                            {application.scopes.join(' · ')}
-                                        </p>
+                                            {application.permissions.map((permission) => (
+                                                <li key={permission}>{permission}</li>
+                                            ))}
+                                        </ul>
                                     )}
                                 </div>
 
@@ -359,9 +393,9 @@ export default function Activity({
                                 className="text-xs shrink-0"
                                 style={{ color: 'var(--faint)' }}
                                 dateTime={entry.atIso ?? undefined}
-                                title={entry.atExact ?? undefined}
+                                title={exact(entry.atIso)}
                             >
-                                {entry.at ?? '—'}
+                                {relative(entry.atIso, entry.at) ?? '—'}
                             </time>
                         </div>
                     ))
