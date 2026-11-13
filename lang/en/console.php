@@ -3,6 +3,8 @@
 return [
     'mobile_approval_start' => 'Approve on phone',
     'mobile_approval_compare' => 'Open Cbox ID Authenticator. Only approve if this code matches the request on your phone.',
+    'mobile_approval_open_app' => 'Open Cbox ID app',
+    'mobile_approval_open_app_hint' => 'Approve in the app, then come back here. This page continues by itself.',
     '1_hour_f8b8883f' => '1 hour',
     '1_register_this_redirect_uri_9c27ff08' => '1. Register this redirect URI',
     '1_what_are_you_building_61edf71c' => '1. What are you building?',

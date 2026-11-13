@@ -5,6 +5,8 @@ declare(strict_types=1);
 return [
     'mobile_approval_start' => 'Aprobă pe telefon',
     'mobile_approval_compare' => 'Deschide Cbox ID Authenticator. Aprobă doar dacă acest cod corespunde solicitării de pe telefon.',
+    'mobile_approval_open_app' => 'Deschide aplicația Cbox ID',
+    'mobile_approval_open_app_hint' => 'Aprobă în aplicație, apoi revino aici. Pagina continuă singură.',
     '_optional_0059798b' => '(opțional)',
     'access_key_id_14eb0f96' => 'ID-ul cheii de acces',
     'action_64cff131' => 'Acțiune',

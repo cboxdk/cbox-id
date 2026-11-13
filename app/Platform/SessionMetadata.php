@@ -26,23 +26,17 @@ final class SessionMetadata
 
         // These headers belong to the visitor only on the configured ingress path.
         // Never attach today's country to an older session's different IP address.
-        if ($request->isFromTrustedProxy() && filled($session->ip) && $session->ip === $request->ip()) {
-            $country = strtoupper(trim((string) $request->header('CF-IPCountry')));
+        $geo = filled($session->ip) && $session->ip === $request->ip() ? CloudflareGeo::fromRequest($request) : null;
 
-            // Cloudflare uses XX for an unknown country and T1 for Tor.
-            if (preg_match('/^[A-Z]{2}$/', $country) === 1 && $country !== 'XX') {
-                if (blank($session->getAttribute('country_code'))) {
-                    $session->setAttribute('country_code', $country);
-                }
+        if ($geo !== null) {
+            if (blank($session->getAttribute('country_code'))) {
+                $session->setAttribute('country_code', $geo->countryCode);
+            }
 
-                $city = trim(rawurldecode((string) $request->header('CF-IPCity')));
-
-                if ($session->getAttribute('country_code') === $country
-                    && blank($session->getAttribute('city'))
-                    && $city !== '' && mb_check_encoding($city, 'UTF-8')
-                    && preg_match('/[\x00-\x1F\x7F]/', $city) !== 1) {
-                    $session->setAttribute('city', mb_substr($city, 0, 160));
-                }
+            if ($session->getAttribute('country_code') === $geo->countryCode
+                && blank($session->getAttribute('city'))
+                && $geo->city !== null) {
+                $session->setAttribute('city', $geo->city);
             }
         }
 

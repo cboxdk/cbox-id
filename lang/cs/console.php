@@ -5,6 +5,8 @@ declare(strict_types=1);
 return [
     'mobile_approval_start' => 'Schválit na telefonu',
     'mobile_approval_compare' => 'Otevřete Cbox ID Authenticator. Schvalte pouze tehdy, pokud tento kód odpovídá žádosti na telefonu.',
+    'mobile_approval_open_app' => 'Otevřít aplikaci Cbox ID',
+    'mobile_approval_open_app_hint' => 'Schvalte v aplikaci a pak se sem vraťte. Stránka bude pokračovat sama.',
     '_optional_0059798b' => '(volitelné)',
     'access_key_id_14eb0f96' => 'ID přístupového klíče',
     'action_64cff131' => 'Akce',

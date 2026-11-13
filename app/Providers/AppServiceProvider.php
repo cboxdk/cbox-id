@@ -35,6 +35,7 @@ use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
 use App\Platform\Keys\TransitionalOrganizationApiKeys;
+use App\Platform\Mfa\PhoneApprovalOrigin;
 use App\Platform\OAuth\PlatformRealmClients;
 use App\Platform\OAuth\RootMcpAudiences;
 use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
@@ -57,6 +58,7 @@ use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
 use Cbox\Id\Api\Http\Controllers\DiscoveryController;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Cbox\Id\Console\HealthChecks;
+use Cbox\Id\Devices\Contracts\ApprovalOriginResolver;
 use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Identity\Contracts\ErasureSteps;
 use Cbox\Id\Identity\Contracts\MailboxProof;
@@ -102,6 +104,10 @@ class AppServiceProvider extends ServiceProvider
         // A deployment without the billing module has no per-project plans; the module
         // binds its own answer over this one.
         $this->app->bindIf(ProjectSubscriptions::class, NoProjectSubscriptions::class);
+
+        // Where a phone approval was asked from — city, country, browser, the app being
+        // signed in to — and the approver's language, for the push and the approvals API.
+        $this->app->bind(ApprovalOriginResolver::class, PhoneApprovalOrigin::class);
 
         // Console URLs carry public ids (`usr_01j…`), wherever a URL is built.
         $this->app->extend('url', static fn (UrlGenerator $url): PublicIdUrlGenerator => PublicIdUrlGenerator::from($url));

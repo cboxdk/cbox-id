@@ -71,6 +71,8 @@ final class Surfaces
         // The app picker's old address: each surface sends it on to the console's switcher.
         'switch-app',
         'authenticator/privacy',
+        // The Authenticator's Universal Link and the documents that let the app claim it.
+        'authenticator/approve/*', '.well-known/apple-app-site-association', '.well-known/assetlinks.json',
         'api/v1', 'api/v1/*',
         '.well-known/oauth-protected-resource', '.well-known/oauth-protected-resource/*',
     ];

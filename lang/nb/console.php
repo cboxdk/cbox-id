@@ -5,6 +5,8 @@ declare(strict_types=1);
 return [
     'mobile_approval_start' => 'Godkjenn på mobilen',
     'mobile_approval_compare' => 'Åpne Cbox ID Authenticator. Godkjenn bare hvis denne koden samsvarer med forespørselen på telefonen din.',
+    'mobile_approval_open_app' => 'Åpne Cbox ID-appen',
+    'mobile_approval_open_app_hint' => 'Godkjenn i appen, og kom så tilbake hit. Siden fortsetter av seg selv.',
     '_optional_0059798b' => '(valgfritt)',
     'access_key_id_14eb0f96' => 'Tilgangsnøkkelens ID',
     'action_64cff131' => 'Handling',

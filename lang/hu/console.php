@@ -5,6 +5,8 @@ declare(strict_types=1);
 return [
     'mobile_approval_start' => 'Jóváhagyás telefonon',
     'mobile_approval_compare' => 'Nyisd meg a Cbox ID Authenticator alkalmazást. Csak akkor hagyd jóvá, ha ez a kód egyezik a telefonodon látható kéréssel.',
+    'mobile_approval_open_app' => 'Cbox ID alkalmazás megnyitása',
+    'mobile_approval_open_app_hint' => 'Hagyja jóvá az alkalmazásban, majd térjen vissza ide. Ez az oldal magától folytatódik.',
     '_optional_0059798b' => '(nem kötelező)',
     'access_key_id_14eb0f96' => 'Hozzáférési kulcs azonosítója',
     'action_64cff131' => 'Művelet',

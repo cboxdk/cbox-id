@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Devices\Decorators;
 
+use Cbox\Id\Devices\Contracts\ApprovalOriginResolver;
 use Cbox\Id\Devices\Contracts\PushDispatcher;
+use Cbox\Id\Devices\Enums\ApprovalKind;
 use Cbox\Id\Devices\Enums\NotificationKind;
+use Cbox\Id\Devices\Support\ApprovalPushText;
 use Cbox\Id\Devices\Support\DeviceConfig;
+use Cbox\Id\Devices\ValueObjects\ApprovalOrigin;
 use Cbox\Id\Devices\ValueObjects\PushPayload;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -115,7 +119,7 @@ final class PushNotifyingBackchannelAuthentication implements BackchannelAuthent
             $this->container->make(PushDispatcher::class)->dispatch(
                 subjectId: $result->subjectId,
                 kind: NotificationKind::Approval,
-                payload: $this->payload($result),
+                payload: $this->payload($client, $result),
                 expiresAt: Carbon::now()->addSeconds($result->expiresIn),
             );
         } catch (Throwable $e) {
@@ -131,17 +135,19 @@ final class PushNotifyingBackchannelAuthentication implements BackchannelAuthent
     /**
      * What the handset is told.
      *
-     * The visible title and body are deliberately uninformative. They render on the
-     * LOCK SCREEN, readable by anyone holding the phone, and the one thing a CIBA
-     * prompt must protect is the binding message — which is the transaction description
-     * ("Transfer DKK 4,200 to ACME ApS"), the very detail an attacker would most like to
-     * read and the one the user is meant to verify. It is fetched over TLS after the app
-     * opens and the user has authenticated, never pushed.
+     * The visible title names the app that asks ("Acme Agent is asking for your
+     * approval") and the body when it lapses — nothing more. They render on the LOCK
+     * SCREEN, readable by anyone holding the phone, and the one thing a CIBA prompt must
+     * protect is the binding message — which is the transaction description ("Transfer
+     * DKK 4,200 to ACME ApS"), the very detail an attacker would most like to read and
+     * the one the user is meant to verify. It is fetched over TLS after the app opens and
+     * the user has authenticated, never pushed. No location or device either: the request
+     * came from the client's server, not from anywhere the person is.
      *
-     * The data payload carries routing only, and the app treats it as untrusted: it
-     * re-fetches the approval by id and renders that response, not this.
+     * The data payload carries routing and those same display strings, and the app treats
+     * it as untrusted: it re-fetches the approval by id and renders that response, not this.
      */
-    private function payload(BackchannelAuthenticationResult $result): PushPayload
+    private function payload(Client $client, BackchannelAuthenticationResult $result): PushPayload
     {
         $data = ['kind' => NotificationKind::Approval->value];
 
@@ -152,10 +158,15 @@ final class PushNotifyingBackchannelAuthentication implements BackchannelAuthent
             $data['url'] = 'com.cboxid.authenticator://approvals';
         }
 
-        return new PushPayload(
-            title: 'Approval request',
-            body: 'Open Cbox ID to review a pending request.',
-            data: $data,
+        // A client that registered itself (RFC 7591) chose its own name, and the lock screen
+        // cannot say so the way the app does — such a request is not named there at all.
+        $name = $client->isDynamicallyRegistered() || $client->name === '' ? null : $client->name;
+
+        return $this->container->make(ApprovalPushText::class)->payload(
+            origin: new ApprovalOrigin(ApprovalKind::Authentication, app: $name),
+            locale: $this->container->make(ApprovalOriginResolver::class)->localeFor($result->subjectId, ApprovalKind::Authentication),
+            expiresAt: Carbon::now()->addSeconds($result->expiresIn),
+            routing: $data,
             // Collapse on the request id so a re-push replaces the existing banner
             // rather than stacking a second one for the same decision.
             collapseKey: $result->requestId,
