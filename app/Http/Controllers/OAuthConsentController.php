@@ -1698,7 +1698,8 @@ final readonly class OAuthConsentController extends PageController
      * A metadata document client by the framework's rule — an EXACT match against the
      * document's `redirect_uris`, since the document is the publisher's whole claim. A
      * registered client by {@see redirectUriRegistered()}, this endpoint's own rule, which
-     * lets only a 127.0.0.1 / [::1] port float.
+     * lets only a 127.0.0.1 / [::1] port float. Either way the port float is reached only
+     * by a loopback URI in canonical form ({@see isCanonicalLoopbackUri()}).
      *
      * `array_values()`: `redirect_uris` is a JSON cast, so a row written as a JSON object
      * rather than an array rehydrates with string keys. `redirectUriRegistered()` asks for
@@ -1706,11 +1707,55 @@ final readonly class OAuthConsentController extends PageController
      */
     private function redirectAllowed(AuthorizationClient $authorizing, string $redirectUri): bool
     {
+        // An exact match is the registration itself and needs no reading.
+        if (in_array($redirectUri, array_values(array_filter($authorizing->client->redirect_uris, 'is_string')), true)) {
+            return true;
+        }
+
+        // Anything else can only pass by the loopback port exception, which reads the URI
+        // with parse_url() — so it must first be a URI a browser reads the same way.
+        if (! self::isCanonicalLoopbackUri($redirectUri)) {
+            return false;
+        }
+
         if ($authorizing->isMetadataDocumentClient()) {
             return $authorizing->allowsRedirectUri($redirectUri);
         }
 
         return $this->redirectUriRegistered($redirectUri, array_values($authorizing->client->redirect_uris));
+    }
+
+    /**
+     * Whether $uri is an http loopback URI in canonical form: byte-identical to
+     * `http://host[:port]path[?query]` rebuilt from its own parse.
+     *
+     * parse_url() and a browser's URL parser disagree on some authorities. A backslash ends
+     * the authority for a browser but not for PHP, and credentials before `@` hide the real
+     * host from a reader. Where they disagree, the port exception would match a loopback host
+     * that PHP saw while the browser — and the authorization code — went somewhere else. No
+     * control characters, whitespace or backslashes, no credentials, no fragment, and nothing
+     * the rebuild would change.
+     */
+    private static function isCanonicalLoopbackUri(string $uri): bool
+    {
+        if (preg_match('/[\x00-\x20\x7f\\\\]/', $uri) === 1) {
+            return false;
+        }
+
+        $parts = parse_url($uri);
+
+        if (! is_array($parts) || ($parts['scheme'] ?? null) !== 'http'
+            || isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment'])
+            || ! in_array($parts['host'] ?? null, ['127.0.0.1', '[::1]', 'localhost'], true)) {
+            return false;
+        }
+
+        $rebuilt = 'http://'.$parts['host']
+            .(isset($parts['port']) ? ':'.$parts['port'] : '')
+            .($parts['path'] ?? '')
+            .(isset($parts['query']) ? '?'.$parts['query'] : '');
+
+        return $rebuilt === $uri;
     }
 
     private function owner(Client $client): string

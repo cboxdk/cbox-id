@@ -401,6 +401,33 @@ it('holds a metadata document client to the redirect URIs it published, the loop
     }
 })->group('security');
 
+it('does not float the port for a metadata document client on a loopback redirect that is not in canonical form', function (): void {
+    mcpSignedIn();
+
+    $this->fakeClientMetadataDocuments()->serve(AGENT_DOCUMENT, [
+        'client_id' => AGENT_DOCUMENT,
+        'client_name' => 'Agent',
+        'redirect_uris' => [MCP_CALLBACK, 'http://localhost/callback'],
+    ]);
+
+    // parse_url() reads a loopback host in each of these; a browser does not, or the
+    // string is not the one it would navigate to. Only an exact match may stand.
+    foreach ([
+        'http://attacker.invalid\\@127.0.0.1:9999/callback',
+        'http://attacker.invalid\\@localhost:5555/callback',
+        'http://attacker.invalid@localhost:5555/callback',
+        'http://localhost:5555/callback#x',
+    ] as $redirectUri) {
+        $refused = authorizeRequest([
+            'client_id' => AGENT_DOCUMENT,
+            'redirect_uri' => $redirectUri,
+            'resource' => mcpResourceId(),
+        ])->assertOk();
+
+        expect(consentRefusal($refused))->toBe(__('oauth.failure.redirect_mismatch'));
+    }
+})->group('security');
+
 it('renders, never redirects, a metadata document it cannot use', function (): void {
     mcpSignedIn();
 
