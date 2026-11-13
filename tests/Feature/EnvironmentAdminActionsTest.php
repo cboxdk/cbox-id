@@ -624,6 +624,7 @@ it('impersonates a user who belongs to no organization', function (): void {
     serveOnTestHost($result->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
     actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
+    confirmEnvironmentStepUp();
 
     $subjectId = app(Subjects::class)->create('lonely@acme.example', 'Lonely', 'the-original-passphrase')->id;
 
@@ -659,6 +660,7 @@ it('refuses to impersonate an owner even with no organization named', function (
     serveOnTestHost($result->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
     actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
+    confirmEnvironmentStepUp();
 
     $victim = app(Subjects::class)->create('boss@acme.example', 'Boss', 'the-original-passphrase')->id;
     $org = app(Organizations::class)->create(new NewOrganization('Their Co', 'their-co'));

@@ -114,10 +114,42 @@ final class RevokingAuthPolicies implements AuthPolicies
         $this->inner->setForOrganization($organizationId, $policy);
 
         if ($wasAllowed && ! $this->inner->resolve($organizationId)->sso->allowsPasswordLogin()) {
+            // PER ORGANIZATION, the mandate governs that organization and nothing else: a
+            // member's sessions in their OTHER organizations are none of this
+            // administrator's business, and entering this one again is asked at its door
+            // ({@see SsoMandates::admits()}). So only the sessions held IN this organization
+            // that its mandate no longer admits are ended.
+            if (SsoMandates::perOrganization()) {
+                $this->revokeSessionsIn($organizationId);
+
+                return;
+            }
+
+            // Per person, one membership's mandate closes local sign-in to the person
+            // everywhere ({@see PlatformAuth::localSignInAllowedFor()}), so a local session
+            // left anywhere would be a way into this organization the mandate just shut.
+            // That is why the organization must have a connection to require it through
+            // ({@see OrganizationSsoMandateGuard}): its members always keep a way back in.
             foreach ($this->memberships->forOrganization($organizationId) as $membership) {
                 $this->sessions->revokeAllForUser($membership->user_id);
             }
         }
+    }
+
+    /** End the live sessions bound to this organization that its SSO mandate does not admit. */
+    private function revokeSessionsIn(string $organizationId): void
+    {
+        $mandates = app(SsoMandates::class);
+
+        Session::query()
+            ->where('organization_id', $organizationId)
+            ->whereNull('revoked_at')
+            ->where('expires_at', '>', now())
+            ->each(function (Session $session) use ($mandates, $organizationId): void {
+                if (! $mandates->admits($session, $organizationId)) {
+                    $this->sessions->revoke($session->id);
+                }
+            });
     }
 
     /**

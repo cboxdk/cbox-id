@@ -16,6 +16,7 @@ use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Enterprise\EnterpriseReach;
+use App\Platform\OrganizationSsoMandateGuard;
 use App\Platform\RootSignInGuard;
 use App\Platform\SignInAudit;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
@@ -53,6 +54,7 @@ final readonly class RequireSso implements Action
         private AuthPolicies $policies,
         private SignInAudit $audit,
         private RootSignInGuard $guard,
+        private OrganizationSsoMandateGuard $mandates,
     ) {}
 
     public static function input(): InputSchema
@@ -91,6 +93,12 @@ final readonly class RequireSso implements Action
             'organization_sso' => [$organizationId => SsoEnforcement::Required],
             'connections_gone' => $connection->isActive() ? [] : [(string) $connection->id],
         ]);
+
+        // The connection it is required THROUGH must be one members can sign in with: an
+        // inactive one leaves every member, operator or not, with no way in.
+        if (! $connection->isActive()) {
+            $this->mandates->assertConnectionBehindMandate($organizationId, 'id');
+        }
 
         $this->policies->setForOrganization($organizationId, $policy);
 

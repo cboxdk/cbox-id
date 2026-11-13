@@ -7,6 +7,7 @@ use App\Platform\PlatformAuth;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\Governance\Contracts\AccessReviews;
 use Cbox\Id\Governance\Enums\AccessKind;
+use Cbox\Id\Governance\Enums\CampaignStatus;
 use Cbox\Id\Governance\Models\CertificationCampaign;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -158,3 +159,87 @@ function openReviewOver(string $organizationId, string $roleId, int $people, str
         ->where('name', $name)
         ->value('id');
 }
+
+/**
+ * Audit finding #24. A review is bulk revocation, and the framework applies it through the
+ * bare access contracts — none of the roster's rules. So an administrator who is not an
+ * owner, refused when removing an owner directly, could open a review of their own
+ * organization, leave the owners undecided under the default "revoke" policy, close it,
+ * and every owner but the last was gone.
+ */
+it('never lets an administrator remove an owner by closing a review', function (): void {
+    [$adminId, $org] = actingAsRole(MembershipRole::Admin);
+    $ownerA = app(Subjects::class)->create('owner-a@acme.test', 'Owner A', 'supersecret123');
+    $ownerB = app(Subjects::class)->create('owner-b@acme.test', 'Owner B', 'supersecret123');
+    app(Memberships::class)->add($org->id, $ownerA->id, MembershipRole::Owner);
+    app(Memberships::class)->add($org->id, $ownerB->id, MembershipRole::Owner);
+
+    openAccessReview()->assertSessionHasNoErrors();
+    $campaign = CertificationCampaign::query()->where('organization_id', $org->id)->firstOrFail();
+    $items = collect(app(AccessReviews::class)->itemsFor($campaign->id));
+    $ownerItem = $items->firstWhere('subject_id', $ownerA->id);
+
+    // An explicit revoke of an owner is refused where it is made…
+    decideAccessItem($campaign->id, $ownerItem->id, 'revoked')->assertSessionHasErrors();
+
+    // …and so is a close that would revoke owners left undecided.
+    test()->from(route('governance.show', $campaign->id))
+        ->post(route('governance.close', $campaign->id))
+        ->assertSessionHasErrors();
+
+    expect(app(Memberships::class)->of($org->id, $ownerA->id)?->role)->toBe(MembershipRole::Owner)
+        ->and(app(Memberships::class)->of($org->id, $ownerB->id)?->role)->toBe(MembershipRole::Owner)
+        ->and(CertificationCampaign::query()->whereKey($campaign->id)->value('status'))->toBe(CampaignStatus::Open);
+
+    // Certifying what is out of reach is how the administrator closes it; the rest applies.
+    foreach ($items as $item) {
+        if ($item->subject_id !== $adminId) {
+            decideAccessItem($campaign->id, $item->id, 'certified')->assertSessionHasNoErrors();
+        }
+    }
+
+    test()->from(route('governance.show', $campaign->id))
+        ->post(route('governance.close', $campaign->id))
+        ->assertSessionHasNoErrors();
+
+    expect(app(Memberships::class)->of($org->id, $ownerA->id)?->role)->toBe(MembershipRole::Owner);
+})->group('security');
+
+it('lets an owner close a review that removes another owner', function (): void {
+    [$ownerId, $org] = actingAsRole(MembershipRole::Owner);
+    $other = app(Subjects::class)->create('owner-x@acme.test', 'Owner X', 'supersecret123');
+    app(Memberships::class)->add($org->id, $other->id, MembershipRole::Owner);
+
+    openAccessReview()->assertSessionHasNoErrors();
+    $campaign = CertificationCampaign::query()->where('organization_id', $org->id)->firstOrFail();
+    $items = collect(app(AccessReviews::class)->itemsFor($campaign->id));
+    $item = $items->firstWhere('subject_id', $other->id);
+    decideAccessItem($campaign->id, $items->firstWhere('subject_id', $ownerId)->id, 'certified')->assertSessionHasNoErrors();
+
+    decideAccessItem($campaign->id, $item->id, 'revoked')->assertSessionHasNoErrors();
+    test()->from(route('governance.show', $campaign->id))->post(route('governance.close', $campaign->id))->assertSessionHasNoErrors();
+
+    expect(app(Memberships::class)->of($org->id, $other->id))->toBeNull();
+})->group('security');
+
+/**
+ * The same, for a role the organization may not assign — an environment-defined role an
+ * environment administrator granted inside it. The People page refuses revoking it; the
+ * review must too.
+ */
+it('never lets an organization review withdraw a role the organization does not assign', function (): void {
+    [, $org] = actingAsRole(MembershipRole::Admin);
+    $member = app(Subjects::class)->create('staffed@acme.test', 'Staffed', 'supersecret123');
+    app(Memberships::class)->add($org->id, $member->id, MembershipRole::Member);
+    $staff = app(Roles::class)->define(null, 'support-staff', tenantAssignable: false);
+    app(Roles::class)->assign($org->id, $member->id, $staff->id);
+
+    openAccessReview()->assertSessionHasNoErrors();
+    $campaign = CertificationCampaign::query()->where('organization_id', $org->id)->firstOrFail();
+    $roleItem = collect(app(AccessReviews::class)->itemsFor($campaign->id))->firstWhere(fn ($i) => $i->access_type === AccessKind::Role);
+
+    decideAccessItem($campaign->id, $roleItem->id, 'revoked')->assertSessionHasErrors();
+    test()->from(route('governance.show', $campaign->id))->post(route('governance.close', $campaign->id))->assertSessionHasErrors();
+
+    expect(app(Roles::class)->assignmentsForSubject($org->id, $member->id))->not->toBe([]);
+})->group('security');

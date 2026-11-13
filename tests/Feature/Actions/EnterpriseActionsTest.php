@@ -6,6 +6,8 @@ use App\Models\AdminPortalLink;
 use App\Platform\Actions\Idempotency\IdempotencyRecord;
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
+use Cbox\Id\AccessControl\Contracts\Roles;
+use Cbox\Id\AccessControl\Models\GroupRoleMapping;
 use Cbox\Id\Directory\Enums\DirectoryStatus;
 use Cbox\Id\Directory\Models\Directory;
 use Cbox\Id\Directory\Models\DirectoryGroup;
@@ -23,6 +25,9 @@ use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
@@ -215,6 +220,12 @@ it('requires SSO for the connection\'s organization, and refuses an environment-
     $org = entOrg();
     $theirs = app(Connections::class)->create($org, ConnectionType::Saml, 'Okta', entSaml());
     $environments = app(Connections::class)->create(null, ConnectionType::Saml, 'Staff IdP', entSaml());
+
+    // Not while it is still a draft: nobody can sign in through it yet (audit finding #9).
+    $this->withToken($key)->postJson("/api/v1/sso/connections/{$theirs->id}/require-sso")
+        ->assertUnprocessable()->assertJsonPath('error', 'no_active_connection');
+
+    app(Connections::class)->activate($org, $theirs->id);
 
     $this->withToken($key)->postJson("/api/v1/sso/connections/{$theirs->id}/require-sso")
         ->assertOk()
@@ -609,6 +620,42 @@ it('pauses, renames, maps and deletes a directory, refusing a group from another
         ->and(entTrail('directory.renamed'))->toHaveCount(1)
         ->and(entTrail('directory.deleted'))->toHaveCount(1);
 });
+
+/**
+ * Audit finding #47. A manifest role is stored with no organization whichever
+ * organization owns the app declaring it, so the framework's tenant predicate read
+ * ANOTHER organization's private app role as environment-shared, and a group mapping
+ * granted it to this organization's people — a role the directory page's own picker hides.
+ */
+it('refuses mapping a group onto a role of another organization\'s private app', function (): void {
+    [$key] = entKey(ENT_DIRECTORY);
+    $org = entOrg();
+    $theirOrg = entOrg('acme-theirs');
+    $id = $this->withToken($key)->postJson('/api/v1/directories', ['organization_id' => $org, 'name' => 'Okta'])->json('data.id');
+
+    $group = new DirectoryGroup;
+    $group->forceFill(['id' => (string) Str::ulid(), 'directory_id' => $id, 'display_name' => 'Engineering'])->save();
+
+    $theirApp = app(ClientRegistry::class)->register(new NewClient(
+        'Their App', ClientType::Confidential, redirectUris: ['https://their.test/cb'], organizationId: $theirOrg,
+    ))->client;
+    $theirRole = app(Roles::class)->define(null, 'their-admin', clientId: $theirApp->client_id);
+
+    $this->withToken($key)->postJson("/api/v1/directories/{$id}/group-roles", ['group_id' => $group->id, 'role_id' => $theirRole->id, 'mapped' => true])
+        ->assertUnprocessable()
+        ->assertJsonPath('error', 'role_not_mappable');
+
+    expect(GroupRoleMapping::query()->where('role_id', $theirRole->id)->exists())->toBeFalse();
+
+    // The organization's own app's role maps as before.
+    $ourApp = app(ClientRegistry::class)->register(new NewClient(
+        'Our App', ClientType::Confidential, redirectUris: ['https://ours.test/cb'], organizationId: $org,
+    ))->client;
+    $ourRole = app(Roles::class)->define(null, 'our-admin', clientId: $ourApp->client_id);
+
+    $this->withToken($key)->postJson("/api/v1/directories/{$id}/group-roles", ['group_id' => $group->id, 'role_id' => $ourRole->id, 'mapped' => true])
+        ->assertOk();
+})->group('security');
 
 it('answers 404 for another environment\'s directory, and refuses a key without the scope', function (): void {
     [$key] = entKey(ENT_DIRECTORY);
