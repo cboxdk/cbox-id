@@ -10,7 +10,6 @@ use App\Actions\Apps\SetAppManifest;
 use App\Actions\Apps\SyncAppManifest;
 use App\Actions\Apps\UpdateApp;
 use App\Http\Props\Shared\HelpProps;
-use App\Http\Props\Shared\PaginationProps;
 use App\Http\Requests\Console\SaveClientRequest;
 use App\Http\Requests\Console\StoreClientRequest;
 use App\Platform\Actions\ActionRefused;
@@ -34,12 +33,11 @@ use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\Models\StoredClientSecret;
 use Cbox\Id\OAuthServer\ValueObjects\RegisteredClient;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Inertia\Response;
 use Inertia\ResponseFactory;
 
@@ -81,7 +79,8 @@ use Inertia\ResponseFactory;
  */
 final readonly class ClientController extends ConsoleController
 {
-    private const PER_PAGE = 50;
+    /** The most apps the list reads at once — far past any real environment. */
+    private const LIST_CAP = 2000;
 
     public function __construct(
         ResponseFactory $inertia,
@@ -104,14 +103,16 @@ final readonly class ClientController extends ConsoleController
          * model's environment scope still bounds it, and an organization member can never
          * reach that branch because their organization is implicit. A filter naming no
          * organization here matches nothing.
+         *
+         * ONE PAGE, NOT FIFTY ROWS AT A TIME. Nesting a product's helper clients under it
+         * needs every client in view at once — a page boundary would cut a product in two
+         * — and an environment's apps number in the tens, so the list is read whole and
+         * cut here rather than in SQL. The cap only guards against a runaway environment.
          */
-        $base = fn (): Builder => $filter->apply(Client::query());
+        /** @var list<Client> $all */
+        $all = $filter->apply(Client::query())->orderBy('name')->orderBy('id')->limit(self::LIST_CAP)->get()->all();
 
-        $term = trim($request->string('q')->toString());
-        $searched = fn (Builder $query): Builder => $term === '' ? $query : $query->where(fn (Builder $q): Builder => $q
-            ->where('name', 'like', '%'.$term.'%')
-            ->orWhere('client_id', 'like', '%'.$term.'%'));
-
+        $term = mb_strtolower(trim($request->string('q')->toString()));
         $showsEveryOrganization = ! $filter->active();
 
         /*
@@ -126,36 +127,38 @@ final readonly class ClientController extends ConsoleController
         $kind = $request->string('type')->toString();
         $kind = in_array($kind, AppListing::KINDS, true) ? $kind : null;
 
-        $query = $searched($base());
-
-        if ($group !== null) {
-            $query = AppListing::inGroup($query, $group);
-        }
-
-        if ($kind !== null) {
-            $query = AppListing::ofKind($query, $kind);
-        }
-
-        $clients = AppListing::ordered($query)->paginate(self::PER_PAGE)->withQueryString();
+        $searched = array_values(array_filter($all, fn (Client $client): bool => $term === ''
+            || str_contains(mb_strtolower($client->name), $term)
+            || str_contains(mb_strtolower($client->client_id), $term)));
 
         /*
-         * The counts the group tabs and kind chips print, each under every OTHER narrowing
-         * in force — so a chip says how many rows choosing it would show.
+         * PRODUCTS, NESTED — only while nothing narrows the list. A search or a kind is a
+         * question about single apps, so those answer flat, each row saying which product
+         * it belongs to; the product is read over every app in view, not the narrowed few.
          */
+        $nested = $term === '' && $kind === null;
+        $products = AppListing::parents($all);
+
+        $visible = AppListing::ofKind(AppListing::inGroup($searched, $group), $kind);
+        $parents = $nested ? AppListing::parents($visible) : [];
+
+        // What each group tab would show: its products when nested, else its rows.
         $groupCounts = [];
 
         if ($showsEveryOrganization) {
             foreach (AppListing::GROUPS as $each) {
-                $counted = AppListing::inGroup($searched($base()), $each);
-                $groupCounts[$each] = ($kind === null ? $counted : AppListing::ofKind($counted, $kind))->count();
+                $rows = AppListing::ofKind(AppListing::inGroup($searched, $each), $kind);
+                $groupCounts[$each] = $nested
+                    ? count(array_filter(AppListing::parents($rows), fn (?string $head): bool => $head === null))
+                    : count($rows);
             }
         }
 
-        $kindCounts = [];
+        // How many apps of each kind, under the group and the search.
+        $kindCounts = array_fill_keys(AppListing::KINDS, 0);
 
-        foreach (AppListing::KINDS as $each) {
-            $counted = AppListing::ofKind($searched($base()), $each);
-            $kindCounts[$each] = ($group === null ? $counted : AppListing::inGroup($counted, $group))->count();
+        foreach (AppListing::inGroup($searched, $group) as $client) {
+            $kindCounts[AppListing::kindOf($client)]++;
         }
 
         /*
@@ -169,54 +172,88 @@ final readonly class ClientController extends ConsoleController
          * that is all the organization plane is shown: the environment's own back-office
          * clients are not theirs to enumerate.
          */
-        $platformApps = $showsEveryOrganization ? new EloquentCollection : Client::query()
+        /** @var list<Client> $platformApps */
+        $platformApps = $showsEveryOrganization ? [] : Client::query()
             ->whereNull('organization_id')
             ->when(
                 $this->scope->plane() === ConsolePlane::Organization,
                 fn (Builder $q): Builder => $q->where('first_party', true),
             )
             ->orderBy('name')
-            ->get();
+            ->get()
+            ->all();
 
-        $clientIds = $clients->getCollection()->pluck('client_id')->merge($platformApps->pluck('client_id'));
+        $everyId = [...array_map(fn (Client $client): string => $client->id, $visible), ...array_map(fn (Client $client): string => $client->id, $platformApps)];
 
-        /*
-         * How many roles each app currently declares.
-         *
-         * NB no `orphaned_at` filter on the CLIENT queries above: that column lives on
-         * `roles`/`permissions`, which are tombstoned when an app's manifest stops
-         * declaring them. `oauth_clients` has no such column — an app is deleted, not
-         * orphaned — and filtering on it there was a query against a column that exists on
-         * no engine.
-         */
-        $roleCounts = Role::query()
-            ->whereIn('client_id', $clientIds)
-            ->whereNull('orphaned_at')
-            ->get(['client_id'])
-            ->groupBy('client_id')
-            ->map(fn ($group): int => $group->count());
+        // Which apps hold a live secret: one that needs a secret and holds none is off.
+        $withLiveSecret = [];
+
+        foreach (StoredClientSecret::query()->live()->whereIn('oauth_client_id', $everyId)->pluck('oauth_client_id') as $id) {
+            if (is_string($id)) {
+                $withLiveSecret[$id] = true;
+            }
+        }
 
         // The scope's own list, not a bare Organization query: on the organization plane
         // that is the member's one organization, so naming an app's owner can never
         // enumerate the environment's other tenants.
-        $owners = $this->scope->organizationNames($clients->pluck('organization_id'));
+        $owners = $this->scope->organizationNames(collect($visible)->pluck('organization_id'));
 
         /** @var list<string> $faceIds */
-        $faceIds = array_values(array_filter($clientIds->all(), 'is_string'));
+        $faceIds = array_values(array_filter(
+            [...array_map(fn (Client $client): string => $client->client_id, $visible), ...array_map(fn (Client $client): string => $client->client_id, $platformApps)],
+            'is_string',
+        ));
         $faces = $listing->faces($faceIds);
+
+        /** @var array<string, Client> $byId */
+        $byId = [];
+
+        foreach ($all as $client) {
+            $byId[$client->id] = $client;
+        }
+
+        /*
+         * The order the page draws: by section (the head's owner group, so a helper sits
+         * with its product even when the helper itself is owned differently), then by
+         * product name, each head followed by its helpers.
+         */
+        $sectionOf = fn (Client $client): int => (int) array_search(
+            AppListing::groupOf($byId[$parents[$client->id] ?? $client->id] ?? $client),
+            AppListing::GROUPS,
+            true,
+        );
+        $headName = fn (Client $client): string => mb_strtolower(($byId[$parents[$client->id] ?? $client->id] ?? $client)->name);
+        $ordered = $visible;
+        usort($ordered, fn (Client $a, Client $b): int => [
+            $sectionOf($a), $headName($a), ($parents[$a->id] ?? null) !== null, mb_strtolower($a->name), $a->id,
+        ] <=> [
+            $sectionOf($b), $headName($b), ($parents[$b->id] ?? null) !== null, mb_strtolower($b->name), $b->id,
+        ]);
+
+        $row = function (Client $client, bool $withOwner) use ($owners, $faces, $withLiveSecret, $parents, $products, $byId): array {
+            $product = $products[$client->id] ?? null;
+
+            return [
+                ...$this->row($client, $owners, $withOwner, $faces, $withLiveSecret),
+                // The head app this one nests under on this page, or null.
+                'parentId' => $parents[$client->id] ?? null,
+                // The product it belongs to, said on a flat row.
+                'product' => $product !== null ? ($byId[$product] ?? null)?->name : null,
+                'section' => AppListing::groupOf($byId[$parents[$client->id] ?? $client->id] ?? $client),
+            ];
+        };
 
         return $this->page('console/clients/index', __('console.applications_98e33b0f'), [
             'help' => HelpProps::for(HelpTopic::Apps),
-            'clients' => $clients->getCollection()
-                ->map(fn (Client $client): array => $this->row($client, $roleCounts, $owners, $showsEveryOrganization, $faces))
-                ->values()
-                ->all(),
-            'pagination' => PaginationProps::from($clients),
-            'platformApps' => $platformApps
-                ->map(fn (Client $client): array => $this->row($client, $roleCounts, $owners, false, $faces))
-                ->values()
-                ->all(),
-            'search' => $term,
+            'clients' => array_map(fn (Client $client): array => $row($client, $showsEveryOrganization), $ordered),
+            'total' => count($ordered),
+            'nested' => $nested,
+            'platformApps' => array_map(
+                fn (Client $client): array => $this->row($client, $owners, false, $faces, $withLiveSecret) + ['parentId' => null, 'product' => null, 'section' => AppListing::GROUP_FIRST_PARTY],
+                $platformApps,
+            ),
+            'search' => trim($request->string('q')->toString()),
             'group' => $group,
             'groupCounts' => $groupCounts === [] ? null : $groupCounts,
             'kind' => $kind,
@@ -401,7 +438,7 @@ final readonly class ClientController extends ConsoleController
 
         // Read back from the GRANTS rather than stored: they are what the token endpoint
         // enforces, so they cannot disagree with what this page claims.
-        $kind = AppKind::forClient($model);
+        $kind = AppListing::kindFor($model);
 
         return $this->page('console/clients/show', $model->name, [
             'appHeader' => $header->for($model, AppTabs::OVERVIEW),
@@ -575,12 +612,12 @@ final readonly class ClientController extends ConsoleController
     /**
      * One row of either list.
      *
-     * @param  Collection<string, int>  $roleCounts
      * @param  array<string, string>  $owners
      * @param  array<string, array{iconUrl: string|null, iconDarkUrl: string|null, hue: string|null}>  $faces
+     * @param  array<string, true>  $withLiveSecret
      * @return array<string, mixed>
      */
-    private function row(Client $client, mixed $roleCounts, array $owners, bool $withOwner, array $faces = []): array
+    private function row(Client $client, array $owners, bool $withOwner, array $faces, array $withLiveSecret): array
     {
         return [
             'group' => AppListing::groupOf($client),
@@ -597,7 +634,8 @@ final readonly class ClientController extends ConsoleController
             'clientId' => $client->client_id,
             'firstParty' => $client->first_party,
             'platformOwned' => $client->organization_id === null,
-            'roleCount' => $roleCounts[$client->client_id] ?? 0,
+            // Switched off (needs a secret, holds none), never used, idle for a month, or in use.
+            'status' => AppListing::status($client, $withLiveSecret),
             /*
              * WHAT IT IS, in one label. This read the grants directly and drew "Sign-in"
              * for authorization_code and "API" for client_credentials — so a CLI, whose
@@ -605,7 +643,7 @@ final readonly class ClientController extends ConsoleController
              * unexplained "Public". Beside it sat "Confidential"/"Public", which is
              * specification vocabulary for a fact the reader of a list is not asking about.
              */
-            'kindLabel' => AppKind::forClient($client)->label(),
+            'kindLabel' => AppListing::kindFor($client)->label(),
             'owner' => $withOwner
                 ? ($client->organization_id !== null
                     ? ($owners[$client->organization_id] ?? $client->organization_id)

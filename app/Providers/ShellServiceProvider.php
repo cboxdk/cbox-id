@@ -9,7 +9,9 @@ use App\Platform\Console\PaletteActions;
 use App\Platform\Console\ShellPayload;
 use App\Platform\Console\Vocabulary;
 use App\Platform\CurrentUser;
+use App\Platform\Help\DocsLinks;
 use App\Platform\Impersonation;
+use App\Platform\IssuerUrl;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Navigation\ConsoleNavigation;
 use App\Platform\Shell\ApprovalsNotificationSource;
@@ -116,15 +118,27 @@ final class ShellServiceProvider extends ServiceProvider
                     return new ShellBanner(BannerKind::Impersonation, $text, new ShellLink(__('console.exit_impersonation_357bef8f'), $exit));
                 }
 
-                // A page that reaches past one organization says so over the page: platform
-                // admin (the whole deployment) and the platform's own environment (everyone's
-                // sign-in). The same sentence the console's "acts on" line has always said.
+                /*
+                 * A page that reaches past one organization says so over the page: platform
+                 * admin (the whole deployment) and the platform's own environment (everyone's
+                 * sign-in). ONE LINE, not the paragraph it used to be: it sits over every
+                 * page, so it says where you are and how far a change reaches, and the full
+                 * explanation is one link away in the docs.
+                 */
                 $actsOn = app(ShellPayload::class)->build()?->actsOn;
 
                 if ($actsOn !== null && $actsOn->critical) {
-                    $label = $actsOn->kind === 'platform' ? __('console.platform_admin_69652f55').': '.$actsOn->label : $actsOn->label;
+                    $platform = $actsOn->kind === 'platform';
+                    $text = $platform
+                        ? __('console.banner_platform_admin', ['host' => $request->getHost()])
+                        : __('console.banner_platform_environment', ['name' => $actsOn->label, 'host' => IssuerUrl::host()]);
+                    $docs = app(DocsLinks::class)->page($platform ? 'core-concepts/planes-and-hosts' : 'operations/platform-environment');
 
-                    return new ShellBanner(BannerKind::Notice, $actsOn->detail !== null ? $label.'. '.$actsOn->detail : $label);
+                    return new ShellBanner(
+                        BannerKind::Notice,
+                        $text,
+                        $docs === null ? null : new ShellLink(__('console.banner_what_this_affects'), $docs),
+                    );
                 }
 
                 return null;

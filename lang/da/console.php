@@ -4934,4 +4934,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Erklæret af denne app.',
     'staff_not_org_roles' => 'Denne side tildeler roller på tværs af hele miljøet. En persons rolle i én organisation (Ejer, Administrator, Medlem og så videre) sættes på organisationens side Medlemmer.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count flere',
+    'apps_part_of' => 'Del af :product',
+    'apps_status_disabled' => 'Deaktiveret',
+    'apps_status_disabled_hint' => 'Den skal bruge en klienthemmelighed og har ingen, så alle dens tokenanmodninger afvises.',
+    'apps_status_stale' => 'Ubrugt i 30+ dage',
+    'banner_platform_environment' => ':name · Platformens eget miljø på :host. Ændringer her rammer alle logins.',
+    'banner_platform_admin' => 'Platformadministration: Hele installationen på :host. Ændringer her rammer alle organisationer.',
+    'banner_what_this_affects' => 'Hvad det påvirker',
+    'user_access_since' => 'Siden :when',
+    'user_access_since_label' => 'Siden',
+    'user_access_none_offered' => 'Ingen tilbudt',
+    'user_access_edit_roles' => 'Rediger app- og brugerdefinerede roller i :organization',
+    'user_access_open_organization' => 'Åbn organisation',
+    'app_and_custom_roles_in_part1' => 'App- og brugerdefinerede roller i :part1',
+    'user_access_reaches' => 'Gælder for',
+    // end console-polish
 ];

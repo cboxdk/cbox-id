@@ -4936,4 +4936,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Deklarovaná touto aplikací.',
     'staff_not_org_roles' => 'Tato stránka přiděluje role v celém prostředí. Role osoby uvnitř jedné organizace (Vlastník, Správce, Člen a další) se nastavuje na stránce Členové dané organizace.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count další',
+    'apps_part_of' => 'Součást :product',
+    'apps_status_disabled' => 'Vypnuto',
+    'apps_status_disabled_hint' => 'Potřebuje tajný klíč klienta a žádný nemá, takže každý požadavek na token je odmítnut.',
+    'apps_status_stale' => 'Nepoužito 30+ dní',
+    'banner_platform_environment' => ':name · Vlastní prostředí platformy na :host. Změny zde ovlivní každé přihlášení.',
+    'banner_platform_admin' => 'Správa platformy: Celé nasazení na :host. Změny zde ovlivní každou organizaci.',
+    'banner_what_this_affects' => 'Co to ovlivní',
+    'user_access_since' => 'Od :when',
+    'user_access_since_label' => 'Od',
+    'user_access_none_offered' => 'Žádné nabízeny',
+    'user_access_edit_roles' => 'Upravit role aplikací a vlastní role v :organization',
+    'user_access_open_organization' => 'Otevřít organizaci',
+    'app_and_custom_roles_in_part1' => 'Role aplikací a vlastní role v :part1',
+    'user_access_reaches' => 'Platí pro',
+    // end console-polish
 ];

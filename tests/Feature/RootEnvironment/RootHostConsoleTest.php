@@ -93,7 +93,10 @@ it('says above every root-host page what it acts on', function (): void {
 
     // The platform's own environment: whose sign-in a change here reaches, over the page.
     expect($environment['kind'])->toBe('notice')
-        ->and((string) $environment['text'])->toContain('every organization owner and every operator')
+        ->and((string) $environment['text'])->toContain('The platform’s own environment on')
+        ->and((string) $environment['text'])->toContain('every sign-in')
+        // One line over every page, not the paragraph it was: the detail is in the docs.
+        ->and(mb_strlen((string) $environment['text']))->toBeLessThan(120)
         // Platform admin, in the same console: the whole deployment, where the amber strip
         // used to say it.
         ->and($platform['kind'])->toBe('notice')

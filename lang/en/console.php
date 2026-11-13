@@ -4934,4 +4934,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Declared by this app.',
     'staff_not_org_roles' => 'This page grants roles across the whole environment. A person\'s role inside one organization — Owner, Admin, Member and the rest — is set on that organization\'s Members page.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count more',
+    'apps_part_of' => 'Part of :product',
+    'apps_status_disabled' => 'Disabled',
+    'apps_status_disabled_hint' => 'It needs a client secret and holds none, so every token request it makes is refused.',
+    'apps_status_stale' => 'Idle 30+ days',
+    'banner_platform_environment' => ':name · The platform’s own environment on :host. Changes here reach every sign-in.',
+    'banner_platform_admin' => 'Platform admin: The whole deployment on :host. Changes here reach every organization.',
+    'banner_what_this_affects' => 'What this affects',
+    'user_access_since' => 'Since :when',
+    'user_access_since_label' => 'Since',
+    'user_access_none_offered' => 'None offered',
+    'user_access_edit_roles' => 'Edit app and custom roles in :organization',
+    'user_access_open_organization' => 'Open organization',
+    'app_and_custom_roles_in_part1' => 'App and custom roles in :part1',
+    'user_access_reaches' => 'Reaches',
+    // end console-polish
 ];

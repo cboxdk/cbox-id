@@ -4936,4 +4936,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Deklarerade av den här appen.',
     'staff_not_org_roles' => 'Den här sidan tilldelar roller i hela miljön. En persons roll i en enskild organisation (Ägare, Administratör, Medlem och så vidare) ställs in på den organisationens sida Medlemmar.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count till',
+    'apps_part_of' => 'Del av :product',
+    'apps_status_disabled' => 'Inaktiverad',
+    'apps_status_disabled_hint' => 'Den behöver en klienthemlighet och har ingen, så varje tokenbegäran avvisas.',
+    'apps_status_stale' => 'Oanvänd i 30+ dagar',
+    'banner_platform_environment' => ':name · Plattformens egen miljö på :host. Ändringar här påverkar varje inloggning.',
+    'banner_platform_admin' => 'Plattformsadmin: Hela installationen på :host. Ändringar här påverkar varje organisation.',
+    'banner_what_this_affects' => 'Vad detta påverkar',
+    'user_access_since' => 'Sedan :when',
+    'user_access_since_label' => 'Sedan',
+    'user_access_none_offered' => 'Inga erbjudna',
+    'user_access_edit_roles' => 'Redigera app- och anpassade roller i :organization',
+    'user_access_open_organization' => 'Öppna organisation',
+    'app_and_custom_roles_in_part1' => 'App- och anpassade roller i :part1',
+    'user_access_reaches' => 'Gäller',
+    // end console-polish
 ];

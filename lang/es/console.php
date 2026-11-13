@@ -4936,4 +4936,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Declarados por esta app.',
     'staff_not_org_roles' => 'Esta página asigna roles en todo el entorno. El rol de una persona dentro de una organización (Propietario, Administrador, Miembro y el resto) se establece en la página Miembros de esa organización.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count más',
+    'apps_part_of' => 'Parte de :product',
+    'apps_status_disabled' => 'Desactivada',
+    'apps_status_disabled_hint' => 'Necesita un secreto de cliente y no tiene ninguno, así que se rechaza cada solicitud de token.',
+    'apps_status_stale' => 'Sin uso en 30+ días',
+    'banner_platform_environment' => ':name · El entorno propio de la plataforma en :host. Los cambios aquí afectan a cada inicio de sesión.',
+    'banner_platform_admin' => 'Administración de la plataforma: Todo el despliegue en :host. Los cambios aquí afectan a cada organización.',
+    'banner_what_this_affects' => 'A qué afecta',
+    'user_access_since' => 'Desde :when',
+    'user_access_since_label' => 'Desde',
+    'user_access_none_offered' => 'Ninguno disponible',
+    'user_access_edit_roles' => 'Editar roles de app y personalizados en :organization',
+    'user_access_open_organization' => 'Abrir organización',
+    'app_and_custom_roles_in_part1' => 'Roles de app y personalizados en :part1',
+    'user_access_reaches' => 'Se aplica a',
+    // end console-polish
 ];

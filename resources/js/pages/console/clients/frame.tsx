@@ -32,6 +32,8 @@ export interface AppHeaderData {
     face: AppFace | null;
     /** The organization that owns it; null for an app the environment owns. */
     owner: string | null;
+    /** Switched off: it needs a client secret and holds no live one. */
+    disabled: boolean;
     tabs: LinkTab[];
     indexHref: string;
     /** Null for somebody who may only look at the app. */
@@ -86,6 +88,13 @@ export function AppFrame({
                                     {app.name}
                                 </h1>
                                 <Badge>{app.kindLabel}</Badge>
+                                {app.disabled && (
+                                    <span title={consoleT('console.apps_status_disabled_hint')}>
+                                        <Badge tone="danger">
+                                            {consoleT('console.apps_status_disabled')}
+                                        </Badge>
+                                    </span>
+                                )}
                                 {app.owner !== null && (
                                     <Badge>
                                         <Icon name="building" className="w-3 h-3" />

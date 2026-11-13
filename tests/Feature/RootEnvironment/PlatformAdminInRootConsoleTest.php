@@ -85,7 +85,7 @@ it('draws platform admin as the Platform area of the platform environment\'s con
 
     expect(collect($environment['areas'])->pluck('key')->first())->toBe('platform')
         ->and($environment['activeArea'])->toBe('Authentication')
-        ->and((string) $response->inertiaProps('shell.banner.text'))->toContain('every organization owner and every operator');
+        ->and((string) $response->inertiaProps('shell.banner.text'))->toContain('every sign-in');
 });
 
 it('keeps the Platform area lit on every page of it, detail pages included', function (): void {

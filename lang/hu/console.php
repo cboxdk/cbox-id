@@ -4936,4 +4936,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Ez az alkalmazás deklarálta.',
     'staff_not_org_roles' => 'Ez az oldal a teljes környezetben ad szerepköröket. Egy személy szerepkörét egy szervezeten belül (Tulajdonos, Adminisztrátor, Tag és a többi) az adott szervezet Tagok oldalán lehet beállítani.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count további',
+    'apps_part_of' => 'A(z) :product része',
+    'apps_status_disabled' => 'Letiltva',
+    'apps_status_disabled_hint' => 'Ügyféltitokra van szüksége, de nincs neki, ezért minden tokenkérését elutasítjuk.',
+    'apps_status_stale' => '30+ napja nem használt',
+    'banner_platform_environment' => ':name · A platform saját környezete itt: :host. Az itteni változások minden bejelentkezést érintenek.',
+    'banner_platform_admin' => 'Platformadminisztráció: A teljes telepítés itt: :host. Az itteni változások minden szervezetet érintenek.',
+    'banner_what_this_affects' => 'Mire hat ez',
+    'user_access_since' => 'Ekkor óta: :when',
+    'user_access_since_label' => 'Mióta',
+    'user_access_none_offered' => 'Nincs felkínálva',
+    'user_access_edit_roles' => 'Alkalmazás- és egyéni szerepkörök szerkesztése itt: :organization',
+    'user_access_open_organization' => 'Szervezet megnyitása',
+    'app_and_custom_roles_in_part1' => 'Alkalmazás- és egyéni szerepkörök itt: :part1',
+    'user_access_reaches' => 'Hatókör',
+    // end console-polish
 ];

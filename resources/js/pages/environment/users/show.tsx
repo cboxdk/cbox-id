@@ -3,7 +3,9 @@ import { LinkTabs } from '@/ui';
 import { EnvironmentReadOnly } from '@/ui/EnvironmentReadOnly';
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm, usePage } from '@inertiajs/react';
+import { MoreHorizontal, Pencil } from 'lucide-react';
 import { useState } from 'react';
+import { absoluteTime } from '@/lib/time';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { HelpContent, PageProps } from '@/types';
 import {
@@ -13,8 +15,13 @@ import {
     Breadcrumb,
     Button,
     Checkbox,
+    Combobox,
     ConfirmDelete,
     CopyButton,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
     EmptyState,
     Field,
     Help,
@@ -37,6 +44,12 @@ type AccessRole = AccessRoleOption;
 interface MembershipRow {
     organizationId: string;
     organizationName: string;
+    /** What a picker calls it: the name, with the slug where two share a name. */
+    organizationLabel: string;
+    /** Its slug: two organizations may share a name, never a slug. */
+    organizationSlug: string | null;
+    /** When they joined it. */
+    joinedAt: string | null;
     role: string;
     /** Owners and admins cannot be impersonated — stepping in would hand over a tenant. */
     managesOrganization: boolean;
@@ -91,6 +104,8 @@ type Props = PageProps<{
     joiningAccessRoles: AccessRole[];
     staffRoles: StaffRoleOption[];
     heldStaffRoles: string[];
+    /** Role id → when the person was first given it. */
+    staffRolesSince: Record<string, string>;
     staffHref: string;
     support: SupportProps;
     sessions: SessionRow[];
@@ -135,6 +150,7 @@ export default function UserDetail({
     joiningAccessRoles,
     staffRoles,
     heldStaffRoles,
+    staffRolesSince,
     staffHref,
     support,
     sessions,
@@ -227,6 +243,7 @@ export default function UserDetail({
                         <StaffRolesPanel
                             roles={staffRoles}
                             held={heldStaffRoles}
+                            since={staffRolesSince}
                             staffHref={staffHref}
                             href={urls.environmentRole}
                         />
@@ -815,9 +832,9 @@ function Sessions({
                                     )}
                                 </p>
                             </div>
+                            {/* One session, and they can sign in again: a quiet button, not a red one per row. */}
                             <Button
                                 size="sm"
-                                variant="danger"
                                 className="shrink-0"
                                 onClick={() =>
                                     router.delete(session.revokeHref, { preserveScroll: true })
@@ -849,10 +866,13 @@ function Sessions({
 }
 
 /**
- * WHERE THIS PERSON BELONGS, and what they can do there.
+ * ORGANIZATIONS — one compact row per membership.
  *
- * Two different questions on every row: the membership role governs who administers the
- * organization, and the access roles are what the person can do inside its apps.
+ * Each row says which organization (its name, and its slug, because two organizations may
+ * share a name), the built-in role as an inline picker, the app and custom roles as chips
+ * with a pencil to change them, and the rarer actions behind "⋯" — removal among them,
+ * confirmed. It used to be a tall card per organization with a full-width picker and a
+ * red button, so four memberships filled the screen.
  */
 function Organizations({
     user,
@@ -873,148 +893,227 @@ function Organizations({
     membershipRoles: RoleOption[];
     urls: Props['urls'];
 }) {
-    const { t: consoleAttributeText } = useConsoleTranslator();
-    const { t: consoleFinalText } = useConsoleTranslator();
-
-    const { t: consoleUiText } = useConsoleTranslator();
-    const { t: consoleText } = useConsoleTranslator();
-    const { rich: consoleRich } = useConsoleTranslator();
-    const { t: consoleT } = useConsoleTranslator();
+    const { t, rich, locale } = useConsoleTranslator();
     const [managing, setManaging] = useState<string | null>(null);
     const [removing, setRemoving] = useState<MembershipRow | null>(null);
 
     return (
         <Panel
-            title={consoleT('console.organizations_2730183d')}
-            description={
-                <>
-                    {consoleRich(
-                        'console.each_organization_gives_them_one_part1_what_they_may_ad_69f922a2',
-                        {
-                            part1: <b>{consoleT('console.built_in_role_59a06e31')}</b>,
-                            part2: <b>{consoleT('console.app_and_custom_roles_5ccc5c71')}</b>,
-                        },
-                    )}
-                </>
-            }
+            title={t('console.organizations_2730183d')}
+            description={rich(
+                'console.each_organization_gives_them_one_part1_what_they_may_ad_69f922a2',
+                {
+                    part1: <b>{t('console.built_in_role_59a06e31')}</b>,
+                    part2: <b>{t('console.app_and_custom_roles_5ccc5c71')}</b>,
+                },
+            )}
         >
             <div className="space-y-4">
-                <div className="space-y-2">
-                    {memberships.length === 0 ? (
-                        <EmptyState
-                            icon="layers"
-                            title={consoleT('console.not_a_member_of_any_organization_49453904')}
-                            description={consoleT(
-                                'console.add_them_to_one_below_to_grant_access_inside_it_or_if_y_386e5f3c',
-                            )}
-                        />
-                    ) : (
-                        memberships.map((membership) => (
-                            <div
-                                key={membership.organizationId}
-                                className="rounded-lg border px-3 py-2"
-                                style={{ borderColor: 'var(--border)' }}
-                            >
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <Link
-                                        href={membership.href}
-                                        className="min-w-0 flex-1 truncate text-sm font-medium"
-                                        style={{ color: 'var(--accent-strong)' }}
-                                    >
-                                        {membership.organizationName}
-                                    </Link>
+                {memberships.length === 0 ? (
+                    <EmptyState
+                        icon="layers"
+                        title={t('console.not_a_member_of_any_organization_49453904')}
+                        description={t(
+                            'console.add_them_to_one_below_to_grant_access_inside_it_or_if_y_386e5f3c',
+                        )}
+                    />
+                ) : (
+                    <div className="idc-access">
+                        <div className="idc-access-head" aria-hidden>
+                            <span>{t('console.organization_d764d425')}</span>
+                            <span>{t('console.built_in_role_9f680a16')}</span>
+                            <span>{t('console.app_and_custom_roles_ecb0207e')}</span>
+                            <span />
+                        </div>
+                        <ul className="idc-access-list">
+                            {memberships.map((membership) => {
+                                const held = membership.accessRoles.filter((role) =>
+                                    membership.accessRoleIds.includes(role.id),
+                                );
+                                const open = managing === membership.organizationId;
 
-                                    <Select
-                                        aria-label={consoleFinalText(
-                                            'console.built_in_role_in_part1_de1834ee',
-                                            { part1: membership.organizationName },
-                                        )}
-                                        value={membership.role}
-                                        onValueChange={(role) =>
-                                            router.patch(
-                                                membership.urls.role,
-                                                { role },
-                                                { preserveScroll: true },
-                                            )
-                                        }
-                                        options={roleSelectOptions(membershipRoles)}
-                                    />
+                                return (
+                                    <li key={membership.organizationId}>
+                                        <div className="idc-access-row">
+                                            <div className="idc-access-who">
+                                                <Link
+                                                    href={membership.href}
+                                                    className="idc-access-name"
+                                                >
+                                                    {membership.organizationName}
+                                                </Link>
+                                                <span className="idc-access-sub">
+                                                    <span className="mono">
+                                                        {membership.organizationSlug ??
+                                                            membership.organizationId.slice(-8)}
+                                                    </span>
+                                                    {membership.joinedAt !== null && (
+                                                        <span
+                                                            title={absoluteTime(
+                                                                membership.joinedAt,
+                                                                locale,
+                                                            )}
+                                                        >
+                                                            {t('console.user_access_since', {
+                                                                when: shortDate(
+                                                                    membership.joinedAt,
+                                                                    locale,
+                                                                ),
+                                                            })}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </div>
 
-                                    <Button
-                                        size="sm"
-                                        variant="danger"
-                                        className="shrink-0"
-                                        onClick={() => setRemoving(membership)}
-                                    >
-                                        {consoleT('console.remove_c3812fc4')}
-                                    </Button>
-                                </div>
-
-                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                                    <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                                        {consoleT('console.roles_47d6de66')}
-                                    </span>
-
-                                    {membership.accessRoleIds.length === 0 ? (
-                                        <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                                            {consoleT('console.none_dc937b59')}
-                                        </span>
-                                    ) : (
-                                        membership.accessRoles
-                                            .filter((role) =>
-                                                membership.accessRoleIds.includes(role.id),
-                                            )
-                                            .map((role) => <Badge key={role.id}>{role.name}</Badge>)
-                                    )}
-
-                                    {membership.accessRoles.length > 0 && (
-                                        <Button
-                                            size="sm"
-                                            aria-expanded={managing === membership.organizationId}
-                                            onClick={() =>
-                                                setManaging((current) =>
-                                                    current === membership.organizationId
-                                                        ? null
-                                                        : membership.organizationId,
-                                                )
-                                            }
-                                        >
-                                            {managing === membership.organizationId
-                                                ? consoleText('console.done_11a6767d')
-                                                : consoleText('console.manage_5a234448')}
-                                        </Button>
-                                    )}
-                                </div>
-
-                                {managing === membership.organizationId && (
-                                    <div
-                                        className="mt-3 rounded-lg p-3 grid gap-2 sm:grid-cols-2"
-                                        style={{
-                                            background:
-                                                'color-mix(in oklch, var(--secondary) 55%, transparent)',
-                                        }}
-                                    >
-                                        {membership.accessRoles.map((role) => (
-                                            <Checkbox
-                                                key={role.id}
-                                                checked={membership.accessRoleIds.includes(role.id)}
-                                                onCheckedChange={(granted) =>
-                                                    router.post(
-                                                        membership.urls.accessRole,
-                                                        { role: role.id, granted },
+                                            <Select
+                                                className="idc-access-role"
+                                                aria-label={t(
+                                                    'console.built_in_role_in_part1_de1834ee',
+                                                    {
+                                                        part1: membership.organizationName,
+                                                    },
+                                                )}
+                                                value={membership.role}
+                                                onValueChange={(role) =>
+                                                    router.patch(
+                                                        membership.urls.role,
+                                                        { role },
                                                         { preserveScroll: true },
                                                     )
                                                 }
-                                                label={role.name}
-                                                hint={<AccessRoleHint role={role} />}
+                                                options={roleSelectOptions(membershipRoles)}
                                             />
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        ))
-                    )}
-                </div>
+
+                                            <div className="idc-access-chips">
+                                                {held.length === 0 ? (
+                                                    <span className="idc-access-none">
+                                                        {membership.accessRoles.length === 0
+                                                            ? t('console.user_access_none_offered')
+                                                            : t('console.none_dc937b59')}
+                                                    </span>
+                                                ) : (
+                                                    held.map((role) => (
+                                                        <Badge key={role.id}>{role.name}</Badge>
+                                                    ))
+                                                )}
+                                                {membership.accessRoles.length > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        className="idc-access-edit"
+                                                        aria-expanded={open}
+                                                        aria-label={t(
+                                                            'console.user_access_edit_roles',
+                                                            {
+                                                                organization:
+                                                                    membership.organizationName,
+                                                            },
+                                                        )}
+                                                        title={t('console.edit_roles_3b3489d0')}
+                                                        onClick={() =>
+                                                            setManaging(
+                                                                open
+                                                                    ? null
+                                                                    : membership.organizationId,
+                                                            )
+                                                        }
+                                                    >
+                                                        <Pencil
+                                                            className="h-3.5 w-3.5"
+                                                            aria-hidden
+                                                        />
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button
+                                                        size="sm"
+                                                        className="idc-access-more"
+                                                        aria-label={t(
+                                                            'console.more_actions_for_part1_b26d24f6',
+                                                            { part1: membership.organizationName },
+                                                        )}
+                                                    >
+                                                        <MoreHorizontal
+                                                            className="h-4 w-4"
+                                                            aria-hidden
+                                                        />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent>
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href={membership.href}>
+                                                            {t(
+                                                                'console.user_access_open_organization',
+                                                            )}
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                    {membership.accessRoles.length > 0 && (
+                                                        <DropdownMenuItem
+                                                            onSelect={() =>
+                                                                setManaging(
+                                                                    membership.organizationId,
+                                                                )
+                                                            }
+                                                        >
+                                                            {t('console.edit_roles_3b3489d0')}
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    <DropdownMenuItem
+                                                        destructive
+                                                        onSelect={() => setRemoving(membership)}
+                                                    >
+                                                        {t(
+                                                            'console.remove_from_organization_2416fd1f',
+                                                        )}
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+
+                                        {open && (
+                                            <div className="idc-access-editor">
+                                                <p className="idc-access-sub">
+                                                    {t('console.app_and_custom_roles_in_part1', {
+                                                        part1: membership.organizationName,
+                                                    })}
+                                                </p>
+                                                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                                    {membership.accessRoles.map((role) => (
+                                                        <Checkbox
+                                                            key={role.id}
+                                                            checked={membership.accessRoleIds.includes(
+                                                                role.id,
+                                                            )}
+                                                            onCheckedChange={(granted) =>
+                                                                router.post(
+                                                                    membership.urls.accessRole,
+                                                                    { role: role.id, granted },
+                                                                    { preserveScroll: true },
+                                                                )
+                                                            }
+                                                            label={role.name}
+                                                            hint={<AccessRoleHint role={role} />}
+                                                        />
+                                                    ))}
+                                                </div>
+                                                <div className="mt-3">
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => setManaging(null)}
+                                                    >
+                                                        {t('console.done_11a6767d')}
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    </div>
+                )}
 
                 <AddToOrganization
                     joinable={joinableOrganizations}
@@ -1029,9 +1128,9 @@ function Organizations({
                 open={removing !== null}
                 onOpenChange={(open) => !open && setRemoving(null)}
                 name={user.email}
-                title={consoleUiText('console.remove_user_membership_title', { name: user.email })}
-                verb={consoleAttributeText('console.remove_c3812fc4')}
-                consequence={consoleUiText(
+                title={t('console.remove_user_membership_title', { name: user.email })}
+                verb={t('console.remove_c3812fc4')}
+                consequence={t(
                     'console.they_lose_every_role_this_organization_grants_them_imme_81e63573',
                 )}
                 onConfirm={() => {
@@ -1047,6 +1146,11 @@ function Organizations({
     );
 }
 
+/** A date without the time — "12 Nov 2026" — for a row's "since". */
+function shortDate(iso: string, locale: string): string {
+    return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(iso));
+}
+
 /**
  * STAFF ROLES — grants that name no organization.
  *
@@ -1054,23 +1158,24 @@ function Organizations({
  * acting across all of them, somebody who has joined none, or an app with no tenancy of
  * its own to hang a grant on. An app's own role granted here reaches only that app's
  * tokens; a role for all apps reaches every one.
+ *
+ * One row per grant — the role, the app it reaches and since when — with taking it back
+ * behind "⋯" and confirmed, rather than a red button on every row.
  */
 function StaffRolesPanel({
     roles,
     held,
+    since,
     staffHref,
     href,
 }: {
     roles: StaffRoleOption[];
     held: string[];
+    since: Record<string, string>;
     staffHref: string;
     href: string;
 }) {
-    const { t: consoleFinalText } = useConsoleTranslator();
-
-    const { t: consoleUiText } = useConsoleTranslator();
-    const { rich: consoleRich } = useConsoleTranslator();
-    const { t: consoleT } = useConsoleTranslator();
+    const { t, rich, locale } = useConsoleTranslator();
     const [role, setRole] = useState('');
     const [takingBack, setTakingBack] = useState<StaffRoleOption | null>(null);
     const { errors } = usePage().props;
@@ -1079,69 +1184,86 @@ function StaffRolesPanel({
 
     return (
         <Panel
-            title={consoleT('console.admin_support_roles_19f22d25')}
-            description={
-                <>
-                    {consoleRich(
-                        'console.roles_held_across_the_whole_environment_in_every_organi_eb64cef7',
-                        {
-                            part1: ' ',
-                            part2: (
-                                <Link
-                                    href={staffHref}
-                                    className="underline underline-offset-2"
-                                    style={{ color: 'var(--accent-strong)' }}
-                                >
-                                    {consoleT(
-                                        'console.everyone_with_an_admin_support_role_e0389623',
-                                    )}
-                                </Link>
-                            ),
-                        },
-                    )}
-                </>
-            }
+            title={t('console.admin_support_roles_19f22d25')}
+            description={rich(
+                'console.roles_held_across_the_whole_environment_in_every_organi_eb64cef7',
+                {
+                    part1: ' ',
+                    part2: (
+                        <Link
+                            href={staffHref}
+                            className="underline underline-offset-2"
+                            style={{ color: 'var(--accent-strong)' }}
+                        >
+                            {t('console.everyone_with_an_admin_support_role_e0389623')}
+                        </Link>
+                    ),
+                },
+            )}
         >
-            <div className="space-y-3">
+            <div className="space-y-4">
                 {holding.length === 0 ? (
                     <p className="text-sm" style={{ color: 'var(--faint)' }}>
-                        {consoleT('console.no_admin_support_roles_7e88c28f')}
+                        {t('console.no_admin_support_roles_7e88c28f')}
                     </p>
                 ) : (
-                    <ul className="space-y-2">
-                        {holding.map((staffRole) => (
-                            <li
-                                key={staffRole.id}
-                                className="flex items-center gap-2 rounded-lg border px-3 py-2"
-                                style={{ borderColor: 'var(--border)' }}
-                            >
-                                <span className="min-w-0 flex-1">
-                                    <span className="block truncate text-sm font-medium">
-                                        {staffRole.name}
-                                    </span>
-                                    <span
-                                        className="block truncate text-xs"
-                                        style={{ color: 'var(--faint)' }}
-                                    >
-                                        {staffRoleScope(staffRole)}
-                                    </span>
-                                </span>
-                                <Button
-                                    size="sm"
-                                    variant="danger"
-                                    className="shrink-0"
-                                    onClick={() => setTakingBack(staffRole)}
+                    <div className="idc-access">
+                        <div className="idc-access-head idc-access-head-staff" aria-hidden>
+                            <span>{t('console.role_14736a2e')}</span>
+                            <span>{t('console.user_access_reaches')}</span>
+                            <span>{t('console.user_access_since_label')}</span>
+                            <span />
+                        </div>
+                        <ul className="idc-access-list">
+                            {holding.map((staffRole) => (
+                                <li
+                                    key={staffRole.id}
+                                    className="idc-access-row idc-access-row-staff"
                                 >
-                                    {consoleT('console.take_back_7d2a64f5')}
-                                </Button>
-                            </li>
-                        ))}
-                    </ul>
+                                    <span className="idc-access-name">{staffRole.name}</span>
+                                    <span className="idc-access-sub">
+                                        {staffRoleScope(staffRole, t('console.all_apps_01bed311'))}
+                                    </span>
+                                    <span className="idc-access-sub">
+                                        {(() => {
+                                            const at = since[staffRole.id];
+
+                                            return at === undefined ? '—' : shortDate(at, locale);
+                                        })()}
+                                    </span>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button
+                                                size="sm"
+                                                className="idc-access-more"
+                                                aria-label={t(
+                                                    'console.more_actions_for_part1_b26d24f6',
+                                                    {
+                                                        part1: staffRole.name,
+                                                    },
+                                                )}
+                                            >
+                                                <MoreHorizontal className="h-4 w-4" aria-hidden />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuItem
+                                                destructive
+                                                onSelect={() => setTakingBack(staffRole)}
+                                            >
+                                                {t('console.take_back_7d2a64f5')}
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
                 )}
 
                 {offered.length > 0 && (
                     <form
-                        className="grid gap-2 sm:grid-cols-[1fr_auto] items-start"
+                        className="idc-access-add"
                         onSubmit={(event) => {
                             event.preventDefault();
 
@@ -1157,17 +1279,17 @@ function StaffRolesPanel({
                         }}
                     >
                         <Field
-                            label={consoleT('console.grant_an_admin_support_role_ebbcd7de')}
+                            label={t('console.grant_an_admin_support_role_ebbcd7de')}
                             error={errors.staffRole}
                         >
                             <StaffRolePicker roles={offered} value={role} onValueChange={setRole} />
                         </Field>
                         <Button
                             type="submit"
-                            className="shrink-0 sm:self-end"
+                            className="idc-access-add-button"
                             disabled={role === ''}
                         >
-                            {consoleT('console.grant_78b7d037')}
+                            {t('console.grant_78b7d037')}
                         </Button>
                     </form>
                 )}
@@ -1177,11 +1299,11 @@ function StaffRolesPanel({
                 open={takingBack !== null}
                 onOpenChange={(open) => !open && setTakingBack(null)}
                 name={takingBack?.name ?? ''}
-                title={consoleFinalText('console.take_back_the_admin_support_role_part1_9287a559', {
+                title={t('console.take_back_the_admin_support_role_part1_9287a559', {
                     part1: takingBack?.name ?? '',
                 })}
-                actionLabel={consoleUiText('console.take_back_7d2a64f5')}
-                consequence={consoleUiText(
+                actionLabel={t('console.take_back_7d2a64f5')}
+                consequence={t(
                     'console.they_lose_this_role_in_every_organization_at_once_apps_39477fda',
                 )}
                 onConfirm={() => {
@@ -1222,8 +1344,7 @@ function AddToOrganization({
     assignableRoles: RoleOption[];
     href: string;
 }) {
-    const { t: consoleUiText } = useConsoleTranslator();
-    const { t: consoleT } = useConsoleTranslator();
+    const { t } = useConsoleTranslator();
     const form = useForm({
         organization: joining,
         role: 'member',
@@ -1254,20 +1375,20 @@ function AddToOrganization({
                 });
             }}
         >
-            <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto] items-start">
+            <div className="idc-access-add idc-access-add-org">
                 <Field
-                    label={consoleT('console.add_to_organization_0e0cb636')}
+                    label={t('console.add_to_organization_0e0cb636')}
                     error={form.errors.organization}
                 >
-                    <Select
+                    <Combobox
                         value={form.data.organization === '' ? undefined : form.data.organization}
                         onValueChange={choose}
-                        placeholder={consoleUiText('console.find_an_organization_eb2523db')}
+                        placeholder={t('console.find_an_organization_eb2523db')}
                         options={joinable}
                     />
                 </Field>
 
-                <Field label={consoleT('console.built_in_role_9f680a16')} error={form.errors.role}>
+                <Field label={t('console.built_in_role_9f680a16')} error={form.errors.role}>
                     <Select
                         value={form.data.role}
                         onValueChange={(role) => form.setData('role', role)}
@@ -1279,18 +1400,17 @@ function AddToOrganization({
                     type="submit"
                     variant="primary"
                     loading={form.processing}
-                    className="shrink-0 self-end"
+                    className="idc-access-add-button"
+                    disabled={form.data.organization === ''}
                 >
-                    {consoleT('console.add_9fd728c6')}
+                    {t('console.add_9fd728c6')}
                 </Button>
             </div>
 
             {form.data.organization !== '' && accessRoles.length > 0 && (
                 <div>
                     <p className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        {consoleT(
-                            'console.app_and_custom_roles_granted_immediately_optional_313d930a',
-                        )}
+                        {t('console.app_and_custom_roles_granted_immediately_optional_313d930a')}
                     </p>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                         {accessRoles.map((role) => (
@@ -1524,7 +1644,7 @@ function Impersonation({ memberships, href }: { memberships: MembershipRow[]; hr
                             }
                             options={impersonatable.map((membership) => ({
                                 value: membership.organizationId,
-                                label: membership.organizationName,
+                                label: membership.organizationLabel,
                             }))}
                         />
                     </Field>
@@ -1556,13 +1676,13 @@ function Impersonation({ memberships, href }: { memberships: MembershipRow[]; hr
                 name={
                     impersonatable.find(
                         (membership) => membership.organizationId === form.data.organization,
-                    )?.organizationName ?? ''
+                    )?.organizationLabel ?? ''
                 }
                 title={consoleUiText('console.impersonate_organization_title', {
                     name:
                         impersonatable.find(
                             (membership) => membership.organizationId === form.data.organization,
-                        )?.organizationName ?? '',
+                        )?.organizationLabel ?? '',
                 })}
                 verb={consoleAttributeText('console.impersonate_f78577dc')}
                 consequence={consoleUiText(

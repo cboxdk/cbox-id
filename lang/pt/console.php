@@ -4936,4 +4936,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Declaradas por esta aplicação.',
     'staff_not_org_roles' => 'Esta página atribui funções em todo o ambiente. A função de uma pessoa dentro de uma organização (Proprietário, Administrador, Membro e as restantes) é definida na página Membros dessa organização.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count mais',
+    'apps_part_of' => 'Parte de :product',
+    'apps_status_disabled' => 'Desativada',
+    'apps_status_disabled_hint' => 'Precisa de um segredo de cliente e não tem nenhum, por isso cada pedido de token é recusado.',
+    'apps_status_stale' => 'Sem uso há 30+ dias',
+    'banner_platform_environment' => ':name · O ambiente próprio da plataforma em :host. As alterações aqui afetam cada início de sessão.',
+    'banner_platform_admin' => 'Administração da plataforma: Toda a implementação em :host. As alterações aqui afetam cada organização.',
+    'banner_what_this_affects' => 'O que isto afeta',
+    'user_access_since' => 'Desde :when',
+    'user_access_since_label' => 'Desde',
+    'user_access_none_offered' => 'Nenhuma disponível',
+    'user_access_edit_roles' => 'Editar funções de app e personalizadas em :organization',
+    'user_access_open_organization' => 'Abrir organização',
+    'app_and_custom_roles_in_part1' => 'Funções de app e personalizadas em :part1',
+    'user_access_reaches' => 'Aplica-se a',
+    // end console-polish
 ];

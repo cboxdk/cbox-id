@@ -4936,4 +4936,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Gedeclareerd door deze app.',
     'staff_not_org_roles' => 'Deze pagina kent rollen toe in de hele omgeving. De rol van een persoon binnen één organisatie (Eigenaar, Beheerder, Lid en de rest) stel je in op de pagina Leden van die organisatie.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count meer',
+    'apps_part_of' => 'Onderdeel van :product',
+    'apps_status_disabled' => 'Uitgeschakeld',
+    'apps_status_disabled_hint' => 'Het heeft een clientgeheim nodig en heeft er geen, dus elk tokenverzoek wordt geweigerd.',
+    'apps_status_stale' => '30+ dagen ongebruikt',
+    'banner_platform_environment' => ':name · De eigen omgeving van het platform op :host. Wijzigingen hier raken elke aanmelding.',
+    'banner_platform_admin' => 'Platformbeheer: De hele installatie op :host. Wijzigingen hier raken elke organisatie.',
+    'banner_what_this_affects' => 'Waar dit invloed op heeft',
+    'user_access_since' => 'Sinds :when',
+    'user_access_since_label' => 'Sinds',
+    'user_access_none_offered' => 'Geen aangeboden',
+    'user_access_edit_roles' => 'App- en aangepaste rollen in :organization bewerken',
+    'user_access_open_organization' => 'Organisatie openen',
+    'app_and_custom_roles_in_part1' => 'App- en aangepaste rollen in :part1',
+    'user_access_reaches' => 'Geldt voor',
+    // end console-polish
 ];

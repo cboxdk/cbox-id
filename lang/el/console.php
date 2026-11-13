@@ -4936,4 +4936,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Δηλωμένες από αυτή την εφαρμογή.',
     'staff_not_org_roles' => 'Αυτή η σελίδα αναθέτει ρόλους σε όλο το περιβάλλον. Ο ρόλος ενός ατόμου μέσα σε έναν οργανισμό (Ιδιοκτήτης, Διαχειριστής, Μέλος και οι υπόλοιποι) ορίζεται στη σελίδα Μέλη αυτού του οργανισμού.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count ακόμη',
+    'apps_part_of' => 'Μέρος του :product',
+    'apps_status_disabled' => 'Απενεργοποιημένη',
+    'apps_status_disabled_hint' => 'Χρειάζεται μυστικό πελάτη και δεν έχει κανένα, οπότε κάθε αίτημα token απορρίπτεται.',
+    'apps_status_stale' => 'Αχρησιμοποίητη 30+ ημέρες',
+    'banner_platform_environment' => ':name · Το δικό περιβάλλον της πλατφόρμας στο :host. Οι αλλαγές εδώ αφορούν κάθε σύνδεση.',
+    'banner_platform_admin' => 'Διαχείριση πλατφόρμας: Ολόκληρη η εγκατάσταση στο :host. Οι αλλαγές εδώ αφορούν κάθε οργανισμό.',
+    'banner_what_this_affects' => 'Τι επηρεάζει',
+    'user_access_since' => 'Από :when',
+    'user_access_since_label' => 'Από',
+    'user_access_none_offered' => 'Δεν προσφέρονται',
+    'user_access_edit_roles' => 'Επεξεργασία ρόλων εφαρμογών και προσαρμοσμένων ρόλων στο :organization',
+    'user_access_open_organization' => 'Άνοιγμα οργανισμού',
+    'app_and_custom_roles_in_part1' => 'Ρόλοι εφαρμογών και προσαρμοσμένοι ρόλοι στο :part1',
+    'user_access_reaches' => 'Ισχύει για',
+    // end console-polish
 ];

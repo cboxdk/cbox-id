@@ -4936,4 +4936,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Декларирани от това приложение.',
     'staff_not_org_roles' => 'Тази страница дава роли в цялата среда. Ролята на човек в рамките на една организация (Собственик, Администратор, Член и останалите) се задава на страницата „Членове“ на съответната организация.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count още',
+    'apps_part_of' => 'Част от :product',
+    'apps_status_disabled' => 'Деактивирано',
+    'apps_status_disabled_hint' => 'Нуждае се от клиентска тайна и няма такава, затова всяка заявка за токен се отказва.',
+    'apps_status_stale' => 'Неизползвано 30+ дни',
+    'banner_platform_environment' => ':name · Собствената среда на платформата на :host. Промените тук засягат всяко влизане.',
+    'banner_platform_admin' => 'Администрация на платформата: Цялата инсталация на :host. Промените тук засягат всяка организация.',
+    'banner_what_this_affects' => 'Какво засяга',
+    'user_access_since' => 'От :when',
+    'user_access_since_label' => 'От',
+    'user_access_none_offered' => 'Няма предложени',
+    'user_access_edit_roles' => 'Редактиране на роли на приложения и персонализирани роли в :organization',
+    'user_access_open_organization' => 'Отваряне на организацията',
+    'app_and_custom_roles_in_part1' => 'Роли на приложения и персонализирани роли в :part1',
+    'user_access_reaches' => 'Важи за',
+    // end console-polish
 ];
