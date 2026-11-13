@@ -406,6 +406,9 @@ it('holds a change to how an organization signs in, and lets a Write through', f
     $workspace = app(PlatformRoot::class)->run(fn () => app(Organizations::class)->create(new NewOrganization('Enterprise organization', 'enterprise-workspace')));
     $project = app(Projects::class)->createForOrganization($workspace->id, 'Enterprise');
     Environment::query()->whereKey('env_test')->update(['project_id' => $project->id]);
+    // The key's minter runs that workspace: an approver must still hold the workspace.
+    $owner = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->findByEmail('owner@governance.test')?->id);
+    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->add($workspace->id, (string) $owner, MembershipRole::Owner));
     grantFeature($org, 'cbox-id-sso');
     $connection = app(Connections::class)->create($org, ConnectionType::Saml, 'Okta', [
         'idp_entity_id' => 'https://idp.example', 'idp_sso_url' => 'https://idp.example/sso', 'idp_x509cert' => 'MIIC',

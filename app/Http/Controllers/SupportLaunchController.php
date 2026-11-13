@@ -45,7 +45,7 @@ final class SupportLaunchController extends Controller
         abort_unless(Cache::add('cbox.support_launch.'.$active->id, true, self::TTL), 404);
 
         // The administrator who started it must still administer this environment.
-        abort_unless($admins->administers((string) $active->actor_id, $environment), 404);
+        abort_unless($admins->managesNow((string) $active->actor_id, $environment), 404);
 
         $handoff->put((string) $active->client_id, (string) $active->id, (string) $active->actor_id, LaunchTicket::redeem(request()->query('ticket')));
 

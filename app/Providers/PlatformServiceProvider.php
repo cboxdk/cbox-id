@@ -28,10 +28,17 @@ use App\Platform\Invitations\Contracts\OrganizationInvitations;
 use App\Platform\Invitations\Contracts\TeamInvitations;
 use App\Platform\Invitations\OrganizationInvitationService;
 use App\Platform\Invitations\TeamInvitationService;
+use App\Platform\Lifecycle\ActiveSubjectPipeTokens;
+use App\Platform\Lifecycle\StandingDirectories;
+use App\Platform\Lifecycle\WithdrawingPasswordReset;
 use App\Platform\Locale\HostedLocales;
 use App\Platform\Locale\HostedTranslations;
 use App\Platform\OAuth\AuthorizationOrganizationService;
 use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
+use App\Platform\OAuth\GrantWithdrawal;
+use App\Platform\OAuth\StandingTokenIntrospector;
+use App\Platform\OAuth\StandingTokenIssuer;
+use App\Platform\OAuth\WithdrawingRefreshTokens;
 use App\Platform\OpenEntitlements;
 use App\Platform\OperatorMfa;
 use App\Platform\Operators\OperatorAssurance;
@@ -44,21 +51,32 @@ use App\Platform\SupportAccess\ConsoleSupportAccess;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\TrustedHosts;
 use Cbox\Id\Api\Http\Controllers\EndSessionController;
+use Cbox\Id\Directory\Contracts\Directories;
 use Cbox\Id\FrontendApi\Contracts\FrontendConfigContributor;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Identity\Contracts\MfaMandate;
 use Cbox\Id\Identity\Contracts\MfaVerification;
+use Cbox\Id\Identity\Contracts\PasswordReset;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\SignedInSession;
 use Cbox\Id\Identity\Contracts\SignedInSubject;
+use Cbox\Id\Identity\Contracts\SubjectGrantRevoker;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Authorization\CachedEntitlements;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
 use Cbox\Id\Migration\Contracts\LegacyCredentialSource;
 use Cbox\Id\Migration\Sources\DeclaredCredentialSource;
+use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
+use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
+use Cbox\Id\OAuthServer\Contracts\TokenIssuer;
+use Cbox\Id\OAuthServer\Models\AccessToken;
+use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\Models\RefreshToken;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Models\Environment;
+use Cbox\Id\Pipes\Contracts\PipeTokens;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Routing\UrlGenerator;
 use Illuminate\Support\Facades\Event;
@@ -191,6 +209,33 @@ final class PlatformServiceProvider extends ServiceProvider
             $inner,
             $app->make(SessionManager::class),
             $app->make(Memberships::class),
+            $app->make(GrantWithdrawal::class),
+        ));
+
+        // GRANTS AND TOKENS THAT OUTLIVE THE DECISION THAT ENDED THEM. One question each,
+        // asked where every path already passes, rather than at each door:
+        //  - the issuer mints nothing for a suspended or archived organization, by any
+        //    grant ({@see StandingTokenIssuer});
+        //  - introspection, which every first-party consumer and token exchange ask, calls
+        //    a token inactive once its organization is closed or its app deleted
+        //    ({@see StandingTokenIntrospector});
+        //  - a withdrawn grant takes its app's access tokens with it, and a closed
+        //    organization's refresh token is refused before it is consumed
+        //    ({@see WithdrawingRefreshTokens});
+        //  - a closed organization's SCIM token stops authenticating ({@see StandingDirectories});
+        //  - a deactivated person's pipe tokens are neither leased nor renewed
+        //    ({@see ActiveSubjectPipeTokens});
+        //  - a password reset withdraws the person's app grants ({@see WithdrawingPasswordReset}).
+        // A ROLE CHANGE IS NONE OF THESE: it revokes nothing (see boot()).
+        $this->app->extend(TokenIssuer::class, static fn (TokenIssuer $inner): TokenIssuer => new StandingTokenIssuer($inner));
+        $this->app->extend(TokenIntrospector::class, static fn (TokenIntrospector $inner): TokenIntrospector => new StandingTokenIntrospector($inner));
+        $this->app->extend(RefreshTokens::class, static fn (RefreshTokens $inner): RefreshTokens => new WithdrawingRefreshTokens($inner));
+        $this->app->extend(Directories::class, static fn (Directories $inner): Directories => new StandingDirectories($inner));
+        $this->app->extend(PipeTokens::class, static fn (PipeTokens $inner, Application $app): PipeTokens => new ActiveSubjectPipeTokens($inner, $app->make(Subjects::class)));
+        $this->app->extend(PasswordReset::class, static fn (PasswordReset $inner, Application $app): PasswordReset => new WithdrawingPasswordReset(
+            $inner,
+            $app->make(Subjects::class),
+            $app->make(SubjectGrantRevoker::class),
         ));
 
         // Live feature defaults; hosted inclusive security is independent of billing admission.
@@ -281,6 +326,20 @@ final class PlatformServiceProvider extends ServiceProvider
 
         Environment::deleted(static function (): void {
             TrustedHosts::forget();
+        });
+
+        /*
+         * A DELETED APP'S TOKENS DIE WITH IT. Deleting an app (the console, `apps.delete`,
+         * an RFC 7592 self-delete) removed the client row and left every access and refresh
+         * token it had been issued live, so the app an administrator deleted to cut it off
+         * kept pushing its manifest and being reported active until its tokens expired.
+         * RFC 7592 §2.3: the server SHOULD invalidate them. On the model, like the framework's
+         * own secret cleanup, so no delete path can route around it; introspection also
+         * refuses a token whose app is gone ({@see StandingTokenIntrospector}).
+         */
+        Client::deleted(static function (Client $client): void {
+            AccessToken::query()->where('client_id', $client->client_id)->whereNull('revoked_at')->update(['revoked_at' => now()]);
+            RefreshToken::query()->where('client_id', $client->client_id)->whereNull('revoked_at')->update(['revoked_at' => now()]);
         });
 
         /*

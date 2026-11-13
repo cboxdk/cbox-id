@@ -9,6 +9,7 @@ use App\Http\Middleware\Authenticate;
 use App\Http\Requests\Auth\ChangePasswordRequest;
 use App\Platform\CurrentUser;
 use App\Platform\IntendedUrl;
+use App\Platform\Lifecycle\EndOtherSessions;
 use App\Platform\Surfaces\ReturnUrl;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
@@ -59,6 +60,7 @@ final readonly class ChangePasswordController extends PageController
         AdminPasswords $admin,
         PasswordExpiry $expiry,
         CurrentUser $me,
+        EndOtherSessions $sessions,
     ): RedirectResponse {
         /*
          * Only somebody the middleware is actually HOLDING here may set a password here.
@@ -79,6 +81,11 @@ final readonly class ChangePasswordController extends PageController
         // Only NOW is the requirement satisfied. Clearing it before the write would
         // release the hold on a password the policy might still refuse.
         $admin->clear($me->id());
+
+        // A changed password ends every other session and the apps they signed in to, as it
+        // does on the account page: a session opened with the old password must not outlive
+        // it. The one making the change stays ({@see EndOtherSessions}).
+        $sessions->handle($me->id(), $me->session()?->id);
 
         // On to where they were going when the hold caught them: an app's authorization
         // (`/oauth/authorize` holds for this too, and waits in the session), else the

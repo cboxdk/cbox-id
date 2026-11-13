@@ -13,8 +13,11 @@ use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
+use Cbox\Id\Platform\Contracts\PlatformOperators;
 use Cbox\Id\Platform\Models\EnvironmentApiKey;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
+use Cbox\Id\Platform\Models\Project;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Str;
 
@@ -87,8 +90,54 @@ final readonly class EnvironmentKeyPrincipal implements Principal
      * The person behind this key: whoever minted it in the console, or — for a key minted by
      * a key — whoever minted the first key in that chain, across into the workspace when a
      * workspace key minted it. A chain that ends in no person has nobody to ask.
+     *
+     * …AND ONLY WHILE THEY STILL HOLD THE AUTHORITY KEYS ARE MINTED WITH. The minting chain
+     * is history; the authority to approve is not. An administrator removed from the
+     * workspace or demoted to a read-only role stayed the one person who could approve this
+     * key's held actions, from their own account and phone, and nobody who still ran the
+     * workspace could. Asked live ({@see self::stillMayApprove()}), on filing and again on
+     * spending an approval: no current authority, nobody to ask, and the gate refuses with
+     * `approval_unavailable` until the key is revoked or replaced.
      */
     public function approverSubjectId(): ?string
+    {
+        $person = $this->mintingPerson();
+
+        return $person !== null && $this->stillMayApprove($person) ? $person : null;
+    }
+
+    /**
+     * An active member of the workspace that owns this key's environment, whose role may
+     * still change environments — the authority the console mints keys under. For a key of
+     * the platform root's own environment, an active platform operator too.
+     */
+    private function stillMayApprove(string $person): bool
+    {
+        $environmentId = (string) $this->key->environment_id;
+        $root = app(PlatformRoot::class);
+
+        if ($root->environment()?->environmentKey() === $environmentId
+            && $root->run(static fn (): bool => app(PlatformOperators::class)->findBySubject($person) !== null) === true) {
+            return true;
+        }
+
+        $workspace = $root->run(static function () use ($environmentId): ?string {
+            $projectId = Environment::query()->whereKey($environmentId)->value('project_id');
+            $organizationId = is_string($projectId) ? Project::query()->whereKey($projectId)->value('organization_id') : null;
+
+            return is_string($organizationId) ? $organizationId : null;
+        });
+
+        // An environment no workspace owns (a self-hosted deployment's own, minted outside any
+        // workspace) has no membership its minter could have lost: the chain answers alone.
+        if ($workspace === null) {
+            return true;
+        }
+
+        return WorkspaceAuthority::mayManageEnvironments($person, $workspace);
+    }
+
+    private function mintingPerson(): ?string
     {
         $key = $this->key;
 

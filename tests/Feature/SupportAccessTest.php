@@ -620,3 +620,59 @@ it('reads the organization from the pushed request alone during a support sessio
 
     expect(supportTokenOrg($parcels, (string) ($query['code'] ?? '')))->toBe($org);
 })->group('security');
+
+/**
+ * STARTING A SUPPORT SESSION TAKES WRITE AUTHORITY, AND SO DOES EVERY CODE IT MINTS (#43).
+ *
+ * The per-code re-check asked only whether the administrator could still READ the
+ * environment. Demoted to a read-only role mid-session, they kept signing in to the app as
+ * the customer while every console write was refused to them.
+ */
+it('mints nothing for the session once the administrator is demoted to a read-only role', function (): void {
+    ['user' => $user, 'org' => $org, 'admin' => $owner] = supportFixture();
+    $environmentId = (string) app(EnvironmentContext::class)->current()?->environmentKey();
+    $workspace = app(PlatformRoot::class)->run(function () use ($environmentId): string {
+        $projectId = Environment::query()->whereKey($environmentId)->value('project_id');
+
+        return (string) DB::table('projects')->where('id', $projectId)->value('organization_id');
+    });
+    [$member, $developer] = memberWithRole($workspace, MembershipRole::Admin, 'dev@acme.example');
+    grantNativeProductRoles($member, ['developer']);
+    actAsEnvironmentAdmin($developer, $environmentId);
+    $parcels = supportApp();
+    confirmEnvironmentStepUp();
+
+    startSupport($user, ['app' => $parcels, 'organization' => $org])->assertSessionHasNoErrors();
+    expect(SupportSession::query()->count())->toBe(1);
+
+    grantNativeProductRoles($member, ['viewer']);
+    nextRequest();
+
+    $answer = appSignsIn($parcels);
+
+    expect(returnedToApp($answer))->not->toHaveKey('code')
+        ->and(session('cbox.support_handoff'))->toBe([]);
+})->group('security');
+
+/**
+ * THE PERSON MUST STILL BE WHAT THE SESSION WAS STARTED FOR (#44): an active member of an
+ * organization that is still open. begin() asked once; every later code asks again.
+ */
+it('mints nothing for the session once the person left or the organization was closed', function (string $change): void {
+    ['user' => $user, 'org' => $org] = supportFixture();
+    $parcels = supportApp();
+    confirmEnvironmentStepUp();
+
+    startSupport($user, ['app' => $parcels, 'organization' => $org])->assertSessionHasNoErrors();
+
+    match ($change) {
+        'removed' => app(Memberships::class)->remove($org, $user),
+        'suspended' => app(Organizations::class)->suspend($org, 'sub_operator'),
+        'archived' => app(Organizations::class)->archive($org, 'sub_operator'),
+    };
+    nextRequest();
+
+    $answer = appSignsIn($parcels);
+
+    expect(returnedToApp($answer))->not->toHaveKey('code');
+})->with(['removed', 'suspended', 'archived'])->group('security');
