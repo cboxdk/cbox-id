@@ -8,6 +8,10 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 ## [Unreleased]
 
+### Security
+
+- **laravel-id 2.9.0.** The package side of the security audit: a domain claim no longer blocks another organization's claim to the same domain (only a verified claim counts), a reactivated directory and tenant roles keep their bounds, FGA checks are bounded and their cache keys scoped, dynamic client registration records its profile, API and MCP scopes cannot collide, hooks must use https, a SAML request cannot inflate past a cap, SMS limits count an IPv6 /64 as one sender, an approval grant ends with its decision, and `/v1/decisions` answers 401 for a suspended organization. Two migrations run on deploy: `verified_domains` is unique per (environment, organization, domain), and `oauth_clients` gains a nullable `registration_profile`.
+
 ### Added
 
 - **Console and account pages update live.** A trusted device enrolled on a phone appears on the open Trusted devices page; sign-ins, sessions, grants and API keys, members, invitations and roles, apps, approvals and audit entries appear or go on the pages that show them, without a reload. Off by default (`BROADCAST_CONNECTION=null`); on with `BROADCAST_CONNECTION=reverb`, the `REVERB_APP_*` keys and `php artisan reverb:start` as its own process (`laravel/reverb ^1.10`). What is sent is an invalidation signal (the kind of record, its id and the action, never a value) on one of three private channels: an environment's (whoever may open its console), an organization's (its owners and administrators) and a person's own. Each is signed by `GET …/realtime/auth` inside the gates of the pages that listen, never while impersonating. Changes publish after commit from a queued job, only to channels a page is listening on, at most once a second per topic; a page reloads its own props, never under a form being edited (it offers "New data on this page — Refresh" instead). See [Live updates](docs/operations/realtime.md).
