@@ -5,8 +5,10 @@ declare(strict_types=1);
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
+use Cbox\Id\Identity\Contracts\LogoutPropagator;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -108,4 +110,76 @@ it('refuses a name that is only whitespace', function (): void {
     saveOwnProfile(['displayName' => '     '])->assertSessionHasErrors('displayName');
 
     expect(app(Subjects::class)->find($id)?->name)->toBe('Original Name');
+});
+
+/** Records which sessions the apps would have been told about, instead of queueing logouts. */
+function spyOnLogoutPropagation(): ArrayObject
+{
+    $ended = new ArrayObject;
+
+    app()->instance(LogoutPropagator::class, new class($ended) implements LogoutPropagator
+    {
+        public function __construct(private ArrayObject $ended) {}
+
+        public function sessionEnded(string $sessionId): void
+        {
+            $this->ended[] = $sessionId;
+        }
+
+        public function subjectSignedOut(string $userId): void
+        {
+            $this->ended[] = 'subject:'.$userId;
+        }
+    });
+
+    return $ended;
+}
+
+/**
+ * Changing your password is what you do when you think the old one leaked. A session opened
+ * with the old one used to outlive the change — here and, through it, in every app it had
+ * signed in to. Every other session ends, each one telling its apps; this one stays.
+ */
+it('ends every other session, and tells their apps, when a person changes their password', function (): void {
+    $id = signInToAccount();
+    $current = app(CurrentUser::class)->session()?->id;
+    $elsewhere = app(SessionManager::class)->start($id, null, ['pwd']);
+    $someoneElse = app(Subjects::class)->create('else@acme.test', 'Someone Else', 'a-strong-unbreached-passphrase');
+    $theirs = app(SessionManager::class)->start($someoneElse->id, null, ['pwd']);
+    $ended = spyOnLogoutPropagation();
+
+    changeOwnPassword()->assertSessionHasNoErrors();
+
+    $revokedAt = fn (string $session): mixed => Session::query()->withoutGlobalScopes()->whereKey($session)->value('revoked_at');
+
+    expect($revokedAt($elsewhere->id))->not->toBeNull()
+        ->and($revokedAt((string) $current))->toBeNull()
+        ->and($revokedAt($theirs->id))->toBeNull()
+        ->and($ended->getArrayCopy())->toBe([$elsewhere->id])
+        ->and(app(Subjects::class)->verifyPassword($id, 'an-even-stronger-unbreached-passphrase'))->toBeTrue();
+});
+
+it('ends nothing when the current password is wrong', function (): void {
+    $id = signInToAccount();
+    $elsewhere = app(SessionManager::class)->start($id, null, ['pwd']);
+    $ended = spyOnLogoutPropagation();
+
+    changeOwnPassword(['currentPassword' => 'not-the-password'])->assertSessionHasErrors('currentPassword');
+
+    expect(Session::query()->withoutGlobalScopes()->whereKey($elsewhere->id)->value('revoked_at'))->toBeNull()
+        ->and($ended->getArrayCopy())->toBe([]);
+});
+
+/** A first password (somebody who signed up with a passkey or a social account) opened no session. */
+it('ends nothing when a person sets their first password', function (): void {
+    $id = signInToAccount();
+    $model = config('cbox-id.models.user');
+    $model::query()->whereKey($id)->update(['password' => null]);
+    $elsewhere = app(SessionManager::class)->start($id, null, ['passkey']);
+    $ended = spyOnLogoutPropagation();
+
+    changeOwnPassword(['currentPassword' => ''])->assertSessionHasNoErrors();
+
+    expect(Session::query()->withoutGlobalScopes()->whereKey($elsewhere->id)->value('revoked_at'))->toBeNull()
+        ->and($ended->getArrayCopy())->toBe([]);
 });
