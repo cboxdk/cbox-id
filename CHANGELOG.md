@@ -133,6 +133,10 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 - **An operator who signs in with a passkey keeps CLI and MCP access at the platform root.** The check compared the token's `acr` with `urn:cbox-id:aal2` by name; it now asks whether the class reaches it (takes effect with the laravel-id release that ranks `urn:cbox-id:phr` above it).
 - **An archived organization no longer shows in the organization switchers.** Archiving keeps the memberships, and the switchers listed them, so "Cbox" showed twice.
 
+### Security
+
+- **`/oauth/authorize` lets a loopback redirect URI's port float only when the URI is in canonical form.** The RFC 8252 port exception, for a registered client and for a client ID metadata document client, now refuses a `redirect_uri` with credentials, a backslash, whitespace or a control character, a fragment, or any other difference from its own normalized `http://host[:port]path[?query]`. Such a URI is accepted only by an exact match with a registered one. Native clients that send a plain `http://127.0.0.1:<port>/…`, `http://[::1]:<port>/…` or `http://localhost:<port>/…` are unaffected.
+
 ## [2.2.0] - 2026-11-08
 
 ### Added

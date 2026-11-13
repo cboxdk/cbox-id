@@ -447,6 +447,47 @@ it('accepts any port on a loopback redirect it registered', function (): void {
     expect((string) $location)->toContain('error=login_required');
 });
 
+/**
+ * The port float applies only to a loopback URI in canonical form.
+ *
+ * parse_url() and a browser's URL parser disagree on some authorities: a backslash or
+ * credentials can make PHP read a loopback host where the browser navigates elsewhere.
+ * The authorization code goes wherever the browser goes, so any candidate that is not
+ * byte-identical to its own normalized form must fall back to exact matching.
+ */
+it('does not float the port for a loopback redirect that is not in canonical form', function (string $redirectUri): void {
+    $registered = app(ClientRegistry::class)->register(new NewClient(
+        'CLI',
+        ClientType::Public,
+        redirectUris: ['http://127.0.0.1:8400/callback', 'http://[::1]:8400/callback'],
+        grantTypes: ['authorization_code'],
+        scopes: ['openid'],
+    ));
+
+    $query = http_build_query([
+        'client_id' => $registered->client->client_id,
+        'redirect_uri' => $redirectUri,
+        'code_challenge' => pkceChallenge(),
+        'response_type' => 'code',
+        'code_challenge_method' => 'S256',
+        'prompt' => 'none',
+    ]);
+
+    // A rendered refusal, never a redirect to the candidate.
+    $this->get('/oauth/authorize?'.$query)->assertOk();
+})->with([
+    'backslash before userinfo' => ['http://attacker.invalid\\@127.0.0.1:59123/callback'],
+    'backslash before userinfo, IPv6' => ['http://attacker.invalid\\@[::1]:59123/callback'],
+    'userinfo' => ['http://attacker.invalid@127.0.0.1:59123/callback'],
+    'user and password' => ['http://user:pass@127.0.0.1:59123/callback'],
+    'loopback as userinfo' => ['http://127.0.0.1:1@attacker.invalid/callback'],
+    'backslash in path' => ['http://127.0.0.1:59123\\callback'],
+    'fragment' => ['http://127.0.0.1:59123/callback#x'],
+    'empty port' => ['http://127.0.0.1:/callback'],
+    'upper-case scheme' => ['HTTP://127.0.0.1:59123/callback'],
+    'whitespace' => ['http://127.0.0.1:59123/callback%20'."\t"],
+])->group('security');
+
 /** A remote host still requires an exact match — the port float is loopback-only. */
 it('does not float the port for a non-loopback host', function (): void {
     $registered = app(ClientRegistry::class)->register(new NewClient(
