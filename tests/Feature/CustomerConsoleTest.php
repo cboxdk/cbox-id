@@ -346,6 +346,9 @@ it('lets nothing through on a customer\'s console but the admin portal, the pers
         'passkeys.register', 'passkeys.register.options',
         'password.change', 'password.change.update',
         'search',
+        // Live updates: signs the person's own channel (and their organization's, for an
+        // administrator) for whatever page they are on.
+        'realtime.auth',
         'social.connect', 'social.connect.callback',
         'sudo', 'sudo.confirm', 'sudo.mobile',
     ];

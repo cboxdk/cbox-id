@@ -132,6 +132,7 @@ final class CustomerConsole
         'orgs.show',
         // ⌘K's records in a Cbox organization: the white-labelled console keeps its own.
         'orgs.search',
+        'orgs.realtime.auth',
     ];
 
     /**
