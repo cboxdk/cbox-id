@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Cbox\Id\Directory\Contracts\Directories;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Testing\TestResponse;
@@ -145,3 +146,36 @@ it('runs a Bulk request, resolving bulkId references', function (): void {
     // The group's member is the user the same request created, by the id it was given.
     expect(array_column((array) scimCall($token, 'GET', '/Groups/'.$groupId)->assertOk()->json('members'), 'value'))->toBe([$userId]);
 });
+
+/*
+ * Audit finding #29. A directory owns the accounts it provisions, but only the
+ * deactivations it CAUSED are its to undo. An account an administrator disabled while the
+ * directory still listed the person active stays disabled through every re-push.
+ */
+it('never reactivates an account an administrator disabled, however the directory re-pushes it', function (): void {
+    $token = scimDirectoryToken();
+    $id = (string) scimCall($token, 'POST', '/Users', scimUser('dana@acme.test', 'okta-dana'))->assertCreated()->json('id');
+    $subjectId = (string) app(Subjects::class)->findByEmail('dana@acme.test')?->id;
+
+    app(Subjects::class)->deactivate($subjectId);
+
+    scimCall($token, 'PUT', '/Users/'.$id, scimUser('dana@acme.test', 'okta-dana'))->assertOk();
+    scimCall($token, 'PATCH', '/Users/'.$id, [
+        'schemas' => ['urn:ietf:params:scim:api:messages:2.0:PatchOp'],
+        'Operations' => [['op' => 'replace', 'path' => 'active', 'value' => true]],
+    ])->assertOk();
+
+    expect(app(Subjects::class)->isActive($subjectId))->toBeFalse();
+})->group('security');
+
+it('still reactivates an account the directory itself deactivated', function (): void {
+    $token = scimDirectoryToken();
+    $id = (string) scimCall($token, 'POST', '/Users', scimUser('lee@acme.test', 'okta-lee'))->assertCreated()->json('id');
+    $subjectId = (string) app(Subjects::class)->findByEmail('lee@acme.test')?->id;
+
+    scimCall($token, 'PUT', '/Users/'.$id, [...scimUser('lee@acme.test', 'okta-lee'), 'active' => false])->assertOk();
+    expect(app(Subjects::class)->isActive($subjectId))->toBeFalse();
+
+    scimCall($token, 'PUT', '/Users/'.$id, scimUser('lee@acme.test', 'okta-lee'))->assertOk();
+    expect(app(Subjects::class)->isActive($subjectId))->toBeTrue();
+})->group('security');

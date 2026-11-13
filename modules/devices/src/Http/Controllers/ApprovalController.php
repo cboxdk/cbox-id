@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Devices\Http\Controllers;
 
+use Cbox\Id\Devices\Enums\ApprovalKind;
 use Cbox\Id\Devices\Models\ApprovalReport;
+use Cbox\Id\Devices\Support\ApprovalOrigins;
+use Cbox\Id\Devices\Support\ApprovalPushText;
 use Cbox\Id\Devices\Support\DeviceApprovalEvidence;
+use Cbox\Id\Devices\ValueObjects\ApprovalOrigin;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
@@ -44,6 +48,8 @@ final class ApprovalController
         private readonly ClientRegistry $clients,
         private readonly AuditLog $audit,
         private readonly ProtectedResources $resources,
+        private readonly ApprovalOrigins $origins,
+        private readonly ApprovalPushText $text,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -168,12 +174,23 @@ final class ApprovalController
             array_values(array_filter($approval->scopes, 'is_string')),
         );
 
+        $origin = $this->origins->of($approval);
+        $purpose = $approval->getAttribute('purpose') ?? 'authentication';
+
         return [
             // The INTERNAL id. Never auth_req_id, which is the initiating client's
             // polling secret and is stored only as a hash.
             'id' => $approval->id,
             'status' => $this->status($approval),
-            'purpose' => $approval->getAttribute('purpose') ?? 'authentication',
+            'purpose' => $purpose,
+            // What is being asked — sign_in, step_up, action or authentication — as the code
+            // that filed it said, not as anything parsed from the binding message.
+            'kind' => $origin !== null ? $origin->kind->value : ($purpose === 'action' ? ApprovalKind::Action->value : ApprovalKind::Authentication->value),
+            // Roughly where the request was made, as captured when it was filed: a city and
+            // country, a browser and platform, the web host — for a request a person's browser
+            // made. Never an address. Null for a CIBA request or a key's held action (a
+            // server asked; where it sits says nothing about the person) and when unknown.
+            'origin' => $this->origin($origin),
             'client_id' => $approval->client_id,
             'client_name' => $client->name ?? $approval->client_id,
             // A self-registered client (RFC 7591) chose its own name. The app says so, so
@@ -190,6 +207,29 @@ final class ApprovalController
             'organization_id' => $approval->organization_id,
             'requested_at' => $this->iso($approval->getAttribute('created_at')),
             'expires_at' => $this->iso($approval->getAttribute('expires_at')),
+        ];
+    }
+
+    /**
+     * @return array{app: string|null, city: string|null, region: string|null, country: string|null, country_code: string|null, device: string|null, host: string|null}|null
+     */
+    private function origin(?ApprovalOrigin $origin): ?array
+    {
+        if ($origin === null || $origin->isEmpty()) {
+            return null;
+        }
+
+        $locale = app()->getLocale();
+        $country = $this->text->countryName($origin->countryCode, $locale);
+
+        return [
+            'app' => $origin->app,
+            'city' => $country === null ? null : $origin->city,
+            'region' => $country === null ? null : $origin->region,
+            'country' => $country,
+            'country_code' => $country === null ? null : $origin->countryCode,
+            'device' => $this->text->device($origin, $locale),
+            'host' => $origin->host,
         ];
     }
 

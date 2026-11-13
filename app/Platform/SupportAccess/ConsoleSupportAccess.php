@@ -9,6 +9,7 @@ use App\Platform\Console\LaunchTicket;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\IssuerUrl;
 use App\Platform\OAuth\Enums\AuthorizationPrompt;
+use App\Platform\OAuth\OrganizationStanding;
 use App\Platform\OAuth\PendingAuthorization;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\SupportAccess\Exceptions\SupportRequestRefused;
@@ -28,6 +29,8 @@ use Cbox\Id\OAuthServer\Support\GrantPolicy;
 use Cbox\Id\OAuthServer\SupportSessionService;
 use Cbox\Id\OAuthServer\ValueObjects\NewSupportSession;
 use Cbox\Id\OAuthServer\ValueObjects\SupportCodeRequest;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Organization\Models\Organization;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Database\Eloquent\Builder;
@@ -175,14 +178,15 @@ class ConsoleSupportAccess implements SupportAccess
             fn (): bool => app(SessionManager::class)->active($console)?->user_id === $actor,
         ) === true;
 
-        // …and they must STILL ADMINISTER this environment: the same chain the console asks
-        // on every request ({@see EnvironmentAdminAuth::administers()}), asked again for every
-        // code. A session can last an hour; an administrator removed from the organization,
-        // stripped of this environment or of their role, or whose organization was suspended
-        // in that hour, mints nothing more — their root session alone is not authority.
+        // …and they must STILL BE ALLOWED TO CHANGE this environment: the chain the console
+        // asks on every request, with the write authority starting a support session took
+        // ({@see EnvironmentAdminAuth::managesNow()}), asked again for every code. A session
+        // can last an hour; an administrator removed from the organization, stripped of this
+        // environment, demoted to a read-only role, or whose organization was suspended in
+        // that hour, mints nothing more — their root session alone is not authority.
         $environment = $this->environments->current()?->environmentKey();
 
-        if (! $live || $environment === null || ! $this->admins->administers($actor, $environment)) {
+        if (! $live || $environment === null || ! $this->admins->managesNow($actor, $environment)) {
             $this->handoff->forgetApp($clientId);
 
             return null;
@@ -191,6 +195,15 @@ class ConsoleSupportAccess implements SupportAccess
         $session = $this->sessions->active($entry->sessionId);
 
         if ($session === null || $session->actor_id !== $actor) {
+            $this->handoff->forgetApp($clientId);
+
+            return null;
+        }
+
+        // …and the PERSON must still be what the session was started for: an active member
+        // of an organization that is still open. begin() refused anything else; a member
+        // removed, or an organization suspended or archived, since then is the same refusal.
+        if (! $this->targetStillEligible($session)) {
             $this->handoff->forgetApp($clientId);
 
             return null;
@@ -220,6 +233,21 @@ class ConsoleSupportAccess implements SupportAccess
 
             return null;
         }
+    }
+
+    /**
+     * Whether the session's person is still an ACTIVE member of a still-open organization,
+     * the eligibility {@see SupportSessions::begin()} decided once.
+     */
+    private function targetStillEligible(SupportSession $session): bool
+    {
+        $organizationId = $session->organization_id;
+
+        if (OrganizationStanding::isClosed($organizationId)) {
+            return false;
+        }
+
+        return app(Memberships::class)->of($organizationId, $session->target_user_id)?->status === MembershipStatus::Active;
     }
 
     /**

@@ -107,6 +107,9 @@ function undocumentedByDesign(): array
         // hardcoded, so a `.well-known` document cannot be expressed in them at all. They
         // are listed because the checker walks every route, not because anybody chose to
         // leave them undescribed.
+        // App-link association files Apple and Android fetch so a sign-in link opens the Authenticator.
+        'GET /.well-known/apple-app-site-association',
+        'GET /.well-known/assetlinks.json',
         'GET /.well-known/cbox-cli',
         'GET /.well-known/cbox-authenticator',
         'GET /.well-known/jwks.json',

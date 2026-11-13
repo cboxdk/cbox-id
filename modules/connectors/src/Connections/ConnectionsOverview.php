@@ -52,10 +52,12 @@ use LogicException;
  * type, which is all the catalog and the filters need.
  *
  * WHICH ROWS "REACH" AN ORGANIZATION, when one is named. Its own, and the environment's
- * where the environment's applies to it — the same answer the type's own list gives when
- * filtered to that organization: an environment-wide webhook, hook, SAML app or log stream
- * carries this organization's data too; an environment social provider is on its sign-in
- * page unless it opted out; an environment-wide provisioning connection pushes its people.
+ * where the type's own organization page shows it — the same answer that page gives: an
+ * environment-wide webhook, hook or SAML app carries this organization's data too; an
+ * environment social provider is on its sign-in page unless it opted out. Provisioning
+ * connections and log streams are the organization's OWN only: the environment's are its
+ * configuration (a downstream base URL, the operator's SIEM, their last errors), which the
+ * provisioning and log-streaming pages withhold from a tenant and so does this one.
  * With no organization, every row in the environment.
  *
  * Health is read from the row (consecutive failures, last sync result, the stream's failure
@@ -304,43 +306,22 @@ class ConnectionsOverview
             ConnectorCategory::Hris => Directory::query()
                 ->whereIn('provider', $hris)
                 ->when($organizationId !== null, fn (Builder $q): Builder => $q->where('organization_id', $organizationId)),
+            // The organization's OWN, as the provisioning list shows it: an environment-wide
+            // connection, and one the environment scoped to this organization, is the
+            // environment's configuration — its downstream base URL and its last error are
+            // not the tenant's to read (audit finding #52; OutboundSyncController).
             ConnectorCategory::Provisioning => ProvisioningConnection::query()
-                ->when($organizationId !== null, fn (Builder $q): Builder => $q->whereKey($this->provisioningReaching((string) $organizationId))),
+                ->when($organizationId !== null, fn (Builder $q): Builder => $q->where('organization_id', $organizationId)),
             ConnectorCategory::SamlApp => ServiceProvider::query()->when($organizationId !== null, $ownOrEnvironment),
             ConnectorCategory::Webhook => WebhookEndpoint::query()->when($organizationId !== null, $ownOrEnvironment),
             ConnectorCategory::Hook => ExternalActionEndpoint::query()->when($organizationId !== null, $ownOrEnvironment),
-            ConnectorCategory::LogStream => AuditStream::query()->when($organizationId !== null, $ownOrEnvironment),
+            // OWNED, never delivered-to: the environment's own streams are the operator's SIEM,
+            // which the log-streaming page withholds from a tenant the same way.
+            ConnectorCategory::LogStream => AuditStream::query()->when($organizationId !== null, fn (Builder $q): Builder => $q->ownedByOrganization($organizationId)),
             // A pipe belongs to no organization — it is where ANY person here connects an
             // account — so it is listed whichever organization is asked about.
             ConnectorCategory::Pipe => Pipe::query(),
         };
-    }
-
-    /**
-     * The provisioning connections that push an organization's people: its own, the
-     * environment-wide ones, and the environment's scoped to it.
-     *
-     * Read in PHP because "scoped to it" is a list inside a JSON column, which the three
-     * databases this runs on query three different ways. It is the one table here that holds
-     * a handful of rows per environment — one per downstream app — so its ids are read once
-     * and the paging stays in SQL.
-     *
-     * @return list<string>
-     */
-    private function provisioningReaching(string $organizationId): array
-    {
-        $ids = [];
-
-        foreach (ProvisioningConnection::query()->get(['id', 'organization_id', 'scope']) as $connection) {
-            /** @var ProvisioningConnection $connection */
-            if ($connection->organization_id === $organizationId
-                || $connection->isEnvironmentWide()
-                || in_array($organizationId, $connection->scopeOrganizationIds(), true)) {
-                $ids[] = $connection->id;
-            }
-        }
-
-        return $ids;
     }
 
     /**

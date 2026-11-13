@@ -14,6 +14,7 @@ use App\Platform\Apps\AppScopes;
 use App\Platform\Console\ConsoleClients;
 use App\Platform\OAuth\PlatformRealmClients;
 use App\Platform\ScopeCatalog;
+use App\ServiceConnections\ServiceConnection;
 use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
 use Cbox\Id\OAuthServer\Exceptions\ScopeNotGrantable;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -69,10 +70,19 @@ final class AppFields
         // shown them on.
         $confinedTo = $principal->confinedToOrganization();
 
-        return Client::query()
+        $client = Client::query()
             ->where(static fn ($query) => $query->whereKey($id)->orWhere('client_id', $id))
             ->when($confinedTo !== null, static fn ($query) => $query->where('organization_id', $confinedTo))
             ->first() ?? throw ActionRefused::notFound('app');
+
+        // A service connection's backing client is the platform's to run, through
+        // OrganizationConnections::lease() alone — never an app anybody changes or takes a
+        // secret for through this door (audit finding #54; ConsoleClients::mayManage()).
+        if (ServiceConnection::backs($client->client_id)) {
+            throw ActionRefused::notFound('app');
+        }
+
+        return $client;
     }
 
     /**

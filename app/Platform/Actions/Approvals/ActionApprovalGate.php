@@ -217,6 +217,12 @@ final readonly class ActionApprovalGate
             throw new ActionRefused('approval_invalid', new ActionMessage('console.no_approval_with_that_id_belongs_to_this_credential_5e7c701c'), 403);
         }
 
+        // An approval given by somebody who has since lost the authority to give it is spent
+        // by nobody: the approver is re-resolved, live, before it is consumed.
+        if ($principal->approverSubjectId() === null) {
+            throw new ActionRefused('approval_unavailable', new ActionMessage('console.this_credential_needs_a_person_s_approval_for_this_acti_6e7eed81'), 403);
+        }
+
         if ($this->inApproverRealm($principal, fn (): bool => $this->approvals->consume($approvalId, $digest)) === true) {
             return;
         }

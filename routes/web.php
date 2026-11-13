@@ -311,7 +311,11 @@ Route::get('/robots.txt', fn () => response("User-agent: *\nDisallow:\n", 200,
  * app overrides would otherwise be the one hole left in that wall.
  */
 Route::match(['get', 'post'], '/sso/saml/idp/sso', SamlIdpSsoController::class)
-    ->middleware(['plane:issuer', 'throttle:30,1'])
+    // Closed while impersonating, like `/oauth/authorize`: a signed assertion is a
+    // credential at the service provider, and an impersonation is a read-only look at the
+    // person, never a way to sign in somewhere else AS them. The HTTP-Redirect binding is
+    // a GET, so the method-based read-only guard alone let it through.
+    ->middleware(['plane:issuer', 'throttle:30,1', EnforceImpersonationWindow::class, BlockDuringImpersonation::class])
     ->name('sso.saml.idp.sso');
 
 /*
@@ -2093,7 +2097,11 @@ ConsoleRoutes::environment(function (): void {
 
     // Step into a subject's session for support (env-admin actor). Authorized in
     // the controller by env-scoped membership; owners/admins refused; reason required.
-    Route::post('/impersonate/{user}', [ImpersonationController::class, 'startAsEnvAdmin'])->name('environment.impersonate');
+    // Behind `env.sudo`, like the support session it sits beside: stepping into a person is
+    // privileged access, and a stale, unattended or hijacked console session must not be
+    // enough to start one (on the platform root's console with the operator rule on, the
+    // same middleware asks for a fresh passkey instead).
+    Route::post('/impersonate/{user}', [ImpersonationController::class, 'startAsEnvAdmin'])->middleware('env.sudo')->name('environment.impersonate');
 });
 
 /*

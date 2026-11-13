@@ -561,3 +561,90 @@ it('requires hosted sign in for a phone-only factor rather than bypassing it or 
         ->assertJsonMissingPath('login_ticket')->assertJsonMissingPath('mfa_token');
     expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
 });
+
+/*
+|--------------------------------------------------------------------------
+| Login CSRF: a ticket is redeemed only by the browser that signed in
+|--------------------------------------------------------------------------
+|
+| Anybody with an account can mint a ready ticket for it: the publishable key is public and
+| the Origin header only binds a browser. Redemption checked nothing about who presented the
+| ticket, so an attacker minted one from their server and pushed it through a victim's
+| browser with a cross-site link or form: that browser was then signed in as the attacker,
+| or switched to the attacker's account over the victim's own session.
+*/
+
+function ticketAuthorizeQuery(string $clientId, string $ticket): string
+{
+    return '/oauth/authorize?'.http_build_query([
+        'client_id' => $clientId,
+        'redirect_uri' => 'https://app.test/cb',
+        'response_type' => 'code',
+        'scope' => 'openid',
+        'state' => 'st',
+        'code_challenge' => pkceChallenge(),
+        'code_challenge_method' => 'S256',
+        'login_ticket' => $ticket,
+    ]);
+}
+
+function ticketClient(): string
+{
+    return app(ClientRegistry::class)->register(new NewClient(
+        'RP',
+        ClientType::Public,
+        redirectUris: ['https://app.test/cb'],
+        grantTypes: ['authorization_code'],
+        scopes: ['openid'],
+    ))->client->client_id;
+}
+
+it('does not sign a signed-out browser in with a ticket minted somewhere else', function (): void {
+    $clientId = ticketClient();
+
+    // The attacker's server signs in to its own account.
+    $ticket = $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.20'])
+        ->withHeaders(['X-Cbox-Publishable-Key' => $this->key->key, 'Origin' => 'https://app.acme.test'])
+        ->postJson('/frontend/v1/sign-in', ['email' => 'ada@acme.test', 'password' => 'a-strong-unbreached-passphrase'])
+        ->assertOk()
+        ->json('login_ticket');
+
+    // The victim's browser is sent to /authorize with it.
+    $response = $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.50'])
+        ->post(ticketAuthorizeQuery($clientId, $ticket));
+
+    expect(session()->get(PlatformAuth::SESSION_KEY))->toBeNull()
+        ->and((string) $response->headers->get('Location'))->toContain('/login');
+});
+
+it('does not switch a signed-in browser to the account of a ticket minted somewhere else', function (): void {
+    $clientId = ticketClient();
+    $victim = app(Subjects::class)->create('victim@acme.test', 'Victim', 'a-strong-unbreached-passphrase');
+    $victimSession = app(SessionManager::class)->start($victim->id, null, ['pwd']);
+
+    $ticket = $this->withServerVariables(['REMOTE_ADDR' => '198.51.100.20'])
+        ->withHeaders(['X-Cbox-Publishable-Key' => $this->key->key, 'Origin' => 'https://app.acme.test'])
+        ->postJson('/frontend/v1/sign-in', ['email' => 'ada@acme.test', 'password' => 'a-strong-unbreached-passphrase'])
+        ->json('login_ticket');
+
+    $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.50'])
+        ->withSession([PlatformAuth::SESSION_KEY => $victimSession->id])
+        ->get(ticketAuthorizeQuery($clientId, $ticket));
+
+    expect(session()->get(PlatformAuth::SESSION_KEY))->toBe($victimSession->id);
+});
+
+it('still signs in the browser that made the embedded sign-in', function (): void {
+    $clientId = ticketClient();
+
+    $ticket = $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.50'])
+        ->withHeaders(['X-Cbox-Publishable-Key' => $this->key->key, 'Origin' => 'https://app.acme.test'])
+        ->postJson('/frontend/v1/sign-in', ['email' => 'ada@acme.test', 'password' => 'a-strong-unbreached-passphrase'])
+        ->json('login_ticket');
+
+    $this->withServerVariables(['REMOTE_ADDR' => '203.0.113.50'])->get(ticketAuthorizeQuery($clientId, $ticket));
+
+    $sessionId = session()->get(PlatformAuth::SESSION_KEY);
+
+    expect(app(SessionManager::class)->active(is_string($sessionId) ? $sessionId : '')?->user_id)->toBe($this->subject->id);
+});

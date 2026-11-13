@@ -75,6 +75,8 @@ final class Surfaces
         // the console and of a person's own pages on the login host.
         'switch-app', 'switch-app/catalog',
         'authenticator/privacy',
+        // The Authenticator's Universal Link and the documents that let the app claim it.
+        'authenticator/approve/*', '.well-known/apple-app-site-association', '.well-known/assetlinks.json',
         'api/v1', 'api/v1/*',
         '.well-known/oauth-protected-resource', '.well-known/oauth-protected-resource/*',
     ];

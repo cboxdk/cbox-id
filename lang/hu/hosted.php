@@ -27,4 +27,14 @@ return [
         'dark' => 'Sötét',
     ],
     'skip_to_content' => 'Ugrás a tartalomra',
+
+    // The page an Authenticator link shows when the app did not open.
+    'authenticator_link' => [
+        'title' => 'A Cbox ID alkalmazás megnyitása',
+        'lead' => 'A Cbox ID alkalmazás nem nyílt meg ezen az eszközön.',
+        'other_phone' => 'Másik telefonon van az alkalmazás? Ott hagyja jóvá a kérést, majd térjen vissza a bejelentkezési oldalra. Magától folytatódik.',
+        'open' => 'Megnyitás az alkalmazásban',
+        'install' => 'Alkalmazás letöltése',
+        'back' => 'Vagy lépjen vissza, és válasszon más megerősítési módot.',
+    ],
 ];

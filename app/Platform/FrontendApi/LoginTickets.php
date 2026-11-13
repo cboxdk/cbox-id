@@ -157,6 +157,9 @@ final class LoginTickets
 
         $ticket->update([
             'token_hash' => hash('sha256', $token),
+            // The request that finished the sign-in is the one whose browser goes on to
+            // /authorize: the binding follows it.
+            'client_hash' => self::clientHash(),
             'stage' => 'ready',
             'amr' => $amr,
             'attempts' => 0,
@@ -177,6 +180,7 @@ final class LoginTickets
             'token_hash' => hash('sha256', $token),
             'publishable_key_id' => $key->id,
             'subject_id' => $subjectId,
+            'client_hash' => self::clientHash(),
             'stage' => $stage,
             'amr' => $amr,
             'expires_at' => now()->addSeconds($ttl),
@@ -218,6 +222,18 @@ final class LoginTickets
                 // `ready` only: a ticket still owing a second factor is not a sign-in, and
                 // redeeming one would be the bypass this whole stage exists to prevent.
                 ->where('stage', 'ready')
+                // AND ONLY FROM WHERE THE SIGN-IN WAS MADE. The embedded sign-in runs in
+                // the person's own browser, which then carries the ticket to /authorize:
+                // both requests come from one address. A ticket somebody minted for
+                // their own account from a server, and pushed through another person's
+                // browser with a cross-site link or form, comes from another, and is not
+                // redeemed there — that was a way to sign a victim's browser in as the
+                // attacker (login CSRF). It is not spent either: it is simply not this
+                // browser's. A row from before the binding existed (minted in the minute
+                // a deploy spans) carries none.
+                ->where(static function ($query): void {
+                    $query->whereNull('client_hash')->orWhere('client_hash', self::clientHash());
+                })
                 ->whereNull('redeemed_at')
                 ->where('expires_at', '>', now())
                 ->update(['redeemed_at' => now()]);
@@ -233,6 +249,21 @@ final class LoginTickets
 
             return $ticket instanceof LoginTicket ? $ticket : null;
         });
+    }
+
+    /**
+     * The keyed pseudonym of the address this request comes from, which a ticket is bound
+     * to at mint and checked against at redemption.
+     *
+     * The address as the app resolves it behind its trusted proxies, the same one every
+     * other per-client control reads. Keyed, so the column cannot be reversed by hashing
+     * the IPv4 space.
+     */
+    private static function clientHash(): string
+    {
+        $key = config('app.key');
+
+        return hash_hmac('sha256', 'login-ticket|'.(string) request()->ip(), is_string($key) && $key !== '' ? $key : 'cbox-id');
     }
 
     /**

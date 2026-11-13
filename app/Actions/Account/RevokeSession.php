@@ -14,6 +14,7 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\OAuth\GrantWithdrawal;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Models\Session;
 
@@ -39,7 +40,7 @@ use Cbox\Id\Identity\Models\Session;
 )]
 final readonly class RevokeSession implements Action
 {
-    public function __construct(private SessionManager $sessions) {}
+    public function __construct(private SessionManager $sessions, private GrantWithdrawal $grants) {}
 
     public static function input(): InputSchema
     {
@@ -56,6 +57,9 @@ final readonly class RevokeSession implements Action
             ->whereNull('revoked_at')
             ->first() ?? throw ActionRefused::notFound('session');
 
+        // Its apps' grants first, then the session, which tells those apps (back-channel
+        // logout). Ending the row alone left them refreshing.
+        $this->grants->fromSessions($session->user_id, [$session->id]);
         $this->sessions->revoke($session->id);
 
         return ActionResult::none($session);
