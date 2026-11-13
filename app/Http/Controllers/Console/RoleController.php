@@ -594,7 +594,7 @@ final readonly class RoleController extends ConsoleController
         if ($this->scope->plane() === ConsolePlane::Environment) {
             return [
                 'membersHref' => $organizationId !== null && Route::has('environment.organizations.members')
-                    ? route('environment.organizations.members', $organizationId)
+                    ? route('environment.organizations.members', ['organization' => $organizationId])
                     : route('environment.organizations'),
                 'staffHref' => route('environment.staff'),
                 'staffCount' => EnvironmentRoleAssignment::query()->count(),
