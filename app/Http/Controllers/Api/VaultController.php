@@ -6,8 +6,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\RequireScope;
+use Cbox\Id\Kernel\Tenancy\Contracts\TenantContext;
+use Cbox\Id\Kernel\Tenancy\GenericTenant;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
+use Cbox\Id\Organization\Enums\MembershipStatus;
+use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\TokenVault\Exceptions\LeaseDenied;
 use Cbox\Id\TokenVault\Exceptions\SecretNotFound;
@@ -40,11 +44,14 @@ final class VaultController extends Controller
      * organization's vault, even when the app belonged to another organization.
      *
      * Now:
+     *  - only a machine token (client credentials, whose subject is the app itself) acts as
+     *    the app; a token issued to a person acts as that person;
      *  - an app an ORGANIZATION owns acts in that organization only, and a token that names
-     *    a different one is refused outright;
+     *    a different one is refused outright; a person's token is honoured there only for an
+     *    active member of that organization;
      *  - an app the ENVIRONMENT owns (the developer's own product, already trusted with the
-     *    whole environment) acts in the organization its token names, or — with none, as a
-     *    machine token — in the environment's own unowned secrets;
+     *    whole environment) acts in the organization its token names, or — with none, and
+     *    only as a machine token — in the environment's own unowned secrets;
      *  - a token whose app this environment does not know is refused.
      *
      * A refusal is a 403 with no detail. Callers on the lease path turn it into the vault's
@@ -69,15 +76,48 @@ final class VaultController extends Controller
         $claimed = $token->claims['org'] ?? null;
         $claimed = is_string($claimed) && $claimed !== '' ? $claimed : null;
 
+        // Only a machine token (client credentials: the subject IS the app) stands for the
+        // app. A token issued to a person acts as that person and nobody else.
+        $person = $token->subject !== null && $token->subject !== $token->clientId ? $token->subject : null;
+
         if ($client->organization_id !== null) {
             if ($claimed !== null && $claimed !== $client->organization_id) {
+                throw new AuthorizationException('This token may not use the vault.');
+            }
+
+            // A person reaches the app's organization only as an active member of it. A
+            // missing `org` claim is never read as the app's organization.
+            if ($person !== null && ! $this->isMember($client->organization_id, $person)) {
                 throw new AuthorizationException('This token may not use the vault.');
             }
 
             return VaultOwner::organization($client->organization_id);
         }
 
-        return $claimed === null ? null : VaultOwner::organization($claimed);
+        if ($claimed !== null) {
+            return VaultOwner::organization($claimed);
+        }
+
+        // The environment's own unowned secrets belong to the app, so only its machine
+        // token reaches them — never a person who signed in without an organization.
+        if ($person !== null) {
+            throw new AuthorizationException('This token may not use the vault.');
+        }
+
+        return null;
+    }
+
+    /**
+     * An ACTIVE member of the organization. Memberships are tenant-owned, so the read is
+     * pinned to that organization rather than to whatever the request stands in.
+     */
+    private function isMember(string $organizationId, string $userId): bool
+    {
+        return (bool) app(TenantContext::class)->runAs(GenericTenant::of($organizationId), static fn (): bool => Membership::query()
+            ->where('organization_id', $organizationId)
+            ->where('user_id', $userId)
+            ->where('status', MembershipStatus::Active->value)
+            ->exists());
     }
 
     /** Ingest a downstream credential, sealed at rest. */
