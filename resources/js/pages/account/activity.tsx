@@ -29,9 +29,12 @@ interface ApplicationRow {
     clientId: string;
     name: string;
     actsOffline: boolean;
-    scopes: string[];
+    /** What it may do, in the reader's words ("Your email address"). */
+    permissions: string[];
     approved: string | null;
+    approvedIso: string | null;
     lastUsed: string | null;
+    lastUsedIso: string | null;
     withdrawHref: string;
 }
 
@@ -237,11 +240,11 @@ export default function Activity({
                         {applications.map((application) => (
                             <div
                                 key={application.clientId}
-                                className="flex items-center gap-3 rounded-lg border px-3 py-2"
+                                className="flex items-center gap-3 rounded-lg border px-4 py-3"
                                 style={{ borderColor: 'var(--border)' }}
                             >
                                 <div className="min-w-0 flex-1">
-                                    <p className="text-sm truncate">
+                                    <p className="text-sm font-medium">
                                         {application.name}
                                         {/*
                                             The distinction that matters to a person: this
@@ -256,29 +259,55 @@ export default function Activity({
                                         )}
                                     </p>
                                     <p
-                                        className="text-xs truncate"
-                                        style={{ color: 'var(--faint)' }}
+                                        className="text-xs mt-0.5"
+                                        style={{ color: 'var(--muted-foreground)' }}
                                     >
                                         {consoleRich(
                                             'console.approved_part1_last_used_part2_part3_e3a21893',
                                             {
-                                                part1:
-                                                    application.approved ??
-                                                    consoleUiText('console.unknown_b764cdc0'),
+                                                part1: (
+                                                    <time
+                                                        dateTime={
+                                                            application.approvedIso ?? undefined
+                                                        }
+                                                        title={exact(application.approvedIso)}
+                                                    >
+                                                        {relative(
+                                                            application.approvedIso,
+                                                            application.approved,
+                                                        ) ??
+                                                            consoleUiText(
+                                                                'console.unknown_b764cdc0',
+                                                            )}
+                                                    </time>
+                                                ),
                                                 part2: ' ',
-                                                part3:
-                                                    application.lastUsed ??
-                                                    consoleUiText('console.never_6300ef80'),
+                                                part3: (
+                                                    <time
+                                                        dateTime={
+                                                            application.lastUsedIso ?? undefined
+                                                        }
+                                                        title={exact(application.lastUsedIso)}
+                                                    >
+                                                        {relative(
+                                                            application.lastUsedIso,
+                                                            application.lastUsed,
+                                                        ) ??
+                                                            consoleUiText('console.never_6300ef80')}
+                                                    </time>
+                                                ),
                                             },
                                         )}
                                     </p>
-                                    {application.scopes.length > 0 && (
-                                        <p
-                                            className="text-xs mt-1 mono truncate"
-                                            style={{ color: 'var(--faint)' }}
+                                    {application.permissions.length > 0 && (
+                                        <ul
+                                            className="acct-permissions"
+                                            aria-label={application.name}
                                         >
-                                            {application.scopes.join(' · ')}
-                                        </p>
+                                            {application.permissions.map((permission) => (
+                                                <li key={permission}>{permission}</li>
+                                            ))}
+                                        </ul>
                                     )}
                                 </div>
 

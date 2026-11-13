@@ -42,6 +42,18 @@ final readonly class AccountChrome
     /** The console-kit area that holds a person's own pages. */
     private const string AREA = 'account';
 
+    /** Each of the person's pages by its route, as the rail draws it (cbox-ui's icon set). */
+    private const array PAGE_ICONS = [
+        'account.apps' => 'layout-grid',
+        'account' => 'shield',
+        'account.activity' => 'activity',
+        'devices.mine' => 'shield-check',
+        'account.api-keys' => 'key',
+        'account.pipes' => 'plug',
+        'account.services' => 'boxes',
+        'account.preferences' => 'settings',
+    ];
+
     public function __construct(
         private Surfaces $surfaces,
         private ReturnUrl $returns,
@@ -135,29 +147,29 @@ final readonly class AccountChrome
 
         $shell = Console::shell()->build($request)->toArray();
 
+        // EACH PAGE IS A RAIL ENTRY OF ITS OWN, with its own icon. On this host the person's
+        // pages are the whole app: one "Account" entry with a second column repeating them
+        // under it was a click and a column spent on saying nothing.
         $pages = array_map(static fn (NavPageProps $page): array => [
             'key' => $page->route,
             'label' => ConsoleLabels::navigation($page->label),
             // The page is on this host: a path, so the visit stays inside the app.
             'url' => route($page->route, [], false),
             'href' => route($page->route, [], false),
+            'icon' => self::PAGE_ICONS[$page->route] ?? 'settings',
+            'pages' => [],
         ], $area->pages);
         $active = array_values(array_filter($area->pages, static fn (NavPageProps $page): bool => $page->active))[0] ?? null;
-        $home = route('account', [], false);
+        // Home is the first page: the person's apps where there are any, else Security.
+        $home = $pages[0]['url'] ?? route('account', [], false);
 
         $shell['app'] = [...self::part($shell, 'app'), 'homeUrl' => $home];
         $shell['nav'] = array_filter([
-            'areas' => [[
-                'key' => $area->key,
-                'label' => ConsoleLabels::navigation($area->label),
-                'url' => $home,
-                'href' => $home,
-                'icon' => $area->icon,
-                'pages' => $pages,
-            ]],
-            'activeArea' => $area->key,
-            'activePage' => $active?->route,
-            'tabs' => [$area->key],
+            'areas' => $pages,
+            'activeArea' => $active?->route,
+            'activePage' => null,
+            // The phone's tab bar: the first four, the rest under More.
+            'tabs' => array_slice(array_column($pages, 'key'), 0, 4),
         ], static fn (mixed $value): bool => $value !== null);
         $shell['section'] = null;
 
@@ -176,7 +188,7 @@ final readonly class AccountChrome
                 'id' => 'account.'.$page['key'],
                 'label' => $page['label'],
                 'url' => $page['url'],
-                'icon' => 'user',
+                'icon' => $page['icon'],
             ], $pages),
         ];
         unset($shell['create'], $shell['createForms']);
@@ -185,7 +197,7 @@ final readonly class AccountChrome
         // ends the session this host holds, the person's, never the console's.
         $shell['account'] = [
             ...self::part($shell, 'account'),
-            'profileUrl' => $home,
+            'profileUrl' => route('account', [], false),
             'switchAccountUrl' => route('accounts', [], false),
             'signOutUrl' => route('logout', [], false),
         ];

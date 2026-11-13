@@ -53,8 +53,10 @@ it('draws the account chrome on a phone with the way back to the app', function 
 
     $page->assertVisible('[data-test="account-back"]')
         ->assertSeeIn('[data-test="account-back"]', 'Acme Billing')
-        ->assertVisible('nav.cbx-tabs')
-        ->assertVisible('.cbx-avatar-btn')
+        // The person's pages are the phone's tab bar, each one its own tab.
+        ->assertVisible('nav.cbx-tabbar')
+        ->assertSeeIn('nav.cbx-tabbar', 'Security')
+        ->assertSeeIn('nav.cbx-tabbar', 'Sessions & activity')
         ->assertNoJavaScriptErrors();
 
     expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
@@ -62,47 +64,49 @@ it('draws the account chrome on a phone with the way back to the app', function 
     $page->screenshot(false, 'account-shell-phone-'.$theme);
 
     // Another of their pages: the way back is still the app's.
-    $page->click('nav.cbx-tabs a:nth-child(2)')
+    $page->click('nav.cbx-tabbar a[href="/settings/activity"]')
+        ->assertSee('Where you are signed in')
         ->assertSeeIn('[data-test="account-back"]', 'Acme Billing')
         ->assertNoJavaScriptErrors();
 
     $page->screenshot(false, 'account-shell-phone-activity-'.$theme);
 
-    // Language, theme, switching account and signing out: the account menu, as elsewhere.
-    $page->click('.cbx-avatar-btn')
-        ->assertSee('Language')
-        ->assertSee('Theme')
-        ->assertSee('Switch account')
-        ->assertSee('Sign out')
+    // The rest of the pages, Switch app and the person: under More.
+    $page->click('nav.cbx-tabbar button[aria-controls="cbx-more"]')
+        ->assertVisible('#cbx-more')
+        ->assertSeeIn('#cbx-more', 'Preferences')
+        ->assertSeeIn('#cbx-more', 'Switch app')
         ->assertNoJavaScriptErrors();
 
     $page->screenshot(false, 'account-shell-phone-menu-'.$theme);
 })->with(['light', 'dark']);
 
-it('draws the rail on a desktop', function (): void {
+it('draws the rail on a desktop, one entry per page and no second column', function (): void {
     accountOnThePhone();
 
     $page = visit('/settings?return_to='.urlencode('https://billing.acme.example/invoices'))
         ->resize(1280, 860);
 
-    $page->assertVisible('aside.idc-rail')
+    $page->assertVisible('.cbx-rail')
+        ->assertPresent('.cbx-rail a[href="/settings"]')
+        ->assertPresent('.cbx-rail a[href="/settings/preferences"]')
+        ->assertNotPresent('.cbx-subnav')
         ->assertSeeIn('[data-test="account-back"]', 'Acme Billing')
         ->assertNoJavaScriptErrors();
 
     $page->screenshot(false, 'account-shell-desktop');
 });
 
-it('speaks the person\'s language once they choose it in the account menu', function (): void {
+it('speaks the person\'s language once they choose it on the preferences page', function (): void {
     accountOnThePhone();
 
-    $page = visit('/settings?return_to='.urlencode('https://billing.acme.example/invoices'))
+    $page = visit('/settings/preferences?return_to='.urlencode('https://billing.acme.example/invoices'))
         ->resize(390, 844);
 
-    $page->assertVisible('.cbx-avatar-btn')
-        ->click('.cbx-avatar-btn')
-        ->click('Language')
+    $page->assertSee('Time zone')
+        ->click('button[aria-label="Language"]')
         ->click('Dansk')
-        ->assertSee('Sikkerhed')
+        ->assertSee('Tidszone')
         ->assertSeeIn('[data-test="account-back"]', 'Tilbage til Acme Billing')
         ->assertNoJavaScriptErrors();
 

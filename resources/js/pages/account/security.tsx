@@ -95,6 +95,15 @@ type OrganizationRow = {
     leaveHref: string;
 };
 
+/** An invitation waiting for this person's (confirmed) address. */
+type InvitationRow = {
+    id: string;
+    organization: string;
+    role: string;
+    inviter: string | null;
+    acceptHref: string;
+};
+
 type TotpSetup = { id: string; name: string; secret: string; qr: string; cancelHref: string };
 
 type Props = PageProps<{
@@ -110,6 +119,7 @@ type Props = PageProps<{
     };
     /** The organizations this person belongs to, each with the way out of it. */
     organizations: OrganizationRow[];
+    invitations: InvitationRow[];
     hasPassword: boolean;
     twoFactor: {
         enabled: boolean;
@@ -158,6 +168,7 @@ export default function Security({
     organizationSettingsMoved,
     profile,
     organizations,
+    invitations,
     hasPassword,
     twoFactor,
     smsFactor,
@@ -219,7 +230,9 @@ export default function Security({
 
             <SessionPanel session={session} otherSessions={otherSessions} urls={urls} />
 
-            {organizations.length > 0 && <OrganizationsPanel organizations={organizations} />}
+            {(organizations.length > 0 || invitations.length > 0) && (
+                <OrganizationsPanel organizations={organizations} invitations={invitations} />
+            )}
         </div>
     );
 }
@@ -1770,10 +1783,18 @@ function SessionPanel({
  * first (one owner, moved by transfer) and a customer's team is administered in its own
  * console; both are said on the row rather than refused after the click.
  */
-function OrganizationsPanel({ organizations }: { organizations: OrganizationRow[] }) {
+function OrganizationsPanel({
+    organizations,
+    invitations,
+}: {
+    organizations: OrganizationRow[];
+    invitations: InvitationRow[];
+}) {
     const { t: tc } = useTranslator();
     const [leaving, setLeaving] = useState<OrganizationRow | null>(null);
     const leave = useForm({});
+    const accept = useForm({});
+    const invitationError = (usePage().props.errors as Record<string, string>).invitation;
 
     return (
         <Panel
@@ -1782,6 +1803,52 @@ function OrganizationsPanel({ organizations }: { organizations: OrganizationRow[
             data-test="account-organizations"
             flush
         >
+            {invitations.length > 0 && (
+                <ul className="acct-list" data-test="account-invitations">
+                    {invitations.map((invitation) => (
+                        <SettingRow
+                            key={invitation.id}
+                            icon="mail"
+                            title={invitation.organization}
+                            badge={
+                                <Pill tone="info" dot={false}>
+                                    {tc('console.account_invitation_pill')}
+                                </Pill>
+                            }
+                            meta={
+                                invitation.inviter !== null
+                                    ? tc('console.account_invitation_from', {
+                                          inviter: invitation.inviter,
+                                          role: invitation.role,
+                                      })
+                                    : tc('console.account_invitation_as', { role: invitation.role })
+                            }
+                            actions={
+                                <Button
+                                    size="sm"
+                                    variant="primary"
+                                    loading={accept.processing}
+                                    aria-label={tc('console.account_invitation_join_named', {
+                                        organization: invitation.organization,
+                                    })}
+                                    onClick={() =>
+                                        accept.post(invitation.acceptHref, { preserveScroll: true })
+                                    }
+                                >
+                                    {tc('console.account_invitation_join')}
+                                </Button>
+                            }
+                        />
+                    ))}
+                    {invitationError !== undefined && (
+                        <li className="acct-row">
+                            <p className="field-error" role="alert">
+                                {invitationError}
+                            </p>
+                        </li>
+                    )}
+                </ul>
+            )}
             <ul className="acct-list">
                 {organizations.map((organization) => (
                     <SettingRow

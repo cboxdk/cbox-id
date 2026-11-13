@@ -150,13 +150,15 @@ it('draws those pages in the Cbox shell with only the person\'s own pages in it,
 
     $props = $this->get('https://'.ACCOUNT_LOGIN_HOST.'/settings')->assertOk()->inertiaProps();
     $shell = $props['shell'];
-    $pages = $shell['nav']['areas'][0]['pages'];
+    $pages = $shell['nav']['areas'];
 
-    // One area, the person's own pages, each a path this host serves.
-    expect(array_column($shell['nav']['areas'], 'key'))->toBe(['account'])
-        ->and(array_column($pages, 'url'))->toContain('/settings', '/settings/activity')
+    // Each of the person's own pages is a rail entry of its own, with its own icon and no
+    // second column under it, each a path this host serves.
+    expect(array_column($pages, 'key'))->toContain('account', 'account.activity', 'account.preferences')
+        ->and(array_column($pages, 'url'))->toContain('/settings', '/settings/activity', '/settings/preferences')
+        ->and(collect($pages)->every(static fn (array $page): bool => $page['pages'] === [] && $page['icon'] !== ''))->toBeTrue()
         ->and(collect($pages)->every(static fn (array $page): bool => accountServed(ACCOUNT_LOGIN_HOST, $page['url'])))->toBeTrue()
-        ->and($shell['nav']['activePage'])->toBe('account')
+        ->and($shell['nav']['activeArea'])->toBe('account')
         // Nothing that acts in the console: no organization, no records search, no "+", no bell.
         ->and($shell['context']['levels'])->toBe([])
         ->and($shell['palette'])->not->toHaveKey('searchUrl')

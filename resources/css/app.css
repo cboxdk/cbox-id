@@ -4516,3 +4516,279 @@ body:has(.cbx-dialog-ft) {
         }
     }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Your apps: the launcher on a person's own pages. Tiles are whole links with a
+ * visible border, in a grid that is one column on a phone; sections are small
+ * headings with a count, so a dozen apps read as a few short groups.
+ * ───────────────────────────────────────────────────────────────────────── */
+@layer components {
+    .acct-count {
+        display: inline-flex;
+        align-items: center;
+        height: 22px;
+        padding: 0 8px;
+        border-radius: var(--radius-sm);
+        background: var(--secondary);
+        color: var(--muted-foreground);
+        font-size: 12px;
+        font-weight: 500;
+    }
+
+    .launcher-search {
+        position: relative;
+        max-width: 28rem;
+        margin-top: 20px;
+    }
+    .launcher-search .input {
+        height: 38px;
+        padding-left: 36px;
+    }
+    .launcher-search-icon {
+        position: absolute;
+        top: 50%;
+        left: 12px;
+        width: 16px;
+        height: 16px;
+        transform: translateY(-50%);
+        color: var(--muted-foreground);
+        pointer-events: none;
+    }
+
+    .launcher-section {
+        margin-top: 28px;
+    }
+    .launcher-section-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .launcher-section-head h2 {
+        margin: 0;
+        font-family: var(--font-display);
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--foreground);
+    }
+    .launcher-section-count {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--muted-foreground);
+    }
+    .launcher-section-lead {
+        margin: 4px 0 0;
+        font-size: 13px;
+        color: var(--muted-foreground);
+    }
+    .launcher-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+        gap: 10px;
+        margin: 12px 0 0;
+        padding: 0;
+        list-style: none;
+    }
+    .launcher-tile {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        height: 100%;
+        min-height: 72px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--card);
+        color: var(--card-foreground);
+        box-shadow: var(--shadow-card);
+        text-decoration: none;
+        transition:
+            border-color var(--dur-hover) var(--ease),
+            background var(--dur-hover) var(--ease);
+    }
+    a.launcher-tile:hover {
+        border-color: var(--border-strong);
+    }
+    a.launcher-tile:hover .launcher-arrow {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    .launcher-tile:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--ring);
+    }
+    .launcher-tile--requestable {
+        border-style: dashed;
+        background: transparent;
+        box-shadow: none;
+    }
+    .launcher-icon {
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        border-radius: var(--radius-md);
+    }
+    .launcher-monogram {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        flex-shrink: 0;
+        border-radius: var(--radius-md);
+        background: oklch(0.94 0.04 var(--app-hue));
+        color: oklch(0.42 0.12 var(--app-hue));
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+    }
+    .dark .launcher-monogram,
+    [data-theme='dark'] .launcher-monogram {
+        background: oklch(0.32 0.06 var(--app-hue));
+        color: oklch(0.88 0.08 var(--app-hue));
+    }
+    .launcher-text {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+        min-width: 0;
+        gap: 2px;
+    }
+    .launcher-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--foreground);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .launcher-description {
+        display: -webkit-box;
+        overflow: hidden;
+        font-size: 13px;
+        line-height: 1.4;
+        color: var(--muted-foreground);
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+    }
+    .launcher-meta {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: var(--muted-foreground);
+    }
+    .launcher-meta--action {
+        color: var(--primary);
+        font-weight: 500;
+    }
+    .launcher-arrow {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        color: var(--muted-foreground);
+        opacity: 0;
+        transform: translateX(-4px);
+        transition:
+            opacity var(--dur-hover) var(--ease),
+            transform var(--dur-hover) var(--ease);
+    }
+    @media (hover: none) {
+        .launcher-arrow {
+            opacity: 1;
+            transform: none;
+        }
+    }
+    @media (max-width: 639px) {
+        .launcher-search {
+            max-width: none;
+        }
+        .launcher-grid {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+
+    /* Preferences: one setting per row, label and help on the left, control on the right;
+       stacked on a phone. */
+    .pref-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 18rem);
+        gap: 8px 24px;
+        align-items: center;
+        padding: 16px 20px;
+    }
+    .pref-row + .pref-row {
+        border-top: 1px solid var(--border);
+    }
+    .pref-row-label {
+        margin: 0;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--foreground);
+    }
+    .pref-row-hint {
+        margin: 2px 0 0;
+        font-size: 13px;
+        color: var(--muted-foreground);
+    }
+    .pref-themes {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        min-width: 0;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+    }
+    .pref-theme {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 10px 6px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--card);
+        color: var(--foreground);
+        font-size: 13px;
+        cursor: pointer;
+        transition: border-color var(--dur-hover) var(--ease);
+    }
+    .pref-theme:hover {
+        border-color: var(--border-strong);
+    }
+    .pref-theme:has(input:checked) {
+        border-color: var(--accent-edge);
+        background: var(--accent-soft);
+        color: var(--primary);
+        font-weight: 500;
+    }
+    .pref-theme:has(input:focus-visible) {
+        box-shadow: 0 0 0 2px var(--ring);
+    }
+    @media (max-width: 639px) {
+        .pref-row {
+            grid-template-columns: minmax(0, 1fr);
+        }
+    }
+}
+
+@layer components {
+    /* What an app with access may do: short phrases as quiet chips, not scope codes. */
+    .acct-permissions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin: 8px 0 0;
+        padding: 0;
+        list-style: none;
+    }
+    .acct-permissions li {
+        padding: 1px 8px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--secondary);
+        color: var(--muted-foreground);
+        font-size: 12px;
+        line-height: 18px;
+    }
+}

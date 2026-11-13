@@ -51,6 +51,8 @@ enum HelpTopic: string
     case Appearance = 'appearance';
     case AccountSecurity = 'account-security';
     case SessionsAndActivity = 'sessions-and-activity';
+    case YourApps = 'your-apps';
+    case Preferences = 'preferences';
     case ApiKeys = 'api-keys';
     case MemberApiKeys = 'member-api-keys';
     case OrganizationSettings = 'organization-settings';
@@ -120,6 +122,8 @@ enum HelpTopic: string
             self::Appearance => __('console.your_branded_sign_in_page_24194071'),
             self::AccountSecurity => __('console.protecting_your_own_sign_in_2ee0bb08'),
             self::SessionsAndActivity => __('console.where_you_are_signed_in_a07510ca'),
+            self::YourApps => __('console.account_apps_title'),
+            self::Preferences => __('console.account_preferences_title'),
             self::ApiKeys => __('console.keys_for_the_apis_of_the_apps_you_use_ec8ba965'),
             self::MemberApiKeys => __('console.keys_your_people_hold_for_your_apps_a5db71a6'),
             self::OrganizationSettings => __('console.organization_settings_4fd62541'),
@@ -215,6 +219,8 @@ enum HelpTopic: string
             self::AccountSecurity => __('console.your_own_sign_in_methods_and_active_sessions_a_passkey_2bf79cbb'),
 
             self::SessionsAndActivity => __('console.every_browser_and_device_signed_in_as_you_the_apps_you_ee516093'),
+            self::YourApps => __('console.account_apps_help'),
+            self::Preferences => __('console.account_preferences_help'),
 
             self::ApiKeys => __('console.a_key_lets_your_own_scripts_and_integrations_call_an_ap_4edbc37d'),
 
@@ -344,6 +350,8 @@ enum HelpTopic: string
             self::Appearance,
             self::AccountSecurity,
             self::SessionsAndActivity,
+            self::YourApps,
+            self::Preferences,
             self::OrganizationSettings,
             self::Team,
             self::Billing,

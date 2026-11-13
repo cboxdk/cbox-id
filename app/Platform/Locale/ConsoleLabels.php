@@ -123,6 +123,9 @@ final class ConsoleLabels
         'Trusted devices' => 'console.trusted_devices_7d989273',
         // A person's own page of Cbox services and waitlists: the page's own title.
         'Services' => 'service_access.title',
+        // The person's launcher and their preferences, the account area's first and last pages.
+        'Your apps' => 'console.account_apps_title',
+        'Preferences' => 'console.account_preferences_title',
     ];
 
     /**

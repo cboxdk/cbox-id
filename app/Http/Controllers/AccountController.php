@@ -16,6 +16,7 @@ use App\Actions\Account\SendEmailConfirmation;
 use App\Actions\Account\UnlinkSocialAccount;
 use App\Actions\Account\UpdateProfile;
 use App\Actions\Members\TenantRoster;
+use App\Http\Controllers\Auth\NoOrganizationController;
 use App\Http\Controllers\Console\RunsActions;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Account\ChangeOwnPasswordRequest;
@@ -27,7 +28,10 @@ use App\Platform\Actions\ActionRefused;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\CustomerConsole;
 use App\Platform\CurrentUser;
+use App\Platform\Enums\RefusedFactor;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Invitations\Contracts\OrganizationInvitations;
+use App\Platform\Invitations\ValueObjects\OpenInvitation;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Locale\SignInMethodLabels;
 use App\Platform\Mfa\AuthenticatorEnrollment;
@@ -36,6 +40,7 @@ use App\Platform\Passkeys\PasskeyName;
 use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\Platform\PlaneResolver;
 use App\Platform\PlatformAuth;
+use App\Platform\SsoRefusal;
 use App\Platform\Surfaces\AccountChrome;
 use App\Platform\Surfaces\ConsoleEntry;
 use App\Platform\Surfaces\ReturnUrl;
@@ -66,6 +71,7 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Enums\MembershipStatus;
+use Cbox\Id\Organization\Exceptions\InvalidInvitation;
 use Cbox\Id\Otp\Exceptions\OtpRateLimitExceeded;
 use Cbox\Id\Otp\Sms\Exceptions\SmsDeliveryFailed;
 use Cbox\Id\Otp\Sms\Exceptions\SmsSendRefused;
@@ -130,6 +136,7 @@ final readonly class AccountController extends PageController
                 ],
             ],
             'organizations' => $this->organizations($subjectId, $organization?->id),
+            'invitations' => $this->invitations($me),
             'hasPassword' => $this->hasPassword($subjectId),
             'twoFactor' => [
                 'enabled' => $mfa->hasConfirmedTotp($subjectId),
@@ -245,6 +252,61 @@ final readonly class AccountController extends PageController
         usort($rows, static fn (array $a, array $b): int => strcasecmp($a['name'], $b['name']));
 
         return $rows;
+    }
+
+    /**
+     * Invitations waiting for this person's address, so joining another organization is a
+     * click on their own page rather than a hunt for the email. Only for a CONFIRMED
+     * address: an invitation trusts whoever holds the mailbox, and an unconfirmed account
+     * has not shown that it does (the same rule as {@see NoOrganizationController}).
+     *
+     * @return list<array{id: string, organization: string, role: string, inviter: string|null, acceptHref: string}>
+     */
+    private function invitations(CurrentUser $me): array
+    {
+        $email = $me->email();
+
+        if (! $me->emailVerified() || $email === null) {
+            return [];
+        }
+
+        return array_map(static fn (OpenInvitation $invitation): array => [
+            'id' => $invitation->id,
+            'organization' => $invitation->organizationName,
+            'role' => ConsoleLabels::navigation($invitation->role->label()),
+            'inviter' => $invitation->inviterName,
+            'acceptHref' => route('account.invitations.accept', $invitation->id),
+        ], app(OrganizationInvitations::class)->openFor($email));
+    }
+
+    /**
+     * Accept one of the invitations listed on the page, as the person it was sent to. The
+     * session stays in the organization it is in; the new one is in the organization list
+     * and the switcher. An organization that requires single sign-on is entered through
+     * its identity provider, as the emailed link would.
+     */
+    public function acceptInvitation(Request $request, string $invitation, PlatformAuth $auth): RedirectResponse
+    {
+        $subject = app(CurrentUser::class)->subject();
+
+        abort_if($subject === null, 403);
+
+        try {
+            $accepted = app(OrganizationInvitations::class)->acceptAs($invitation, $subject);
+        } catch (InvalidInvitation) {
+            return back()->withErrors(['invitation' => __('auth.no_organization.invitation_invalid')]);
+        }
+
+        if (! $auth->localSignInAllowedFor($subject->id)) {
+            $auth->logout($request);
+            SsoRefusal::hold($subject->id, RefusedFactor::Invitation);
+
+            return redirect()->route('login');
+        }
+
+        $name = app(Organizations::class)->find($accepted->organizationId())->name ?? '';
+
+        return back()->with('status', __('console.account_invitation_accepted', ['organization' => $name]));
     }
 
     /**

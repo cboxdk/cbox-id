@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Console;
 
+use App\Http\Controllers\AccountAppsController;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\AppLauncher;
 use App\Platform\AuditNames;
@@ -82,7 +83,9 @@ final readonly class DashboardController extends ConsoleController
         // the customer console there: it serves the person's own pages, and this is where
         // every sign-in lands.
         if ($this->scope->atCustomerAltitude() && ! CustomerConsole::persistent()) {
-            return to_route('account');
+            // Their apps where the environment publishes any: a person signing in to a
+            // customer's identity is there to open one.
+            return to_route(AccountAppsController::offered() ? 'account.apps' : 'account');
         }
 
         $me = app(CurrentUser::class);

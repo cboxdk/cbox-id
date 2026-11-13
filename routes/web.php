@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Http\Controllers\AccountActivityController;
 use App\Http\Controllers\AccountApiKeyController;
+use App\Http\Controllers\AccountAppsController;
 use App\Http\Controllers\AccountController;
+use App\Http\Controllers\AccountPreferencesController;
 use App\Http\Controllers\AdminPortalController;
 use App\Http\Controllers\Api\CliBootstrapController;
 use App\Http\Controllers\AppCatalogFeedController;
@@ -914,6 +916,16 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     // passkeys, 2FA — and this is about what is currently holding YOU. A person arrives
     // here with a different question ("is any of this not me?") and usually in a hurry.
     Route::get('/settings/activity', [AccountActivityController::class, 'index'])->name('account.activity');
+
+    // YOUR APPS: every app this person may open, recently used first, grouped by what each
+    // is for. The account's home where an environment publishes apps.
+    Route::get('/settings/apps', [AccountAppsController::class, 'index'])->name('account.apps');
+    // An invitation waiting for this person's address, accepted from their own page.
+    Route::post('/settings/invitations/{invitation}/accept', [AccountController::class, 'acceptInvitation'])
+        ->middleware(BlockDuringImpersonation::class)
+        ->name('account.invitations.accept');
+    // Language, regional format, time zone and theme, the account menu's four choices.
+    Route::get('/settings/preferences', [AccountPreferencesController::class, 'index'])->name('account.preferences');
 
     // The three levers on that page, each its own route. Under Volt they shared
     // `/livewire/update` with every other action in the console, which is why each had to

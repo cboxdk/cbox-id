@@ -14,6 +14,7 @@ use App\Platform\DeviceLabel;
 use App\Platform\Help\HelpTopic;
 use App\Platform\Locale\ConsoleStrings;
 use App\Platform\Locale\SignInMethodLabels;
+use App\Platform\OAuth\ConsentScopes;
 use App\Platform\PlatformAuth;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
@@ -91,7 +92,7 @@ final readonly class AccountActivityController extends PageController
         'support_session.ended' => 'A support session as you ended',
     ];
 
-    public function index(RefreshTokens $tokens): Response
+    public function index(RefreshTokens $tokens, ConsentScopes $scopes): Response
     {
         $subjectId = $this->subjectId();
         $currentId = $this->currentSessionId();
@@ -156,9 +157,16 @@ final readonly class AccountActivityController extends PageController
                 // The distinction that matters to a person: this one keeps working when
                 // they are not there.
                 'actsOffline' => $app->actsOffline(),
-                'scopes' => $app->scopes,
+                // What it may do, in words ("Your email address"), never `openid email`.
+                // `offline_access` is said by the pill above.
+                'permissions' => array_values(array_map(
+                    static fn (array $row): string => $row['label'],
+                    array_filter($scopes->rows($app->scopes), static fn (array $row): bool => $row['scope'] !== 'offline_access'),
+                )),
                 'approved' => $app->firstAuthorizedAt?->diffForHumans(),
+                'approvedIso' => $app->firstAuthorizedAt?->toIso8601String(),
                 'lastUsed' => $app->lastUsedAt?->diffForHumans(),
+                'lastUsedIso' => $app->lastUsedAt?->toIso8601String(),
                 'withdrawHref' => route('account.applications.destroy', $app->clientId),
             ], $tokens->connectedApplications($subjectId)),
             'activity' => $this->activity($subjectId),

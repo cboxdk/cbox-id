@@ -139,7 +139,7 @@ export function preferenceAction(url: string): { key: string; value: string } | 
 }
 
 /** One choice, wherever it was made: the cookie the server reads before the first paint, and the request that saves it. */
-function savePreference(key: string, value: unknown, i18n: I18n | null | undefined): void {
+export function savePreference(key: string, value: unknown, i18n: I18n | null | undefined): void {
     if (key === 'theme') {
         setThemePreference(value as 'system' | 'light' | 'dark');
     } else if (key === 'railPinned') {

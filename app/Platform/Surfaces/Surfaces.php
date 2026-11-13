@@ -133,6 +133,8 @@ final class Surfaces
         'settings/social/*', 'settings/connect/*',
         'settings/sign-in-methods/*',
         'settings/email/*',
+        // The person's apps, and how the pages are shown to them.
+        'settings/apps', 'settings/preferences', 'settings/invitations/*',
         // Where you are signed in and what can act as you.
         'settings/activity',
         'settings/sessions/*',
