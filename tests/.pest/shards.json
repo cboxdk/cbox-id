@@ -289,7 +289,6 @@
         "Tests\\Feature\\Radar\\RadarSignalsTest": 1.1105,
         "Tests\\Feature\\RecoveryCodeTest": 1.6951,
         "Tests\\Feature\\RequirementsAccuracyTest": 0.138,
-        "Tests\\Feature\\RevokeTokensOnRoleChangeTest": 1.9675,
         "Tests\\Feature\\RiskIntegrationTest": 1.2757,
         "Tests\\Feature\\RiskPlus\\ImpossibleTravelSignalTest": 0.2342,
         "Tests\\Feature\\RiskPlus\\NewDeviceSignalTest": 0.3268,

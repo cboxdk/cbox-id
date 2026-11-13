@@ -16,6 +16,7 @@ use App\Platform\OrganizationAccess;
 use App\Platform\Organizations\OrganizationLinks;
 use App\Platform\PlatformAuth;
 use App\Platform\ServiceAccess\ProductAdmission;
+use App\Platform\Shell\ShellRequest;
 use Cbox\AiAssistant\Connector\Support\ToolContext;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -64,6 +65,15 @@ final readonly class SupportContext
             return null;
         }
         $environment = app(ConsoleScope::class)->plane() === ConsolePlane::Environment;
+
+        // The environment plane with no environment console in the URL is a door, not a
+        // console: the sign-in callback's failure page clears the signed-in person (which
+        // reads as the environment plane) while `/auth/callback` names no environment. The
+        // environment route cannot be built there, and a shared prop must never throw — it
+        // turned every failed console sign-in and step-up into a 500. No console, no support.
+        if ($environment && ShellRequest::environmentPath($request) === null) {
+            return null;
+        }
 
         $base = $environment ? route('environment.support.session', [], false) : '/support/session';
 

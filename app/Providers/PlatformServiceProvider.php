@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Http\Controllers\HostedEndSessionController;
-use App\Listeners\RevokeTokensOnRoleChange;
 use App\Platform\Appearance\BrandContext;
 use App\Platform\Appearance\BrandImages;
 use App\Platform\Appearance\NoBrandImages;
@@ -56,7 +55,6 @@ use Cbox\Id\Identity\Contracts\SignedInSubject;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Authorization\CachedEntitlements;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
-use Cbox\Id\Kernel\Events\EventDelivered;
 use Cbox\Id\Migration\Contracts\LegacyCredentialSource;
 use Cbox\Id\Migration\Sources\DeclaredCredentialSource;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -257,12 +255,13 @@ final class PlatformServiceProvider extends ServiceProvider
         // Every view can read `$me` without each component wiring it up.
         View::share('me', $this->app->make(CurrentUser::class));
 
-        // RBAC freshness: revoke a user's refresh tokens when their roles change, so a
-        // grant/downgrade takes effect on next refresh rather than riding a stale token.
-        Event::listen(EventDelivered::class, RevokeTokensOnRoleChange::class);
+        // A ROLE CHANGE REVOKES NOTHING. A refresh token carries no roles: every refresh
+        // mints its access token and ID Token from the roles held at that moment, so a
+        // grant or a downgrade reaches the app on its next refresh (within one access-token
+        // lifetime). Revoking refresh tokens here bought no freshness and signed out every
+        // app that cannot silently sign in again, the Authenticator first among them.
         // WithdrawAccessOnOrganizationClosed is NOT listed here: Laravel discovers
-        // app/Listeners by the handle() type, and naming it as well runs it twice per event
-        // (as it does the line above, whose explicit registration predates discovery).
+        // app/Listeners by the handle() type, and naming it as well runs it twice per event.
 
         // The trusted-Host allow-list is derived from the `environments` table and cached
         // for the resolution TTL, and NOTHING invalidated it. The window that opened is

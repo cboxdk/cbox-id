@@ -6,6 +6,8 @@ use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\ConsoleSignIn\ConsoleClient;
 use App\Platform\ConsoleSignIn\ConsoleSignIn;
 use App\Platform\EnvironmentSudo;
+use App\Platform\NativeProduct\NativeProductClient;
+use App\Platform\NativeProduct\NativeProductManifest;
 use App\Platform\Operators\OperatorAssurance;
 use App\Platform\Organizations\OrganizationDirectory;
 use App\Platform\PlatformAuth;
@@ -13,6 +15,7 @@ use App\Platform\SignInLineage;
 use App\Platform\StepUpPrompt;
 use App\Platform\Sudo;
 use App\Platform\Surfaces\SessionSurface;
+use Cbox\Id\AccessControl\Contracts\AppManifests;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -747,3 +750,39 @@ it('sends a console session that owes a second factor to the security page on th
             ->where('returnTo', null)
             ->where('accountShell.back.url', $page));
 })->group('security');
+
+/**
+ * THE FAILURE PAGE IS A DOOR, AND A DOOR STANDS IN NO ENVIRONMENT. It clears the signed-in
+ * person, which reads as the environment plane, while the request (`/auth/callback`) names
+ * no environment in its URL. The shared Inertia props asked for the environment console's
+ * support-session route anyway and threw — production answered every failed sign-in and
+ * step-up with a 500 instead of this page. Support is switched on and the person is a
+ * signed-in workspace owner, which is when the support URL is computed at all.
+ */
+it('renders the failure page, not a 500, when support is on and the callback names no environment', function (string $reason): void {
+    $this->withoutVite();
+    $realm = consoleRealm();
+    config(['ai-assistant-connector.support.enabled' => true]);
+    app(NativeProductClient::class)->synchronize(app(AppManifests::class), new NativeProductManifest);
+    signInToTheConsole($realm['subjectId']);
+
+    if ($reason === 'state') {
+        $response = $this->get('https://'.RP_APP.'/auth/callback?state=forged&code=whatever');
+    } else {
+        $authorizeUrl = (string) $this->get('https://'.RP_APP.'/auth/start?step_up=organization')->headers->get('Location');
+        $verifier = heldVerifier($authorizeUrl);
+        $console = session()->all();
+
+        atTheLoginHost($realm['subjectId']);
+        $callback = answeredByTheLoginHost(preg_replace('/&max_age=0/', '', $authorizeUrl), $verifier);
+        $this->travel(10)->minutes();
+
+        atTheConsole($console);
+        $response = $this->get($callback);
+    }
+
+    $response->assertStatus(400)
+        ->assertInertia(fn ($page) => $page->component('auth/console-sign-in-failed')
+            ->where('reason', $reason)
+            ->where('supportSessionUrl', null));
+})->with(['state', 'step_up_not_met']);
