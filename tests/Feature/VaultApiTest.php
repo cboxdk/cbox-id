@@ -6,7 +6,9 @@ use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\TokenVault\Contracts\SecretVault;
 use Cbox\Id\TokenVault\ValueObjects\VaultOwner;
@@ -47,7 +49,15 @@ beforeEach(function (): void {
         'acme-app-globex-user-tok' => Introspection::active('sub-globex', $this->acmeApp, ['vault.manage'], ['org' => $this->globex->id]),
         // The environment's own app, acting for a person in Globex.
         'issuer-globex-user-tok' => Introspection::active('sub-globex', $this->issuer, ['vault.manage'], ['org' => $this->globex->id]),
+        // Acme's app, signed in to by a person who belongs to no organization: no `org`.
+        'acme-app-orgless-person-tok' => Introspection::active('user_nobody', $this->acmeApp, ['vault.lease', 'vault.manage'], []),
+        // Acme's app, signed in to by an active member of Acme.
+        'acme-app-member-tok' => Introspection::active('user_ada', $this->acmeApp, ['vault.lease'], ['org' => $this->acme->id]),
+        // The environment's own app, signed in to by a person with no organization.
+        'agent-orgless-person-tok' => Introspection::active('user_nobody', $this->agent1, ['vault.lease', 'vault.manage'], []),
     ];
+
+    app(Memberships::class)->add($this->acme->id, 'user_ada', MembershipRole::Member);
 
     $this->app->instance(TokenIntrospector::class, new readonly class($tokens) implements TokenIntrospector
     {
@@ -230,3 +240,58 @@ it('keeps a machine token of the environment\'s own app in the environment\'s un
     expect($created['owner_type'])->toBeNull()
         ->and($created['owner_id'])->toBeNull();
 });
+
+/*
+ * A TOKEN ISSUED TO A PERSON ACTS AS THAT PERSON, NEVER AS THE APP.
+ *
+ * Only a machine token (client credentials, whose subject is the app itself) stands for
+ * the app. A person's token reaches an organization's vault only as an active member of
+ * it, and a missing `org` claim never stands in for the app's organization.
+ */
+it('refuses an organization\'s app a person token from someone outside the organization', function (): void {
+    $vault = app(SecretVault::class);
+    $owner = VaultOwner::organization($this->acme->id);
+    $secret = $vault->store('stripe', 'stripe', 'sk-acme-live', $owner);
+    $vault->grant($secret->id, $this->acmeApp, $owner);
+
+    $this->postJson("/api/v1/vault/secrets/{$secret->id}/lease", [
+        'purpose' => 'x',
+    ], bearer('acme-app-orgless-person-tok'))
+        ->assertStatus(403)
+        ->assertJsonPath('error', 'lease_denied')
+        ->assertJsonMissing(['secret' => 'sk-acme-live']);
+
+    $this->postJson("/api/v1/vault/secrets/{$secret->id}/rotate", [
+        'secret' => 'attacker-chosen',
+    ], bearer('acme-app-orgless-person-tok'))->assertStatus(403);
+
+    $this->postJson('/api/v1/vault/secrets', [
+        'name' => 'planted', 'provider' => 'x', 'secret' => 'x',
+    ], bearer('acme-app-orgless-person-tok'))->assertStatus(403);
+
+    // An active member of Acme, through the same app, still leases.
+    $this->postJson("/api/v1/vault/secrets/{$secret->id}/lease", [
+        'purpose' => 'x',
+    ], bearer('acme-app-member-tok'))
+        ->assertStatus(200)
+        ->assertJsonPath('secret', 'sk-acme-live');
+})->group('security');
+
+it('keeps a person with no organization out of the environment\'s unowned secrets', function (): void {
+    $vault = app(SecretVault::class);
+    $secret = $vault->store('openai', 'openai', 'sk-env');
+    $vault->grant($secret->id, $this->agent1, null);
+
+    $this->postJson("/api/v1/vault/secrets/{$secret->id}/lease", [
+        'purpose' => 'x',
+    ], bearer('agent-orgless-person-tok'))->assertStatus(403)->assertJsonPath('error', 'lease_denied');
+
+    $this->postJson('/api/v1/vault/secrets', [
+        'name' => 'planted', 'provider' => 'x', 'secret' => 'x',
+    ], bearer('agent-orgless-person-tok'))->assertStatus(403);
+
+    // The app's own machine token still leases it.
+    $this->postJson("/api/v1/vault/secrets/{$secret->id}/lease", [
+        'purpose' => 'x',
+    ], bearer('agent-tok'))->assertStatus(200)->assertJsonPath('secret', 'sk-env');
+})->group('security');
