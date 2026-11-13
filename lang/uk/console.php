@@ -4953,4 +4953,7 @@ https://staging.example.com',
     'app_and_custom_roles_in_part1' => 'Ролі застосунків і власні ролі в :part1',
     'user_access_reaches' => 'Діє для',
     // end console-polish
+    // Live updates: what changed while the person was editing waits for them.
+    'live_new_data' => 'На цій сторінці є нові дані',
+    'live_refresh' => 'Оновити',
 ];

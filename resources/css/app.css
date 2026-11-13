@@ -4244,3 +4244,29 @@ body:has(.cbx-dialog-ft) {
         }
     }
 }
+
+/* ── Live updates: "New data on this page" ─────────────────────────────────
+   Shown only when something changed while the person was editing, so the page was
+   not reloaded under them. Quiet on purpose — a popover-coloured pill at the top of
+   the viewport, clear of the toasts (bottom) and the shell's own banners. */
+@layer components {
+    .cbx-live-chip {
+        position: fixed;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 60;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        max-width: calc(100vw - 32px);
+        padding: 6px 6px 6px 14px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--popover);
+        color: var(--foreground);
+        box-shadow: var(--shadow-lg);
+        font-family: var(--font-sans);
+        font-size: 13px;
+    }
+}

@@ -4953,4 +4953,7 @@ https://staging.example.com',
     'app_and_custom_roles_in_part1' => 'Role aplikacji i niestandardowe w :part1',
     'user_access_reaches' => 'Dotyczy',
     // end console-polish
+    // Live updates: what changed while the person was editing waits for them.
+    'live_new_data' => 'Nowe dane na tej stronie',
+    'live_refresh' => 'Odśwież',
 ];

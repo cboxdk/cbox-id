@@ -70,6 +70,7 @@ Pulled in automatically by `composer install`:
 
 | Package | Version | Used for |
 |---|---|---|
+| `laravel/reverb` | `^1.10` | The socket server for live updates, run as its own process (`php artisan reverb:start`). Optional: off unless `BROADCAST_CONNECTION=reverb`. See [Live updates](operations/realtime.md). |
 | `laravel/mcp` | `^1.0` | The MCP server at `/mcp` on each environment host. See [Agents and MCP](guides/agents-and-mcp.md). |
 | `laravel/tinker` | `^3.0` | REPL for operations/debugging. |
 | `maxmind-db/reader` | `^1.12` | Reads MaxMind GeoLite2/GeoIP2 database files locally for Radar's IP intelligence, when `CBOX_ID_RADAR_IP_INTELLIGENCE=maxmind`. Pure PHP; inert otherwise. |

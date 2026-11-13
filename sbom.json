@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:aafd25d8-3ca5-42eb-a256-3dbfa2d21004",
+    "serialNumber": "urn:uuid:7dba9b37-1747-4ad5-9275-27d98cd9232e",
     "version": 1,
     "metadata": {
         "tools": [
@@ -453,6 +453,38 @@
         },
         {
             "type": "library",
+            "bom-ref": "pkg:composer/clue/redis-protocol@v0.3.2",
+            "group": "clue",
+            "name": "redis-protocol",
+            "version": "v0.3.2",
+            "purl": "pkg:composer/clue/redis-protocol@v0.3.2",
+            "description": "A streaming Redis protocol (RESP) parser and serializer written in pure PHP.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/clue/redis-react@v2.8.0",
+            "group": "clue",
+            "name": "redis-react",
+            "version": "v2.8.0",
+            "purl": "pkg:composer/clue/redis-react@v2.8.0",
+            "description": "Async Redis client implementation, built on top of ReactPHP.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
             "bom-ref": "pkg:composer/dasprid/enum@1.0.7",
             "group": "dasprid",
             "name": "enum",
@@ -539,6 +571,22 @@
             "version": "4.0.4",
             "purl": "pkg:composer/egulias/email-validator@4.0.4",
             "description": "A library for validating emails against several RFCs",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/evenement/evenement@v3.0.2",
+            "group": "evenement",
+            "name": "evenement",
+            "version": "v3.0.2",
+            "purl": "pkg:composer/evenement/evenement@v3.0.2",
+            "description": "\u00c9v\u00e9nement is a very simple event dispatching library for PHP",
             "licenses": [
                 {
                     "license": {
@@ -715,6 +763,22 @@
             "version": "v0.3.27",
             "purl": "pkg:composer/laravel/prompts@v0.3.27",
             "description": "Add beautiful and user-friendly forms to your command-line applications.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/laravel/reverb@v1.13.0",
+            "group": "laravel",
+            "name": "reverb",
+            "version": "v1.13.0",
+            "purl": "pkg:composer/laravel/reverb@v1.13.0",
+            "description": "Laravel Reverb provides a real-time WebSocket communication backend for Laravel applications.",
             "licenses": [
                 {
                     "license": {
@@ -1281,6 +1345,22 @@
         },
         {
             "type": "library",
+            "bom-ref": "pkg:composer/pusher/pusher-php-server@7.3.0",
+            "group": "pusher",
+            "name": "pusher-php-server",
+            "version": "7.3.0",
+            "purl": "pkg:composer/pusher/pusher-php-server@7.3.0",
+            "description": "Library for interacting with the Pusher REST API",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
             "bom-ref": "pkg:composer/ramsey/collection@2.1.1",
             "group": "ramsey",
             "name": "collection",
@@ -1303,6 +1383,134 @@
             "version": "4.9.4",
             "purl": "pkg:composer/ramsey/uuid@4.9.4",
             "description": "A PHP library for generating and working with universally unique identifiers (UUIDs).",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/ratchet/rfc6455@v0.4.1",
+            "group": "ratchet",
+            "name": "rfc6455",
+            "version": "v0.4.1",
+            "purl": "pkg:composer/ratchet/rfc6455@v0.4.1",
+            "description": "RFC6455 WebSocket protocol handler",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/react/cache@v1.2.0",
+            "group": "react",
+            "name": "cache",
+            "version": "v1.2.0",
+            "purl": "pkg:composer/react/cache@v1.2.0",
+            "description": "Async, Promise-based cache interface for ReactPHP",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/react/dns@v1.14.0",
+            "group": "react",
+            "name": "dns",
+            "version": "v1.14.0",
+            "purl": "pkg:composer/react/dns@v1.14.0",
+            "description": "Async DNS resolver for ReactPHP",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/react/event-loop@v1.6.0",
+            "group": "react",
+            "name": "event-loop",
+            "version": "v1.6.0",
+            "purl": "pkg:composer/react/event-loop@v1.6.0",
+            "description": "ReactPHP's core reactor event loop that libraries can use for evented I/O.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/react/promise@v3.3.0",
+            "group": "react",
+            "name": "promise",
+            "version": "v3.3.0",
+            "purl": "pkg:composer/react/promise@v3.3.0",
+            "description": "A lightweight implementation of CommonJS Promises/A for PHP",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/react/promise-timer@v1.11.0",
+            "group": "react",
+            "name": "promise-timer",
+            "version": "v1.11.0",
+            "purl": "pkg:composer/react/promise-timer@v1.11.0",
+            "description": "A trivial implementation of timeouts for Promises, built on top of ReactPHP.",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/react/socket@v1.17.0",
+            "group": "react",
+            "name": "socket",
+            "version": "v1.17.0",
+            "purl": "pkg:composer/react/socket@v1.17.0",
+            "description": "Async, streaming plaintext TCP/IP and secure TLS socket server and client connections for ReactPHP",
+            "licenses": [
+                {
+                    "license": {
+                        "id": "MIT"
+                    }
+                }
+            ]
+        },
+        {
+            "type": "library",
+            "bom-ref": "pkg:composer/react/stream@v1.4.0",
+            "group": "react",
+            "name": "stream",
+            "version": "v1.4.0",
+            "purl": "pkg:composer/react/stream@v1.4.0",
+            "description": "Event-driven readable and writable streams for non-blocking I/O in ReactPHP",
             "licenses": [
                 {
                     "license": {

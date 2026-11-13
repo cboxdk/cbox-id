@@ -4954,4 +4954,7 @@ Le connessioni',
     'app_and_custom_roles_in_part1' => 'Ruoli app e personalizzati in :part1',
     'user_access_reaches' => 'Vale per',
     // end console-polish
+    // Live updates: what changed while the person was editing waits for them.
+    'live_new_data' => 'Nuovi dati in questa pagina',
+    'live_refresh' => 'Aggiorna',
 ];

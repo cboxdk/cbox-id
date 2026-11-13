@@ -6,6 +6,7 @@ import { Brand } from '@/chrome/Brand';
 import { Rail } from '@/chrome/Rail';
 import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { StepUpDialog } from '@/chrome/StepUpDialog';
+import { LiveUpdates } from '@/chrome/LiveUpdates';
 import { Toaster } from '@/chrome/Toaster';
 import { useDocumentLanguage, useTranslator } from '@/i18n';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
@@ -88,6 +89,7 @@ function HostedAccount({ shell, children }: { shell: AccountShell; children: Rea
             <Head title={title} />
             <RouteAnnouncer />
             <Toaster />
+            <LiveUpdates />
             <StepUpDialog />
 
             <div className="flex h-full" data-test="account-shell">

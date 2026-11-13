@@ -11,6 +11,7 @@ use App\Http\Props\Shared\EnvironmentProps;
 use App\Http\Props\Shared\FlashProps;
 use App\Http\Props\Shared\I18nProps;
 use App\Http\Props\Shared\ImpersonationProps;
+use App\Http\Props\Shared\RealtimeProps;
 use App\Http\Props\Shell\ShellProps;
 use App\Platform\Appearance\BrandContext;
 use App\Platform\Connect\ActionSnippets;
@@ -19,6 +20,7 @@ use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
 use App\Platform\Impersonation;
 use App\Platform\Locale\HostedTranslations;
+use App\Platform\Realtime\ChannelAuthorizer;
 use App\Platform\Shell\IdShell;
 use App\Platform\Surfaces\AccountChrome;
 use App\Platform\Theme;
@@ -160,6 +162,9 @@ final class HandleInertiaRequests extends Middleware
             ),
 
             'flash' => fn (): FlashProps => FlashProps::from($request->session()),
+
+            // Live updates: where this page may connect and which channels it may join.
+            'realtime' => fn (): ?RealtimeProps => RealtimeProps::from($request, app(ChannelAuthorizer::class)),
 
             /*
              * THE CHROME. Null on a page that has none — sign-in, the admin portal, an

@@ -160,6 +160,8 @@ it('offers every environment-console page somewhere in its rail', function (): v
                 'environment.search',
                 // The global support launcher's authenticated JSON session, not a page.
                 'environment.support.session',
+                // Live updates: signs this console's channel subscription. JSON, not a page.
+                'environment.realtime.auth',
                 // A REDIRECT kept for links and bookmarks: the environment console's
                 // management keys are its Agents page (AI agents › Agents) now.
                 'environment.keys',

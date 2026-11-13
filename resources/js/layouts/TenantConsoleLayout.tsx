@@ -12,6 +12,7 @@ import { MobileNav } from '@/chrome/MobileNav';
 import { Rail } from '@/chrome/Rail';
 import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { Subnav } from '@/chrome/Subnav';
+import { LiveUpdates } from '@/chrome/LiveUpdates';
 import { Toaster } from '@/chrome/Toaster';
 import { useDocumentLanguage, useTranslator } from '@/i18n';
 import { setNavPinned } from '@/lib/theme';
@@ -109,6 +110,7 @@ export function TenantConsoleLayout({ children: page }: TenantConsoleLayoutProps
                 <Head title={title} />
                 <RouteAnnouncer />
                 <Toaster />
+                <LiveUpdates />
                 <StepUpDialog />
                 <main id="main-content" className="canvas-gradient">
                     {children}
@@ -143,6 +145,7 @@ export function TenantConsoleLayout({ children: page }: TenantConsoleLayoutProps
             <Head title={title} />
             <RouteAnnouncer />
             <Toaster />
+            <LiveUpdates />
             <StepUpDialog />
             <SandboxBanner />
             <EmailConfirmationBanner />

@@ -4953,4 +4953,7 @@ https://staging.example.com',
     'app_and_custom_roles_in_part1' => 'Alkalmazás- és egyéni szerepkörök itt: :part1',
     'user_access_reaches' => 'Hatókör',
     // end console-polish
+    // Live updates: what changed while the person was editing waits for them.
+    'live_new_data' => 'Új adatok ezen az oldalon',
+    'live_refresh' => 'Frissítés',
 ];
