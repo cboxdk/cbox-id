@@ -88,9 +88,10 @@ ID recognise `you@acme.com` as yours and send that person to your provider.
 The TXT record's name is `_cbox-id-challenge.<your domain>`, and its value is a random
 token generated for that domain.
 
-A domain can only be claimed by one organization — if verification is refused
-because it is already claimed, that is why. Verify every domain your people have
-addresses on before you rely on Enterprise SSO.
+A domain can only be verified by one organization. Several organizations may claim the
+same domain while it is unverified, each with its own token; the first to publish its
+record and verify owns it, and adding or verifying it anywhere else is refused from then
+on. Verify every domain your people have addresses on before you rely on Enterprise SSO.
 
 These are email domains. Serving the sign-in pages themselves on your own address, such
 as `login.example.com`, is a different feature: [custom domains](custom-domains.md).

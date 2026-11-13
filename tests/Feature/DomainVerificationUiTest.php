@@ -84,13 +84,28 @@ it('rejects a malformed domain', function () {
     addDomain('not a domain')->assertSessionHasErrors('domain');
 });
 
-it('surfaces a friendly error when the domain is already claimed by another org', function () {
+it('surfaces a friendly error when another org has already verified the domain', function () {
     $orgA = ssoAdmin('dom-claim-a');
-    app(DomainVerification::class)->add($orgA, 'acme.com'); // org A claims it first
+    // Org A has PROVED the domain — a verified claim is ownership and refuses everyone else.
+    app(DomainVerification::class)->add($orgA, 'acme.com')->forceFill(['verified_at' => now()])->save();
 
     ssoAdmin('dom-claim-b'); // now acting as a different org's admin
 
     addDomain('acme.com')->assertSessionHasErrors('domain');
+});
+
+it('lets a second org claim a domain another org has only claimed, not verified', function () {
+    $orgA = ssoAdmin('dom-pending-a');
+    app(DomainVerification::class)->add($orgA, 'acme.com'); // pending, never proved
+
+    $orgB = ssoAdmin('dom-pending-b');
+
+    // A pending claim is not ownership: the real owner gets its own challenge, and
+    // whoever proves the domain first owns it.
+    addDomain('acme.com')->assertSessionHasNoErrors();
+
+    expect(VerifiedDomain::query()->where('domain', 'acme.com')->pluck('organization_id')->sort()->values()->all())
+        ->toBe(collect([$orgA, $orgB])->sort()->values()->all());
 });
 
 it('refuses every domain action for a non-entitled org', function () {
