@@ -14,6 +14,7 @@ use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Enterprise\EnterpriseAudit;
 use App\Platform\Enterprise\EnterpriseReach;
+use App\Platform\OrganizationSsoMandateGuard;
 use App\Platform\RootSignInGuard;
 use Cbox\Id\Federation\Enums\ConnectionStatus;
 
@@ -38,7 +39,7 @@ use Cbox\Id\Federation\Enums\ConnectionStatus;
 )]
 final readonly class DisableSsoConnection implements Action
 {
-    public function __construct(private EnterpriseAudit $audit, private RootSignInGuard $guard) {}
+    public function __construct(private EnterpriseAudit $audit, private RootSignInGuard $guard, private OrganizationSsoMandateGuard $mandates) {}
 
     public static function input(): InputSchema
     {
@@ -55,6 +56,10 @@ final readonly class DisableSsoConnection implements Action
         // The platform root's own environment: nobody may leave its operators without a
         // way to sign in ({@see RootSignInGuard}). A no-op in every other environment.
         $this->guard->assertOperatorsKeepAWayIn(['connections_gone' => [(string) $connection->id]]);
+
+        // Nor any organization's members: the last active connection of an organization that
+        // requires SSO is the only door its members have ({@see OrganizationSsoMandateGuard}).
+        $this->mandates->assertMandateKeepsAConnection($connection->organization_id, (string) $connection->id);
 
         $connection->status = ConnectionStatus::Inactive;
         $connection->save();

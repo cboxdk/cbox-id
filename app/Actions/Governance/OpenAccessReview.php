@@ -72,6 +72,9 @@ final readonly class OpenAccessReview implements Action
             }
 
             $organizationId = EnterpriseReach::requiredOrganization($context);
+
+            // A roster managed elsewhere is not reviewed — and so not revoked — from inside.
+            AccessReviewReach::assertManagedHere($context, $organizationId);
         }
 
         $days = $context->input['due_in_days'] ?? 7;

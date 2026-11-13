@@ -15,6 +15,9 @@ use App\Platform\ConsoleSignIn\HttpIssuerTokens;
 use App\Platform\ConsoleSignIn\IssuerTokens;
 use App\Platform\CurrentEnvironment;
 use App\Platform\CurrentUser;
+use App\Platform\Directory\DirectoryReactivationHold;
+use App\Platform\Directory\HeldReactivationSubjects;
+use App\Platform\Directory\HoldingDirectorySync;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\FrontendApi\AppearanceConfig;
 use App\Platform\FrontendApi\SignInMethodsConfig;
@@ -44,6 +47,8 @@ use App\Platform\SupportAccess\ConsoleSupportAccess;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\TrustedHosts;
 use Cbox\Id\Api\Http\Controllers\EndSessionController;
+use Cbox\Id\Directory\Contracts\DirectorySync;
+use Cbox\Id\Directory\DatabaseDirectorySync;
 use Cbox\Id\FrontendApi\Contracts\FrontendConfigContributor;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
@@ -52,6 +57,7 @@ use Cbox\Id\Identity\Contracts\MfaVerification;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\SignedInSession;
 use Cbox\Id\Identity\Contracts\SignedInSubject;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Authorization\CachedEntitlements;
 use Cbox\Id\Kernel\Authorization\Contracts\EntitlementReader;
@@ -178,6 +184,19 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->app->extend(AuditLog::class, function (AuditLog $inner): AuditLog {
             return new ImpersonationAwareAuditLog($inner);
         });
+
+        // A directory push reactivates only an account the directory itself deactivated —
+        // never one an administrator disabled (audit finding #29). A bridge until
+        // cboxdk/laravel-id's own sync carries the rule: see DirectoryReactivationHold.
+        $this->app->singleton(DirectoryReactivationHold::class);
+        $this->app->extend(DirectorySync::class, static fn (DirectorySync $inner, Application $app): DirectorySync => new HoldingDirectorySync(
+            $inner,
+            $app->make(DirectoryReactivationHold::class),
+        ));
+        $this->app->when(DatabaseDirectorySync::class)->needs(Subjects::class)->give(static fn (Application $app): Subjects => new HeldReactivationSubjects(
+            $app->make(Subjects::class),
+            $app->make(DirectoryReactivationHold::class),
+        ));
 
         // A tightened SSO mandate ends the sessions that predate it. Decorating the
         // CONTRACT rather than the console page that writes it: the mandate is the one

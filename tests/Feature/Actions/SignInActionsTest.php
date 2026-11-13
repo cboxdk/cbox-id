@@ -3,17 +3,23 @@
 declare(strict_types=1);
 
 use App\Actions\Branding\SetAppearance;
+use App\Actions\SignIn\UpdateSignInPolicy;
+use App\Actions\Sso\DeleteSsoConnection;
+use App\Actions\Sso\DisableSsoConnection;
+use App\Actions\Sso\RequireSso;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\ActionRunner;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\PlatformAuth;
 use App\Platform\SelfServiceSignup;
 use Cbox\Id\AccessControl\Manifest\Manifest;
 use Cbox\Id\AccessControl\ManifestSyncService;
 use Cbox\Id\Federation\Contracts\Connections;
 use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Federation\Enums\ConnectionType;
+use Cbox\Id\Federation\Models\Connection;
 use Cbox\Id\Federation\Testing\FakeDnsResolver;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
@@ -183,10 +189,108 @@ it('ends password sessions when a key requires SSO — through the decorated con
     $subject = app(Subjects::class)->create('member@tenant.example', 'Member', 'a-strong-unbreached-passphrase');
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
     $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    siaActiveConnection($org->id);
 
     $this->withToken($key)->patchJson('/api/v1/sign-in/policy', ['organization_id' => $org->id, 'sso' => 'required'])->assertOk();
 
     expect(app(SessionManager::class)->active($session->id))->toBeNull();
+})->group('security');
+
+/** An active enterprise connection of the organization's own. */
+function siaActiveConnection(string $organizationId): Connection
+{
+    $connection = app(Connections::class)->create(
+        $organizationId,
+        ConnectionType::Oidc,
+        'Tenant IdP',
+        ['issuer' => 'https://idp.tenant.test', 'client_id' => 'abc', 'client_secret' => 's', 'signing_key' => 'k'],
+    );
+    app(Connections::class)->activate($organizationId, $connection->id);
+
+    return $connection->refresh();
+}
+
+/**
+ * Audit finding #9. "SSO required" with no connection to sign in through strands every
+ * member — and on a per-person deployment strands a member out of their OTHER
+ * organizations too, which one organization's administrator has no business deciding.
+ */
+it('refuses to require SSO for an organization with no active connection, at every door', function (): void {
+    ['environment' => $environment] = siaTenant();
+    [$key] = siaKey($environment, ['signin:write', 'sso:write']);
+    $org = siaOrg();
+
+    $subject = app(Subjects::class)->create('shared@tenant.example', 'Shared', 'a-strong-unbreached-passphrase');
+    app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Member);
+    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+
+    $this->withToken($key)->patchJson('/api/v1/sign-in/policy', ['organization_id' => $org->id, 'sso' => 'required'])
+        ->assertUnprocessable()
+        ->assertJsonPath('error', 'no_active_connection');
+
+    expect(app(AuthPolicies::class)->resolve($org->id)->sso->allowsPasswordLogin())->toBeTrue()
+        ->and(app(SessionManager::class)->active($session->id))->not->toBeNull();
+
+    // With a connection, the same write is accepted.
+    siaActiveConnection($org->id);
+    $this->withToken($key)->patchJson('/api/v1/sign-in/policy', ['organization_id' => $org->id, 'sso' => 'required'])->assertOk();
+})->group('security');
+
+/**
+ * Audit finding #9, the organization console's own doors: an organization administrator
+ * cannot require SSO through a connection nobody can sign in with, nor take the last one
+ * away from under the mandate.
+ */
+it('keeps an organization\'s SSO mandate behind an active connection, from its own console', function (): void {
+    [, $org] = actingAsRole(MembershipRole::Owner);
+    grantFeature($org->id, 'cbox-id-sso');
+    $principal = new ConsoleSessionPrincipal(app(ConsoleScope::class));
+    $run = fn (string $action, array $input) => app(ActionRunner::class)->run($action, $principal, ['organization_id' => $org->id, ...$input]);
+
+    $draft = app(Connections::class)->create($org->id, ConnectionType::Oidc, 'Draft IdP', ['issuer' => 'https://idp.tenant.test', 'client_id' => 'abc', 'client_secret' => 's', 'signing_key' => 'k']);
+
+    expect(fn () => $run(RequireSso::class, ['id' => $draft->id]))->toThrow(ActionRefused::class);
+    expect(fn () => $run(UpdateSignInPolicy::class, ['organization_id' => $org->id, 'sso' => 'required']))->toThrow(ActionRefused::class);
+    expect(app(AuthPolicies::class)->resolve($org->id)->sso->allowsPasswordLogin())->toBeTrue();
+
+    $active = siaActiveConnection($org->id);
+    $run(RequireSso::class, ['id' => $active->id]);
+    expect(app(AuthPolicies::class)->resolve($org->id)->sso->allowsPasswordLogin())->toBeFalse();
+
+    expect(fn () => $run(DisableSsoConnection::class, ['id' => $active->id]))->toThrow(ActionRefused::class);
+    expect(fn () => $run(DeleteSsoConnection::class, ['id' => $active->id]))->toThrow(ActionRefused::class);
+    expect(app(Connections::class)->byId($active->id)?->isActive())->toBeTrue();
+
+    // The draft is no way in, so taking IT away changes nothing for anybody.
+    $run(DeleteSsoConnection::class, ['id' => $draft->id]);
+    expect(app(Connections::class)->byId($draft->id))->toBeNull();
+})->group('security');
+
+/**
+ * Audit finding #9, the reach. Per organization, a mandate governs entering THAT
+ * organization: a member's sessions in their other organizations stay live, and their
+ * sign-in to those keeps working.
+ */
+it('ends only the sessions held in the mandating organization, on a per-organization deployment', function (): void {
+    config(['cbox-id.sso.mandate_per_organization' => true]);
+    ['environment' => $environment] = siaTenant();
+    [$key] = siaKey($environment, ['signin:write']);
+    $mandating = siaOrg('Mandating Co');
+    $own = siaOrg('Own Co');
+    siaActiveConnection($mandating->id);
+
+    $subject = app(Subjects::class)->create('shared@tenant.example', 'Shared', 'a-strong-unbreached-passphrase');
+    app(Memberships::class)->add($mandating->id, $subject->id, MembershipRole::Member);
+    app(Memberships::class)->add($own->id, $subject->id, MembershipRole::Owner);
+
+    $inMandating = app(SessionManager::class)->start($subject->id, $mandating->id, ['pwd']);
+    $inOwn = app(SessionManager::class)->start($subject->id, $own->id, ['pwd']);
+
+    $this->withToken($key)->patchJson('/api/v1/sign-in/policy', ['organization_id' => $mandating->id, 'sso' => 'required'])->assertOk();
+
+    expect(app(SessionManager::class)->active($inMandating->id))->toBeNull()
+        ->and(app(SessionManager::class)->active($inOwn->id))->not->toBeNull()
+        ->and(app(PlatformAuth::class)->localSignInAllowedFor($subject->id))->toBeTrue();
 })->group('security');
 
 it('drops an organization override, and 404s an organization that is not here', function (): void {

@@ -14,6 +14,7 @@ use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Actions\OrganizationTarget;
+use App\Platform\OrganizationSsoMandateGuard;
 use App\Platform\RevokingAuthPolicies;
 use App\Platform\RootSignInGuard;
 use App\Platform\SignInAudit;
@@ -55,6 +56,7 @@ final readonly class UpdateSignInPolicy implements Action
         private EnvironmentContext $environments,
         private SignInMethods $methods,
         private RootSignInGuard $guard,
+        private OrganizationSsoMandateGuard $mandates,
     ) {}
 
     public static function input(): InputSchema
@@ -112,6 +114,15 @@ final readonly class UpdateSignInPolicy implements Action
                 'organization_sso' => [$organizationId => $policy->sso],
                 'field' => 'sso',
             ]);
+
+            // …and nobody else either. Requiring SSO with no connection to sign in through
+            // strands every member, and on a per-person deployment strands them out of their
+            // OTHER organizations too. Asked only when this write is what closes the
+            // password door: an override restating the environment's own mandate changes
+            // nothing for anybody.
+            if ($this->policies->resolve($organizationId)->sso->allowsPasswordLogin() && ! $policy->sso->allowsPasswordLogin()) {
+                $this->mandates->assertConnectionBehindMandate($organizationId);
+            }
 
             $this->policies->setForOrganization($organizationId, $policy);
         }

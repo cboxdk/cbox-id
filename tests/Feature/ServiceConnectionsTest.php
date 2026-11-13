@@ -2,7 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Actions\Apps\AppFields;
+use App\Actions\Apps\RotateAppSecret;
+use App\Platform\Actions\ActionContext;
+use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\ActionRunner;
+use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
+use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Api\ApiHost;
+use App\Platform\Console\ConsoleScope;
+use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use App\ServiceConnections\ConnectionEvents;
 use App\ServiceConnections\Contracts\ReadsConnectionEvents;
 use App\ServiceConnections\ServiceConnection;
@@ -19,6 +28,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 beforeEach(function (): void {
     $this->organization = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-services'));
@@ -147,3 +157,59 @@ it('inspects a grant on the API host with either an inspect-only or a lease-only
         ->assertForbidden()
         ->assertHeader('Content-Type', 'application/problem+json');
 });
+
+/**
+ * Audit finding #54. The backing client of a service connection is filed under the
+ * organization, so the organization console treated it as one of the organization's own
+ * apps: an owner could rotate its secret, take the plaintext, and mint provider-audience
+ * tokens at /oauth/token that skipped every check lease() makes — consumer, actor, active
+ * organization, catalog audience, audit. Nobody gets that client's credentials.
+ */
+it('never hands anybody the backing client of a service connection to rotate or change', function (): void {
+    [$ownerId, $org] = actingAsRole(MembershipRole::Owner);
+    confirmConsoleStepUp();
+
+    $backing = app(ClientRegistry::class)->register(new NewClient(
+        name: 'Service connection: cbox_billing', type: ClientType::Confidential, grantTypes: ['client_credentials'], organizationId: $org->id,
+    ))->client;
+    ServiceConnection::query()->create([
+        'organization_id' => $org->id, 'consumer_client_id' => $this->consumer, 'service' => 'cbox_billing',
+        'service_client_id' => $backing->client_id, 'audience' => 'https://billing.test', 'scopes' => ['billing:engage:sync'],
+        'created_by' => 'user_admin',
+    ]);
+    $ordinaryFirst = app(ClientRegistry::class)->register(new NewClient(name: 'Reports', type: ClientType::Confidential, grantTypes: ['client_credentials'], organizationId: $org->id))->client;
+    $secrets = fn (): int => count(app(ClientRegistry::class)->secrets($backing->refresh()));
+    $before = $secrets();
+
+    // The organization console: no rotation, no edit.
+    $this->post(route('clients.rotate', $backing->id))->assertForbidden();
+    expect($secrets())->toBe($before);
+
+    // Any other door an organization-confined principal has: the app does not exist for it.
+    $principal = new ConsoleSessionPrincipal(app(ConsoleScope::class));
+    expect(fn () => app(ActionRunner::class)->run(RotateAppSecret::class, $principal, ['id' => $backing->client_id, 'grace_seconds' => 0]))
+        ->toThrow(HttpException::class);
+    expect($secrets())->toBe($before);
+
+    // A token the owner signed in for, confined to the organization: a 404, as for an app
+    // that is not theirs.
+    $token = new DelegatedTokenPrincipal(
+        subjectId: (string) $ownerId,
+        personName: 'Owner',
+        clientId: 'owner-cli',
+        clientName: 'Owner CLI',
+        environmentId: 'env_test',
+        scopes: ['apps:write', 'apps:read'],
+        organization: new OrganizationChoice($org->id, $org->name, MembershipRole::Owner),
+        customerConsole: false,
+    );
+    $context = new ActionContext($token, ['id' => $backing->client_id]);
+    expect(fn () => AppFields::find($context, $backing->client_id))
+        ->toThrow(ActionRefused::class);
+    expect(AppFields::find($context, $ordinaryFirst->client_id)->client_id)->toBe($ordinaryFirst->client_id);
+    expect($secrets())->toBe($before);
+
+    // An ordinary app of the same organization still rotates.
+    $ordinary = app(ClientRegistry::class)->register(new NewClient(name: 'Billing', type: ClientType::Confidential, grantTypes: ['client_credentials'], organizationId: $org->id))->client;
+    $this->from(route('clients.show', $ordinary->id))->post(route('clients.rotate', $ordinary->id))->assertSessionHasNoErrors();
+})->group('security');

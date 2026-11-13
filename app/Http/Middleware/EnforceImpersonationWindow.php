@@ -32,6 +32,14 @@ final class EnforceImpersonationWindow
     {
         $marker = $this->impersonation->active();
 
+        // A marker that is there but does not parse is an impersonation nobody can bound:
+        // no start time to measure, no principal to restore. It ends now.
+        if ($marker === null && $request->hasSession() && $request->session()->has(Impersonation::SESSION_KEY)) {
+            $this->impersonation->exit($request);
+
+            return redirect()->route('login');
+        }
+
         if ($marker !== null && now()->getTimestamp() - $marker->startedAt > Impersonation::MAX_MINUTES * 60) {
             // Return to whichever control plane started it (exit() restores that
             // session): the env-admin console for an account member, else operator.

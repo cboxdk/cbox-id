@@ -16,6 +16,7 @@ use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Enterprise\EnterpriseAudit;
 use App\Platform\Enterprise\EnterpriseReach;
+use App\Platform\OrgAccessRoles;
 use Cbox\Id\AccessControl\Contracts\GroupRoleMappings;
 use Cbox\Id\AccessControl\Exceptions\UnknownRole;
 use Cbox\Id\AccessControl\Models\GroupRoleMapping;
@@ -49,6 +50,7 @@ final readonly class MapDirectoryGroup implements Action
     public function __construct(
         private GroupRoleMappings $mappings,
         private EnterpriseAudit $audit,
+        private OrgAccessRoles $catalog,
     ) {}
 
     public static function input(): InputSchema
@@ -75,6 +77,16 @@ final readonly class MapDirectoryGroup implements Action
         $mapped = $context->boolean('mapped');
 
         if ($mapped) {
+            // Exactly the roles the directory page offers: the organization's own, the
+            // environment's shared ones, and an app-declared role only for an app this
+            // organization can use. A manifest role is stored with no organization whoever
+            // owns its app, so the framework's predicate alone read ANOTHER organization's
+            // private app role as shared, and the mapping granted it to this organization's
+            // people (audit finding #47; the framework predicate is tightened too).
+            if (! $this->catalog->isTenantAssignable($directory->organization_id, $roleId)) {
+                throw ActionRefused::because('role_not_mappable', new ActionMessage('console.that_role_cannot_be_given_to_a_directory_group_here_d4c35edb'), 'role_id');
+            }
+
             try {
                 $this->mappings->map($directory->organization_id, $group->id, $roleId);
             } catch (UnknownRole) {

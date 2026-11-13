@@ -242,6 +242,13 @@ final class SamlIdpSsoController
             return null;
         }
 
+        // An impersonation session is never a sign-in an assertion may be issued for —
+        // whatever route reached here. The route carries BlockDuringImpersonation; this is
+        // the same rule asked of the session itself, so containment does not rest on a list.
+        if (in_array('impersonation', $session->amr, true)) {
+            abort(403, 'This action is not available while impersonating a user.');
+        }
+
         return $this->subjects->isActive($session->user_id) ? $session->user_id : null;
     }
 

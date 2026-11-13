@@ -185,6 +185,20 @@ final class Impersonation
         $marker = $this->active();
 
         if ($marker === null) {
+            // A marker that is there but unreadable restores nobody — there is no acting
+            // principal to trust — but it must still END: the subject's session goes, and
+            // the browser is left signed in as no one rather than as the person stepped into.
+            if ($request->session()->has(self::SESSION_KEY)) {
+                $sessionId = $request->session()->get(PlatformAuth::SESSION_KEY);
+                if (is_string($sessionId)) {
+                    $this->sessions->revoke($sessionId);
+                }
+
+                $this->forgetSubjectSession($request);
+                $request->session()->forget(self::SESSION_KEY);
+                $request->session()->regenerate();
+            }
+
             return;
         }
 
@@ -411,9 +425,15 @@ final class Impersonation
         $org = $data['org'] ?? null;
         $startedAt = $data['started_at'] ?? null;
 
+        // THE ORGANIZATION IS OPTIONAL, because the writers make it optional: an environment
+        // administrator may step into a person who belongs to no organization
+        // ({@see ImpersonationController::startAsEnvAdmin()}). This used to demand a
+        // non-empty string, so that marker parsed as "not impersonating" and every guard
+        // keyed on it stood down — writes allowed, no time box, Exit refused. What is read
+        // here must be exactly what {@see ImpersonationMarker::toSession()} writes.
         if (! is_string($operator) || $operator === ''
             || ! is_string($subject) || $subject === ''
-            || ! is_string($org) || $org === ''
+            || ($org !== null && (! is_string($org) || $org === ''))
             || ! is_int($startedAt)) {
             return null;
         }
@@ -433,7 +453,7 @@ final class Impersonation
             actorType: $actorType,
             operator: $operator,
             subject: $subject,
-            organizationId: $org,
+            organizationId: is_string($org) ? $org : null,
             environmentKey: is_string($env) && $env !== '' ? $env : null,
             reason: is_string($reason) && $reason !== '' ? $reason : null,
             startedAt: $startedAt,
@@ -441,9 +461,17 @@ final class Impersonation
         );
     }
 
+    /**
+     * Whether this browser is impersonating — FAIL CLOSED.
+     *
+     * A marker that is present but does not parse still means an impersonation was
+     * started here: the session it set up is the subject's, not the administrator's. Every
+     * containment guard (read-only, the credential-route block) asks this, so a marker the
+     * validator cannot read must keep them up rather than stand them all down.
+     */
     public function isImpersonating(): bool
     {
-        return $this->active() !== null;
+        return $this->active() !== null || session()->has(self::SESSION_KEY);
     }
 
     /**

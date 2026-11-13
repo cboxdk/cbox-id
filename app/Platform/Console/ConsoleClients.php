@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Console;
 
+use App\ServiceConnections\ServiceConnection;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -83,6 +84,15 @@ final readonly class ConsoleClients
      */
     public function mayManage(Client $client): bool
     {
+        // A service connection's backing client is the PLATFORM's, whoever it is filed
+        // under: its tokens are minted by OrganizationConnections::lease() for the
+        // configured consumer, behind that method's checks and audit. Rotating its secret
+        // from a console handed the administrator provider-audience tokens that skipped
+        // every one of them (audit finding #54). Not manageable here, on either plane.
+        if (ServiceConnection::backs($client->client_id)) {
+            return false;
+        }
+
         if ($this->scope->plane() === ConsolePlane::Environment) {
             return true;
         }
