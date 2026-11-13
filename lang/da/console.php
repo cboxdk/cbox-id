@@ -4835,4 +4835,5 @@ https://staging.example.com',
     'environment_delete_protected_reserved' => 'Dette miljø svarer på en af platformens egne adresser og kan ikke slettes.',
     'environment_delete_protected_configured' => 'Installationens konfiguration peger på dette miljø (:key), så det kan ikke slettes her.',
     'environment_delete_unavailable' => 'Miljøet indeholder data, som denne version endnu ikke kan fjerne, så intet blev slettet. Kontakt support.',
+    'that_address_has_not_been_confirmed_so_the_account_may_e0febd82' => 'Adressen er ikke bekræftet, så kontoen tilhører måske ikke den person, du mener. Inviter personen i stedet, eller tilføj kontoen fra brugerens side.',
 ];

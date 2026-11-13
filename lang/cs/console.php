@@ -4837,4 +4837,5 @@ https://staging.example.com',
     'environment_delete_protected_reserved' => 'Toto prostředí odpovídá na jedné z vlastních adres platformy a nelze ho smazat.',
     'environment_delete_protected_configured' => 'Konfigurace této instalace odkazuje na toto prostředí (:key), proto ho zde nelze smazat.',
     'environment_delete_unavailable' => 'Toto prostředí obsahuje data, která tato verze zatím neumí odstranit, proto nebylo nic smazáno. Kontaktujte podporu.',
+    'that_address_has_not_been_confirmed_so_the_account_may_e0febd82' => 'Tato adresa nebyla potvrzena, takže účet nemusí patřit osobě, kterou máte na mysli. Místo toho ji pozvěte, nebo účet přidejte z jeho uživatelské stránky.',
 ];

@@ -4837,4 +4837,5 @@ https://staging.example.com',
     'environment_delete_protected_reserved' => 'Este entorno responde en una de las direcciones propias de la plataforma y no se puede eliminar.',
     'environment_delete_protected_configured' => 'La configuración de esta instalación hace referencia a este entorno (:key), así que no se puede eliminar aquí.',
     'environment_delete_unavailable' => 'Este entorno contiene datos que esta versión todavía no puede eliminar, así que no se ha eliminado nada. Contacta con soporte.',
+    'that_address_has_not_been_confirmed_so_the_account_may_e0febd82' => 'Esa dirección no se ha confirmado, así que la cuenta puede no pertenecer a la persona que buscas. Invítala en su lugar o añade la cuenta desde su página de usuario.',
 ];

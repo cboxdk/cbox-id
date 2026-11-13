@@ -4837,4 +4837,5 @@ https://staging.example.com',
     'environment_delete_protected_reserved' => 'Ovo okruženje odgovara na jednoj od vlastitih adresa platforme i ne može se izbrisati.',
     'environment_delete_protected_configured' => 'Konfiguracija ove instalacije upućuje na ovo okruženje (:key) pa se ovdje ne može izbrisati.',
     'environment_delete_unavailable' => 'Ovo okruženje sadrži podatke koje ova verzija još ne može ukloniti pa ništa nije izbrisano. Obratite se podršci.',
+    'that_address_has_not_been_confirmed_so_the_account_may_e0febd82' => 'Ta adresa nije potvrđena pa račun možda ne pripada osobi na koju mislite. Umjesto toga pošaljite pozivnicu ili dodajte račun s njegove korisničke stranice.',
 ];

@@ -4837,4 +4837,5 @@ https://staging.example.com',
     'environment_delete_protected_reserved' => 'Acest mediu răspunde la una dintre adresele proprii ale platformei și nu poate fi șters.',
     'environment_delete_protected_configured' => 'Configurația acestei instalări face referire la acest mediu (:key), așa că nu poate fi șters aici.',
     'environment_delete_unavailable' => 'Acest mediu conține date pe care această versiune nu le poate elimina încă, așa că nu s-a șters nimic. Contactați asistența.',
+    'that_address_has_not_been_confirmed_so_the_account_may_e0febd82' => 'Această adresă nu a fost confirmată, deci contul s-ar putea să nu aparțină persoanei la care vă gândiți. Trimiteți o invitație sau adăugați contul din pagina utilizatorului.',
 ];

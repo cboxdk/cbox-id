@@ -4837,4 +4837,5 @@ https://staging.example.com',
     'environment_delete_protected_reserved' => 'Diese Umgebung antwortet unter einer der eigenen Adressen der Plattform und kann nicht gelöscht werden.',
     'environment_delete_protected_configured' => 'Die Konfiguration dieser Installation verweist auf diese Umgebung (:key), daher kann sie hier nicht gelöscht werden.',
     'environment_delete_unavailable' => 'Diese Umgebung enthält Daten, die diese Version noch nicht entfernen kann. Es wurde daher nichts gelöscht. Wenden Sie sich an den Support.',
+    'that_address_has_not_been_confirmed_so_the_account_may_e0febd82' => 'Diese Adresse wurde nicht bestätigt, daher gehört das Konto möglicherweise nicht der gemeinten Person. Laden Sie die Person stattdessen ein oder fügen Sie das Konto über seine Benutzerseite hinzu.',
 ];

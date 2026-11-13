@@ -4837,4 +4837,5 @@ https://staging.example.com',
     'environment_delete_protected_reserved' => 'Tämä ympäristö vastaa yhdessä alustan omista osoitteista, eikä sitä voi poistaa.',
     'environment_delete_protected_configured' => 'Asennuksen määritykset viittaavat tähän ympäristöön (:key), joten sitä ei voi poistaa täältä.',
     'environment_delete_unavailable' => 'Ympäristössä on tietoja, joita tämä versio ei vielä osaa poistaa, joten mitään ei poistettu. Ota yhteyttä tukeen.',
+    'that_address_has_not_been_confirmed_so_the_account_may_e0febd82' => 'Osoitetta ei ole vahvistettu, joten tili ei ehkä kuulu tarkoittamallesi henkilölle. Kutsu hänet sen sijaan tai lisää tili sen käyttäjäsivulta.',
 ];

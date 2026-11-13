@@ -34,6 +34,7 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 ### Security
 
 - **The SAML IdP asserts only a verified email address.** A signed assertion could carry the person's email, as the NameID or as a mapped attribute, before they had confirmed it. The SSO endpoint now refuses with 403 ("Confirm your email address before signing in to this service.") when the service provider would receive the email (an email or unspecified NameID taken from `email`, or an attribute mapped from `email`) and the address is not verified. For any other service provider the person signs in as before, and the unverified address is never passed to the assertion. `SamlIdpUnverifiedEmailTest`.
+- **An account whose address nobody confirmed never receives a membership.** Accepting an organization or team invitation proves the invited address, so an existing account under that address that was never confirmed is now handed to the person accepting: its password, second factors, passkeys, linked sign-in methods, personal API keys, sessions and refresh tokens are withdrawn and the address is marked confirmed before the membership is added (`App\Platform\UnverifiedAccountClaim`, audited as `user.unverified_account_claimed`). On the team invitation page the password chosen there becomes the account's password. A confirmed account is left as it is. `members.add` named by `email` now refuses an unconfirmed account with `409 email_unverified`; send an invitation instead, or name the account by `user_id` (`InvitationUnverifiedAccountTest`).
 
 ### Fixed
 

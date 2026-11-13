@@ -24,6 +24,7 @@ use App\Platform\MailLinks;
 use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
 use App\Platform\SodGuard;
+use App\Platform\UnverifiedAccountClaim;
 use Carbon\CarbonInterface;
 use Cbox\Id\AccessControl\Enums\GrantSource;
 use Cbox\Id\AccessControl\Exceptions\GrantRefused;
@@ -77,6 +78,7 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
         private AppReturnTargets $targets,
         private MailLinks $links,
         private AuditLog $audit,
+        private UnverifiedAccountClaim $claims,
     ) {}
 
     public function send(NewInvitation $invitation): SentInvitation
@@ -362,9 +364,22 @@ final readonly class OrganizationInvitationService implements OrganizationInvita
             throw InvalidInvitation::make();
         }
 
-        $subject = $this->subjects->findByEmail($invitation->email) ?? $this->subjects->create($invitation->email);
+        /*
+         * THE TOKEN PROVES THE MAILBOX, so the membership goes to whoever holds it. An
+         * account found under this address whose owner never confirmed it is somebody's
+         * claim to the address, not proof of it: what was set on it before now is
+         * withdrawn and the address confirmed BEFORE the membership attaches, in the same
+         * transaction, so an unconfirmed account never holds one — not even for a moment.
+         */
+        return DB::transaction(function () use ($invitation, $token): AcceptedInvitation {
+            $existing = $this->subjects->findByEmail($invitation->email);
 
-        return $this->redeem($invitation, $token, $subject->id);
+            $subject = $existing === null
+                ? $this->subjects->create($invitation->email)
+                : $this->claims->claim($existing, $invitation->email);
+
+            return $this->redeem($invitation, $token, $subject->id);
+        });
     }
 
     public function openFor(string $email, int $limit = 20): array

@@ -121,8 +121,21 @@ final readonly class AddMember implements Action
 
         $user = User::query()->whereRaw('lower(email) = ?', [mb_strtolower(trim($email))])->first();
 
-        return $user !== null
-            ? $user->id
-            : throw ActionRefused::because('user_not_found', new ActionMessage('console.no_user_with_that_email_in_this_environment_create_the_c8a9a675'), 'email');
+        if ($user === null) {
+            throw ActionRefused::because('user_not_found', new ActionMessage('console.no_user_with_that_email_in_this_environment_create_the_c8a9a675'), 'email');
+        }
+
+        /*
+         * AN ADDRESS NOBODY CONFIRMED IS NOT A PERSON. Signup makes an account for any
+         * typed address, so the account found under the one an administrator typed may
+         * belong to somebody else entirely — and a membership would hand them the
+         * organization. An invitation proves the mailbox before anything attaches; an
+         * administrator who means a particular account can still pick it by `user_id`.
+         */
+        if ($user->getAttribute('email_verified_at') === null) {
+            throw new ActionRefused('email_unverified', new ActionMessage('console.that_address_has_not_been_confirmed_so_the_account_may_e0febd82'), 409, 'email');
+        }
+
+        return $user->id;
     }
 }
