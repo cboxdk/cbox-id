@@ -14,7 +14,8 @@ use Illuminate\Http\Request;
  * AN IDENTITY PROVIDER THAT LINKS WHEREVER IT IS TOLD IS A PHISHING KIT with a trusted
  * domain on it. So a return address is only ever offered when it is a well-formed absolute
  * URL on a host this deployment already sends people to: the console's own host, the host
- * the page is on, or a host one of this environment's apps registered a redirect URI on.
+ * the page is on, or a host one of this environment's apps registered a redirect URI on —
+ * an app an administrator registered, never one somebody self-registered at /oauth/register.
  * That is the trust the authorization endpoint extends to an app, and no more. Anything
  * else is dropped without a word, and the page falls back to the console.
  *
@@ -77,8 +78,14 @@ final readonly class ReturnUrl
             return ['url' => $candidate, 'host' => $host, 'label' => $this->ownLabel($host)];
         }
 
-        // Client is environment-scoped, so this is the current realm's registered set.
-        foreach (Client::query()->get(['name', 'redirect_uris']) as $client) {
+        // Client is environment-scoped, so this is the current realm's registered set. Only
+        // the apps an administrator registered: anybody may self-register a client at
+        // /oauth/register and name any https redirect URI, and that is no trust at all.
+        $registered = Client::query()
+            ->whereNull('registration_access_token_hash')
+            ->get(['name', 'redirect_uris']);
+
+        foreach ($registered as $client) {
             foreach ($client->redirect_uris as $uri) {
                 if (strtolower((string) parse_url($uri, PHP_URL_HOST)) === $host) {
                     return ['url' => $candidate, 'host' => $host, 'label' => $client->name !== '' ? $client->name : $host];

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Platform\CurrentUser;
 use App\Platform\PlatformAuth;
+use App\Platform\Surfaces\ReturnUrl;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -13,6 +14,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 
 uses(RefreshDatabase::class);
 
@@ -77,3 +79,29 @@ it('never renders a return link for a malformed/unsafe return_to', function (str
     'http://evil.example.com/phish', // http on a non-local host is refused
     'not-a-url',
 ]);
+
+/*
+ * A host only counts when an ADMINISTRATOR registered a redirect URI on it. Anybody may
+ * self-register a client at /oauth/register (the `mcp` mode is the default) and name any
+ * https redirect URI, so a self-registered client's hosts would put a "Return to
+ * evil.example" link on the IdP for anyone who asked (security finding #36). The same
+ * rule covers the Referer the console's "Back to …" reads.
+ */
+it('never trusts the redirect host of a self-registered client, by return_to or Referer', function (): void {
+    signInUserHttp();
+
+    $this->postJson('/oauth/register', [
+        'client_name' => 'Anything',
+        'redirect_uris' => ['https://evil.example/cb'],
+        'grant_types' => ['authorization_code', 'refresh_token'],
+        'token_endpoint_auth_method' => 'none',
+    ])->assertCreated();
+
+    expect($this->get('/settings?return_to='.urlencode('https://evil.example/phish'))
+        ->assertOk()
+        ->inertiaProps('returnTo'))->toBeNull();
+
+    $request = Request::create('/settings', 'GET', server: ['HTTP_REFERER' => 'https://evil.example/phish']);
+    expect(app(ReturnUrl::class)->validated('https://evil.example/phish', $request))->toBeNull()
+        ->and(app(ReturnUrl::class)->referredBy($request))->toBeNull();
+})->group('security');
