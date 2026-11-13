@@ -125,6 +125,12 @@ Every web and worker process publishes over HTTP to Reverb, so the web tier scal
 did. To run more than one Reverb process, set `REVERB_SCALING_ENABLED=true`: they share
 connections over Redis/Valkey (`REDIS_*`).
 
+Give Reverb the Redis host by its **fully qualified name** (in Kubernetes
+`valkey.<namespace>.svc.cluster.local`, not `valkey`). Reverb resolves it with its own
+DNS client, which does not apply the resolver's search domains: a short name fails to
+resolve, Reverb retries for `REDIS_TIMEOUT` (60 s) and then stops. A Reverb that logs
+"Starting server" and exits a minute later is this.
+
 ### Locally
 
 ```bash
@@ -139,7 +145,7 @@ php artisan reverb:start
 ### How cboxid.com runs it
 
 Namespace `cbox-id` on cbox-hel1: Deployment `cbox-id-reverb` (one replica, Valkey
-scaling on) from the same image as the web, Service `cbox-id-reverb:8080`, and a
+scaling on, `REDIS_HOST` fully qualified) from the same image as the web, Service `cbox-id-reverb:8080`, and a
 Cloudflare Tunnel path rule `^/app/[a-z0-9]{20}$` on `cboxid.com` and `*.cboxid.com`
 ahead of the catch-all. Network policies admit the tunnel connectors and the cbox-id
 pods, nothing else. The release rolls it with the web and the worker.
