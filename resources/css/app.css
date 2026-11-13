@@ -3995,135 +3995,6 @@ body:has(.cbx-dialog-ft) {
         min-height: 30px;
         padding: 0 16px 10px 64px;
         font-size: 12.5px;
-/* ─────────────────────────────────────────────────────────────────────────
- * A person's own pages (security, sessions, devices, services). One row shape for
- * every list on them — a password, a passkey, a linked account, an organization —
- * so the page reads as one thing rather than a stack of differently-built panels.
- * ───────────────────────────────────────────────────────────────────────── */
-@layer components {
-    /* "Back to Cbox Telemetry", above the page header: the shared back link, flush with the title. */
-    .acct-back {
-        margin: -4px 0 12px -10px;
-    }
-
-    .acct-notice {
-        display: flex;
-        align-items: flex-start;
-        gap: 10px;
-        padding: 12px 16px;
-        border: 1px solid color-mix(in oklch, var(--info) 25%, transparent);
-        border-radius: var(--radius);
-        background: var(--info-soft);
-        color: var(--info-strong);
-        font-size: 14px;
-    }
-    .acct-notice svg {
-        margin-top: 2px;
-    }
-    .acct-notice a {
-        font-weight: 600;
-        color: inherit;
-        text-decoration: underline;
-        text-underline-offset: 2px;
-    }
-
-    .acct-list {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-    }
-    .acct-list + .acct-list,
-    .acct-list + .acct-section,
-    .acct-list + .field-error {
-        border-top: 1px solid var(--border);
-    }
-    .acct-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 14px 20px;
-    }
-    .acct-row + .acct-row {
-        border-top: 1px solid var(--border);
-    }
-    /* A passkey under "Passkeys", an app under "Authenticator apps": indented to line up
-       with the title above, on the same divider. */
-    .acct-row--nested {
-        padding-left: 64px;
-    }
-    .acct-row--nested .acct-row-icon {
-        display: none;
-    }
-    .acct-row--block {
-        display: block;
-    }
-    .acct-row-icon {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        width: 32px;
-        height: 32px;
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border);
-        background: var(--secondary);
-        color: var(--foreground);
-    }
-    .acct-row-main {
-        flex: 1;
-        min-width: 0;
-    }
-    .acct-row-title {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 6px 8px;
-        margin: 0;
-        font-size: 14px;
-        font-weight: 500;
-        color: var(--foreground);
-    }
-    .acct-row-name {
-        min-width: 0;
-        overflow-wrap: anywhere;
-    }
-    .acct-row-meta {
-        margin: 2px 0 0;
-        font-size: 13px;
-        color: var(--muted-foreground);
-        overflow-wrap: anywhere;
-    }
-    .acct-row-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-shrink: 0;
-    }
-    .acct-menu-button {
-        width: 32px;
-        padding: 0;
-        justify-content: center;
-    }
-    .acct-section-pad {
-        padding: 14px 20px;
-    }
-    .acct-footer {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 8px;
-        padding: 14px 20px;
-        border-top: 1px solid var(--border);
-    }
-    .acct-details {
-        padding: 0 20px 14px;
-        font-size: 13px;
-    }
-    .acct-details summary {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        border-radius: var(--radius-sm);
         color: var(--muted-foreground);
         cursor: pointer;
         list-style: none;
@@ -4361,6 +4232,143 @@ body:has(.cbx-dialog-ft) {
         .idc-access-add-org {
             grid-template-columns: minmax(0, 1fr);
             padding: 0;
+        }
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * A person's own pages (security, sessions, devices, services). One row shape for
+ * every list on them — a password, a passkey, a linked account, an organization —
+ * so the page reads as one thing rather than a stack of differently-built panels.
+ * ───────────────────────────────────────────────────────────────────────── */
+@layer components {
+    /* "Back to Cbox Telemetry", above the page header: the shared back link, flush with the title. */
+    .acct-back {
+        margin: -4px 0 12px -10px;
+    }
+
+    .acct-notice {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 12px 16px;
+        border: 1px solid color-mix(in oklch, var(--info) 25%, transparent);
+        border-radius: var(--radius);
+        background: var(--info-soft);
+        color: var(--info-strong);
+        font-size: 14px;
+    }
+    .acct-notice svg {
+        margin-top: 2px;
+    }
+    .acct-notice a {
+        font-weight: 600;
+        color: inherit;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+
+    .acct-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+    }
+    .acct-list + .acct-list,
+    .acct-list + .acct-section,
+    .acct-list + .field-error {
+        border-top: 1px solid var(--border);
+    }
+    .acct-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 20px;
+    }
+    .acct-row + .acct-row {
+        border-top: 1px solid var(--border);
+    }
+    /* A passkey under "Passkeys", an app under "Authenticator apps": indented to line up
+       with the title above, on the same divider. */
+    .acct-row--nested {
+        padding-left: 64px;
+    }
+    .acct-row--nested .acct-row-icon {
+        display: none;
+    }
+    .acct-row--block {
+        display: block;
+    }
+    .acct-row-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border);
+        background: var(--secondary);
+        color: var(--foreground);
+    }
+    .acct-row-main {
+        flex: 1;
+        min-width: 0;
+    }
+    .acct-row-title {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 8px;
+        margin: 0;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--foreground);
+    }
+    .acct-row-name {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+    .acct-row-meta {
+        margin: 2px 0 0;
+        font-size: 13px;
+        color: var(--muted-foreground);
+        overflow-wrap: anywhere;
+    }
+    .acct-row-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+    .acct-menu-button {
+        width: 32px;
+        padding: 0;
+        justify-content: center;
+    }
+    .acct-section-pad {
+        padding: 14px 20px;
+    }
+    .acct-footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border);
+    }
+    .acct-details {
+        padding: 0 20px 14px;
+        font-size: 13px;
+    }
+    .acct-details summary {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border-radius: var(--radius-sm);
+        color: var(--muted-foreground);
+        cursor: pointer;
+        list-style: none;
+    }
     .acct-details summary::-webkit-details-marker {
         display: none;
     }
