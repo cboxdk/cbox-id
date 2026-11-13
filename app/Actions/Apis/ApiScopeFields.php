@@ -11,7 +11,6 @@ use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Support\ReservedScopes;
 use Cbox\Id\OAuthServer\ValueObjects\ApiScopeDefinition;
-use Cbox\Id\OAuthServer\ValueObjects\ProtectedResource;
 
 /**
  * The `scopes` input APIs are registered and changed with, and how it becomes the
@@ -51,9 +50,7 @@ final class ApiScopeFields
         $declared = [...ReservedScopes::all(), ...ScopeCatalog::RESERVED_FOR_CONSOLE];
 
         foreach (app(ProtectedResources::class)->all() as $resource) {
-            if ($resource instanceof ProtectedResource) {
-                array_push($declared, ...$resource->scopes);
-            }
+            array_push($declared, ...$resource->scopes);
         }
 
         foreach ($keys as $key) {
