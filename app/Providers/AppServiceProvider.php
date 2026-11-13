@@ -53,7 +53,6 @@ use App\Platform\Surfaces\SurfaceUrls;
 use App\Routing\PublicIdUrlGenerator;
 use App\SignalsData\Bundled\IdMachineCredential;
 use App\SignalsData\Bundled\IdManagedSources;
-use Cbox\Dns\Dns;
 use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
 use Cbox\Id\Api\Http\Controllers\DiscoveryController;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
@@ -180,7 +179,9 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(DnsResolver::class, function (Application $app): DnsResolver {
-            return new AuthoritativeDnsResolver($app->make(Dns::class)->authoritative());
+            // Short queries under one deadline per verification: a zone's owner picks its
+            // nameservers, and silent ones held a web worker for every address listed.
+            return AuthoritativeDnsResolver::bounded();
         });
 
         // The authenticated account API key for the request — shared between the

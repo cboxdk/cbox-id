@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\Dns\DeadlineResolver;
 use Cbox\Dns\Enums\RecordType;
 use Cbox\Dns\Exceptions\DnsException;
 use Cbox\Dns\Resolvers\AuthoritativeResolver;
+use Cbox\Dns\Resolvers\SocketResolver;
 use Cbox\Id\Federation\Contracts\DnsResolver;
 
 /**
@@ -23,7 +25,35 @@ use Cbox\Id\Federation\Contracts\DnsResolver;
  */
 final class AuthoritativeDnsResolver implements DnsResolver
 {
-    public function __construct(private readonly AuthoritativeResolver $authoritative) {}
+    /**
+     * The most one verification spends on DNS, start to finish. Well inside php-fpm's
+     * 60 s request timeout, and plenty for real nameservers, which answer in milliseconds.
+     */
+    public const float DEADLINE_SECONDS = 10.0;
+
+    /** Each query's own timeout and tries: a live server answers well inside it. */
+    public const float QUERY_TIMEOUT_SECONDS = 2.0;
+
+    public const int QUERY_ATTEMPTS = 1;
+
+    /**
+     * @param  DeadlineResolver|null  $deadline  The resolver under $authoritative, started per lookup.
+     */
+    public function __construct(
+        private readonly AuthoritativeResolver $authoritative,
+        private readonly ?DeadlineResolver $deadline = null,
+    ) {}
+
+    /** The production shape: short queries, under one deadline per verification. */
+    public static function bounded(): self
+    {
+        $deadline = new DeadlineResolver(
+            new SocketResolver(timeout: self::QUERY_TIMEOUT_SECONDS, attempts: self::QUERY_ATTEMPTS),
+            self::DEADLINE_SECONDS,
+        );
+
+        return new self(new AuthoritativeResolver($deadline), $deadline);
+    }
 
     public function txtRecords(string $host): array
     {
@@ -38,6 +68,9 @@ final class AuthoritativeDnsResolver implements DnsResolver
         // is never itself a zone). The first candidate with reachable authoritative
         // nameservers answers; an empty answer is a legitimate "not verified".
         $labels = explode('.', $host);
+
+        // One budget for the whole walk: every candidate zone, every nameserver.
+        $this->deadline?->start();
 
         for ($i = 1, $n = count($labels); $i < $n - 1; $i++) {
             $zone = implode('.', array_slice($labels, $i));
