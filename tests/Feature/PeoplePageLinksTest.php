@@ -57,10 +57,10 @@ it('sends the dashboard checklist\'s invite step to the same page', function ():
         ->assertInertia(fn (AssertableInertia $page) => $page->component('console/directory-members'));
 });
 
-it('sends the Roles page\'s "console access" link to the People page', function (): void {
+it('sends the Roles page\'s "a person\'s role in an organization" link to the People page', function (): void {
     actingAsRole(MembershipRole::Owner);
 
-    $href = (string) (test()->get(route('roles'))->assertOk()->inertiaProps()['consoleAccessHref'] ?? '');
+    $href = (string) (test()->get(route('roles'))->assertOk()->inertiaProps()['where']['membersHref'] ?? '');
 
     landOn($href)
         ->assertInertia(fn (AssertableInertia $page) => $page->component('console/directory-members'));

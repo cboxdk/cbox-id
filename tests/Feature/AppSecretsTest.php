@@ -215,7 +215,7 @@ it('has no secrets page for an app with no secret', function (): void {
 
     $tabs = collect((array) (test()->get(route('clients.show', $spa->id))->inertiaProps('appHeader'))['tabs']);
 
-    expect($tabs->pluck('key')->all())->toBe(['overview', 'scopes', 'settings']);
+    expect($tabs->pluck('key')->all())->toBe(['overview', 'sign-in', 'scopes', 'settings']);
 });
 
 it('rotates from the environment console for an environment-owned app', function (): void {

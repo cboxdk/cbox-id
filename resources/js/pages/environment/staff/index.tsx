@@ -1,4 +1,3 @@
-import type { Translator } from '@/i18n';
 import { EnvironmentReadOnly } from '@/ui/EnvironmentReadOnly';
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
@@ -17,7 +16,6 @@ import {
     Panel,
     type StaffRoleOption,
     StaffRolePicker,
-    staffRoleScope,
 } from '@/ui';
 
 interface GrantRow {
@@ -37,35 +35,47 @@ type Props = PageProps<{
     storeHref: string;
     rolesHref: string;
     reviewHref: string;
+    /** Where a person's role inside ONE organization is set instead. */
+    organizationsHref: string;
     help: HelpContent;
 }>;
 
 /**
- * Grants grouped by what they reach: every app first, then each app by name — the
- * question this page answers is "who has what in Parcels?", and the app is its first half.
+ * Grants grouped by ROLE — the role is what a reviewer certifies — with the roles that reach
+ * every app first, then each app's by name.
  */
-function byScope(grants: GrantRow[], tc: Translator['t']): [string, GrantRow[]][] {
+function byRole(grants: GrantRow[]): GrantRow[][] {
     const groups = new Map<string, GrantRow[]>();
 
     for (const grant of grants) {
-        const scope = staffRoleScope(grant.role, tc('console.all_apps_01bed311'));
-        groups.set(scope, [...(groups.get(scope) ?? []), grant]);
+        groups.set(grant.role.id, [...(groups.get(grant.role.id) ?? []), grant]);
     }
 
-    return [...groups.entries()].sort(([a], [b]) => {
-        if (a === tc('console.all_apps_01bed311')) {
-            return -1;
+    return [...groups.values()].sort((a, b) => {
+        const x = a[0]?.role;
+        const y = b[0]?.role;
+
+        if (x === undefined || y === undefined) {
+            return 0;
         }
 
-        if (b === tc('console.all_apps_01bed311')) {
-            return 1;
+        if ((x.app === null) !== (y.app === null)) {
+            return x.app === null ? -1 : 1;
         }
 
-        return a.localeCompare(b);
+        return `${x.app ?? ''} ${x.name}`.localeCompare(`${y.app ?? ''} ${y.name}`);
     });
 }
 
-export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref, help }: Props) {
+export default function Staff({
+    grants,
+    roles,
+    storeHref,
+    rolesHref,
+    reviewHref,
+    organizationsHref,
+    help,
+}: Props) {
     const { t: consoleRuntimeText } = useConsoleTranslator();
     const { t: consoleFinalText } = useConsoleTranslator();
 
@@ -98,6 +108,13 @@ export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref,
                 />
 
                 <div className="mt-6 space-y-6">
+                    <div className="idc-where">
+                        <p>{consoleT('console.staff_not_org_roles')}</p>
+                        <Link href={organizationsHref}>
+                            {consoleT('console.roles_where_org_link')}
+                        </Link>
+                    </div>
+
                     <GrantForm roles={roles} storeHref={storeHref} rolesHref={rolesHref} />
 
                     {grants.length === 0 ? (
@@ -114,79 +131,88 @@ export default function Staff({ grants, roles, storeHref, rolesHref, reviewHref,
                             />
                         </div>
                     ) : (
-                        byScope(grants, consoleT).map(([scope, rows]) => (
-                            <Panel
-                                key={scope}
-                                title={scope}
-                                description={
-                                    scope === consoleRuntimeText('console.all_apps_01bed311')
-                                        ? consoleText(
-                                              'console.in_the_tokens_of_every_app_in_every_organization_6a811d97',
-                                          )
-                                        : consoleFinalText(
-                                              'console.only_in_tokens_for_part1_in_every_organization_cead60fe',
-                                              { part1: scope },
-                                          )
-                                }
-                            >
-                                <ul className="-my-1">
-                                    {rows.map((grant, index) => (
-                                        <li
-                                            key={`${grant.userId}:${grant.role.id}`}
-                                            className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5"
-                                            style={
-                                                index < rows.length - 1
-                                                    ? { borderBottom: '1px solid var(--border)' }
-                                                    : undefined
-                                            }
-                                        >
-                                            <Link
-                                                href={grant.userHref}
-                                                className="min-w-0 flex-1 basis-48"
-                                            >
-                                                <span
-                                                    className="block truncate text-sm font-medium"
-                                                    style={{ color: 'var(--accent-strong)' }}
-                                                >
-                                                    {grant.userName ??
-                                                        grant.userEmail ??
-                                                        grant.userId}
-                                                </span>
-                                                {grant.userName !== null &&
-                                                    grant.userEmail !== null && (
-                                                        <span
-                                                            className="block truncate text-xs"
-                                                            style={{ color: 'var(--faint)' }}
-                                                        >
-                                                            {grant.userEmail}
-                                                        </span>
+                        byRole(grants).map((rows) => {
+                            const role = rows[0]?.role;
+
+                            if (role === undefined) {
+                                return null;
+                            }
+
+                            return (
+                                <Panel
+                                    key={role.id}
+                                    title={
+                                        <span className="inline-flex flex-wrap items-center gap-2">
+                                            {role.name}
+                                            <Badge>
+                                                {role.app ??
+                                                    consoleRuntimeText('console.all_apps_01bed311')}
+                                            </Badge>
+                                            {role.staffOnly && (
+                                                <Badge tone="info">
+                                                    {consoleT(
+                                                        'console.admins_support_only_bc5dfbd2',
                                                     )}
-                                            </Link>
-
-                                            <span className="inline-flex items-center gap-1.5">
-                                                <Badge>{grant.role.name}</Badge>
-                                                {grant.role.staffOnly && (
-                                                    <Badge tone="info">
-                                                        {consoleT(
-                                                            'console.admins_support_only_bc5dfbd2',
-                                                        )}
-                                                    </Badge>
-                                                )}
-                                            </span>
-
-                                            <Button
-                                                size="sm"
-                                                variant="danger"
-                                                className="shrink-0"
-                                                onClick={() => setRevoking(grant)}
+                                                </Badge>
+                                            )}
+                                        </span>
+                                    }
+                                    description={
+                                        role.app === null
+                                            ? consoleText(
+                                                  'console.in_the_tokens_of_every_app_in_every_organization_6a811d97',
+                                              )
+                                            : consoleFinalText(
+                                                  'console.only_in_tokens_for_part1_in_every_organization_cead60fe',
+                                                  { part1: role.app },
+                                              )
+                                    }
+                                    action={
+                                        <Badge>
+                                            {consoleT('console.roles_summary_grants', {
+                                                count: rows.length,
+                                            })}
+                                        </Badge>
+                                    }
+                                    flush
+                                >
+                                    <ul>
+                                        {rows.map((grant) => (
+                                            <li
+                                                key={`${grant.userId}:${grant.role.id}`}
+                                                className="idc-row"
                                             >
-                                                {consoleT('console.take_back_7d2a64f5')}
-                                            </Button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </Panel>
-                        ))
+                                                <Link
+                                                    href={grant.userHref}
+                                                    className="idc-row-main"
+                                                >
+                                                    <span className="idc-row-title text-sm">
+                                                        {grant.userName ??
+                                                            grant.userEmail ??
+                                                            grant.userId}
+                                                    </span>
+                                                    {grant.userName !== null &&
+                                                        grant.userEmail !== null && (
+                                                            <span className="idc-row-sub">
+                                                                <span>{grant.userEmail}</span>
+                                                            </span>
+                                                        )}
+                                                </Link>
+
+                                                <Button
+                                                    size="sm"
+                                                    variant="danger"
+                                                    className="shrink-0"
+                                                    onClick={() => setRevoking(grant)}
+                                                >
+                                                    {consoleT('console.take_back_7d2a64f5')}
+                                                </Button>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </Panel>
+                            );
+                        })
                     )}
                 </div>
 

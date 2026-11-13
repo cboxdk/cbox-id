@@ -8,7 +8,9 @@ use App\Rules\SecureUriLines;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * An edit to an app's details: its name, and where it may return people to.
+ * An edit to an app's details: its name, and where it may return people to. Each field is
+ * optional — the Settings tab sends the name, the Sign-in & logout tab the URIs — and one
+ * the request leaves out keeps its current value.
  *
  * The scopes are edited on the app's Scopes tab ({@see SaveClientScopesRequest}), not
  * here: a details form that also carried them would write back whatever that tab held
@@ -32,7 +34,7 @@ final class SaveClientRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:190'],
+            'name' => ['sometimes', 'required', 'string', 'max:190'],
             'redirectUris' => ['nullable', 'string', 'max:2000', new SecureUriLines(
                 __('console.each_redirect_uri_must_use_https_http_is_all_5445c31e'),
             )],

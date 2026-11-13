@@ -79,7 +79,8 @@ function anOwnerWithAnApp(): array
 it('will not delete an app until its name is typed exactly', function (): void {
     [$client] = anOwnerWithAnApp();
 
-    $page = visit('/apps/'.$client->id);
+    // Deleting is the Settings tab's danger zone, apart from everything that is safe to click.
+    $page = visit('/apps/'.$client->id.'/settings');
 
     $page->assertSee('Billing Worker')
         ->click('button:has-text("Delete app")');
@@ -125,7 +126,8 @@ it('will not delete an app until its name is typed exactly', function (): void {
 it('deletes the app once the name is typed exactly', function (): void {
     [$client] = anOwnerWithAnApp();
 
-    $page = visit('/apps/'.$client->id);
+    // Deleting is the Settings tab's danger zone, apart from everything that is safe to click.
+    $page = visit('/apps/'.$client->id.'/settings');
 
     $page->assertSee('Billing Worker')
         ->click('button:has-text("Delete app")')

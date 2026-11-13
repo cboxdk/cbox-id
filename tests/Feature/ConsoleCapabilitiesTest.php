@@ -1362,11 +1362,10 @@ it('gives the environment plane the catalog grant it never had', function (): vo
     expect(DB::table('role_permission')->where('role_id', $role->id)->count())->toBe(1);
 })->group('security');
 
-it('offers the environment plane the picker its own detail page would honour', function (): void {
-    // The list's picker was a query of its own, narrower than the detail page's
-    // catalogue: on this plane a permission the role's own page would grant was missing
-    // from the row, and an environment-wide role could be composed on one page and not
-    // the other. One rule now — the row carries what the detail page offers.
+it('marks a role the environment plane may compose, and offers its catalogue on the role\'s page', function (): void {
+    // The list used to carry a picker of its own, narrower than the detail page's
+    // catalogue. The list is now rows that link to the role, so the one rule is the role's
+    // own page: the row says it may be composed, the page offers what may be granted.
     anEnvironmentAdminActingOn('tenant-roles-picker');
     $role = app(Roles::class)->define(null, 'Env-wide support');
     Permission::query()->create(['name' => 'reports:view']);
@@ -1375,7 +1374,13 @@ it('offers the environment plane the picker its own detail page would honour', f
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('roles.0.mayCompose', true)
-            ->where('roles.0.offerable.0.name', 'reports:view'));
+            ->where('roles.0.permissionCount', 0));
+
+    $this->get(route('environment.roles.show', $role->id))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->where('readOnly', false)
+            ->where('catalog.0.name', 'reports:view'));
 })->group('security');
 
 it('renders the editor on the environment plane rather than a read-only shell', function (): void {

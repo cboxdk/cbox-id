@@ -1,12 +1,14 @@
 import { useTranslator } from '@/i18n';
-import { useForm } from '@inertiajs/react';
+import { router, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { Button, Checkbox, Disclosure, Field, Input, Panel, Switch } from '@/ui';
+import { Button, ConfirmDelete, Disclosure, Field, Input, Panel, Switch } from '@/ui';
 import { AppFrame, type AppHeaderData } from './frame';
 
 type Props = PageProps<{
     appHeader: AppHeaderData;
+    name: string;
     lifetime: {
         /** Null: the install's default. */
         minutes: number | null;
@@ -15,22 +17,98 @@ type Props = PageProps<{
         href: string;
     };
     exchange: { enabled: boolean; available: boolean; href: string };
-    logout: { uri: string; sessionRequired: boolean; href: string };
     apiKeys: { prefix: string; href: string };
+    urls: { update: string; destroy: string };
 }>;
 
 /**
- * FOUR FORMS, each saving one setting — so saving one never writes back a value another
- * form changed since the page loaded, and each change is one line on the activity log.
+ * ONE FORM PER SETTING, each saving only its own — so saving one never writes back a value
+ * another form changed since the page loaded, and each change is one line on the activity
+ * log. Where people are sent after signing in and out, and back-channel logout, are on the
+ * Sign-in & logout tab; deleting the app is last, set apart.
  */
-export default function ClientSettings({ appHeader, lifetime, exchange, logout, apiKeys }: Props) {
+export default function ClientSettings({
+    appHeader,
+    name,
+    lifetime,
+    exchange,
+    apiKeys,
+    urls,
+}: Props) {
     return (
         <AppFrame app={appHeader}>
+            <NameForm name={name} href={urls.update} />
             <LifetimeForm lifetime={lifetime} />
             <ExchangeForm exchange={exchange} />
-            <LogoutForm logout={logout} />
             <ApiKeysForm apiKeys={apiKeys} />
+            <DangerZone name={name} href={urls.destroy} />
         </AppFrame>
+    );
+}
+
+function NameForm({ name, href }: { name: string; href: string }) {
+    const { t } = useTranslator();
+    const form = useForm({ name });
+
+    return (
+        <Panel title={t('console.app_settings_general')}>
+            <form
+                className="space-y-3"
+                onSubmit={(event) => {
+                    event.preventDefault();
+                    form.patch(href, { preserveScroll: true });
+                }}
+            >
+                <Field label={t('console.name_dcd1d522')} error={form.errors.name}>
+                    <Input
+                        name="name"
+                        style={{ maxWidth: '28rem' }}
+                        value={form.data.name}
+                        onChange={(event) => form.setData('name', event.target.value)}
+                    />
+                </Field>
+                <Button
+                    type="submit"
+                    size="sm"
+                    variant="primary"
+                    loading={form.processing}
+                    disabled={form.data.name.trim() === name}
+                >
+                    {t('console.app_settings_save_name')}
+                </Button>
+            </form>
+        </Panel>
+    );
+}
+
+/** Deleting the app: last on the page, apart from the settings, behind its name typed out. */
+function DangerZone({ name, href }: { name: string; href: string }) {
+    const { t } = useTranslator();
+    const [confirming, setConfirming] = useState(false);
+
+    return (
+        <Panel
+            title={t('console.app_danger_zone')}
+            description={t(
+                'console.anything_using_its_credentials_will_stop_working_this_c_da65f419',
+            )}
+        >
+            <Button size="sm" variant="danger" onClick={() => setConfirming(true)}>
+                {t('console.delete_app_70ddc821')}
+            </Button>
+            <ConfirmDelete
+                open={confirming}
+                onOpenChange={setConfirming}
+                name={name}
+                consequence={t(
+                    'console.anything_using_this_app_s_credentials_will_stop_working_1ea63206',
+                )}
+                onConfirm={() => {
+                    setConfirming(false);
+                    router.delete(href);
+                }}
+            />
+        </Panel>
     );
 }
 
@@ -141,58 +219,6 @@ function ExchangeForm({ exchange }: { exchange: Props['exchange'] }) {
                     {tc('console.not_available_for_this_app_only_an_app_that__9bac58d4')}
                 </p>
             )}
-        </Disclosure>
-    );
-}
-
-function LogoutForm({ logout }: { logout: Props['logout'] }) {
-    const { t: tc } = useTranslator();
-
-    const form = useForm({ uri: logout.uri, sessionRequired: logout.sessionRequired });
-
-    return (
-        <Disclosure
-            title={tc('console.back_channel_logout_ac979af8')}
-            summary={logout.uri || tc('console.ux_not_configured')}
-            hasError={Object.keys(form.errors).length > 0}
-        >
-            <p className="text-sm text-[var(--muted-foreground)] mb-4">
-                {tc('console.when_somebody_signs_out_or_an_administrator__3520d247')}
-            </p>
-            <form
-                className="space-y-3"
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    form.put(logout.href, { preserveScroll: true });
-                }}
-            >
-                <Field
-                    label={tc('console.logout_uri_29094b69')}
-                    optional
-                    hint={tc('console.https_or_http_on_localhost_leave_empty_and_t_6d61df22')}
-                    error={form.errors.uri}
-                >
-                    <Input
-                        name="uri"
-                        type="url"
-                        className="mono"
-                        spellCheck={false}
-                        placeholder="https://app.example.com/auth/backchannel-logout"
-                        value={form.data.uri}
-                        onChange={(event) => form.setData('uri', event.target.value)}
-                    />
-                </Field>
-                <Checkbox
-                    checked={form.data.sessionRequired}
-                    disabled={form.data.uri.trim() === ''}
-                    onCheckedChange={(checked) => form.setData('sessionRequired', checked)}
-                    label={tc('console.the_app_needs_the_session_id_8983946c')}
-                    hint={tc('console.every_logout_token_then_names_the_session_si_54d0a907')}
-                />
-                <Button type="submit" size="sm" variant="primary" loading={form.processing}>
-                    {tc('console.save_logout_b29b9b19')}
-                </Button>
-            </form>
         </Disclosure>
     );
 }

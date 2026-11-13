@@ -1,6 +1,16 @@
-import { useTranslator as useConsoleTranslator } from '@/i18n';
+import { useTranslator } from '@/i18n';
 import { Link, router } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import {
+    Check,
+    ChevronRight,
+    Headset,
+    KeyRound,
+    Lock,
+    Minus,
+    ShieldCheck,
+    Users,
+} from 'lucide-react';
+import { Fragment, useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import { listHref } from '@/lib/listHref';
 import type {
@@ -10,9 +20,9 @@ import type {
     Pagination as PaginationState,
 } from '@/types';
 import {
+    AccessModelGuide,
     Badge,
     Button,
-    Combobox,
     EmptyState,
     FilterChips,
     Icon,
@@ -20,14 +30,8 @@ import {
     OrganizationFilterChip,
     PageHeader,
     Pagination,
-    AccessModelGuide,
+    Panel,
 } from '@/ui';
-
-interface Offerable {
-    id: string;
-    name: string;
-    description: string | null;
-}
 
 interface RoleRow {
     id: string;
@@ -38,50 +42,89 @@ interface RoleRow {
     /** The app whose tokens it is stamped into, or null for every app. */
     app: string | null;
     environmentWide: boolean;
+    /** An admin & support role: never offered to an organization's administrators. */
+    staffOnly: boolean;
     /**
      * The organization that owns it — set only when every organization is in view, where
-     * two tenants' "Editor" would otherwise be two identical rows.
+     * two organizations' "Editor" would otherwise be two identical rows.
      */
     organization: string | null;
     permissions: string[];
-    moreCount: number;
-    offerable: Offerable[];
+    permissionCount: number;
+    holderCount: number;
+    /** Whether this administrator may change it. */
     mayCompose: boolean;
     href: string;
-    grantHref: string;
 }
+
+type Source = 'custom' | 'app';
 
 type Props = PageProps<{
     help: HelpContent;
     roles: RoleRow[];
     pagination: PaginationState;
     search: string;
+    source: Source | null;
+    sourceCounts: Record<Source, number>;
     mayAdminister: boolean;
     sample: { role: string; permissions: string[] } | null;
     createHref: string;
-    consoleAccessHref: string | null;
+    builtIn: {
+        roles: { value: string; label: string }[];
+        abilities: { label: string; holders: string[] }[];
+    };
+    where: {
+        /** Where a person's built-in role and app/custom roles in an organization are set. */
+        membersHref: string | null;
+        /** The environment's Admins & support page; null outside the environment console. */
+        staffHref: string | null;
+        staffCount: number | null;
+    };
     /** The environment-wide list's Organization chip; null where the list is one organization's already. */
     organizationFilter: OrganizationFilter | null;
 }>;
 
+/** This page's URL with `?source=` set or dropped, back on page one. */
+function withSource(value: Source | null): string {
+    const query = new URLSearchParams(window.location.search);
+
+    if (value === null) {
+        query.delete('source');
+    } else {
+        query.set('source', value);
+    }
+
+    query.delete('page');
+    const rest = query.toString();
+
+    return rest === '' ? window.location.pathname : `${window.location.pathname}?${rest}`;
+}
+
+/**
+ * CONSOLE › ROLES — the three kinds of role, told apart, and where each is given.
+ *
+ * It was one list with a paragraph above it, and the paragraph was the only place that said
+ * a member also holds a built-in role, or that there is a second kind granted across the
+ * whole environment. So the page now starts with WHERE: a person's role in an organization
+ * is set on its Members page, an admin & support role on Admins & support. Then the
+ * built-in roles as a table of what each may do. Then the app and custom roles, custom first
+ * and each app's declared roles together, each row a link to the role.
+ */
 export default function RolesIndex({
     help,
     roles,
     pagination,
     search,
+    source,
+    sourceCounts,
     mayAdminister,
     sample,
     createHref,
-    consoleAccessHref,
+    builtIn,
+    where,
     organizationFilter,
 }: Props) {
-    const { t: consoleNestedText } = useConsoleTranslator();
-    const { t: consoleRuntimeText } = useConsoleTranslator();
-    const { t: consoleFinalText } = useConsoleTranslator();
-
-    const { t: consoleUiText } = useConsoleTranslator();
-    const { rich: consoleRich } = useConsoleTranslator();
-    const { t: consoleT } = useConsoleTranslator();
+    const { t, rich } = useTranslator();
     const [term, setTerm] = useState(search);
 
     useEffect(() => {
@@ -100,162 +143,189 @@ export default function RolesIndex({
         return () => clearTimeout(timer);
     }, [term, search]);
 
+    const newRole = mayAdminister ? (
+        <Button asChild variant="primary" className="shrink-0">
+            <Link href={createHref}>
+                {rich('console._part1_new_role_db15d053', {
+                    part1: <Icon name="plus" className="w-4 h-4" />,
+                })}
+            </Link>
+        </Button>
+    ) : undefined;
+
     return (
         <>
             <PageHeader
                 help={help}
-                description={consoleT(
+                description={t(
                     'console.what_people_can_do_inside_your_apps_you_assign_roles_he_c31f1a20',
                 )}
-                actions={
-                    mayAdminister ? (
-                        <Button asChild variant="primary" className="shrink-0">
-                            <Link href={createHref}>
-                                {consoleRich('console._part1_new_role_db15d053', {
-                                    part1: <Icon name="plus" className="w-4 h-4" />,
-                                })}
-                            </Link>
-                        </Button>
-                    ) : undefined
-                }
+                actions={newRole}
             />
 
-            {/* The one paragraph that removes the confusion this page arrives with. */}
-            <div
-                className="card p-4 mt-6"
-                style={{ background: 'var(--accent-soft)', borderColor: 'var(--accent-edge)' }}
-            >
-                <div className="flex items-start gap-3">
-                    <span
-                        className="grid place-items-center rounded-lg shrink-0"
-                        style={{
-                            width: '2rem',
-                            height: '2rem',
-                            background: 'var(--card)',
-                            color: 'var(--primary)',
-                        }}
-                    >
-                        <Icon name="key" className="w-4 h-4" />
-                    </span>
-                    <p className="text-sm">
-                        {consoleRich(
-                            'console._part1_a_role_is_a_label_stamped_into_the_token_the_one_92a78021',
-                            {
-                                part1: (
-                                    <b>
-                                        {consoleT(
-                                            'console.cbox_id_assigns_roles_your_app_decides_what_they_can_do_840ee10f',
-                                        )}
-                                    </b>
-                                ),
-                                part2: ' ',
-                                part3:
-                                    consoleAccessHref !== null ? (
-                                        <Link
-                                            href={consoleAccessHref}
-                                            className="underline"
-                                            style={{ color: 'var(--accent-strong)' }}
-                                        >
-                                            {consoleT('console.built_in_role_59a06e31')}
-                                        </Link>
-                                    ) : (
-                                        consoleNestedText('console.built_in_role_59a06e31')
-                                    ),
-                                part4: ' ',
-                            },
-                        )}
+            <section className="idc-where-grid mt-6" aria-label={t('console.roles_where_label')}>
+                <div className="idc-where">
+                    <h2>
+                        <Users className="h-4 w-4" strokeWidth={1.7} aria-hidden />
+                        {t('console.roles_where_org_title')}
+                    </h2>
+                    <p>{t('console.roles_where_org_body')}</p>
+                    {where.membersHref !== null && (
+                        <Link href={where.membersHref}>{t('console.roles_where_org_link')}</Link>
+                    )}
+                </div>
+                {where.staffHref !== null && (
+                    <div className="idc-where">
+                        <h2>
+                            <Headset className="h-4 w-4" strokeWidth={1.7} aria-hidden />
+                            {t('console.roles_where_staff_title')}
+                        </h2>
+                        <p>{t('console.roles_where_staff_body')}</p>
+                        <Link href={where.staffHref}>
+                            {t('console.roles_where_staff_link', {
+                                count: where.staffCount ?? 0,
+                            })}
+                        </Link>
+                    </div>
+                )}
+            </section>
+
+            <section className="mt-8" aria-labelledby="roles-app-custom">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <h2 id="roles-app-custom" className="text-base font-semibold">
+                        {t('console.roles_app_custom_title')}
+                    </h2>
+                    <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                        {t('console.roles_app_custom_lead')}
                     </p>
                 </div>
-            </div>
 
-            {sample !== null && <TokenShape sample={sample} />}
+                <nav className="cbx-tabs mt-3" aria-label={t('console.roles_source_label')}>
+                    <SourceTab
+                        href={withSource(null)}
+                        current={source === null}
+                        label={t('console.apps_group_all')}
+                        count={sourceCounts.custom + sourceCounts.app}
+                    />
+                    <SourceTab
+                        href={withSource('custom')}
+                        current={source === 'custom'}
+                        label={t('console.roles_source_custom')}
+                        count={sourceCounts.custom}
+                    />
+                    <SourceTab
+                        href={withSource('app')}
+                        current={source === 'app'}
+                        label={t('console.roles_source_app')}
+                        count={sourceCounts.app}
+                    />
+                </nav>
 
-            <div className="mt-6 space-y-3">
-                {organizationFilter !== null && (
-                    <FilterChips>
-                        <OrganizationFilterChip filter={organizationFilter} />
-                    </FilterChips>
-                )}
-                <Input
-                    type="search"
-                    style={{ maxWidth: '24rem' }}
-                    placeholder={consoleUiText('console.search_by_name_4ae2b333')}
-                    aria-label={consoleT('console.search_roles_848b9c5d')}
-                    value={term}
-                    onChange={(event) => setTerm(event.target.value)}
-                />
+                <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <Input
+                        type="search"
+                        className="md:max-w-sm"
+                        placeholder={t('console.search_by_name_4ae2b333')}
+                        aria-label={t('console.search_roles_848b9c5d')}
+                        value={term}
+                        onChange={(event) => setTerm(event.target.value)}
+                    />
+                    {organizationFilter !== null && (
+                        <FilterChips>
+                            <OrganizationFilterChip filter={organizationFilter} />
+                        </FilterChips>
+                    )}
+                </div>
                 {/*
                     SC 4.1.3: the list re-renders on a debounced keystroke with no focus
                     change, so the result count is the only thing that can report the
                     filter narrowed to nothing.
                 */}
                 <output aria-live="polite" className="sr-only">
-                    {consoleRich('console.search_results_found', { count: pagination.total })}
+                    {rich('console.search_results_found', { count: pagination.total })}
                 </output>
-            </div>
 
-            <div
-                className="mt-4 rounded-xl border overflow-hidden"
-                style={{ borderColor: 'var(--border)' }}
-            >
-                {roles.length === 0 ? (
-                    search !== '' ? (
-                        <EmptyState
-                            icon="search"
-                            title={consoleT('console.no_matches_2df01a03')}
-                            description={consoleFinalText(
-                                'console.no_roles_match_part1_try_a_different_name_135af768',
-                                { part1: search },
-                            )}
-                        />
+                <div className="idc-rows mt-4">
+                    {roles.length === 0 ? (
+                        search !== '' || source !== null ? (
+                            <EmptyState
+                                icon="search"
+                                title={t('console.no_matches_2df01a03')}
+                                description={
+                                    search !== ''
+                                        ? t(
+                                              'console.no_roles_match_part1_try_a_different_name_135af768',
+                                              { part1: search },
+                                          )
+                                        : t('console.apps_no_match_filters')
+                                }
+                            />
+                        ) : (
+                            <EmptyState
+                                icon="shield"
+                                equivalent="roles.create"
+                                title={t('console.no_roles_yet_4fbdeea7')}
+                                help={help}
+                                description={t(
+                                    'console.without_roles_everyone_who_can_sign_in_gets_whatever_an_dc1418f9',
+                                )}
+                                steps={[
+                                    t(
+                                        'console.let_your_apps_declare_the_roles_they_understand_those_a_719f1d4a',
+                                    ),
+                                    t(
+                                        'console.or_create_a_role_here_and_compose_it_from_the_permissio_ed2a324a',
+                                    ),
+                                    t(
+                                        'console.assign_it_to_people_the_role_travels_with_them_into_eve_a3f3f862',
+                                    ),
+                                ]}
+                                actions={newRole}
+                            />
+                        )
                     ) : (
-                        <EmptyState
-                            icon="shield"
-                            equivalent="roles.create"
-                            title={consoleT('console.no_roles_yet_4fbdeea7')}
-                            help={help}
-                            description={consoleT(
-                                'console.without_roles_everyone_who_can_sign_in_gets_whatever_an_dc1418f9',
-                            )}
-                            steps={[
-                                consoleRuntimeText(
-                                    'console.let_your_apps_declare_the_roles_they_understand_those_a_719f1d4a',
-                                ),
-                                consoleRuntimeText(
-                                    'console.or_create_a_role_here_and_compose_it_from_the_permissio_ed2a324a',
-                                ),
-                                consoleRuntimeText(
-                                    'console.assign_it_to_people_the_role_travels_with_them_into_eve_a3f3f862',
-                                ),
-                            ]}
-                            actions={
-                                mayAdminister ? (
-                                    <Button asChild variant="primary">
-                                        <Link href={createHref}>
-                                            {consoleRich('console._part1_new_role_db15d053', {
-                                                part1: <Icon name="plus" className="w-4 h-4" />,
-                                            })}
-                                        </Link>
-                                    </Button>
-                                ) : undefined
-                            }
-                        />
-                    )
-                ) : (
-                    roles.map((role, index) => (
-                        <Row
-                            key={role.id}
-                            role={role}
-                            mayAdminister={mayAdminister}
-                            last={index === roles.length - 1}
-                        />
-                    ))
-                )}
-            </div>
+                        roles.map((role, index) => {
+                            const previous = roles[index - 1];
+                            const section = sectionOf(role);
+                            const heading =
+                                index === 0 ||
+                                previous === undefined ||
+                                sectionOf(previous) !== section;
 
-            <Legend roles={roles} />
+                            return (
+                                <Fragment key={role.id}>
+                                    {heading && (
+                                        <div className="idc-rows-group">
+                                            <h3>
+                                                {role.declaredByApp
+                                                    ? t('console.roles_section_app', {
+                                                          app: role.app ?? '',
+                                                      })
+                                                    : t('console.roles_section_custom')}
+                                            </h3>
+                                            <p>
+                                                {role.declaredByApp
+                                                    ? t('console.roles_section_app_lead')
+                                                    : t('console.roles_section_custom_lead')}
+                                            </p>
+                                        </div>
+                                    )}
+                                    <RoleLink role={role} />
+                                </Fragment>
+                            );
+                        })
+                    )}
+                </div>
 
-            <Pagination pagination={pagination} href={(page) => listHref(search, page)} />
+                <div className="mt-4">
+                    <Pagination pagination={pagination} href={(page) => listHref(search, page)} />
+                </div>
+            </section>
+
+            <BuiltInRoles builtIn={builtIn} />
+
+            {sample !== null && <TokenShape sample={sample} />}
+
             <div className="mt-8">
                 <AccessModelGuide current="roles" />
             </div>
@@ -263,214 +333,158 @@ export default function RolesIndex({
     );
 }
 
-/**
- * What the badges on the rows above mean, said once.
- *
- * These were `title` attributes on each badge, which is the one place they could not do
- * their job: a tooltip is unreachable by touch, invisible to most screen readers, and gone
- * the moment the pointer moves — and "Environment-wide" is not decoration, it is the
- * difference between a role you may compose and one you may only hold.
- *
- * IT SAYS DIFFERENT THINGS ON THE TWO PLANES. From an organization, an environment-wide
- * role means "you may use this but not change it". From the environment it means the
- * opposite, and something more: it is the only kind that can be granted to a person across
- * every organization at once. Which sentence applies is exactly whether this administrator
- * may compose one, so the rows already carry the answer.
- */
-function Legend({ roles }: { roles: RoleRow[] }) {
-    const { t: consoleT } = useConsoleTranslator();
-    const declared = roles.some((role) => role.declaredByApp);
-    const wide = roles.filter((role) => role.environmentWide);
+/** Which section a row is drawn under: custom roles, or one app's declared roles. */
+function sectionOf(role: RoleRow): string {
+    return role.declaredByApp ? `app:${role.app ?? ''}` : 'custom';
+}
 
-    if (!declared && wide.length === 0) {
-        return null;
-    }
-
+function SourceTab({
+    href,
+    current,
+    label,
+    count,
+}: {
+    href: string;
+    current: boolean;
+    label: string;
+    count: number;
+}) {
     return (
-        <dl className="mt-4 space-y-1.5 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-            {declared && (
-                <div className="flex items-start gap-2">
-                    <dt className="shrink-0">
-                        <Badge>{consoleT('console.app_0d04bfeb')}</Badge>
-                    </dt>
-                    <dd>
-                        {consoleT(
-                            'console.declared_by_the_application_which_is_its_source_of_trut_b3e04ae9',
-                        )}
-                    </dd>
-                </div>
-            )}
-            {wide.length > 0 && (
-                <div className="flex items-start gap-2">
-                    <dt className="shrink-0">
-                        <Badge>{consoleT('console.environment_wide_cd1204b6')}</Badge>
-                    </dt>
-                    <dd>
-                        {wide.some((role) => role.mayCompose)
-                            ? consoleT(
-                                  'console.defined_for_the_whole_environment_every_organization_ca_8039a976',
-                              )
-                            : consoleT(
-                                  'console.owned_by_the_environment_it_applies_here_but_is_not_you_b6293291',
-                              )}
-                    </dd>
-                </div>
-            )}
-        </dl>
+        <Link
+            href={href}
+            className="idc-tab"
+            data-state={current ? 'active' : 'inactive'}
+            aria-current={current ? 'page' : undefined}
+            preserveScroll
+        >
+            {label}
+            <span className="idc-tab-count">{count}</span>
+        </Link>
     );
 }
 
 /**
- * One role.
- *
- * A row rather than one big link: the permission picker lives inside it, and a combobox
- * nested in an anchor is neither valid markup nor operable by keyboard.
+ * THE BUILT-IN ROLES as a table of what each may do here — read from the roles themselves
+ * on the server, so it cannot drift from what is enforced. Every member holds exactly one.
  */
-function Row({
-    role,
-    mayAdminister,
-    last,
-}: {
-    role: RoleRow;
-    mayAdminister: boolean;
-    last: boolean;
-}) {
-    const { t: consoleFinalText } = useConsoleTranslator();
-
-    const { t: consoleUiText } = useConsoleTranslator();
-    const { rich: consoleRich } = useConsoleTranslator();
-    const { t: consoleT } = useConsoleTranslator();
-    /*
-     * AN EMPTY PICKER MEANS TWO DIFFERENT THINGS. With grants on the role it means they
-     * are all held; with none it means the catalogue has nothing for this role at all —
-     * and the row said both at once: "No permissions yet." over "Every available
-     * permission is already granted." One sentence, the true one.
-     */
-    const nothingToOffer =
-        mayAdminister &&
-        role.mayCompose &&
-        role.offerable.length === 0 &&
-        role.permissions.length === 0 &&
-        role.moreCount === 0;
+function BuiltInRoles({ builtIn }: { builtIn: Props['builtIn'] }) {
+    const { t } = useTranslator();
 
     return (
-        <div className="p-4" style={last ? undefined : { borderBottom: '1px solid var(--border)' }}>
-            <div className="flex items-center gap-3 flex-wrap">
-                <div className="min-w-0 flex-1">
-                    <Link href={role.href} className="font-medium truncate">
-                        {role.name}
-                    </Link>
-                    {role.description !== null && (
-                        <p
-                            className="text-sm truncate"
-                            style={{ color: 'var(--muted-foreground)' }}
-                        >
-                            {role.description}
-                        </p>
-                    )}
-                </div>
+        <Panel
+            className="mt-8"
+            title={t('console.roles_builtin_title')}
+            description={t('console.roles_builtin_lead')}
+            flush
+        >
+            <div className="overflow-x-auto">
+                <table className="idc-matrix">
+                    <caption className="sr-only">{t('console.roles_builtin_title')}</caption>
+                    <thead>
+                        <tr>
+                            <th scope="col">{t('console.roles_builtin_ability')}</th>
+                            {builtIn.roles.map((role) => (
+                                <th key={role.value} scope="col">
+                                    {role.label}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {builtIn.abilities.map((ability) => (
+                            <tr key={ability.label}>
+                                <th scope="row" style={{ fontWeight: 400 }}>
+                                    {ability.label}
+                                </th>
+                                {builtIn.roles.map((role) => {
+                                    const may = ability.holders.includes(role.value);
 
-                {role.declaredByApp && <Badge>{consoleT('console.app_0d04bfeb')}</Badge>}
+                                    return (
+                                        <td key={role.value} className={may ? 'is-yes' : 'is-no'}>
+                                            {may ? (
+                                                <Check
+                                                    className="inline h-4 w-4"
+                                                    strokeWidth={2}
+                                                    aria-label={t('console.yes_85a39ab3')}
+                                                />
+                                            ) : (
+                                                <Minus
+                                                    className="inline h-4 w-4"
+                                                    strokeWidth={1.6}
+                                                    aria-label={t('console.no_1ea442a1')}
+                                                />
+                                            )}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </Panel>
+    );
+}
 
-                {role.app !== null ? (
+/** One role: the whole row is the link to it. */
+function RoleLink({ role }: { role: RoleRow }) {
+    const { t } = useTranslator();
+    const RoleIcon = role.declaredByApp ? Lock : role.staffOnly ? Headset : ShieldCheck;
+
+    return (
+        <Link href={role.href} className="idc-row">
+            <span className="idc-app-mark idc-app-mark--tile h-9 w-9" aria-hidden="true">
+                <RoleIcon className="h-4 w-4" strokeWidth={1.7} />
+            </span>
+
+            <div className="idc-row-main">
+                <span className="idc-row-title">{role.name}</span>
+                <span className="idc-row-sub">
+                    <span>
+                        {role.description ??
+                            (role.permissions.length > 0
+                                ? role.permissions.join(', ')
+                                : t('console.no_permissions_yet_340e092f'))}
+                    </span>
+                </span>
+            </div>
+
+            <div className="idc-row-meta">
+                {role.declaredByApp ? (
                     <Badge>
-                        {consoleRich('console._part1_part2_only_5ce234b9', {
-                            part1: <Icon name="clients" className="w-3 h-3" />,
-                            part2: role.app,
-                        })}
+                        <Lock className="h-3 w-3" aria-hidden />
+                        {t('console.roles_badge_app')}
                     </Badge>
                 ) : (
-                    <Badge>{consoleT('console.all_apps_01bed311')}</Badge>
+                    !role.mayCompose && (
+                        <Badge>{t('console.managed_for_the_environment_502c8ccb')}</Badge>
+                    )
                 )}
-
-                {role.environmentWide && (
-                    <Badge>{consoleT('console.environment_wide_cd1204b6')}</Badge>
+                {role.app !== null && !role.declaredByApp && (
+                    <Badge>{t('console.roles_badge_app_only', { app: role.app })}</Badge>
                 )}
-
-                {role.organization !== null && (
+                {role.staffOnly && (
+                    <Badge tone="info">{t('console.admins_support_only_bc5dfbd2')}</Badge>
+                )}
+                {role.organization !== null ? (
                     <Badge>
-                        <Icon name="members" className="w-3 h-3" />
-                        <span className="sr-only">{consoleT('console.organization_5300e286')}</span>
+                        <Icon name="building" className="w-3 h-3" />
                         {role.organization}
                     </Badge>
+                ) : (
+                    role.environmentWide &&
+                    !role.declaredByApp && <Badge>{t('console.environment_wide_cd1204b6')}</Badge>
                 )}
-
-                {/* The chevron promises a page, so it is a link to it — the row holds
-                    permission chips of its own and cannot itself be one. */}
-                <Link
-                    href={role.href}
-                    className="cbx-iconbtn shrink-0"
-                    aria-label={consoleFinalText('console.open_part1_10c0f8b9', {
-                        part1: role.name,
-                    })}
-                >
-                    <Icon
-                        name="chevron"
-                        className="w-4 h-4"
-                        style={{ color: 'var(--faint)', transform: 'rotate(-90deg)' }}
-                    />
-                </Link>
+                <span className="idc-row-when">
+                    <KeyRound className="mr-1 inline h-3 w-3" aria-hidden />
+                    {t('console.roles_count_permissions', { count: role.permissionCount })}
+                    {' · '}
+                    {t('console.roles_count_holders', { count: role.holderCount })}
+                </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                {role.permissions.length === 0 ? (
-                    <span className="text-xs" style={{ color: 'var(--muted-foreground)' }}>
-                        {nothingToOffer
-                            ? consoleT(
-                                  'console.no_permissions_yet_none_of_your_apps_has_declared_one_t_f84b634e',
-                              )
-                            : consoleT('console.no_permissions_yet_340e092f')}
-                    </span>
-                ) : (
-                    role.permissions.map((permission) => (
-                        <Badge key={permission}>
-                            <Icon name="key" className="w-3 h-3" />
-                            <span className="mono">{permission}</span>
-                        </Badge>
-                    ))
-                )}
-                {role.moreCount > 0 && (
-                    <span className="text-xs" style={{ color: 'var(--faint)' }}>
-                        {consoleRich('console.and_part1_more_1468d675', { part1: role.moreCount })}
-                    </span>
-                )}
-            </div>
-
-            {mayAdminister &&
-                role.mayCompose &&
-                !nothingToOffer &&
-                (role.offerable.length === 0 ? (
-                    <p className="text-xs mt-3" style={{ color: 'var(--faint)' }}>
-                        {consoleT('console.every_available_permission_is_already_granted_50e66339')}
-                    </p>
-                ) : (
-                    <div className="mt-3" style={{ maxWidth: '22rem' }}>
-                        <Combobox
-                            value={undefined}
-                            aria-label={consoleFinalText(
-                                'console.add_a_permission_to_the_part1_role_5684b805',
-                                { part1: role.name },
-                            )}
-                            placeholder={consoleUiText('console._add_a_permission_d9202366')}
-                            searchPlaceholder={consoleT('console.search_permissions_267b21e2')}
-                            emptyMessage={consoleT('console.no_permission_matches_that_acbdba7a')}
-                            options={role.offerable.map((permission) => ({
-                                value: permission.id,
-                                label: permission.name,
-                                keywords: [permission.name],
-                                hint: permission.description ?? undefined,
-                            }))}
-                            onValueChange={(permission) =>
-                                router.post(
-                                    role.grantHref,
-                                    { permission, granted: true },
-                                    { preserveScroll: true },
-                                )
-                            }
-                        />
-                    </div>
-                ))}
-        </div>
+            <ChevronRight className="idc-row-chevron h-4 w-4" aria-hidden />
+        </Link>
     );
 }
 
@@ -482,28 +496,23 @@ function Row({
  * two commonest guesses, `scope` and a nested `authorization` object, are both wrong.
  */
 function TokenShape({ sample }: { sample: { role: string; permissions: string[] } }) {
-    const { t: consoleFinalText } = useConsoleTranslator();
-
-    const { rich: consoleRich } = useConsoleTranslator();
-    const { t: consoleT } = useConsoleTranslator();
+    const { t, rich } = useTranslator();
     const quoted = sample.permissions.map((permission) => `"${permission}"`).join(', ');
 
     return (
-        <details className="card mt-4 p-4">
+        <details className="card mt-8 p-4">
             <summary className="text-sm font-medium cursor-pointer">
-                {consoleT('console.what_your_app_receives_20810522')}
+                {t('console.what_your_app_receives_20810522')}
             </summary>
 
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                {consoleT(
-                    'console.roles_and_permissions_arrive_in_the_access_token_as_two_0107aa88',
-                )}
+                {t('console.roles_and_permissions_arrive_in_the_access_token_as_two_0107aa88')}
             </p>
             <Snippet>
-                {consoleFinalText(
-                    'console._sub_the_person_s_id_org_the_organization_they_are_acti_2e2ddc7f',
-                    { part1: sample.role, part2: quoted },
-                )}
+                {t('console._sub_the_person_s_id_org_the_organization_they_are_acti_2e2ddc7f', {
+                    part1: sample.role,
+                    part2: quoted,
+                })}
             </Snippet>
 
             {/*
@@ -517,65 +526,49 @@ function TokenShape({ sample }: { sample: { role: string; permissions: string[] 
                 token themselves.)
             */}
             <p className="mt-3 text-sm">
-                {consoleRich(
-                    'console._part1_tick_the_part2_part3_scope_when_you_register_the_ef0603eb',
-                    {
-                        part1: (
-                            <b>
-                                {consoleT(
-                                    'console.if_your_app_expects_groups_these_are_them_09efb592',
-                                )}
-                            </b>
-                        ),
-                        part2: ' ',
-                        part3: <code className="mono">{'groups'}</code>,
-                        part4: <code className="mono">{'groups'}</code>,
-                    },
-                )}
+                {rich('console._part1_tick_the_part2_part3_scope_when_you_register_the_ef0603eb', {
+                    part1: <b>{t('console.if_your_app_expects_groups_these_are_them_09efb592')}</b>,
+                    part2: ' ',
+                    part3: <code className="mono">{'groups'}</code>,
+                    part4: <code className="mono">{'groups'}</code>,
+                })}
             </p>
-            <Snippet>
-                {consoleFinalText('console._groups_part1_39d243e0', { part1: sample.role })}
-            </Snippet>
+            <Snippet>{t('console._groups_part1_39d243e0', { part1: sample.role })}</Snippet>
 
             <p className="mt-2 text-xs" style={{ color: 'var(--faint)' }}>
-                {consoleRich(
-                    'console._part1_the_part2_claim_is_a_different_thing_it_is_what_c15748b6',
-                    {
-                        part1: sample.permissions.length === 0 && (
-                            <>
-                                {consoleRich(
-                                    'console._part1_has_no_permissions_yet_so_part2_part3_arrives_em_a819e0c7',
-                                    {
-                                        part1: <b>{sample.role}</b>,
-                                        part2: ' ',
-                                        part3: <code className="mono">{'permissions'}</code>,
-                                        part4: ' ',
-                                    },
-                                )}
-                            </>
-                        ),
-                        part2: <code className="mono">{'scope'}</code>,
-                        part3: ' ',
-                        part4: <em>{consoleT('console.app_a172cedc')}</em>,
-                        part5: <em>{consoleT('console.person_38a81e87')}</em>,
-                    },
-                )}
+                {rich('console._part1_the_part2_claim_is_a_different_thing_it_is_what_c15748b6', {
+                    part1: sample.permissions.length === 0 && (
+                        <>
+                            {rich(
+                                'console._part1_has_no_permissions_yet_so_part2_part3_arrives_em_a819e0c7',
+                                {
+                                    part1: <b>{sample.role}</b>,
+                                    part2: ' ',
+                                    part3: <code className="mono">{'permissions'}</code>,
+                                    part4: ' ',
+                                },
+                            )}
+                        </>
+                    ),
+                    part2: <code className="mono">{'scope'}</code>,
+                    part3: ' ',
+                    part4: <em>{t('console.app_a172cedc')}</em>,
+                    part5: <em>{t('console.person_38a81e87')}</em>,
+                })}
             </p>
         </details>
     );
 }
 
 function Snippet({ children }: { children: string }) {
-    const { t: consoleT } = useConsoleTranslator();
+    const { t } = useTranslator();
     return (
         <section
             // Scrollable sideways, so reachable by keyboard: a long line is read by scrolling it
-
             // (WCAG 2.1.1; axe scrollable-region-focusable), which the lint rule does not know.
-
             // oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex
             tabIndex={0}
-            aria-label={consoleT('console.permissions_as_code_d6c35b7e')}
+            aria-label={t('console.permissions_as_code_d6c35b7e')}
             className="mt-3 rounded-lg p-3 overflow-x-auto text-xs mono"
             style={{
                 background: 'var(--surface-2)',

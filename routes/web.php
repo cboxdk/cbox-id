@@ -1249,6 +1249,7 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
     Route::get('/apps/{client}/secrets', [ClientSecretsController::class, 'index'])->name('clients.secrets');
     Route::post('/apps/{client}/rotate', [ClientSecretsController::class, 'rotate'])->name('clients.rotate');
     Route::delete('/apps/{client}/secrets/{secret}', [ClientSecretsController::class, 'revoke'])->name('clients.secrets.revoke');
+    Route::get('/apps/{client}/sign-in', [ClientSettingsController::class, 'signIn'])->name('clients.sign-in');
     Route::get('/apps/{client}/settings', [ClientSettingsController::class, 'show'])->name('clients.settings');
     Route::put('/apps/{client}/settings/lifetime', [ClientSettingsController::class, 'lifetime'])->name('clients.settings.lifetime');
     Route::put('/apps/{client}/settings/token-exchange', [ClientSettingsController::class, 'exchange'])->name('clients.settings.exchange');
@@ -1841,6 +1842,7 @@ ConsoleRoutes::environment(function (): void {
     Route::get('/apps/{client}/secrets', [ClientSecretsController::class, 'index'])->name('environment.clients.secrets');
     Route::post('/apps/{client}/rotate', [ClientSecretsController::class, 'rotate'])->name('environment.clients.rotate');
     Route::delete('/apps/{client}/secrets/{secret}', [ClientSecretsController::class, 'revoke'])->name('environment.clients.secrets.revoke');
+    Route::get('/apps/{client}/sign-in', [ClientSettingsController::class, 'signIn'])->name('environment.clients.sign-in');
     Route::get('/apps/{client}/settings', [ClientSettingsController::class, 'show'])->name('environment.clients.settings');
     Route::put('/apps/{client}/settings/lifetime', [ClientSettingsController::class, 'lifetime'])->name('environment.clients.settings.lifetime');
     Route::put('/apps/{client}/settings/token-exchange', [ClientSettingsController::class, 'exchange'])->name('environment.clients.settings.exchange');

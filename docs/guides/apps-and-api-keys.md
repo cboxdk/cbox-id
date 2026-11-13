@@ -46,17 +46,29 @@ keys) are on the [API keys](keys.md) page.
 6. Optionally set a **role manifest URL**, so the app declares the roles it
    understands and they appear on the [Roles](roles.md) page for you to assign.
 
-## An app's four tabs
+## Finding an app
 
-Open an app and it has up to four tabs, each a page of its own:
+**Developers › Applications** groups the apps by who owns them — **First-party apps**
+(the environment's own products), **Environment apps** (its other apps: integrations,
+services, agents) and **Organizations' apps** — and narrows by kind with the chips under
+the search box. Both are in the address (`?group=`, `?type=`), so a narrowed list can be
+linked. Each row shows where the app signs in, its owner and when it last asked for a
+token.
 
-- **Overview** — how to connect it (a snippet per SDK), its issuer and client ID, its name
-  and redirect URIs, its roles manifest, and deleting it.
+## An app's tabs
+
+Open an app and it has up to five tabs, each a page of its own:
+
+- **Overview** — the app at a glance (its kind, where it signs in, whether sign-out is
+  wired, when it was last used), how to connect it (a snippet per SDK), its issuer and
+  client ID, and its roles manifest.
+- **Sign-in & logout** — its redirect URIs, its sign-out URIs and its
+  [back-channel logout](#back-channel-logout) endpoint.
 - **Scopes** — what the app may ask for, and the audience its tokens will carry. See
   [Scopes](#scopes) below.
 - **Secrets** — for an app that holds a client secret. Not drawn for a public app (it has
   none) or one that signs in with its own keys.
-- **Settings** — token lifetime, token exchange, back-channel logout and API keys.
+- **Settings** — its name, token lifetime, token exchange, API keys and, last, deleting it.
 
 An organization's administrator looking at one of the environment's first-party apps
 sees Overview and Scopes, read-only: those apps are the environment's to change.
@@ -97,6 +109,13 @@ to wait out. The app's only live secret cannot be revoked on its own, because th
 switch the app off with nothing in its place: rotate it instead, or delete the app. Rotating
 and revoking both ask for your password first.
 
+## Back-channel logout
+
+On the **Sign-in & logout** tab: an HTTPS address (HTTP on `localhost`) Cbox ID posts a
+signed logout token to when somebody signs out, an administrator ends their sessions, or
+they are removed or deactivated. Tick **The app needs the session id** if it ends one
+session at a time.
+
 ## Settings
 
 - **Access token lifetime** — how long this app's access tokens are accepted, in minutes.
@@ -107,10 +126,6 @@ and revoking both ask for your password first.
 - **Token exchange** — lets the app trade a token it was given for one meant for another
   of your services, over the standard token-exchange grant (RFC 8693). Only an app that
   holds a secret or its own keys can use it.
-- **Back-channel logout** — an HTTPS address (HTTP on `localhost`) Cbox ID posts a signed
-  logout token to when somebody signs out, an administrator ends their sessions, or they
-  are removed or deactivated. Tick **The app needs the session id** if it ends one session
-  at a time.
 - **API keys** — set a **key prefix** such as `acme_live` and the people who use the
   app can create API keys for its API under Account › [API keys](api-keys.md), each tied to them, one organization and a subset of their
   permissions in this app. Your API checks a key by calling Cbox ID with this app's own

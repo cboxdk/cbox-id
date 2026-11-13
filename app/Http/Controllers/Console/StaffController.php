@@ -50,6 +50,8 @@ final readonly class StaffController extends ConsoleController
             'storeHref' => route('environment.staff.store'),
             'rolesHref' => route('environment.roles'),
             'reviewHref' => route('environment.governance.create', ['review' => 'staff']),
+            // A person's role inside ONE organization is not granted here; the page says where.
+            'organizationsHref' => route('environment.organizations'),
         ]);
     }
 

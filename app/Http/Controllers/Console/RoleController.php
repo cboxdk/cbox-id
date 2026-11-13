@@ -17,6 +17,7 @@ use App\Http\Requests\Console\SaveRoleRequest;
 use App\Http\Requests\Console\StoreRoleRequest;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Locale\ConsoleStrings;
 use App\Platform\VerifiedEmailGate;
 use Cbox\Id\AccessControl\Contracts\Roles;
 use Cbox\Id\AccessControl\Enums\RoleSource;
@@ -26,6 +27,7 @@ use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\AccessControl\Models\RoleAssignment;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -33,6 +35,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Inertia\Response;
 
 /**
@@ -88,25 +91,43 @@ final readonly class RoleController extends ConsoleController
         // its roles: its own plus the environment's that apply to it.
         $filter = $this->organizationFilter();
 
-        $query = ($filter->unknown ? $filter->apply(Role::query()) : $this->visible($filter->id))
-            // App-declared roles last: an administrator's own are the ones they act on.
-            ->orderByRaw('client_id is not null')
-            ->orderBy('name');
+        $base = fn (): Builder => $filter->unknown ? $filter->apply(Role::query()) : $this->visible($filter->id);
 
         $term = trim($request->string('q')->toString());
+        $searched = fn (Builder $query): Builder => $term === '' ? $query : $query->where('name', 'like', '%'.$term.'%');
 
-        if ($term !== '') {
-            $query->where('name', 'like', '%'.$term.'%');
+        /*
+         * CUSTOM OR DECLARED BY AN APP — the one distinction that decides whether a role
+         * can be changed here at all, so it is the list's first cut and its sections.
+         */
+        $source = $request->string('source')->toString();
+        $source = in_array($source, ['custom', 'app'], true) ? $source : null;
+        $bySource = static fn (Builder $query, string $source): Builder => $source === 'app'
+            ? $query->where('source', RoleSource::Manifest->value)
+            : $query->where(fn (Builder $q): Builder => $q->where('source', '!=', RoleSource::Manifest->value)->orWhereNull('source'));
+
+        $query = $searched($base());
+
+        if ($source !== null) {
+            $query = $bySource($query, $source);
         }
 
-        $page = $query->paginate(self::PER_PAGE)->withQueryString();
+        $page = $query
+            // Custom roles first — an administrator's own are the ones they act on — then
+            // each app's declared roles together, so the list reads as sections.
+            ->orderByRaw('case when source = ? then 1 else 0 end', [RoleSource::Manifest->value])
+            ->orderByRaw('client_id is not null')
+            ->orderBy('client_id')
+            ->orderBy('name')
+            ->paginate(self::PER_PAGE)
+            ->withQueryString();
 
         /** @var EloquentCollection<int, Role> $rows */
         $rows = $page->getCollection();
 
         $permissionsByRole = $this->grantedNamesFor($rows);
         $appNames = $this->usableApps($filter->id);
-        $offerable = $this->offerableFor($rows);
+        $holderCounts = $this->holderCounts($rows);
 
         $first = $rows->first();
 
@@ -121,7 +142,6 @@ final readonly class RoleController extends ConsoleController
         $owners = $showsEveryOrganization
             ? $this->scope->organizationNames($rows->pluck('organization_id'))
             : [];
-        $people = $this->scope->peopleRoute();
 
         return $this->page('console/roles/index', __('console.roles_c2533705'), [
             'help' => HelpProps::for(HelpTopic::Roles),
@@ -134,26 +154,27 @@ final readonly class RoleController extends ConsoleController
                     ? ($appNames[$role->client_id] ?? $role->client_id)
                     : null,
                 'environmentWide' => $role->organization_id === null,
+                // An admin & support role: granted to the environment's own people, never
+                // offered to an organization's administrators.
+                'staffOnly' => ! $role->tenant_assignable,
                 'organization' => $showsEveryOrganization && $role->organization_id !== null
                     ? ($owners[$role->organization_id] ?? $role->organization_id)
                     : null,
                 'permissions' => array_slice($permissionsByRole[$role->id] ?? [], 0, self::BADGE_LIMIT),
-                'moreCount' => max(0, count($permissionsByRole[$role->id] ?? []) - self::BADGE_LIMIT),
-                // The keys still on offer for this role: declared, assignable, in its own
-                // app scope, and not already held. Precomputed for the whole page in two
-                // queries rather than two PER ROW — the closure this replaces ran inside
-                // the loop, so a 25-role page paid 50, and it re-ran on every keystroke in
-                // the search box. Measured there: 28 queries at 0 roles, 79 at 25.
-                'offerable' => $offerable[$role->id] ?? [],
-                // A role this administrator may see but not compose still has to be
-                // legible — they have to know what constrains them — so the row is drawn
-                // either way and only the picker goes.
-                'mayCompose' => isset($offerable[$role->id]),
+                'permissionCount' => count($permissionsByRole[$role->id] ?? []),
+                'holderCount' => $holderCounts[$role->id] ?? 0,
+                // Whether this administrator may change it — said on the row, so a role they
+                // can only hold does not look like one they can edit.
+                'mayCompose' => $role->source !== RoleSource::Manifest && $this->mayChange($role),
                 'href' => $this->url('roles.show', $role->id),
-                'grantHref' => $this->url('roles.permissions', $role->id),
             ], $rows->all()),
             'pagination' => PaginationProps::from($page),
             'search' => $term,
+            'source' => $source,
+            'sourceCounts' => [
+                'custom' => $bySource($searched($base()), 'custom')->count(),
+                'app' => $bySource($searched($base()), 'app')->count(),
+            ],
             'mayAdminister' => $this->scope->mayAdminister(),
             'organizationFilter' => $this->organizationFilterProps($filter),
             // THE LAST MILE. The page says a role is "a label stamped into the token", and
@@ -167,11 +188,8 @@ final readonly class RoleController extends ConsoleController
                 'permissions' => array_slice($permissionsByRole[$first->id] ?? [], 0, 3),
             ],
             'createHref' => $this->createUrl('roles.create'),
-            // "Console access" is set on the organization's PEOPLE page — which is a different
-            // page for a customer than for everybody else, and hard-coding the customer's
-            // sent a tenant admin through two redirects to the dashboard. The environment
-            // plane has no equivalent, so there the sentence stays and only the link goes.
-            'consoleAccessHref' => $people === null ? null : route($people),
+            'builtIn' => $this->builtInRoles(),
+            'where' => $this->whereRolesAreSet($filter->id),
         ]);
     }
 
@@ -492,74 +510,104 @@ final readonly class RoleController extends ConsoleController
     }
 
     /**
-     * The permissions still on offer, for every composable role on the page, in one pass.
-     *
-     * ONE QUERY FOR THE WHOLE PAGE rather than two per row. The catalogue is read once and
-     * each role's own scope and grants are applied in memory, because both are already in
-     * hand.
-     *
-     * The offer set is {@see assignable()} — the same catalogue the role's own page
-     * composes from. It used to be a narrower query of its own, so on the environment
-     * plane a permission the detail page would grant was missing from the list's picker,
-     * and an environment-wide role could be composed on one page and not the other.
-     *
-     * A role absent from the returned map is one this administrator may not compose, which
-     * is what the row reads to decide whether to draw a picker at all.
+     * How many grants each role on the page has — inside one organization or everywhere —
+     * in two queries for the page.
      *
      * @param  EloquentCollection<int, Role>  $roles
-     * @return array<string, list<array{id: string, name: string, description: string|null}>>
+     * @return array<string, int>
      */
-    private function offerableFor(EloquentCollection $roles): array
+    private function holderCounts(EloquentCollection $roles): array
     {
-        $composable = $roles->filter(fn (Role $role): bool => $role->source !== RoleSource::Manifest
-            && $this->mayChange($role));
-
-        if ($composable->isEmpty()) {
+        if ($roles->isEmpty()) {
             return [];
         }
 
-        $granted = $this->grantedNamesFor($roles);
+        $counts = [];
+        $ids = $roles->pluck('id')->all();
 
-        $catalogue = $this->assignable()
-            /*
-             * Only the apps the roles on THIS page belong to, plus the unscoped ones —
-             * reading the whole catalogue would make the page's cost the size of the
-             * environment rather than the size of the page.
-             */
-            ->where(fn (Builder $q): Builder => $q
-                ->whereIn('client_id', $composable->pluck('client_id')->filter()->unique()->all())
-                ->orWhereNull('client_id'))
-            ->orderBy('name')
-            ->get(['id', 'name', 'description', 'client_id']);
-
-        $offerable = [];
-
-        foreach ($composable as $role) {
-            $held = $granted[$role->id] ?? [];
-            $forRole = [];
-
-            foreach ($catalogue as $permission) {
-                // A role may be granted its own app's permissions and the unscoped ones,
-                // and nothing another app declared.
-                if ($permission->client_id !== null && $permission->client_id !== $role->client_id) {
-                    continue;
+        foreach ([RoleAssignment::query(), EnvironmentRoleAssignment::query()] as $query) {
+            foreach ($query->whereIn('role_id', $ids)->selectRaw('role_id, count(*) as holders')->groupBy('role_id')->toBase()->get() as $row) {
+                if (is_string($row->role_id) && is_numeric($row->holders)) {
+                    $counts[$row->role_id] = ($counts[$row->role_id] ?? 0) + (int) $row->holders;
                 }
-
-                if (in_array($permission->name, $held, true)) {
-                    continue;
-                }
-
-                $forRole[] = [
-                    'id' => $permission->id,
-                    'name' => $permission->name,
-                    'description' => $permission->description,
-                ];
             }
-
-            $offerable[$role->id] = $forRole;
         }
 
-        return $offerable;
+        return $counts;
+    }
+
+    /**
+     * THE BUILT-IN ROLES, and what each may do in this console — read from the role
+     * itself ({@see MembershipRole}), so the table cannot describe a role the code does not
+     * enforce. Every member of an organization holds exactly one of these; the app and
+     * custom roles on this page are added on top.
+     *
+     * @return array{roles: list<array{value: string, label: string}>, abilities: list<array{label: string, holders: list<string>}>}
+     */
+    private function builtInRoles(): array
+    {
+        $roles = MembershipRole::cases();
+        $label = static fn (MembershipRole $role): string => ConsoleStrings::message(match ($role) {
+            MembershipRole::Owner => 'console.owner_4b1b8aa3',
+            MembershipRole::Admin => 'console.admin_c1c224b0',
+            MembershipRole::Developer => 'console.developer_3fb7b394',
+            MembershipRole::Member => 'console.member_7c968fb7',
+            MembershipRole::Viewer => 'console.viewer_678bfa6a',
+        });
+
+        $abilities = [
+            'console.roles_builtin_manage' => static fn (MembershipRole $role): bool => $role->canManageOrganization(),
+            'console.roles_builtin_environments' => static fn (MembershipRole $role): bool => $role->canManageEnvironments(),
+            'console.roles_builtin_write' => static fn (MembershipRole $role): bool => $role->canWrite(),
+            'console.roles_builtin_members' => static fn (MembershipRole $role): bool => $role->canReadMembers(),
+            'console.roles_builtin_billing' => static fn (MembershipRole $role): bool => $role->canReadBilling(),
+        ];
+
+        $rows = [];
+
+        foreach ($abilities as $key => $may) {
+            $rows[] = [
+                'label' => ConsoleStrings::message($key),
+                'holders' => array_values(array_map(
+                    static fn (MembershipRole $role): string => $role->value,
+                    array_filter($roles, $may),
+                )),
+            ];
+        }
+
+        return [
+            'roles' => array_map(static fn (MembershipRole $role): array => ['value' => $role->value, 'label' => $label($role)], $roles),
+            'abilities' => $rows,
+        ];
+    }
+
+    /**
+     * WHERE EACH KIND OF ROLE IS GIVEN TO A PERSON — the question this page arrives with
+     * and could not answer: a person's role in an organization is set on that
+     * organization's Members page; an admin & support role, across the environment, on
+     * Admins & support. The second exists only on the environment console.
+     *
+     * @return array{membersHref: string|null, staffHref: string|null, staffCount: int|null}
+     */
+    private function whereRolesAreSet(?string $organizationId): array
+    {
+        if ($this->scope->plane() === ConsolePlane::Environment) {
+            return [
+                'membersHref' => $organizationId !== null && Route::has('environment.organizations.members')
+                    ? route('environment.organizations.members', $organizationId)
+                    : route('environment.organizations'),
+                'staffHref' => route('environment.staff'),
+                'staffCount' => EnvironmentRoleAssignment::query()->count(),
+            ];
+        }
+
+        $people = $this->scope->peopleRoute();
+
+        return [
+            'membersHref' => $people === null ? null : route($people),
+            'staffHref' => null,
+            'staffCount' => null,
+        ];
     }
 
     /**

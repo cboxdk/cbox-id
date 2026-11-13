@@ -23,6 +23,26 @@ understanding before you create anything:
 The role travels with the person into every connected app, in their token. Revoke
 it here and every app sees that on their next sign-in.
 
+## The page, top to bottom
+
+- **Where roles are given.** Two cards say where each kind of role reaches a person: a
+  person's role in an organization (their built-in role, plus app and custom roles) is set
+  on that organization's **Members** page; an admin & support role, across the whole
+  environment, on **Settings › Admins & support** (environment console only).
+- **App and custom roles.** Tabs split custom roles from the ones apps declare
+  (`?source=custom`, `?source=app`); the list is custom roles first, then each app's
+  declared roles together. Each row shows how many permissions the role grants and how
+  many people hold it, and opens the role.
+- **Built-in roles.** A table of what Owner, Admin, Developer, Member and Viewer may do in
+  the console. Every member holds exactly one.
+
+A role's own page starts with its numbers — permissions, people, where it comes from —
+then lists its permissions grouped by app and by resource (`invoices:read` and
+`invoices:void` sit under **Invoices**), each in words with its key beside it. On a custom
+role you tick and untick them there; an app-declared role is read-only, and changes in the
+app's manifest. Holders are grouped by where they hold the role: everywhere, or inside one
+organization.
+
 ## Two kinds of role
 
 **Custom roles** are yours: you create them for your organization, and they mean

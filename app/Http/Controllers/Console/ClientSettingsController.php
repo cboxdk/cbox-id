@@ -56,6 +56,9 @@ final readonly class ClientSettingsController extends ConsoleController
 
         return $this->page('console/clients/settings', $model->name, [
             'appHeader' => $header->for($model, AppTabs::SETTINGS),
+            // The name is the one detail left on this page: where people are sent is the
+            // Sign-in & logout tab's, and each form saves only its own fields.
+            'name' => $model->name,
             'lifetime' => [
                 'minutes' => $model->access_token_ttl === null ? null : intdiv($model->access_token_ttl, 60),
                 'defaultMinutes' => intdiv(AccessTokenLifetime::deploymentDefault(), 60),
@@ -71,14 +74,45 @@ final readonly class ClientSettingsController extends ConsoleController
                 'available' => $confidential,
                 'href' => $this->url('clients.settings.exchange', $model->id),
             ],
+            'apiKeys' => [
+                'prefix' => $model->api_key_prefix ?? '',
+                'href' => $this->url('clients.settings.api-keys', $model->id),
+            ],
+            'urls' => [
+                'update' => $this->url('clients.update', $model->id),
+                'destroy' => $this->url('clients.destroy', $model->id),
+            ],
+        ]);
+    }
+
+    /**
+     * AN APP › SIGN-IN & LOGOUT — every address the app and Cbox ID exchange around a
+     * person's session: where they may be returned after signing in, where after signing
+     * out, and where the app is told a session ended (OIDC Back-Channel Logout).
+     *
+     * They were split across two tabs — the redirect URIs in the overview's details form,
+     * the back-channel endpoint under Settings — so a person wiring logout had to know it
+     * lived in both. The writes are unchanged: the URIs save through `apps.update`, the
+     * back-channel endpoint through `apps.settings.logout`.
+     */
+    public function signIn(string $client, AppHeader $header): Response
+    {
+        $model = $this->clients->manageable($client);
+
+        return $this->page('console/clients/sign-in', $model->name, [
+            'appHeader' => $header->for($model, AppTabs::SIGN_IN),
+            // A service or an agent is never returned to a browser; the page says so rather
+            // than presenting empty fields as something missing.
+            'browserSignIn' => in_array('authorization_code', $model->grant_types ?? [], true),
+            'redirectUris' => implode("\n", $model->redirect_uris ?? []),
+            'postLogoutRedirectUris' => implode("\n", $model->post_logout_redirect_uris ?? []),
             'logout' => [
                 'uri' => $model->backchannel_logout_uri ?? '',
                 'sessionRequired' => $model->backchannel_logout_session_required,
                 'href' => $this->url('clients.settings.logout', $model->id),
             ],
-            'apiKeys' => [
-                'prefix' => $model->api_key_prefix ?? '',
-                'href' => $this->url('clients.settings.api-keys', $model->id),
+            'urls' => [
+                'update' => $this->url('clients.update', $model->id),
             ],
         ]);
     }

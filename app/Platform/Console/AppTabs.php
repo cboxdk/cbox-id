@@ -6,6 +6,7 @@ namespace App\Platform\Console;
 
 use App\Http\Props\Shared\LinkTabProps;
 use App\Platform\Locale\ConsoleLabels;
+use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Enums\TokenEndpointAuthMethod;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -16,12 +17,14 @@ use Cbox\Id\OAuthServer\Models\Client;
  * One page held everything an app is: how to connect it, its details, its scopes, its
  * roles manifest, its secret and its deletion. Secrets with an overlap, token settings,
  * back-channel logout, a key prefix and promotion between environments would have made it
- * a page nobody could find anything on, so the app is four pages that share a header:
+ * a page nobody could find anything on, so the app is five pages that share a header:
  *
- *  - OVERVIEW: connect it, its credentials, its details, its roles manifest;
+ *  - OVERVIEW: what it is at a glance, connect it, its credentials, its roles manifest;
+ *  - SIGN-IN & LOGOUT: where people are sent back to after signing in and out, and where
+ *    the app is told somebody signed out (back-channel logout);
  *  - SCOPES: what it may ask for, and the audience its tokens will carry;
  *  - SECRETS: its live secrets, rotation with an overlap, revoking one;
- *  - SETTINGS: token lifetime, token exchange, back-channel logout, API keys.
+ *  - SETTINGS: its name, token lifetime, token exchange, API keys, and deleting it.
  *
  * A tab the person cannot use is not drawn. Secrets exist only for an app that holds a
  * shared secret — a public app uses PKCE and an app that signs assertions holds keys — and
@@ -32,6 +35,8 @@ use Cbox\Id\OAuthServer\Models\Client;
 final readonly class AppTabs
 {
     public const OVERVIEW = 'overview';
+
+    public const SIGN_IN = 'sign-in';
 
     public const SCOPES = 'scopes';
 
@@ -54,6 +59,14 @@ final readonly class AppTabs
 
         $tabs = [
             new LinkTabProps(self::OVERVIEW, ConsoleLabels::navigation('Overview'), $route('clients.show'), $current === self::OVERVIEW),
+        ];
+
+        if ($manages) {
+            $tabs[] = new LinkTabProps(self::SIGN_IN, ConsoleStrings::message('console.app_tab_sign_in'), $route('clients.sign-in'), $current === self::SIGN_IN);
+        }
+
+        $tabs = [
+            ...$tabs,
             new LinkTabProps(self::SCOPES, ConsoleLabels::navigation('Scopes'), $route('clients.scopes'), $current === self::SCOPES),
         ];
 

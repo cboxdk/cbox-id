@@ -16,6 +16,7 @@ import {
     Select,
     Textarea,
 } from '@/ui';
+import { type AppFace, type AppKindKey, AppMark } from './AppMark';
 
 /** `App\Http\Props\Console\AppHeaderProps` */
 export interface AppHeaderData {
@@ -25,6 +26,12 @@ export interface AppHeaderData {
     confidential: boolean;
     firstParty: boolean;
     kindLabel: string;
+    /** The kind filter's value, for the app's face when the catalog has no icon for it. */
+    kind: AppKindKey;
+    /** The catalog's icon and hue, when the catalog names this app. */
+    face: AppFace | null;
+    /** The organization that owns it; null for an app the environment owns. */
+    owner: string | null;
     tabs: LinkTab[];
     indexHref: string;
     /** Null for somebody who may only look at the app. */
@@ -71,34 +78,44 @@ export function AppFrame({
                     label={consoleT('console.applications_98e33b0f')}
                 />
                 <div className="mt-2 flex items-start justify-between gap-3 flex-wrap">
-                    <div style={{ minWidth: 0 }}>
-                        <div className="flex items-center gap-3 flex-wrap">
-                            <h1 className="cbx-page-title" style={{ overflowWrap: 'anywhere' }}>
-                                {app.name}
-                            </h1>
-                            {app.firstParty && (
-                                <span
-                                    className="text-xs rounded-full px-2 py-0.5"
-                                    style={{
-                                        background: 'var(--accent-soft)',
-                                        color: 'var(--accent-strong)',
-                                    }}
-                                >
-                                    {consoleT('console.first_party_ee374836')}
-                                </span>
-                            )}
-                            <Badge>
-                                {app.confidential
-                                    ? consoleText('console.confidential_a3e83aee')
-                                    : consoleText('console.public_591935b1')}
-                            </Badge>
+                    <div className="flex items-start gap-3" style={{ minWidth: 0 }}>
+                        <AppMark name={app.name} kind={app.kind} face={app.face} size="lg" />
+                        <div style={{ minWidth: 0 }}>
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <h1 className="cbx-page-title" style={{ overflowWrap: 'anywhere' }}>
+                                    {app.name}
+                                </h1>
+                                <Badge>{app.kindLabel}</Badge>
+                                {app.owner !== null && (
+                                    <Badge>
+                                        <Icon name="building" className="w-3 h-3" />
+                                        {app.owner}
+                                    </Badge>
+                                )}
+                                {app.firstParty && (
+                                    <span
+                                        className="text-xs rounded-full px-2 py-0.5"
+                                        style={{
+                                            background: 'var(--accent-soft)',
+                                            color: 'var(--accent-strong)',
+                                        }}
+                                    >
+                                        {consoleT('console.first_party_ee374836')}
+                                    </span>
+                                )}
+                                <Badge>
+                                    {app.confidential
+                                        ? consoleText('console.confidential_a3e83aee')
+                                        : consoleText('console.public_591935b1')}
+                                </Badge>
+                            </div>
+                            <p
+                                className="mt-1 text-sm mono"
+                                style={{ color: 'var(--faint)', overflowWrap: 'anywhere' }}
+                            >
+                                {app.clientId}
+                            </p>
                         </div>
-                        <p
-                            className="mt-1 text-sm mono"
-                            style={{ color: 'var(--faint)', overflowWrap: 'anywhere' }}
-                        >
-                            {app.clientId}
-                        </p>
                     </div>
 
                     {(app.blueprintHref !== null || app.copy !== null) && (

@@ -86,28 +86,31 @@ it('shows the claim shape an app receives, with this environment\'s own role in 
         ->assertNoJavaScriptErrors();
 })->group('a11y');
 
-it('composes a role from the catalogue without leaving the list', function (): void {
+it('opens a role from its row and composes it from the grouped catalogue', function (): void {
     anOwnerLookingAtRoles();
 
-    // A second key, declared and assignable and not yet held — so the row has something
-    // to offer. The picker is the organization plane's own capability, and it is the one
-    // thing on this page that is neither a link nor a form submit.
+    // A second key, declared and assignable and not yet held — so the role's page has
+    // something to offer.
     app(PlatformRoot::class)->run(fn () => Permission::query()->create([
         'name' => 'reports:export',
         'description' => 'Export reports',
         'tenant_assignable' => true,
     ]));
 
+    // The row IS the link: no "Manage" button, no picker inside it.
     $page = visit('/roles');
 
-    $page->assertSee('reports:view')
-        ->assertDontSee('reports:export');
+    $page->assertSee('Support agent')
+        ->assertSee('Custom roles')
+        ->click('a.idc-row:has-text("Support agent")');
 
-    // A combobox rather than a native select: the trigger is named, and the option is a
-    // listbox row rather than a control a person can tab to.
-    $page->click('[aria-label="Add a permission to the Support agent role"]')
-        ->click('[role="option"]:has-text("reports:export")')
+    // Grouped by resource, each permission in words with its key beside it.
+    $page->assertSee('Reports')
+        ->assertSee('View reports')
         ->assertSee('reports:export')
+        ->assertSee('Granted: 1 of')
+        ->click('label:has-text("Export reports")')
+        ->assertSee('Granted: 2 of')
         ->assertNoJavaScriptErrors();
 })->group('a11y');
 

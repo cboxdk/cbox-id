@@ -3667,3 +3667,321 @@
 body:has(.cbx-dialog-ft) {
     --toast-bottom: calc(84px + env(safe-area-inset-bottom));
 }
+
+/*
+ * THE APPS AND ROLES LISTS — grouped rows that are links, a face per app, and the chips that
+ * narrow them. Every narrowing is a link (the URL is the state), so the chips are anchors
+ * drawn as toggles rather than buttons holding component state.
+ */
+@layer components {
+    .idc-app-mark {
+        display: inline-flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+    }
+    .idc-app-mark--tile {
+        border: 1px solid var(--border);
+        background: var(--surface-2);
+        color: var(--muted-foreground);
+    }
+    .idc-app-mark--tile[data-hue='set'] {
+        border-color: oklch(0.6 0.12 var(--app-hue) / 0.28);
+        background: oklch(0.62 0.13 var(--app-hue) / 0.13);
+        color: oklch(0.47 0.14 var(--app-hue));
+    }
+    :root[data-theme='dark'] .idc-app-mark--tile[data-hue='set'] {
+        color: oklch(0.8 0.12 var(--app-hue));
+        background: oklch(0.62 0.13 var(--app-hue) / 0.2);
+    }
+    @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) .idc-app-mark--tile[data-hue='set'] {
+            color: oklch(0.8 0.12 var(--app-hue));
+            background: oklch(0.62 0.13 var(--app-hue) / 0.2);
+        }
+    }
+
+    /* A list of link rows inside one bordered card. */
+    .idc-rows {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--card);
+        overflow: hidden;
+    }
+    .idc-rows-group {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        flex-wrap: wrap;
+        padding: 10px 16px;
+        background: var(--surface-2);
+        border-bottom: 1px solid var(--border);
+    }
+    .idc-rows-group:not(:first-child) {
+        border-top: 1px solid var(--border);
+    }
+    .idc-rows-group h2,
+    .idc-rows-group h3 {
+        margin: 0;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: var(--foreground);
+    }
+    .idc-rows-group p {
+        margin: 0;
+        font-size: 12px;
+        color: var(--muted-foreground);
+    }
+    .idc-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        color: inherit;
+        text-decoration: none;
+        transition: background-color var(--dur-hover) var(--ease);
+    }
+    .idc-row + .idc-row {
+        border-top: 1px solid var(--border);
+    }
+    a.idc-row:hover {
+        background: var(--surface-2);
+    }
+    a.idc-row:focus-visible {
+        outline: none;
+        box-shadow: inset 0 0 0 2px var(--ring);
+    }
+    .idc-row-main {
+        min-width: 0;
+        flex: 1 1 auto;
+    }
+    .idc-row-title {
+        display: block;
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .idc-row-sub {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-width: 0;
+        margin-top: 2px;
+        font-size: 12.5px;
+        color: var(--muted-foreground);
+    }
+    .idc-row-sub > * {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .idc-row-meta {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        flex-wrap: wrap;
+        flex-shrink: 0;
+    }
+    .idc-row-when {
+        min-width: 7.5rem;
+        text-align: right;
+        font-size: 12px;
+        color: var(--faint);
+        white-space: nowrap;
+    }
+    .idc-row-chevron {
+        flex-shrink: 0;
+        color: var(--faint);
+    }
+    /* On a phone the meta column moves under the name rather than vanishing. */
+    @media (max-width: 767px) {
+        .idc-row {
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+        .idc-row-main {
+            flex-basis: calc(100% - 80px);
+        }
+        .idc-row-meta {
+            order: 3;
+            flex-basis: 100%;
+            justify-content: flex-start;
+            padding-left: 48px;
+        }
+        .idc-row-when {
+            min-width: 0;
+            text-align: left;
+        }
+    }
+
+    /* Narrowing chips that are links. */
+    .idc-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .idc-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 30px;
+        padding: 4px 10px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--card);
+        color: var(--muted-foreground);
+        font-size: 12.5px;
+        font-weight: 500;
+        text-decoration: none;
+        white-space: nowrap;
+        transition:
+            border-color var(--dur-hover) var(--ease),
+            color var(--dur-hover) var(--ease);
+    }
+    .idc-chip:hover {
+        border-color: var(--border-strong);
+        color: var(--foreground);
+    }
+    .idc-chip[aria-current='true'] {
+        border-color: var(--accent-edge);
+        background: var(--accent-soft);
+        color: var(--nav-active-fg);
+    }
+    .idc-chip:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--ring);
+    }
+    .idc-chip-count {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--faint);
+    }
+    .idc-chip[aria-current='true'] .idc-chip-count {
+        color: inherit;
+    }
+    .idc-tab-count {
+        margin-left: 6px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--faint);
+    }
+
+    /* Two-up explainer cards: where each kind of role is set. */
+    .idc-where-grid {
+        display: grid;
+        gap: 12px;
+    }
+    @media (min-width: 768px) {
+        .idc-where-grid {
+            grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+        }
+    }
+    .idc-where {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 16px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--card);
+    }
+    .idc-where h2 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 0;
+        font-size: 14px;
+        font-weight: 600;
+    }
+    .idc-where p {
+        margin: 0;
+        font-size: 13px;
+        color: var(--muted-foreground);
+    }
+    .idc-where a {
+        margin-top: auto;
+        padding-top: 4px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--accent-strong);
+    }
+
+    /* The built-in roles' ability matrix. */
+    .idc-matrix {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+    .idc-matrix th,
+    .idc-matrix td {
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--border);
+        text-align: center;
+    }
+    .idc-matrix th:first-child,
+    .idc-matrix td:first-child {
+        text-align: left;
+    }
+    .idc-matrix thead th {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted-foreground);
+        background: var(--surface-2);
+    }
+    .idc-matrix tbody tr:last-child td,
+    .idc-matrix tbody tr:last-child th {
+        border-bottom: 0;
+    }
+    .idc-matrix .is-yes {
+        color: var(--success-strong, var(--foreground));
+    }
+    .idc-matrix .is-no {
+        color: var(--faint);
+    }
+
+    /* A permission group: a resource's permissions, with how many of them are held. */
+    .idc-perm-group + .idc-perm-group {
+        border-top: 1px solid var(--border);
+    }
+    .idc-perm-group-head {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: var(--surface-2);
+        font-size: 12.5px;
+        font-weight: 600;
+    }
+    .idc-perm {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 9px 16px;
+    }
+    .idc-perm + .idc-perm {
+        border-top: 1px solid var(--border);
+    }
+    .idc-perm-key {
+        font-family: var(--font-mono);
+        font-size: 11.5px;
+        color: var(--faint);
+    }
+}
+@layer components {
+    @media (max-width: 767px) {
+        /* A phone scrolls the chips sideways rather than stacking four rows of them. */
+        .idc-chips {
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            scrollbar-width: none;
+            margin-inline: -16px;
+            padding-inline: 16px;
+        }
+        .idc-chips::-webkit-scrollbar {
+            display: none;
+        }
+    }
+}
