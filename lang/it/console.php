@@ -4937,4 +4937,21 @@ Le connessioni',
     'roles_perm_group_app' => 'Dichiarati da questa app.',
     'staff_not_org_roles' => 'Questa pagina assegna ruoli in tutto l’ambiente. Il ruolo di una persona all’interno di un’organizzazione (Proprietario, Amministratore, Membro e così via) si imposta nella pagina Membri di quell’organizzazione.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count altri',
+    'apps_part_of' => 'Parte di :product',
+    'apps_status_disabled' => 'Disattivata',
+    'apps_status_disabled_hint' => 'Richiede un segreto client e non ne ha nessuno, quindi ogni richiesta di token viene rifiutata.',
+    'apps_status_stale' => 'Inutilizzata da 30+ giorni',
+    'banner_platform_environment' => ':name · L’ambiente proprio della piattaforma su :host. Le modifiche qui riguardano ogni accesso.',
+    'banner_platform_admin' => 'Amministrazione piattaforma: L’intera installazione su :host. Le modifiche qui riguardano ogni organizzazione.',
+    'banner_what_this_affects' => 'Cosa riguarda',
+    'user_access_since' => 'Dal :when',
+    'user_access_since_label' => 'Dal',
+    'user_access_none_offered' => 'Nessuno disponibile',
+    'user_access_edit_roles' => 'Modifica ruoli app e personalizzati in :organization',
+    'user_access_open_organization' => 'Apri organizzazione',
+    'app_and_custom_roles_in_part1' => 'Ruoli app e personalizzati in :part1',
+    'user_access_reaches' => 'Vale per',
+    // end console-polish
 ];

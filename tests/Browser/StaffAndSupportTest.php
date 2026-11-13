@@ -110,8 +110,10 @@ it('draws a user\'s staff roles and the support access form', function (): void 
     visit(envConsole('/users/').$world['sam'].'?section=access')
         ->assertSee('Admin & support roles')
         ->assertSee('Support')
-        ->assertSee('Take back')
-        ->screenshotElement('section:has(h2:has-text("Admin & support roles"))', 'user-staff-roles');
+        ->screenshotElement('section:has(h2:has-text("Admin & support roles"))', 'user-staff-roles')
+        // Taking a role back is behind the row's "⋯", not a red button on every row.
+        ->click('[aria-label="More actions for Support"]')
+        ->assertSee('Take back');
 
     $page = visit(envConsole('/users/').$world['grace'].'?section=support');
 

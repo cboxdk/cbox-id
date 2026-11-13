@@ -4936,4 +4936,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Оголошені цим застосунком.',
     'staff_not_org_roles' => 'Ця сторінка надає ролі в усьому середовищі. Роль людини в межах однієї організації (Власник, Адміністратор, Учасник та інші) задається на сторінці «Учасники» цієї організації.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count ще',
+    'apps_part_of' => 'Частина :product',
+    'apps_status_disabled' => 'Вимкнено',
+    'apps_status_disabled_hint' => 'Потрібен секрет клієнта, а його немає, тож кожен запит токена відхиляється.',
+    'apps_status_stale' => 'Не використовується 30+ днів',
+    'banner_platform_environment' => ':name · Власне середовище платформи на :host. Зміни тут стосуються кожного входу.',
+    'banner_platform_admin' => 'Адміністрування платформи: Усе розгортання на :host. Зміни тут стосуються кожної організації.',
+    'banner_what_this_affects' => 'На що це впливає',
+    'user_access_since' => 'З :when',
+    'user_access_since_label' => 'З',
+    'user_access_none_offered' => 'Немає запропонованих',
+    'user_access_edit_roles' => 'Редагувати ролі застосунків і власні ролі в :organization',
+    'user_access_open_organization' => 'Відкрити організацію',
+    'app_and_custom_roles_in_part1' => 'Ролі застосунків і власні ролі в :part1',
+    'user_access_reaches' => 'Діє для',
+    // end console-polish
 ];

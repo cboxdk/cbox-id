@@ -293,6 +293,17 @@ it('defines no cbx- class that nothing uses', function (): void {
         }
     }
 
+    /*
+     * …and the shell itself. CboxShell (`@cboxdk/cbox-ui`) draws the rail, the subnav and
+     * the banners, so a rule here that adjusts one of those (a label that wraps in a long
+     * language) is worn by the package's markup, not ours.
+     */
+    $shell = REPO.'/node_modules/@cboxdk/cbox-ui/dist/index.js';
+
+    if (is_file($shell)) {
+        $markup .= (string) file_get_contents($shell);
+    }
+
     $unused = [];
 
     foreach ($defined as $class) {
@@ -308,6 +319,13 @@ it('defines no cbx- class that nothing uses', function (): void {
          * sharing a prefix with a used one is fine".
          */
         if (str_contains($class, '--') && str_contains($markup, strstr($class, '--', true).'--$')) {
+            continue;
+        }
+
+        // The shell composes its banner's kind the same way: `cbx-banner-${banner.kind}`.
+        $stem = (string) preg_replace('/-[a-z0-9]+$/', '', $class);
+
+        if ($stem !== $class && str_contains($markup, $stem.'-${')) {
             continue;
         }
 

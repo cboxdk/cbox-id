@@ -3984,4 +3984,263 @@ body:has(.cbx-dialog-ft) {
             display: none;
         }
     }
+
+    /*
+     * A product on the apps list: its head app's row, then its helper clients folded into
+     * one line that opens to their rows.
+     */
+    .idc-rows > .idc-product + .idc-row,
+    .idc-rows > .idc-row + .idc-product,
+    .idc-rows > .idc-product + .idc-product {
+        border-top: 1px solid var(--border);
+    }
+    .idc-product > .idc-row {
+        padding-bottom: 6px;
+    }
+    .idc-product-more > summary {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 30px;
+        padding: 0 16px 10px 64px;
+        font-size: 12.5px;
+        color: var(--muted-foreground);
+        cursor: pointer;
+        list-style: none;
+    }
+    .idc-product-more > summary::-webkit-details-marker {
+        display: none;
+    }
+    .idc-product-more > summary:hover {
+        color: var(--foreground);
+    }
+    .idc-product-more > summary:focus-visible {
+        outline: none;
+        box-shadow: inset 0 0 0 2px var(--ring);
+        border-radius: 6px;
+    }
+    .idc-product-caret {
+        flex-shrink: 0;
+        transition: transform var(--dur-hover) var(--ease);
+    }
+    .idc-product-more[open] .idc-product-caret {
+        transform: rotate(90deg);
+    }
+    .idc-product-count {
+        flex-shrink: 0;
+        font-weight: 500;
+        color: var(--foreground);
+    }
+    .idc-product-names {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .idc-product-helpers {
+        margin-left: 64px;
+        border-top: 1px solid var(--border);
+        border-left: 1px solid var(--border);
+    }
+    .idc-product-helpers > .idc-row {
+        padding-left: 12px;
+    }
+    .idc-row[data-status='disabled'] .idc-row-title,
+    .idc-row[data-status='disabled'] .idc-app-mark {
+        opacity: 0.6;
+    }
+    @media (max-width: 767px) {
+        .idc-product-more > summary {
+            padding-left: 16px;
+        }
+        .idc-product-helpers {
+            margin-left: 16px;
+        }
+    }
+
+    /*
+     * Shell labels that run long in some languages: a rail area and the subnav's heading
+     * wrap to a second line instead of being cut off mid-word.
+     */
+    .cbx-rail[data-open='true'] .cbx-rail-link {
+        white-space: normal;
+    }
+    .cbx-rail[data-open='true'] .cbx-rail-label {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        line-height: 1.25;
+        padding: 4px 0;
+    }
+    .cbx-subnav-head > .cbx-truncate {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        white-space: normal;
+        line-height: 1.3;
+        padding: 4px 0;
+    }
+
+    /* The platform environment's notice: one line, its details a link away. */
+    .cbx-banner-notice {
+        min-height: 32px;
+        padding-top: 4px;
+        padding-bottom: 4px;
+        font-size: 12.5px;
+    }
+    .cbx-banner-notice .cbx-banner-text {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /*
+     * A person's access, as compact rows: organization (name, slug, since), built-in role,
+     * app and custom roles, and "⋯". On a phone the cells stack under the name.
+     */
+    .idc-access {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+    }
+    .idc-access-head,
+    .idc-access-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1.2fr) 10rem minmax(0, 1.4fr) 2.25rem;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px 10px 16px;
+    }
+    .idc-access-head {
+        padding-top: 8px;
+        padding-bottom: 8px;
+        background: var(--surface-2);
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--muted-foreground);
+    }
+    .idc-access-head-staff,
+    .idc-access-row-staff {
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 8rem 2.25rem;
+    }
+    .idc-access-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        border-top: 1px solid var(--border);
+    }
+    .idc-access-list > li + li {
+        border-top: 1px solid var(--border);
+    }
+    .idc-access-who {
+        min-width: 0;
+    }
+    .idc-access-name {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--foreground);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    a.idc-access-name:hover {
+        color: var(--accent-strong);
+        text-decoration: underline;
+        text-underline-offset: 2px;
+    }
+    .idc-access-sub {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 8px;
+        min-width: 0;
+        font-size: 12px;
+        color: var(--muted-foreground);
+    }
+    .idc-access-role.cbx-select {
+        min-height: 32px;
+        height: 32px;
+        font-size: 13px;
+    }
+    .idc-access-chips {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px;
+        min-width: 0;
+    }
+    .idc-access-none {
+        font-size: 12.5px;
+        color: var(--faint);
+    }
+    .idc-access-edit {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 6px;
+        color: var(--muted-foreground);
+    }
+    .idc-access-edit:hover,
+    .idc-access-edit[aria-expanded='true'] {
+        background: var(--secondary);
+        color: var(--foreground);
+    }
+    .idc-access-edit:focus-visible {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--ring);
+    }
+    .idc-access-more {
+        justify-self: end;
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+    .idc-access-editor {
+        padding: 12px 16px 14px;
+        background: var(--surface-2);
+        border-top: 1px dashed var(--border);
+    }
+    /* The add row lines up with the columns above it. */
+    .idc-access-add {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: end;
+        gap: 12px;
+    }
+    /* Same columns as the rows (inside their 1px border): organization, role, then the button. */
+    .idc-access-add-org {
+        grid-template-columns: minmax(0, 1.2fr) 10rem minmax(0, 1.4fr) 2.25rem;
+        padding: 0 13px 0 17px;
+    }
+    .idc-access-add-org > .idc-access-add-button {
+        justify-self: start;
+    }
+    @media (max-width: 767px) {
+        .idc-access-head {
+            display: none;
+        }
+        .idc-access-row,
+        .idc-access-row-staff {
+            grid-template-columns: minmax(0, 1fr) 2.25rem;
+            gap: 8px 12px;
+        }
+        .idc-access-row > :not(.idc-access-who):not(.idc-access-more):not(.idc-access-name) {
+            grid-column: 1 / -1;
+        }
+        .idc-access-row > .idc-access-more {
+            grid-row: 1;
+            grid-column: 2;
+        }
+        .idc-access-row-staff > .idc-access-sub {
+            grid-column: 1 / 2;
+        }
+        .idc-access-add,
+        .idc-access-add-org {
+            grid-template-columns: minmax(0, 1fr);
+            padding: 0;
+        }
+    }
 }

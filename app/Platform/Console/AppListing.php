@@ -7,8 +7,8 @@ namespace App\Platform\Console;
 use App\Platform\AppCatalog\AppCatalog;
 use App\Platform\AppCatalog\CatalogEntry;
 use App\Platform\AppKind;
+use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
-use Illuminate\Database\Eloquent\Builder;
 
 /**
  * HOW THE APPS LIST IS CUT — into groups a person can find an app in, and by the kind of
@@ -22,11 +22,14 @@ use Illuminate\Database\Eloquent\Builder;
  * THE GROUPS are who owns an app, which is the question that decides what may be done to
  * it: the environment's own first-party apps (in the platform environment, the Cbox
  * services), the environment's other apps (integrations, machine clients, agents), and the
- * apps registered by or for one organization. They are cut in SQL so the list still pages.
+ * apps registered by or for one organization.
  *
- * THE KINDS are {@see AppKind}, read back from the grants exactly as
- * {@see AppKind::forClient()} does, so a filter can never disagree with the label on the
- * row it returns. Advanced — anything matching no preset — is "Other".
+ * THE KINDS are {@see AppKind}, read back from the grants by {@see self::kindFor()} — the
+ * one reading the row's label, the filter and the app's own header all share, so a filter
+ * can never disagree with the label on the row it returns.
+ *
+ * THE PRODUCTS are {@see self::parents()}: the helper clients behind a product nest under
+ * it instead of standing beside it.
  *
  * The same for every environment: the platform environment and an organization's own
  * environment are cut by the same rules, because they are the same thing.
@@ -45,6 +48,17 @@ final readonly class AppListing
     /** @var list<string> the kinds offered as filters, in the order the form offers them */
     public const KINDS = ['web', 'spa', 'cli', 'service', 'agent', 'other'];
 
+    public const STATUS_ACTIVE = 'active';
+
+    public const STATUS_STALE = 'stale';
+
+    public const STATUS_NEVER_USED = 'never-used';
+
+    public const STATUS_DISABLED = 'disabled';
+
+    /** How long without a token before an app reads as no longer in use. */
+    public const STALE_AFTER_DAYS = 30;
+
     public function __construct(private AppCatalog $catalog) {}
 
     /** Which group an app belongs to. */
@@ -58,109 +72,223 @@ final readonly class AppListing
     }
 
     /**
-     * Narrow to one group.
+     * The kind an app IS, read from its grants.
      *
-     * @param  Builder<Client>  $query
-     * @return Builder<Client>
+     * An exact preset first ({@see AppKind::forClient()}). Real apps rarely stay exact: a
+     * product's web app that also calls the API as itself and exchanges tokens carries
+     * authorization_code, client_credentials, refresh_token and token-exchange, and filing
+     * that under "Other" told the reader nothing they could use. So, failing an exact
+     * match, the grant that brings people to the app decides: a browser sign-in is a web
+     * app when it can keep a secret and a single-page or mobile app otherwise; then an
+     * approval-asking agent, a device-flow CLI, a service. Only an app with none of those
+     * is "Other". A public app that comes back to a loopback address is a CLI first.
      */
-    public static function inGroup(Builder $query, string $group): Builder
+    public static function kindFor(Client $client): AppKind
     {
-        return match ($group) {
-            self::GROUP_FIRST_PARTY => $query->whereNull('organization_id')->where('first_party', true),
-            self::GROUP_ENVIRONMENT => $query->whereNull('organization_id')->where('first_party', false),
-            self::GROUP_ORGANIZATIONS => $query->whereNotNull('organization_id'),
-            default => $query,
+        $exact = AppKind::forClient($client);
+        $grants = $client->grant_types ?? [];
+
+        // A public app that signs in through a browser and comes back to this machine's
+        // own address is a command-line tool (RFC 8252's native app), whatever preset its
+        // grants happen to spell.
+        if ($client->type === ClientType::Public && in_array('authorization_code', $grants, true) && self::returnsToLoopback($client)) {
+            return AppKind::CliOrDevice;
+        }
+
+        if ($exact !== AppKind::Advanced) {
+            return $exact;
+        }
+
+        if (in_array('authorization_code', $grants, true)) {
+            return $client->type === ClientType::Confidential ? AppKind::WebApp : AppKind::SpaOrMobile;
+        }
+
+        return match (true) {
+            in_array('urn:openid:params:grant-type:ciba', $grants, true) => AppKind::Agent,
+            in_array('urn:ietf:params:oauth:grant-type:device_code', $grants, true) => AppKind::CliOrDevice,
+            in_array('client_credentials', $grants, true) => AppKind::Service,
+            default => AppKind::Advanced,
+        };
+    }
+
+    /** The kind filter's value for an app: its kind, or `other`. */
+    public static function kindOf(Client $client): string
+    {
+        $kind = self::kindFor($client);
+
+        return $kind === AppKind::Advanced ? 'other' : $kind->value;
+    }
+
+    /** Whether every address the app is sent back to is this machine's own. */
+    private static function returnsToLoopback(Client $client): bool
+    {
+        $uris = $client->redirect_uris ?? [];
+
+        if ($uris === []) {
+            return false;
+        }
+
+        foreach ($uris as $uri) {
+            $host = parse_url($uri, PHP_URL_HOST);
+
+            if (! in_array($host, ['127.0.0.1', 'localhost', '[::1]'], true)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * What a row says about the app's use: switched off, never used, not used for a month,
+     * or in use.
+     *
+     * Switched off is an app that authenticates with a shared secret and holds no live one:
+     * every token request it makes is refused, whatever its last use says.
+     *
+     * @param  array<string, true>  $withLiveSecret  primary keys of the apps holding a live secret
+     */
+    public static function status(Client $client, array $withLiveSecret): string
+    {
+        return match (true) {
+            AppTabs::holdsSharedSecret($client) && ! isset($withLiveSecret[$client->id]) => self::STATUS_DISABLED,
+            $client->last_used_at === null => self::STATUS_NEVER_USED,
+            $client->last_used_at->lt(now()->subDays(self::STALE_AFTER_DAYS)) => self::STATUS_STALE,
+            default => self::STATUS_ACTIVE,
         };
     }
 
     /**
-     * Group order, then name: the order the sections are drawn in, so a page of the list
-     * reads as consecutive groups rather than one interleaved column.
+     * WHICH PRODUCT EACH APP BELONGS TO — the head app it nests under, or null for a
+     * product of its own.
      *
-     * @param  Builder<Client>  $query
-     * @return Builder<Client>
+     * A product is rarely one client. Billing is a web app and the machine client that
+     * reads shared properties; Infra is a web app, an engine, an approvals agent and a
+     * vault. Listed flat, the forty clients behind fifteen products read as forty things.
+     *
+     * Nothing names a product outright, so it is read from what an operator already wrote:
+     *  - an app-catalog entry that lists several clients makes them one product, the client
+     *    the entry is named after (else its first) at the head;
+     *  - otherwise an app whose name extends another app's name by whole words belongs to
+     *    the longest such app — "Cbox Billing shared properties" to "Cbox Billing".
+     * An app only ever joins one with the same owner organization, and a chain collapses to
+     * its head, so the list nests one level deep.
+     *
+     * @param  iterable<Client>  $clients
+     * @return array<string, string|null> primary key => the head app's primary key, or null
      */
-    public static function ordered(Builder $query): Builder
+    public static function parents(iterable $clients): array
     {
-        return $query
-            ->orderByRaw('organization_id is not null')
-            ->orderByDesc('first_party')
-            ->orderBy('name')
-            ->orderBy('id');
-    }
+        /** @var array<string, Client> $byId */
+        $byId = [];
+        /** @var array<string, Client> $byClientId */
+        $byClientId = [];
 
-    /**
-     * Narrow to one kind of app, by the same grants {@see AppKind::forClient()} reads.
-     *
-     * A preset is matched on its exact grants, which JSON containment can only approximate
-     * from below; the extra grants a preset does not carry are excluded explicitly, so the
-     * rows returned are the rows that would be labelled that kind.
-     *
-     * @param  Builder<Client>  $query
-     * @return Builder<Client>
-     */
-    public static function ofKind(Builder $query, string $kind): Builder
-    {
-        $preset = AppKind::tryFrom($kind === 'other' ? 'advanced' : $kind);
-
-        if ($preset === null) {
-            return $query;
+        foreach ($clients as $client) {
+            $byId[$client->id] = $client;
+            $byClientId[$client->client_id] = $client;
         }
 
-        if ($preset === AppKind::Advanced) {
-            return $query->where(function (Builder $q): void {
-                foreach ([AppKind::WebApp, AppKind::SpaOrMobile, AppKind::CliOrDevice, AppKind::Service, AppKind::Agent] as $kind) {
-                    $q->whereNot(fn (Builder $q): Builder => self::exactly($q, $kind));
+        /** @var array<string, string|null> $parent */
+        $parent = [];
+
+        foreach (CatalogEntry::query()->orderBy('position')->get() as $entry) {
+            $members = [];
+
+            foreach ($entry->client_ids as $clientId) {
+                if (isset($byClientId[$clientId])) {
+                    $members[] = $byClientId[$clientId];
                 }
-            });
-        }
+            }
 
-        return self::exactly($query, $preset);
-    }
+            if (count($members) < 2) {
+                continue;
+            }
 
-    /**
-     * The grants and client type of exactly one preset.
-     *
-     * @param  Builder<Client>  $query
-     * @return Builder<Client>
-     */
-    private static function exactly(Builder $query, AppKind $kind): Builder
-    {
-        $grants = $kind->grantTypes();
+            $head = $members[0];
 
-        $query->where('type', $kind->clientType()->value);
+            foreach ($members as $member) {
+                if (mb_strtolower($member->name) === mb_strtolower($entry->name)) {
+                    $head = $member;
+                }
+            }
 
-        foreach ($grants as $grant) {
-            $query->whereJsonContains('grant_types', $grant);
-        }
-
-        foreach (self::knownGrants() as $grant) {
-            if (! in_array($grant, $grants, true)) {
-                $query->whereJsonDoesntContain('grant_types', $grant);
+            foreach ($members as $member) {
+                if ($member->id !== $head->id && ! isset($parent[$member->id]) && $member->organization_id === $head->organization_id) {
+                    $parent[$member->id] = $head->id;
+                }
             }
         }
 
-        return $query->whereJsonLength('grant_types', count($grants));
-    }
+        foreach ($byId as $client) {
+            if (isset($parent[$client->id])) {
+                continue;
+            }
 
-    /** @return list<string> every grant a preset is made of */
-    private static function knownGrants(): array
-    {
-        $grants = [];
+            $name = mb_strtolower(trim($client->name));
+            $best = null;
+            $bestLength = 0;
 
-        foreach ([AppKind::WebApp, AppKind::SpaOrMobile, AppKind::CliOrDevice, AppKind::Service, AppKind::Agent] as $kind) {
-            $grants = [...$grants, ...$kind->grantTypes()];
+            foreach ($byId as $candidate) {
+                if ($candidate->id === $client->id || $candidate->organization_id !== $client->organization_id) {
+                    continue;
+                }
+
+                $prefix = mb_strtolower(trim($candidate->name));
+
+                if ($prefix !== '' && str_starts_with($name, $prefix.' ') && mb_strlen($prefix) > $bestLength) {
+                    $best = $candidate->id;
+                    $bestLength = mb_strlen($prefix);
+                }
+            }
+
+            $parent[$client->id] = $best;
         }
 
-        return array_values(array_unique($grants));
+        // Collapse chains to their head, guarding against a cycle a catalog could draw.
+        $heads = [];
+
+        foreach (array_keys($byId) as $id) {
+            $seen = [$id => true];
+            $at = $parent[$id] ?? null;
+            $head = null;
+
+            while ($at !== null && ! isset($seen[$at])) {
+                $seen[$at] = true;
+                $head = $at;
+                $at = $parent[$at] ?? null;
+            }
+
+            $heads[$id] = $head;
+        }
+
+        return $heads;
     }
 
-    /** The kind filter's value for an app: its preset, or `other`. */
-    public static function kindOf(Client $client): string
+    /**
+     * The apps of one group, or all of them for none.
+     *
+     * @param  list<Client>  $clients
+     * @return list<Client>
+     */
+    public static function inGroup(array $clients, ?string $group): array
     {
-        $kind = AppKind::forClient($client);
+        return $group === null
+            ? $clients
+            : array_values(array_filter($clients, fn (Client $client): bool => self::groupOf($client) === $group));
+    }
 
-        return $kind === AppKind::Advanced ? 'other' : $kind->value;
+    /**
+     * The apps of one kind, or all of them for none.
+     *
+     * @param  list<Client>  $clients
+     * @return list<Client>
+     */
+    public static function ofKind(array $clients, ?string $kind): array
+    {
+        return $kind === null
+            ? $clients
+            : array_values(array_filter($clients, fn (Client $client): bool => self::kindOf($client) === $kind));
     }
 
     /** Whether the app is one a person signs in to through a browser. */
@@ -176,6 +304,13 @@ final readonly class AppListing
     public static function host(Client $client): ?string
     {
         foreach ($client->redirect_uris ?? [] as $uri) {
+            $scheme = parse_url($uri, PHP_URL_SCHEME);
+
+            // An app's own scheme (`dk.cbox.ai://auth/callback`) names the app, not a host.
+            if (is_string($scheme) && ! in_array(strtolower($scheme), ['http', 'https'], true)) {
+                return $scheme.'://';
+            }
+
             $host = parse_url($uri, PHP_URL_HOST);
 
             if (is_string($host) && $host !== '') {

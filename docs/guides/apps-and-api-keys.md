@@ -52,8 +52,26 @@ keys) are on the [API keys](keys.md) page.
 (the environment's own products), **Environment apps** (its other apps: integrations,
 services, agents) and **Organizations' apps** — and narrows by kind with the chips under
 the search box. Both are in the address (`?group=`, `?type=`), so a narrowed list can be
-linked. Each row shows where the app signs in, its owner and when it last asked for a
-token.
+linked. Each row shows where the app signs in (or, for an app no browser returns to, its
+kind), its owner and when it last asked for a token. The whole list is on one page.
+
+**A product's helper clients are folded under it.** "Cbox Billing shared properties" sits
+under "Cbox Billing" as "+1 more", which opens to its rows. An app belongs to another when
+an app-catalog entry lists both, or when its name extends the other's by whole words; only
+apps with the same owner are folded together. A search or a kind chip lists every match
+flat, each saying which product it is part of.
+
+**The kind is read from the grants.** An app is a web app when it signs people in through
+a browser and can keep a secret, a single-page or mobile app when it cannot, a CLI when it
+comes back to `127.0.0.1` or `localhost` or uses the device flow, an AI agent when it asks
+for approval (CIBA), and a service when it only calls the API as itself. Extra grants, such
+as token exchange beside a web app's sign-in, do not change that. **Other** is an app with
+none of those grants.
+
+**Status:** *Disabled* is an app that authenticates with a client secret and holds no live
+one, so every token request it makes is refused (rotate in a secret to turn it back on).
+*Idle 30+ days* is an app whose last token is more than 30 days old. *Never used* has never
+asked for a token.
 
 ## An app's tabs
 

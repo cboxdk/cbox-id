@@ -4936,4 +4936,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Declarate de această aplicație.',
     'staff_not_org_roles' => 'Această pagină acordă roluri în întregul mediu. Rolul unei persoane într-o organizație (Proprietar, Administrator, Membru și celelalte) se setează pe pagina Membri a organizației respective.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count în plus',
+    'apps_part_of' => 'Parte din :product',
+    'apps_status_disabled' => 'Dezactivată',
+    'apps_status_disabled_hint' => 'Are nevoie de un secret de client și nu are niciunul, deci fiecare cerere de token este refuzată.',
+    'apps_status_stale' => 'Nefolosită de 30+ zile',
+    'banner_platform_environment' => ':name · Mediul propriu al platformei pe :host. Modificările de aici afectează fiecare autentificare.',
+    'banner_platform_admin' => 'Administrare platformă: Întreaga instalare pe :host. Modificările de aici afectează fiecare organizație.',
+    'banner_what_this_affects' => 'Ce afectează',
+    'user_access_since' => 'Din :when',
+    'user_access_since_label' => 'Din',
+    'user_access_none_offered' => 'Niciunul disponibil',
+    'user_access_edit_roles' => 'Editează rolurile de aplicație și personalizate în :organization',
+    'user_access_open_organization' => 'Deschide organizația',
+    'app_and_custom_roles_in_part1' => 'Roluri de aplicație și personalizate în :part1',
+    'user_access_reaches' => 'Se aplică la',
+    // end console-polish
 ];

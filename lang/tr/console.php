@@ -4936,4 +4936,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Bu uygulama tarafından bildirildi.',
     'staff_not_org_roles' => 'Bu sayfa rolleri tüm ortam genelinde verir. Bir kişinin tek bir kuruluştaki rolü (Sahip, Yönetici, Üye vb.) o kuruluşun Üyeler sayfasında ayarlanır.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count daha',
+    'apps_part_of' => 'Şunun parçası: :product',
+    'apps_status_disabled' => 'Devre dışı',
+    'apps_status_disabled_hint' => 'Bir istemci gizli anahtarı gerektiriyor ama hiç yok, bu yüzden her token isteği reddediliyor.',
+    'apps_status_stale' => '30+ gündür kullanılmıyor',
+    'banner_platform_environment' => ':name · Platformun kendi ortamı: :host. Buradaki değişiklikler her oturum açmayı etkiler.',
+    'banner_platform_admin' => 'Platform yönetimi: :host üzerindeki tüm kurulum. Buradaki değişiklikler her kuruluşu etkiler.',
+    'banner_what_this_affects' => 'Bunun etkiledikleri',
+    'user_access_since' => ':when tarihinden beri',
+    'user_access_since_label' => 'Başlangıç',
+    'user_access_none_offered' => 'Sunulan yok',
+    'user_access_edit_roles' => ':organization içindeki uygulama ve özel rolleri düzenle',
+    'user_access_open_organization' => 'Kuruluşu aç',
+    'app_and_custom_roles_in_part1' => ':part1 içindeki uygulama ve özel roller',
+    'user_access_reaches' => 'Kapsam',
+    // end console-polish
 ];

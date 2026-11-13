@@ -40,6 +40,8 @@ final readonly class AppHeaderProps implements Prop
         public ?array $face = null,
         /** The organization that owns it; null for an app the environment owns. */
         public ?string $owner = null,
+        /** Switched off: it needs a client secret and holds no live one. */
+        public bool $disabled = false,
     ) {}
 
     /**
@@ -61,6 +63,7 @@ final readonly class AppHeaderProps implements Prop
             'kind' => $this->kind,
             'face' => $this->face,
             'owner' => $this->owner,
+            'disabled' => $this->disabled,
         ];
     }
 }

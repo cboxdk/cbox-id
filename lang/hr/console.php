@@ -4936,4 +4936,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Deklarirala ova aplikacija.',
     'staff_not_org_roles' => 'Ova stranica dodjeljuje uloge u cijelom okruženju. Uloga osobe unutar jedne organizacije (Vlasnik, Administrator, Član i ostale) postavlja se na stranici Članovi te organizacije.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count više',
+    'apps_part_of' => 'Dio proizvoda :product',
+    'apps_status_disabled' => 'Onemogućeno',
+    'apps_status_disabled_hint' => 'Treba tajnu klijenta, a nema je, pa se svaki zahtjev za token odbija.',
+    'apps_status_stale' => 'Nekorišteno 30+ dana',
+    'banner_platform_environment' => ':name · Vlastito okruženje platforme na :host. Promjene ovdje utječu na svaku prijavu.',
+    'banner_platform_admin' => 'Administracija platforme: Cijela instalacija na :host. Promjene ovdje utječu na svaku organizaciju.',
+    'banner_what_this_affects' => 'Na što ovo utječe',
+    'user_access_since' => 'Od :when',
+    'user_access_since_label' => 'Od',
+    'user_access_none_offered' => 'Nijedna ponuđena',
+    'user_access_edit_roles' => 'Uredi uloge aplikacija i prilagođene uloge u :organization',
+    'user_access_open_organization' => 'Otvori organizaciju',
+    'app_and_custom_roles_in_part1' => 'Uloge aplikacija i prilagođene uloge u :part1',
+    'user_access_reaches' => 'Vrijedi za',
+    // end console-polish
 ];

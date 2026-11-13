@@ -8,11 +8,11 @@ use App\Http\Controllers\Console\ClientPromotionController;
 use App\Http\Props\Console\AppCopyProps;
 use App\Http\Props\Console\AppHeaderProps;
 use App\Http\Props\Console\CopyTargetProps;
-use App\Platform\AppKind;
 use App\Platform\Apps\CopyTargets;
 use App\Platform\Locale\ConsoleStrings;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\Models\StoredClientSecret;
 use Cbox\Id\Organization\Models\Environment;
 
 /**
@@ -39,7 +39,7 @@ final readonly class AppHeader
             clientId: $client->client_id,
             confidential: $client->type === ClientType::Confidential,
             firstParty: $client->first_party,
-            kindLabel: AppKind::forClient($client)->label(),
+            kindLabel: AppListing::kindFor($client)->label(),
             tabs: $this->tabs->for($client, $tab),
             indexHref: route($this->scope->routeName('clients')),
             blueprintHref: $manages ? route($this->scope->routeName('clients.blueprint'), $client->id) : null,
@@ -50,6 +50,8 @@ final readonly class AppHeader
             owner: $client->organization_id === null
                 ? null
                 : ($this->scope->organizationNames([$client->organization_id])[$client->organization_id] ?? null),
+            disabled: AppTabs::holdsSharedSecret($client)
+                && ! StoredClientSecret::query()->live()->where('oauth_client_id', $client->id)->exists(),
         );
     }
 

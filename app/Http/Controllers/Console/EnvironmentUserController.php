@@ -44,6 +44,8 @@ use App\Platform\Staff\Contracts\StaffRoles;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\SupportAccess\ValueObjects\SupportApp;
 use App\Platform\VerifiedEmailGate;
+use Carbon\CarbonInterface;
+use Cbox\Id\AccessControl\Models\EnvironmentRoleAssignment;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\Mfa;
@@ -251,13 +253,25 @@ final readonly class EnvironmentUserController extends ConsoleController
         $names = $this->organizationNames();
 
         $rows = [];
+        $held = $memberships->forUser($model->id);
 
-        foreach ($memberships->forUser($model->id) as $membership) {
+        /*
+         * Slugs, because a name is not an identity: two organizations may both be called
+         * "Cbox", and a row has to say which one it is.
+         */
+        $slugs = Organization::query()
+            ->whereIn('id', array_map(static fn (Membership $membership): string => $membership->organization_id, $held->all()))
+            ->pluck('slug', 'id')
+            ->all();
+
+        foreach ($held as $membership) {
             $roles = $catalog->assignable($membership->organization_id);
 
             $rows[] = [
                 'organizationId' => $membership->organization_id,
                 'organizationName' => $names[$membership->organization_id] ?? $membership->organization_id,
+                'organizationSlug' => is_string($slugs[$membership->organization_id] ?? null) ? $slugs[$membership->organization_id] : null,
+                'joinedAt' => $membership->created_at?->toIso8601String(),
                 'role' => $membership->role->value,
                 // Invited and suspended members cannot be acted as: a support session
                 // would put them into an organization its administrators have not.
@@ -277,6 +291,18 @@ final readonly class EnvironmentUserController extends ConsoleController
                     'remove' => route('environment.users.organizations.remove', [$model->id, $membership->organization_id]),
                 ],
             ];
+        }
+
+        /*
+         * What a picker calls each organization: its name, and its slug as well where two of
+         * theirs share a name — "Cbox" twice in a list is a coin toss.
+         */
+        $nameCounts = array_count_values(array_map(static fn (array $row): string => $row['organizationName'], $rows));
+
+        foreach ($rows as $i => $row) {
+            $rows[$i]['organizationLabel'] = ($nameCounts[$row['organizationName']] ?? 0) > 1 && $row['organizationSlug'] !== null
+                ? $row['organizationName'].' ('.$row['organizationSlug'].')'
+                : $row['organizationName'];
         }
 
         /*
@@ -332,6 +358,8 @@ final readonly class EnvironmentUserController extends ConsoleController
              */
             'staffRoles' => StaffRoleProps::list($staff->grantable()),
             'heldStaffRoles' => $staff->heldBy($model->id),
+            // Since when each is held: the earliest grant of it, for the row's date.
+            'staffRolesSince' => $this->staffRolesSince($model->id),
             'staffHref' => route('environment.staff'),
             /*
              * SUPPORT ACCESS — sign in to one of the environment's own apps as this person.
@@ -345,7 +373,7 @@ final readonly class EnvironmentUserController extends ConsoleController
                     'label' => $app->name,
                 ], $support->eligibleApps()),
                 'organizations' => array_values(array_map(
-                    static fn (array $row): array => ['value' => $row['organizationId'], 'label' => $row['organizationName']],
+                    static fn (array $row): array => ['value' => $row['organizationId'], 'label' => $row['organizationLabel']],
                     array_filter($rows, static fn (array $row): bool => $row['active']),
                 )),
                 'maxMinutes' => $support->maxMinutes(),
@@ -804,6 +832,26 @@ final readonly class EnvironmentUserController extends ConsoleController
         );
 
         return $route === null ? null : to_route($route);
+    }
+
+    /**
+     * When the person was first given each admin & support role they hold.
+     *
+     * @return array<string, string> role id => ISO 8601 time
+     */
+    private function staffRolesSince(string $userId): array
+    {
+        $since = [];
+
+        foreach (EnvironmentRoleAssignment::query()->where('user_id', $userId)->orderBy('created_at')->get(['role_id', 'created_at']) as $assignment) {
+            $at = $assignment->getAttribute('created_at');
+
+            if (! isset($since[$assignment->role_id]) && $at instanceof CarbonInterface) {
+                $since[$assignment->role_id] = $at->toIso8601String();
+            }
+        }
+
+        return $since;
     }
 
     /**

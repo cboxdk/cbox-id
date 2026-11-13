@@ -2,16 +2,11 @@ import { useTranslator } from '@/i18n';
 import type { MessageKey } from '@/i18n/keys';
 import { Link, router } from '@inertiajs/react';
 import { ChevronRight } from 'lucide-react';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import { listHref } from '@/lib/listHref';
 import { relativeTime } from '@/lib/time';
-import type {
-    HelpContent,
-    OrganizationFilter,
-    PageProps,
-    Pagination as PaginationState,
-} from '@/types';
+import type { HelpContent, OrganizationFilter, PageProps } from '@/types';
 import {
     Badge,
     Button,
@@ -21,7 +16,6 @@ import {
     Input,
     OrganizationFilterChip,
     PageHeader,
-    Pagination,
 } from '@/ui';
 import { type AppFace, type AppKindKey, AppMark, KIND_ICONS } from './AppMark';
 
@@ -33,7 +27,6 @@ interface AppRow {
     clientId: string;
     firstParty: boolean;
     platformOwned: boolean;
-    roleCount: number;
     kindLabel: string;
     owner: string | null;
     href: string;
@@ -46,12 +39,31 @@ interface AppRow {
     backchannelLogout: boolean;
     lastUsedAt: string | null;
     face: AppFace | null;
+    /** Switched off (needs a secret, holds none), never used, idle for 30+ days, or in use. */
+    status: AppStatus;
+    /** The product app this one nests under on this page, or null for a product of its own. */
+    parentId: string | null;
+    /** The product it belongs to — said on a flat (searched or kind-narrowed) row. */
+    product: string | null;
+    /** The section it is drawn in: its product's owner group. */
+    section: AppGroup;
+}
+
+type AppStatus = 'active' | 'stale' | 'never-used' | 'disabled';
+
+/** A product: its head app and the helper clients behind it. */
+interface Product {
+    head: AppRow;
+    helpers: AppRow[];
 }
 
 type Props = PageProps<{
     help: HelpContent;
     clients: AppRow[];
-    pagination: PaginationState;
+    /** Rows in the list — every one, on one page. */
+    total: number;
+    /** Helpers nest under their product: nothing narrows the list. */
+    nested: boolean;
     platformApps: AppRow[];
     search: string;
     /** The owner group in view, or null for every group. */
@@ -124,7 +136,8 @@ function narrowed(parameter: string, value: string | null): string {
 export default function Clients({
     help,
     clients,
-    pagination,
+    total: rowCount,
+    nested,
     platformApps,
     search,
     group,
@@ -168,6 +181,7 @@ export default function Clients({
     ) : undefined;
 
     const total = groupCounts === null ? null : GROUPS.reduce((n, g) => n + groupCounts[g], 0);
+    const products = useMemo(() => intoProducts(clients, nested), [clients, nested]);
     const narrowedAtAll = search !== '' || kind !== null || group !== null;
 
     return (
@@ -250,7 +264,7 @@ export default function Clients({
                 narrowed to nothing.
             */}
             <output className="sr-only">
-                {rich('console.search_results_found', { count: pagination.total })}
+                {rich('console.search_results_found', { count: rowCount })}
             </output>
 
             <div className="mt-4">
@@ -312,32 +326,32 @@ export default function Clients({
                     </div>
                 ) : (
                     <div className="idc-rows">
-                        {clients.map((client, index) => {
-                            // A heading where the group changes — and on the first row, so a
-                            // page that starts mid-group still says which group it is in.
+                        {products.map((product, index) => {
+                            // A heading where the section changes, so "All" reads as the
+                            // owner groups in turn.
                             const heading =
                                 showsEveryOrganization &&
                                 group === null &&
-                                (index === 0 || clients[index - 1]?.group !== client.group);
+                                (index === 0 ||
+                                    products[index - 1]?.head.section !== product.head.section);
 
                             return (
-                                <Fragment key={client.id}>
+                                <Fragment key={product.head.id}>
                                     {heading && (
                                         <div className="idc-rows-group">
-                                            <h2>{t(GROUP_TITLE[client.group])}</h2>
-                                            <p>{t(GROUP_LEAD[client.group])}</p>
+                                            <h2>{t(GROUP_TITLE[product.head.section])}</h2>
+                                            <p>{t(GROUP_LEAD[product.head.section])}</p>
                                         </div>
                                     )}
-                                    <AppLink app={client} showOwner={showsEveryOrganization} />
+                                    <ProductRows
+                                        product={product}
+                                        showOwner={showsEveryOrganization}
+                                    />
                                 </Fragment>
                             );
                         })}
                     </div>
                 )}
-            </div>
-
-            <div className="mt-4">
-                <Pagination pagination={pagination} href={(page) => listHref(search, page)} />
             </div>
 
             {/*
@@ -392,28 +406,123 @@ function GroupTab({
     );
 }
 
-/** One app: the whole row is the link to it. */
-function AppLink({ app, showOwner }: { app: AppRow; showOwner: boolean }) {
-    const { t, locale } = useTranslator();
+/**
+ * The rows as products: each head app followed by the helpers that nest under it. A flat
+ * list (searched, or narrowed to a kind) is every row its own product.
+ */
+function intoProducts(rows: AppRow[], nested: boolean): Product[] {
+    const products: Product[] = [];
+    const byHead = new Map<string, Product>();
+
+    for (const row of rows) {
+        const head = nested && row.parentId !== null ? byHead.get(row.parentId) : undefined;
+
+        if (head !== undefined) {
+            head.helpers.push(row);
+            continue;
+        }
+
+        const product = { head: row, helpers: [] };
+        products.push(product);
+        byHead.set(row.id, product);
+    }
+
+    return products;
+}
+
+/** A helper's name without its product's: "Cbox Billing shared properties" → "Shared properties". */
+function shortName(helper: string, head: string): string {
+    if (!helper.toLowerCase().startsWith(`${head.toLowerCase()} `)) {
+        return helper;
+    }
+
+    const rest = helper.slice(head.length).trim();
+
+    return rest.charAt(0).toUpperCase() + rest.slice(1);
+}
+
+/**
+ * A product: its head app as a row, and — when there are any — the helper clients behind
+ * it folded into one line ("+2 · Shared properties, CLI") that opens to their rows.
+ */
+function ProductRows({ product, showOwner }: { product: Product; showOwner: boolean }) {
+    const { t } = useTranslator();
+    const { head, helpers } = product;
+
+    if (helpers.length === 0) {
+        return <AppLink app={head} showOwner={showOwner} />;
+    }
+
+    const names = helpers.map((helper) => shortName(helper.name, head.name));
+    const anyOff = helpers.some((helper) => helper.status === 'disabled');
 
     return (
-        <Link href={app.href} className="idc-row">
+        <div className="idc-product">
+            <AppLink app={head} showOwner={showOwner} />
+            <details className="idc-product-more">
+                <summary>
+                    <ChevronRight className="idc-product-caret h-3.5 w-3.5" aria-hidden />
+                    <span className="idc-product-count">
+                        {t('console.apps_product_more', { count: helpers.length })}
+                    </span>
+                    <span className="idc-product-names">{names.join(', ')}</span>
+                    {anyOff && <Badge tone="danger">{t('console.apps_status_disabled')}</Badge>}
+                </summary>
+                <div className="idc-product-helpers">
+                    {helpers.map((helper) => (
+                        <AppLink
+                            key={helper.id}
+                            app={helper}
+                            showOwner={showOwner}
+                            label={shortName(helper.name, head.name)}
+                        />
+                    ))}
+                </div>
+            </details>
+        </div>
+    );
+}
+
+/** One app: the whole row is the link to it. */
+function AppLink({
+    app,
+    showOwner,
+    label,
+}: {
+    app: AppRow;
+    showOwner: boolean;
+    /** The name to draw, when shorter than the app's own (a helper under its product). */
+    label?: string;
+}) {
+    const { t, locale } = useTranslator();
+    const off = app.status === 'disabled';
+
+    return (
+        <Link
+            href={app.href}
+            className="idc-row"
+            data-status={app.status}
+            title={`${app.name} · ${app.clientId}`}
+        >
             <AppMark name={app.name} kind={app.kind} face={app.face} />
 
             <div className="idc-row-main">
-                <span className="idc-row-title">{app.name}</span>
+                <span className="idc-row-title">{label ?? app.name}</span>
                 <span className="idc-row-sub">
                     {app.host !== null ? (
                         <span className="mono">{app.host}</span>
                     ) : (
-                        <span className="mono">{app.clientId}</span>
+                        <span>{app.kindLabel}</span>
+                    )}
+                    {app.product !== null && app.parentId === null && (
+                        <span>{t('console.apps_part_of', { product: app.product })}</span>
                     )}
                 </span>
             </div>
 
             <div className="idc-row-meta">
-                <Badge>{app.kindLabel}</Badge>
-                {app.firstParty && app.group !== 'first-party' && (
+                {app.host !== null && <Badge>{app.kindLabel}</Badge>}
+                {app.firstParty && app.section !== 'first-party' && (
                     <Badge tone="info">{t('console.first_party_ee374836')}</Badge>
                 )}
                 {showOwner && app.owner !== null && app.group === 'organizations' && (
@@ -422,11 +531,16 @@ function AppLink({ app, showOwner }: { app: AppRow; showOwner: boolean }) {
                         {app.owner}
                     </Badge>
                 )}
-                {app.roleCount > 0 && (
-                    <Badge>{t('console.apps_roles_count', { count: app.roleCount })}</Badge>
-                )}
                 {app.signsIn && app.redirectCount === 0 && (
                     <Badge tone="warn">{t('console.apps_no_redirect')}</Badge>
+                )}
+                {off && (
+                    <span title={t('console.apps_status_disabled_hint')}>
+                        <Badge tone="danger">{t('console.apps_status_disabled')}</Badge>
+                    </span>
+                )}
+                {app.status === 'stale' && (
+                    <Badge tone="warn">{t('console.apps_status_stale')}</Badge>
                 )}
                 <span className="idc-row-when">
                     {app.lastUsedAt === null

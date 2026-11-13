@@ -4936,4 +4936,21 @@ https://staging.example.com',
     'roles_perm_group_app' => 'Tämän sovelluksen määrittelemiä.',
     'staff_not_org_roles' => 'Tämä sivu antaa rooleja koko ympäristössä. Henkilön rooli yksittäisessä organisaatiossa (Omistaja, Ylläpitäjä, Jäsen ja muut) asetetaan kyseisen organisaation Jäsenet-sivulla.',
     // end console-ux
+    // console-polish: apps, access, shell
+    'apps_product_more' => '+:count lisää',
+    'apps_part_of' => 'Osa tuotetta :product',
+    'apps_status_disabled' => 'Poistettu käytöstä',
+    'apps_status_disabled_hint' => 'Se tarvitsee asiakassalaisuuden eikä sillä ole sellaista, joten jokainen tunnuspyyntö hylätään.',
+    'apps_status_stale' => 'Käyttämättä 30+ päivää',
+    'banner_platform_environment' => ':name · Alustan oma ympäristö osoitteessa :host. Muutokset täällä koskevat jokaista kirjautumista.',
+    'banner_platform_admin' => 'Alustan hallinta: Koko asennus osoitteessa :host. Muutokset täällä koskevat jokaista organisaatiota.',
+    'banner_what_this_affects' => 'Mihin tämä vaikuttaa',
+    'user_access_since' => 'Alkaen :when',
+    'user_access_since_label' => 'Alkaen',
+    'user_access_none_offered' => 'Ei tarjolla',
+    'user_access_edit_roles' => 'Muokkaa sovellus- ja mukautettuja rooleja organisaatiossa :organization',
+    'user_access_open_organization' => 'Avaa organisaatio',
+    'app_and_custom_roles_in_part1' => 'Sovellus- ja mukautetut roolit organisaatiossa :part1',
+    'user_access_reaches' => 'Koskee',
+    // end console-polish
 ];
