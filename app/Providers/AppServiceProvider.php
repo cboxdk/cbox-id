@@ -34,6 +34,7 @@ use App\Platform\Health\LoginHostHealthCheck;
 use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
+use App\Platform\Integrations\SsrfToggles;
 use App\Platform\Keys\TransitionalOrganizationApiKeys;
 use App\Platform\OAuth\PlatformRealmClients;
 use App\Platform\OAuth\RootMcpAudiences;
@@ -259,6 +260,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Every SSRF guard toggle as the boolean the guards agree it means (`1`, `on` = on),
+        // after every package merged its config and before any reader compares it
+        // `=== true`. See the class.
+        SsrfToggles::apply($this->app->make('config'));
+
         // In login-host mode a named route's URL carries the host that serves it.
         SurfaceUrls::register($this->app->make('url'));
 

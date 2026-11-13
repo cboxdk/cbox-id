@@ -325,6 +325,23 @@ it('refuses a hook at a private address, and needs hooks:write', function (): vo
     expect(ExternalActionEndpoint::query()->count())->toBe(0);
 });
 
+/*
+ * A hook's request carries who is signing in and what their token will say, and its reply
+ * decides the sign-in and adds claims: nothing but TLS protects either. The copy says
+ * "a public HTTPS URL"; it is now what the guard enforces, as it is for webhooks
+ * (security finding #55). Read through the same toggle reading as every other guard, so a
+ * truthy string such as `1` keeps it on (security finding #56).
+ */
+it('refuses a hook on plaintext http, with the guard on however the toggle is spelled', function (mixed $toggle): void {
+    config(['cbox-id.external_actions.verify_url' => $toggle]);
+    app(Resolver::class)->set('plain.acme.example', ['93.184.216.34']);
+
+    $this->withToken(integrationKey())->postJson('/api/v1/hooks', ['hook_point' => 'token_minting', 'url' => 'http://plain.acme.example/mint', 'environment_wide' => true])
+        ->assertUnprocessable()->assertJsonPath('error', 'unsafe_url');
+
+    expect(ExternalActionEndpoint::query()->count())->toBe(0);
+})->with([true, '1', 'on', 'yes', 'true'])->group('security');
+
 it('never reaches another environment\'s hook', function (): void {
     config(['cbox-id.external_actions.verify_url' => false]);
     $key = integrationKey();

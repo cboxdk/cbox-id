@@ -29,6 +29,9 @@ use Cbox\Ssrf\Exceptions\BlockedUrl;
  */
 final class OutboundUrl
 {
+    /** @var list<string> */
+    private const array HOOK_SCHEMES = ['https'];
+
     /**
      * A webhook endpoint: public and HTTPS only ({@see SafeWebhookUrl}).
      *
@@ -44,9 +47,14 @@ final class OutboundUrl
     }
 
     /**
-     * An inline hook's endpoint. The framework's registry keeps its guard private, so this
-     * asks the same shared guard under the same toggle
-     * (`cbox-id.external_actions.verify_url`).
+     * An inline hook's endpoint: public and HTTPS only, as a webhook's is. The framework's
+     * registry keeps its guard private, so this asks the same shared guard under the same
+     * toggle (`cbox-id.external_actions.verify_url`).
+     *
+     * HTTPS because nothing else protects a hook: the request carries who is signing in
+     * and what their token will say, and the unauthenticated reply decides the sign-in and
+     * adds claims to the token. Over plain http anybody on the path reads the one and
+     * writes the other.
      *
      * @throws ActionRefused
      */
@@ -59,7 +67,7 @@ final class OutboundUrl
         }
 
         try {
-            app(UrlGuard::class)->assertSafe($url);
+            app(UrlGuard::class)->assertSafe($url, self::HOOK_SCHEMES);
         } catch (BlockedUrl) {
             throw ActionRefused::because('unsafe_url', 'That URL is not allowed — it must be a public HTTPS endpoint.', $field);
         }
