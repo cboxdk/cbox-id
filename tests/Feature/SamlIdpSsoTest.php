@@ -24,6 +24,8 @@ uses(InteractsWithSamlIdp::class);
 function samlSubjectSession(string $email = 'sso.user@sp-test.example'): string
 {
     $subject = app(Subjects::class)->create($email, 'SSO User', 'supersecret123');
+    // Verified: the IdP only asserts a confirmed address (SamlIdpUnverifiedEmailTest).
+    app(Subjects::class)->markEmailVerified($subject->id, $email);
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'saml-'.substr(md5($email), 0, 8)));
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
 
@@ -205,6 +207,7 @@ it('carries the raw query string across the stash, not just into it', function (
 function assertionContextFor(array $amr): string
 {
     $subject = app(Subjects::class)->create('ctx-'.mt_rand().'@acme.test', 'Ctx', 'supersecret123');
+    app(Subjects::class)->markEmailVerified($subject->id, (string) $subject->email);
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-ctx-'.mt_rand()));
     app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
 

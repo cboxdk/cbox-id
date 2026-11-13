@@ -31,6 +31,10 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 
 - **Resend.** `resend/resend-php`, the `resend` mailer and `services.resend` (`RESEND_API_KEY`) are gone; Cbox services do not send through Resend. A deployment with `MAIL_MAILER=resend` must switch to `relay` before upgrading.
 
+### Security
+
+- **The SAML IdP asserts only a verified email address.** A signed assertion could carry the person's email, as the NameID or as a mapped attribute, before they had confirmed it. The SSO endpoint now refuses with 403 ("Confirm your email address before signing in to this service.") when the service provider would receive the email (an email or unspecified NameID taken from `email`, or an attribute mapped from `email`) and the address is not verified. For any other service provider the person signs in as before, and the unverified address is never passed to the assertion. `SamlIdpUnverifiedEmailTest`.
+
 ### Fixed
 
 - **The hosted sign-in pages paint with the Cbox design system, not a hex copy of it.** An environment or organization left on the default `cbox` theme (saved from the Branding page without changes, under this release or an earlier one) got a `<style>` override built from hex guesses: Plus Jakarta Sans for all text, `#2f62ea`/`#7ba0ff` for the primary and a cold `#141210` ground. Such a theme now emits no override, so the page uses the real oklch tokens in light and dark: system-ui for text, Plus Jakarta Sans for headings, the warm canvas and the console's blue wash. A theme with any colour, corner or typeface changed keeps its override as before, on the platform root and every tenant alike. The `cbox` preset's editor values are the nearest hex to the real tokens, and its typeface is the new **System + Plus Jakarta Sans** pairing. The footer's language picker is the Cbox menu the console uses rather than a native `<select>`, the footer controls share one 28px control style, and the hero panel loses its dot grid.
