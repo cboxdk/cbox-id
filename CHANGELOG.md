@@ -136,6 +136,7 @@ Confirmed security issues and their fixes are cross-referenced under **Security*
 ### Security
 
 - **`/oauth/authorize` lets a loopback redirect URI's port float only when the URI is in canonical form.** The RFC 8252 port exception, for a registered client and for a client ID metadata document client, now refuses a `redirect_uri` with credentials, a backslash, whitespace or a control character, a fragment, or any other difference from its own normalized `http://host[:port]path[?query]`. Such a URI is accepted only by an exact match with a registered one. Native clients that send a plain `http://127.0.0.1:<port>/…`, `http://[::1]:<port>/…` or `http://localhost:<port>/…` are unaffected.
+- **A sign-in link makes an unverified account its mailbox holder's alone.** Redeeming a sign-in link proves control of the address, so when the account's address was not yet confirmed, Cbox ID now marks it verified and removes what was attached before that proof: the password, second factors and recovery codes, passkeys, linked sign-ins, other sessions (the apps they signed in to are told), OAuth grants and access tokens, and API keys. The person then sets their own. This happens before the second-factor check. A verified account is unchanged, and its second factor is still asked for. Recorded as `user.unverified_credentials_removed` (`App\Platform\MailboxProof`, `MagicLinkUnverifiedAccountTest`).
 
 ## [2.2.0] - 2026-11-08
 
