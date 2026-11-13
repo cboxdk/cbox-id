@@ -47,7 +47,14 @@ final readonly class SamlRequestContext
      */
     public static function fromRequest(Request $request): ?self
     {
-        $samlRequest = self::str($request->input('SAMLRequest'));
+        // Each binding from where it travels, and nowhere else: the redirect binding in the
+        // query string, which the URL's own length bounds; the POST binding in the form
+        // body. `input()` also read a GET's JSON body, where a DEFLATE bomb of any size
+        // the body limit allows was inflated before a service provider was looked up.
+        $fromRedirect = $request->isMethod('get');
+        $bag = $fromRedirect ? $request->query : $request->request;
+
+        $samlRequest = self::str($bag->get('SAMLRequest'));
 
         if ($samlRequest === null) {
             return null;
@@ -55,12 +62,12 @@ final readonly class SamlRequestContext
 
         return new self(
             samlRequest: $samlRequest,
-            relayState: self::str($request->input('RelayState')),
-            signature: self::str($request->input('Signature')),
-            sigAlg: self::str($request->input('SigAlg')),
+            relayState: self::str($bag->get('RelayState')),
+            signature: self::str($bag->get('Signature')),
+            sigAlg: self::str($bag->get('SigAlg')),
             // Redirect binding is a GET (base64+DEFLATE, detached signature); the
             // POST binding is a POST (base64 only, embedded XML-DSig).
-            fromRedirect: $request->isMethod('get'),
+            fromRedirect: $fromRedirect,
             rawQueryString: $request->getQueryString(),
         );
     }
