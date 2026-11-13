@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Prunable;
  * @property string $token_hash
  * @property string $publishable_key_id
  * @property string $subject_id
+ * @property string|null $client_hash
  * @property string $stage
  * @property int $attempts
  * @property array<int, string> $amr

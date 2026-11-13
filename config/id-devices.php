@@ -73,6 +73,32 @@ return [
      */
     'app_store_url' => env('CBOX_ID_DEVICES_APP_STORE_URL'),
 
+    /*
+     * Universal Links (iOS) and App Links (Android): an https link that opens the
+     * Authenticator straight on one approval when it is installed, and a plain web page
+     * when it is not. `/.well-known/apple-app-site-association` and
+     * `/.well-known/assetlinks.json` are built from these on every host.
+     *
+     * UNSET BY DEFAULT, for the reason `app_store_url` is: a self-hosted deployment ships
+     * its own build under its own bundle id and signing team. Unset, both documents answer
+     * 404 and the sign-in page offers no "Open the app" button.
+     *
+     *   ios_app_ids     — `TEAMID.bundle.id`, comma list (e.g. 7CX7963T36.com.cboxid.authenticator)
+     *   android_package — the application id (e.g. com.cboxid.authenticator)
+     *   android_sha256  — the signing certificates' SHA-256 fingerprints, comma list
+     *                     (`AA:BB:…`, as `keytool -list -v` or Play Console prints them)
+     *   hosts           — where the link points, in order of preference, comma list. Empty:
+     *                     the login host, then the app host. The first that is NOT the
+     *                     page's own host is used, because iOS keeps a link to the page's
+     *                     own host inside Safari instead of handing it to the app.
+     */
+    'universal_links' => [
+        'ios_app_ids' => array_values(array_filter(array_map('trim', explode(',', (string) env('CBOX_ID_DEVICES_IOS_APP_IDS', ''))))),
+        'android_package' => env('CBOX_ID_DEVICES_ANDROID_PACKAGE'),
+        'android_sha256' => array_values(array_filter(array_map('trim', explode(',', (string) env('CBOX_ID_DEVICES_ANDROID_SHA256', ''))))),
+        'hosts' => array_values(array_filter(array_map('trim', explode(',', (string) env('CBOX_ID_DEVICES_LINK_HOSTS', ''))))),
+    ],
+
     'max_attempts' => (int) env('CBOX_ID_DEVICES_MAX_ATTEMPTS', 12),
 
     /*

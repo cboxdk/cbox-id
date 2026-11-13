@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\AuditStreaming\Testing\InteractsWithAuditStreaming;
 use Cbox\Id\Connectors\Connections\ConnectionsOverview;
 use Cbox\Id\Connectors\Enums\ConnectorCategory;
 use Cbox\Id\Connectors\ValueObjects\ConnectionSummary;
@@ -14,7 +15,7 @@ use Cbox\Id\Webhooks\Testing\InteractsWithWebhooks;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
 
-uses(RefreshDatabase::class, InteractsWithOrganizations::class, InteractsWithFederation::class, InteractsWithProvisioning::class, InteractsWithWebhooks::class);
+uses(RefreshDatabase::class, InteractsWithOrganizations::class, InteractsWithFederation::class, InteractsWithProvisioning::class, InteractsWithWebhooks::class, InteractsWithAuditStreaming::class);
 
 // The connector modules SSRF-check every target URL on registration. These tests
 // register against non-routable example hosts and never make real egress, so the
@@ -60,14 +61,45 @@ it('aggregates provisioning, webhook and federation connections for an organizat
         ->and($byCategory['federation']->isActive())->toBeTrue();
 });
 
-it('includes an environment-wide provisioning connection for every organization', function (): void {
+/**
+ * Audit finding #52. An environment-wide provisioning connection, and one the environment
+ * scoped to this organization, is the ENVIRONMENT's configuration: its downstream base URL
+ * and last error are withheld from a tenant on the provisioning page, and were shown here.
+ */
+it('never shows an organization the environment\'s own provisioning connections', function (): void {
     $org = $this->makeOrganization('Acme');
-    $this->registerProvisioningConnection(name: 'Env-wide'); // no org ⇒ environment-wide
+    $wide = $this->registerProvisioningConnection(name: 'Env-wide'); // no org ⇒ environment-wide
+    $this->registerProvisioningConnection(name: 'Env-scoped', organizationIds: [$org->id]);
+    $wide->connection->forceFill(['last_error' => 'HTTP 401 from https://internal.example/scim'])->save();
 
-    $byCategory = summariesByCategory(app(ConnectionsOverview::class), $org->id);
+    $overview = app(ConnectionsOverview::class);
+    $byCategory = summariesByCategory($overview, $org->id);
 
-    expect($byCategory['provisioning']->name)->toBe('Env-wide');
-});
+    expect($byCategory)->not->toHaveKey('provisioning')
+        ->and($overview->activeCount($org->id))->toBe(0)
+        ->and(json_encode(array_map(fn ($summary) => [$summary->name, $summary->target, $summary->problem], $overview->forOrganization($org->id))))
+        ->not->toContain('internal.example')->not->toContain('Env-');
+
+    // The organization's own is listed, and the environment plane still sees every row.
+    $this->registerProvisioningConnection(organizationId: $org->id, name: 'Ours');
+    expect(summariesByCategory($overview, $org->id)['provisioning']->name)->toBe('Ours')
+        ->and(collect($overview->forOrganization(null))->where('category', ConnectorCategory::Provisioning))->toHaveCount(3);
+})->group('security');
+
+/**
+ * Audit finding #52, log streams: the environment's own stream is the operator's SIEM,
+ * which the log-streaming page withholds from a tenant. Owned, never delivered-to.
+ */
+it('never shows an organization the environment\'s own log streams', function (): void {
+    $org = $this->makeOrganization('Acme');
+    $this->registerAuditStream('Operator SIEM');
+    $this->registerAuditStream('Acme SIEM', organizationId: $org->id);
+
+    $streams = collect(app(ConnectionsOverview::class)->forOrganization($org->id))
+        ->filter(fn ($summary): bool => $summary->category === ConnectorCategory::LogStream);
+
+    expect($streams->pluck('name')->all())->toBe(['Acme SIEM']);
+})->group('security');
 
 it('excludes a provisioning connection scoped to a different organization', function (): void {
     $acme = $this->makeOrganization('Acme');
@@ -132,7 +164,7 @@ it('reads a failing webhook from its own failure counter', function (): void {
 
 it('counts only active connections', function (): void {
     $org = $this->makeOrganization('Acme');
-    $this->registerProvisioningConnection(name: 'Downstream', organizationIds: [$org->id]);
+    $this->registerProvisioningConnection(organizationId: $org->id, name: 'Downstream', organizationIds: [$org->id]);
     $this->registerWebhook($org->id, 'https://hooks.acme.test/events', ['auth.login']);
 
     expect(app(ConnectionsOverview::class)->activeCount($org->id))->toBe(2);

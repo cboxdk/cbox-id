@@ -27,4 +27,14 @@ return [
         'dark' => 'Întunecat',
     ],
     'skip_to_content' => 'Sari la conținut',
+
+    // The page an Authenticator link shows when the app did not open.
+    'authenticator_link' => [
+        'title' => 'Deschide aplicația Cbox ID',
+        'lead' => 'Aplicația Cbox ID nu s-a deschis pe acest dispozitiv.',
+        'other_phone' => 'Aplicația este pe alt telefon? Aprobă solicitarea acolo, apoi revino la pagina de autentificare. Continuă singură.',
+        'open' => 'Deschide în aplicație',
+        'install' => 'Descarcă aplicația',
+        'back' => 'Sau revino și alege altă metodă de confirmare.',
+    ],
 ];

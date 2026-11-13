@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Platform\Mfa;
 
 use App\Platform\Actions\Approvals\StepUpClient;
+use Cbox\Id\Devices\Enums\ApprovalKind;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
+use Cbox\Id\Devices\Support\ApprovalKindHint;
+use Cbox\Id\Devices\Support\AuthenticatorLinks;
 use Cbox\Id\Devices\Support\DeviceApprovalEvidence;
 use Cbox\Id\Devices\Support\DeviceConfig;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -28,7 +31,12 @@ final readonly class BrowserApproval
                 ->where('status', '!=', DeviceStatus::Revoked->value)->exists();
     }
 
-    /** @return array{available: bool, status: string, code?: string, expiresAt?: string} */
+    /**
+     * `appLink` is the Universal Link that opens the Authenticator on this request, offered
+     * to a phone's browser while the request waits ({@see AuthenticatorLinks}).
+     *
+     * @return array{available: bool, status: string, code?: string, expiresAt?: string, appLink?: string|null}
+     */
     public function respond(Request $request, string $purpose, string $subject, string $anchor, bool $start): array
     {
         if (! $this->available($subject)) {
@@ -43,7 +51,8 @@ final readonly class BrowserApproval
             if (! $start || $status === ActionApprovalStatus::Pending
                 || ($status === ActionApprovalStatus::Approved && app(DeviceApprovalEvidence::class)->valid($held['id'], $subject))) {
                 return ['available' => true, 'status' => ($status === null ? 'expired' : $status->value),
-                    'code' => $held['code'], 'expiresAt' => $held['expiresAt']];
+                    'code' => $held['code'], 'expiresAt' => $held['expiresAt'],
+                    'appLink' => $status === ActionApprovalStatus::Pending ? app(AuthenticatorLinks::class)->forApproval($request, $held['id']) : null];
             }
         }
         if (! $start) {
@@ -54,13 +63,17 @@ final readonly class BrowserApproval
         abort_if(RateLimiter::hit($limit, 300) > 3, 429);
         $code = (string) random_int(100000, 999999);
         $message = ($purpose === 'login' ? 'Confirm sign-in' : 'Confirm security access').' · '.mb_substr($request->getHost(), 0, 210).' · '.$code;
+        // Told, not parsed from the message: the push says "Sign in to …?", not "Approve an action".
+        app(ApprovalKindHint::class)->expect($purpose === 'login'
+            ? ApprovalKind::SignIn : ApprovalKind::StepUp);
         $approval = $this->approvals->request($this->client->ensure(), $subject, mb_substr($message, 0, 255), $digest, 300);
         $request->session()->put($this->key($purpose), [
             'id' => $approval->requestId, 'digest' => $digest, 'code' => $code,
             'expiresAt' => $approval->expiresAt->format(DATE_ATOM),
         ]);
 
-        return ['available' => true, 'status' => 'pending', 'code' => $code, 'expiresAt' => $approval->expiresAt->format(DATE_ATOM)];
+        return ['available' => true, 'status' => 'pending', 'code' => $code, 'expiresAt' => $approval->expiresAt->format(DATE_ATOM),
+            'appLink' => app(AuthenticatorLinks::class)->forApproval($request, $approval->requestId)];
     }
 
     public function consume(Request $request, string $purpose, string $subject, string $anchor): bool

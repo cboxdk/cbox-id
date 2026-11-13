@@ -119,7 +119,30 @@ final readonly class AddMember implements Action
             throw ValidationException::withMessages(['user_id' => 'Name the user to add, by user_id or by email.']);
         }
 
-        $user = User::query()->whereRaw('lower(email) = ?', [mb_strtolower(trim($email))])->first();
+        /*
+         * ONE ACCOUNT, THE SAME ONE EVERY TIME. Case variants of an address can exist as
+         * separate accounts (signup used to match byte for byte), and this used to take
+         * whichever the database returned first, so a variant somebody registered ahead of
+         * the real person could receive the membership. Only a confirmed address can be
+         * the person (below); among confirmed variants the exact spelling decides, and
+         * without one the administrator is asked to name the account by `user_id`.
+         */
+        $candidates = User::query()
+            ->whereRaw('lower(email) = ?', [mb_strtolower(trim($email))])
+            ->orderBy('id')
+            ->get();
+
+        $confirmed = $candidates->filter(static fn (User $candidate): bool => $candidate->getAttribute('email_verified_at') !== null);
+
+        if ($confirmed->count() > 1) {
+            $confirmed = $confirmed->filter(static fn (User $candidate): bool => $candidate->getAttribute('email') === trim($email));
+
+            if ($confirmed->count() !== 1) {
+                throw new ActionRefused('email_ambiguous', new ActionMessage('console.several_accounts_share_that_address_name_the_one_you_2c942f61'), 409, 'email');
+            }
+        }
+
+        $user = $confirmed->first() ?? $candidates->first();
 
         if ($user === null) {
             throw ActionRefused::because('user_not_found', new ActionMessage('console.no_user_with_that_email_in_this_environment_create_the_c8a9a675'), 'email');

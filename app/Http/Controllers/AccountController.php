@@ -11,7 +11,6 @@ use App\Actions\Account\RemoveSmsFactor;
 use App\Actions\Account\RemoveTotpDevice;
 use App\Actions\Account\RenamePasskey;
 use App\Actions\Account\RenameTotpDevice;
-use App\Actions\Account\RevokeOtherSessions;
 use App\Actions\Account\SendEmailConfirmation;
 use App\Actions\Account\UnlinkSocialAccount;
 use App\Actions\Account\UpdateProfile;
@@ -28,6 +27,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\CustomerConsole;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Lifecycle\EndOtherSessions;
 use App\Platform\Locale\ConsoleLabels;
 use App\Platform\Mfa\AuthenticatorEnrollment;
 use App\Platform\OAuth\AppSignIns;
@@ -343,13 +343,14 @@ final readonly class AccountController extends PageController
         /*
          * A CHANGED PASSWORD ENDS EVERY OTHER SESSION. Changing it is what somebody does when
          * they think the old one leaked, and a session opened with the old password would
-         * otherwise outlive the change, here and in every app it signed in to. One revoke per
-         * session, through the session manager, so each one tells those apps (back-channel
-         * logout). The session the change was made from stays. Setting a FIRST password
-         * ends nothing: no session was opened with a password.
+         * otherwise outlive the change, here and in every app it signed in to. The apps those
+         * sessions signed in to lose their grants too, and each session is revoked through the
+         * session manager so it tells them (back-channel logout): {@see EndOtherSessions}.
+         * The session the change was made from stays. Setting a FIRST password ends
+         * nothing: no session was opened with a password.
          */
         if ($changing) {
-            $this->endOtherSessions($me->id(), $me->session()?->id);
+            app(EndOtherSessions::class)->handle($me->id(), $me->session()?->id);
         }
 
         return back()->with('status', __('console.password_updated_df01ff0d'));
@@ -694,14 +695,13 @@ final readonly class AccountController extends PageController
         return $connect->start($model, $me->id(), $sessionId);
     }
 
-    public function signOutOtherSessions(SessionManager $sessions): RedirectResponse
+    public function signOutOtherSessions(EndOtherSessions $sessions): RedirectResponse
     {
         $me = app(CurrentUser::class);
 
         abort_unless($me->check(), 403);
 
-        $this->otherSessions($me->id(), $me->session()?->id)
-            ->each(fn (string $id) => $sessions->revoke($id));
+        $sessions->handle($me->id(), $me->session()?->id);
 
         return back()->with('status', __('console.signed_out_of_all_other_sessions_6b396037'));
     }
@@ -811,23 +811,6 @@ final readonly class AccountController extends PageController
         ));
 
         return 'data:image/svg+xml;base64,'.base64_encode($writer->writeString($provisioningUri));
-    }
-
-    /** Every live session of this person but the one given, as {@see RevokeOtherSessions} ends them. */
-    private function endOtherSessions(string $subjectId, ?string $currentSessionId): void
-    {
-        $sessions = app(SessionManager::class);
-
-        Session::query()
-            ->where('user_id', $subjectId)
-            ->whereNull('revoked_at')
-            ->when($currentSessionId !== null, fn (Builder $query): Builder => $query->whereKeyNot($currentSessionId))
-            ->pluck('id')
-            ->each(function (mixed $id) use ($sessions): void {
-                if (is_string($id)) {
-                    $sessions->revoke($id);
-                }
-            });
     }
 
     private function hasPassword(string $subjectId): bool

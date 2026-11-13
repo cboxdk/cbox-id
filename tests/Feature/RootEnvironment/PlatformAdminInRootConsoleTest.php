@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\AuthenticateOperator;
+use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\Impersonation;
 use App\Platform\NativeProduct\NativeProductMembers;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -10,9 +11,11 @@ use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\EnvironmentType;
+use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Routing\Route;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
 /*
@@ -264,6 +267,7 @@ it('ends an outlived support session on an environment console page too', functi
 
     // Started in place on the root's environment console: the marker lives in the app host's
     // own session, the one every environment console on this host reads.
+    confirmEnvironmentStepUp();
     $this->post('https://cboxid.com/admin/environment/impersonate/'.$member->id, ['organization' => $organization->id, 'reason' => IMPERSONATION_REASON])
         ->assertRedirect('https://cboxid.com/dashboard');
     nextRequest();
@@ -288,6 +292,7 @@ it('runs a support session from the platform environment\'s own Users page, land
     // The same console's other way in — a user of the platform environment, from its own
     // Users page. It used to land on the environment console's home, which answers the
     // member's session with a 404: no chrome, no banner, no Exit.
+    confirmEnvironmentStepUp();
     $this->post('https://cboxid.com/admin/environment/impersonate/'.$member->id, ['organization' => $organization->id, 'reason' => IMPERSONATION_REASON])
         ->assertRedirect('https://cboxid.com/dashboard');
     nextRequest();
@@ -301,4 +306,60 @@ it('runs a support session from the platform environment\'s own Users page, land
     // Back in the console they started from — signed in as themselves, not at the door: an
     // operator holds no workspace membership, and Exit used to restore only those who did.
     $this->get('https://cboxid.com/admin/environment')->assertOk();
+})->group('security');
+
+/**
+ * Audit finding #17. `/open/{environment}` used to MINT a signed handoff to the
+ * environment's own host, where it started a fresh, unmarked console session for the
+ * person being impersonated — writable, outside the time box, and alive after Exit. The
+ * handoff is gone (275dbf46: every environment console is served on the app host, by its
+ * path), so `/open` is a same-host redirect into the session the impersonation already
+ * holds. This keeps it that way: no second session for the person, and the console it
+ * leads to is as read-only as the rest of the impersonation.
+ */
+it('opens an environment console during a support session without minting anything, read-only', function (): void {
+    $account = provisionAccount('owner@acme.example');
+    actAsOperator('ops@platform.test');
+    $workspace = $account['organization'];
+    $environmentId = $account['environment']->id;
+
+    $developer = app(PlatformRoot::class)->run(function () use ($workspace) {
+        $subject = app(Subjects::class)->create('dev@acme.test', 'Developer', 'a-strong-unbreached-passphrase');
+        app(Memberships::class)->add($workspace->id, $subject->id, MembershipRole::Developer);
+        grantNativeProductRoles(app(Memberships::class)->of($workspace->id, $subject->id), ['developer']);
+
+        return $subject;
+    });
+
+    $this->post('https://cboxid.com/admin/environments/root/impersonate/'.$developer->id, [
+        'organization' => $workspace->id, 'reason' => IMPERSONATION_REASON,
+    ])->assertRedirect(route('dashboard'));
+    nextRequest();
+
+    $sessions = fn (): int => app(PlatformRoot::class)->run(fn () => DB::table('auth_sessions')
+        ->where('user_id', $developer->id)->whereNull('revoked_at')->count());
+
+    expect($sessions())->toBe(1);
+
+    $open = $this->get('https://cboxid.com/open/'.$environmentId);
+    $to = (string) $open->headers->get('Location');
+
+    // Nothing minted: no handoff form, no token, no other host, no second session.
+    expect($open->status())->toBeIn([302, 403, 404])
+        ->and((string) $open->getContent())->not->toContain('name="lineage"')
+        ->and((string) $open->getContent())->not->toContain('name="token"')
+        ->and($to === '' || in_array(parse_url($to, PHP_URL_HOST), [null, 'cboxid.com'], true))->toBeTrue()
+        ->and($sessions())->toBe(1);
+
+    // And the environment's console, reached in this session, takes no write.
+    $console = app(EnvironmentConsolePath::class)->for($environmentId);
+    expect($console)->not->toBeNull();
+    nextRequest();
+    $write = $this->post('https://cboxid.com/'.$console.'/branding', ['environmentDefault' => true]);
+    expect($write->status())->toBeIn([403, 404])
+        ->and($sessions())->toBe(1);
+
+    // And Exit leaves the person holding nothing this support session started.
+    $this->post('https://cboxid.com/impersonation/exit')->assertRedirect();
+    expect($sessions())->toBe(0);
 })->group('security');

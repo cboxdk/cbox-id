@@ -234,6 +234,15 @@ final class ImpersonationController extends Controller
         // — the env-admin home for an account member, else the operator. A missing
         // marker means there is nothing to exit (403).
         $marker = $impersonation->active();
+
+        // Present but unreadable: still an impersonation, and Exit must still end it. Nobody
+        // is restored — there is no principal in it to trust — so the door is the sign-in.
+        if ($marker === null && $request->session()->has(Impersonation::SESSION_KEY)) {
+            $impersonation->exit($request);
+
+            return redirect()->route('login');
+        }
+
         abort_if($marker === null, 403);
         $wasMembership = $marker->isMembership();
 

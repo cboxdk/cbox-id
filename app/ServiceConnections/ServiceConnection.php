@@ -29,6 +29,15 @@ class ServiceConnection extends Model implements EnvironmentOwned
 
     protected $guarded = [];
 
+    /**
+     * Whether this client backs a service connection — revoked ones included, since a
+     * retired client is still nobody's to revive.
+     */
+    public static function backs(string $clientId): bool
+    {
+        return self::query()->where('service_client_id', $clientId)->exists();
+    }
+
     protected function casts(): array
     {
         return ['scopes' => 'array', 'revoked_at' => 'datetime'];

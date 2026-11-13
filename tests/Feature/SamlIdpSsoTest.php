@@ -264,3 +264,20 @@ it('never says a password was used when the person used a passkey', function ():
 it('says password-protected-transport for a password sign-in', function (): void {
     expect(assertionContextFor(['pwd']))->toContain('ac:classes:PasswordProtectedTransport');
 });
+
+/**
+ * Audit finding #18, defence in depth. The route refuses an impersonating browser; the
+ * controller refuses an impersonation SESSION, whatever reached it — so containment does
+ * not rest on one route's middleware list.
+ */
+it('never issues an assertion for a session that is an impersonation', function (): void {
+    $sp = $this->registerSamlServiceProvider();
+    $subject = app(Subjects::class)->create('imp.saml@sp-test.example', 'Imp', 'supersecret123');
+    app(Subjects::class)->markEmailVerified($subject->id, 'imp.saml@sp-test.example');
+    $session = app(SessionManager::class)->start($subject->id, null, ['impersonation'])->id;
+
+    $this->withSession([PlatformAuth::SESSION_KEY => $session])
+        ->get('/sso/saml/idp/sso?'.http_build_query(['SAMLRequest' => $this->makeRedirectAuthnRequest($sp->entity_id)]))
+        ->assertForbidden()
+        ->assertDontSee('SAMLResponse', false);
+})->group('security');

@@ -53,25 +53,7 @@ final class DeviceLabel
             return $localized ? __('console.device_not_recorded_0d70f75d') : 'Device not recorded';
         }
 
-        $browser = null;
-
-        foreach (self::BROWSERS as $needle => $name) {
-            if (str_contains($agent, $needle)) {
-                $browser = $name;
-
-                break;
-            }
-        }
-
-        $platform = null;
-
-        foreach (self::PLATFORMS as $needle => $name) {
-            if (str_contains($agent, $needle)) {
-                $platform = $name;
-
-                break;
-            }
-        }
+        ['browser' => $browser, 'platform' => $platform] = self::parts($agent);
 
         if ($browser !== null && $platform !== null) {
             return $localized
@@ -83,5 +65,37 @@ final class DeviceLabel
         // trying to recognise their own session is better served by the truth than by
         // "Unknown".
         return $browser ?? $platform ?? mb_strimwidth($agent, 0, 60, '…');
+    }
+
+    /**
+     * The browser and platform recognised in a user agent, each null when not — without
+     * the raw-string fallback, for a surface that must never echo the agent itself (an
+     * approval push on a lock screen).
+     *
+     * @return array{browser: string|null, platform: string|null}
+     */
+    public static function parts(?string $userAgent): array
+    {
+        $agent = trim((string) $userAgent);
+        $browser = null;
+        $platform = null;
+
+        foreach (self::BROWSERS as $needle => $name) {
+            if (str_contains($agent, $needle)) {
+                $browser = $name;
+
+                break;
+            }
+        }
+
+        foreach (self::PLATFORMS as $needle => $name) {
+            if (str_contains($agent, $needle)) {
+                $platform = $name;
+
+                break;
+            }
+        }
+
+        return ['browser' => $browser, 'platform' => $platform];
     }
 }

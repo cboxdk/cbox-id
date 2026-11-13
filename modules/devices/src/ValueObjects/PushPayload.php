@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace Cbox\Id\Devices\ValueObjects;
 
+use Cbox\Id\Devices\Support\ApprovalPushText;
+
 /**
  * What a single push says and carries.
  *
  * The split between `title`/`body` and `data` is a security boundary, not a formatting
  * one. `title` and `body` are rendered on the LOCK SCREEN, readable by anyone holding
- * the handset, so they are deliberately vague: "Approval request", not the client name
- * and certainly not the CIBA binding message — which is the transaction description
- * ("Transfer DKK 4,200 to ACME ApS") and precisely the detail CIBA exists to protect.
- * The specifics are fetched over TLS after the app opens and the user has authenticated.
+ * the handset, so they say only what is safe to read there — the app's name, a city and
+ * country, a browser and platform ({@see ApprovalPushText}) —
+ * and never the CIBA binding message, which is the transaction description ("Transfer
+ * DKK 4,200 to ACME ApS") and precisely the detail CIBA exists to protect, nor a code the
+ * person is meant to compare. The specifics are fetched over TLS after the app opens and
+ * the user has authenticated.
  *
  * `data` therefore carries only routing information, and the app must treat it as
  * UNTRUSTED: it re-fetches the approval by id and renders that response, never the

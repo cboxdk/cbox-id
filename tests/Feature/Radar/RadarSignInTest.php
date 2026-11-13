@@ -197,10 +197,22 @@ it('remembers the device a sign-in succeeded from, and challenges a new one once
         ->assertRedirect(route('dashboard'));
     expect(radarLastDecision()->facts['new_device'] ?? null)->toBeFalse()
         ->and(radarLastDecision()->device_hash)->toBe(app(RadarPseudonyms::class)->device((string) $cookie?->getValue()));
+});
 
-    // And the same browser without its cookie is recognised by its fingerprint.
-    radarSignIn('dana@acme.example')->assertRedirect(route('dashboard'));
-    expect(radarLastDecision()->facts['new_device'] ?? null)->toBeFalse();
+it('does not take replayed browser headers for a device the account knows', function (): void {
+    radarUser('erin@acme.example');
+    app(RadarPolicy::class)->setMode(RadarMode::Enforce);
+    app(RadarPolicy::class)->updateBuiltins(['new_device' => ['enabled' => true]]);
+
+    // The owner signs in from their browser.
+    radarSignIn('erin@acme.example')->assertRedirect(route('dashboard'));
+
+    // Somebody else, with the password, another address and no cookie, sends the owner's
+    // user agent and language: still a new device, still asked for the code.
+    radarSignIn('erin@acme.example', ip: '198.51.100.66')->assertRedirect(route('login.step-up'));
+    expect(radarLastDecision()->facts['new_device'] ?? null)->toBeTrue()
+        ->and(radarLastDecision()->rule)->toBe('builtin:new_device')
+        ->and(session(PlatformAuth::SESSION_KEY))->toBeNull();
 });
 
 it('challenges impossible travel from the last SUCCESSFUL sign-in', function (): void {

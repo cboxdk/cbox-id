@@ -21,6 +21,7 @@ use App\Platform\Agents\MailingBackchannelAuthentication;
 use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Billing\NoProjectSubscriptions;
 use App\Platform\Billing\ProjectSubscriptions;
+use App\Platform\ClaimingPasswordReset;
 use App\Platform\Connect\ActionSnippets;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
@@ -36,6 +37,7 @@ use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
 use App\Platform\Integrations\SsrfToggles;
 use App\Platform\Keys\TransitionalOrganizationApiKeys;
+use App\Platform\Mfa\PhoneApprovalOrigin;
 use App\Platform\OAuth\PlatformRealmClients;
 use App\Platform\OAuth\RootMcpAudiences;
 use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
@@ -45,6 +47,7 @@ use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\Platform\PlatformMailboxProof;
 use App\Platform\PublicIds\BareIdDeliveryPolicy;
 use App\Platform\PublicIds\WebhookIdFormat;
+use App\Platform\SsoMandateOnJoin;
 use App\Platform\StandingApprovals\StandingApprovals;
 use App\Platform\StandingApprovals\StandingApprovalTokenExchange;
 use App\Platform\StandingApprovals\StandingApprovalTokenIssuer;
@@ -57,10 +60,13 @@ use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
 use Cbox\Id\Api\Http\Controllers\DiscoveryController;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Cbox\Id\Console\HealthChecks;
+use Cbox\Id\Devices\Contracts\ApprovalOriginResolver;
 use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Identity\Contracts\ErasureSteps;
 use Cbox\Id\Identity\Contracts\MailboxProof;
 use Cbox\Id\Identity\Contracts\Passkeys;
+use Cbox\Id\Identity\Contracts\PasswordReset;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
@@ -102,6 +108,10 @@ class AppServiceProvider extends ServiceProvider
         // A deployment without the billing module has no per-project plans; the module
         // binds its own answer over this one.
         $this->app->bindIf(ProjectSubscriptions::class, NoProjectSubscriptions::class);
+
+        // Where a phone approval was asked from — city, country, browser, the app being
+        // signed in to — and the approver's language, for the push and the approvals API.
+        $this->app->bind(ApprovalOriginResolver::class, PhoneApprovalOrigin::class);
 
         // Console URLs carry public ids (`usr_01j…`), wherever a URL is built.
         $this->app->extend('url', static fn (UrlGenerator $url): PublicIdUrlGenerator => PublicIdUrlGenerator::from($url));
@@ -217,6 +227,14 @@ class AppServiceProvider extends ServiceProvider
         // store or its login tickets — see PlatformMailboxProof.
         $this->app->singleton(MailboxProof::class, PlatformMailboxProof::class);
 
+        // …and so does an emailed password reset, which is the same proof (ClaimingPasswordReset).
+        $this->app->extend(PasswordReset::class, fn (PasswordReset $inner, Application $app): PasswordReset => new ClaimingPasswordReset(
+            $inner,
+            $app->make(Subjects::class),
+            $app->make(MailboxProof::class),
+            $app->make(AuditLog::class),
+        ));
+
         // A CIBA request mails the person when no phone will tell them — see ApprovalMail.
         $this->app->extend(BackchannelAuthentication::class, fn (BackchannelAuthentication $inner, Application $app): BackchannelAuthentication => new MailingBackchannelAuthentication(
             $inner,
@@ -294,6 +312,15 @@ class AppServiceProvider extends ServiceProvider
         Membership::created(static function (Membership $membership): void {
             if ($membership->role === MembershipRole::Owner) {
                 app(OrganizationLinks::class)->ensureForNewOrganization($membership->organization_id);
+            }
+        });
+
+        // Joining an organization that requires SSO ends the person's local sessions, the
+        // way the mandate switching on does (see SsoMandateOnJoin). On the model, so every
+        // door that adds or reactivates a membership is covered.
+        Membership::saved(static function (Membership $membership): void {
+            if ($membership->wasRecentlyCreated || $membership->wasChanged('status')) {
+                app(SsoMandateOnJoin::class)->joined($membership);
             }
         });
 

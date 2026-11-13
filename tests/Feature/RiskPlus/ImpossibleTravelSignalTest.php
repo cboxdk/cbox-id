@@ -47,6 +47,7 @@ it('fires when two sign-ins imply impossible travel speed', function (): void {
 
     $this->travelTo('2026-07-16 12:00:00');
     expect($signal->evaluate(loginFrom('1.1.1.1')))->toBeNull();
+    $signal->remember(loginFrom('1.1.1.1'));
 
     $this->travelTo('2026-07-16 13:00:00');
     $result = $signal->evaluate(loginFrom('2.2.2.2'));
@@ -63,7 +64,7 @@ it('does not fire for plausible travel (same city, an hour apart)', function ():
     ]);
 
     $this->travelTo('2026-07-16 12:00:00');
-    $signal->evaluate(loginFrom('1.1.1.1'));
+    $signal->remember(loginFrom('1.1.1.1'));
 
     $this->travelTo('2026-07-16 13:00:00');
     expect($signal->evaluate(loginFrom('3.3.3.3')))->toBeNull();
@@ -74,7 +75,25 @@ it('is inert without a located IP (null locator = no false positives)', function
 
     $this->travelTo('2026-07-16 12:00:00');
     expect($signal->evaluate(loginFrom('9.9.9.9')))->toBeNull();
+    $signal->remember(loginFrom('9.9.9.9'));
 
     $this->travelTo('2026-07-16 20:00:00');
     expect($signal->evaluate(loginFrom('8.8.8.8')))->toBeNull();
+});
+
+it('measures from the last successful sign-in, not from an attempt somebody only scored', function (): void {
+    $signal = travelSignal([
+        '1.1.1.1' => [40.71, -74.01], // New York, where the owner signs in
+        '2.2.2.2' => [35.68, 139.69], // Tokyo, where somebody only typed the address
+    ]);
+
+    $this->travelTo('2026-07-16 12:00:00');
+    $signal->remember(loginFrom('1.1.1.1'));
+
+    $this->travelTo('2026-07-16 12:30:00');
+    $signal->evaluate(loginFrom('2.2.2.2'));
+
+    // Back in New York: no hop happened, so nothing is impossible.
+    $this->travelTo('2026-07-16 13:00:00');
+    expect($signal->evaluate(loginFrom('1.1.1.1')))->toBeNull();
 });

@@ -236,6 +236,10 @@ it('asks before a save that would sign an organization out, then does it', funct
     app(Memberships::class)->add($org->id, $member->user_id, MembershipRole::Member);
     $bystander = aRuleSubjectSession('rules-bystander@acme.test');
 
+    // Something to sign in through once passwords stop working (audit finding #9).
+    $idp = app(Connections::class)->create($org->id, ConnectionType::Oidc, 'Acme IdP', ['issuer' => 'https://idp.acme.test', 'client_id' => 'abc', 'client_secret' => 's', 'signing_key' => 'k']);
+    app(Connections::class)->activate($org->id, $idp->id);
+
     /*
      * THE PAGE ASKS FIRST, and this is the fact it asks on.
      *

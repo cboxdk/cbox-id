@@ -77,7 +77,11 @@ banner naming them and **Exit impersonation**. Platform admin and the platform e
 console answer `404` while it lasts. **Exit impersonation**, or the 30-minute limit, brings you back to
 **Platform › Organization tree**. A user of the platform environment itself can be
 impersonated the same way from **Users & orgs › Users**, and **Exit impersonation** returns you to the
-platform environment's console.
+platform environment's console. From an environment console, starting one asks you to confirm
+it's you first (the console's step-up).
+
+An impersonation is read-only. It cannot approve a device or consent screen, change a credential,
+or sign in to another app as the person: `/oauth/authorize` and the SAML IdP both refuse while it lasts.
 
 ### Old addresses
 

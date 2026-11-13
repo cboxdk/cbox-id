@@ -57,8 +57,9 @@ it('keeps the binding message off the lock screen', function (): void {
 
     // The binding message is the transaction description — the one detail CIBA exists
     // to protect, and the one an attacker holding the handset would most like to read.
-    // It must be fetched over TLS after the app opens, never pushed.
-    expect($payload?->title)->toBe('Approval request')
+    // It must be fetched over TLS after the app opens, never pushed. The app that asks
+    // may be named; what it asks for may not.
+    expect($payload?->title)->toBe('Agent is asking for your approval')
         ->and($payload?->body)->not->toContain('4,200')
         ->and(implode(' ', $payload?->data ?? []))->not->toContain('4,200');
 });

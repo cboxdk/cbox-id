@@ -245,3 +245,47 @@ it('rejects a device key if another registration of the same key was revoked', f
         'platform' => 'ios', 'name' => 'Old installation', 'status' => 'revoked', 'dpop_jkt' => $this->jkt]);
     $this->postJson('/mfa/mobile', ['operation' => 'complete'])->assertStatus(409);
 });
+
+/*
+ * "Open Cbox ID app" on a phone's sign-in page: a Universal Link carrying the opaque
+ * request id and nothing else, pointing at a host other than the page's own (iOS keeps a
+ * same-host link in Safari), and offered only to a phone while the request waits.
+ */
+it('offers a phone browser a universal link to the waiting request on another host', function (): void {
+    config(['id-devices.universal_links.ios_app_ids' => ['7CX7963T36.com.cboxid.authenticator'],
+        'id-devices.universal_links.hosts' => ['localhost', 'login.cboxid.test']]);
+    registerMobilePhone();
+    request()->setLaravelSession(app('session.store'));
+    app(PlatformAuth::class)->holdForMfa(request(), $this->subject);
+    $this->withCookie(config('session.cookie'), session()->getId());
+    $iphone = ['User-Agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Mobile/15E148 Safari/604.1'];
+
+    $started = $this->postJson('/mfa/mobile', ['operation' => 'start'], $iphone)->assertOk();
+    $id = session('cbox.browser_approval.login.id');
+
+    expect($started->json('appLink'))->toBe('https://login.cboxid.test/authenticator/approve/'.$id)
+        ->and($started->json('appLink'))->not->toContain((string) $started->json('code'));
+    // A reload of the sign-in page resumes with the same link while the request waits.
+    $this->getJson('/mfa/mobile', $iphone)->assertOk()->assertJsonPath('appLink', 'https://login.cboxid.test/authenticator/approve/'.$id);
+    // Answered: nothing left to open.
+    approveMobile($id);
+    $this->getJson('/mfa/mobile', $iphone)->assertOk()->assertJsonPath('status', 'approved')->assertJsonPath('appLink', null);
+});
+
+it('offers no app link to a desktop browser, an unconfigured install or a single host', function (array $config, string $agent): void {
+    config($config);
+    registerMobilePhone();
+    request()->setLaravelSession(app('session.store'));
+    app(PlatformAuth::class)->holdForMfa(request(), $this->subject);
+    $this->withCookie(config('session.cookie'), session()->getId());
+
+    $this->postJson('/mfa/mobile', ['operation' => 'start'], ['User-Agent' => $agent])
+        ->assertOk()->assertJsonPath('status', 'pending')->assertJsonPath('appLink', null);
+})->with([
+    'desktop' => [['id-devices.universal_links.ios_app_ids' => ['7CX7963T36.com.cboxid.authenticator'], 'id-devices.universal_links.hosts' => ['login.cboxid.test']],
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.2 Safari/605.1.15'],
+    'unconfigured' => [['id-devices.universal_links.ios_app_ids' => [], 'id-devices.universal_links.hosts' => ['login.cboxid.test']],
+        'Mozilla/5.0 (Linux; Android 15; Pixel 9) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Mobile Safari/537.36'],
+    'only the page host' => [['id-devices.universal_links.ios_app_ids' => ['7CX7963T36.com.cboxid.authenticator'], 'id-devices.universal_links.hosts' => ['localhost']],
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'],
+]);
