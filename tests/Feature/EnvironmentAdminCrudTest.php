@@ -140,6 +140,7 @@ it('starts an env-admin impersonation of a member (redirect + marker)', function
     $user = app(Subjects::class)->create('erin@acme.example', 'Erin');
     app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
 
+    confirmEnvironmentStepUp();
     followImpersonationLaunch($this->post(envConsole("/impersonate/{$user->id}"), ['organization' => $org->id, 'reason' => 'support ticket 42']))
         ->assertRedirect(route('dashboard'));
 
@@ -158,6 +159,7 @@ it('expires an env-admin impersonation back to the env console (not the operator
     $user = app(Subjects::class)->create('gina@acme.example', 'Gina');
     app(Memberships::class)->add($org->id, $user->id, MembershipRole::Member);
 
+    confirmEnvironmentStepUp();
     followImpersonationLaunch($this->post(envConsole("/impersonate/{$user->id}"), ['organization' => $org->id, 'reason' => 'support']))
         ->assertRedirect(route('dashboard'));
 
@@ -178,6 +180,7 @@ it('refuses to impersonate an owner/admin', function (): void {
     $user = app(Subjects::class)->create('frank@acme.example', 'Frank');
     app(Memberships::class)->add($org->id, $user->id, MembershipRole::Admin);
 
+    confirmEnvironmentStepUp();
     $this->post(envConsole("/impersonate/{$user->id}"), ['organization' => $org->id, 'reason' => 'nope'])
         ->assertForbidden();
 });
@@ -333,6 +336,7 @@ it('pins an impersonation session to the authorized org, not the subject\'s olde
     app(Memberships::class)->add($ownerOrg->id, $user->id, MembershipRole::Owner);   // oldest membership
     app(Memberships::class)->add($memberOrg->id, $user->id, MembershipRole::Member); // the one we authorize
 
+    confirmEnvironmentStepUp();
     followImpersonationLaunch($this->post(envConsole("/impersonate/{$user->id}"), ['organization' => $memberOrg->id, 'reason' => 'support']))
         ->assertRedirect(route('dashboard'));
 
