@@ -54,6 +54,30 @@ export class PasskeyError extends Error {}
  */
 export class StepUpDeclined extends Error {}
 
+/**
+ * The server said this page is the wrong place to be — the browser is already signed in, or
+ * its session ended — and the page is on its way somewhere else. Not a failure: nothing is
+ * reported, and nothing is armed again behind it.
+ */
+export class LeavingPage extends Error {}
+
+/** How this page leaves itself. One object, so a test can watch it without a browser. */
+export const navigation = {
+    assign: (url: string): void => window.location.assign(url),
+    reload: (): void => window.location.reload(),
+};
+
+/** Leave this page for `url` (or load it afresh), as a navigation — never a fetch. */
+function leaveFor(url: string | null): LeavingPage {
+    if (url === null) {
+        navigation.reload();
+    } else {
+        navigation.assign(url);
+    }
+
+    return new LeavingPage('Leaving the page.');
+}
+
 interface PostResult {
     redirect?: string;
     sudo?: string;
@@ -71,11 +95,25 @@ async function post(
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': csrf(),
+            'X-Requested-With': 'XMLHttpRequest',
             Accept: 'application/json',
         },
         credentials: 'same-origin',
+        /*
+         * NEVER FOLLOWED. These endpoints answer JSON; a redirect is the server saying the page
+         * is out of date, and following it with a fetch gets nothing the page can use. Worse:
+         * in login-host mode it leads to the app host, which `connect-src 'self'` refuses, so
+         * the fetch failed outright and the page said only "Load failed" (Chrome on an iPhone,
+         * a sign-in tab restored after the browser had signed in). Not followed, it is
+         * followed as what it is — a page load.
+         */
+        redirect: 'manual',
         body: JSON.stringify(body ?? {}),
     });
+
+    if (response.type === 'opaqueredirect') {
+        throw leaveFor(null);
+    }
 
     const data = (await response.json().catch(() => ({}))) as PostResult;
 
@@ -95,6 +133,26 @@ async function post(
             }
 
             return post(url, body, stepUp);
+        }
+
+        /*
+         * Somewhere else to be: already signed in (409), or signed out (401). The page goes
+         * there itself — in login-host mode that is another origin, which only a navigation
+         * may reach.
+         */
+        if (typeof data.redirect === 'string') {
+            throw leaveFor(data.redirect);
+        }
+
+        /*
+         * The page's session — and with it the CSRF token this page carries — has ended
+         * (419): a tab left open past the session's lifetime. Nothing this page holds can
+         * make the request valid again, so it is loaded afresh, with a new session and a new
+         * token, and the person presses the button once more. WebAuthn needs that press
+         * anyway: the one that brought us here has been spent.
+         */
+        if (response.status === 419) {
+            throw leaveFor(null);
         }
 
         throw new PasskeyError(
@@ -385,6 +443,7 @@ export async function confirmWithPasskey(
 export function isCancellation(error: unknown): boolean {
     return (
         error instanceof StepUpDeclined ||
+        error instanceof LeavingPage ||
         // AbortError: this page ended the wait itself (the autofill request, when the
         // button's ceremony starts or the page goes away).
         (error instanceof DOMException &&

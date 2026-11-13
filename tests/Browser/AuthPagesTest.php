@@ -2,6 +2,13 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\PlatformRoot;
+
 beforeEach(function (): void {
     // These render product pages, which presuppose an installed deployment.
     installedDeployment();
@@ -86,4 +93,42 @@ it('advances the account door with Enter too', function (): void {
         ->keys('#email', 'Enter')
         ->assertNoJavascriptErrors()
         ->assertSee('Password');
+});
+
+/**
+ * A SIGN-IN PAGE THE BROWSER HAS SIGNED IN BEHIND — a tab restored on a phone, another tab
+ * that finished first (found from Chrome on an iPhone in production).
+ *
+ * The passkey button asked for its challenge and was answered with a redirect to the
+ * console, which the fetch followed: the page got HTML where it wanted options (or, in
+ * login-host mode, a cross-origin hop CSP refuses) and said only that it had failed. The
+ * page goes where the server says instead.
+ */
+it('takes a sign-in page the browser has signed in behind to the console when the passkey button is pressed', function (): void {
+    platformRootEnvironment();
+
+    app(PlatformRoot::class)->run(function (): void {
+        $subject = app(Subjects::class)->create('behind@acme.test', 'Behind', 'a-strong-unbreached-passphrase');
+        $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-behind'));
+        app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
+    });
+
+    $page = visit('/login')->assertSee('Sign in with a passkey');
+
+    // Signed in behind the page's back: the same cookie jar, another request.
+    $page->script(<<<'JS'
+        (async () => {
+            const body = new URLSearchParams({
+                _token: document.querySelector('meta[name="csrf-token"]').content,
+                email: 'behind@acme.test',
+                password: 'a-strong-unbreached-passphrase',
+            });
+            await fetch('/login', { method: 'POST', body, credentials: 'same-origin' });
+            return true;
+        })()
+        JS);
+
+    $page->click('Sign in with a passkey')
+        ->assertPathIs('/dashboard')
+        ->assertNoJavaScriptErrors();
 });
