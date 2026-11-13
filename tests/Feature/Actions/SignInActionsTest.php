@@ -244,6 +244,8 @@ it('refuses to require SSO for an organization with no active connection, at eve
 it('keeps an organization\'s SSO mandate behind an active connection, from its own console', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
     grantFeature($org->id, 'cbox-id-sso');
+    // A mandate is Critical, so the console asks for the step-up before anything else.
+    confirmStepUp();
     $principal = new ConsoleSessionPrincipal(app(ConsoleScope::class));
     $run = fn (string $action, array $input) => app(ActionRunner::class)->run($action, $principal, ['organization_id' => $org->id, ...$input]);
 
