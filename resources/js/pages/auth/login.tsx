@@ -5,6 +5,7 @@ import { useTranslator } from '@/i18n';
 import AuthLayout, { AuthCardFoot } from '@/layouts/AuthLayout';
 import {
     isCancellation,
+    LeavingPage,
     passkeyAutofillSupported,
     passkeysSupported,
     signInWithPasskey,
@@ -196,6 +197,12 @@ export default function Login({
                 return;
             }
         } catch (error) {
+            // On its way elsewhere (already signed in, or a session that ended): nothing to
+            // say, and nothing to arm behind it.
+            if (error instanceof LeavingPage) {
+                return;
+            }
+
             // A dismissed system prompt is not a failure worth reporting: saying "passkey
             // failed" for a deliberate cancel teaches people to distrust the message that
             // appears when something really did go wrong.
