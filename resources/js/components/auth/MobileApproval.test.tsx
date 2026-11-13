@@ -61,3 +61,52 @@ it('cancels the pending browser binding and never completes after unmount', asyn
     unmount();
     expect(confirmed).not.toHaveBeenCalled();
 });
+
+it('offers the universal link to open the app while the request waits, and keeps polling', async () => {
+    const link = 'https://login.cboxid.com/authenticator/approve/01JD2Z7Q8M3K4N5P6R7S8T9V0W';
+    vi.spyOn(window, 'fetch').mockResolvedValue(
+        reply({ available: true, status: 'pending', code: '246810', appLink: link }),
+    );
+    render(
+        <MobileApproval endpoint="/mfa/mobile" onConfirmed={vi.fn<(redirect: string) => void>()} />,
+    );
+    const open = await screen.findByRole('link', { name: 'Open Cbox ID app' });
+    expect(open).toHaveAttribute('href', link);
+    // Same tab, so a missing app lands on the help page and Back returns to this one.
+    expect(open).not.toHaveAttribute('target');
+    expect(screen.getByText('246810')).toBeInTheDocument();
+});
+
+it('checks at once when the person comes back from the app', async () => {
+    const confirmed = vi.fn<(redirect: string) => void>();
+    const fetcher = vi
+        .spyOn(window, 'fetch')
+        .mockResolvedValueOnce(
+            reply({
+                available: true,
+                status: 'pending',
+                code: '135790',
+                appLink: 'https://x.test/authenticator/approve/01JD2Z7Q8M3K4N5P6R7S8T9V0W',
+            }),
+        )
+        .mockResolvedValueOnce(reply({ available: true, status: 'approved', code: '135790' }))
+        .mockResolvedValueOnce(reply({ status: 'confirmed', redirect: '/dashboard' }));
+    render(<MobileApproval endpoint="/mfa/mobile" onConfirmed={confirmed} />);
+    await screen.findByText('135790');
+    act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+    });
+    await waitFor(() => expect(confirmed).toHaveBeenCalledWith('/dashboard'), { timeout: 1500 });
+    expect(fetcher).toHaveBeenCalledTimes(3);
+});
+
+it('shows no app button on a desktop', async () => {
+    vi.spyOn(window, 'fetch').mockResolvedValue(
+        reply({ available: true, status: 'pending', code: '112233', appLink: null }),
+    );
+    render(
+        <MobileApproval endpoint="/mfa/mobile" onConfirmed={vi.fn<(redirect: string) => void>()} />,
+    );
+    await screen.findByText('112233');
+    expect(screen.queryByRole('link', { name: 'Open Cbox ID app' })).toBeNull();
+});

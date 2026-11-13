@@ -5,6 +5,8 @@ declare(strict_types=1);
 return [
     'mobile_approval_start' => 'Одобри на телефона',
     'mobile_approval_compare' => 'Отворете Cbox ID Authenticator. Одобрете само ако този код съвпада със заявката на телефона ви.',
+    'mobile_approval_open_app' => 'Отвори приложението Cbox ID',
+    'mobile_approval_open_app_hint' => 'Одобрете в приложението и се върнете тук. Страницата ще продължи сама.',
     'access_key_id_14eb0f96' => 'Идентификатор на ключа за достъп',
     'action_64cff131' => 'Действие',
     'actions_ff8059dc' => 'Действия',

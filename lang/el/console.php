@@ -5,6 +5,8 @@ declare(strict_types=1);
 return [
     'mobile_approval_start' => 'Έγκριση στο κινητό',
     'mobile_approval_compare' => 'Ανοίξτε το Cbox ID Authenticator. Εγκρίνετε μόνο αν αυτός ο κωδικός αντιστοιχεί στο αίτημα στο κινητό σας.',
+    'mobile_approval_open_app' => 'Άνοιγμα εφαρμογής Cbox ID',
+    'mobile_approval_open_app_hint' => 'Εγκρίνετε στην εφαρμογή και επιστρέψτε εδώ. Η σελίδα θα συνεχίσει μόνη της.',
     '_optional_0059798b' => '(προαιρετικό)',
     'access_key_id_14eb0f96' => 'Αναγνωριστικό κλειδιού πρόσβασης',
     'action_64cff131' => 'Ενέργεια',

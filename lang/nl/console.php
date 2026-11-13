@@ -5,6 +5,8 @@ declare(strict_types=1);
 return [
     'mobile_approval_start' => 'Goedkeuren op telefoon',
     'mobile_approval_compare' => 'Open Cbox ID Authenticator. Keur alleen goed als deze code overeenkomt met het verzoek op je telefoon.',
+    'mobile_approval_open_app' => 'Cbox ID-app openen',
+    'mobile_approval_open_app_hint' => 'Keur goed in de app en kom daarna hier terug. Deze pagina gaat vanzelf verder.',
     '_optional_0059798b' => '(optioneel)',
     'access_key_id_14eb0f96' => 'Toegangssleutel-ID',
     'action_64cff131' => 'Actie',

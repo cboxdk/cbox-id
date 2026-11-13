@@ -27,4 +27,14 @@ return [
         'dark' => 'Tmavý',
     ],
     'skip_to_content' => 'Prejsť na obsah',
+
+    // The page an Authenticator link shows when the app did not open.
+    'authenticator_link' => [
+        'title' => 'Otvoriť aplikáciu Cbox ID',
+        'lead' => 'Aplikácia Cbox ID sa na tomto zariadení neotvorila.',
+        'other_phone' => 'Máte aplikáciu v inom telefóne? Schváľte žiadosť tam a potom sa vráťte na prihlasovaciu stránku. Bude pokračovať sama.',
+        'open' => 'Otvoriť v aplikácii',
+        'install' => 'Stiahnuť aplikáciu',
+        'back' => 'Alebo sa vráťte a zvoľte iný spôsob potvrdenia.',
+    ],
 ];

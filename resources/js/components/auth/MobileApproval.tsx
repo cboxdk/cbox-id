@@ -8,6 +8,8 @@ type State = {
     code?: string;
     expiresAt?: string;
     redirect?: string;
+    /** The Universal Link that opens the Authenticator on this request; phones only. */
+    appLink?: string | null;
 };
 
 /** The phone answers the existing approval; only this browser can spend it. */
@@ -76,7 +78,7 @@ export function MobileApproval({
     useEffect(() => {
         if (state.status !== 'pending' && state.status !== 'approved') return;
         const abort = new AbortController();
-        const timer = window.setTimeout(async () => {
+        const tick = async () => {
             try {
                 if (state.expiresAt && Date.parse(state.expiresAt) <= Date.now()) {
                     setState((s) => ({ ...s, status: 'expired' }));
@@ -98,9 +100,19 @@ export function MobileApproval({
                     setState((s) => ({ ...s, status: 'failed' }));
                 }
             }
-        }, 5000);
+        };
+        let timer = window.setTimeout(() => void tick(), 5000);
+        // Back from the Authenticator: look now rather than up to five seconds later, so
+        // the sign-in is already moving when the person lands on the page.
+        const onVisible = () => {
+            if (document.visibilityState !== 'visible') return;
+            window.clearTimeout(timer);
+            timer = window.setTimeout(() => void tick(), 0);
+        };
+        document.addEventListener('visibilitychange', onVisible);
         return () => {
             window.clearTimeout(timer);
+            document.removeEventListener('visibilitychange', onVisible);
             abort.abort();
         };
     }, [state, call]);
@@ -136,6 +148,24 @@ export function MobileApproval({
                     >
                         {state.code}
                     </output>
+                    {state.appLink && state.status === 'pending' && (
+                        <>
+                            {/* A Universal Link, not a scheme probe: the system opens the
+                                app when it is installed and this page when it is not. */}
+                            <Button
+                                asChild
+                                variant="primary"
+                                size="lg"
+                                icon="phone"
+                                className="w-full"
+                            >
+                                <a href={state.appLink}>{t('console.mobile_approval_open_app')}</a>
+                            </Button>
+                            <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                                {t('console.mobile_approval_open_app_hint')}
+                            </p>
+                        </>
+                    )}
                     <output className="block text-sm">{t('console.waiting_6e293a8c')}</output>
                     <Button onClick={() => void act('cancel')} loading={busy}>
                         {t('console.cancel_19766ed6')}

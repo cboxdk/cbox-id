@@ -5,6 +5,8 @@ declare(strict_types=1);
 return [
     'mobile_approval_start' => 'Odobri na telefonu',
     'mobile_approval_compare' => 'Otvorite Cbox ID Authenticator. Odobrite samo ako se ovaj kod podudara sa zahtjevom na telefonu.',
+    'mobile_approval_open_app' => 'Otvori aplikaciju Cbox ID',
+    'mobile_approval_open_app_hint' => 'Odobrite u aplikaciji, a zatim se vratite ovamo. Stranica će nastaviti sama.',
     '_optional_0059798b' => '(neobavezno)',
     'access_key_id_14eb0f96' => 'ID pristupnog ključa',
     'action_64cff131' => 'Radnja',

@@ -5,6 +5,8 @@ declare(strict_types=1);
 return [
     'mobile_approval_start' => 'Approuver sur le téléphone',
     'mobile_approval_compare' => 'Ouvrez Cbox ID Authenticator. Approuvez uniquement si ce code correspond à la demande sur votre téléphone.',
+    'mobile_approval_open_app' => 'Ouvrir l’app Cbox ID',
+    'mobile_approval_open_app_hint' => 'Approuvez dans l’app, puis revenez ici. Cette page continue toute seule.',
     '_optional_0059798b' => '(facultatif)',
     'access_key_id_14eb0f96' => 'ID de clé d’accès',
     'action_64cff131' => 'Action',

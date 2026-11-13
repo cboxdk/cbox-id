@@ -27,4 +27,14 @@ return [
         'dark' => 'Tumma',
     ],
     'skip_to_content' => 'Siirry sisältöön',
+
+    // The page an Authenticator link shows when the app did not open.
+    'authenticator_link' => [
+        'title' => 'Avaa Cbox ID -sovellus',
+        'lead' => 'Cbox ID -sovellus ei avautunut tällä laitteella.',
+        'other_phone' => 'Onko sovellus toisessa puhelimessa? Hyväksy pyyntö siellä ja palaa sitten kirjautumissivulle. Se jatkuu itsestään.',
+        'open' => 'Avaa sovelluksessa',
+        'install' => 'Hanki sovellus',
+        'back' => 'Tai palaa takaisin ja valitse toinen vahvistustapa.',
+    ],
 ];
