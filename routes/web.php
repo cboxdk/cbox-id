@@ -77,6 +77,7 @@ use App\Http\Controllers\Console\Organization\OrganizationMembersController;
 use App\Http\Controllers\Console\Organization\OrganizationOverviewController;
 use App\Http\Controllers\Console\Organization\OrganizationPortalLinkController;
 use App\Http\Controllers\Console\Organization\OrganizationSettingsController;
+use App\Http\Controllers\Console\Organization\OrganizationStandingApprovalsController;
 use App\Http\Controllers\Console\Organization\OrganizationSupportController;
 use App\Http\Controllers\Console\OrganizationLookupController;
 use App\Http\Controllers\Console\OrganizationPickerController;
@@ -1606,6 +1607,8 @@ ConsoleRoutes::environment(function (): void {
         Route::get('/domains', [OrganizationDomainsController::class, 'index'])->name('environment.organizations.domains');
         Route::get('/roles', [RoleController::class, 'index'])->name('environment.organizations.roles');
         Route::get('/api-keys', [OrganizationApiKeysController::class, 'index'])->name('environment.organizations.api-keys');
+        Route::get('/standing-approvals', [OrganizationStandingApprovalsController::class, 'index'])->name('environment.organizations.standing-approvals');
+        Route::delete('/standing-approvals/{grant}', [OrganizationStandingApprovalsController::class, 'destroy'])->name('environment.organizations.standing-approvals.revoke');
 
         Route::get('/branding', [BrandingController::class, 'edit'])->name('environment.organizations.branding');
         Route::post('/branding', [BrandingController::class, 'update'])->name('environment.organizations.branding.update');

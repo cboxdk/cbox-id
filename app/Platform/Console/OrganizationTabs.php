@@ -47,6 +47,8 @@ final readonly class OrganizationTabs
 
     public const API_KEYS = 'api-keys';
 
+    public const STANDING_APPROVALS = 'standing-approvals';
+
     public const BRANDING = 'branding';
 
     public const POLICY = 'policy';
@@ -81,6 +83,7 @@ final readonly class OrganizationTabs
         self::SETTINGS => ['General', 'environment.organizations.settings'],
         self::BRANDING => ['Branding', 'environment.organizations.branding'],
         self::API_KEYS => ['API keys', 'environment.organizations.api-keys'],
+        self::STANDING_APPROVALS => ['Standing approvals', 'environment.organizations.standing-approvals'],
         self::SUPPORT => ['Support access', 'environment.organizations.support'],
     ];
 
@@ -95,7 +98,7 @@ final readonly class OrganizationTabs
         self::MEMBERS => ['Members', [self::MEMBERS, self::INVITATIONS]],
         self::ACCESS => ['Sign-in & access', [self::SSO, self::DIRECTORY_SYNC, self::DOMAINS, self::ROLES, self::POLICY]],
         self::AUDIT => ['Audit log', [self::AUDIT, self::AUDIT_LOGS]],
-        self::SETTINGS => ['Settings', [self::SETTINGS, self::BRANDING, self::API_KEYS, self::SUPPORT]],
+        self::SETTINGS => ['Settings', [self::SETTINGS, self::BRANDING, self::API_KEYS, self::STANDING_APPROVALS, self::SUPPORT]],
     ];
 
     /**

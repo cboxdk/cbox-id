@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Models\RiskDecision;
+use App\Models\StandingApproval;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRefused;
@@ -97,6 +98,7 @@ final class CrossTenantSweep
             'permissions:id' => 'permission',
             'permissions:permission_id' => 'permission',
             'portal-links:id' => 'portal_link',
+            'standing-approvals:id' => 'standing_approval',
             'provisioning-targets:id' => 'provisioning_target',
             'saml-apps:id' => 'saml_app',
             // A social provider BY ID — an organization's own, or the environment's — is a
@@ -270,6 +272,12 @@ final class CrossTenantSweep
             $run('members.add', ['organization_id' => $w['organization'], 'user_id' => $w['member'], 'role' => 'member']);
             // Domain verification needs no plan, so the link mints on any environment.
             $w['portal_link'] = $run('organizations.portal_links.create', ['organization_id' => $w['organization'], 'intents' => ['domain_verification']])['id'];
+            // A standing approval is granted by the organization's owner through an app; the row
+            // itself is all the sweep needs to aim another tenant's id at.
+            $w['standing_approval'] = (string) StandingApproval::query()->create([
+                'organization_id' => $w['organization'], 'client_id' => 'sweep-ci-'.$slug, 'app_client_id' => 'sweep-app-'.$slug,
+                'environment_ref' => 'env_sweep', 'environment_kind' => 'staging', 'granted_by' => $w['member'], 'granted_at' => now(), 'uses' => 0,
+            ])->id;
 
             $w['permission'] = $run('permissions.create', ['name' => "sweep:{$slug}", 'organization_id' => $w['organization']])['id'];
             $w['role'] = $run('roles.create', ['name' => 'Sweep role '.$label, 'organization_id' => $w['organization'], 'permissions' => [$w['permission']]])['id'];

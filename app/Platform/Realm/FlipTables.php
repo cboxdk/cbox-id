@@ -163,6 +163,7 @@ final class FlipTables
             'invitation_role_grants' => self::move('Console roles parked on a pending invitation: follow it.', $o),
             'invitation_contexts' => self::move('Where an invitation returns the person to: follows it.', $o),
             'admin_portal_links' => self::move('Setup links for a customer\'s IT admin: re-keyed, and the console person who minted or revoked one is re-pointed in every environment.', [...$o, 'user' => ['created_by', 'revoked_by']]),
+            'standing_approvals' => self::move('An owner\'s standing approval of a machine client\'s deployments: re-keyed with its organization; the owner who granted it and whoever revoked it are re-pointed in every environment.', [...$o, 'user' => ['granted_by', 'revoked_by']]),
             'onboarding_dismissals' => self::move('Which setup checklist somebody dismissed: re-keyed; cosmetic.', [...$o, 'user' => ['subject_id']]),
             'user_groups' => self::move('Groups of an organization: re-keyed.', $o),
             'relationship_tuples' => self::move('Group membership and resource access tuples: re-keyed (a subject is a bare id next to its type).', [...$o, 'user' => ['subject_id']]),

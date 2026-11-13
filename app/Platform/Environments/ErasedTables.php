@@ -41,7 +41,7 @@ final class ErasedTables
 
     private const ORGANIZATIONS = [
         'organizations', 'organization_closure', 'memberships', 'membership_environments', 'invitations', 'invitation_role_grants',
-        'invitation_contexts', 'admin_portal_links', 'user_groups', 'relationship_tuples', 'group_role_mappings', 'verified_domains',
+        'invitation_contexts', 'admin_portal_links', 'standing_approvals', 'user_groups', 'relationship_tuples', 'group_role_mappings', 'verified_domains',
         'sign_in_provider_opt_outs',
     ];
 

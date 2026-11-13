@@ -44,6 +44,9 @@ use App\Platform\OwnDeclaredPermissionClaims;
 use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\Platform\PublicIds\BareIdDeliveryPolicy;
 use App\Platform\PublicIds\WebhookIdFormat;
+use App\Platform\StandingApprovals\StandingApprovals;
+use App\Platform\StandingApprovals\StandingApprovalTokenExchange;
+use App\Platform\StandingApprovals\StandingApprovalTokenIssuer;
 use App\Platform\Surfaces\Surfaces;
 use App\Platform\Surfaces\SurfaceUrls;
 use App\Routing\PublicIdUrlGenerator;
@@ -63,6 +66,8 @@ use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
+use Cbox\Id\OAuthServer\Contracts\TokenExchange;
+use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\Support\SelfRegisteredScopes;
 use Cbox\Id\Organization\Contracts\OrganizationHierarchy;
 use Cbox\Id\Organization\Enums\MembershipRole;
@@ -118,6 +123,16 @@ class AppServiceProvider extends ServiceProvider
         // root is nobody's identity provider. Both inert everywhere but the root of a
         // multi-tenant deployment. See App\Platform\OAuth\RootMcpOAuth.
         $this->app->extend(AudienceResolver::class, fn (AudienceResolver $inner): AudienceResolver => new RootMcpAudiences($inner));
+
+        // Cbox Infra's standing CI approvals (ADR-0017 Addendum A): the token exchange also
+        // issues a plan-bound approval for a machine client an organization owner's standing
+        // approval covers. Every other exchange is the framework's, unchanged.
+        $this->app->extend(TokenExchange::class, fn (TokenExchange $inner, Application $app): TokenExchange => new StandingApprovalTokenExchange(
+            $inner,
+            $app->make(TokenIntrospector::class),
+            $app->make(StandingApprovals::class),
+            $app->make(StandingApprovalTokenIssuer::class),
+        ));
 
         // On the API host the credential names the environment, not the host: every route
         // that resolves its environment through the framework's middleware does so there too.

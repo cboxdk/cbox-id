@@ -299,7 +299,7 @@ const PUBLIC_IDS_BARE_OBJECTS = [
     'origin', 'payment_method', 'pipe_connection', 'pipe_grant', 'pipe_lease', 'portal_link', 'profile',
     'radar_decision', 'radar_list', 'radar_setting', 'role_assignment', 'role_permission',
     'saml_metadata_import', 'scope', 'secret', 'service', 'service_connection', 'sign_in',
-    'sign_in_method', 'signals_source', 'social', 'social_connection', 'sync_setting',
+    'sign_in_method', 'signals_source', 'social', 'social_connection', 'standing_approval', 'sync_setting',
     'user_property_namespace', 'vault_secret_grant', 'whitelabel',
 ];
 

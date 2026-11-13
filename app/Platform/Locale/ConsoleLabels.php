@@ -22,6 +22,7 @@ final class ConsoleLabels
         'Developer' => 'console.developer_3fb7b394',
         'AI agents' => 'console.ai_agents_3d9e4348',
         'API keys' => 'console.api_keys_98aae897',
+        'Standing approvals' => 'console.standing_approvals_2de7b3d3',
         'APIs' => 'console.apis_8d266d3e',
         'Access control' => 'console.access_control_0bf1d245',
         'Access reviews' => 'console.access_reviews_f0cc91be',

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mail\PortalLinkMail;
 use App\Models\AdminPortalLink;
+use App\Models\StandingApproval;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\OrganizationTabs;
 use Cbox\Id\Federation\Contracts\Connections;
@@ -18,6 +19,8 @@ use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
@@ -486,4 +489,40 @@ it('names the TXT record the same way on the organization console\'s own Domains
     $row = ((array) $this->get(route('domains'))->assertOk()->inertiaProps('domains'))[0];
 
     expect($row['recordName'])->toBe('_cbox-id-challenge.tenant.example');
+});
+
+it('lists an organization\'s standing approvals and turns one off, never on', function (): void {
+    $orgId = anEnvironmentAdminWithOrganizations();
+    $ci = app(ClientRegistry::class)->register(new NewClient(name: 'Shop CI', grantTypes: ['client_credentials'], organizationId: $orgId))->client;
+    $grant = StandingApproval::query()->create([
+        'organization_id' => $orgId,
+        'client_id' => $ci->client_id,
+        'app_client_id' => 'infra-app',
+        'environment_ref' => 'env_staging',
+        'environment_kind' => 'staging',
+        'granted_by' => 'usr_owner',
+        'granted_at' => now(),
+        'uses' => 3,
+    ]);
+
+    $this->get(route('environment.organizations.standing-approvals', $orgId))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->component('environment/organizations/tabs/standing-approvals')
+            ->has('approvals', 1)
+            ->where('approvals.0.clientId', $ci->client_id)
+            ->where('approvals.0.environmentKind', 'staging')
+            ->where('approvals.0.active', true)
+            ->where('approvals.0.revokeHref', route('environment.organizations.standing-approvals.revoke', ['organization' => $orgId, 'grant' => $grant->id])));
+
+    $this->from(route('environment.organizations.standing-approvals', $orgId))
+        ->delete(route('environment.organizations.standing-approvals.revoke', ['organization' => $orgId, 'grant' => $grant->id]))
+        ->assertRedirect(route('environment.organizations.standing-approvals', $orgId))
+        ->assertSessionHas('status', 'Standing approval turned off.');
+
+    expect($grant->refresh()->revoked_at)->not->toBeNull()
+        ->and(AuditEntry::query()->where('action', 'standing_approval.revoked')->count())->toBe(1);
+
+    // Another organization's grant is not this page's to reach.
+    $this->delete(route('environment.organizations.standing-approvals.revoke', ['organization' => anOrganizationElsewhere(), 'grant' => $grant->id]))->assertNotFound();
 });

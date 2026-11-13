@@ -13826,6 +13826,266 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  '/organizations/{organization_id}/standing-approvals':
+    get:
+      operationId: organizations_standing_approvals_list
+      x-action: organizations.standing_approvals.list
+      x-scope: 'organizations:read'
+      x-danger: read
+      tags:
+        - Organizations
+      summary: "List an organization's standing approvals"
+      description: |
+        Requires scope `organizations:read`. Danger: read. Every active standing approval —
+        a machine client whose deployments to one non-production environment of an app run
+        without a person's click — and those turned off in the last 30 days, newest first.
+        Not paged.
+      parameters:
+        -
+          $ref: '#/components/parameters/OrganizationId'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
+        -
+          name: Cbox-Organization
+          in: header
+          required: false
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
+          schema:
+            type: string
+            minLength: 1
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StandingApproval'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+        503:
+          description: 'Product admission could not be verified. The request is refused; retry later.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-scope-aliases: []
+    post:
+      tags:
+        - Organizations
+      summary: "Turn on a standing approval: the organization owner lets one machine client's deployments to one non-production environment of an app run without a person's click. Never for a production environment."
+      description: 'Requires scope `organizations:write`. Danger: critical.'
+      operationId: organizations_standing_approvals_grant
+      x-action: organizations.standing_approvals.grant
+      x-scope: 'organizations:write'
+      x-scope-aliases: []
+      x-danger: critical
+      parameters:
+        -
+          name: organization_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The organization id.'
+            maxLength: 64
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
+        -
+          name: Cbox-Organization
+          in: header
+          required: false
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
+          schema:
+            type: string
+            minLength: 1
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                client_id:
+                  type: string
+                  description: 'The machine client (client credentials) of the organization whose deployments it approves.'
+                  maxLength: 191
+                app_client_id:
+                  type: string
+                  description: "The app that exchanges for the approval token (Cbox Infra's client)."
+                  maxLength: 191
+                environment_ref:
+                  type: string
+                  description: "The app's environment the deployments go to."
+                  maxLength: 64
+                environment_kind:
+                  type: string
+                  description: 'What that environment is: staging, development or another non-production kind. production is refused.'
+                  maxLength: 32
+                granted_by:
+                  type:
+                    - string
+                    - 'null'
+                  description: "The organization owner who turns it on (a user id). Required from the environment's keys; from inside the organization it is the person acting."
+                  maxLength: 64
+              required:
+                - client_id
+                - app_client_id
+                - environment_ref
+                - environment_kind
+      responses:
+        201:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/StandingApproval'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+        503:
+          description: 'Product admission could not be verified. The request is refused; retry later.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  '/organizations/{organization_id}/standing-approvals/{id}':
+    delete:
+      tags:
+        - Organizations
+      summary: "Turn a standing approval off: that machine client's deployments to that environment wait for a person again."
+      description: 'Requires scope `organizations:write`. Danger: destructive.'
+      operationId: organizations_standing_approvals_revoke
+      x-action: organizations.standing_approvals.revoke
+      x-scope: 'organizations:write'
+      x-scope-aliases: []
+      x-danger: destructive
+      parameters:
+        -
+          name: organization_id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: 'The organization id.'
+            maxLength: 64
+        -
+          name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            description: "The standing approval's id."
+            maxLength: 64
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+        -
+          $ref: '#/components/parameters/CboxEnvironment'
+        -
+          name: Cbox-Organization
+          in: header
+          required: false
+          description: 'Select the exact organization for a platform-root user token. Required when an unbound token can access multiple organizations. Must match an organization-bound token or organization key; never changes the credential authority.'
+          schema:
+            type: string
+            minLength: 1
+      security:
+        -
+          EnvironmentApiKey: []
+        -
+          ManagementAccessToken: []
+        -
+          WorkspaceAccessToken: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type:
+                    - string
+                    - 'null'
+                  description: 'Why, as a short code (for example environment_kind_changed). Kept on the audit log.'
+                  maxLength: 64
+      responses:
+        204:
+          description: Done.
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        400:
+          $ref: '#/components/responses/EnvironmentRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          $ref: '#/components/responses/NotFound'
+        409:
+          $ref: '#/components/responses/Conflict'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        429:
+          $ref: '#/components/responses/TooManyRequests'
+        503:
+          description: 'Product admission could not be verified. The request is refused; retry later.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /permissions:
     post:
       tags:
@@ -28572,6 +28832,82 @@ components:
             - 'null'
           format: date-time
           description: 'When it was withdrawn.'
+    StandingApproval:
+      type: object
+      description: |
+        An organization owner's standing approval: one machine client's deployments to one
+        non-production environment of an app run without a person's click. While it is
+        active, the token exchange issues the app (`app_client_id`) a plan-bound approval
+        token for each such deployment, marked `"approval": "standing_grant"` with this id.
+      required:
+        - id
+        - organization_id
+        - client_id
+        - app_client_id
+        - environment_ref
+        - environment_kind
+        - status
+        - granted_by
+        - granted_at
+        - revoked_at
+        - revoked_by
+        - revoke_reason
+        - last_used_at
+        - uses
+      properties:
+        id:
+          type: string
+        organization_id:
+          type: string
+        client_id:
+          type: string
+          description: 'The machine client (client credentials) whose deployments it approves.'
+        app_client_id:
+          type: string
+          description: 'The app that exchanges for the approval token.'
+        environment_ref:
+          type: string
+          description: "The app's environment the deployments go to."
+        environment_kind:
+          type: string
+          description: 'What that environment is (staging, development, …). Never production.'
+        status:
+          type: string
+          enum:
+            - active
+            - revoked
+        granted_by:
+          type: string
+          description: 'The organization owner who turned it on.'
+        granted_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        revoked_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        revoked_by:
+          type:
+            - string
+            - 'null'
+          description: "Who turned it off: the console person's id, or the key's."
+        revoke_reason:
+          type:
+            - string
+            - 'null'
+          description: 'Why, as a short code, when one was given.'
+        last_used_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+          description: 'When an approval token was last issued under it.'
+        uses:
+          type: integer
+          description: 'How many approval tokens were issued under it.'
     AuditLogEvent:
       type: object
       description: |

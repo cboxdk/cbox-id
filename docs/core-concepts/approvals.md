@@ -63,6 +63,33 @@ agents › Approvals**, so one that looks like abuse can be denied.
 
 Every decision, approve or deny, is recorded on the [Audit log](../guides/activity-log.md).
 
+## 3. A standing approval for a machine's deployments
+
+Some changes are approved once and for all by the one person entitled to: an organization's
+**owner** can say that one machine client's deployments to one non-production environment of
+an app (Cbox Infra's CI deploys) run without a person's click. It is a **standing approval**,
+off until the owner turns it on, and never possible for a production environment.
+
+- **Granted by the owner only**, from the app, which calls
+  [`organizations.standing_approvals.grant`](../reference/actions-environment.md#organizations.standing_approvals.grant)
+  naming them; Cbox ID checks they are the organization's active owner, that the client is a
+  machine client (client credentials) of the organization, and that the environment's kind is
+  not `production`.
+- **Used through the token exchange.** When that client proposes a deployment, the app
+  exchanges the client's own token (RFC 8693) for an approval token bound to the plan
+  (RFC 9396 `authorization_details`, type `cbox_infra_change`). It is the token a person's
+  approval is, with the client as its subject and the entry marked
+  `"approval": "standing_grant"` with the grant's id, the environment and its kind. Cbox ID
+  checks the grant on every exchange; the app's engine checks the kind again before it runs.
+- **Seen and turned off** under the organization's **Settings › Standing approvals** in the
+  console, or with
+  [`organizations.standing_approvals.revoke`](../reference/actions-environment.md#organizations.standing_approvals.revoke).
+  From then on the client's deployments wait for a person again.
+
+Every grant, every token issued under one and every revocation is on the
+[Audit log](../guides/activity-log.md): `standing_approval.granted`, `standing_approval.used`,
+`standing_approval.revoked`.
+
 ## Related
 
 - [Step-up approvals](../guides/step-up-approvals.md): setting a key's approval policy, and handling `approval_required` in code.
