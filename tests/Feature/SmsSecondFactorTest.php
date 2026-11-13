@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\WebRateLimiters;
 use App\Platform\FrontendApi\LoginTickets;
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
@@ -245,6 +246,33 @@ it('says why a number is refused, without storing or sending anything', function
     $this->sms->assertNothingSent();
     expect(app(SmsFactors::class)->details($id))->toBeNull();
 });
+
+/*
+ * Every enrolment creates a new factor, so the per-recipient code cap started over each
+ * time, and the only per-actor budget was per full client address: one account behind an
+ * IPv6 /64 texted any numbers it liked, on the operator's bill and the environment's daily
+ * cap (needs-validation lead: SMS enrolment). The person is now budgeted, whatever address
+ * they come from.
+ */
+it('holds one person to a few enrolment texts an hour, whatever address they come from', function (): void {
+    smsfPolicy();
+    $id = smsfPerson();
+    smsfSignedIn($id);
+
+    foreach (range(1, WebRateLimiters::SMS_ENROL_PER_PERSON_PER_HOUR) as $n) {
+        inertiaRequest(fn () => $this->from(route('account'))
+            ->withServerVariables(['REMOTE_ADDR' => "2001:db8:1:2::{$n}"])
+            ->post(route('account.mfa.sms.enrol'), ['phone' => '+45123456'.str_pad((string) $n, 2, '0', STR_PAD_LEFT)]))
+            ->assertSessionHasNoErrors();
+    }
+
+    $this->from(route('account'))
+        ->withServerVariables(['REMOTE_ADDR' => '2001:db8:1:2::99'])
+        ->post(route('account.mfa.sms.enrol'), ['phone' => '+4512345699'])
+        ->assertSessionHasErrors('phone');
+
+    $this->sms->assertSentCount(WebRateLimiters::SMS_ENROL_PER_PERSON_PER_HOUR);
+})->group('security');
 
 it('hides the panel where SMS is not offered, and keeps an owner from making SMS their only factor', function (): void {
     $member = smsfPerson();
