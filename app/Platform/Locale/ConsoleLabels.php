@@ -117,10 +117,25 @@ final class ConsoleLabels
         'After a password change' => 'console.after_a_password_change_9b158424',
         'Production' => 'console.production_13a7c655',
         'Sandbox' => 'console.sandbox_67fc6249',
+        'Trusted devices' => 'console.trusted_devices_7d989273',
+        // A person's own page of Cbox services and waitlists: the page's own title.
+        'Services' => 'service_access.title',
     ];
 
+    /**
+     * A registered label in the person's language: its mapped key, else the console's own
+     * key for that English text ({@see ConsoleStrings::key()}), else the English. A module
+     * that registers a page names it in English and need not edit this list for it to be
+     * translated wherever the catalogue already has the words.
+     */
     public static function navigation(string $label): string
     {
-        return isset(self::KEYS[$label]) ? __(self::KEYS[$label]) : $label;
+        if (isset(self::KEYS[$label])) {
+            $translated = __(self::KEYS[$label]);
+
+            return is_string($translated) ? $translated : $label;
+        }
+
+        return ConsoleStrings::text($label);
     }
 }

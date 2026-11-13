@@ -76,6 +76,7 @@ final class HandleInertiaRequests extends Middleware
         'shell',
         'tenantShell',
         'accountShell',
+        'accountBack',
         'appCatalogUrl',
         'i18n',
         'apiEquivalents',
@@ -177,6 +178,9 @@ final class HandleInertiaRequests extends Middleware
             // In login-host mode, the chrome of a person's own pages on the login host:
             // "Back to …", their pages and the way out ({@see AccountChrome}).
             'accountShell' => fn (): ?array => app(AccountChrome::class)->toProps($request),
+            // On a customer environment's own host, the way back to the app that sent the
+            // person to their own pages; the console chrome there draws it in its topbar.
+            'accountBack' => fn (): ?array => app(AccountChrome::class)->tenantBack($request),
             // Where the app switcher reads the signed-in person's catalog (AppCatalogFeedController).
             'appCatalogUrl' => fn (): string => route('apps.catalog', [], false),
 

@@ -3,7 +3,7 @@ import type { FormEvent, ReactNode } from 'react';
 import { useTranslator, type MessageKey } from '@/i18n';
 import AccountLayout from '@/layouts/AccountLayout';
 import type { PageProps } from '@/types';
-import { Button, Combobox, Field, Input, PageHeader, Panel, Pill, Textarea } from '@/ui';
+import { Button, Combobox, Field, Input, LinkTabs, PageHeader, Panel, Pill, Textarea } from '@/ui';
 
 type Service = {
     kind: 'service' | 'feature';
@@ -81,24 +81,24 @@ export default function Services({
                     kind === 'feature' ? 'service_access.feature_lead' : 'service_access.lead',
                 )}
             />
-            <nav className="flex gap-2" aria-label={t('service_access.title')}>
-                <Button asChild variant={kind === 'service' ? 'primary' : 'secondary'}>
-                    <Link
-                        href={servicesHref}
-                        aria-current={kind === 'service' ? 'page' : undefined}
-                    >
-                        {t('service_access.title')}
-                    </Link>
-                </Button>
-                <Button asChild variant={kind === 'feature' ? 'primary' : 'secondary'}>
-                    <Link
-                        href={featuresHref}
-                        aria-current={kind === 'feature' ? 'page' : undefined}
-                    >
-                        {t('service_access.features')}
-                    </Link>
-                </Button>
-            </nav>
+            <LinkTabs
+                variant="sub"
+                label={t('service_access.title')}
+                tabs={[
+                    {
+                        key: 'service',
+                        label: t('service_access.title'),
+                        href: servicesHref,
+                        current: kind === 'service',
+                    },
+                    {
+                        key: 'feature',
+                        label: t('service_access.features'),
+                        href: featuresHref,
+                        current: kind === 'feature',
+                    },
+                ]}
+            />
             {kind === 'feature' && (
                 <Panel>
                     <Field label={t('service_access.team')}>

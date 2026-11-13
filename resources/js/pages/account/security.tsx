@@ -323,8 +323,9 @@ function ProfilePanel({ profile, href }: { profile: Props['profile']; href: stri
                     form.patch(href, { preserveScroll: true });
                 }}
             >
+                {/* The initial is decoration: on a phone the name field needs the width. */}
                 <span
-                    className="idc-avatar shrink-0"
+                    className="idc-avatar shrink-0 hidden sm:inline-flex"
                     aria-hidden="true"
                     style={{ width: '3rem', height: '3rem', fontSize: '1.1rem' }}
                 >

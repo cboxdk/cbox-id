@@ -20,6 +20,9 @@ use Illuminate\Http\Request;
  *
  * It is kept in the session once validated, so it survives the person moving between
  * their pages (security, activity, the account chooser) and the POSTs in between.
+ *
+ * Without a `return_to`, the page that linked here (`Referer`) is offered under the same
+ * rules ({@see referredBy()}), so an app's own "Manage account" link leads back to it.
  */
 final readonly class ReturnUrl
 {
@@ -94,17 +97,48 @@ final readonly class ReturnUrl
      */
     public function remember(Request $request): ?array
     {
-        if ($request->query->has(self::PARAMETER)) {
-            $named = $this->validated($request->query(self::PARAMETER), $request);
+        $named = $request->query->has(self::PARAMETER)
+            ? $this->validated($request->query(self::PARAMETER), $request)
+            : null;
 
-            if ($named !== null) {
-                $request->session()->put(self::SESSION_KEY, $named['url']);
+        $named ??= $this->referredBy($request);
 
-                return $named;
-            }
+        if ($named !== null && $request->hasSession()) {
+            $request->session()->put(self::SESSION_KEY, $named['url']);
+
+            return $named;
         }
 
         return $this->current($request);
+    }
+
+    /**
+     * THE PAGE THAT LINKED HERE, when it said nothing itself: an app's "Manage account" link
+     * or the app switcher opens these pages without a `return_to`, and the browser still
+     * names where the person was (`Referer`, by default only the origin across sites).
+     *
+     * The same validation as `return_to`, and two more refusals: only a page load the
+     * browser made (an Inertia visit between the person's own pages names the page they
+     * were on here), and never this host itself, so moving between their tabs or coming
+     * back from a step-up keeps the app they came from instead of replacing it.
+     *
+     * @return array{url: string, host: string, label: string}|null
+     */
+    public function referredBy(Request $request): ?array
+    {
+        if (! $request->isMethod('GET') || $request->headers->has('X-Inertia')) {
+            return null;
+        }
+
+        $referer = $request->headers->get('referer');
+
+        if (! is_string($referer) || $referer === '') {
+            return null;
+        }
+
+        $valid = $this->validated($referer, $request);
+
+        return $valid !== null && $valid['host'] !== strtolower($request->getHost()) ? $valid : null;
     }
 
     /**
