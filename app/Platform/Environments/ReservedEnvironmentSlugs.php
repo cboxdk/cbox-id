@@ -32,8 +32,44 @@ final class ReservedEnvironmentSlugs
 
         return array_values(array_unique(array_filter(array_map(
             static fn (mixed $slug): string => is_string($slug) ? mb_strtolower(trim($slug)) : '',
-            [...(is_array($configured) ? $configured : []), ...(is_array($extra) ? $extra : [])],
+            [...(is_array($configured) ? $configured : []), ...(is_array($extra) ? $extra : []), ...self::platformHostLabels()],
         ), static fn (string $slug): bool => $slug !== '')));
+    }
+
+    /**
+     * The first label of every host the deployment NAMES — the login host, the application
+     * (console) host and the API host — under any of its base domains. A deployment that
+     * calls its console `console.cboxid.com` has that label reserved without listing it,
+     * so no product named "Console" is ever resolved for the platform's own host.
+     *
+     * @return list<string>
+     */
+    private static function platformHostLabels(): array
+    {
+        $bases = config('cbox-id.environments.base_domains', []);
+        $labels = [];
+
+        foreach ([config('cbox-id.hosts.login'), config('cbox-id.tenancy.account_host'), config('cbox-id.hosts.api')] as $host) {
+            if (! is_string($host) || trim($host) === '') {
+                continue;
+            }
+
+            $host = mb_strtolower(trim($host));
+
+            foreach (is_array($bases) ? $bases : [] as $base) {
+                $suffix = is_string($base) && trim($base) !== '' ? '.'.mb_strtolower(trim($base)) : null;
+
+                if ($suffix !== null && str_ends_with($host, $suffix)) {
+                    $label = substr($host, 0, -strlen($suffix));
+
+                    if ($label !== '' && ! str_contains($label, '.')) {
+                        $labels[] = $label;
+                    }
+                }
+            }
+        }
+
+        return $labels;
     }
 
     public static function reserved(?string $slug): bool
