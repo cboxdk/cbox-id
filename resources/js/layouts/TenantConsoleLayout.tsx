@@ -2,6 +2,7 @@ import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Head, Link, usePage } from '@inertiajs/react';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
 import { AccountMenu } from '@/chrome/AccountMenu';
+import { BackLink } from '@/chrome/BackLink';
 import { ConsoleLanguagePicker } from '@/chrome/ConsoleLanguagePicker';
 import { EmailConfirmationBanner, ImpersonationBanner, SandboxBanner } from '@/chrome/Banners';
 import { CommandPalette } from '@/chrome/CommandPalette';
@@ -43,6 +44,7 @@ export function TenantConsoleLayout({ children: page }: TenantConsoleLayoutProps
         environment,
         organizationHub,
         i18n,
+        accountBack,
     } = usePage<SharedProps>().props;
 
     // A page under an environment console's `…/organizations/{organization}/…` is a tab of that organization's
@@ -195,7 +197,16 @@ export function TenantConsoleLayout({ children: page }: TenantConsoleLayoutProps
 
                 <div className="flex flex-col min-w-0 flex-1">
                     <header className="cbx-topbar">
-                        <div className="cbx-topbar-context">{context}</div>
+                        <div className="flex min-w-0 items-center gap-2">
+                            {/*
+                                A person's own page opened from one of this environment's
+                                apps: the way back to it, validated by the server.
+                            */}
+                            {accountBack !== null && accountBack !== undefined && (
+                                <BackLink back={accountBack} />
+                            )}
+                            <div className="cbx-topbar-context">{context}</div>
+                        </div>
 
                         <div className="flex items-center gap-2 shrink-0">
                             {/* "</> API": this page's actions as REST, MCP, CLI and SDK calls. */}

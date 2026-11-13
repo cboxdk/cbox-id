@@ -408,9 +408,17 @@ export interface CatalogApp {
 /** `App\Platform\Surfaces\AccountChrome`: a person's own pages without a console around them. */
 export interface AccountShell {
     /** Where the person came from: the console, or the app that sent them. Another origin. */
-    back: { url: string; label: string };
-    pages: { label: string; href: string; active: boolean }[];
+    back: AccountBack;
+    pages: { route: string; label: string; href: string; active: boolean }[];
     signOutHref: string;
+    /** The accounts this browser holds, and switching among them. */
+    switchAccountHref: string;
+}
+
+/** "Back to …": the app or console a person came from, validated by the server. Another origin. */
+export interface AccountBack {
+    url: string;
+    label: string;
 }
 
 export interface SharedProps {
@@ -451,6 +459,8 @@ export interface SharedProps {
      * (`App\Platform\Surfaces\AccountChrome`). Null everywhere else.
      */
     accountShell?: AccountShell | null;
+    /** On a customer environment's host: the app that sent the person to their own pages. */
+    accountBack?: AccountBack | null;
     i18n: I18n | null;
     /**
      * Shared on every page under an environment console's `…/organizations/{organization}/…`: the organization the

@@ -1,29 +1,28 @@
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
-import type { ReactNode } from 'react';
-import { ConsoleLanguagePicker } from '@/chrome/ConsoleLanguagePicker';
-import { DoorBrand } from '@/chrome/DoorBrand';
+import { Head, Link, usePage } from '@inertiajs/react';
+import { type ReactNode, useCallback, useState } from 'react';
+import { AccountMenu } from '@/chrome/AccountMenu';
+import { BackLink } from '@/chrome/BackLink';
+import { Brand } from '@/chrome/Brand';
+import { Rail } from '@/chrome/Rail';
 import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { StepUpDialog } from '@/chrome/StepUpDialog';
 import { Toaster } from '@/chrome/Toaster';
 import { useDocumentLanguage, useTranslator } from '@/i18n';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
-import { toggleTheme } from '@/lib/theme';
-import type { AccountShell, SharedProps } from '@/types';
-import { Icon, TooltipProvider } from '@/ui';
+import { setNavPinned } from '@/lib/theme';
+import type { AccountShell, NavArea, SharedProps } from '@/types';
+import { LinkTabs, TooltipProvider } from '@/ui';
+import type { IconName } from '@/ui/icons';
 
 /**
- * THE LAYOUT OF A PERSON'S OWN PAGES: security, sessions and activity, their keys and
- * connected services, the step-up in front of a change.
+ * THE LAYOUT OF A PERSON'S OWN PAGES: security, sessions and activity, their keys, devices
+ * and connected services, the step-up in front of a change.
  *
  * Where the page stands in a console it is the console's layout, unchanged. In login-host
  * mode these pages are on the login host, which has no console to put around them, and
- * the server says so with `accountShell` ({@see \App\Platform\Surfaces\AccountChrome});
- * the page is then drawn the way the hosted pages are, with the three things a person
- * needs there: the way back to where they came from, their own pages, and the way out.
- *
- * The language picker is the console's: it writes the person's SAVED interface language,
- * which these pages speak, and not the cookie the hosted pages' picker sets for a visitor
- * with no account.
+ * the server says so with `accountShell` ({@see \App\Platform\Surfaces\AccountChrome}).
+ * The page is then drawn with the console's own chrome, holding only what a person needs
+ * here: the way back to where they came from, their own pages, and the account menu.
  */
 export default function AccountLayout({ children }: { children: ReactNode }) {
     const { accountShell } = usePage<SharedProps>().props;
@@ -35,12 +34,54 @@ export default function AccountLayout({ children }: { children: ReactNode }) {
     return <HostedAccount shell={accountShell}>{children}</HostedAccount>;
 }
 
+/** Each of a person's pages by its route, as the rail draws it. Anything else is the person. */
+const PAGE_ICONS: Record<string, IconName> = {
+    account: 'shield',
+    'account.activity': 'clock',
+    'account.api-keys': 'key',
+    'devices.mine': 'device',
+    'account.pipes': 'connections',
+    'account.services': 'puzzle',
+};
+
+/**
+ * The person's pages as rail entries, one each: on the login host they are the whole
+ * console, so the first tier holds them and no second tier repeats them under one
+ * "Account" heading.
+ */
+export function accountAreas(pages: AccountShell['pages']): NavArea[] {
+    return pages.map((page) => ({
+        key: page.route,
+        label: page.label,
+        icon: PAGE_ICONS[page.route] ?? 'user',
+        href: page.href,
+        active: page.active,
+        current: page.active,
+        pages: [],
+    }));
+}
+
 function HostedAccount({ shell, children }: { shell: AccountShell; children: ReactNode }) {
     const { app, auth, brand, title, i18n } = usePage<SharedProps>().props;
     const { t } = useTranslator();
-    const signOut = useForm({});
 
     useDocumentLanguage(i18n?.locale ?? 'en');
+
+    // The root view sets the class from the cookie before the first paint.
+    const [pinned, setPinned] = useState(
+        () =>
+            typeof document === 'undefined' ||
+            document.documentElement.classList.contains('cbx-nav-pinned'),
+    );
+    const togglePin = useCallback(() => {
+        setPinned((current) => {
+            setNavPinned(!current);
+
+            return !current;
+        });
+    }, []);
+
+    const home = shell.pages[0]?.href ?? '/settings';
 
     return (
         <TooltipProvider>
@@ -49,107 +90,73 @@ function HostedAccount({ shell, children }: { shell: AccountShell; children: Rea
             <Toaster />
             <StepUpDialog />
 
-            <div className="min-h-full flex flex-col">
-                <header
-                    className="border-b"
-                    style={{ borderColor: 'var(--border)', background: 'var(--card)' }}
-                >
-                    <div
-                        className="mx-auto w-full flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 sm:px-8 py-3"
-                        style={{ maxWidth: '72rem' }}
-                    >
-                        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                            <DoorBrand brand={brand} home={null} />
+            <div className="flex h-full" data-test="account-shell">
+                <Rail
+                    areas={accountAreas(shell.pages)}
+                    brandHref={home}
+                    brandLabel={brand?.name ?? app.name}
+                    pinned={pinned}
+                    onTogglePin={togglePin}
+                />
 
-                            {/* Another origin: a real navigation, never an Inertia visit. */}
-                            <a
-                                href={shell.back.url}
-                                className="inline-flex items-center gap-1.5 text-sm font-medium underline-offset-2 hover:underline"
-                                style={{ color: 'var(--muted-foreground)' }}
-                                data-test="account-back"
+                <div className="flex flex-col min-w-0 flex-1">
+                    <header className="cbx-topbar idc-account-topbar">
+                        <div className="flex min-w-0 items-center gap-3">
+                            {/* The rail and its mark are not drawn on a phone. */}
+                            <Link
+                                href={home}
+                                className="lg:hidden shrink-0"
+                                aria-label={brand?.name ?? app.name}
                             >
-                                <Icon name="arrow-left" className="w-4 h-4" />
-                                {t('console.back_to_part1_dc732693', { part1: shell.back.label })}
-                            </a>
+                                {brand?.logo ? (
+                                    <img
+                                        src={brand.logo}
+                                        alt=""
+                                        style={{ maxHeight: '1.75rem', maxWidth: '6rem' }}
+                                    />
+                                ) : (
+                                    <Brand compact />
+                                )}
+                            </Link>
+
+                            <BackLink back={shell.back} />
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-3 text-xs">
-                            {auth.user !== null && (
-                                <span style={{ color: 'var(--muted-foreground)' }}>
-                                    {auth.user.email ?? auth.user.name}
-                                </span>
-                            )}
+                        {auth.user !== null && (
+                            <AccountMenu
+                                user={auth.user}
+                                logoutUrl={shell.signOutHref}
+                                organizationSettingsHref={null}
+                                accountHref={null}
+                                switchUserHref={shell.switchAccountHref}
+                                platformHref={null}
+                                withLanguage
+                            />
+                        )}
+                    </header>
 
-                            <ConsoleLanguagePicker />
-
-                            <button
-                                type="button"
-                                className="btn btn-ghost"
-                                style={{ padding: '0.4rem' }}
-                                onClick={() => toggleTheme()}
-                                aria-label={t('hosted.layout.toggle_theme')}
-                            >
-                                <Icon name="sun" className="w-[1.1rem] h-[1.1rem]" />
-                            </button>
-
-                            <button
-                                type="button"
-                                className="btn btn-ghost"
-                                disabled={signOut.processing}
-                                onClick={() => signOut.post(shell.signOutHref)}
-                            >
-                                <Icon name="logout" className="w-4 h-4" />{' '}
-                                {t('console.sign_out_48f0d3d3')}
-                            </button>
-                        </div>
-                    </div>
-
-                    {shell.pages.length > 1 && (
-                        <nav
-                            aria-label={t('console.account_7e1b0d56')}
-                            className="mx-auto w-full flex flex-wrap gap-x-1 px-5 sm:px-8"
-                            style={{ maxWidth: '72rem' }}
+                    <main id="main-content" className="flex-1 overflow-y-auto canvas-gradient">
+                        <div
+                            className="mx-auto w-full px-4 pt-3 pb-16 sm:px-6 sm:pt-6 lg:p-8"
+                            style={{ maxWidth: '64rem' }}
                         >
-                            {shell.pages.map((page) => (
-                                <Link
-                                    key={page.href}
-                                    href={page.href}
-                                    aria-current={page.active ? 'page' : undefined}
-                                    className="px-3 py-2.5 text-sm font-medium"
-                                    style={{
-                                        color: page.active
-                                            ? 'var(--foreground)'
-                                            : 'var(--muted-foreground)',
-                                        borderBottom: page.active
-                                            ? '2px solid var(--primary)'
-                                            : '2px solid transparent',
-                                    }}
-                                >
-                                    {page.label}
-                                </Link>
-                            ))}
-                        </nav>
-                    )}
-                </header>
+                            {/* The rail's pages, on a phone: one row that scrolls sideways. */}
+                            <div className="lg:hidden mb-5 -mx-4 px-4 sm:-mx-6 sm:px-6">
+                                <LinkTabs
+                                    label={t('console.account_7e1b0d56')}
+                                    tabs={shell.pages.map((page) => ({
+                                        key: page.route,
+                                        label: page.label,
+                                        href: page.href,
+                                        current: page.active,
+                                    }))}
+                                />
+                            </div>
 
-                <main
-                    id="main-content"
-                    className="flex-1 w-full mx-auto p-6 pb-24 lg:p-8"
-                    style={{ maxWidth: '72rem' }}
-                >
-                    {children}
-                </main>
-
-                <footer
-                    className="px-5 sm:px-8 py-5 border-t text-xs flex items-center justify-between"
-                    style={{ borderColor: 'var(--border)', color: 'var(--faint)' }}
-                >
-                    <span className="inline-flex items-center gap-1.5">
-                        <Icon name="shield" className="w-3.5 h-3.5" />{' '}
-                        {t('hosted.layout.secured_by', { name: app.name })}
-                    </span>
-                    <span>© {app.year}</span>
-                </footer>
+                            {children}
+                        </div>
+                    </main>
+                </div>
             </div>
         </TooltipProvider>
     );

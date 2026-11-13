@@ -1,9 +1,9 @@
 import { router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { useTranslator } from '@/i18n';
-import AuthLayout from '@/layouts/AuthLayout';
+import AccountLayout from '@/layouts/AccountLayout';
 import type { PageProps } from '@/types';
-import { Button, Dialog, Pill, ProviderMark } from '@/ui';
+import { Button, Dialog, PageHeader, Panel, Pill, ProviderMark } from '@/ui';
 
 type Service = {
     provider: string;
@@ -30,127 +30,125 @@ type Props = PageProps<{
  * row is either a Connect button or a Disconnect button, plus a Reconnect when the
  * provider stopped accepting the connection.
  */
-export default function ConnectedServices({ services, accountHref }: Props) {
+export default function ConnectedServices({ services }: Props) {
     const { t } = useTranslator();
     const { errors, flash } = usePage().props;
     const [disconnecting, setDisconnecting] = useState<Service | null>(null);
     const error = typeof errors.disconnect === 'string' ? errors.disconnect : flash.error;
 
     return (
-        <>
-            <h1 className="auth-title">{t('auth.connected_services.heading')}</h1>
-            <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                {t('auth.connected_services.lead')}
-            </p>
+        <div className="space-y-6">
+            <PageHeader
+                title={t('auth.connected_services.heading')}
+                description={t('auth.connected_services.lead')}
+            />
 
             {flash.status !== null && (
-                <output className="mt-4 block text-sm" style={{ color: 'var(--success)' }}>
+                <output className="block text-sm" style={{ color: 'var(--success)' }}>
                     {flash.status}
                 </output>
             )}
             {error !== null && error !== undefined && (
-                <p className="field-error mt-4" role="alert">
+                <p className="field-error" role="alert">
                     {error}
                 </p>
             )}
 
-            {services.length === 0 ? (
-                <p className="mt-6 text-sm" style={{ color: 'var(--faint)' }}>
-                    {t('auth.connected_services.empty')}
-                </p>
-            ) : (
-                <ul className="mt-6 divide-y" style={{ borderColor: 'var(--border)' }}>
-                    {services.map((service) => (
-                        <li
-                            key={service.provider}
-                            className="flex items-start justify-between gap-4 py-3"
-                        >
-                            <div className="flex min-w-0 items-start gap-3">
-                                <ProviderMark provider={service.provider} size={22} />
-                                <div className="min-w-0">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <span className="font-medium">{service.name}</span>
-                                        {service.needsReauth ? (
-                                            <Pill tone="warning">
-                                                {t('auth.connected_services.needs_reauth')}
-                                            </Pill>
-                                        ) : service.connected ? (
-                                            <Pill tone="success">
-                                                {t('auth.connected_services.connected_label')}
-                                            </Pill>
-                                        ) : (
-                                            <Pill>
-                                                {t('auth.connected_services.not_connected')}
-                                            </Pill>
+            <Panel>
+                {services.length === 0 ? (
+                    <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
+                        {t('auth.connected_services.empty')}
+                    </p>
+                ) : (
+                    <ul className="-my-3 divide-y" style={{ borderColor: 'var(--border)' }}>
+                        {services.map((service) => (
+                            <li
+                                key={service.provider}
+                                className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 py-3"
+                            >
+                                <div className="flex min-w-0 items-start gap-3">
+                                    <ProviderMark provider={service.provider} size={22} />
+                                    <div className="min-w-0">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="font-medium">{service.name}</span>
+                                            {service.needsReauth ? (
+                                                <Pill tone="warning">
+                                                    {t('auth.connected_services.needs_reauth')}
+                                                </Pill>
+                                            ) : service.connected ? (
+                                                <Pill tone="success">
+                                                    {t('auth.connected_services.connected_label')}
+                                                </Pill>
+                                            ) : (
+                                                <Pill>
+                                                    {t('auth.connected_services.not_connected')}
+                                                </Pill>
+                                            )}
+                                        </div>
+                                        {service.account !== null && (
+                                            <p
+                                                className="mt-0.5 truncate text-xs"
+                                                style={{ color: 'var(--muted-foreground)' }}
+                                            >
+                                                {t('auth.connected_services.connected_as', {
+                                                    account: service.account,
+                                                })}
+                                            </p>
+                                        )}
+                                        {service.needsReauth && (
+                                            <p
+                                                className="mt-0.5 text-xs"
+                                                style={{ color: 'var(--muted-foreground)' }}
+                                            >
+                                                {t('auth.connected_services.needs_reauth_hint', {
+                                                    provider: service.name,
+                                                })}
+                                            </p>
+                                        )}
+                                        {service.connected && service.scopes.length > 0 && (
+                                            <p
+                                                className="mt-0.5 text-xs"
+                                                style={{ color: 'var(--faint)' }}
+                                            >
+                                                {t('auth.connected_services.access', {
+                                                    scopes: service.scopes.join(', '),
+                                                })}
+                                            </p>
                                         )}
                                     </div>
-                                    {service.account !== null && (
-                                        <p
-                                            className="mt-0.5 truncate text-xs"
-                                            style={{ color: 'var(--muted-foreground)' }}
-                                        >
-                                            {t('auth.connected_services.connected_as', {
-                                                account: service.account,
-                                            })}
-                                        </p>
-                                    )}
-                                    {service.needsReauth && (
-                                        <p
-                                            className="mt-0.5 text-xs"
-                                            style={{ color: 'var(--muted-foreground)' }}
-                                        >
-                                            {t('auth.connected_services.needs_reauth_hint', {
-                                                provider: service.name,
-                                            })}
-                                        </p>
-                                    )}
-                                    {service.connected && service.scopes.length > 0 && (
-                                        <p
-                                            className="mt-0.5 text-xs"
-                                            style={{ color: 'var(--faint)' }}
-                                        >
-                                            {t('auth.connected_services.access', {
-                                                scopes: service.scopes.join(', '),
-                                            })}
-                                        </p>
-                                    )}
                                 </div>
-                            </div>
-                            <div className="flex shrink-0 gap-2">
-                                {service.connectHref !== null &&
-                                    (!service.connected || service.needsReauth) && (
+                                <div className="flex shrink-0 gap-2">
+                                    {service.connectHref !== null &&
+                                        (!service.connected || service.needsReauth) && (
+                                            <Button
+                                                asChild
+                                                size="sm"
+                                                variant={
+                                                    service.needsReauth ? 'primary' : undefined
+                                                }
+                                            >
+                                                <a href={service.connectHref}>
+                                                    {service.needsReauth
+                                                        ? t('auth.connected_services.reconnect')
+                                                        : t('auth.connected_services.connect')}
+                                                </a>
+                                            </Button>
+                                        )}
+                                    {service.disconnectHref !== null && (
                                         <Button
-                                            asChild
                                             size="sm"
-                                            variant={service.needsReauth ? 'primary' : undefined}
+                                            variant="danger"
+                                            onClick={() => setDisconnecting(service)}
                                         >
-                                            <a href={service.connectHref}>
-                                                {service.needsReauth
-                                                    ? t('auth.connected_services.reconnect')
-                                                    : t('auth.connected_services.connect')}
-                                            </a>
+                                            {t('auth.connected_services.disconnect')}
                                         </Button>
                                     )}
-                                {service.disconnectHref !== null && (
-                                    <Button
-                                        size="sm"
-                                        variant="danger"
-                                        onClick={() => setDisconnecting(service)}
-                                    >
-                                        {t('auth.connected_services.disconnect')}
-                                    </Button>
-                                )}
-                            </div>
-                        </li>
-                    ))}
-                </ul>
-            )}
-
-            <p className="mt-6 text-sm">
-                <a href={accountHref} className="auth-link">
-                    {t('auth.connected_services.back')}
-                </a>
-            </p>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </Panel>
 
             <Dialog
                 open={disconnecting !== null}
@@ -190,8 +188,8 @@ export default function ConnectedServices({ services, accountHref }: Props) {
                     </>
                 }
             />
-        </>
+        </div>
     );
 }
 
-ConnectedServices.layout = (page: React.ReactNode) => <AuthLayout>{page}</AuthLayout>;
+ConnectedServices.layout = (page: React.ReactNode) => <AccountLayout>{page}</AccountLayout>;
