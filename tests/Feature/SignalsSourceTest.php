@@ -272,6 +272,8 @@ it('does not report a temporary framework session as a completed sign-in', funct
 
 it('keeps a magic-link attempt pending through a refused second factor', function (): void {
     $subject = app(Subjects::class)->create('source-magic@example.test', 'Source magic');
+    // Verified: on an unverified account the sign-in link would remove the factor first.
+    app(Subjects::class)->markEmailVerified($subject->id, $subject->email);
     $factor = app(Mfa::class)->enrollTotp($subject->id, $subject->email);
     confirmTotpForTest($subject->id, $factor->secret);
     $link = app(MagicLink::class)->request($subject->email);
