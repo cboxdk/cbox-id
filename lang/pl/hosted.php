@@ -27,4 +27,14 @@ return [
         'dark' => 'Ciemny',
     ],
     'skip_to_content' => 'Przejdź do treści',
+
+    // The page an Authenticator link shows when the app did not open.
+    'authenticator_link' => [
+        'title' => 'Otwórz aplikację Cbox ID',
+        'lead' => 'Aplikacja Cbox ID nie otworzyła się na tym urządzeniu.',
+        'other_phone' => 'Aplikacja jest na innym telefonie? Zatwierdź żądanie tam, a potem wróć do strony logowania. Przejdzie dalej sama.',
+        'open' => 'Otwórz w aplikacji',
+        'install' => 'Pobierz aplikację',
+        'back' => 'Albo wróć i wybierz inny sposób potwierdzenia.',
+    ],
 ];

@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Cbox\Id\Federation\Contracts\Connections;
+use Cbox\Id\Federation\Enums\ConnectionType;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\BreachedPasswordCheck;
 use Cbox\Id\Identity\Contracts\SessionManager;
@@ -43,6 +45,10 @@ function anOwnerOfSignInRules(): string
         $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-rules-browser'));
         app(Memberships::class)->add($org->id, $subject->id, MembershipRole::Owner);
         app(Projects::class)->createForOrganization($org->id, 'Acme');
+
+        // An active connection to sign in through: SSO cannot be required without one.
+        $idp = app(Connections::class)->create($org->id, ConnectionType::Oidc, 'Acme IdP', ['issuer' => 'https://idp.acme.test', 'client_id' => 'abc', 'client_secret' => 's', 'signing_key' => 'k']);
+        app(Connections::class)->activate($org->id, $idp->id);
 
         signInAsMember($subject->id);
 

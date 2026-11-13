@@ -36,4 +36,14 @@ return [
     ],
 
     'skip_to_content' => 'Skip to content',
+
+    // The page an Authenticator link shows when the app did not open.
+    'authenticator_link' => [
+        'title' => 'Open the Cbox ID app',
+        'lead' => 'The Cbox ID app didn\'t open on this device.',
+        'other_phone' => 'Is the app on another phone? Approve the request there, then go back to the sign-in page. It continues by itself.',
+        'open' => 'Open in the app',
+        'install' => 'Get the app',
+        'back' => 'Or go back and choose another way to confirm.',
+    ],
 ];

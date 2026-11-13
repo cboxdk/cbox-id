@@ -10,6 +10,7 @@ use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsolePlane;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Devices\Console\CreateAuthenticatorClientCommand;
+use Cbox\Id\Devices\Contracts\ApprovalOriginResolver;
 use Cbox\Id\Devices\Contracts\PushDispatcher;
 use Cbox\Id\Devices\Contracts\PushTransport;
 use Cbox\Id\Devices\Decorators\PushNotifyingActionApprovals;
@@ -17,9 +18,11 @@ use Cbox\Id\Devices\Decorators\PushNotifyingBackchannelAuthentication;
 use Cbox\Id\Devices\Erasure\DevicesErasureStep;
 use Cbox\Id\Devices\Listeners\SendSecurityAlert;
 use Cbox\Id\Devices\Models\PushNotification;
+use Cbox\Id\Devices\Support\ApprovalKindHint;
 use Cbox\Id\Devices\Support\DeviceCircuitBreaker;
 use Cbox\Id\Devices\Support\DeviceConfig;
 use Cbox\Id\Devices\Support\DeviceRateLimiter;
+use Cbox\Id\Devices\Support\NullApprovalOriginResolver;
 use Cbox\Id\Devices\Transports\FcmPushTransport;
 use Cbox\Id\Devices\Transports\NullPushTransport;
 use Cbox\Id\Identity\Contracts\ErasureSteps;
@@ -125,6 +128,14 @@ class DevicesServiceProvider extends ServiceProvider
 
         $this->app->singleton(DeviceCircuitBreaker::class);
 
+        // What an approval push says about where it came from. The module knows nothing
+        // about a host's ingress, IP intelligence or language preferences; the host binds
+        // its own answer over this one.
+        $this->app->bindIf(ApprovalOriginResolver::class, NullApprovalOriginResolver::class);
+
+        // One per request or job: the kind the next filed action approval is for.
+        $this->app->scoped(ApprovalKindHint::class);
+
         $this->app->bindIf(PushDispatcher::class, static fn (Application $app): QueuedPushDispatcher => new QueuedPushDispatcher(
             $app,
             $app->make(DeviceCircuitBreaker::class),
@@ -171,6 +182,7 @@ class DevicesServiceProvider extends ServiceProvider
         DeviceRateLimiter::register();
 
         $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
+        $this->loadTranslationsFrom(__DIR__.'/../lang', 'id-devices');
         $this->loadRoutesFrom(__DIR__.'/../routes/devices.php');
 
         // The push token is sealed under the crypto master key, so a key rotation has to

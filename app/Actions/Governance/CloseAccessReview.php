@@ -41,7 +41,7 @@ use Cbox\Id\Governance\Enums\CampaignStatus;
 )]
 final readonly class CloseAccessReview implements Action
 {
-    public function __construct(private AccessReviews $reviews) {}
+    public function __construct(private AccessReviews $reviews, private AccessReviewReach $reach) {}
 
     public static function input(): InputSchema
     {
@@ -58,6 +58,11 @@ final readonly class CloseAccessReview implements Action
         if ($campaign->status !== CampaignStatus::Open) {
             throw new ActionRefused('review_closed', new ActionMessage('console.this_access_review_is_already_closed_2b90fb54'), 409);
         }
+
+        // Closing applies every revoke through the bare access contracts, so what the closer
+        // could not take away directly must not be taken away here ({@see AccessReviewReach}).
+        AccessReviewReach::assertManagedHere($context, $campaign->organization_id);
+        $this->reach->assertMayClose($context, $campaign);
 
         $closed = $this->reviews->close($campaign->id, AccessReviewFields::writeOrganizationId($context, $campaign));
 

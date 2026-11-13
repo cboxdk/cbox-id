@@ -359,3 +359,52 @@ it('activates an account invitation under a mandate, and still refuses the sessi
             ->hasFlash('mandate.organization', 'Organization Co')
             ->hasFlash('mandate.reason', RefusedFactor::Invitation->sentence()));
 })->group('security');
+
+/*
+|--------------------------------------------------------------------------
+| Joining a mandating organization with a local session already open
+|--------------------------------------------------------------------------
+|
+| The doors ask at sign-in and the mandate switching on revokes what predates it; neither
+| reached somebody who held a local session and THEN joined an organization that already
+| required SSO. That session switched into the organization and acted there.
+*/
+
+it('ends a local session when the person joins an organization that already requires SSO', function (): void {
+    [$subjectId, $homeId] = doorSubject('joiner@door.test', 'Home', 'door-home');
+    [$mandatedId] = doorOrganization('Mandated', 'door-mandated');
+    doorMandate($mandatedId);
+
+    $session = app(SessionManager::class)->start($subjectId, $homeId, ['magic_link']);
+    $this->withSession([PlatformAuth::SESSION_KEY => $session->id])->get('/dashboard')->assertOk();
+
+    app(Memberships::class)->add($mandatedId, $subjectId, MembershipRole::Admin);
+
+    expect(doorHasLiveSession($subjectId))->toBeFalse();
+
+    $this->post(route('organization.switch'), ['organization' => $mandatedId])->assertRedirect(route('login'));
+    expect(app(CurrentUser::class)->organizationId())->not->toBe($mandatedId);
+})->group('security');
+
+it('keeps the session that came through enterprise SSO when its person joins a mandating organization', function (): void {
+    [$subjectId, $homeId] = doorSubject('sso-joiner@door.test', 'Home', 'door-home-sso');
+    [$mandatedId] = doorOrganization('Mandated', 'door-mandated-sso');
+    doorMandate($mandatedId);
+
+    $sso = app(SessionManager::class)->start($subjectId, $homeId, ['sso']);
+
+    app(Memberships::class)->add($mandatedId, $subjectId, MembershipRole::Member);
+
+    expect(app(SessionManager::class)->active($sso->id))->not->toBeNull();
+})->group('security');
+
+it('leaves a local session alone when the organization joined does not require SSO', function (): void {
+    [$subjectId, $homeId] = doorSubject('plain-joiner@door.test', 'Home', 'door-home-plain');
+    [$otherId] = doorOrganization('Other', 'door-other');
+
+    $session = app(SessionManager::class)->start($subjectId, $homeId, ['pwd']);
+
+    app(Memberships::class)->add($otherId, $subjectId, MembershipRole::Member);
+
+    expect(app(SessionManager::class)->active($session->id))->not->toBeNull();
+})->group('security');

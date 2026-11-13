@@ -10,6 +10,7 @@ use Cbox\Id\FrontendApi\Contracts\PublishableKeys;
 use Cbox\Id\FrontendApi\Enums\KeyMode;
 use Cbox\Id\FrontendApi\FrontendApiServiceProvider;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
+use Cbox\Id\Identity\Contracts\MagicLink;
 use Cbox\Id\Identity\Contracts\Mfa;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\SmsFactorPolicies;
@@ -333,9 +334,10 @@ it('holds an administrator whose only factor is SMS until they add a stronger on
     $id = smsfPerson('admin@acme.test', MembershipRole::Admin);
     smsfEnrol($id, $this->sms);
 
-    // The environment then decides SMS cannot stand alone for administrators.
+    // The environment then decides SMS cannot stand alone for administrators. They signed
+    // in the only way they can: the password, then the code texted to them.
     smsfPolicy();
-    smsfSignedIn($id);
+    smsfSignedIn($id, ['pwd', 'sms', 'mfa']);
 
     $this->get('/dashboard')->assertRedirect(route('account'));
     expect(accountSecurity()['smsFactor']['needsStrongerFactor'])->toBeTrue();
@@ -343,7 +345,42 @@ it('holds an administrator whose only factor is SMS until they add a stronger on
     $enrolment = app(Mfa::class)->enrollTotp($id, 'admin@acme.test');
     app(Mfa::class)->confirmTotp($id, app(TotpAuthenticator::class)->codeAt($enrolment->secret, time()));
 
-    $this->get('/dashboard')->assertRedirect(route('mfa'));
+    // The session already proved a factor; the stronger one only lifts the hold.
+    $this->get('/dashboard')->assertOk();
+})->group('security');
+
+/**
+ * THE STRONGER-FACTOR NUDGE IS NOT AN EXEMPTION FROM THE FACTOR THEY HAVE.
+ *
+ * "Add a stronger factor" used to read as "has nothing to verify": a magic link (the
+ * mailbox alone) adopted a session for an SMS-only administrator with no code asked, and
+ * the page that held them is the one where an authenticator is enrolled. The phone they
+ * enrolled is asked for first, exactly as the password door asks for it.
+ */
+it('asks an SMS-only administrator signing in with a magic link for the texted code', function (): void {
+    app(SmsFactorPolicies::class)->setForEnvironment(new SmsFactorPolicy(true, ['DK'], privilegedNeedStrongerFactor: false));
+    $id = smsfPerson('admin@acme.test', MembershipRole::Admin);
+    smsfEnrol($id, $this->sms);
+    smsfPolicy();
+
+    $link = app(MagicLink::class)->request('admin@acme.test');
+
+    $this->post(route('magic.redeem.store', $link))->assertRedirect(route('mfa'));
+
+    expect(session(PlatformAuth::SESSION_KEY))->toBeNull()
+        ->and(Session::query()->where('user_id', $id)->whereNull('revoked_at')->count())->toBe(0);
+})->group('security');
+
+it('challenges a live single-factor session of an SMS-only administrator before the enrolment page', function (): void {
+    app(SmsFactorPolicies::class)->setForEnvironment(new SmsFactorPolicy(true, ['DK'], privilegedNeedStrongerFactor: false));
+    $id = smsfPerson('admin@acme.test', MembershipRole::Admin);
+    smsfEnrol($id, $this->sms);
+    smsfPolicy();
+
+    smsfSignedIn($id, ['magic_link']);
+
+    $this->get(route('account'))->assertRedirect(route('mfa'));
+    expect(session(PlatformAuth::SESSION_KEY))->toBeNull();
 })->group('security');
 
 // ------------------------------------------------------------- the embedded channel

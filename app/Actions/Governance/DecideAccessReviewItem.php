@@ -41,7 +41,7 @@ use Cbox\Id\Governance\Models\CertificationItem;
 )]
 final readonly class DecideAccessReviewItem implements Action
 {
-    public function __construct(private AccessReviews $reviews) {}
+    public function __construct(private AccessReviews $reviews, private AccessReviewReach $reach) {}
 
     public static function input(): InputSchema
     {
@@ -64,8 +64,16 @@ final readonly class DecideAccessReviewItem implements Action
 
         // Within THIS review: an item id from another review is a 404, whatever the
         // framework would have said about it.
-        CertificationItem::query()->whereKey($context->string('item_id'))->where('campaign_id', $campaign->id)->first()
+        $target = CertificationItem::query()->whereKey($context->string('item_id'))->where('campaign_id', $campaign->id)->first()
             ?? throw ActionRefused::notFound('item');
+
+        // A revoke is applied at close; one the decider could not make directly is refused
+        // now, where they can see why ({@see AccessReviewReach}).
+        AccessReviewReach::assertManagedHere($context, $campaign->organization_id);
+
+        if ($context->string('decision') === 'revoked') {
+            $this->reach->assertMayRevoke($context, $target);
+        }
 
         $organizationId = AccessReviewFields::writeOrganizationId($context, $campaign);
         $reviewer = $context->principal->id();

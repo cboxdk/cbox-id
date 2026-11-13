@@ -194,11 +194,14 @@ sign-in or a sign-up, as part of securing the sign-in they asked for — the cat
 consent rules treat as strictly necessary. There is no third-party script, no canvas or font
 fingerprinting and no other storage.
 
-For a client that keeps no cookies — an app on the Frontend API, a private window — the
-fallback is a coarse **fingerprint**: the user agent with every version cut to its major
-number, the `Sec-CH-UA` client hints the browser sends anyway, and its first language. Two
-colleagues on the same browser and OS look alike; that is the right failure for "have we seen
-this before?".
+For an app on the Frontend API, which cannot carry the cookie, the fallback is a coarse
+**fingerprint**: the user agent with every version cut to its major number, the `Sec-CH-UA`
+client hints the browser sends anyway, and its first language. Two colleagues on the same
+browser and OS look alike; that is the right failure for "have we seen this before?". The
+fingerprint is used **only** there. On the hosted sign-in page, where the cookie could have
+come back, a browser without it is a new device even when its headers match: every one of
+those headers is sent by the client and seen by every site the person visits, so anybody
+holding a password could otherwise replay them past a `new_device` challenge.
 
 Devices are remembered only after a sign-in **succeeds** — through any door: password,
 passkey, magic link, Enterprise SSO, social login, a completed challenge. Typing somebody's
@@ -257,7 +260,8 @@ newest first; pass `next_cursor` as `after` for the next page.
   each account; nothing per-IP catches a slow, wide spray. A shared NAT (an office, a mobile
   carrier) can also trip the per-IP rules — allow-list it.
 - **Device recognition is not identification.** Clearing cookies makes any device new; the
-  fingerprint fallback is deliberately coarse. A deny-listed device is a speed bump, not a ban.
+  fingerprint fallback (Frontend API only) is deliberately coarse, and somebody who copies a
+  person's browser headers can pass as one of their devices there. A deny-listed device is a speed bump, not a ban.
 - **Passkey and magic-link attempts are judged before anybody is known**, so their facts carry
   no address: rules on `email`, `new_device` or travel do not apply to them, and a challenge adds
   no step (they already prove possession). Blocks, lists and per-IP rules do apply.

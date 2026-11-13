@@ -97,8 +97,21 @@ final readonly class OrganizationKeyPrincipal implements Principal
      * The person behind this key: the team member who minted it in the console, or — for a
      * key minted by a key — whoever minted the first key in that chain. A chain that ends
      * in no person has nobody to ask.
+     *
+     * …and only while they still hold the workspace authority keys are minted with: an active
+     * member whose role may change environments. A minter removed or demoted is nobody to ask
+     * ({@see EnvironmentKeyPrincipal::approverSubjectId()}).
      */
     public function approverSubjectId(): ?string
+    {
+        $person = $this->mintingPerson();
+
+        return $person !== null && WorkspaceAuthority::mayManageEnvironments($person, $this->key->organization_id)
+            ? $person
+            : null;
+    }
+
+    private function mintingPerson(): ?string
     {
         $key = $this->key;
 

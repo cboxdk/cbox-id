@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\BlockDuringImpersonation;
+use App\Http\Middleware\ResolveLocale;
 use App\Platform\Console\ConsoleRoutes;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
+use Cbox\Id\Devices\Http\Controllers\AppAssociationController;
 use Cbox\Id\Devices\Http\Controllers\AppReviewController;
 use Cbox\Id\Devices\Http\Controllers\ApprovalController;
 use Cbox\Id\Devices\Http\Controllers\BootstrapController;
@@ -150,6 +152,16 @@ Route::middleware(['api', ResolveEnvironment::class, 'throttle:api-devices'])
 
 // Public policy/support page for the App Store listing; no account or session required.
 Route::get('/authenticator/privacy', PrivacyController::class)->middleware('throttle:60,1')->name('authenticator.privacy');
+
+/*
+ * Universal Links / App Links. The association documents let the Authenticator claim
+ * `/authenticator/approve/{id}`; the same URL is a page when the app did not open. Every
+ * host answers them, a tenant's as much as the login host (root = tenant parity), and none
+ * needs a session or an environment: the app is the same app everywhere.
+ */
+Route::get('/.well-known/apple-app-site-association', [AppAssociationController::class, 'apple'])->middleware('throttle:120,1')->name('authenticator.aasa');
+Route::get('/.well-known/assetlinks.json', [AppAssociationController::class, 'android'])->middleware('throttle:120,1')->name('authenticator.assetlinks');
+Route::get('/authenticator/approve/{id}', [AppAssociationController::class, 'fallback'])->middleware(['throttle:60,1', ResolveLocale::class])->name('authenticator.approve');
 
 // A real approval exercise, available only to the explicitly configured review subject.
 Route::middleware(['web', 'plane:console', 'platform.auth', 'console.customer', 'console.root', BlockDuringImpersonation::class])

@@ -6,6 +6,7 @@ use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\EnvironmentAdminAuth;
 use App\Platform\Impersonation;
 use App\Platform\PlatformAuth;
+use App\Platform\StepUpPlane;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -20,11 +21,12 @@ use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
+use Cbox\Id\SamlIdp\Testing\InteractsWithSamlIdp;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
-uses(RefreshDatabase::class);
+uses(RefreshDatabase::class, InteractsWithSamlIdp::class);
 
 beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('', 200)]));
 
@@ -82,6 +84,7 @@ it('starts the impersonation on the environment\'s own host, through a signed si
 
     app(EnvironmentContext::class)->set(GenericEnvironment::of($envId));
     actAsEnvironmentAdmin($admin, $envId);
+    confirmEnvironmentStepUp();
     $console = (string) session(PlatformAuth::SESSION_KEY);
 
     expect(app(EnvironmentAdminAuth::class)->check())
@@ -114,6 +117,7 @@ it('refuses a launch link that was tampered with, or outlived the console that m
     ['subjectId' => $admin, 'envId' => $envId, 'orgId' => $orgId, 'userId' => $userId] = envAdminImpersonationSetup();
 
     actAsEnvironmentAdmin($admin, $envId);
+    confirmEnvironmentStepUp();
     $console = (string) session(PlatformAuth::SESSION_KEY);
 
     $launch = (string) $this->post(route('environment.impersonate', $userId), ['organization' => $orgId, 'reason' => IMPERSONATION_REASON])
@@ -134,6 +138,7 @@ it('opens a launch link only on the environment it names, for an administrator w
     ['subjectId' => $admin, 'member' => $member, 'envId' => $envId, 'orgId' => $orgId, 'userId' => $userId] = envAdminImpersonationSetup();
 
     actAsEnvironmentAdmin($admin, $envId);
+    confirmEnvironmentStepUp();
 
     $mint = fn (): string => (string) $this->post(route('environment.impersonate', $userId), ['organization' => $orgId, 'reason' => IMPERSONATION_REASON])
         ->headers->get('Location');
@@ -162,4 +167,145 @@ it('opens a launch link only on the environment it names, for an administrator w
     backOnTestHost();
     $this->get($launch)->assertNotFound();
     expect(session(Impersonation::SESSION_KEY))->toBeNull();
+})->group('security');
+
+/**
+ * Audit finding #18. Starting an impersonation is privileged access: the support session
+ * beside it already asks for the environment console's step-up, and this one did not, so a
+ * stale, unattended or hijacked console session was enough to become any regular member.
+ */
+it('asks for the environment step-up before stepping into anyone, and starts nothing without it', function (): void {
+    ['subjectId' => $admin, 'envId' => $envId, 'orgId' => $orgId, 'userId' => $userId] = envAdminImpersonationSetup();
+
+    actAsEnvironmentAdmin($admin, $envId);
+
+    $start = $this->post(route('environment.impersonate', $userId), ['organization' => $orgId, 'reason' => IMPERSONATION_REASON]);
+
+    // To the step-up, not to a launch link.
+    $start->assertRedirect();
+    expect(parse_url((string) $start->headers->get('Location'), PHP_URL_PATH))->not->toBe('/impersonation/launch')
+        ->and(session(Impersonation::SESSION_KEY))->toBeNull();
+
+    // An Inertia request is answered in place with the step-up dialog's 403.
+    $this->post(route('environment.impersonate', $userId), ['organization' => $orgId, 'reason' => IMPERSONATION_REASON], ['X-Inertia' => 'true'])
+        ->assertForbidden()
+        ->assertJsonPath('step_up.plane', StepUpPlane::Environment->label());
+
+    // With the step-up, the same request is the launch link.
+    confirmEnvironmentStepUp();
+    $launch = (string) $this->post(route('environment.impersonate', $userId), ['organization' => $orgId, 'reason' => IMPERSONATION_REASON])
+        ->headers->get('Location');
+
+    expect(parse_url($launch, PHP_URL_PATH))->toBe('/impersonation/launch');
+})->group('security');
+
+/**
+ * Audit finding #18, second half. An impersonation is a read-only look at a person. The
+ * SAML IdP's HTTP-Redirect binding is a GET, which the method-based read-only guard let
+ * through, so the impersonated session could get a signed assertion naming the person for
+ * any service provider they reach — a sign-in elsewhere AS them, outside the support
+ * session's controls.
+ */
+it('never issues a SAML assertion for the person being impersonated', function (): void {
+    ['subjectId' => $admin, 'env' => $env, 'envId' => $envId, 'orgId' => $orgId, 'userId' => $userId] = envAdminImpersonationSetup();
+
+    $sp = app(EnvironmentContext::class)->runAs($env, function () use ($userId) {
+        app(Subjects::class)->markEmailVerified($userId, 'victim@tenant.test');
+
+        return $this->registerSamlServiceProvider();
+    });
+
+    actAsEnvironmentAdmin($admin, $envId);
+    confirmEnvironmentStepUp();
+    followImpersonationLaunch($this->post(route('environment.impersonate', $userId), ['organization' => $orgId, 'reason' => IMPERSONATION_REASON]))
+        ->assertRedirect(route('dashboard'));
+
+    expect(app(Impersonation::class)->isImpersonating())->toBeTrue();
+
+    $sso = fn () => $this->get('/sso/saml/idp/sso?'.http_build_query([
+        'SAMLRequest' => $this->makeRedirectAuthnRequest($sp->entity_id),
+        'RelayState' => 'imp',
+    ]));
+
+    $sso()->assertForbidden()->assertDontSee('SAMLResponse', false);
+
+    // Control: the same request from the person's own session is answered with an assertion.
+    $this->post(route('impersonation.exit'));
+    $own = app(EnvironmentContext::class)->runAs($env, fn () => app(SessionManager::class)->start($userId, $orgId, ['pwd'])->id);
+    session([PlatformAuth::SESSION_KEY => $own]);
+
+    $sso()->assertOk()->assertSee('name="SAMLResponse"', false);
+})->group('security');
+
+/**
+ * Audit finding #22. Impersonating a person who belongs to no organization is a supported
+ * branch, and its marker carries no organization. The validator demanded one, so the
+ * marker read as "not impersonating" and every guard stood down: writes allowed, no time
+ * box, credential routes open, and Exit refused.
+ */
+it('contains an impersonation of a person with no organization like any other', function (): void {
+    ['subjectId' => $admin, 'env' => $env, 'envId' => $envId] = envAdminImpersonationSetup();
+
+    $loneId = app(EnvironmentContext::class)->runAs($env, fn () => app(Subjects::class)->create('lonely@tenant.test', 'Lonely', 'a-strong-unbreached-passphrase')->id);
+
+    actAsEnvironmentAdmin($admin, $envId);
+    confirmEnvironmentStepUp();
+    followImpersonationLaunch($this->post(route('environment.impersonate', $loneId), ['reason' => IMPERSONATION_REASON]))
+        ->assertRedirect(route('dashboard'));
+
+    $marker = app(Impersonation::class)->active();
+
+    expect($marker)->not->toBeNull()
+        ->and($marker?->organizationId)->toBeNull()
+        ->and($marker?->subject)->toBe($loneId)
+        ->and(app(Impersonation::class)->isImpersonating())->toBeTrue();
+
+    // Read-only, and the credential routes closed.
+    $this->post(route('device.lookup'), ['user_code' => 'ABCD-EFGH'])->assertForbidden();
+    $this->post(route('passkeys.register.options'))->assertForbidden();
+
+    // The time box ends it.
+    $this->travel(Impersonation::MAX_MINUTES + 1)->minutes();
+    $this->get(route('dashboard'))->assertRedirect();
+    expect(session(Impersonation::SESSION_KEY))->toBeNull();
+})->group('security');
+
+it('lets the administrator exit an impersonation of a person with no organization', function (): void {
+    ['subjectId' => $admin, 'env' => $env, 'envId' => $envId] = envAdminImpersonationSetup();
+
+    $loneId = app(EnvironmentContext::class)->runAs($env, fn () => app(Subjects::class)->create('lonely@tenant.test', 'Lonely', 'a-strong-unbreached-passphrase')->id);
+
+    actAsEnvironmentAdmin($admin, $envId);
+    confirmEnvironmentStepUp();
+    followImpersonationLaunch($this->post(route('environment.impersonate', $loneId), ['reason' => IMPERSONATION_REASON]));
+
+    $subjectSession = (string) session(PlatformAuth::SESSION_KEY);
+
+    $back = (string) $this->post(route('impersonation.exit'))->assertRedirect()->headers->get('Location');
+
+    expect(parse_url($back, PHP_URL_PATH))->toBe('/'.app(EnvironmentConsolePath::class)->for($envId))
+        ->and(session(Impersonation::SESSION_KEY))->toBeNull()
+        ->and(app(EnvironmentContext::class)->runAs($env, fn () => app(SessionManager::class)->active($subjectSession)))->toBeNull();
+})->group('security');
+
+/**
+ * Fail closed: a marker that is there but does not parse is still an impersonation. The
+ * guards stay up, and Exit ends it rather than answering 403 and leaving the browser as
+ * the person.
+ */
+it('treats an unreadable impersonation marker as an impersonation, and still ends it', function (): void {
+    ['env' => $env, 'orgId' => $orgId, 'userId' => $userId] = envAdminImpersonationSetup();
+
+    backOnTestHost();
+    $session = app(EnvironmentContext::class)->runAs($env, fn () => app(SessionManager::class)->start($userId, $orgId, ['impersonation'])->id);
+    session([PlatformAuth::SESSION_KEY => $session, Impersonation::SESSION_KEY => ['subject' => $userId]]);
+
+    expect(app(Impersonation::class)->active())->toBeNull()
+        ->and(app(Impersonation::class)->isImpersonating())->toBeTrue();
+
+    $this->post(route('impersonation.exit'))->assertRedirect(route('login'));
+
+    expect(session(Impersonation::SESSION_KEY))->toBeNull()
+        ->and(session(PlatformAuth::SESSION_KEY))->toBeNull()
+        ->and(app(EnvironmentContext::class)->runAs($env, fn () => app(SessionManager::class)->active($session)))->toBeNull();
 })->group('security');

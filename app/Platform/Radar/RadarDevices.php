@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform\Radar;
 
+use App\Http\Middleware\StatelessFrontendApi;
 use App\Models\Radar\RadarDevice;
 use App\Platform\Radar\IpIntelligence\IpProfile;
 use Illuminate\Database\Eloquent\Collection;
@@ -21,8 +22,8 @@ use Illuminate\Support\Facades\Cookie;
  * the environment. There is no third-party script, no canvas or font probing, no storage
  * beyond the cookie.
  *
- * The FINGERPRINT is the weaker fallback for clients that keep no cookies (the cross-origin
- * Frontend API, a private window): the user agent with every version reduced to its major
+ * The FINGERPRINT is the weaker fallback for the one door that cannot carry the cookie (the
+ * cross-origin Frontend API), and only there ({@see self::knows()}): the user agent with every version reduced to its major
  * number, the `Sec-CH-UA` client hints the browser sends anyway, and the first language it
  * asks for — hashed, keyed, never stored raw. It is coarse on purpose: two colleagues on the
  * same browser and OS look alike, which is the right failure for a "have we seen this
@@ -73,6 +74,7 @@ final readonly class RadarDevices
             $this->pseudonyms->device($id),
             $returning,
             $this->pseudonyms->fingerprint(self::fingerprintMaterial($request)),
+            $request->is(StatelessFrontendApi::PATHS),
         );
     }
 
@@ -91,12 +93,25 @@ final readonly class RadarDevices
     }
 
     /**
+     * Whether this account has signed in from this device before.
+     *
+     * The returning cookie decides. The fingerprint is asked only of a door that cannot
+     * carry the cookie ({@see DeviceIdentity::$cookieless}): it is made of headers the
+     * client chooses and every site sees, so on the browser's own sign-in page somebody
+     * holding a stolen password and replaying the owner's user agent and language was
+     * "a device already seen", and the new-device step-up an environment switched on never
+     * asked them anything.
+     *
      * @param  Collection<int, RadarDevice>  $history
      */
     public function knows(Collection $history, DeviceIdentity $device): bool
     {
         foreach ($history as $known) {
-            if (($device->returning && $known->device_hash === $device->deviceHash) || $known->fingerprint_hash === $device->fingerprintHash) {
+            if ($device->returning && $known->device_hash === $device->deviceHash) {
+                return true;
+            }
+
+            if ($device->cookieless && $known->fingerprint_hash === $device->fingerprintHash) {
                 return true;
             }
         }

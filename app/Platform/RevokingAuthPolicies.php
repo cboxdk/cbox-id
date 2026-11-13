@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Platform;
 
 use App\Http\Middleware\Authenticate;
+use App\Platform\OAuth\GrantWithdrawal;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Models\Session;
 use Cbox\Id\Identity\ValueObjects\AuthPolicy;
+use Cbox\Id\OAuthServer\Models\RefreshToken;
 use Cbox\Id\Organization\Contracts\Memberships;
 
 /**
@@ -35,6 +37,14 @@ use Cbox\Id\Organization\Contracts\Memberships;
  * fix aimed at the surfaces would have covered the population it was not written for and
  * missed the one it was written for. Here every writer passes through, the console page
  * that exists and the API path that does not yet.
+ *
+ * AND THE APP GRANTS THOSE SIGN-INS PRODUCED. Ending the sessions left every refresh token a
+ * password sign-in had handed an app: the app (or whoever signed in with a stolen password
+ * and authorized one) went on minting access tokens for the mandated organization, with
+ * `amr: ["pwd"]`, until the family expired. Each affected person's grants from a sign-in
+ * that was not single sign-on are withdrawn before their sessions end
+ * ({@see GrantWithdrawal::fromLocalSignIns()}); a grant from the mandated identity
+ * provider's own sign-in is the way in the mandate asks for, and is kept.
  */
 final class RevokingAuthPolicies implements AuthPolicies
 {
@@ -42,6 +52,7 @@ final class RevokingAuthPolicies implements AuthPolicies
         private readonly AuthPolicies $inner,
         private readonly SessionManager $sessions,
         private readonly Memberships $memberships,
+        private readonly GrantWithdrawal $grants,
     ) {}
 
     public function resolve(?string $organizationId = null): AuthPolicy
@@ -114,10 +125,42 @@ final class RevokingAuthPolicies implements AuthPolicies
         $this->inner->setForOrganization($organizationId, $policy);
 
         if ($wasAllowed && ! $this->inner->resolve($organizationId)->sso->allowsPasswordLogin()) {
+            // PER ORGANIZATION, the mandate governs that organization and nothing else: a
+            // member's sessions in their OTHER organizations are none of this
+            // administrator's business, and entering this one again is asked at its door
+            // ({@see SsoMandates::admits()}). So only the sessions held IN this organization
+            // that its mandate no longer admits are ended.
+            if (SsoMandates::perOrganization()) {
+                $this->revokeSessionsIn($organizationId);
+
+                return;
+            }
+
+            // Per person, one membership's mandate closes local sign-in to the person
+            // everywhere ({@see PlatformAuth::localSignInAllowedFor()}), so a local session
+            // left anywhere would be a way into this organization the mandate just shut.
+            // That is why the organization must have a connection to require it through
+            // ({@see OrganizationSsoMandateGuard}): its members always keep a way back in.
             foreach ($this->memberships->forOrganization($organizationId) as $membership) {
-                $this->sessions->revokeAllForUser($membership->user_id);
+                $this->endLocalSignIns($membership->user_id);
             }
         }
+    }
+
+    /** End the live sessions bound to this organization that its SSO mandate does not admit. */
+    private function revokeSessionsIn(string $organizationId): void
+    {
+        $mandates = app(SsoMandates::class);
+
+        Session::query()
+            ->where('organization_id', $organizationId)
+            ->whereNull('revoked_at')
+            ->where('expires_at', '>', now())
+            ->each(function (Session $session) use ($mandates, $organizationId): void {
+                if (! $mandates->admits($session, $organizationId)) {
+                    $this->sessions->revoke($session->id);
+                }
+            });
     }
 
     /**
@@ -144,16 +187,30 @@ final class RevokingAuthPolicies implements AuthPolicies
      */
     private function revokeEveryLiveSessionHere(): void
     {
-        $userIds = Session::query()
+        $sessionHolders = Session::query()
             ->whereNull('revoked_at')
             ->where('expires_at', '>', now())
             ->distinct()
             ->pluck('user_id');
 
-        foreach ($userIds as $userId) {
+        // A grant outlives the session it came from, so its holders are asked for too.
+        $grantHolders = RefreshToken::query()
+            ->whereNull('revoked_at')
+            ->whereNotNull('user_id')
+            ->distinct()
+            ->pluck('user_id');
+
+        foreach ($sessionHolders->merge($grantHolders)->unique() as $userId) {
             if (is_string($userId) && $userId !== '') {
-                $this->sessions->revokeAllForUser($userId);
+                $this->endLocalSignIns($userId);
             }
         }
+    }
+
+    /** The grants first, then the sessions — whose revocation tells the apps (back-channel logout). */
+    private function endLocalSignIns(string $userId): void
+    {
+        $this->grants->fromLocalSignIns($userId);
+        $this->sessions->revokeAllForUser($userId);
     }
 }
