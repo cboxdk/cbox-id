@@ -404,7 +404,8 @@ it('walks domain verification end to end: add, publish, check, verified, remove'
 it('says a refusal in the visitor\'s language', function (): void {
     $org = intentOrg();
     $other = intentOrg('portal-rival');
-    app(DomainVerification::class)->add($other, 'taken.example');
+    // Verified, not merely claimed: only a domain another organization has proved is refused.
+    app(DomainVerification::class)->add($other, 'taken.example')->forceFill(['verified_at' => now()])->save();
     openPortal($org, [PortalIntent::DomainVerification]);
 
     $this->withHeader('Accept-Language', 'da');
