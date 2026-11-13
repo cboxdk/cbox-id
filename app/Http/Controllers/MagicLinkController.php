@@ -7,7 +7,6 @@ namespace App\Http\Controllers;
 use App\Http\Props\Auth\LinkConfirmationProps;
 use App\Platform\Enums\RefusedFactor;
 use App\Platform\IntendedUrl;
-use App\Platform\MailboxProof;
 use App\Platform\OAuth\AppSignIns;
 use App\Platform\PlatformAuth;
 use App\Platform\Radar\Enums\RadarMethod;
@@ -58,7 +57,7 @@ final readonly class MagicLinkController extends PageController
         ]);
     }
 
-    public function redeem(Request $request, string $token, MagicLink $magicLink, PlatformAuth $auth, RiskGuard $risk, SessionManager $sessions, MailboxProof $mailboxProof): RedirectResponse
+    public function redeem(Request $request, string $token, MagicLink $magicLink, PlatformAuth $auth, RiskGuard $risk, SessionManager $sessions): RedirectResponse
     {
         app(IdentityCapture::class)->begin($request);
         // Risk rejection precedes consumption. A magic link proves mailbox access;
@@ -103,10 +102,11 @@ final readonly class MagicLinkController extends PageController
             return redirect()->route('login');
         }
 
-        // The link proved the mailbox. An account whose address was never confirmed becomes
-        // this person's alone — before the second-factor check, so a factor somebody else
-        // enrolled on it cannot stand between them and their own address.
-        $mailboxProof->claim($session);
+        // The link proved the mailbox. An account whose address was never confirmed has
+        // already become this person's alone inside redeem() (the framework's MailboxProof,
+        // see PlatformMailboxProof) — before the session started and before the
+        // second-factor check below, so a factor somebody else enrolled on it cannot stand
+        // between them and their own address.
 
         if (app(MfaVerification::class)->requiresVerification($session->user_id, array_values($session->amr))
             && ! app(MfaMandate::class)->requiresEnrolment($session->user_id)) {

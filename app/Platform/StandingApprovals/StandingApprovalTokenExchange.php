@@ -154,12 +154,10 @@ final readonly class StandingApprovalTokenExchange implements TokenExchange
         return $entry;
     }
 
-    /** A client's own token: active, and its subject is the client itself. */
+    /** A client's own token: active, its subject is the client itself, nobody acting for it. */
     private static function isMachine(Introspection $subject): bool
     {
-        return $subject->active
-            && is_string($subject->clientId) && $subject->clientId !== ''
-            && $subject->subject === $subject->clientId;
+        return $subject->isMachine();
     }
 
     /** @param array<string, mixed> $entry */

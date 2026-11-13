@@ -28,6 +28,11 @@ uses(RefreshDatabase::class);
  * key that app declares only when the user holds it through that app's own declared row —
  * which also covers the order the console cannot see (the manual key came first, the app
  * declared the same key later).
+ *
+ * The token half is the framework's own since laravel-id 2.8
+ * (HierarchyAwareAccessChecker::forToken()); the app used to decorate the checker to the
+ * same end. These tests resolve the container's checker, so they hold the line through
+ * the app whichever layer enforces it.
  */
 function shadowApp(): string
 {

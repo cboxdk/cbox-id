@@ -12,7 +12,7 @@ final class MachineTokenAuthority
 {
     public static function issued(Introspection $token): bool
     {
-        if (! $token->active || $token->clientId === null || $token->subject !== $token->clientId || array_key_exists('act', $token->claims)) {
+        if (! $token->isMachine() || $token->clientId === null) {
             return false;
         }
 
