@@ -4835,4 +4835,5 @@ https://staging.example.com',
     'environment_delete_protected_reserved' => 'This environment answers on one of the platform\'s own addresses and cannot be deleted.',
     'environment_delete_protected_configured' => 'This installation\'s configuration names this environment (:key), so it cannot be deleted here.',
     'environment_delete_unavailable' => 'This environment holds data this version cannot remove yet, so nothing was deleted. Contact support.',
+    'that_address_has_not_been_confirmed_so_the_account_may_e0febd82' => 'That address has not been confirmed, so the account may not belong to the person you mean. Invite them instead, or add the account from its user page.',
 ];

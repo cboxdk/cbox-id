@@ -4837,4 +4837,5 @@ https://staging.example.com',
     'environment_delete_protected_reserved' => 'Deze omgeving is bereikbaar op een van de eigen adressen van het platform en kan niet worden verwijderd.',
     'environment_delete_protected_configured' => 'De configuratie van deze installatie verwijst naar deze omgeving (:key), dus deze kan hier niet worden verwijderd.',
     'environment_delete_unavailable' => 'Deze omgeving bevat gegevens die deze versie nog niet kan verwijderen, dus er is niets verwijderd. Neem contact op met support.',
+    'that_address_has_not_been_confirmed_so_the_account_may_e0febd82' => 'Dit adres is niet bevestigd, dus het account is mogelijk niet van de persoon die je bedoelt. Nodig die persoon liever uit, of voeg het account toe vanaf de gebruikerspagina.',
 ];

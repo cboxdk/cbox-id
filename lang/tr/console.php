@@ -4837,4 +4837,5 @@ https://staging.example.com',
     'environment_delete_protected_reserved' => 'Bu ortam platformun kendi adreslerinden birinde yanıt veriyor ve silinemez.',
     'environment_delete_protected_configured' => 'Bu kurulumun yapılandırması bu ortama işaret ediyor (:key), bu yüzden burada silinemez.',
     'environment_delete_unavailable' => 'Bu ortam, bu sürümün henüz kaldıramadığı veriler içeriyor; bu yüzden hiçbir şey silinmedi. Destek ile iletişime geçin.',
+    'that_address_has_not_been_confirmed_so_the_account_may_e0febd82' => 'Bu adres doğrulanmadı, bu yüzden hesap kastettiğiniz kişiye ait olmayabilir. Bunun yerine davet gönderin veya hesabı kullanıcı sayfasından ekleyin.',
 ];

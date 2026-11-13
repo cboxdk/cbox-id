@@ -4837,4 +4837,5 @@ https://staging.example.com',
     'environment_delete_protected_reserved' => 'Ez a környezet a platform egyik saját címén válaszol, ezért nem törölhető.',
     'environment_delete_protected_configured' => 'A telepítés konfigurációja hivatkozik erre a környezetre (:key), ezért itt nem törölhető.',
     'environment_delete_unavailable' => 'A környezet olyan adatokat tartalmaz, amelyeket ez a verzió még nem tud eltávolítani, ezért semmi sem lett törölve. Forduljon az ügyfélszolgálathoz.',
+    'that_address_has_not_been_confirmed_so_the_account_may_e0febd82' => 'Ez a cím nincs megerősítve, így a fiók talán nem ahhoz a személyhez tartozik, akire gondol. Inkább küldjön meghívót, vagy adja hozzá a fiókot a felhasználói oldaláról.',
 ];

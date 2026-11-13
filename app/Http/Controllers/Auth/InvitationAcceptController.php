@@ -12,6 +12,7 @@ use App\Platform\Invitations\Contracts\TeamInvitations;
 use App\Platform\PlatformAuth;
 use App\Platform\SsoRefusal;
 use App\Platform\SubjectCredentialGate;
+use App\Platform\UnverifiedAccountClaim;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Invitations;
 use Cbox\Id\Platform\PlatformRoot;
@@ -71,6 +72,7 @@ final readonly class InvitationAcceptController extends PageController
         SubjectCredentialGate $gate,
         PlatformAuth $auth,
         PlatformRoot $platformRoot,
+        UnverifiedAccountClaim $claims,
     ): RedirectResponse {
         $invitation = $platformRoot->run(fn () => $invitations->byToken($token));
 
@@ -81,9 +83,26 @@ final readonly class InvitationAcceptController extends PageController
         $email = (string) $invitation->email;
         $existing = $platformRoot->run(fn () => $subjects->findByEmail($email));
 
-        $subject = $platformRoot->run(
-            fn () => $existing ?? $subjects->create($email, null, $request->password()),
-        );
+        /*
+         * The signed link proves the mailbox. An account already under this address that
+         * nobody confirmed is handed to the person holding the link: whatever was set on it
+         * before is withdrawn, and the password they chose on this page becomes its only
+         * credential. A confirmed account is its owner's and is left as it is.
+         */
+        $subject = $platformRoot->run(function () use ($existing, $subjects, $claims, $email, $request) {
+            if ($existing === null) {
+                return $subjects->create($email, null, $request->password());
+            }
+
+            if ($existing->emailVerified) {
+                return $existing;
+            }
+
+            $claimed = $claims->claim($existing, $email);
+            $subjects->setPassword($claimed->id, $request->password());
+
+            return $claimed;
+        });
 
         if ($subject === null) {
             return to_route('login')->with('error', __('auth.accept_invite.not_completed'));

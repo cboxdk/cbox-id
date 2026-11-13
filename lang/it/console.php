@@ -4838,4 +4838,5 @@ Le connessioni',
     'environment_delete_protected_reserved' => 'Questo ambiente risponde su uno degli indirizzi propri della piattaforma e non può essere eliminato.',
     'environment_delete_protected_configured' => 'La configurazione di questa installazione fa riferimento a questo ambiente (:key), quindi non può essere eliminato qui.',
     'environment_delete_unavailable' => 'Questo ambiente contiene dati che questa versione non può ancora rimuovere, quindi non è stato eliminato nulla. Contatta l’assistenza.',
+    'that_address_has_not_been_confirmed_so_the_account_may_e0febd82' => 'Questo indirizzo non è stato confermato, quindi l’account potrebbe non appartenere alla persona che intendi. Invitala invece, oppure aggiungi l’account dalla sua pagina utente.',
 ];

@@ -4837,4 +4837,5 @@ https://staging.example.com',
     'environment_delete_protected_reserved' => 'Den här miljön svarar på en av plattformens egna adresser och kan inte tas bort.',
     'environment_delete_protected_configured' => 'Installationens konfiguration pekar på den här miljön (:key), så den kan inte tas bort här.',
     'environment_delete_unavailable' => 'Miljön innehåller data som den här versionen ännu inte kan ta bort, så inget togs bort. Kontakta supporten.',
+    'that_address_has_not_been_confirmed_so_the_account_may_e0febd82' => 'Adressen är inte bekräftad, så kontot kanske inte tillhör personen du menar. Bjud in personen i stället, eller lägg till kontot från användarsidan.',
 ];

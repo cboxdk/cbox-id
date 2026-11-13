@@ -125,6 +125,9 @@ it('adds a member to an organization by email', function (): void {
     crudSetup();
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant C', slug: 'tenant-c'));
     $user = app(Subjects::class)->create('dave@acme.example', 'Dave');
+    // By ADDRESS, so the address must be confirmed: an unconfirmed one may be somebody
+    // else's (InvitationUnverifiedAccountTest).
+    app(Subjects::class)->markEmailVerified($user->id, 'dave@acme.example');
 
     addOrganizationMember($org->id, ['role' => 'admin'])->assertSessionHasNoErrors();
 
@@ -546,6 +549,7 @@ it('renders the detail pages for login methods, event hooks, conflict rules and 
 it('adds a member with an RBAC access role from the organization screen', function (): void {
     crudSetup();
     $user = app(Subjects::class)->create('dan@acme.example', 'Dan');
+    app(Subjects::class)->markEmailVerified($user->id, 'dan@acme.example');
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant C', slug: 'tenant-c'));
     // An environment-wide manual role — the kind the Roles console authors.
     $role = app(Roles::class)->define(null, 'Team leads', 'Team leads across the org', null);

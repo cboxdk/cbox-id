@@ -4837,4 +4837,5 @@ https://staging.example.com',
     'environment_delete_protected_reserved' => 'Toto prostredie odpovedá na jednej z vlastných adries platformy a nemožno ho odstrániť.',
     'environment_delete_protected_configured' => 'Konfigurácia tejto inštalácie odkazuje na toto prostredie (:key), preto ho tu nemožno odstrániť.',
     'environment_delete_unavailable' => 'Toto prostredie obsahuje údaje, ktoré táto verzia zatiaľ nevie odstrániť, preto nebolo nič odstránené. Kontaktujte podporu.',
+    'that_address_has_not_been_confirmed_so_the_account_may_e0febd82' => 'Táto adresa nebola potvrdená, takže účet nemusí patriť osobe, ktorú máte na mysli. Namiesto toho ju pozvite alebo pridajte účet z jeho používateľskej stránky.',
 ];
