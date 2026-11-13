@@ -4214,6 +4214,7 @@ export type MessageKey =
     | 'console.setup_link_for_their_it_admin_8c06f675'
     | 'console.setup_link_for_your_it_admin_df0a3a89'
     | 'console.setup_progress_e9b4495a'
+    | 'console.several_accounts_share_that_address_name_the_one_you_2c942f61'
     | 'console.share_it_with_your_team_474083cd'
     | 'console.shared'
     | 'console.shell_create_project'

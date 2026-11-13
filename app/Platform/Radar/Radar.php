@@ -7,6 +7,7 @@ namespace App\Platform\Radar;
 use App\Platform\Radar\Enums\RadarAction;
 use App\Platform\Radar\Enums\RadarFlow;
 use App\Platform\Radar\Enums\RadarMethod;
+use App\Platform\Radar\Events\SignInSucceeded;
 use App\Platform\Radar\IpIntelligence\IpIntelligence;
 use App\Platform\RiskGuard;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -83,6 +84,8 @@ final readonly class Radar
      */
     public function succeeded(Request $request, string $subjectId): void
     {
+        $email = null;
+
         try {
             $email = $this->subjects->find($subjectId)?->email;
 
@@ -97,6 +100,16 @@ final readonly class Radar
             DB::transaction(fn () => $this->devices->remember($this->pseudonyms->subject($email), $this->devices->identify($request), $profile));
         } catch (Throwable $e) {
             Log::warning('radar could not remember a successful sign-in', ['error' => $e->getMessage()]);
+        }
+
+        // The risk signals that learn from a sign-in learn from this one (risk-plus's
+        // device and travel memory), never from an attempt still being scored.
+        try {
+            if (is_string($email) && $email !== '') {
+                event(new SignInSucceeded($request, $subjectId, $email));
+            }
+        } catch (Throwable $e) {
+            Log::warning('a sign-in listener failed', ['error' => $e->getMessage()]);
         }
     }
 

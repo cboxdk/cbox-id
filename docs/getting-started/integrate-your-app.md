@@ -187,6 +187,14 @@ if (result.status === 'ok') {
 }
 ```
 
+**Redeem the ticket from the browser that signed in.** A ticket opens a session only for a
+request from the same network address as the sign-in that produced it. The embedded form
+runs in the person's own browser, so that holds by itself. What it stops is a ticket somebody
+minted for their own account on a server and pushed through another person's browser: that
+would sign the browser in as them (login CSRF). So don't call `/frontend/v1/sign-in` from your
+backend and forward the ticket. A ticket redeemed from another address is simply not used,
+and the person signs in on the hosted page instead.
+
 **You get a ticket, never a token.** That is the whole design. Handing tokens to a page
 that proved a password is the implicit grant, which OAuth 2.1 removes — tokens in a URL, in
 history, in `Referer`, with no client authentication and no PKCE binding. The ticket is

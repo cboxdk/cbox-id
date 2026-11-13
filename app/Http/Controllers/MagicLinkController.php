@@ -11,11 +11,10 @@ use App\Platform\OAuth\AppSignIns;
 use App\Platform\PlatformAuth;
 use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
+use App\Platform\SignInHolds;
 use App\Platform\SsoRefusal;
 use App\SignalsData\IdentityCapture;
 use Cbox\Id\Identity\Contracts\MagicLink;
-use Cbox\Id\Identity\Contracts\MfaMandate;
-use Cbox\Id\Identity\Contracts\MfaVerification;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Exceptions\InvalidMagicLink;
 use Cbox\Id\Identity\Models\Session;
@@ -108,8 +107,11 @@ final readonly class MagicLinkController extends PageController
         // second-factor check below, so a factor somebody else enrolled on it cannot stand
         // between them and their own address.
 
-        if (app(MfaVerification::class)->requiresVerification($session->user_id, array_values($session->amr))
-            && ! app(MfaMandate::class)->requiresEnrolment($session->user_id)) {
+        // The SAME question every door asks ({@see SignInHolds::mustVerify()}). It used to
+        // skip the challenge whenever the mandate also wanted a stronger factor, which is
+        // true of an owner or admin whose only factor is SMS: the link (the mailbox alone)
+        // then adopted a session past the phone they had enrolled.
+        if (app(SignInHolds::class)->mustVerify($session->user_id, array_values($session->amr))) {
             return redirect()->to($auth->challengeSession($request, $session));
         }
 

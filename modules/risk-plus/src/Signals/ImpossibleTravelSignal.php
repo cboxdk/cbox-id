@@ -56,15 +56,12 @@ class ImpossibleTravelSignal implements Signal
         }
 
         $now = Carbon::now()->getTimestamp();
-        $bucket = 'cbox-riskplus:geo:'.$subject;
-        $prior = $this->readPrior($this->cache->get($bucket));
 
-        // Record this sighting for next time, regardless of the outcome.
-        $this->cache->put($bucket, [
-            'lat' => $current->latitude,
-            'lon' => $current->longitude,
-            'at' => $now,
-        ], $this->ttlSeconds);
+        // Read-only: the last place is the last SUCCESSFUL sign-in ({@see remember()}). An
+        // attempt scored before its credential is checked must not move it, or anybody who
+        // knows an address could plant a distant point and get the owner's next sign-in
+        // flagged.
+        $prior = $this->readPrior($this->cache->get('cbox-riskplus:geo:'.$subject));
 
         if ($prior === null) {
             return null;
@@ -91,6 +88,28 @@ class ImpossibleTravelSignal implements Signal
             sprintf('implied travel of %d km/h exceeds %d km/h', (int) round($impliedKmh), (int) $this->maxSpeedKmh),
             ['distance_km' => round($distanceKm, 1), 'seconds' => $elapsedSeconds, 'kmh' => round($impliedKmh)],
         );
+    }
+
+    /** A sign-in from here SUCCEEDED: it is the point the next one is measured from. */
+    public function remember(RiskContext $context): void
+    {
+        $subject = $this->subjectKey->for($context);
+
+        if ($subject === null || $context->ip === null) {
+            return;
+        }
+
+        $current = $this->locator->locate($context->ip);
+
+        if ($current === null) {
+            return;
+        }
+
+        $this->cache->put('cbox-riskplus:geo:'.$subject, [
+            'lat' => $current->latitude,
+            'lon' => $current->longitude,
+            'at' => Carbon::now()->getTimestamp(),
+        ], $this->ttlSeconds);
     }
 
     /**

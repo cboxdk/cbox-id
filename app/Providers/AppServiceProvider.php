@@ -21,6 +21,7 @@ use App\Platform\Agents\MailingBackchannelAuthentication;
 use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Billing\NoProjectSubscriptions;
 use App\Platform\Billing\ProjectSubscriptions;
+use App\Platform\ClaimingPasswordReset;
 use App\Platform\Connect\ActionSnippets;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CspNonce;
@@ -45,6 +46,7 @@ use App\Platform\Passkeys\RecordsPasskeyUse;
 use App\Platform\PlatformMailboxProof;
 use App\Platform\PublicIds\BareIdDeliveryPolicy;
 use App\Platform\PublicIds\WebhookIdFormat;
+use App\Platform\SsoMandateOnJoin;
 use App\Platform\StandingApprovals\StandingApprovals;
 use App\Platform\StandingApprovals\StandingApprovalTokenExchange;
 use App\Platform\StandingApprovals\StandingApprovalTokenIssuer;
@@ -61,6 +63,8 @@ use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Identity\Contracts\ErasureSteps;
 use Cbox\Id\Identity\Contracts\MailboxProof;
 use Cbox\Id\Identity\Contracts\Passkeys;
+use Cbox\Id\Identity\Contracts\PasswordReset;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
@@ -217,6 +221,14 @@ class AppServiceProvider extends ServiceProvider
         // store or its login tickets — see PlatformMailboxProof.
         $this->app->singleton(MailboxProof::class, PlatformMailboxProof::class);
 
+        // …and so does an emailed password reset, which is the same proof (ClaimingPasswordReset).
+        $this->app->extend(PasswordReset::class, fn (PasswordReset $inner, Application $app): PasswordReset => new ClaimingPasswordReset(
+            $inner,
+            $app->make(Subjects::class),
+            $app->make(MailboxProof::class),
+            $app->make(AuditLog::class),
+        ));
+
         // A CIBA request mails the person when no phone will tell them — see ApprovalMail.
         $this->app->extend(BackchannelAuthentication::class, fn (BackchannelAuthentication $inner, Application $app): BackchannelAuthentication => new MailingBackchannelAuthentication(
             $inner,
@@ -294,6 +306,15 @@ class AppServiceProvider extends ServiceProvider
         Membership::created(static function (Membership $membership): void {
             if ($membership->role === MembershipRole::Owner) {
                 app(OrganizationLinks::class)->ensureForNewOrganization($membership->organization_id);
+            }
+        });
+
+        // Joining an organization that requires SSO ends the person's local sessions, the
+        // way the mandate switching on does (see SsoMandateOnJoin). On the model, so every
+        // door that adds or reactivates a membership is covered.
+        Membership::saved(static function (Membership $membership): void {
+            if ($membership->wasRecentlyCreated || $membership->wasChanged('status')) {
+                app(SsoMandateOnJoin::class)->joined($membership);
             }
         });
 

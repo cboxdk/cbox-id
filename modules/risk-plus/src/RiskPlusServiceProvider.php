@@ -9,12 +9,14 @@ use App\Platform\Console\ConsoleArea;
 use App\Platform\Console\ConsolePages;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\DashboardCards;
+use App\Platform\Radar\Events\SignInSucceeded;
 use Cbox\Console\Kit\Facades\Console;
 use Cbox\Id\Identity\Contracts\ErasureSteps;
 use Cbox\Id\RiskPlus\Contracts\GeoLocator;
 use Cbox\Id\RiskPlus\Erasure\RiskHistoryErasureStep;
 use Cbox\Id\RiskPlus\Geo\NullGeoLocator;
 use Cbox\Id\RiskPlus\Listeners\RecordRiskEvent;
+use Cbox\Id\RiskPlus\Listeners\RememberSuccessfulSignIn;
 use Cbox\Id\RiskPlus\Queries\OrganizationRiskEvents;
 use Cbox\Id\RiskPlus\Signals\ImpossibleTravelSignal;
 use Cbox\Id\RiskPlus\Signals\NewDeviceSignal;
@@ -83,6 +85,10 @@ class RiskPlusServiceProvider extends ServiceProvider
 
         // Record elevated assessments for the console to review.
         $this->app->make(Dispatcher::class)->listen(RiskAssessed::class, RecordRiskEvent::class);
+
+        // The device and travel memory learn from a sign-in that succeeded, never from an
+        // attempt still being scored (see NewDeviceSignal::evaluate()).
+        $this->app->make(Dispatcher::class)->listen(SignInSucceeded::class, RememberSuccessfulSignIn::class);
 
         // That review trail names people by address and IP, so erasing a person reaches it.
         $this->callAfterResolving(ErasureSteps::class, static function (ErasureSteps $steps, Application $app): void {
