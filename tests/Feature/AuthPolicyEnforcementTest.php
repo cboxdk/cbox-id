@@ -122,6 +122,7 @@ it('saves the environment baseline from the console and shows what each org gets
     app(EnvironmentContext::class)
         ->set(GenericEnvironment::of($r->environment->id));
     actAsEnvironmentAdmin($r->owner->id, $r->environment->id);
+    confirmEnvironmentStepUp();
 
     $org = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'tenant-'.uniqid()));
 

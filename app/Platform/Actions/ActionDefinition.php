@@ -34,6 +34,7 @@ final readonly class ActionDefinition
         public ?string $schema = null,
         public ?string $tag = null,
         public array $redact = [],
+        public bool $consoleStepUp = true,
     ) {}
 
     /**
@@ -66,7 +67,57 @@ final readonly class ActionDefinition
             schema: $meta->schema,
             tag: $meta->tag,
             redact: $meta->redact,
+            consoleStepUp: $meta->consoleStepUp,
         );
+    }
+
+    /**
+     * This action as one run of it is rated: the same facts, with the danger the input
+     * reaches ({@see RatedByInput}). Never below the declared floor.
+     */
+    public function withDanger(Danger $danger): self
+    {
+        if (self::rank($danger) <= self::rank($this->danger)) {
+            return $this;
+        }
+
+        return new self(
+            class: $this->class,
+            name: $this->name,
+            summary: $this->summary,
+            scope: $this->scope,
+            danger: $danger,
+            plane: $this->plane,
+            method: $this->method,
+            path: $this->path,
+            status: $this->status,
+            consoleRoutes: $this->consoleRoutes,
+            consoleGate: $this->consoleGate,
+            schema: $this->schema,
+            tag: $this->tag,
+            redact: $this->redact,
+            consoleStepUp: $this->consoleStepUp,
+        );
+    }
+
+    /**
+     * Whether some run of this action is Critical: declared so, or rated by its input
+     * ({@see RatedByInput}) and so able to become so. What a consent screen flags and what
+     * an approval page asks a fresh credential for, where the input is not in hand.
+     */
+    public function mayBeCritical(): bool
+    {
+        return $this->danger === Danger::Critical || is_subclass_of($this->class, RatedByInput::class);
+    }
+
+    private static function rank(Danger $danger): int
+    {
+        return match ($danger) {
+            Danger::Read => 0,
+            Danger::Write => 1,
+            Danger::Destructive => 2,
+            Danger::Critical => 3,
+        };
     }
 
     public function input(): InputSchema

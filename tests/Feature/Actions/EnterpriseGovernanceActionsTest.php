@@ -246,6 +246,7 @@ it('defines, switches and removes a role-conflict rule, refusing a role the orga
 
 it('lets an organization administrator see, but never switch or remove, an environment-wide rule', function (): void {
     [$subjectId, $orgId] = govOrgAdmin();
+    confirmStepUp();
     $a = app(Roles::class)->define($orgId, 'create-po');
     $b = app(Roles::class)->define($orgId, 'approve-pay');
     $environmentWide = app(SegregationOfDuties::class)->definePolicy(null, 'Everywhere', [$a->id, $b->id]);
@@ -427,6 +428,7 @@ it('holds a change to how an organization signs in, and lets a Write through', f
 
 it('records an organization administrator\'s outbound and vault changes through the same actions', function (): void {
     [$subjectId, $orgId] = govOrgAdmin();
+    confirmStepUp();
 
     $this->from(route('provisioning.create'))->post(route('provisioning.store'), [
         'name' => 'Downstream', 'baseUrl' => 'https://scim.example.test/v2', 'scheme' => 'bearer', 'secret' => 'tok_123',

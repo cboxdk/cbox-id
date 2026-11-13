@@ -138,6 +138,9 @@ final class ParityAllowlist
             // Registering a passkey: the authenticator signs a challenge in the browser.
             'passkeys.register',
             'passkeys.register.options',
+            // Opening the step-up window before the Authenticator enrolment code is shown:
+            // it changes nothing — the phone's own sign-in and scan are the ceremony.
+            'devices.mine.enrolment',
             // …and the break-glass link on which a named operator enrols one. The link is
             // issued at the command line (`cbox-id:operator:passkey-link`); the ceremony is
             // the authenticator's.

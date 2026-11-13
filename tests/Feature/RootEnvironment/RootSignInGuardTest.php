@@ -43,6 +43,7 @@ beforeEach(function (): void {
     $this->operator = actAsOperator('ops@platform.test');
     $this->operatorSubject = (string) $this->operator->subject_id;
     $this->root = app(PlatformRoot::class)->model();
+    confirmRootEnvironmentStepUp();
 
     // The operator belongs to the platform's own organization in the root.
     $this->staff = app(PlatformRoot::class)->run(function () {
@@ -96,6 +97,7 @@ it('refuses to require SSO of everybody on the platform environment while an ope
 
 it('allows it once every operator has an active connection to sign in with', function (): void {
     guardSsoConnection($this->staff->id, active: true);
+    confirmConsoleStepUp();
 
     $this->from('https://'.GUARD_ROOT.'/admin/environment/sign-in-rules')
         ->put('https://'.GUARD_ROOT.'/admin/environment/sign-in-rules', rootPolicyForm(['sso' => 'required']))
@@ -106,6 +108,7 @@ it('allows it once every operator has an active connection to sign in with', fun
 
 it('refuses to require SSO for the operators\' organization on a connection that does not work yet', function (): void {
     $draft = guardSsoConnection($this->staff->id, active: false);
+    confirmConsoleStepUp();
     grantFeature($this->staff->id, 'cbox-id-sso');
 
     $this->post('https://'.GUARD_ROOT.'/admin/environment/single-sign-on/'.$draft->id.'/require-sso')

@@ -18,11 +18,13 @@ interface DeviceRow {
 type Props = PageProps<{
     help: HelpContent;
     enrolment: { uri: string; qr: string; refreshSeconds: number } | null;
+    /** Set while the code is held back for a fresh "Confirm it's you"; null once shown. */
+    unlockHref: string | null;
     appStoreUrl: string | null;
     devices: DeviceRow[];
 }>;
 
-export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Props) {
+export default function MyDevices({ help, enrolment, unlockHref, appStoreUrl, devices }: Props) {
     const { t: tc } = useTranslator();
 
     const [removing, setRemoving] = useState<DeviceRow | null>(null);
@@ -52,7 +54,26 @@ export default function MyDevices({ help, enrolment, appStoreUrl, devices }: Pro
                 description={tc('console.phones_enrolled_in_the_authenticator_app_the_c53bb961')}
             />
 
-            {enrolment === null ? (
+            {unlockHref !== null ? (
+                /*
+                    THE CODE WAITS FOR "CONFIRM IT'S YOU", like adding a passkey: it is a
+                    way to add an approval device. The button's request is refused with the
+                    step-up the page answers in place, then replayed, and the reload that
+                    follows shows the code.
+                */
+                <Panel title={tc('console.add_a_phone_f2ec926d')}>
+                    <div className="space-y-3">
+                        <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                            {tc('console.confirm_it_s_you_to_show_the_code_that_conne_3b6e0c41')}
+                        </p>
+                        <Button
+                            onClick={() => router.post(unlockHref, {}, { preserveScroll: true })}
+                        >
+                            {tc('console.show_the_code_9a4f2d17')}
+                        </Button>
+                    </div>
+                </Panel>
+            ) : enrolment === null ? (
                 /* Reached only when self-provisioning failed — the error is in the logs. */
                 <Panel title={tc('console.add_a_phone_f2ec926d')}>
                     <p className="text-sm" style={{ color: 'var(--muted)' }}>

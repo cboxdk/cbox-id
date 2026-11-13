@@ -46,6 +46,9 @@ use Cbox\Id\Organization\Models\CustomerApiKey;
     schema: 'PersonalApiKey',
     tag: 'API keys',
     redact: ['token'],
+    // No console step-up, deliberately: see AccountApiKeyController — the people this page
+    // is for often sign in through their company's SSO and have no password to re-enter.
+    consoleStepUp: false,
 )]
 final readonly class CreateMyApiKey implements Action
 {

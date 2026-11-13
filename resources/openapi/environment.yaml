@@ -16940,12 +16940,12 @@ paths:
       tags:
         - Radar
       summary: "Tune this environment's built-in Radar rules: `builtin_rules` maps a rule key (credential_stuffing, bot_velocity, account_attack, impossible_travel, new_device, anonymous_network, hosting_network, disposable_email, risk_score_reject, risk_score_elevated) to any of enabled, action and threshold."
-      description: 'Requires scope `radar:write`. Danger: write.'
+      description: 'Requires scope `radar:write`. Danger: critical.'
       operationId: radar_settings_update
       x-action: radar.settings.update
       x-scope: 'radar:write'
       x-scope-aliases: []
-      x-danger: write
+      x-danger: critical
       parameters:
         -
           $ref: '#/components/parameters/IdempotencyKey'
@@ -19996,12 +19996,12 @@ paths:
       tags:
         - Sign-in
       summary: 'Turn a social login provider that was turned off back on, with the credentials it already has.'
-      description: 'Requires scope `signin:write`. Danger: write.'
+      description: 'Requires scope `signin:write`. Danger: critical.'
       operationId: signin_social_enable
       x-action: signin.social.enable
       x-scope: 'signin:write'
       x-scope-aliases: []
-      x-danger: write
+      x-danger: critical
       parameters:
         -
           name: id
@@ -23730,12 +23730,12 @@ paths:
       tags:
         - Users
       summary: "Change a user's name and/or email address. A changed address must be verified again."
-      description: 'Requires scope `users:write`. Danger: critical.'
+      description: 'Requires scope `users:write`. Danger: write.'
       operationId: users_update
       x-action: users.update
       x-scope: 'users:write'
       x-scope-aliases: []
-      x-danger: critical
+      x-danger: write
       parameters:
         -
           name: id

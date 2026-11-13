@@ -75,6 +75,7 @@ it('lists who holds a staff role, grouped by the app it reaches', function (): v
 
 it('grants an app\'s own role everywhere, reaching only that app\'s tokens', function (): void {
     ['member' => $member] = crudSetup();
+    confirmEnvironmentStepUp();
 
     $parcels = staffApp('Parcels');
     $ledger = staffApp('Ledger');
@@ -112,6 +113,7 @@ it('takes a staff role back everywhere at once', function (): void {
  */
 it('refuses a staff role that completes a conflict in one of the person\'s organizations, and says where', function (): void {
     crudSetup();
+    confirmEnvironmentStepUp();
 
     $roles = app(Roles::class);
     $approver = $roles->define(null, 'Approver');
@@ -137,6 +139,7 @@ it('refuses a staff role that completes a conflict in one of the person\'s organ
  */
 it('refuses a second staff role that conflicts with one the person already holds, with no organization involved', function (): void {
     crudSetup();
+    confirmEnvironmentStepUp();
 
     $roles = app(Roles::class);
     $approver = $roles->define(null, 'Approver');
@@ -177,6 +180,7 @@ it('names nobody it cannot find', function (): void {
 
 it('shows the same refusal on the user page, under the staff roles', function (): void {
     crudSetup();
+    confirmEnvironmentStepUp();
 
     $roles = app(Roles::class);
     $approver = $roles->define(null, 'Approver');

@@ -111,6 +111,7 @@ function rosterAudit(string $action): ?AuditEntry
 
 it('runs every People page write through its action, recorded as the person', function (): void {
     [$ownerId, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
     $dana = rosterColleague($org->id, MembershipRole::Member, 'dana@acme.test');
     $erin = rosterColleague($org->id, MembershipRole::Member, 'erin@acme.test');
 
@@ -231,6 +232,7 @@ it('refuses removing yourself, and points to leaving', function (): void {
 
 it('lets only the owner hand the organization over, and handing it to yourself is nothing', function (): void {
     [$adminId, $org] = actingAsRole(MembershipRole::Admin);
+    confirmStepUp();
     $boss = rosterColleague($org->id, MembershipRole::Owner, 'boss@acme.test');
 
     test()->from(route('directory.members'))->post(route('directory.members.transfer-ownership', $adminId))->assertForbidden();
@@ -241,6 +243,7 @@ it('lets only the owner hand the organization over, and handing it to yourself i
 
     // The owner, to themself: no change, no entry, no message.
     [$ownerId, $own] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     test()->from(route('directory.members'))->post(route('directory.members.transfer-ownership', $ownerId))
         ->assertSessionHasNoErrors()
@@ -278,6 +281,7 @@ it('refuses a customer\'s roster writes from its own People page, with where it 
     ['subjectId' => $ownerId, 'organization' => $customer] = provisionAccount();
     [$membership, $member] = addMember($customer->id, MembershipRole::Member, 'dev@acme.example');
     signInAsMember($ownerId);
+    confirmStepUp();
 
     inviteToDirectory(['email' => 'new@acme.example'])->assertSessionHasErrors(['email' => TenantRoster::MANAGED_ELSEWHERE]);
     test()->from(route('directory.members'))->patch(route('directory.members.role', $member), ['role' => 'admin'])
@@ -301,6 +305,7 @@ it('refuses a customer\'s roster writes from its own People page, with where it 
 
 it('keeps a person on the organization console to their own organization, whatever id they name', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
     $globex = rosterOrganization();
     $victim = rosterColleague($globex->id, MembershipRole::Member, 'victim@globex.test');
     $keys = appKeyFixture('globex-confined');
@@ -414,6 +419,7 @@ it('leaves the environment console and its keys as they were', function (): void
 
     // And the environment console's administrator, from above every organization.
     actAsEnvironmentAdmin($tenant['subjectId'], $tenant['environment']->id);
+    confirmEnvironmentStepUp();
 
     test()->from(route('environment.organizations.show', $org->id))
         ->post(route('environment.organizations.members.transfer-ownership', [$org->id, $first]))

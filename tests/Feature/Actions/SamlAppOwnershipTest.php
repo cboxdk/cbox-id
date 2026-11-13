@@ -81,6 +81,7 @@ it('refuses an organization that is not in this environment', function (): void 
 
 it('sets and clears the owning organization from the console, and the list says whose each app is', function (): void {
     crudSetup();
+    confirmEnvironmentStepUp();
     $acme = samlOwnershipOrg('Acme Corp');
 
     $form = [

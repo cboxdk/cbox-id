@@ -200,6 +200,7 @@ it('answers a root account that administers nothing there as if the console did 
 it('keeps a tenant\'s own Google off its console\'s sign-in, which is the root\'s', function (): void {
     // The tenant turns on Google for ITS users, environment-wide, in its own console.
     actAsEnvironmentAdmin($this->account['subjectId'], $this->account['environment']->id);
+    confirmEnvironmentStepUp();
 
     $this->from(envConsole('/social-sign-in?provider=google'))
         ->post(envConsole('/social-sign-in'), [

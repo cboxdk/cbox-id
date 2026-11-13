@@ -13,6 +13,7 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\RatedByInput;
 use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
 use Cbox\Id\Identity\Contracts\PasswordReset;
@@ -22,6 +23,11 @@ use Illuminate\Support\Facades\Mail;
  * Mail a person a password-reset link, to the address they already have. Nothing about
  * their credential changes until they follow it, so this is an ordinary write: the link
  * reaches only the inbox the account already trusts.
+ *
+ * UNLESS NOBODY HAS VERIFIED THAT INBOX ({@see RatedByInput}): right after an administrator
+ * changes the address, the link goes wherever they pointed it, and following it sets the
+ * account's password — a takeover in two calls. Sent to an unverified address it is
+ * Critical, so it waits for the same step-up and approval as setting the password.
  */
 #[AsAction(
     name: 'users.password_reset.send',
@@ -34,7 +40,7 @@ use Illuminate\Support\Facades\Mail;
     consoleRoutes: ['environment.users.password-reset'],
     consoleGate: ConsoleGate::EnvironmentAdmin,
 )]
-final readonly class SendPasswordReset implements Action
+final readonly class SendPasswordReset implements Action, RatedByInput
 {
     public function __construct(
         private PasswordReset $resets,
@@ -46,6 +52,11 @@ final readonly class SendPasswordReset implements Action
         return InputSchema::of([
             Field::string('id')->inPath()->max(64)->describe('The user id.'),
         ]);
+    }
+
+    public function dangerFor(ActionContext $context): Danger
+    {
+        return UserFields::find($context->string('id'))->email_verified_at === null ? Danger::Critical : Danger::Write;
     }
 
     public function handle(ActionContext $context): ActionResult

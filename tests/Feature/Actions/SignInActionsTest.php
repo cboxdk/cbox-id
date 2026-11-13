@@ -227,6 +227,7 @@ it('needs signin:write to change how people sign in, and signin:read to look', f
 it('writes the same sign-in rules entry from the console, as the person', function (): void {
     ['environment' => $environment, 'ownerId' => $ownerId] = siaTenant();
     actAsEnvironmentAdmin($ownerId, $environment->id);
+    confirmEnvironmentStepUp();
 
     test()->from(route('environment.auth-policy'))
         ->put(route('environment.auth-policy.update'), [
@@ -256,6 +257,7 @@ it('switches self-service sign-up, on the organization trail, as the console doe
 
     // The console first, so its entry is the person's…
     actAsEnvironmentAdmin($ownerId, $environment->id);
+    confirmEnvironmentStepUp();
     test()->from(route('environment.auth-policy'))
         ->put(route('environment.auth-policy.self-service-signup'), ['enabled' => true])
         ->assertSessionHasNoErrors();
@@ -471,6 +473,7 @@ it('refuses a second SAML app with the same entity id, and a signed one with no 
 it('records a SAML app registered from the console the same way, as the person', function (): void {
     ['environment' => $environment, 'ownerId' => $ownerId] = siaTenant();
     actAsEnvironmentAdmin($ownerId, $environment->id);
+    confirmEnvironmentStepUp();
 
     test()->post(route('environment.sso-providers.store'), [
         'entityId' => 'https://console-sp.example.com',

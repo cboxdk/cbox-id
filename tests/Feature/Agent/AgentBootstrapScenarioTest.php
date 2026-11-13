@@ -149,7 +149,12 @@ it('bootstraps an environment from one organization key, down to a supervised na
 
     $appId = $app['data']['id'];
     $redirects = ['https://agent.example/callback', 'https://agent.example/oauth/return'];
-    $updated = $door->call($narrow, 'apps.update', ['id' => $appId, 'redirect_uris' => $redirects]);
+    // A new redirect URI is a new place codes are delivered: held like creating the app.
+    $heldUpdate = $door->call($narrow, 'apps.update', ['id' => $appId, 'redirect_uris' => $redirects]);
+
+    expect($heldUpdate['status'])->toBe('approval_required');
+
+    $updated = $door->approve($heldUpdate, $owner);
 
     expect($updated['status'])->toBe('ok')
         ->and($updated['data']['redirect_uris'])->toBe($redirects);

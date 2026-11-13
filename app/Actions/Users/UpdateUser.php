@@ -14,6 +14,7 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\RatedByInput;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\Models\User;
 
@@ -23,25 +24,38 @@ use Cbox\Id\Identity\Models\User;
  * subscriber and the outbound SCIM push). A changed address loses its verification; the
  * contract clears it.
  *
- * CRITICAL, because the address is the account's RECOVERY channel: pointing it somewhere
- * else and then asking for a password reset is a takeover in two calls, and the second one
- * needs nothing more than this scope. A key whose policy holds critical actions for a
- * person's approval holds this one too.
+ * CRITICAL WHEN IT CHANGES THE ADDRESS ({@see RatedByInput}), because the address is the
+ * account's RECOVERY channel: pointing it somewhere else and then asking for a password
+ * reset is a takeover in two calls, and the second one needs nothing more than this scope.
+ * A key whose policy holds critical actions for a person's approval holds that run, and
+ * the console asks for its step-up. A name change, or resending the same address, is a
+ * Write: it moves nothing about how the account is recovered.
  */
 #[AsAction(
     name: 'users.update',
     summary: 'Change a user\'s name and/or email address. A changed address must be verified again.',
     scope: 'users:write',
-    danger: Danger::Critical,
+    danger: Danger::Write,
     schema: 'User',
     tag: 'Users',
     rest: ['PATCH', '/users/{id}'],
     consoleRoutes: ['environment.users.update'],
     consoleGate: ConsoleGate::EnvironmentAdmin,
 )]
-final readonly class UpdateUser implements Action
+final readonly class UpdateUser implements Action, RatedByInput
 {
     public function __construct(private Subjects $subjects) {}
+
+    public function dangerFor(ActionContext $context): Danger
+    {
+        $email = $context->nullableString('email');
+
+        if ($email === null) {
+            return Danger::Write;
+        }
+
+        return mb_strtolower(trim($email)) === mb_strtolower(UserFields::find($context->string('id'))->email) ? Danger::Write : Danger::Critical;
+    }
 
     public static function input(): InputSchema
     {

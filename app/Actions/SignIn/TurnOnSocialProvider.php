@@ -24,7 +24,9 @@ use Cbox\Id\Federation\Contracts\Connections;
     name: 'signin.social.enable',
     summary: 'Turn a social login provider that was turned off back on, with the credentials it already has.',
     scope: 'signin:write',
-    danger: Danger::Write,
+    // Critical, as its siblings that turn a provider off or set one up: turning one back on
+    // opens a sign-in door with the credentials it already holds.
+    danger: Danger::Critical,
     schema: 'SocialProvider',
     tag: 'Sign-in',
     rest: ['POST', '/sign-in/social-providers/{id}/enable'],

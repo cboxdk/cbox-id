@@ -52,6 +52,10 @@ it('edits only the chosen field and keeps email verification on a name change', 
         ->and($fresh->email)->toBe('dana@panel.test')
         ->and($fresh->email_verified_at)->not->toBeNull();
 
+    // A new address is a new recovery channel: the name change above asked nothing, this asks
+    // for the step-up first.
+    $this->patch(route('environment.users.update', $user->id), ['email' => 'new@panel.test'])->assertRedirect(route('environment.sudo'));
+    confirmEnvironmentStepUp();
     $this->patch(route('environment.users.update', $user->id), ['email' => 'new@panel.test'])->assertSessionHasNoErrors();
     $fresh->refresh();
     expect($fresh->name)->toBe('Dana Updated')

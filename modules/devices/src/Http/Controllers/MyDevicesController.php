@@ -8,7 +8,9 @@ use App\Http\Controllers\Console\ConsoleController;
 use App\Http\Props\Shared\HelpProps;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
+use App\Platform\Impersonation;
 use App\Platform\PlaneResolver;
+use App\Platform\Sudo;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -58,10 +60,14 @@ final readonly class MyDevicesController extends ConsoleController
             }
         }
 
-        $uri = $this->enrolmentUri();
+        $locked = ! $this->mayEnrol();
+        $uri = $locked ? null : $this->enrolmentUri();
 
         return $this->page('devices::mine', __('console.trusted_devices_7d989273'), [
             'help' => HelpProps::for(HelpTopic::TrustedDevices),
+            // Where to confirm it's you before a code is shown; null once the window is open
+            // (or never, during a support session, which gets neither).
+            'unlockHref' => $locked && ! app(Impersonation::class)->isImpersonating() ? route('devices.mine.enrolment') : null,
             'enrolment' => $uri === null ? null : [
                 'uri' => $uri,
                 'qr' => $this->enrolmentQr($uri),
@@ -89,6 +95,34 @@ final readonly class MyDevicesController extends ConsoleController
                     'removeHref' => route('devices.mine.destroy', $device->id),
                 ])->values()->all(),
         ]);
+    }
+
+    /**
+     * Confirm it's you, then come back to the page — which now shows the code.
+     *
+     * The route carries `sudo` and the impersonation block, as passkey enrolment does, so
+     * pressing "Show the code" opens the same in-place dialog and the reload that follows
+     * renders the QR. Nothing is minted here: the page mints, inside the window.
+     */
+    public function unlock(): RedirectResponse
+    {
+        return to_route('devices.mine');
+    }
+
+    /**
+     * A NEW APPROVAL DEVICE ASKS WHAT A NEW PASSKEY ASKS: a fresh confirmation, and never
+     * during a support session.
+     *
+     * The code is all a phone needs to become a standing approver — the authenticator is a
+     * first-party client, so the cookie session that rendered this page signs it in with no
+     * consent and no password. Rendered to any live session, that let somebody at an
+     * unlocked browser attach a handset of their own that outlives a password reset and
+     * answers held Critical actions. Adding a passkey, TOTP or a social sign-in has always
+     * required the step-up; this is the same door.
+     */
+    private function mayEnrol(): bool
+    {
+        return app(Sudo::class)->confirmed() && ! app(Impersonation::class)->isImpersonating();
     }
 
     /**

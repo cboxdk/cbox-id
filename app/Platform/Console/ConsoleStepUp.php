@@ -6,11 +6,13 @@ namespace App\Platform\Console;
 
 use App\Http\Middleware\RequireEnvironmentSudo;
 use App\Http\Middleware\RequireSudo;
+use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\EnvironmentSudo;
 use App\Platform\Operators\OperatorAssurance;
 use App\Platform\StepUpPlane;
 use App\Platform\StepUpPrompt;
 use App\Platform\Sudo;
+use Illuminate\Http\Exceptions\HttpResponseException;
 
 /**
  * The step-up a CONSOLE component must clear before it mints or reveals a credential —
@@ -114,6 +116,44 @@ final class ConsoleStepUp
             $parameters,
             $reason,
         );
+    }
+
+    /**
+     * The same gate for a caller with no page of its own to name — the action runner, on
+     * behalf of every console route that runs a Critical action
+     * ({@see ConsoleSessionPrincipal::confirmFresh()}).
+     *
+     * Returns when the plane's window is open. Otherwise it THROWS: the in-place prompt for
+     * a request a script made (the page holds the request and replays it once the person
+     * confirms), and the redirect to the plane's full-page screen for a plain form post,
+     * which comes back to the page the post was made from. A form post has no script to
+     * replay it, so the person presses the button again inside the open window.
+     *
+     * `$personal` is the account plane: a person's own sign-in settings are confirmed with
+     * {@see Sudo} whichever console drew the page, as their routes' `sudo` gate does.
+     *
+     * @throws HttpResponseException
+     */
+    public function demand(string $reason, bool $personal = false): void
+    {
+        [$open, $plane] = match (true) {
+            $personal => [$this->organization->confirmed(), StepUpPlane::Organization],
+            $this->operators->governs() => [$this->operators->fresh(), StepUpPlane::Operator],
+            $this->onEnvironmentPlane() => [$this->environment->confirmed(), StepUpPlane::Environment],
+            default => [$this->organization->confirmed(), StepUpPlane::Organization],
+        };
+
+        if ($open) {
+            return;
+        }
+
+        // No session to hold a return address (a run outside a browser request): refused
+        // all the same, never let through.
+        if (! request()->hasSession()) {
+            throw new HttpResponseException(StepUpPrompt::response($plane, $reason));
+        }
+
+        throw new HttpResponseException(StepUpPrompt::demand(request(), $plane, null, $reason));
     }
 
     private function onEnvironmentPlane(): bool

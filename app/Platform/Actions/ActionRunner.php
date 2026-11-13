@@ -7,6 +7,7 @@ namespace App\Platform\Actions;
 use App\Platform\Actions\Approvals\ActionApprovalGate;
 use App\Platform\Actions\Idempotency\IdempotencyGuard;
 use App\Platform\Actions\Principal\AnnotatesTrail;
+use App\Platform\Actions\Principal\ConfirmsFreshly;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\OAuth\Exceptions\StepUpAuthenticationRequired;
 use App\Platform\OAuth\ManagementStepUp;
@@ -25,6 +26,10 @@ use Illuminate\Validation\ValidationException;
  *      for an approval the token could not then use;
  *  2. the input is valid against the action's own schema — the same rules for a form, a
  *     JSON body and a tool call, so a refusal is the same `validation_failed` everywhere;
+ *  2a. the run is RATED: an action whose harm depends on its input ({@see RatedByInput})
+ *     says how dangerous this run is, and every gate below reads that, never the floor —
+ *     the token step-up again, and a console session's own fresh confirmation
+ *     ({@see ConfirmsFreshly}) for a Critical run, whichever route asked;
  *  3. a write with an `Idempotency-Key` from a machine principal runs at most once;
  *  3a. an action that can refuse from its input alone says so now ({@see Preflight}) —
  *      an unsafe URL, a foreign id, a missing owner — so nobody approves a request that
@@ -73,12 +78,22 @@ final readonly class ActionRunner
         /** @var array<string, mixed> $validated */
         $validated = Validator::make($input, $definition->input()->rules())->validate();
 
+        $rated = $this->rate($definition, $principal, $validated, $via);
+
+        if ($rated !== $definition) {
+            $this->stepUp->enforce($principal, $rated);
+        }
+
+        if ($principal instanceof ConfirmsFreshly) {
+            $principal->confirmFresh($rated);
+        }
+
         // Asked of the container per run, never held: the trail is SCOPED, and a runner held
         // by a controller the router keeps would push onto a trail the audit log no longer
         // reads once a queued job has reset the scoped instances.
         $trail = $this->container->make(ActionTrail::class);
 
-        $execute = fn (): ActionResult => $trail->within($via, function () use ($definition, $principal, $validated, $approvalId, $via, $trail): ActionResult {
+        $execute = fn (): ActionResult => $trail->within($via, function () use ($definition, $rated, $principal, $validated, $approvalId, $via, $trail): ActionResult {
             /** @var Action $handler */
             $handler = $this->container->make($definition->class);
             $context = new ActionContext($principal, $validated, $via);
@@ -93,7 +108,7 @@ final readonly class ActionRunner
 
             // Inside the idempotent section: a retry of a request that already ran replays its
             // answer without asking the person again, and a held request stores nothing.
-            $spent = $this->approvals->enforce($principal, $definition, $validated, $approvalId);
+            $spent = $this->approvals->enforce($principal, $rated, $validated, $approvalId);
 
             if ($spent !== null) {
                 $trail->approved($spent, $principal->approverSubjectId());
@@ -113,5 +128,22 @@ final readonly class ActionRunner
         }
 
         return $execute();
+    }
+
+    /**
+     * The danger of THIS run: the declared floor, raised by an action that rates its input.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    private function rate(ActionDefinition $definition, Principal $principal, array $validated, ActionVia $via): ActionDefinition
+    {
+        if (! is_subclass_of($definition->class, RatedByInput::class)) {
+            return $definition;
+        }
+
+        /** @var RatedByInput $rater */
+        $rater = $this->container->make($definition->class);
+
+        return $definition->withDanger($rater->dangerFor(new ActionContext($principal, $validated, $via)));
     }
 }

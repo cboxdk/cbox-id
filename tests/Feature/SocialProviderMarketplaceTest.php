@@ -69,6 +69,7 @@ it('refuses the page to a member', function (): void {
 
 it('refuses to enable a provider the catalogue does not have', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     // The key arrives from the browser and everything downstream — endpoints, scopes, the
     // profile shape — is looked up by it, so this is the one place it must be checked.
@@ -83,6 +84,7 @@ it('refuses to enable a provider the catalogue does not have', function (): void
 
 it('enables an OAuth 2.0 provider and offers it on the sign-in page', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     enableSocialProvider()->assertSessionHasNoErrors();
 
@@ -98,6 +100,7 @@ it('enables an OAuth 2.0 provider and offers it on the sign-in page', function (
 
 it('renders a whole localized provider status without changing the organization name', function (): void {
     [$person, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
     app(UserPreferences::class)->patch(
         $person,
         new PropertyPatch(0, (object) ['language' => 'da']),
@@ -109,6 +112,7 @@ it('renders a whole localized provider status without changing the organization 
 
 it('does not enable the same provider twice', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
     enableProvider($org->id, 'github');
 
     // Two GitHub buttons with the same label and different credentials is a page nobody
@@ -121,6 +125,7 @@ it('does not enable the same provider twice', function (): void {
 
 it('will not remove another tenant provider by id', function (): void {
     [, $mine] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
     $theirs = enableProvider('someone-elses-org', 'github');
 
     /*
@@ -140,6 +145,7 @@ it('will not remove another tenant provider by id', function (): void {
 
 it('removes its own provider', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
     $id = enableProvider($org->id, 'discord');
 
     test()->from(route('social-providers'))
@@ -213,6 +219,7 @@ it('asks for what Apple actually needs, which is not a client secret', function 
 
 it('will not enable a provider whose required parameters are blank', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     // Every missing field is reported at once. One at a time would walk somebody through
     // Apple's three in three round trips.
@@ -264,6 +271,7 @@ it('uses the OIDC callback path for an OIDC provider', function (): void {
  */
 it('enables Apple without asking for a secret Apple does not issue', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     // Apple's issuer is fixed, so the page runs discovery against it. Faked, because
     // reaching appleid.apple.com from a test is neither reliable nor the thing under test —
@@ -302,6 +310,7 @@ it('enables Apple without asking for a secret Apple does not issue', function ()
 
 it('still requires a client secret from a provider that issues one', function (): void {
     actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     enableSocialProvider(['clientSecret' => ''])->assertSessionHasErrors('clientSecret');
 });

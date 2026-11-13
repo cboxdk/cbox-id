@@ -46,6 +46,7 @@ final readonly class StepUpReason
         'account.mfa.sms.enrol' => 'Adding a phone number changes how you sign in.',
         'account.mfa.sms.confirm' => 'Adding a phone number changes how you sign in.',
         'account.mfa.sms.destroy' => 'Removing your phone number changes how you sign in.',
+        'devices.mine.enrolment' => 'Adding a phone gives it a standing way to approve sign-ins and actions as you.',
         'account.passkeys.destroy' => 'Removing a passkey changes how you sign in.',
         'account.social.destroy' => 'Disconnecting an account changes how you sign in.',
         'account.sign-in-methods.destroy' => 'Disconnecting an account changes how you sign in.',

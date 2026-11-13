@@ -39,6 +39,7 @@ beforeEach(function (): void {
 
 it('lets an entitled admin generate a setup link, recorded in the audit trail', function () {
     $orgId = gateAdmin('portal-gen');
+    confirmConsoleStepUp();
     grantFeature($orgId, 'cbox-id-sso');
 
     $fake = new FakeAuditLog;

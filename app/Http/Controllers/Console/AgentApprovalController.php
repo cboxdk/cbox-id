@@ -11,7 +11,6 @@ use App\Http\Props\Shared\PaginationProps;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ActionApprovalGate;
-use App\Platform\Actions\Danger;
 use App\Platform\Actions\RenamedActions;
 use App\Platform\Agents\ActionApprovalEntry;
 use App\Platform\Agents\ActionApprovalInbox;
@@ -210,8 +209,9 @@ final readonly class AgentApprovalController extends ConsoleController
 
         // A Critical action waits for a password typed in the last few minutes: approving
         // one hands an agent a credential or the way people sign in, and a console left
-        // open is not the person it belongs to.
-        if (self::definition($registry, $entry->request->action)?->danger === Danger::Critical) {
+        // open is not the person it belongs to. An action that MAY be Critical (rated by its
+        // input) asks too, and so does one this release no longer knows — failing closed.
+        if (self::needsStepUp(self::definition($registry, $entry->request->action))) {
             $sudo = app(ConsoleStepUp::class)->challenge(
                 'approvals',
                 'environment.approvals',
@@ -309,7 +309,7 @@ final readonly class AgentApprovalController extends ConsoleController
                 arguments: ActionApprovalRowProps::arguments($input, $pathFields),
                 approver: $mine ? __('console.you_08b04193') : ($approvers[$entry->approverId] ?? __('console.a_former_member_4c91e0f9')),
                 mine: $mine,
-                needsSudo: $pending && $mine && $definition?->danger === Danger::Critical && ! $sudoOpen,
+                needsSudo: $pending && $mine && self::needsStepUp($definition) && ! $sudoOpen,
                 approveHref: $pending && $mine ? route('environment.approvals.actions.approve', $entry->request->id) : null,
                 denyHref: $pending ? route('environment.approvals.actions.deny', $entry->request->id) : null,
             ))->toArray();
@@ -342,6 +342,15 @@ final readonly class AgentApprovalController extends ConsoleController
         }
 
         return $parts === [] ? null : implode(' · ', $parts);
+    }
+
+    /**
+     * Whether approving a held run of this action asks for the plane's fresh confirmation:
+     * one that is or may be Critical, or one nobody can name any more.
+     */
+    public static function needsStepUp(?ActionDefinition $definition): bool
+    {
+        return $definition === null || $definition->mayBeCritical();
     }
 
     private static function definition(ActionRegistry $registry, string $name): ?ActionDefinition

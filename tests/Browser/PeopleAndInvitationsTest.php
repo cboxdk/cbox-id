@@ -96,6 +96,7 @@ it('invites someone with the shared form, back to an app, and lists them with bo
 
 it('transfers ownership from a row, and offers the owner a way to leave', function (): void {
     [$org, $danaId] = anOwnerWithATeam();
+    confirmStepUp();
 
     $page = visit('/directory/members');
 

@@ -7,6 +7,7 @@ use Cbox\Id\Identity\Contracts\Subjects;
 
 it('delivers an action confirmation through native flash for one response only', function (): void {
     actAsEnvironmentAdminOfATenant();
+    confirmEnvironmentStepUp();
     $user = app(Subjects::class)->create('flash@panel.test', 'Before');
     $url = route('environment.users', ['selected' => $user->id]);
     $this->from($url)->patch(route('environment.users.update', $user->id), ['name' => 'After'])

@@ -35,6 +35,17 @@ into a short-lived elevated "sudo" session** even when the user is already signe
 The elevation lasts 15 minutes and does not persist for the whole session. This limits
 the blast radius of a hijacked, already-authenticated session.
 
+**Every Critical change asks, whichever page it is on.** An action rated Critical (it mints
+or rotates a credential, changes how people sign in, grants standing authority) asks for
+the step-up before it runs from any console page: an SSO connection, the sign-in rules,
+a social provider, a SAML app, a staff role, an organization's ownership, an Admin Portal
+link, a provisioning target, a team role beyond Reader, a person's email address. Some
+edits are Critical only for what they change: repointing a webhook, adding a redirect URI
+to an app, a Radar allow entry, a reset link to an unverified address. Within the
+15-minute window nothing asks again. The personal API keys page is the one exception, and
+says why. Approving an agent's held Critical action asks too, on either Approvals page,
+and so does showing the code that connects a phone to the Authenticator.
+
 **The prompt opens where the person is.** When a click needs a fresh step-up, the page
 shows a **Confirm it's you** dialog with the reason the action gave ("Adding a passkey
 gives you a new way to sign in."). Once the password is accepted, the action the person

@@ -81,6 +81,9 @@ final class RootGoogle
     /** Google, environment-wide, in the platform root's environment — as an operator does it, in its console. */
     public static function turnOn(): Connection
     {
+        // A Critical change on the root's environment console: the operator confirms first.
+        confirmRootEnvironmentStepUp();
+
         test()->from('https://'.self::HOST.'/admin/environment/social-sign-in?provider=google')
             ->post('https://'.self::HOST.'/admin/environment/social-sign-in', [
                 'provider' => 'google',

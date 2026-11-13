@@ -15,6 +15,7 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\RatedByInput;
 use App\Platform\NativeProduct\NativeProductManifest;
 use App\Platform\NativeProduct\NativeProductMembers;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -38,8 +39,21 @@ use Cbox\Id\Platform\PlatformRoot;
     schema: 'Member',
     tag: 'Team',
 )]
-final readonly class ChangeMemberRole implements Action
+final readonly class ChangeMemberRole implements Action, RatedByInput
 {
+    /**
+     * Critical when it hands out more than reading ({@see RatedByInput}): an Editor or Admin
+     * holds `id:write`, which is environment-administrator authority in every environment the
+     * member reaches, and Billing spends money — the same standing persistence a role-bearing
+     * key is, which `keys.workspace.create` already treats as Critical. Reader only stays a Write.
+     */
+    public function dangerFor(ActionContext $context): Danger
+    {
+        $roles = array_values(array_filter($context->array('roles'), 'is_string'));
+
+        return array_diff($roles, ['viewer']) === [] ? Danger::Write : Danger::Critical;
+    }
+
     public function __construct(
         private NativeProductMembers $members,
         private Subjects $subjects,

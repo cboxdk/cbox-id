@@ -19,6 +19,7 @@ it('edits multiple native roles and invites with app roles on desktop and mobile
     [$member] = addMember($account['organization']->id, MembershipRole::Member, 'native-colleague@example.test', 'Colleague');
     grantNativeProductRoles($member, ['viewer']);
     signInAsMember($account['subjectId']);
+    confirmStepUp();
 
     $page = visit('/members?organization='.$account['organization']->id);
     $page->assertSee('Colleague')->assertSee('Owner')->click('details > summary')
@@ -68,6 +69,7 @@ it('refuses an outdated role form without overwriting a newer assignment', funct
     [$member] = addMember($account['organization']->id, MembershipRole::Member, 'stale-colleague@example.test', 'Colleague');
     grantNativeProductRoles($member, ['viewer']);
     signInAsMember($account['subjectId']);
+    confirmStepUp();
     $page = visit('/members?organization='.$account['organization']->id);
     $page->click('details > summary')->check('details label:has-text("Billing") input');
     // Another administrator changes this member after the form was opened.
@@ -86,6 +88,7 @@ it('refuses an outdated environment selection independently of app roles', funct
     [$member] = addMember($account['organization']->id, MembershipRole::Member, 'row-colleague@example.test', 'Colleague');
     grantNativeProductRoles($member, ['viewer']);
     signInAsMember($account['subjectId']);
+    confirmStepUp();
     $page = visit('/members?organization='.$account['organization']->id);
     $page->click('[aria-label="More actions for row-colleague@example.test"]')->click('Manage environment access')
         ->assertScript('new URL(location.href).searchParams.get("organization")', $account['organization']->id)
@@ -106,6 +109,7 @@ it('removes app access from the member page while keeping the shared membership'
     [$member] = addMember($account['organization']->id, MembershipRole::Member, 'remove-colleague@example.test', 'Colleague');
     grantNativeProductRoles($member, ['viewer', 'billing']);
     signInAsMember($account['subjectId']);
+    confirmStepUp();
     $page = visit('/members?organization='.$account['organization']->id);
     $page->click('[aria-label="More actions for remove-colleague@example.test"]')->click('[role="menuitem"]:has-text("Remove")')
         ->fill('.cbx-dialog input.input', 'remove-colleague@example.test')

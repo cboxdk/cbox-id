@@ -57,6 +57,7 @@ beforeEach(fn () => Http::fake(['api.pwnedpasswords.com/*' => Http::response('',
 
 it('renders the user + org detail pages and edits a user profile', function (): void {
     crudSetup();
+    confirmEnvironmentStepUp();
     $user = app(Subjects::class)->create('jane@acme.example', 'Jane');
     $org = app(Organizations::class)->create(new NewOrganization(name: 'Tenant A', slug: 'tenant-a'));
 
@@ -91,6 +92,7 @@ it('deactivates and reactivates a user', function (): void {
 
 it('sends a password reset email from the user detail page', function (): void {
     crudSetup();
+    confirmEnvironmentStepUp();
     Mail::fake();
     $user = app(Subjects::class)->create('reset@acme.example', 'Reset Me');
 

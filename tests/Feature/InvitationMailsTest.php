@@ -38,6 +38,7 @@ it('names the organization and the inviter when inviting somebody to join it', f
 it('names the native app and selected role when inviting a teammate', function (): void {
     ['organization' => $organization, 'subjectId' => $ownerId] = provisionAccount('owner@acme.example');
     signInAsMember($ownerId);
+    confirmStepUp();
 
     test()->from(route('orgs.settings.members'))
         ->post(route('orgs.settings.members.invite', ['organization' => $organization->id]), ['email' => 'new@acme.example', 'roles' => ['developer', 'billing']])
