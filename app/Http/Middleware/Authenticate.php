@@ -12,6 +12,7 @@ use App\Platform\OrganizationAccess;
 use App\Platform\PlatformAuth;
 use App\Platform\SessionMetadata;
 use App\Platform\SignedInPage;
+use App\Platform\SignInHolds;
 use App\Platform\SsoMandates;
 use App\Platform\Surfaces\ReturnUrl;
 use App\Platform\Surfaces\SessionSurface;
@@ -19,7 +20,6 @@ use App\Platform\Surfaces\Surfaces;
 use App\SignalsData\IdentityCapture;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\MfaMandate;
-use Cbox\Id\Identity\Contracts\MfaVerification;
 use Cbox\Id\Identity\Contracts\PasswordExpiry;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -192,9 +192,13 @@ final class Authenticate
         // replace an already enrolled factor. OAuth resolves prompt/PAR itself below.
         $requiresEnrolment = $this->mfaMandate->requiresEnrolment($subject->id);
 
+        //
+        // A person who HAS a factor proves it first, even while the mandate also asks them
+        // for a stronger one (an owner whose only factor is SMS): the enrolment exemptions
+        // below are where a new authenticator is added, and a magic link must not reach
+        // them past the factor already enrolled ({@see SignInHolds::mustVerify()}).
         if (! $request->routeIs('oauth.authorize', 'oauth.authorize.*', 'logout', 'logout.*', 'console.auth.*')
-            && ! $requiresEnrolment
-            && app(MfaVerification::class)->requiresVerification($subject->id, array_values($session->amr))) {
+            && app(SignInHolds::class)->mustVerify($subject->id, array_values($session->amr))) {
             $this->current->clear();
 
             // The second factor is asked for where the person signs in. On the console of

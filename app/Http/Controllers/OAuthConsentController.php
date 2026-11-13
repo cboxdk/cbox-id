@@ -21,14 +21,11 @@ use App\Platform\OAuth\RootMcpOAuth;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use App\Platform\Organizations\OrganizationRequired;
 use App\Platform\PlatformAuth;
+use App\Platform\SignInHolds;
 use App\Platform\SignupPolicy;
 use App\Platform\SsoMandates;
 use App\Platform\SupportAccess\Contracts\SupportAccess;
 use App\Platform\SupportAccess\Exceptions\SupportRequestRefused;
-use Cbox\Id\Identity\Contracts\AdminPasswords;
-use Cbox\Id\Identity\Contracts\MfaMandate;
-use Cbox\Id\Identity\Contracts\MfaVerification;
-use Cbox\Id\Identity\Contracts\PasswordExpiry;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
 use Cbox\Id\OAuthServer\Contracts\AuthorizationClients;
@@ -1436,27 +1433,9 @@ final readonly class OAuthConsentController extends PageController
             return null;
         }
 
-        if (app(AdminPasswords::class)->requiresChange($subjectId)
-            || app(PasswordExpiry::class)->hasExpired($subjectId)) {
-            return [
-                'route' => 'password.change',
-                'reason' => 'The user must change their password before authorizing.',
-            ];
-        }
+        $hold = app(SignInHolds::class)->pending($subjectId, array_values(app(CurrentUser::class)->session()->amr ?? []));
 
-        if (app(MfaMandate::class)->requiresEnrolment($subjectId)) {
-            return [
-                'route' => 'account',
-                'reason' => 'The user must enrol a second factor before authorizing.',
-            ];
-        }
-
-        $amr = app(CurrentUser::class)->session()->amr ?? [];
-        if (app(MfaVerification::class)->requiresVerification($subjectId, array_values($amr))) {
-            return ['route' => 'mfa', 'reason' => 'The user must verify a second factor before authorizing.'];
-        }
-
-        return null;
+        return $hold === null ? null : ['route' => $hold->value, 'reason' => $hold->reason('authorizing')];
     }
 
     /**

@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Sso;
 
+use App\Platform\Enums\SignInHold;
+use App\Platform\IntendedUrl;
 use App\Platform\PlatformAuth;
 use App\Platform\SamlSsoHandoff;
+use App\Platform\SignInHolds;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Identity\ValueObjects\Subject;
@@ -99,6 +102,25 @@ final class SamlIdpSsoController
             return redirect()->route('login');
         }
 
+        /*
+         * WHAT THE SESSION STILL OWES. A signed assertion is a sign-in to somebody else's
+         * application, so it is held exactly where the console and the authorize endpoint
+         * hold the same session ({@see SignInHolds}): a forced password change, a second
+         * factor to prove, a mandated one to enrol. This endpoint is not behind the auth
+         * middleware, so it asked none of them, and a password-only session the console
+         * was about to revoke for its second factor still single-signed into every SP.
+         *
+         * The request stays stashed, so the person comes back here once the hold is
+         * settled: the second-factor screen resumes it itself.
+         */
+        $held = $this->held($request, $subjectId);
+
+        if ($held !== null) {
+            $this->handoff->stash($context);
+
+            return $held;
+        }
+
         $this->handoff->clear();
 
         // An assertion is a signed statement, and most SPs key accounts by the email in
@@ -148,6 +170,40 @@ final class SamlIdpSsoController
         // appended globally and would otherwise stamp `form-action 'self'` on a form
         // whose whole purpose is to post to the service provider's ACS.
         return $response->toPostBinding()->toResponse();
+    }
+
+    /**
+     * Where to send a session that may not be asserted yet, or null when it may.
+     *
+     * A second factor is asked for the way the console asks for it: the weak session is
+     * ended and the person proves the factor, which starts a session that carries it
+     * ({@see PlatformAuth::challengeSession()}). The password change and the enrolment are
+     * the console's own pages.
+     */
+    private function held(Request $request, string $subjectId): ?RedirectResponse
+    {
+        $sessionId = $request->session()->get(PlatformAuth::SESSION_KEY);
+        $session = is_string($sessionId) ? $this->sessions->active($sessionId) : null;
+
+        if ($session === null) {
+            return null;
+        }
+
+        $hold = app(SignInHolds::class)->pending($subjectId, array_values($session->amr));
+
+        if ($hold === null) {
+            return null;
+        }
+
+        return match ($hold) {
+            // The second-factor screen resumes a stashed SAML request on its own.
+            SignInHold::Verification => redirect()->to(app(PlatformAuth::class)->challengeSession($request, $session)),
+            // The password change ends wherever the person was going: back here.
+            SignInHold::PasswordChange => tap(redirect()->route('password.change'),
+                static fn () => $request->session()->put(IntendedUrl::KEY, route('sso.saml.idp.sso'))),
+            SignInHold::Enrolment => redirect()->route('account')
+                ->with('status', 'Your organization requires two-factor authentication. Set it up to continue.'),
+        };
     }
 
     /**

@@ -32,7 +32,7 @@ it('treats the first device as enrolment, not a new-device event', function (): 
 it('fires on a device the account has not been seen on before', function (): void {
     $signal = deviceSignal();
 
-    $signal->evaluate(signInWith('Mozilla/5.0 (Macintosh)'));       // enrolment
+    $signal->remember(signInWith('Mozilla/5.0 (Macintosh)'));        // a sign-in that succeeded
     $result = $signal->evaluate(signInWith('Mozilla/5.0 (Windows)')); // new device
 
     expect($result)->not->toBeNull()
@@ -43,8 +43,36 @@ it('fires on a device the account has not been seen on before', function (): voi
 it('stays quiet on a device it has already seen', function (): void {
     $signal = deviceSignal();
 
-    $signal->evaluate(signInWith('Mozilla/5.0 (Macintosh)'));
-    $signal->evaluate(signInWith('Mozilla/5.0 (Windows)'));
+    $signal->remember(signInWith('Mozilla/5.0 (Macintosh)'));
+    $signal->remember(signInWith('Mozilla/5.0 (Windows)'));
+
+    expect($signal->evaluate(signInWith('Mozilla/5.0 (Macintosh)')))->toBeNull();
+});
+
+/**
+ * SCORING LEARNS NOTHING. The assessment runs before the credential is checked, so a
+ * device learned there was "known" on the very next try: an attacker with only the
+ * password passed the new-device step-up by submitting twice, and could pre-enrol their
+ * browser with a wrong password.
+ */
+it('keeps scoring a new device however often it only tries', function (): void {
+    $signal = deviceSignal();
+    $signal->remember(signInWith('Mozilla/5.0 (Macintosh)'));
+
+    $first = $signal->evaluate(signInWith('Mozilla/5.0 (AttackerBox)'));
+    $second = $signal->evaluate(signInWith('Mozilla/5.0 (AttackerBox)'));
+
+    expect($first?->key)->toBe('device.new')
+        ->and($second?->key)->toBe('device.new');
+});
+
+it('cannot evict the owner\'s devices by trying from many browsers', function (): void {
+    $signal = new NewDeviceSignal(new SubjectKey('test-secret'), new Repository(new ArrayStore), maxDevices: 2);
+    $signal->remember(signInWith('Mozilla/5.0 (Macintosh)'));
+
+    foreach (range(1, 5) as $i) {
+        $signal->evaluate(signInWith("Mozilla/5.0 (Throwaway {$i})"));
+    }
 
     expect($signal->evaluate(signInWith('Mozilla/5.0 (Macintosh)')))->toBeNull();
 });
@@ -76,7 +104,7 @@ it('keeps device history separate between environments', function (): void {
 
     // The attacker, on their own tenant, teaches the shared history their device.
     $context->runAs(GenericEnvironment::of('env_attacker'), function () use ($signal): void {
-        $signal->evaluate(signInWith('Mozilla/5.0 (AttackerBox)'));
+        $signal->remember(signInWith('Mozilla/5.0 (AttackerBox)'));
     });
 
     // On the victim's tenant: their own device enrols first, and then the attacker's
@@ -86,7 +114,7 @@ it('keeps device history separate between environments', function (): void {
     // earlier version checked that some LATER device scored, which it does either way —
     // the discriminator has to be the one device the attacker was trying to pre-approve.
     $victim = $context->runAs(GenericEnvironment::of('env_victim'), function () use ($signal) {
-        $signal->evaluate(signInWith('Mozilla/5.0 (VictimLaptop)'));
+        $signal->remember(signInWith('Mozilla/5.0 (VictimLaptop)'));
 
         return $signal->evaluate(signInWith('Mozilla/5.0 (AttackerBox)'));
     });
