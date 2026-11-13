@@ -1,7 +1,7 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { useCallback } from 'react';
 import { useTranslator } from '@/i18n';
-import AuthLayout from '@/layouts/AuthLayout';
+import AuthLayout, { AuthCardFoot } from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button, Field, Input, PasswordField, Turnstile } from '@/ui';
 import { login } from '@routes';
@@ -49,7 +49,7 @@ export default function Signup({
 
     return (
         <>
-            <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
+            <h1 className="auth-title">
                 {createsIdp
                     ? t('auth.signup.heading.creates_idp')
                     : forApp !== null
@@ -184,16 +184,14 @@ export default function Signup({
                 </Button>
             </form>
 
-            <p className="mt-8 text-sm text-center" style={{ color: 'var(--muted-foreground)' }}>
-                {t('auth.signup.have_account')}{' '}
-                <Link
-                    href={login.url()}
-                    className="font-medium underline underline-offset-2"
-                    style={{ color: 'var(--accent-strong)' }}
-                >
-                    {t('auth.common.sign_in')}
-                </Link>
-            </p>
+            <AuthCardFoot>
+                <p>
+                    {t('auth.signup.have_account')}{' '}
+                    <Link href={login.url()} className="auth-link">
+                        {t('auth.common.sign_in')}
+                    </Link>
+                </p>
+            </AuthCardFoot>
         </>
     );
 }

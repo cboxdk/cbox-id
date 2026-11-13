@@ -110,7 +110,7 @@ function Failure({
             >
                 !
             </div>
-            <h1 className="text-2xl font-semibold tracking-tight">{t('oauth.failure.heading')}</h1>
+            <h1 className="auth-title">{t('oauth.failure.heading')}</h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
                 {message}
             </p>
@@ -175,9 +175,7 @@ function Authorize({
                 <Icon name="shield" className="w-5 h-5" />
             </div>
 
-            <h1 className="text-2xl font-semibold tracking-tight">
-                {t('oauth.consent.heading', { client: client.name })}
-            </h1>
+            <h1 className="auth-title">{t('oauth.consent.heading', { client: client.name })}</h1>
             <p className="mt-1.5 text-sm" style={{ color: 'var(--muted)' }}>
                 {rich('oauth.consent.wants_access', {
                     client: <b>{client.name}</b>,
@@ -201,7 +199,7 @@ function Authorize({
                                 href={client.clientUri}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="underline"
+                                className="auth-link"
                             >
                                 {t('oauth.consent.about_app')}
                             </a>

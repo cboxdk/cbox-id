@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Accedi',
         'purpose' => [
-            'default' => 'Bentornato. Accedi per continuare.',
+            'default' => 'Accedi al tuo account per continuare.',
             'device' => 'Accedi per approvare il dispositivo in attesa.',
             'app' => 'Accedi per continuare su :app.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => 'Hai dimenticato la password?',
         'admin_link' => 'Sono un amministratore',
-        'or' => 'OPPURE',
+        'or' => 'oppure',
         'continue_with' => 'Prosegui con :provider',
         'last_used' => 'Ultimo utilizzo',
         'last_used_hint' => 'Il modo in cui hai effettuato l\'accesso l\'ultima volta su questo dispositivo.',
         'magic_link' => 'Inviami un link di accesso via email',
         'passkey' => 'Accedi con una passkey',
+        'method' => [
+            'magic_link' => 'Link di accesso',
+            'passkey' => 'Passkey',
+        ],
         'passkey_failed' => 'L’accesso con la passkey non è riuscito.',
         'new_organization' => 'Nuova organizzazione?',
         'create_one' => 'Crea',

@@ -38,9 +38,7 @@ export default function ConnectedServices({ services, accountHref }: Props) {
 
     return (
         <>
-            <h1 className="text-xl font-semibold tracking-tight">
-                {t('auth.connected_services.heading')}
-            </h1>
+            <h1 className="auth-title">{t('auth.connected_services.heading')}</h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {t('auth.connected_services.lead')}
             </p>
@@ -149,7 +147,7 @@ export default function ConnectedServices({ services, accountHref }: Props) {
             )}
 
             <p className="mt-6 text-sm">
-                <a href={accountHref} className="underline">
+                <a href={accountHref} className="auth-link">
                     {t('auth.connected_services.back')}
                 </a>
             </p>

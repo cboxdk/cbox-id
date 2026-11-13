@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Přihlásit se',
         'purpose' => [
-            'default' => 'Vítejte zpět. Přihlaste se a pokračujte.',
+            'default' => 'Pro pokračování se přihlaste ke svému účtu.',
             'device' => 'Přihlaste se, abyste schválili zařízení, které čeká.',
             'app' => 'Přihlaste se a pokračujte do aplikace :app.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => 'Zapomněli jste heslo?',
         'admin_link' => 'Jsem správce',
-        'or' => 'NEBO',
+        'or' => 'nebo',
         'continue_with' => 'Pokračujte s :provider',
         'last_used' => 'Poslední použití',
         'last_used_hint' => 'Způsob použitý při posledním přihlášení na tomto zařízení.',
         'magic_link' => 'Poslat přihlašovací odkaz e-mailem',
         'passkey' => 'Přihlaste se pomocí přístupového klíče',
+        'method' => [
+            'magic_link' => 'Přihlašovací odkaz',
+            'passkey' => 'Přístupový klíč',
+        ],
         'passkey_failed' => 'Přihlášení pomocí přístupového klíče selhalo.',
         'new_organization' => 'Nová organizace?',
         'create_one' => 'Vytvořit',

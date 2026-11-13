@@ -20,5 +20,11 @@ return [
     'language' => [
         'label' => 'Idioma',
     ],
+
+    'theme' => [
+        'system' => 'Sistema',
+        'light' => 'Claro',
+        'dark' => 'Escuro',
+    ],
     'skip_to_content' => 'Saltar para o conteúdo',
 ];

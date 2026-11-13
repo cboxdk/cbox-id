@@ -28,5 +28,12 @@ return [
         'label' => 'Language',
     ],
 
+    // The sign-in footer's theme choice — the account menu's three, in the same words.
+    'theme' => [
+        'system' => 'System',
+        'light' => 'Light',
+        'dark' => 'Dark',
+    ],
+
     'skip_to_content' => 'Skip to content',
 ];

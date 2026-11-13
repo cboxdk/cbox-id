@@ -20,5 +20,11 @@ return [
     'language' => [
         'label' => 'Jezik',
     ],
+
+    'theme' => [
+        'system' => 'Sustav',
+        'light' => 'Svijetlo',
+        'dark' => 'Tamno',
+    ],
     'skip_to_content' => 'Preskoči na sadržaj',
 ];

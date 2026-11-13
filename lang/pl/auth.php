@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Zaloguj się',
         'purpose' => [
-            'default' => 'Witaj ponownie. Zaloguj się, aby kontynuować.',
+            'default' => 'Zaloguj się na swoje konto, aby kontynuować.',
             'device' => 'Zaloguj się, aby zatwierdzić urządzenie, które czeka.',
             'app' => 'Zaloguj się, aby przejść do aplikacji :app.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => 'Zapomniałeś hasła?',
         'admin_link' => 'Jestem administratorem',
-        'or' => 'LUB',
+        'or' => 'lub',
         'continue_with' => 'Kontynuuj z :provider',
         'last_used' => 'Ostatnie użycie',
         'last_used_hint' => 'Metoda użyta podczas ostatniego logowania na tym urządzeniu.',
         'magic_link' => 'Wyślij mi link do logowania',
         'passkey' => 'Zaloguj się przy użyciu klucza dostępu',
+        'method' => [
+            'magic_link' => 'Link do logowania',
+            'passkey' => 'Klucz dostępu',
+        ],
         'passkey_failed' => 'Logowanie za pomocą klucza dostępu zakończyło się niepowodzeniem.',
         'new_organization' => 'Nowa organizacja?',
         'create_one' => 'Utwórz',

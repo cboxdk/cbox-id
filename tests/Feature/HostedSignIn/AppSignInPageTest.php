@@ -70,7 +70,7 @@ it('names the app on the sign-in page when an authorization sent the person ther
 
 it('says nothing about an identity console to somebody who came by themselves', function (): void {
     $this->get(route('login'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
-        ->where('purpose', 'Welcome back. Sign in to continue.')
+        ->where('purpose', 'Sign in to your account to continue.')
         ->where('signingInTo', null));
 });
 

@@ -1,6 +1,6 @@
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useTranslator } from '@/i18n';
-import AuthLayout from '@/layouts/AuthLayout';
+import AuthLayout, { AuthCardFoot } from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button, Field, Icon, Input } from '@/ui';
 import { logout } from '@routes';
@@ -28,7 +28,7 @@ export default function OtpStepUp({ maskedEmail, purpose = 'sign_in' }: Props) {
 
     return (
         <>
-            <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
+            <h1 className="auth-title">
                 {t(
                     purpose === 'sign_up'
                         ? 'auth.otp_step_up.signup_title'
@@ -91,22 +91,20 @@ export default function OtpStepUp({ maskedEmail, purpose = 'sign_in' }: Props) {
             <button
                 type="button"
                 onClick={() => router.post(resend.url(), {}, { preserveScroll: true })}
-                className="mt-4 text-sm underline underline-offset-2"
-                style={{ color: 'var(--accent-strong)' }}
+                className="mt-3.5 text-sm auth-link"
             >
                 {t('auth.otp_step_up.resend')}
             </button>
 
-            <div className="mt-6">
+            <AuthCardFoot>
                 <button
                     type="button"
                     onClick={() => router.post(logout.url())}
-                    className="text-sm underline underline-offset-2"
-                    style={{ color: 'var(--muted-foreground)' }}
+                    className="auth-link is-quiet"
                 >
                     {t('auth.common.cancel_and_sign_out')}
                 </button>
-            </div>
+            </AuthCardFoot>
         </>
     );
 }

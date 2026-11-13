@@ -20,9 +20,7 @@ export default function ChangePassword({ email }: Props) {
 
     return (
         <>
-            <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                {t('auth.change_password.title')}
-            </h1>
+            <h1 className="auth-title">{t('auth.change_password.title')}</h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {t('auth.change_password.lead')}
             </p>

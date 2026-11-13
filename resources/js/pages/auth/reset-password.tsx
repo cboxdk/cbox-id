@@ -1,6 +1,6 @@
 import { Link, useForm } from '@inertiajs/react';
 import { useTranslator } from '@/i18n';
-import AuthLayout from '@/layouts/AuthLayout';
+import AuthLayout, { AuthCardFoot } from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button, PasswordField, PasswordManagerIdentity } from '@/ui';
 import { login } from '@routes';
@@ -33,9 +33,7 @@ export default function ResetPassword({ token, forApp }: Props) {
 
     return (
         <>
-            <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                {t('auth.reset_password.title')}
-            </h1>
+            <h1 className="auth-title">{t('auth.reset_password.title')}</h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {t('auth.reset_password.lead', { count: 12 })}
             </p>
@@ -86,15 +84,13 @@ export default function ResetPassword({ token, forApp }: Props) {
                 </Button>
             </form>
 
-            <p className="mt-6 text-sm text-center" style={{ color: 'var(--muted-foreground)' }}>
-                <Link
-                    href={login.url()}
-                    className="font-medium underline underline-offset-2"
-                    style={{ color: 'var(--accent-strong)' }}
-                >
-                    {t('auth.common.back_to_sign_in')}
-                </Link>
-            </p>
+            <AuthCardFoot>
+                <p>
+                    <Link href={login.url()} className="auth-link">
+                        {t('auth.common.back_to_sign_in')}
+                    </Link>
+                </p>
+            </AuthCardFoot>
         </>
     );
 }

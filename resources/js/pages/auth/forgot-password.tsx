@@ -1,6 +1,6 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { useTranslator } from '@/i18n';
-import AuthLayout from '@/layouts/AuthLayout';
+import AuthLayout, { AuthCardFoot } from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button, Field, Input } from '@/ui';
 import { login } from '@routes';
@@ -26,9 +26,7 @@ export default function ForgotPassword(_props: Props) {
 
     return (
         <>
-            <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                {t('auth.forgot_password.heading')}
-            </h1>
+            <h1 className="auth-title">{t('auth.forgot_password.heading')}</h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {t('auth.forgot_password.lead')}
             </p>
@@ -53,8 +51,8 @@ export default function ForgotPassword(_props: Props) {
                     {devResetUrl != null && (
                         <a
                             href={devResetUrl}
-                            className="mt-2 inline-block underline underline-offset-2 mono"
-                            style={{ color: 'var(--accent-strong)', wordBreak: 'break-all' }}
+                            className="mt-2 inline-block auth-link mono"
+                            style={{ wordBreak: 'break-all' }}
                         >
                             {devResetUrl}
                         </a>
@@ -95,16 +93,14 @@ export default function ForgotPassword(_props: Props) {
                 </form>
             )}
 
-            <p className="mt-6 text-sm text-center" style={{ color: 'var(--muted-foreground)' }}>
-                {t('auth.forgot_password.remembered')}{' '}
-                <Link
-                    href={login.url()}
-                    className="font-medium underline underline-offset-2"
-                    style={{ color: 'var(--accent-strong)' }}
-                >
-                    {t('auth.common.back_to_sign_in')}
-                </Link>
-            </p>
+            <AuthCardFoot>
+                <p>
+                    {t('auth.forgot_password.remembered')}{' '}
+                    <Link href={login.url()} className="auth-link">
+                        {t('auth.common.back_to_sign_in')}
+                    </Link>
+                </p>
+            </AuthCardFoot>
         </>
     );
 }

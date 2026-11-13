@@ -42,7 +42,7 @@ export default function ConnectService({
         <>
             <div className="flex items-center gap-3">
                 <ProviderMark provider={provider} size={28} />
-                <h1 className="text-xl font-semibold tracking-tight">
+                <h1 className="auth-title">
                     {t('auth.connect_service.heading', { provider: providerName })}
                 </h1>
             </div>

@@ -2,7 +2,7 @@ import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CatalogAppIcon } from '@/chrome/CatalogAppIcon';
 import { useTranslator } from '@/i18n';
-import AuthLayout from '@/layouts/AuthLayout';
+import AuthLayout, { AuthCardFoot } from '@/layouts/AuthLayout';
 import {
     isCancellation,
     passkeyAutofillSupported,
@@ -10,7 +10,7 @@ import {
     signInWithPasskey,
 } from '@/lib/passkeys';
 import type { PageProps } from '@/types';
-import { Button, Divider, Field, Icon, Input, PasswordField, ProviderMark } from '@/ui';
+import { Button, Divider, Field, Icon, Input, PasswordField, ProviderMark, Spinner } from '@/ui';
 import { login as loginRoute, signup } from '@routes';
 import { attempt, identify, magicLink } from '@routes/login';
 import { request as forgotPassword } from '@routes/password';
@@ -226,10 +226,8 @@ export default function Login({
                     />
                 </div>
             )}
-            <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                {t('auth.login.title')}
-            </h1>
-            <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
+            <h1 className="auth-title">{t('auth.login.title')}</h1>
+            <p className="mt-1.5 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {purpose}
             </p>
 
@@ -248,43 +246,51 @@ export default function Login({
                 at Google. An alert, so it is announced as well as drawn.
             */}
             {signInProblem !== undefined && (
-                <div
-                    role="alert"
-                    className="mt-5 rounded-lg px-3.5 py-3 text-sm flex gap-2.5"
-                    style={{
-                        background: 'var(--destructive-soft)',
-                        color: 'var(--destructive-strong)',
-                        border: '1px solid color-mix(in srgb, var(--destructive) 25%, transparent)',
-                    }}
-                >
+                <div role="alert" className="auth-notice is-error mt-5">
                     <Icon name="warning" className="w-4 h-4 shrink-0 mt-0.5" />
                     <span>{signInProblem}</span>
                 </div>
             )}
 
             {magicSentTo !== undefined && (
-                <output
-                    className="mt-5 rounded-lg text-sm card block"
-                    style={{ padding: '0.85rem 1rem' }}
-                >
-                    <p className="font-medium">{t('auth.common.check_your_inbox')}</p>
-                    <p className="mt-1" style={{ color: 'var(--muted-foreground)' }}>
-                        {rich('auth.login.magic.sent_to', { email: <b>{magicSentTo}</b> })}
-                    </p>
-                    {magicUrl != null && (
-                        <>
-                            <a
-                                href={magicUrl}
-                                className="mt-2 inline-block text-sm underline underline-offset-2 mono"
-                                style={{ color: 'var(--accent-strong)', wordBreak: 'break-all' }}
-                            >
-                                {magicUrl}
-                            </a>
-                            <p className="mt-1 text-xs" style={{ color: 'var(--faint)' }}>
-                                {t('auth.login.magic.dev_note')}
-                            </p>
-                        </>
-                    )}
+                <output className="auth-notice is-info mt-5">
+                    <span className="auth-notice-icon" aria-hidden="true">
+                        <Icon name="mail" className="w-4 h-4" />
+                    </span>
+                    <span className="min-w-0 block">
+                        <span className="font-medium block">
+                            {t('auth.common.check_your_inbox')}
+                        </span>
+                        <span className="mt-0.5 block" style={{ color: 'var(--muted-foreground)' }}>
+                            {rich('auth.login.magic.sent_to', {
+                                email: (
+                                    <b
+                                        className="font-medium"
+                                        style={{ color: 'var(--foreground)' }}
+                                    >
+                                        {magicSentTo}
+                                    </b>
+                                ),
+                            })}
+                        </span>
+                        {magicUrl != null && (
+                            <>
+                                <a
+                                    href={magicUrl}
+                                    className="auth-link mt-2 inline-block text-xs mono"
+                                    style={{ wordBreak: 'break-all' }}
+                                >
+                                    {magicUrl}
+                                </a>
+                                <span
+                                    className="mt-1 block text-xs"
+                                    style={{ color: 'var(--faint)' }}
+                                >
+                                    {t('auth.login.magic.dev_note')}
+                                </span>
+                            </>
+                        )}
+                    </span>
                 </output>
             )}
 
@@ -297,7 +303,7 @@ export default function Login({
                     the old wording ("those credentials do not match our records") already
                     did, to people whose credentials matched perfectly well.
                 */
-                <div role="alert" className="mt-7 card p-5">
+                <div role="alert" className="mt-6 card p-5">
                     <h2 className="text-base font-semibold">
                         {t('auth.login.mandate.heading', { organization: mandate.organization })}
                     </h2>
@@ -345,7 +351,7 @@ export default function Login({
                 <>
                     {identified !== true ? (
                         <form
-                            className="mt-7 space-y-4"
+                            className="mt-6 space-y-4"
                             onSubmit={(event) => {
                                 event.preventDefault();
                                 form.post(identify.url());
@@ -394,7 +400,7 @@ export default function Login({
                                 never reaches here: it redirects before the form is drawn.
                             */}
                             {ssoOffer != null && ssoOfferLeads === true && (
-                                <div className="mt-7">
+                                <div className="mt-6">
                                     <a
                                         href={ssoOffer}
                                         className="btn btn-primary btn-lg w-full relative"
@@ -413,7 +419,7 @@ export default function Login({
                                 className={
                                     ssoOffer != null && ssoOfferLeads === true
                                         ? 'mt-5 space-y-4'
-                                        : 'mt-7 space-y-4'
+                                        : 'mt-6 space-y-4'
                                 }
                                 onSubmit={(event) => {
                                     event.preventDefault();
@@ -425,11 +431,7 @@ export default function Login({
                                     label={t('auth.common.email')}
                                     error={form.errors.email}
                                     labelAction={
-                                        <Link
-                                            href={loginRoute.url()}
-                                            className="text-xs font-medium underline underline-offset-2"
-                                            style={{ color: 'var(--accent-strong)' }}
-                                        >
+                                        <Link href={loginRoute.url()} className="auth-link text-xs">
                                             {t('auth.login.use_different_email')}
                                         </Link>
                                     }
@@ -460,8 +462,7 @@ export default function Login({
                                     labelAction={
                                         <Link
                                             href={forgotPassword.url()}
-                                            className="text-xs font-medium underline underline-offset-2"
-                                            style={{ color: 'var(--accent-strong)' }}
+                                            className="auth-link text-xs"
                                         >
                                             {t('auth.login.forgot_password')}
                                         </Link>
@@ -509,17 +510,26 @@ export default function Login({
                         <Divider>{t('auth.login.or')}</Divider>
                     )}
 
-                    {providers.length > 0 && (
-                        <div className="space-y-2.5 mb-2.5">
+                    {/*
+                        EVERY OTHER WAY IN, AS ONE GROUP: equal tiles, two to a row, each with
+                        its mark and a short name. The full sentence ("Continue with Google")
+                        stays each control's accessible name; the short label is what is
+                        drawn.
+                    */}
+                    {(providers.length > 0 ||
+                        methods.magicLink ||
+                        (methods.passkeys && canUsePasskeys)) && (
+                        <div className="auth-methods">
                             {providers.map((provider) => (
                                 <a
                                     key={provider.provider}
                                     href={provider.url}
-                                    className="btn btn-ghost btn-lg w-full relative"
+                                    className="auth-method"
                                     {...lastUsedProps(provider.provider)}
                                 >
-                                    <ProviderMark provider={provider.provider} />
-                                    <span>
+                                    <ProviderMark provider={provider.provider} size={16} />
+                                    <span aria-hidden="true">{provider.label}</span>
+                                    <span className="sr-only">
                                         {t('auth.login.continue_with', {
                                             provider: provider.label,
                                         })}
@@ -527,45 +537,53 @@ export default function Login({
                                     {badge(provider.provider)}
                                 </a>
                             ))}
+
+                            {methods.magicLink && (
+                                <button
+                                    type="button"
+                                    className="auth-method"
+                                    onClick={() => form.post(magicLink.url())}
+                                    {...lastUsedProps('magic_link')}
+                                >
+                                    <Icon name="magic" className="w-4 h-4" />
+                                    <span aria-hidden="true">
+                                        {t('auth.login.method.magic_link')}
+                                    </span>
+                                    <span className="sr-only">{t('auth.login.magic_link')}</span>
+                                    {badge('magic_link')}
+                                </button>
+                            )}
+
+                            {/*
+                                Hidden entirely where the browser cannot do WebAuthn. An
+                                affordance that always fails is worse than one that is absent.
+                            */}
+                            {methods.passkeys && canUsePasskeys && (
+                                <button
+                                    type="button"
+                                    className="auth-method"
+                                    disabled={passkeyBusy}
+                                    aria-busy={passkeyBusy}
+                                    onClick={() => void signIn()}
+                                    {...lastUsedProps('passkey')}
+                                >
+                                    {passkeyBusy ? (
+                                        <Spinner />
+                                    ) : (
+                                        <Icon name="key" className="w-4 h-4" />
+                                    )}
+                                    <span aria-hidden="true">{t('auth.login.method.passkey')}</span>
+                                    <span className="sr-only">{t('auth.login.passkey')}</span>
+                                    {badge('passkey')}
+                                </button>
+                            )}
                         </div>
                     )}
 
-                    <div className="space-y-2.5">
-                        {methods.magicLink && (
-                            <Button
-                                size="lg"
-                                icon="magic"
-                                className="w-full relative"
-                                onClick={() => form.post(magicLink.url())}
-                                {...lastUsedProps('magic_link')}
-                            >
-                                {t('auth.login.magic_link')}
-                                {badge('magic_link')}
-                            </Button>
-                        )}
-
-                        {/*
-                            Hidden entirely where the browser cannot do WebAuthn. An
-                            affordance that always fails is worse than one that is absent.
-                        */}
-                        {methods.passkeys && canUsePasskeys && (
-                            <Button
-                                size="lg"
-                                icon="key"
-                                className="w-full relative"
-                                loading={passkeyBusy}
-                                onClick={() => void signIn()}
-                                {...lastUsedProps('passkey')}
-                            >
-                                {t('auth.login.passkey')}
-                                {badge('passkey')}
-                            </Button>
-                        )}
-
+                    <div>
                         <output
-                            className="text-xs text-center block"
+                            className="text-xs text-center block mt-3 empty:mt-0"
                             style={{
-                                minHeight: '1rem',
                                 color:
                                     passkeyMessage?.ok === true
                                         ? 'var(--success-strong)'
@@ -575,12 +593,13 @@ export default function Login({
                             {passkeyMessage?.text ?? ''}
                         </output>
                     </div>
+                </>
+            )}
 
-                    {signupOpen && (
-                        <p
-                            className="mt-8 text-sm text-center"
-                            style={{ color: 'var(--muted-foreground)' }}
-                        >
+            {((mandate === undefined && signupOpen) || adminUrl !== null) && (
+                <AuthCardFoot>
+                    {mandate === undefined && signupOpen && (
+                        <p>
                             {/*
                                 On the way to an app the person wants an ACCOUNT for it.
                                 "New organization? Create one" is the console's question.
@@ -590,11 +609,7 @@ export default function Login({
                                     ? 'auth.login.new_organization'
                                     : 'auth.login.no_account',
                             )}{' '}
-                            <Link
-                                href={signup.url()}
-                                className="font-medium underline underline-offset-2"
-                                style={{ color: 'var(--accent-strong)' }}
-                            >
+                            <Link href={signup.url()} className="auth-link">
                                 {t(
                                     signingInTo === null
                                         ? 'auth.login.create_one'
@@ -603,24 +618,20 @@ export default function Login({
                             </Link>
                         </p>
                     )}
-                </>
-            )}
 
-            {/*
-                For whoever ADMINISTERS this environment, not for the people signing in: a
-                plain anchor to another origin (the console on the app host), small and
-                below everything else. The environment can hide it.
-            */}
-            {adminUrl !== null && (
-                <p className="mt-8 text-xs text-center">
-                    <a
-                        href={adminUrl}
-                        className="underline underline-offset-2"
-                        style={{ color: 'var(--muted-foreground)' }}
-                    >
-                        {t('auth.login.admin_link')}
-                    </a>
-                </p>
+                    {/*
+                        For whoever ADMINISTERS this environment, not for the people signing
+                        in: a plain anchor to another origin (the console on the app host),
+                        small and last. The environment can hide it.
+                    */}
+                    {adminUrl !== null && (
+                        <p className="text-xs">
+                            <a href={adminUrl} className="auth-link is-quiet">
+                                {t('auth.login.admin_link')}
+                            </a>
+                        </p>
+                    )}
+                </AuthCardFoot>
             )}
         </>
     );

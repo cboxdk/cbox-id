@@ -28,9 +28,7 @@ export default function CreateOrganization({ client, me, storeHref, pickerHref, 
 
     return (
         <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-                {t('oauth.create_organization.heading')}
-            </h1>
+            <h1 className="auth-title">{t('oauth.create_organization.heading')}</h1>
             <p className="mt-1.5 text-sm" style={{ color: 'var(--muted)' }}>
                 {rich('oauth.create_organization.lead', { client: <b>{client.name}</b> })}
             </p>

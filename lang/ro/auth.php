@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Autentificare',
         'purpose' => [
-            'default' => 'Bine ați revenit. Autentificați-vă pentru a continua.',
+            'default' => 'Conectați-vă la cont pentru a continua.',
             'device' => 'Autentificați-vă pentru a aproba dispozitivul în așteptare.',
             'app' => 'Autentificați-vă pentru a continua către :app.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => 'Ați uitat parola?',
         'admin_link' => 'Sunt administrator',
-        'or' => 'SAU',
+        'or' => 'sau',
         'continue_with' => 'Continuați cu :provider',
         'last_used' => 'Ultima utilizare',
         'last_used_hint' => 'Modul în care v-ați autentificat ultima dată pe acest dispozitiv.',
         'magic_link' => 'Trimiteți-mi un link de autentificare prin e-mail',
         'passkey' => 'Autentificare folosind o cheie de acces',
+        'method' => [
+            'magic_link' => 'Link de autentificare',
+            'passkey' => 'Cheie de acces',
+        ],
         'passkey_failed' => 'Autentificarea cu cheia de acces a eșuat.',
         'new_organization' => 'O nouă organizație?',
         'create_one' => 'Creați una',

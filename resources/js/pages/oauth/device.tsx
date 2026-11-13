@@ -114,9 +114,7 @@ function Outcome({
             >
                 <Icon name={tone === 'success' ? 'check' : 'close'} className="w-7 h-7" />
             </span>
-            <h1 className="mt-5 font-semibold tracking-tight" style={{ fontSize: '1.6rem' }}>
-                {title}
-            </h1>
+            <h1 className="auth-title mt-5">{title}</h1>
             <p className="mt-2 text-[15px]" style={{ color: 'var(--muted-foreground)' }}>
                 {body}
             </p>
@@ -155,7 +153,7 @@ function Consent({
         <div>
             <DeviceMark />
 
-            <h1 className="mt-5 font-semibold tracking-tight" style={{ fontSize: '1.6rem' }}>
+            <h1 className="auth-title mt-5">
                 {t('oauth.device.consent_heading', { client: client.name })}
             </h1>
             <p className="mt-2 text-[15px]" style={{ color: 'var(--muted-foreground)' }}>
@@ -413,9 +411,7 @@ function CodeForm({ href, error }: { href: string; error?: string }) {
         <div>
             <DeviceMark />
 
-            <h1 className="mt-5 font-semibold tracking-tight" style={{ fontSize: '1.6rem' }}>
-                {t('oauth.device.heading')}
-            </h1>
+            <h1 className="auth-title mt-5">{t('oauth.device.heading')}</h1>
             <p className="mt-2 text-[15px]" style={{ color: 'var(--muted-foreground)' }}>
                 {t('oauth.device.lead')}
             </p>

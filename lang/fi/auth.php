@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Kirjaudu sisään',
         'purpose' => [
-            'default' => 'Tervetuloa takaisin. Kirjaudu sisään jatkaaksesi.',
+            'default' => 'Jatka kirjautumalla tilillesi.',
             'device' => 'Kirjaudu sisään hyväksymään odottava laite.',
             'app' => 'Kirjaudu sisään jatkaaksesi sovellukseen :app.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => 'Unohdit salasanan?',
         'admin_link' => 'Olen ylläpitäjä',
-        'or' => 'TAI',
+        'or' => 'tai',
         'continue_with' => 'Jatka palvelun :provider kautta',
         'last_used' => 'Viimeksi käytetty',
         'last_used_hint' => 'Edellinen kirjautumistapa tässä laitteessa.',
         'magic_link' => 'Lähetä kirjautumislinkki sähköpostitse',
         'passkey' => 'Kirjaudu sisään pääsyavaimella',
+        'method' => [
+            'magic_link' => 'Kirjautumislinkki',
+            'passkey' => 'Pääsyavain',
+        ],
         'passkey_failed' => 'Pääsyavaimen käyttäminen ei onnistunut.',
         'new_organization' => 'Uusi organisaatio?',
         'create_one' => 'Luo',

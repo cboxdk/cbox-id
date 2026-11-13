@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Inloggen',
         'purpose' => [
-            'default' => 'Welkom terug. Log in om door te gaan.',
+            'default' => 'Log in op je account om verder te gaan.',
             'device' => 'Log in om het wachtende apparaat goed te keuren.',
             'app' => 'Log in om door te gaan naar :app.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => 'Wachtwoord vergeten?',
         'admin_link' => 'Ik ben beheerder',
-        'or' => 'OF',
+        'or' => 'of',
         'continue_with' => 'Ga verder met :provider',
         'last_used' => 'Laatst gebruikt',
         'last_used_hint' => 'De methode waarmee je de vorige keer op dit apparaat inlogde.',
         'magic_link' => 'Stuur me een inloglink per e-mail',
         'passkey' => 'Inloggen met een passkey',
+        'method' => [
+            'magic_link' => 'Inloglink',
+            'passkey' => 'Passkey',
+        ],
         'passkey_failed' => 'Inloggen met een passkey is mislukt.',
         'new_organization' => 'Nieuwe organisatie?',
         'create_one' => 'Aanmaken',
