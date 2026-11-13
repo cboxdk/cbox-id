@@ -2242,6 +2242,16 @@ function confirmEnvironmentStepUp(): void
 }
 
 /**
+ * Confirm the step-up on the PLATFORM ROOT's environment console (`/admin/environment/…`),
+ * for an operator about to make a Critical change there — bound to the root, as the
+ * confirmation the console itself records is.
+ */
+function confirmRootEnvironmentStepUp(): void
+{
+    app(EnvironmentContext::class)->runAs(app(PlatformRoot::class)->model(), static fn () => app(EnvironmentSudo::class)->confirm());
+}
+
+/**
  * Leave the console session behind, keeping everything `actingAsRole()` set up.
  *
  * For the pages an ANONYMOUS visitor sees — a branded sign-in page, a public consent
@@ -2741,4 +2751,26 @@ function pickConsoleLanguage(mixed $page, string $name, bool $phone = false): mi
     }
 
     return $page->click('.cbx-menu-account [role="option"]:has-text("'.$name.'")');
+}
+
+/*
+ * LIVE UPDATES ON, as a deployment with Reverb configured has them. The suite runs with
+ * BROADCAST_CONNECTION=null ({@see tests/bootstrap.php}), which is also the shape every
+ * other test asserts: live updates fully inert.
+ */
+function enableLiveUpdates(): void
+{
+    config([
+        'broadcasting.default' => 'reverb',
+        'broadcasting.connections.reverb.key' => 'live-test-key',
+        'broadcasting.connections.reverb.secret' => 'live-test-secret',
+        'broadcasting.connections.reverb.app_id' => 'live-test',
+        'realtime.enabled' => true,
+    ]);
+}
+
+/** The signature Reverb expects for this socket and channel, computed independently. */
+function liveSignature(string $socketId, string $channel): string
+{
+    return 'live-test-key:'.hash_hmac('sha256', $socketId.':'.$channel, 'live-test-secret');
 }

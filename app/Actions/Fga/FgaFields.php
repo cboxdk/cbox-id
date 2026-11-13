@@ -259,6 +259,30 @@ final class FgaFields
         }
     }
 
+    /**
+     * Refuse an id no tuple could hold — the write's own rule ({@see SubjectRef::ID_PATTERN}:
+     * 1–128 printable characters, no space, `#` or `@`) — before it is asked.
+     *
+     * A check or list question is rendered as text to key its cached answer, and `#` and `@`
+     * are that text's separators: a plain subject id `eng#member` read as the userset
+     * `group:eng#member`, so whoever asked it first fixed the answer every later userset
+     * check got. An id that can never be stored can never be granted, so there is nothing
+     * to answer about it. The list cursor (`after`) is the last id of the previous page, so
+     * it takes the same rule.
+     *
+     * @throws ActionRefused
+     */
+    public static function assertIds(ActionContext $context, string ...$fields): void
+    {
+        foreach ($fields as $field) {
+            $id = $context->nullableString($field);
+
+            if ($id !== null && (preg_match(SubjectRef::ID_PATTERN, $id) !== 1)) {
+                throw ActionRefused::because('invalid_id', "`{$field}` is not a valid id: 1–128 printable characters without spaces, `#` or `@`.", $field);
+            }
+        }
+    }
+
     private static function text(mixed $value): string
     {
         return is_scalar($value) ? (string) $value : '';

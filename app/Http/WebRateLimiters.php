@@ -87,6 +87,16 @@ final class WebRateLimiters
     public const VERIFICATION_RESEND_PER_PERSON = 5;
 
     /**
+     * Texts one person may have sent to enrol a phone number, per hour, from any address.
+     * Each enrolment is a new factor, so the code's own per-recipient cap starts over every
+     * time, and the guard's per-address budget is escaped by rotating addresses (an IPv6
+     * /64 is millions of them). A person mistyping their number a few times stays well
+     * inside it. Counted in the controller, keyed on the signed-in person: a route
+     * throttle runs before authentication and would know nobody.
+     */
+    public const SMS_ENROL_PER_PERSON_PER_HOUR = 5;
+
+    /**
      * First-run claims per minute from one address. The setup token is the whole credential
      * for an unclaimed deployment; the controller locks a guesser out after a handful of
      * wrong tokens, and this is the ceiling in front of it.

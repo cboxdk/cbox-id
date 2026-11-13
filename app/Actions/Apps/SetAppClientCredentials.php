@@ -14,6 +14,7 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\RatedByInput;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Enums\GrantType;
@@ -30,9 +31,18 @@ use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
     rest: ['PUT', '/apps/{id}/settings/client-credentials'],
     consoleGate: ConsoleGate::Administer,
 )]
-final readonly class SetAppClientCredentials implements Action
+final readonly class SetAppClientCredentials implements Action, RatedByInput
 {
     public function __construct(private ClientRegistry $clients) {}
+
+    /**
+     * Turning the machine grant ON is Critical ({@see RatedByInput}): the app's secret
+     * becomes a way to act as the app with no person present. Turning it off is a Write.
+     */
+    public function dangerFor(ActionContext $context): Danger
+    {
+        return $context->boolean('enabled') ? Danger::Critical : Danger::Write;
+    }
 
     public static function input(): InputSchema
     {
@@ -56,6 +66,7 @@ final readonly class SetAppClientCredentials implements Action
         ));
 
         if ($context->boolean('enabled')) {
+            AppFields::refuseCredentialForReserved($context, $client, 'enabled');
             $grants[] = GrantType::ClientCredentials->value;
         }
 

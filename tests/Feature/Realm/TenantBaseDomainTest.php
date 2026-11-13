@@ -136,3 +136,34 @@ it('does not disturb an environment that already holds a slug reserved later', f
     expect($cbox->refresh()->slug)->toBe('cbox');
     $this->get('https://cbox.cboxauth.com/login')->assertOk();
 });
+
+/*
+ * Needs-validation lead "a customer's product name can claim the platform console host's
+ * label": already closed on main by d18f9d95 (the reserved list), kept by this test end to
+ * end. A product named "App" never gets `app`, so app.cboxid.com stays the platform's, and
+ * a host the deployment NAMES (a login, console or API host under a base domain) is
+ * reserved by its first label even when it is not on the shipped list.
+ */
+it('never hands a product the label of a platform host, shipped or configured', function (): void {
+    config([
+        'cbox-id.hosts.login' => 'signin.cboxid.com',
+        'cbox-id.hosts.api' => 'rest.cboxauth.com',
+        'cbox-id.tenancy.account_host' => 'console.cboxid.com',
+    ]);
+
+    foreach (['App' => 'app', 'Signin' => 'signin', 'Rest' => 'rest', 'Console' => 'console'] as $name => $label) {
+        $created = Environment::query()->create([
+            'name' => $name,
+            'slug' => $label,
+            'type' => EnvironmentType::Production,
+            'status' => EnvironmentStatus::Active,
+            'is_default' => false,
+            'settings' => [],
+        ]);
+
+        expect($created->slug)->not->toBe($label)
+            ->and(ReservedEnvironmentSlugs::reserved($label))->toBeTrue($label);
+    }
+
+    expect(ReservedEnvironmentSlugs::reserved('acme'))->toBeFalse();
+})->group('security');

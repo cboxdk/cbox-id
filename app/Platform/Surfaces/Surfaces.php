@@ -68,6 +68,8 @@ final class Surfaces
     public const array SHARED = [
         '/', 'robots.txt', 'favicon.ico', 'build/*', 'storage/*', 'brand-assets/*', 'app-icons/*',
         'locale', 'interface-language', 'logout', 'signed-out', 'first-run',
+        // Live updates: a signed-in page asks whether it may listen, on whichever host drew it.
+        'realtime/auth',
         // The app picker's old address: each surface sends it on to the console's switcher.
         // Its catalog feed is the person's own list, read by Switch app in the header of
         // the console and of a person's own pages on the login host.

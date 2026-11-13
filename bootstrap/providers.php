@@ -4,6 +4,7 @@ use App\Assistant\ServiceProvider;
 use App\Providers\AppServiceProvider;
 use App\Providers\QueueServiceProvider;
 use App\Providers\RadarServiceProvider;
+use App\Providers\RealtimeServiceProvider;
 use App\Providers\ServiceConnectionsServiceProvider;
 use App\Providers\ShellServiceProvider;
 use App\Providers\SignalsDataServiceProvider;
@@ -18,4 +19,5 @@ return [
     RadarServiceProvider::class,
     SignalsServiceProvider::class,
     SignalsDataServiceProvider::class,
+    RealtimeServiceProvider::class,
 ];

@@ -124,6 +124,7 @@ function ruleSessionIsLive(Session $session): bool
 
 it('writes an organization override from the organization console', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     // Nothing of its own to begin with: the org is governed entirely by the baseline.
     expect(app(AuthPolicies::class)->overrideFor($org->id))->toBeNull();
@@ -147,6 +148,7 @@ it('refuses an override that would loosen the environment baseline', function ()
     // instead — on every field, because a page that catches only the obvious one teaches
     // an administrator to trust the rest.
     [$subjectId, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(
         minLength: 16,
@@ -205,6 +207,7 @@ it('says whether a rule is the organization\'s own or the environment\'s', funct
 
 it('drops the override and goes back to inheriting', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(minLength: 14));
     app(AuthPolicies::class)->setForOrganization($org->id, new AuthPolicy(minLength: 22));
@@ -227,6 +230,7 @@ it('drops the override and goes back to inheriting', function (): void {
 
 it('asks before a save that would sign an organization out, then does it', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     $member = aRuleSubjectSession('rules-member@acme.test');
     app(Memberships::class)->add($org->id, $member->user_id, MembershipRole::Member);
@@ -262,6 +266,7 @@ it('does not ask when the organization is already covered by an environment mand
     // everyone out" about a change that signs nobody out is how confirmations become
     // reflexes — and the effective policy, not the stored override, is what says so.
     [$subjectId, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(sso: SsoEnforcement::Required));
 
@@ -304,6 +309,7 @@ it('refuses an organization admin with no organization at all', function (): voi
 
 it('keeps the environment plane writing the baseline, not an override', function (): void {
     $setup = crudSetup();
+    confirmEnvironmentStepUp();
     $org = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'tenant-baseline'));
 
     saveRules(['minLength' => 19], 'environment.auth-policy')->assertSessionHasNoErrors();
@@ -320,6 +326,7 @@ it('writes one organization\'s override from its Policy tab on the environment c
     // its own page — `/admin/organizations/{organization}/policy` — which edits exactly what
     // that organization's own console edits, and inherits again from the same place.
     crudSetup();
+    confirmEnvironmentStepUp();
     $org = app(Organizations::class)->create(new NewOrganization('Tenant Co', 'tenant-override'));
     $tab = route('environment.organizations.policy', $org->id);
 
@@ -398,6 +405,7 @@ function anOrgWithADraftConnection(): array
 
 it('offers the mandate when a connection is activated, and does not apply it', function (): void {
     [$org, $connection] = anOrgWithADraftConnection();
+    confirmConsoleStepUp();
 
     $member = aRuleSubjectSession('offer-member@acme.test');
     app(Memberships::class)->add($org->id, $member->user_id, MembershipRole::Member);
@@ -422,6 +430,7 @@ it('offers the mandate when a connection is activated, and does not apply it', f
 
 it('applies the mandate when the offer is accepted', function (): void {
     [$org, $connection] = anOrgWithADraftConnection();
+    confirmConsoleStepUp();
 
     $member = aRuleSubjectSession('accept-member@acme.test');
     app(Memberships::class)->add($org->id, $member->user_id, MembershipRole::Member);
@@ -440,6 +449,7 @@ it('keeps the rest of the organization\'s policy when the offer is accepted', fu
     // AuthPolicy it would write the value object's defaults as this organization's first
     // override — quietly restating a 12-character minimum under a 16-character baseline.
     [, $connection] = anOrgWithADraftConnection();
+    confirmConsoleStepUp();
 
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(minLength: 16, reuseHistory: 4));
 

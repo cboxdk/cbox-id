@@ -54,6 +54,7 @@ function ownersOf(string $organizationId): array
 
 it('transfers ownership: the new owner is promoted and the old one stays on as an admin', function (): void {
     [$ownerId, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
     $danaId = colleague($org->id, MembershipRole::Member, 'dana@acme.test');
 
     test()->from(route('directory.members'))
@@ -89,6 +90,7 @@ it('will not hand the organization to a member who is suspended', function (): v
 
 it('lets only the owner transfer ownership', function (): void {
     [, $org] = actingAsRole(MembershipRole::Admin);
+    confirmStepUp();
     $danaId = colleague($org->id, MembershipRole::Member, 'dana@acme.test');
 
     test()->from(route('directory.members'))
@@ -100,6 +102,7 @@ it('lets only the owner transfer ownership', function (): void {
 
 it('will not transfer to somebody who is not a member', function (): void {
     [$ownerId, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
     $other = app(Organizations::class)->create(new NewOrganization('Globex', 'globex-transfer'));
     $strangerId = colleague($other->id, MembershipRole::Member, 'stranger@globex.test');
 
@@ -187,6 +190,7 @@ it('refuses with the REASON, so a test cannot pass on a different refusal', func
 
 it('lets an environment administrator make somebody the owner of an organization that has none', function (): void {
     craftedEnvAdmin();
+    confirmEnvironmentStepUp();
     $org = app(Organizations::class)->create(new NewOrganization('Tenant', 'tenant-no-owner'));
     $erinId = colleague($org->id, MembershipRole::Member, 'erin@tenant.test');
 
@@ -199,6 +203,7 @@ it('lets an environment administrator make somebody the owner of an organization
 
 it('steps every current owner down when an environment administrator re-assigns ownership', function (): void {
     craftedEnvAdmin();
+    confirmEnvironmentStepUp();
     $org = app(Organizations::class)->create(new NewOrganization('Tenant', 'tenant-two-owners'));
     // Two owners — the state the People page could produce before ownership was a transfer.
     $aId = colleague($org->id, MembershipRole::Owner, 'a@tenant.test');

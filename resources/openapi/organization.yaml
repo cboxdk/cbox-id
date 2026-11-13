@@ -1864,13 +1864,13 @@ paths:
       tags:
         - Team
       summary: "Set which of the organization's environments a team member reaches: all of them, or the listed ones."
-      description: 'Requires scope `id:members:write` (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. Danger: write.'
+      description: 'Requires scope `id:members:write` (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. Danger: critical.'
       operationId: team_environment_access
       x-action: team.environment_access
       x-scope: 'id:members:write'
       x-scope-aliases:
         - 'team:write'
-      x-danger: write
+      x-danger: critical
       parameters:
         -
           name: id

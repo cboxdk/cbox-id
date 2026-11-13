@@ -133,6 +133,7 @@ it('flashes a not-found message when the TXT record is missing', function () {
 
 it('toggles capture only on a verified domain', function () {
     $orgId = ssoAdmin('dom-capture');
+    confirmConsoleStepUp();
 
     $verified = $this->makeVerifiedDomain($orgId, 'acme.com');
     $pending = app(DomainVerification::class)->add($orgId, 'pending.com');

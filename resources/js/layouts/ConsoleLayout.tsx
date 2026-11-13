@@ -18,6 +18,7 @@ import { type ComponentProps, type ReactNode, useCallback, useEffect, useMemo } 
 import { EmailConfirmationBanner } from '@/chrome/Banners';
 import { RouteAnnouncer } from '@/chrome/RouteAnnouncer';
 import { StepUpDialog } from '@/chrome/StepUpDialog';
+import { LiveUpdates } from '@/chrome/LiveUpdates';
 import { Toaster } from '@/chrome/Toaster';
 import { useDocumentLanguage, useTranslator } from '@/i18n';
 import {
@@ -378,6 +379,7 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
             <Head title={title} />
             <RouteAnnouncer />
             <Toaster />
+            <LiveUpdates />
             <StepUpDialog />
         </>
     );

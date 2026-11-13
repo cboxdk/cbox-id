@@ -54,6 +54,7 @@ function provConnection(?string $organizationId, string $name = 'Downstream'): P
 it('registers a provisioning connection', function (): void {
     config(['cbox-id.provisioning.verify_url' => false]);
     $orgId = provAdmin();
+    confirmConsoleStepUp();
 
     registerOutboundSync()->assertSessionHasNoErrors();
 
@@ -183,6 +184,7 @@ it('forbids a non-admin member', function (): void {
 it('stores what an OAuth2 client-credentials target needs to authenticate', function (): void {
     config(['cbox-id.provisioning.verify_url' => false]);
     $orgId = provAdmin();
+    confirmConsoleStepUp();
 
     registerOutboundSync([
         'scheme' => 'oauth2_client_credentials',
@@ -220,6 +222,7 @@ it('refuses to register a client-credentials target with nowhere to fetch a toke
 it('leaves the auth config empty for a bearer target', function (): void {
     config(['cbox-id.provisioning.verify_url' => false]);
     $orgId = provAdmin();
+    confirmConsoleStepUp();
 
     registerOutboundSync([
         'name' => 'Bearer one',

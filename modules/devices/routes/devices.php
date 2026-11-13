@@ -54,6 +54,20 @@ ConsoleRoutes::organizationPage(
 );
 
 /*
+ * Confirming it's you before the enrolment code is shown — the code is a way to add an
+ * approval device, so it is behind the same step-up as adding a passkey
+ * ({@see MyDevicesController::unlock()}).
+ */
+ConsoleRoutes::organizationAction(
+    feature: 'devices',
+    verb: 'post',
+    uri: '/settings/devices/enrolment',
+    action: [MyDevicesController::class, 'unlock'],
+    name: 'devices.mine.enrolment',
+    middleware: [BlockDuringImpersonation::class, 'sudo'],
+);
+
+/*
  * Removing one of your OWN handsets.
  *
  * Its own route with its own verb, so the impersonation guard refuses it on the method —

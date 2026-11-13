@@ -62,6 +62,7 @@ function makeOrg(string $slug): string
 
 it('exercises the connection detail mutating actions (saveConfig, activate, disable, delete)', function (): void {
     crudSetup();
+    confirmEnvironmentStepUp();
     // saveConfig completes the OIDC endpoints via SSRF-guarded discovery from the issuer.
     config(['cbox-id.federation.verify_url' => false]);
     Http::fake([
@@ -192,6 +193,7 @@ it('runs every webhook detail mutation over its own route', function (): void {
 
 it('runs every SAML-application detail mutation over its own route', function (): void {
     crudSetup();
+    confirmEnvironmentStepUp();
     $sp = registerServiceProvider();
 
     saveServiceProvider($sp->id, ['entityId' => 'https://sp/meta-updated'])
@@ -216,6 +218,7 @@ it('runs every SAML-application detail mutation over its own route', function ()
  */
 it('refuses signed requests with no certificate, and keeps the one on file', function (): void {
     crudSetup();
+    confirmEnvironmentStepUp();
 
     // Refused at registration…
     test()->from(route('environment.sso-providers.create'))
@@ -255,6 +258,7 @@ it('refuses signed requests with no certificate, and keeps the one on file', fun
  */
 it('keeps only whole attribute mappings', function (): void {
     crudSetup();
+    confirmEnvironmentStepUp();
     $sp = registerServiceProvider();
 
     saveServiceProvider($sp->id, [
@@ -273,6 +277,7 @@ it('keeps only whole attribute mappings', function (): void {
 
 it('runs every inline-hook detail mutation over its own route', function (): void {
     crudSetup();
+    confirmEnvironmentStepUp();
     $hook = app(ExternalActions::class)
         ->registerForEnvironment(HookPoint::TokenMinting, 'https://example.com/hook')->endpoint;
 
@@ -293,6 +298,7 @@ it('runs every inline-hook detail mutation over its own route', function (): voi
 
 it('exercises the sod-policy detail mutating actions (scan, toggle, remove)', function (): void {
     crudSetup();
+    confirmEnvironmentStepUp();
     $scanOrgId = makeOrg('sod-org');
     $roleA = app(Roles::class)->define(null, 'Maker');
     $roleB = app(Roles::class)->define(null, 'Checker');
@@ -444,6 +450,7 @@ it('grants a role everywhere from the user page, with no membership involved', f
     serveOnTestHost($result->environment);
     app(EnvironmentContext::class)->set(GenericEnvironment::of($result->environment->id));
     actAsEnvironmentAdmin($result->owner->id, $result->environment->id);
+    confirmEnvironmentStepUp();
 
     $subjectId = app(Subjects::class)->create('agent@acme.example', 'Agent', 'the-original-passphrase')->id;
     $support = app(Roles::class)->define(null, 'Support');

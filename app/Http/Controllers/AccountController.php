@@ -21,6 +21,7 @@ use App\Http\Controllers\Console\RunsActions;
 use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Account\ChangeOwnPasswordRequest;
 use App\Http\Requests\Account\SaveProfileRequest;
+use App\Http\WebRateLimiters;
 use App\Platform\AccountLinking\ConnectFromAccount;
 use App\Platform\AccountLinking\SignInIdentities;
 use App\Platform\AccountLinking\SignInIdentity;
@@ -45,6 +46,7 @@ use App\Platform\Surfaces\AccountChrome;
 use App\Platform\Surfaces\ConsoleEntry;
 use App\Platform\Surfaces\ReturnUrl;
 use App\Platform\Surfaces\SurfaceUrls;
+use App\Platform\ThrottleScope;
 use BaconQrCode\Renderer\Image\SvgImageBackEnd;
 use BaconQrCode\Renderer\ImageRenderer;
 use BaconQrCode\Renderer\RendererStyle\RendererStyle;
@@ -597,6 +599,17 @@ final readonly class AccountController extends PageController
             'phone' => ['required', 'string', 'max:32'],
             'country' => ['nullable', 'string', 'size:2', 'alpha'],
         ]);
+
+        // One person's enrolment texts, whatever address they come from: each enrolment is
+        // a new factor, so the code's own cap starts over, and the guard's per-address
+        // budget is escaped by rotating addresses. A refused request is not counted.
+        $budget = 'sms-enrol|'.ThrottleScope::key().'|subject:'.$me->id();
+
+        if (RateLimiter::tooManyAttempts($budget, WebRateLimiters::SMS_ENROL_PER_PERSON_PER_HOUR)) {
+            return back()->withErrors(['phone' => __('console.too_many_codes_have_been_sent_wait_a_few_min_87e86ab7')]);
+        }
+
+        RateLimiter::hit($budget, 3600);
 
         try {
             $sent = $sms->beginEnrolment(

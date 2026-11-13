@@ -62,6 +62,8 @@ final readonly class RotateAppSecret implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $client = AppFields::find($context, $context->string('id'));
+        // A new secret for an app holding a console-reserved scope IS that scope's authority.
+        AppFields::refuseCredentialForReserved($context, $client, 'id');
 
         try {
             $rotated = $this->clients->rotateSecret($client, (int) $context->string('grace_seconds'), $context->actor());

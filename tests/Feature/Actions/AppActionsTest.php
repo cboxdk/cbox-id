@@ -14,6 +14,7 @@ use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\Models\StoredClientSecret;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
@@ -323,6 +324,43 @@ it('refuses a key giving an app a scope reserved for the console, and keeps one 
 
     expect($granted->fresh()?->scopes)->toEqualCanonicalizing([$scope, 'openid']);
 })->with(['vault.manage', 'decisions:read'])->group('security');
+
+/*
+ * A working credential for an app that holds a console-reserved scope IS that scope's
+ * authority: a key that may only manage apps must not get one by rotating the secret,
+ * turning client credentials on, or pointing its redirect URIs somewhere new. Without
+ * this, an apps:write key rotated a vault.manage app's secret, swapped it for a token
+ * and rewrote the environment's Token Vault (security finding #12).
+ */
+it('refuses a key a working credential for an app that holds a console-reserved scope', function (string $scope): void {
+    [$key] = appActionsKey();
+
+    $granted = app(ClientRegistry::class)->register(new NewClient(
+        name: 'Vault manager',
+        type: ClientType::Confidential,
+        grantTypes: ['client_credentials', 'authorization_code'],
+        redirectUris: ['https://vault.example/callback'],
+        scopes: [$scope],
+    ))->client;
+    $secretsBefore = StoredClientSecret::query()->where('oauth_client_id', $granted->id)->count();
+
+    $this->withToken($key)->postJson("/api/v1/apps/{$granted->id}/secrets", ['grace_seconds' => 0])
+        ->assertUnprocessable()->assertJsonPath('error', 'scope_not_grantable')
+        ->assertJsonMissingPath('data.client_secret');
+    $this->withToken($key)->putJson("/api/v1/apps/{$granted->id}/settings/client-credentials", ['enabled' => true])
+        ->assertUnprocessable()->assertJsonPath('error', 'scope_not_grantable');
+    $this->withToken($key)->patchJson("/api/v1/apps/{$granted->id}", ['redirect_uris' => ['https://attacker.example/cb']])
+        ->assertUnprocessable()->assertJsonPath('error', 'scope_not_grantable');
+
+    expect(StoredClientSecret::query()->where('oauth_client_id', $granted->id)->count())->toBe($secretsBefore)
+        ->and($granted->fresh()?->redirect_uris)->toBe(['https://vault.example/callback']);
+
+    // A plain app is still the key's to rotate and re-point.
+    $app = appActionsWebApp($key);
+    $this->withToken($key)->postJson("/api/v1/apps/{$app['id']}/secrets", ['grace_seconds' => 0])
+        ->assertCreated()->assertJsonStructure(['data' => ['client_secret']]);
+    $this->withToken($key)->patchJson("/api/v1/apps/{$app['id']}", ['name' => 'Renamed'])->assertOk();
+})->with(['vault.manage', 'decisions:read', 'app_catalog:resolve'])->group('security');
 
 it('changes each setting on its own, and refuses what the registry would', function (): void {
     [$key, $row] = appActionsKey();

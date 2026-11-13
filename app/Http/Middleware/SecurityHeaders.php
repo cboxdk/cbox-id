@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use App\Platform\Appearance\BrandImages;
 use App\Platform\CspNonce;
 use App\Platform\PlaneResolver;
+use App\Platform\Realtime\LiveUpdates;
 use App\Platform\Turnstile;
 use Cbox\AiAssistant\Connector\Support\SupportSession;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
@@ -111,7 +112,7 @@ final class SecurityHeaders
                 "font-src 'self' data:",
                 // …plus the dev server's websocket, which is how Fast Refresh reaches the
                 // page. Empty in every environment that is not a local install.
-                "connect-src 'self'".$dev.$devSocket.($billing ? ' https://api.stripe.com https://link.com https://*.link.com' : ''),
+                "connect-src 'self'".$dev.$devSocket.self::realtimeSocket($request).($billing ? ' https://api.stripe.com https://link.com https://*.link.com' : ''),
                 // Turnstile renders its challenge in an iframe from its own origin.
                 // Omitted entirely when Turnstile is off, so default-src 'self' governs.
                 ($turnstile || $billing || $support !== '') ? "frame-src 'self'".$support.($turnstile ? ' '.Turnstile::ORIGIN : '').($billing ? ' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://link.com https://*.link.com' : '') : null,
@@ -255,5 +256,33 @@ final class SecurityHeaders
         // Vite writes the origin it is serving on. Anything that is not an http(s) origin
         // is not something to widen a policy with, so it is refused rather than trusted.
         return preg_match('#^https?://[A-Za-z0-9.\-]+(:\d+)?$#', $origin) === 1 ? $origin : null;
+    }
+
+    /**
+     * The live-update socket's origin, when live updates are on.
+     *
+     * Same-origin by default (the proxy routes `/app/{key}` on the page's own host to
+     * Reverb), which CSP Level 3's `'self'` already covers for `wss:` — named explicitly
+     * anyway, for the browsers that read `'self'` as the page's scheme only. A configured
+     * client host (local `reverb:start` on :8080) is the one exception to same-origin.
+     */
+    private static function realtimeSocket(Request $request): string
+    {
+        if (! LiveUpdates::enabled()) {
+            return '';
+        }
+
+        $host = config('realtime.client.host');
+        $host = is_string($host) && trim($host) !== '' ? trim($host) : $request->getHost();
+        $port = config()->integer('realtime.client.port', 443);
+        $secure = config('realtime.client.scheme') !== 'http';
+
+        if (preg_match('/\A[A-Za-z0-9.-]+\z/', $host) !== 1) {
+            return '';
+        }
+
+        $default = $secure ? 443 : 80;
+
+        return ' '.($secure ? 'wss' : 'ws').'://'.$host.($port > 0 && $port !== $default ? ':'.$port : '');
     }
 }

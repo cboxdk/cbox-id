@@ -134,6 +134,7 @@ it('needs signin:write to change the policy', function (): void {
 it('saves the policy from the Authentication policy page through the same action, as the person', function (): void {
     ['environment' => $environment, 'ownerId' => $ownerId] = smsaTenant();
     actAsEnvironmentAdmin($ownerId, $environment->id);
+    confirmEnvironmentStepUp();
 
     $page = $this->get(route('environment.auth-policy'))->assertOk()->inertiaProps();
 

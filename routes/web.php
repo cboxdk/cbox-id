@@ -135,6 +135,7 @@ use App\Http\Controllers\Portal\PortalSsoController;
 use App\Http\Controllers\PortalAuditLogController;
 use App\Http\Controllers\PortalSetupController;
 use App\Http\Controllers\ProductSignupController;
+use App\Http\Controllers\RealtimeAuthController;
 use App\Http\Controllers\ServiceAccessController;
 use App\Http\Controllers\SessionController;
 use App\Http\Controllers\SocialController;
@@ -817,6 +818,8 @@ Route::get('/switch-app/catalog', AppCatalogFeedController::class)
 Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform.auth', 'locale.console', 'console.customer', 'console.root'])->group(function (): void {
     Route::get('/support/session', App\Assistant\SessionController::class)->middleware('throttle:30,1')->name('support.session');
     Route::post('/interface-language', ConsoleLocaleController::class)->name('console.locale.update');
+    // Live updates: may this person's page listen on its channels? See RealtimeAuthController.
+    Route::get('/realtime/auth', RealtimeAuthController::class)->middleware('throttle:120,1')->name('realtime.auth');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::post('/dashboard/checklist/dismiss', [DashboardController::class, 'dismissChecklist'])->name('dashboard.checklist.dismiss');
 
@@ -1058,6 +1061,9 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
 
     Route::middleware('orgs.bind')->prefix('/orgs/{org}')->name('orgs.')->group(function (): void {
         Route::get('/', [OrganizationPickerController::class, 'show'])->name('show');
+
+        // Live updates for the organization in the address (its channel, and the person's own).
+        Route::get('/realtime/auth', RealtimeAuthController::class)->middleware('throttle:120,1')->name('realtime.auth');
 
         // ⌘K's records on an organization page: in the organization the address names, for
         // somebody who administers it. JSON for the shared shell's palette.
@@ -1524,6 +1530,8 @@ Route::middleware([RefuseReadOfOperatorWrite::class, 'plane:environment', 'multi
 
 ConsoleRoutes::environment(function (): void {
     Route::get('/support/session', App\Assistant\SessionController::class)->middleware('throttle:30,1')->name('environment.support.session');
+    // Live updates for this environment's console. A GET, so a read-only role can listen.
+    Route::get('/realtime/auth', RealtimeAuthController::class)->middleware('throttle:120,1')->name('environment.realtime.auth');
     Route::post('/interface-language', ConsoleLocaleController::class)->name('environment.locale.update');
     // `admin.login` is the name every "send them to the door" redirect uses — the
     // handoff's refusals, logout, the sudo screen. It is BEHIND the gate on purpose:

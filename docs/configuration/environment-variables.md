@@ -604,6 +604,27 @@ variables; these are the ones a deployment sets. See
 latter protects the identity platform's sealed secrets. **Both must be backed up;
 neither is recoverable if lost.**
 
+## Live updates (Reverb)
+
+Off unless `BROADCAST_CONNECTION=reverb` with an application key and secret. Off, every
+page works exactly as it did; nothing is queued and no page connects. See
+[Live updates](../operations/realtime.md) for how it works and how to run it.
+
+| Key | What it does | Default |
+|---|---|---|
+| `BROADCAST_CONNECTION` | `reverb` turns live updates on; `null` (or anything else) leaves them off. | `null` |
+| `REVERB_APP_ID`, `REVERB_APP_KEY`, `REVERB_APP_SECRET` | The Reverb application. Random values, the same in the web, the worker and `reverb:start`. The key is public (browsers send it); the secret signs channel subscriptions and publishes. | — |
+| `REVERB_HOST`, `REVERB_PORT`, `REVERB_SCHEME` | Where a browser connects. Unset host = the page's own host, behind a proxy that routes `/app/{key}` to Reverb. | page host, `443`, `https` |
+| `REVERB_PUBLISH_HOST`, `REVERB_PUBLISH_PORT`, `REVERB_PUBLISH_SCHEME` | Where the web and worker publish, when that is not the browser's address (a cluster Service). | the `REVERB_*` above |
+| `REVERB_SERVER_HOST`, `REVERB_SERVER_PORT` | What `reverb:start` listens on. | `0.0.0.0`, `8080` |
+| `REVERB_SCALING_ENABLED` | Several Reverb processes share connections over Redis/Valkey (`REDIS_*`). | `false` |
+| `REVERB_ALLOWED_ORIGINS` | Page origins that may open a socket, comma-separated, `*.example.com` allowed. | `*` |
+| `REVERB_APP_ACCEPT_CLIENT_EVENTS_FROM` | Client-to-client messages. Pages only listen. | `none` |
+| `CBOX_ID_REALTIME_ENABLED` | Switch live updates off while Reverb stays configured. | `true` |
+| `CBOX_ID_REALTIME_QUEUE` | The queue publishes go on. | the default queue |
+| `CBOX_ID_REALTIME_WATCH_SECONDS` | How long a channel counts as watched after a page subscribed; nothing is published to an unwatched one. | `21600` |
+| `CBOX_ID_REALTIME_THROTTLE_SECONDS` | At most one publish per channel and topic per window, plus one trailing. | `1` |
+
 ## Signing keys are not env vars
 
 Signing keys live in the database, are minted on install/first use, and are rotated

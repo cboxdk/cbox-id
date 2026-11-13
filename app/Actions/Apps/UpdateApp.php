@@ -13,6 +13,7 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\RatedByInput;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
 
@@ -30,6 +31,11 @@ use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
  * authenticates — changing one under a running integration is a different app — and the
  * scopes and settings, which have endpoints of their own so an edit to one never writes
  * back a stale copy of another.
+ *
+ * CRITICAL WHEN IT ADDS A DESTINATION ({@see RatedByInput}): a redirect URI the app did not
+ * have is a new place its authorization codes are delivered — what `apps.create` is — and
+ * a new sign-out redirect is a new place people are sent. Renaming, or removing a URI,
+ * stays a Write; resending the list as it is adds nothing.
  */
 #[AsAction(
     name: 'apps.update',
@@ -42,9 +48,33 @@ use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
     consoleRoutes: ['clients.update', 'environment.clients.update'],
     consoleGate: ConsoleGate::Administer,
 )]
-final readonly class UpdateApp implements Action
+final readonly class UpdateApp implements Action, RatedByInput
 {
     public function __construct(private ClientRegistry $clients) {}
+
+    public function dangerFor(ActionContext $context): Danger
+    {
+        if (! $context->has('redirect_uris') && ! $context->has('post_logout_redirect_uris')) {
+            return Danger::Write;
+        }
+
+        $client = AppFields::find($context, $context->string('id'));
+
+        foreach (['redirect_uris', 'post_logout_redirect_uris'] as $field) {
+            if (! $context->has($field)) {
+                continue;
+            }
+
+            $stored = $client->getAttribute($field);
+            $current = is_array($stored) ? self::strings($stored) : [];
+
+            if (array_diff(self::strings($context->array($field)), $current) !== []) {
+                return Danger::Critical;
+            }
+        }
+
+        return Danger::Write;
+    }
 
     public static function input(): InputSchema
     {
@@ -66,7 +96,15 @@ final readonly class UpdateApp implements Action
         }
 
         if ($context->has('redirect_uris')) {
-            $settings = $settings->withRedirectUris(self::strings($context->array('redirect_uris')));
+            $redirectUris = self::strings($context->array('redirect_uris'));
+
+            // A NEW redirect URI on an app holding a console-reserved scope sends its codes,
+            // and so that authority, somewhere new. Removing one, or keeping them, is fine.
+            if (array_diff($redirectUris, $client->redirect_uris) !== []) {
+                AppFields::refuseCredentialForReserved($context, $client, 'redirect_uris');
+            }
+
+            $settings = $settings->withRedirectUris($redirectUris);
         }
 
         if ($context->has('post_logout_redirect_uris')) {

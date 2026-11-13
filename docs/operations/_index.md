@@ -15,6 +15,8 @@ running it yourself on a VM, a PaaS or any Kubernetes cluster.
   server or cluster to a running, hardened instance.
 - [Day-2 operations](operations.md) — **backing up the crypto key**, signing-key
   rotation, health checks, audit/monitoring, upgrades, and the break-glass runbook.
+- [Live updates](realtime.md) — pages that update while open: Reverb, the three
+  channels and who may listen, what is sent (ids, never data), running and switching it off.
 - [Queue workers](queue-workers.md) — running the queue manager on Kubernetes, a VM or a
   PaaS, the operator-only job monitor, and the health signal that says it is running.
 - [Administering the platform's own environment](platform-environment.md) — the root

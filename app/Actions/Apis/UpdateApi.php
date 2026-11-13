@@ -20,6 +20,7 @@ use Cbox\Id\OAuthServer\Contracts\Apis;
 use Cbox\Id\OAuthServer\Exceptions\InvalidApiDefinition;
 use Cbox\Id\OAuthServer\Models\Api;
 use Cbox\Id\OAuthServer\Models\ApiScope;
+use Cbox\Id\OAuthServer\ValueObjects\ApiScopeDefinition;
 
 /**
  * Rename an API, (re)link the app whose roles it enforces, and — when `scopes` is sent —
@@ -66,6 +67,13 @@ final readonly class UpdateApi implements Action
             if ($refusal !== null) {
                 throw ActionRefused::because('invalid_api', $refusal, 'client_id');
             }
+        }
+
+        if ($context->has('scopes')) {
+            ApiScopeFields::refuseDeclared(array_values(array_diff(
+                array_map(static fn (ApiScopeDefinition $scope): string => $scope->key, ApiScopeFields::definitions($context->array('scopes'))),
+                $this->scopeKeys($api),
+            )), 'scopes');
         }
 
         try {
