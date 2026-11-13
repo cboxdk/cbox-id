@@ -56,6 +56,7 @@ final readonly class SetAppClientCredentials implements Action
         ));
 
         if ($context->boolean('enabled')) {
+            AppFields::refuseCredentialForReserved($context, $client, 'enabled');
             $grants[] = GrantType::ClientCredentials->value;
         }
 

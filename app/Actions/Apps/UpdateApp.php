@@ -66,7 +66,15 @@ final readonly class UpdateApp implements Action
         }
 
         if ($context->has('redirect_uris')) {
-            $settings = $settings->withRedirectUris(self::strings($context->array('redirect_uris')));
+            $redirectUris = self::strings($context->array('redirect_uris'));
+
+            // A NEW redirect URI on an app holding a console-reserved scope sends its codes,
+            // and so that authority, somewhere new. Removing one, or keeping them, is fine.
+            if (array_diff($redirectUris, $client->redirect_uris) !== []) {
+                AppFields::refuseCredentialForReserved($context, $client, 'redirect_uris');
+            }
+
+            $settings = $settings->withRedirectUris($redirectUris);
         }
 
         if ($context->has('post_logout_redirect_uris')) {
