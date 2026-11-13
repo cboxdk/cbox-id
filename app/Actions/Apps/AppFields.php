@@ -139,6 +139,23 @@ final class AppFields
     }
 
     /**
+     * Refuse a principal that is not a console session a working credential for an app that
+     * already holds a console-reserved scope: a new secret, client credentials turned on, or
+     * redirect URIs pointed somewhere new.
+     *
+     * {@see refuseReserved()} stops a key GIVING an app that authority; this stops it TAKING
+     * the authority an administrator gave the app, which a credential for the app carries. A
+     * key with apps:write could otherwise rotate a vault.manage app's secret, swap it for a
+     * token, and manage the Token Vault it was never given.
+     *
+     * @throws ActionRefused
+     */
+    public static function refuseCredentialForReserved(ActionContext $context, Client $client, ?string $field = null): void
+    {
+        self::refuseReserved($context, array_values($client->scopes ?? []), $field);
+    }
+
+    /**
      * A registered API's scope this app may not hold, said with the API it belongs to and
      * what to do about it ({@see AppScopes::explain()}) — the same sentence on every door.
      */

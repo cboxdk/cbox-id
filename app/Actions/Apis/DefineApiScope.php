@@ -73,6 +73,10 @@ final readonly class DefineApiScope implements Action
             throw ActionRefused::because('invalid_api', new ActionMessage('console._part1_already_belongs_to_another_api_in_this_environme_bab95da8', ['part1' => (string) ($key)]), 'key');
         }
 
+        if ($owner === null) {
+            ApiScopeFields::refuseDeclared([$key], 'key');
+        }
+
         try {
             $this->admin->defineScope($api, new ApiScopeDefinition(
                 $key,

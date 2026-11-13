@@ -13,6 +13,7 @@ use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\SamlIdp\Testing\InteractsWithSamlIdp;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
+use Illuminate\Http\Request;
 
 uses(InteractsWithSamlIdp::class);
 
@@ -104,6 +105,30 @@ it('refuses an AuthnRequest from an unregistered service provider', function () 
 it('returns 400 when no SAMLRequest is present', function () {
     $this->get('/sso/saml/idp/sso')->assertStatus(400);
 });
+
+/*
+ * The redirect binding carries SAMLRequest in the URL, which the URL's own length bounds.
+ * Read from the BODY of a GET (`Content-Type: application/json`), it had no such bound,
+ * and a ~1 MB DEFLATE bomb inflated toward 1 GB before any service provider was looked up
+ * (needs-validation lead: SAMLRequest inflation). A GET reads the query string only, and a
+ * POST its form body only.
+ */
+it('reads a redirect-binding SAMLRequest from the query string only, never a GET body', function () {
+    $request = Request::create('/sso/saml/idp/sso', 'GET', [], [], [], ['CONTENT_TYPE' => 'application/json'], json_encode(['SAMLRequest' => 'from-the-body']));
+
+    expect(SamlRequestContext::fromRequest($request))->toBeNull();
+
+    $this->call('GET', '/sso/saml/idp/sso', [], [], [], ['CONTENT_TYPE' => 'application/json'], json_encode([
+        'SAMLRequest' => $this->makeRedirectAuthnRequest('https://unregistered.example/metadata'),
+    ]))->assertStatus(400);
+
+    $query = Request::create('/sso/saml/idp/sso?SAMLRequest=from-the-query', 'GET');
+    expect(SamlRequestContext::fromRequest($query)?->samlRequest)->toBe('from-the-query');
+
+    $post = Request::create('/sso/saml/idp/sso?SAMLRequest=from-the-query', 'POST', ['SAMLRequest' => 'from-the-form']);
+    expect(SamlRequestContext::fromRequest($post)?->samlRequest)->toBe('from-the-form')
+        ->and(SamlRequestContext::fromRequest($post)?->fromRedirect)->toBeFalse();
+})->group('security');
 
 it('exempts the SSO POST binding from CSRF verification', function () {
     // A cross-site SP POST carries no Laravel CSRF token; the endpoint must be

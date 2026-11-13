@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Platform\Actions\Idempotency\IdempotencyRecord;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\Models\AuditEntry;
+use Cbox\Id\OAuthServer\Models\ApiScope;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\Enums\EnvironmentApiScope;
 use Illuminate\Support\Str;
@@ -66,6 +67,31 @@ it('refuses a scope key another API owns, and a sign-in scope', function (): voi
     $this->withToken($key)->putJson("/api/v1/apis/{$second['id']}/scopes/openid", [])
         ->assertUnprocessable()->assertJsonPath('error', 'invalid_api');
 });
+
+/*
+ * A registered API cannot own a scope Cbox ID's own `/mcp` management plane answers to: a
+ * token request names a scope by key alone, so the API would take `users:read` away from
+ * the plane, and a client anybody may self-register for `/mcp` would come away with a token
+ * for the customer's own API (security finding #51).
+ */
+it('refuses an API scope key the management plane already answers to, on every door', function (string $taken): void {
+    $key = apisKey();
+    $api = registerTaxApi($key);
+
+    $this->withToken($key)->putJson("/api/v1/apis/{$api['id']}/scopes/{$taken}", ['description' => 'Mine'])
+        ->assertUnprocessable()->assertJsonPath('error', 'invalid_api');
+
+    $this->withToken($key)->postJson('/api/v1/apis', [
+        'identifier' => 'https://orders.example',
+        'name' => 'Orders',
+        'scopes' => [['key' => 'orders:read'], ['key' => $taken]],
+    ])->assertUnprocessable()->assertJsonPath('error', 'invalid_api');
+
+    $this->withToken($key)->patchJson("/api/v1/apis/{$api['id']}", ['scopes' => [['key' => $taken]]])
+        ->assertUnprocessable()->assertJsonPath('error', 'invalid_api');
+
+    expect(ApiScope::query()->where('key', $taken)->exists())->toBeFalse();
+})->with(['users:read', 'webhooks:read', 'vault.manage'])->group('security');
 
 it('answers 404 removing a scope this API does not own', function (): void {
     $key = apisKey();

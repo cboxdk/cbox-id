@@ -34,6 +34,7 @@ use App\Platform\Health\LoginHostHealthCheck;
 use App\Platform\Health\ProductionConfigDoctorCheck;
 use App\Platform\Health\SchedulerDoctorCheck;
 use App\Platform\Health\TenancyHealthCheck;
+use App\Platform\Integrations\SsrfToggles;
 use App\Platform\Keys\TransitionalOrganizationApiKeys;
 use App\Platform\OAuth\PlatformRealmClients;
 use App\Platform\OAuth\RootMcpAudiences;
@@ -52,7 +53,6 @@ use App\Platform\Surfaces\SurfaceUrls;
 use App\Routing\PublicIdUrlGenerator;
 use App\SignalsData\Bundled\IdMachineCredential;
 use App\SignalsData\Bundled\IdManagedSources;
-use Cbox\Dns\Dns;
 use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
 use Cbox\Id\Api\Http\Controllers\DiscoveryController;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
@@ -179,7 +179,9 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(DnsResolver::class, function (Application $app): DnsResolver {
-            return new AuthoritativeDnsResolver($app->make(Dns::class)->authoritative());
+            // Short queries under one deadline per verification: a zone's owner picks its
+            // nameservers, and silent ones held a web worker for every address listed.
+            return AuthoritativeDnsResolver::bounded();
         });
 
         // The authenticated account API key for the request — shared between the
@@ -259,6 +261,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Every SSRF guard toggle as the boolean the guards agree it means (`1`, `on` = on),
+        // after every package merged its config and before any reader compares it
+        // `=== true`. See the class.
+        SsrfToggles::apply($this->app->make('config'));
+
         // In login-host mode a named route's URL carries the host that serves it.
         SurfaceUrls::register($this->app->make('url'));
 

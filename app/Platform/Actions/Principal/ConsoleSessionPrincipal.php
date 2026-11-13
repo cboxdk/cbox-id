@@ -11,6 +11,7 @@ use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\CurrentUser;
+use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -72,7 +73,7 @@ final readonly class ConsoleSessionPrincipal implements Principal
             ConsoleGate::Administer => $this->scope->assertMayAdminister(),
             ConsoleGate::Operator => $this->assertOperator(),
             ConsoleGate::Person => $this->assertPerson(),
-            default => $this->assertOrganizationCapability($action->consoleGate),
+            default => $this->assertOrganizationCapability($action),
         };
     }
 
@@ -154,13 +155,20 @@ final readonly class ConsoleSessionPrincipal implements Principal
      *
      * @throws AuthorizationException
      */
-    private function assertOrganizationCapability(ConsoleGate $gate): void
+    private function assertOrganizationCapability(ActionDefinition $action): void
     {
         $capabilities = $this->scope->capabilities();
-        $capability = $gate->capability();
+        $capability = $action->consoleGate->capability();
 
         if ($capabilities === null || $capability === false || ! OrganizationScopes::holds($capabilities, $capability)) {
             throw new AuthorizationException('You do not have permission to do this in this organization.');
+        }
+
+        // The product's admission, as the organization key and the root sign-in ask it for
+        // the same scopes: the console is one more door to the same actions, not a way
+        // round Billing's answer (minting a management key, claiming a custom domain).
+        if (OrganizationScopes::admitted($action->scope)) {
+            app(ProductAdmission::class)->assertGranted($this->scope->actorId(), $this->scope->requireOrganizationId(), acting: $action->danger->writes());
         }
     }
 }

@@ -43,6 +43,7 @@ final readonly class CheckFgaRelation implements Action
 
     public function handle(ActionContext $context): ActionResult
     {
+        FgaFields::assertIds($context, 'resource_id', 'subject_id');
         $result = FgaFields::refusing(fn () => $this->fga->check(FgaFields::flatCheckFrom($context), $context->nullableString('consistency_token')));
 
         return ActionResult::item($result, FgaFields::presentCheck($result));

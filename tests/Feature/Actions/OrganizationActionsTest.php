@@ -485,3 +485,44 @@ it('does not let inclusive identity defaults raise the centrally assigned enviro
     $this->withToken($agent)->postJson('/api/v1/workspace/projects', ['name' => 'Within allowance'])
         ->assertCreated()->assertJsonPath('data.environment_limit', 3);
 });
+
+/*
+ * PRODUCT ADMISSION HOLDS ON EVERY DOOR. The organization key and the root sign-in are
+ * refused the admitted scopes for a workspace Billing has not let in; the console ran the
+ * same actions as a session and asked only the role, so a member could mint a management
+ * key, or claim a custom domain, for a refused workspace (security finding #46).
+ */
+it('refuses the console the admitted workspace actions for a workspace Billing refuses', function (): void {
+    $account = provisionAccount();
+    $workspace = $account['organization'];
+    $environment = $account['environment'];
+    signInAsMember($account['subjectId']);
+    app(Sudo::class)->confirm();
+
+    config(['service-access.product_enabled' => true, 'service-access.enabled' => true,
+        'service-access.identity_environment' => app(PlatformRoot::class)->environment()?->environmentKey(),
+        'service-access.billing_url' => 'https://billing.example.test', 'service-access.product_billing_token' => 'test-service-secret',
+        'cbox-id.environments.base_domains' => ['cboxid.com']]);
+    $allowed = false;
+    Http::fake(['billing.example.test/api/v1/access/services/cbox-id/check' => function () use (&$allowed) {
+        return Http::response(['allowed' => $allowed]);
+    }]);
+
+    $before = EnvironmentApiKey::query()->withoutGlobalScopes()->where('environment_id', $environment->id)->count();
+
+    // The console's own refusal: the form, with Billing's answer on it.
+    issueEnvironmentKey($environment->id, ['name' => 'Minted while refused', 'scopes' => ['users:read', 'users:write']])
+        ->assertSessionHasErrors();
+    $this->from(route('orgs.environment-domains', ['environment' => $environment->id]))
+        ->post(route('orgs.environment-domains.store'), ['environment' => $environment->id, 'domain' => 'id.refused.example'])
+        ->assertSessionHasErrors();
+
+    expect(EnvironmentApiKey::query()->withoutGlobalScopes()->where('environment_id', $environment->id)->count())->toBe($before)
+        ->and($environment->fresh()?->domain)->toBeNull();
+    Http::assertSent(static fn ($request): bool => str_contains($request->url(), '/access/services/cbox-id/check'));
+
+    // Admitted, the same door works.
+    $allowed = true;
+    issueEnvironmentKey($environment->id, ['name' => 'Minted once admitted'])->assertSessionHasNoErrors();
+    expect(EnvironmentApiKey::query()->withoutGlobalScopes()->where('environment_id', $environment->id)->count())->toBe($before + 1);
+})->group('security');

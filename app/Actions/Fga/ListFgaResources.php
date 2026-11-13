@@ -50,6 +50,7 @@ final readonly class ListFgaResources implements Action
 
     public function handle(ActionContext $context): ActionResult
     {
+        FgaFields::assertIds($context, 'subject_id', 'after');
         $limit = FgaFields::limit($context, 100, FgaFields::MAX_LIST);
         $list = FgaFields::refusing(fn () => $this->fga->listResources(
             SubjectRef::of($context->string('subject_type'), $context->string('subject_id'), $context->nullableString('subject_relation')),
