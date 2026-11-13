@@ -40,8 +40,8 @@ use App\Platform\OAuth\RootMcpAudiences;
 use App\Platform\OAuth\RootMcpSelfRegisteredScopes;
 use App\Platform\OrganizationApiContext;
 use App\Platform\Organizations\OrganizationLinks;
-use App\Platform\OwnDeclaredPermissionClaims;
 use App\Platform\Passkeys\RecordsPasskeyUse;
+use App\Platform\PlatformMailboxProof;
 use App\Platform\PublicIds\BareIdDeliveryPolicy;
 use App\Platform\PublicIds\WebhookIdFormat;
 use App\Platform\StandingApprovals\StandingApprovals;
@@ -53,13 +53,13 @@ use App\Routing\PublicIdUrlGenerator;
 use App\SignalsData\Bundled\IdMachineCredential;
 use App\SignalsData\Bundled\IdManagedSources;
 use Cbox\Dns\Dns;
-use Cbox\Id\AccessControl\Contracts\AccessChecker;
 use Cbox\Id\Api\Http\Controllers\AuthorizationServerMetadataController;
 use Cbox\Id\Api\Http\Controllers\DiscoveryController;
 use Cbox\Id\Api\Http\Middleware\ResolveEnvironment;
 use Cbox\Id\Console\HealthChecks;
 use Cbox\Id\Federation\Contracts\DnsResolver;
 use Cbox\Id\Identity\Contracts\ErasureSteps;
+use Cbox\Id\Identity\Contracts\MailboxProof;
 use Cbox\Id\Identity\Contracts\Passkeys;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
@@ -69,7 +69,6 @@ use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Contracts\TokenExchange;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\Support\SelfRegisteredScopes;
-use Cbox\Id\Organization\Contracts\OrganizationHierarchy;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
@@ -211,12 +210,10 @@ class AppServiceProvider extends ServiceProvider
         // management API write their own audit entries, mostly with no actor at all.
         $this->app->extend(AuditLog::class, fn (AuditLog $inner): AuditLog => new EnvironmentKeyAuditLog($inner));
 
-        // A token for an app carries a key that app declares only through the app's own
-        // declared row, never through a manual permission spelled the same.
-        $this->app->extend(AccessChecker::class, fn (AccessChecker $inner, Application $app): AccessChecker => new OwnDeclaredPermissionClaims(
-            $inner,
-            $app->make(OrganizationHierarchy::class),
-        ));
+        // Proving a mailbox hands an unverified account to its holder (sign-in link,
+        // invitation). The framework's default cannot see this app's wrapped account
+        // store or its login tickets — see PlatformMailboxProof.
+        $this->app->singleton(MailboxProof::class, PlatformMailboxProof::class);
 
         // A CIBA request mails the person when no phone will tell them — see ApprovalMail.
         $this->app->extend(BackchannelAuthentication::class, fn (BackchannelAuthentication $inner, Application $app): BackchannelAuthentication => new MailingBackchannelAuthentication(

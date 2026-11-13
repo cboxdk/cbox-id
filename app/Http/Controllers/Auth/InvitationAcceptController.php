@@ -91,7 +91,14 @@ final readonly class InvitationAcceptController extends PageController
          */
         $subject = $platformRoot->run(function () use ($existing, $subjects, $claims, $email, $request) {
             if ($existing === null) {
-                return $subjects->create($email, null, $request->password());
+                // Created by the person holding the link, so its address is proven from the
+                // start. Left unconfirmed, accepting the invitation would hand it to "the
+                // mailbox holder" (the framework's MailboxProof) and withdraw the password
+                // they chose here a moment ago.
+                $created = $subjects->create($email, null, $request->password());
+                $subjects->markEmailVerified($created->id, $email);
+
+                return $subjects->find($created->id) ?? $created;
             }
 
             if ($existing->emailVerified) {

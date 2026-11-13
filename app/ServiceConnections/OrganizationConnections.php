@@ -85,7 +85,7 @@ class OrganizationConnections implements Connections
     public function lease(Introspection $caller, string $id): IssuedToken
     {
         $this->consumer($caller);
-        abort_unless($caller->subject === $caller->clientId && $caller->actorSubject() === null, 403);
+        abort_unless($caller->isMachine(), 403);
 
         return DB::transaction(function () use ($caller, $id): IssuedToken {
             $connection = ServiceConnection::query()->whereKey($id)->where('consumer_client_id', $caller->clientId)->whereNull('revoked_at')->lockForUpdate()->firstOrFail();
@@ -106,7 +106,7 @@ class OrganizationConnections implements Connections
 
     public function inspect(Introspection $caller, string $id): ?ServiceConnection
     {
-        abort_unless($caller->clientId !== null && $caller->subject === $caller->clientId && $caller->actorSubject() === null, 403);
+        abort_unless($caller->isMachine() && $caller->clientId !== null, 403);
         $connection = ServiceConnection::query()->whereKey($id)->first();
         if ($connection === null) {
             return null;

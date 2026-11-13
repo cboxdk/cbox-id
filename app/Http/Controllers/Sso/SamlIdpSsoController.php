@@ -12,7 +12,9 @@ use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\SamlIdp\Contracts\SamlIdentityProvider;
 use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
 use Cbox\Id\SamlIdp\Enums\NameIdFormat;
+use Cbox\Id\SamlIdp\Exceptions\EmailNotVerified;
 use Cbox\Id\SamlIdp\Exceptions\InvalidAuthnRequest;
+use Cbox\Id\SamlIdp\Exceptions\SubjectNotPermitted;
 use Cbox\Id\SamlIdp\Exceptions\UnknownServiceProvider;
 use Cbox\Id\SamlIdp\ValueObjects\AuthnRequest;
 use Illuminate\Http\RedirectResponse;
@@ -83,18 +85,7 @@ final class SamlIdpSsoController
             // the InvalidNameIdPolicy/RequestDenied codes. The highest-volume real refusal
             // is a Destination mismatch after a custom-domain migration — exactly the one
             // an SP admin needs to find in their own logs.
-            $error = $exception->samlError();
-
-            if ($error === null) {
-                return new Response('SAML AuthnRequest rejected.', 400);
-            }
-
-            try {
-                return $this->idp->issueErrorResponse($error)->toPostBinding()->toResponse();
-            } catch (UnknownServiceProvider) {
-                // Disabled between parsing and answering — no trusted ACS to deliver to.
-                return new Response('Unknown or inactive SAML service provider.', 403);
-            }
+            return $this->refuse($exception);
         }
 
         // The host owns "who is logged in". No subject → stash the (already
@@ -127,17 +118,56 @@ final class SamlIdpSsoController
         // It used to say "Password" unconditionally — a false statement in a signed
         // document that relying parties act on, and one that contradicted the `acr` the
         // OIDC side derived from this very session.
-        $response = $this->idp->issueResponse(
-            $authnRequest,
-            $subjectId,
-            $this->attributesFor($subject),
-            $this->authenticationMethods($request),
-        );
+        //
+        // Issuance refuses on its own too, and none of those refusals may surface as a
+        // 500: the package re-checks the email (the same 403 as above, should the SP's
+        // mapping change between the two checks), the SP's owning organization, the SP
+        // itself, and whether this request was already answered.
+        try {
+            $response = $this->idp->issueResponse(
+                $authnRequest,
+                $subjectId,
+                $this->attributesFor($subject),
+                $this->authenticationMethods($request),
+            );
+        } catch (UnknownServiceProvider) {
+            return new Response('Unknown or inactive SAML service provider.', 403);
+        } catch (EmailNotVerified) {
+            // The person's to fix, so they are told, not the SP. The request id is not
+            // burned, so the same sign-in works once the address is confirmed.
+            return new Response('Confirm your email address before signing in to this service.', 403);
+        } catch (SubjectNotPermitted) {
+            return new Response('Your account does not have access to this service.', 403);
+        } catch (InvalidAuthnRequest $exception) {
+            // A replayed request, or any other refusal at issuance: answered the same
+            // way a parse-time refusal is.
+            return $this->refuse($exception);
+        }
 
         // The binding brings its own content policy. This app's SecurityHeaders is
         // appended globally and would otherwise stamp `form-action 'self'` on a form
         // whose whole purpose is to post to the service provider's ACS.
         return $response->toPostBinding()->toResponse();
+    }
+
+    /**
+     * A refusal the SP can be told about in SAML goes back to its ACS as a signed
+     * Response with a failure StatusCode; everything else stays an opaque refusal.
+     */
+    private function refuse(InvalidAuthnRequest $exception): Response
+    {
+        $error = $exception->samlError();
+
+        if ($error === null) {
+            return new Response('SAML AuthnRequest rejected.', 400);
+        }
+
+        try {
+            return $this->idp->issueErrorResponse($error)->toPostBinding()->toResponse();
+        } catch (UnknownServiceProvider) {
+            // Disabled between parsing and answering — no trusted ACS to deliver to.
+            return new Response('Unknown or inactive SAML service provider.', 403);
+        }
     }
 
     /**

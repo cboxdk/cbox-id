@@ -20,8 +20,7 @@ class ConnectionEvents implements ReadsConnectionEvents
 
     public function page(Introspection $caller, string $grant, array $types, ?string $after, int $limit): array
     {
-        abort_unless($caller->active && $caller->clientId !== null && $caller->subject === $caller->clientId
-            && $caller->actorSubject() === null && $caller->hasScope('signals:events:read'), 403);
+        abort_unless($caller->isMachine() && $caller->clientId !== null && $caller->hasScope('signals:events:read'), 403);
         $connection = ServiceConnection::query()->whereKey($grant)->where('service', 'cbox_id_events')
             ->where('service_client_id', $caller->clientId)->whereNull('revoked_at')->firstOrFail();
         $definition = config('service-connections.services.cbox_id_events');
