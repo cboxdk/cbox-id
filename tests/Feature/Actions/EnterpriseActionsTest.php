@@ -635,6 +635,7 @@ it('answers 404 for another environment\'s directory, and refuses a key without 
 
 it('records an organization administrator\'s SSO and directory changes as theirs, and fences the rest out', function (): void {
     [$subjectId, $orgId] = entOrgAdmin();
+    confirmStepUp();
     $other = entOrg('acme-other');
     $theirs = app(Connections::class)->create($other, ConnectionType::Saml, 'Theirs', entSaml());
 
@@ -673,6 +674,7 @@ it('records an organization administrator\'s SSO and directory changes as theirs
 
 it('records an environment administrator\'s console changes the way the API records a key\'s', function (): void {
     craftedEnvAdmin();
+    confirmEnvironmentStepUp();
     $org = entOrg();
     grantFeature($org, 'cbox-id-sso');
 

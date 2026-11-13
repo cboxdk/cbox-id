@@ -167,6 +167,7 @@ it('runs the whole app-on-Cbox-ID scenario as one chain', function (): void {
 
     // The vendor switches self-service sign-up on, in its environment console.
     actAsEnvironmentAdmin($vendor->owner->id, $environment->id);
+    confirmEnvironmentStepUp();
     test()->from(route('environment.auth-policy'))
         ->put(route('environment.auth-policy.self-service-signup'), ['enabled' => true])
         ->assertRedirect(route('environment.auth-policy'));

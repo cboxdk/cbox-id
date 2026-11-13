@@ -50,6 +50,9 @@ final class RootEntra
     /** Microsoft, environment-wide, in the platform root — as an operator does it in its console. */
     public static function turnOn(): Connection
     {
+        // A Critical change on the root's environment console: the operator confirms first.
+        confirmRootEnvironmentStepUp();
+
         test()->from('https://'.RootGoogle::HOST.'/admin/environment/social-sign-in?provider=microsoft')
             ->post('https://'.RootGoogle::HOST.'/admin/environment/social-sign-in', [
                 'provider' => 'microsoft',

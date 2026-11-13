@@ -284,6 +284,8 @@ final class ConsoleRoutes
      *
      * @param  string  $verb  post|patch|put|delete
      * @param  array{0: class-string, 1: string}|class-string  $action  a controller action
+     * @param  list<string>  $middleware  what this one action adds — a step-up (`sudo`), an
+     *                                    impersonation block — after the console's own stack
      */
     public static function organizationAction(
         string $feature,
@@ -291,6 +293,7 @@ final class ConsoleRoutes
         string $uri,
         array|string $action,
         string $name,
+        array $middleware = [],
     ): void {
         Route::middleware([
             'web',
@@ -301,6 +304,7 @@ final class ConsoleRoutes
             'console.customer',
             'console.root',
             'console.feature:'.$feature,
+            ...$middleware,
         ])->group(function () use ($verb, $uri, $action, $name): void {
             self::verb($verb, $uri, $action)->name($name);
         });

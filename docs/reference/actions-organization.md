@@ -444,7 +444,7 @@ Set which of the organization's environments a team member reaches: all of them,
 |---|---|
 | REST | `PATCH /v1/members/{id}` → `200`; was `PUT /api/v1/workspace/members/{id}/access` |
 | Scope | `id:members:write` (until v3.1 also accepted as `team:write`) and a role that may `manage-members`. |
-| Danger | `write` |
+| Danger | `critical` |
 | MCP tool | `team_environment_access` |
 | CLI | `cbox id team environment_access <id>` |
 

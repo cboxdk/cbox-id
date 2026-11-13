@@ -15,6 +15,7 @@ use App\Platform\Actions\Danger;
 use App\Platform\Actions\FrameworkMessage;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\RatedByInput;
 use App\Platform\Radar\Enums\RadarList;
 use App\Platform\Radar\Enums\RadarListKind;
 use App\Platform\Radar\RadarLists;
@@ -30,6 +31,9 @@ use Throwable;
  * Deny blocks before anything else is asked; allow lets an attempt through without a rule
  * being consulted. The trail records the list and the kind — not the value, which may be an
  * address; the entry itself is the record of it.
+ *
+ * AN ALLOW ENTRY IS CRITICAL ({@see RatedByInput}): it skips every rule, so a wide enough
+ * one is enforcement off — what `radar.mode.set` is. A deny entry stays a Write.
  */
 #[AsAction(
     name: 'radar.lists.add',
@@ -43,7 +47,7 @@ use Throwable;
     consoleRoutes: ['environment.radar.lists.store'],
     consoleGate: ConsoleGate::EnvironmentAdmin,
 )]
-final readonly class AddRadarListEntry implements Action
+final readonly class AddRadarListEntry implements Action, RatedByInput
 {
     public function __construct(
         private RadarLists $lists,
@@ -59,6 +63,11 @@ final readonly class AddRadarListEntry implements Action
             Field::string('note')->nullable()->max(255)->describe('Why it is listed.'),
             Field::string('expires_at')->nullable()->format('date-time')->describe('When the entry stops applying (ISO 8601). Never, when omitted.'),
         ]);
+    }
+
+    public function dangerFor(ActionContext $context): Danger
+    {
+        return $context->string('list') === RadarList::Allow->value ? Danger::Critical : Danger::Write;
     }
 
     public function handle(ActionContext $context): ActionResult

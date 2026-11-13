@@ -152,6 +152,7 @@ it('tells somebody signing up from an app which app it is for', function (): voi
 
 it('draws the environment\'s sign-up switch and asks before opening it', function (): void {
     actAsEnvironmentAdminOfATenant();
+    confirmEnvironmentStepUp();
 
     $page = visit(envConsole('/sign-in-rules'))
         ->assertSee('Self-service sign-up')

@@ -237,6 +237,7 @@ it('resets a user\'s second factor as whoever asked, from both doors', function 
 it('runs the console\'s people writes through the actions', function (): void {
     ['environment' => $environment, 'ownerId' => $ownerId] = uoaTenant();
     actAsEnvironmentAdmin($ownerId, $environment->id);
+    confirmEnvironmentStepUp();
     $org = uoaOrg('Acme');
     $ada = uoaUser('ada@acme.test');
 

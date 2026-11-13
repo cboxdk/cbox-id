@@ -5,14 +5,20 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Console;
 
 use App\Http\Props\Shared\HelpProps;
+use App\Platform\Actions\ActionRegistry;
+use App\Platform\Actions\Approvals\ActionApprovalRequest;
+use App\Platform\Actions\RenamedActions;
+use App\Platform\Console\ConsoleStepUp;
 use App\Platform\CurrentUser;
 use App\Platform\Help\HelpTopic;
+use Cbox\Id\OAuthServer\CibaActionApprovals;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Response;
+use InvalidArgumentException;
 
 /**
  * AGENT APPROVALS — MINE. The other side of the environment console's queue: this is where
@@ -107,9 +113,39 @@ final readonly class MyApprovalController extends ConsoleController
         ]);
     }
 
-    public function approve(string $request, BackchannelAuthentication $backchannel): RedirectResponse
+    public function approve(string $request, BackchannelAuthentication $backchannel, ActionRegistry $registry): RedirectResponse
     {
         $me = app(CurrentUser::class);
+
+        // A HELD ACTION asks what the environment console's queue asks
+        // ({@see AgentApprovalController::approveAction()}): approving a Critical one hands an
+        // agent a credential, a factor's removal or the way people sign in, and the action's
+        // own console button is behind the step-up. Without this, a borrowed session that
+        // cannot pass the step-up could have a token run the action and approve it here.
+        $row = BackchannelAuthRequest::query()->whereKey($request)->where('user_id', $me->id())->first();
+
+        if ($row !== null && $row->getAttribute('purpose') === CibaActionApprovals::PURPOSE) {
+            $action = ActionApprovalRequest::query()->whereKey($row->getKey())->value('action');
+
+            try {
+                $definition = is_string($action) ? $registry->named($action) : null;
+            } catch (InvalidArgumentException) {
+                $definition = null;
+            }
+
+            if (AgentApprovalController::needsStepUp($definition)) {
+                $sudo = app(ConsoleStepUp::class)->challenge(
+                    'approvals',
+                    'approvals',
+                    [],
+                    __('console.approving_lets_an_agent_run_a_critical_action_action_81ec66e8', ['action' => is_string($action) ? RenamedActions::current($action) : '?']),
+                );
+
+                if ($sudo !== null) {
+                    return to_route($sudo);
+                }
+            }
+        }
 
         // Bound to the acting subject rather than checked against it: a request belonging to
         // somebody else is refused by the service, which is where that rule belongs.

@@ -26,6 +26,7 @@ beforeEach(function (): void {
 
     $operator = actAsOperator('ops@platform.test');
     app(PlatformRoot::class)->run(fn () => app(Subjects::class)->markEmailVerified((string) $operator->subject_id, 'ops@platform.test'));
+    confirmRootEnvironmentStepUp();
 });
 
 it('paints the root\'s sign-in page in the theme, typeface and logo its environment console sets', function (): void {

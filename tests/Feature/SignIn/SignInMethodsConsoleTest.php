@@ -64,6 +64,7 @@ function smcRows(array $props): array
 
 it('turns GitHub on for the whole environment from the setup form, under the redirect URI it showed', function (): void {
     actAsEnvironmentAdminOfATenant();
+    confirmEnvironmentStepUp();
 
     $first = smcProps(route('environment.social-providers', ['provider' => 'github']));
     // The id behind the redirect URI is kept while the form is open — a reload while
@@ -112,6 +113,7 @@ it('turns GitHub on for the whole environment from the setup form, under the red
 
 it('shows one organization what its page offers, and lets it turn an inherited provider off', function (): void {
     actAsEnvironmentAdminOfATenant();
+    confirmEnvironmentStepUp();
     $acme = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-'.Str::lower(Str::random(4))));
     smcProvider(null, 'github');
     smcProvider(null, 'discord');
@@ -141,6 +143,7 @@ it('shows one organization what its page offers, and lets it turn an inherited p
 
 it('changes a provider\'s credentials from the console, keeping the secret it is not shown', function (): void {
     actAsEnvironmentAdminOfATenant();
+    confirmEnvironmentStepUp();
     $id = smcProvider(null, 'github');
 
     $editing = smcProps(route('environment.social-providers', ['edit' => $id]))['editing'];
@@ -161,6 +164,7 @@ it('changes a provider\'s credentials from the console, keeping the secret it is
 
 it('reports passkeys, magic link, sessions and the bot challenge as this environment\'s, under the deployment', function (): void {
     actAsEnvironmentAdminOfATenant();
+    confirmEnvironmentStepUp();
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(magicLink: false, sessionAbsoluteMinutes: 120));
     smcProvider(null, 'github');
 
@@ -224,6 +228,7 @@ it('refuses Sign-in methods to a plain member', function (): void {
 
 it('saves the environment\'s methods and session lengths from Authentication policy, and names the ceiling it refuses', function (): void {
     actAsEnvironmentAdminOfATenant();
+    confirmEnvironmentStepUp();
     config()->set('cbox-id.sessions.ttl_minutes', 480);
     config()->set('cbox-id.sessions.idle_minutes', 30);
 
@@ -258,6 +263,7 @@ it('saves the environment\'s methods and session lengths from Authentication pol
 
 it('keeps an organization\'s policy form working beside the environment\'s methods', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
     app(AuthPolicies::class)->setForEnvironment(new AuthPolicy(passkeys: false));
 
     $this->from(route('auth-policy'))->put(route('auth-policy.update'), [
@@ -272,6 +278,7 @@ it('keeps an organization\'s policy form working beside the environment\'s metho
 
 it('lets the owner of a single-tenant install\'s own organization change the environment\'s methods, sessions and SMS', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
     app(InstallationOrganization::class)->set($org->id);
     config()->set('cbox-id.sessions.ttl_minutes', 480);
     config()->set('cbox-id.sessions.idle_minutes', 30);
@@ -308,6 +315,7 @@ it('lets the owner of a single-tenant install\'s own organization change the env
 
 it('turns a provider on for every sign-in page from a single-tenant install\'s own organization, and manages it there', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
     app(InstallationOrganization::class)->set($org->id);
 
     $props = smcProps(route('social-providers', ['provider' => 'github']));
@@ -388,6 +396,7 @@ it('keeps the environment\'s settings off a multi-tenant organization console', 
  */
 it('refuses a customer organization\'s owner on a single-tenant install every environment-level write', function (MembershipRole $role, bool $home): void {
     [, $org] = actingAsRole($role);
+    confirmStepUp();
     $installation = $home ? $org : app(Organizations::class)->create(new NewOrganization('The install', 'install-'.Str::lower(Str::random(4))));
     app(InstallationOrganization::class)->set($installation->id);
     $environmentProvider = smcProvider(null, 'github');

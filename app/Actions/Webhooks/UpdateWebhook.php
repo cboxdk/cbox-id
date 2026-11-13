@@ -15,6 +15,7 @@ use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
 use App\Platform\Actions\Preflight;
+use App\Platform\Actions\RatedByInput;
 use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\Integrations\IntegrationAudit;
 use App\Platform\Integrations\OutboundUrl;
@@ -33,6 +34,10 @@ use App\Platform\PublicIds\WebhookIdFormat;
  *
  * One `webhook.updated` entry with `changes: {field: {from, to}}`; nothing recorded when
  * nothing changed.
+ *
+ * CRITICAL WHEN IT REPOINTS ({@see RatedByInput}): a new URL is a new destination for the
+ * environment's signed events, which is what `webhooks.create` is, so it waits for the same
+ * approval and step-up. Changing only the events or the id format stays a Write.
  */
 #[AsAction(
     name: 'webhooks.update',
@@ -45,9 +50,18 @@ use App\Platform\PublicIds\WebhookIdFormat;
     consoleRoutes: ['webhooks.update', 'environment.webhooks.update', 'webhooks.id-format', 'environment.webhooks.id-format'],
     consoleGate: ConsoleGate::Administer,
 )]
-final readonly class UpdateWebhook implements Action, Preflight
+final readonly class UpdateWebhook implements Action, Preflight, RatedByInput
 {
     public function __construct(private IntegrationAudit $audit) {}
+
+    public function dangerFor(ActionContext $context): Danger
+    {
+        if (! $context->has('url')) {
+            return Danger::Write;
+        }
+
+        return trim($context->string('url')) === WebhookEndpoints::manageable($context)->url ? Danger::Write : Danger::Critical;
+    }
 
     public static function input(): InputSchema
     {

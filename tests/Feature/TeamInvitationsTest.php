@@ -71,6 +71,7 @@ it('sends the same invitation from the console and from the organization API', f
     ['organization' => $organization, 'ownerId' => $ownerId, 'key' => $key, 'keyId' => $keyId] = teamWorkspace();
 
     signInAsMember($ownerId);
+    confirmStepUp();
     test()->from(route('orgs.settings.members'))
         ->post(route('orgs.settings.members.invite', ['organization' => $organization->id]), ['email' => 'console@acme.example', 'roles' => ['developer']])
         ->assertSessionHasNoErrors();

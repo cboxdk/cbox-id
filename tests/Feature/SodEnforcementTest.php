@@ -217,6 +217,7 @@ it('shows an environment-wide policy as read-only rather than hiding it', functi
 
 it('still lets an org admin toggle its own policy', function (): void {
     [$orgId] = sodEnforcementOrg();
+    confirmConsoleStepUp();
     [$createPo, $approvePay] = sodEnforcementRoles($orgId);
 
     $own = app(SegregationOfDuties::class)->definePolicy($orgId, 'Our PO vs payment', [$createPo->id, $approvePay->id]);

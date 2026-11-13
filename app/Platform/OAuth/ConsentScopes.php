@@ -9,7 +9,6 @@ use App\Http\Controllers\OAuthConsentController;
 use App\Platform\Actions\AccountScopes;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\AppManagementScopes;
-use App\Platform\Actions\Danger;
 use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Actions\PlatformScopes;
 use App\Platform\ScopeCatalog;
@@ -118,7 +117,7 @@ final readonly class ConsentScopes
         $critical = [];
 
         foreach ($this->actions->all() as $action) {
-            if ($action->danger === Danger::Critical) {
+            if ($action->mayBeCritical()) {
                 foreach (ScopeRegistry::equivalents($action->scope) as $name) {
                     $critical[$name] = true;
                 }

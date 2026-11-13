@@ -7,11 +7,16 @@ namespace App\Platform\Actions\Principal;
 use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\Approvals\StepUpPolicy;
 use App\Platform\Actions\ConsoleGate;
+use App\Platform\Actions\Danger;
 use App\Platform\Actions\OrganizationScopes;
 use App\Platform\Console\ConsolePlane;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\Console\ConsoleStepUp;
 use App\Platform\CurrentUser;
+use App\Platform\Operators\OperatorGate;
 use App\Platform\ServiceAccess\ProductAdmission;
+use App\Platform\StepUpReason;
+use App\Platform\Sudo;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -20,7 +25,7 @@ use Illuminate\Auth\Access\AuthorizationException;
  * gates every console page asks — so moving a page's write into an action changes nothing
  * about who may make it.
  */
-final readonly class ConsoleSessionPrincipal implements Principal
+final readonly class ConsoleSessionPrincipal implements ConfirmsFreshly, Principal
 {
     /**
      * @param  bool  $forEnvironment  acting on the ENVIRONMENT's own settings from a console
@@ -115,10 +120,44 @@ final readonly class ConsoleSessionPrincipal implements Principal
         return 'You';
     }
 
-    /** The console has its own step-up — re-entering the password (sudo) — before a sensitive change. */
+    /**
+     * The console has its own step-up — the plane's fresh confirmation (a password, a
+     * passkey, the Authenticator) — rather than a held approval.
+     */
     public function stepUpPolicy(): ?StepUpPolicy
     {
         return null;
+    }
+
+    /**
+     * EVERY CRITICAL RUN FROM A CONSOLE WAITS FOR THE PLANE'S STEP-UP — asked here, by the
+     * runner, rather than by each route.
+     *
+     * The step-up used to be opt-in per route: `sudo` on some, `env.sudo` on others, a
+     * controller's own challenge on a few. The routes that forgot were exactly the ones a
+     * borrowed or hijacked console session wants — repointing an SSO connection, turning
+     * MFA off, granting a staff role, transferring an organization, changing a person's
+     * address before a password reset, minting an Admin Portal link, registering a SCIM
+     * target. {@see Danger::Critical} already says "mints credentials or changes how people
+     * sign in"; the console now treats it as meaning "confirm it's you first", so a new
+     * route cannot forget. The window is the plane's (fifteen minutes), so a person doing
+     * several such things is asked once; a route that already asked finds it open.
+     *
+     * Not here: the operator plane's actions, which answer to {@see OperatorGate} before
+     * they are run; and an action whose page decided otherwise and says why
+     * (`consoleStepUp: false`). A person's own account actions confirm on the account
+     * plane ({@see Sudo}), as their `sudo` routes do.
+     */
+    public function confirmFresh(ActionDefinition $action): void
+    {
+        if ($action->danger !== Danger::Critical || ! $action->consoleStepUp || $action->consoleGate === ConsoleGate::Operator) {
+            return;
+        }
+
+        app(ConsoleStepUp::class)->demand(
+            StepUpReason::forRoute(request()->route()?->getName()) ?? __('console.this_is_a_critical_change_action_7d3f19a2', ['action' => $action->summary]),
+            personal: $action->consoleGate === ConsoleGate::Person,
+        );
     }
 
     public function approverSubjectId(): ?string

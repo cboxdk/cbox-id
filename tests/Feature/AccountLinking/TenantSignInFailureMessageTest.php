@@ -22,6 +22,7 @@ beforeEach(function (): void {
 it('shows why a sign-in did not complete on a tenant\'s own sign-in page', function (): void {
     // The tenant turns on Google for ITS users, environment-wide, in its own console.
     actAsEnvironmentAdmin($this->account['subjectId'], $this->account['environment']->id);
+    confirmEnvironmentStepUp();
 
     $this->from(envConsole('/social-sign-in?provider=google'))
         ->post(envConsole('/social-sign-in'), [

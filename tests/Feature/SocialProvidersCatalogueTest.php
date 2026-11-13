@@ -30,6 +30,7 @@ it('offers the four new providers in the console catalogue', function (): void {
 
 it('discovers Intuit at its published document, not under its issuer, and keeps the UserInfo endpoint', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     Http::fake(['developer.api.intuit.com/*' => Http::response([
         'issuer' => 'https://oauth.platform.intuit.com/op/v1',
@@ -58,6 +59,7 @@ it('discovers Intuit at its published document, not under its issuer, and keeps 
 
 it('discovers Xero under its issuer, keeping the body form when the document allows it', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     Http::fake(['identity.xero.com/*' => Http::response([
         'issuer' => 'https://identity.xero.com',
@@ -80,6 +82,7 @@ it('discovers Xero under its issuer, keeping the body form when the document all
 
 it('enables Bitbucket over OAuth 2.0 and shows it on the sign-in page', function (): void {
     [, $org] = actingAsRole(MembershipRole::Owner);
+    confirmStepUp();
 
     enableSocialProvider(['provider' => 'bitbucket'])->assertSessionHasNoErrors();
 

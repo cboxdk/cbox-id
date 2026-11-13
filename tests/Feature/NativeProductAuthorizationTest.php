@@ -105,6 +105,7 @@ it('serves native roles and replaces them through the member page without removi
     [$member] = addMember($account['organization']->id, MembershipRole::Member, 'native-row@example.test');
     grantNativeProductRoles($member, ['viewer']);
     signInAsMember($account['subjectId']);
+    confirmStepUp();
     $this->get(route('orgs.settings.members'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->has('members', 2));
     $roles = app(NativeProductMembers::class);
     $version = $roles->access($member)['roles_version'];
@@ -141,6 +142,7 @@ it('uses independent optimistic versions for environment access and denies an em
     expect($rows->ids($account['organization']->id, $subject))->toBe([]);
     expect(fn () => $rows->replace($member, true, [], $version))->toThrow(ActionRefused::class);
     signInAsMember($account['subjectId']);
+    confirmStepUp();
     $this->putJson(route('orgs.settings.members.access', ['member' => $member->id, 'organization' => $account['organization']->id]), ['all' => true, 'environmentIds' => [], 'environment_access_version' => $version])->assertStatus(409);
     expect($rows->ids($account['organization']->id, $subject))->toBe([]);
 });

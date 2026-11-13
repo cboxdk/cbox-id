@@ -502,6 +502,7 @@ it('reads this environment\'s audit trail and no other\'s, by action and actor t
 it('records an organization administrator\'s console changes as theirs, and keeps the environment\'s own out of reach', function (): void {
     config(['cbox-id.webhooks.verify_url' => false, 'cbox-id.external_actions.verify_url' => false]);
     [$subjectId, $orgId] = integrationOrgAdmin();
+    confirmStepUp();
 
     $own = app(WebhookRegistry::class)->register($orgId, 'https://own.acme.example/in', [integrationEvent()])->endpoint;
     $environments = app(WebhookRegistry::class)->registerForEnvironment('https://env.acme.example/in', [integrationEvent()])->endpoint;
@@ -536,6 +537,7 @@ it('records an organization administrator\'s console changes as theirs, and keep
 
 it('records an environment administrator\'s console changes the same way the API does', function (): void {
     craftedEnvAdmin();
+    confirmEnvironmentStepUp();
     config(['cbox-id.webhooks.verify_url' => false]);
 
     $endpoint = app(WebhookRegistry::class)->registerForEnvironment('https://env.acme.example/in', [integrationEvent()])->endpoint;
