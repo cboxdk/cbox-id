@@ -8,9 +8,13 @@ use App\Platform\PlatformAuth;
 use App\Platform\SamlSsoHandoff;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Identity\ValueObjects\Subject;
 use Cbox\Id\SamlIdp\Contracts\SamlIdentityProvider;
+use Cbox\Id\SamlIdp\Contracts\ServiceProviders;
+use Cbox\Id\SamlIdp\Enums\NameIdFormat;
 use Cbox\Id\SamlIdp\Exceptions\InvalidAuthnRequest;
 use Cbox\Id\SamlIdp\Exceptions\UnknownServiceProvider;
+use Cbox\Id\SamlIdp\ValueObjects\AuthnRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -38,6 +42,7 @@ final class SamlIdpSsoController
         private readonly SamlSsoHandoff $handoff,
         private readonly SessionManager $sessions,
         private readonly Subjects $subjects,
+        private readonly ServiceProviders $serviceProviders,
     ) {}
 
     public function __invoke(Request $request): Response|RedirectResponse
@@ -105,6 +110,17 @@ final class SamlIdpSsoController
 
         $this->handoff->clear();
 
+        // An assertion is a signed statement, and most SPs key accounts by the email in
+        // it. An address nobody has confirmed is a claim, not an identity: the IdP does
+        // not vouch for it. Where this SP would receive the email — as the NameID or as
+        // a mapped attribute — the person confirms it first. Everywhere else the email
+        // is simply never handed to the IdP (see attributesFor()).
+        $subject = $this->subjects->find($subjectId);
+
+        if ($subject !== null && ! $subject->emailVerified && $this->releasesEmail($authnRequest)) {
+            return new Response('Confirm your email address before signing in to this service.', 403);
+        }
+
         // HOW they signed in travels with the assertion. Without it the IdP falls back to
         // "unspecified", which is vague but true; with it the assertion says
         // password-protected-transport or unspecified according to what actually happened.
@@ -114,7 +130,7 @@ final class SamlIdpSsoController
         $response = $this->idp->issueResponse(
             $authnRequest,
             $subjectId,
-            $this->attributesFor($subjectId),
+            $this->attributesFor($subject),
             $this->authenticationMethods($request),
         );
 
@@ -173,15 +189,16 @@ final class SamlIdpSsoController
      * these through the SP's mapping and pins the NameID — the host only supplies the
      * source values (email, name).
      *
+     * The email is a source value only once it is verified: an unconfirmed address
+     * never reaches a signed assertion, whatever the SP's mapping says.
+     *
      * @return array<string, string>
      */
-    private function attributesFor(string $subjectId): array
+    private function attributesFor(?Subject $subject): array
     {
-        $subject = $this->subjects->find($subjectId);
-
         $attributes = [];
 
-        if ($subject?->email !== null && $subject->email !== '') {
+        if ($subject?->emailVerified === true && $subject->email !== null && $subject->email !== '') {
             $attributes['email'] = $subject->email;
         }
 
@@ -190,5 +207,25 @@ final class SamlIdpSsoController
         }
 
         return $attributes;
+    }
+
+    /**
+     * Whether this SP's configuration would put the subject's email in the assertion:
+     * as the NameID (an email or unspecified format sourced from `email`; persistent and
+     * transient NameIDs are minted, never the address) or through an attribute mapping.
+     */
+    private function releasesEmail(AuthnRequest $request): bool
+    {
+        $serviceProvider = $this->serviceProviders->findActiveByEntityId($request->spEntityId);
+
+        // Gone since parsing: issueResponse() refuses it on its own re-check.
+        if ($serviceProvider === null) {
+            return false;
+        }
+
+        $nameIdIsEmail = ! in_array($serviceProvider->name_id_format, [NameIdFormat::Persistent, NameIdFormat::Transient], true)
+            && $serviceProvider->name_id_attribute === 'email';
+
+        return $nameIdIsEmail || in_array('email', $serviceProvider->attribute_mappings, true);
     }
 }
