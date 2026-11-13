@@ -11,6 +11,7 @@ use App\Actions\Account\RemoveSmsFactor;
 use App\Actions\Account\RemoveTotpDevice;
 use App\Actions\Account\RenamePasskey;
 use App\Actions\Account\RenameTotpDevice;
+use App\Actions\Account\RevokeOtherSessions;
 use App\Actions\Account\SendEmailConfirmation;
 use App\Actions\Account\UnlinkSocialAccount;
 use App\Actions\Account\UpdateProfile;
@@ -325,7 +326,9 @@ final readonly class AccountController extends PageController
          * nothing to verify — demanding it would lock them out of the panel that exists to
          * give them a second way in.
          */
-        if ($this->hasPassword($me->id()) && ! $subjects->verifyPassword($me->id(), $request->currentPassword())) {
+        $changing = $this->hasPassword($me->id());
+
+        if ($changing && ! $subjects->verifyPassword($me->id(), $request->currentPassword())) {
             return back()->withErrors(['currentPassword' => __('console.that_password_is_incorrect_5dc5ee0d')]);
         }
 
@@ -334,6 +337,18 @@ final readonly class AccountController extends PageController
         }
 
         $subjects->setPassword($me->id(), $request->newPassword());
+
+        /*
+         * A CHANGED PASSWORD ENDS EVERY OTHER SESSION. Changing it is what somebody does when
+         * they think the old one leaked, and a session opened with the old password would
+         * otherwise outlive the change, here and in every app it signed in to. One revoke per
+         * session, through the session manager, so each one tells those apps (back-channel
+         * logout). The session the change was made from stays. Setting a FIRST password
+         * ends nothing: no session was opened with a password.
+         */
+        if ($changing) {
+            $this->endOtherSessions($me->id(), $me->session()?->id);
+        }
 
         return back()->with('status', __('console.password_updated_df01ff0d'));
     }
@@ -783,6 +798,23 @@ final readonly class AccountController extends PageController
         ));
 
         return 'data:image/svg+xml;base64,'.base64_encode($writer->writeString($provisioningUri));
+    }
+
+    /** Every live session of this person but the one given, as {@see RevokeOtherSessions} ends them. */
+    private function endOtherSessions(string $subjectId, ?string $currentSessionId): void
+    {
+        $sessions = app(SessionManager::class);
+
+        Session::query()
+            ->where('user_id', $subjectId)
+            ->whereNull('revoked_at')
+            ->when($currentSessionId !== null, fn (Builder $query): Builder => $query->whereKeyNot($currentSessionId))
+            ->pluck('id')
+            ->each(function (mixed $id) use ($sessions): void {
+                if (is_string($id)) {
+                    $sessions->revoke($id);
+                }
+            });
     }
 
     private function hasPassword(string $subjectId): bool
