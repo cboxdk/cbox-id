@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Log ind',
         'purpose' => [
-            'default' => 'Velkommen tilbage. Log ind for at fortsætte.',
+            'default' => 'Log ind på din konto for at fortsætte.',
             'device' => 'Log ind for at godkende den enhed der venter.',
             'app' => 'Log ind for at fortsætte til :app.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => 'Glemt adgangskode?',
         'admin_link' => 'Jeg er administrator',
-        'or' => 'ELLER',
+        'or' => 'eller',
         'continue_with' => 'Fortsæt med :provider',
         'last_used' => 'Sidst brugt',
         'last_used_hint' => 'Sådan loggede du ind sidste gang på denne enhed.',
         'magic_link' => 'Send mig et loginlink',
         'passkey' => 'Log ind med adgangsnøgle',
+        'method' => [
+            'magic_link' => 'Loginlink',
+            'passkey' => 'Adgangsnøgle',
+        ],
         'passkey_failed' => 'Login med adgangsnøgle mislykkedes.',
         'new_organization' => 'Ny organisation?',
         'create_one' => 'Opret en',

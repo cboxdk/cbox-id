@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Anmelden',
         'purpose' => [
-            'default' => 'Willkommen zurück. Melden Sie sich an, um fortzufahren.',
+            'default' => 'Melden Sie sich bei Ihrem Konto an, um fortzufahren.',
             'device' => 'Melden Sie sich an, um das wartende Gerät zu genehmigen.',
             'app' => 'Melden Sie sich an, um mit :app fortzufahren.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => 'Passwort vergessen?',
         'admin_link' => 'Ich bin Administrator',
-        'or' => 'ODER',
+        'or' => 'oder',
         'continue_with' => 'Weiter mit :provider',
         'last_used' => 'Zuletzt verwendet',
         'last_used_hint' => 'So haben Sie sich zuletzt auf diesem Gerät angemeldet.',
         'magic_link' => 'Anmeldelink per E-Mail senden',
         'passkey' => 'Mit Passkey anmelden',
+        'method' => [
+            'magic_link' => 'Anmeldelink',
+            'passkey' => 'Passkey',
+        ],
         'passkey_failed' => 'Die Anmeldung mit Passkey ist fehlgeschlagen.',
         'new_organization' => 'Neue Organisation?',
         'create_one' => 'Jetzt erstellen',

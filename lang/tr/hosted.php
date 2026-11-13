@@ -20,5 +20,11 @@ return [
     'language' => [
         'label' => 'Dil',
     ],
+
+    'theme' => [
+        'system' => 'Sistem',
+        'light' => 'Açık',
+        'dark' => 'Koyu',
+    ],
     'skip_to_content' => 'İçeriğe geç',
 ];

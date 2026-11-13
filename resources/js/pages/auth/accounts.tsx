@@ -27,7 +27,7 @@ export default function Accounts({ accounts }: Props) {
 
     return (
         <div className="w-full max-w-sm mx-auto">
-            <h1 className="font-semibold tracking-tight text-2xl">{t('auth.accounts.title')}</h1>
+            <h1 className="auth-title">{t('auth.accounts.title')}</h1>
             <p className="mt-1 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {t('auth.accounts.lead')}
             </p>

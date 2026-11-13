@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Giriş yap',
         'purpose' => [
-            'default' => 'Tekrar hoş geldiniz. Devam etmek için giriş yapın.',
+            'default' => 'Devam etmek için hesabınıza giriş yapın.',
             'device' => 'Bekleyen cihazı onaylamak için giriş yapın.',
             'app' => ':app uygulamasına devam etmek için giriş yapın.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => 'Şifrenizi mi unuttunuz?',
         'admin_link' => 'Yöneticiyim',
-        'or' => 'VEYA',
+        'or' => 'veya',
         'continue_with' => ':provider ile devam edin',
         'last_used' => 'Son kullanılan',
         'last_used_hint' => 'Bu cihazda en son kullandığınız giriş yöntemi.',
         'magic_link' => 'Bana e-postayla giriş bağlantısı gönder',
         'passkey' => 'Geçiş anahtarıyla giriş yap',
+        'method' => [
+            'magic_link' => 'Giriş bağlantısı',
+            'passkey' => 'Geçiş anahtarı',
+        ],
         'passkey_failed' => 'Geçiş anahtarıyla giriş yapılamadı.',
         'new_organization' => 'Yeni bir kuruluş mu oluşturacaksınız?',
         'create_one' => 'Oluştur',

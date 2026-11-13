@@ -22,9 +22,7 @@ export default function SignedOut({ signInUrl, backToApp }: Props) {
 
     return (
         <div className="w-full max-w-sm mx-auto">
-            <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                {t('auth.signed_out.heading')}
-            </h1>
+            <h1 className="auth-title">{t('auth.signed_out.heading')}</h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {t('auth.signed_out.lead')}
             </p>

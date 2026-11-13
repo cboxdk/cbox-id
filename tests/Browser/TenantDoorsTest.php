@@ -33,7 +33,7 @@ use Illuminate\Support\Facades\Mail;
  *
  * tests/Feature/TenantDoorBrandingTest.php holds that the doors are handed the
  * environment's brand; this looks at what the sign-in layout draws with it — the vendor's
- * name over the form, and none of Cbox's pitch beside it — in both themes and on a phone.
+ * name over the form, and none of Cbox's marks beside it — in both themes and on a phone.
  */
 beforeEach(function (): void {
     app()->instance(BreachedPasswordCheck::class, new NeverBreachedCheck);
@@ -70,7 +70,7 @@ it('draws a customer environment\'s sign-up in its name, with none of Cbox\'s pi
         ->assertDontSee('Set up Cbox ID')
         ->assertDontSee('SCIM 2.0 directory provisioning')
         ->assertDontSee('self-hostable')
-        ->assertScript('document.querySelector("aside.auth-hero") === null', true)
+        ->assertScript('document.querySelector(".auth-wordmark") === null', true)
         ->assertTitleContains('cboxtax')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'tenant-door-signup');
@@ -91,18 +91,18 @@ it('draws the sign-in and the password reset there the same way', function (): v
         visit($path)
             ->assertSee('cboxtax')
             ->assertDontSee('SAML & OIDC single sign-on')
-            ->assertScript('document.querySelector("aside.auth-hero") === null', true)
+            ->assertScript('document.querySelector(".auth-wordmark") === null', true)
             ->assertNoJavaScriptErrors()
             ->screenshot(filename: $shot);
     }
 });
 
-it('keeps Cbox\'s own panel on a single-tenant install\'s sign-up', function (): void {
+it('wears Cbox\'s own mark on a single-tenant install\'s sign-up', function (): void {
     installedDeployment();
 
     visit('/signup')
         ->assertSee('Set up Cbox ID for your team')
-        ->assertSee('SCIM 2.0 directory provisioning')
+        ->assertScript('document.querySelector(".auth-topbar .auth-wordmark") !== null', true)
         ->assertNoJavaScriptErrors();
 });
 

@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Logga in',
         'purpose' => [
-            'default' => 'Välkommen tillbaka. Logga in för att fortsätta.',
+            'default' => 'Logga in på ditt konto för att fortsätta.',
             'device' => 'Logga in för att godkänna enheten som väntar.',
             'app' => 'Logga in för att fortsätta till :app.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => 'Glömt lösenordet?',
         'admin_link' => 'Jag är administratör',
-        'or' => 'ELLER',
+        'or' => 'eller',
         'continue_with' => 'Fortsätt med :provider',
         'last_used' => 'Senast använd',
         'last_used_hint' => 'Så loggade du in senast på den här enheten.',
         'magic_link' => 'Skicka en inloggningslänk till mig',
         'passkey' => 'Logga in med lösennyckel',
+        'method' => [
+            'magic_link' => 'Inloggningslänk',
+            'passkey' => 'Lösennyckel',
+        ],
         'passkey_failed' => 'Inloggningen med lösennyckel misslyckades.',
         'new_organization' => 'Ny organisation?',
         'create_one' => 'Skapa en',

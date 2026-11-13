@@ -57,9 +57,7 @@ export default function OperatorPasskeyLink({ email, base, signIn }: Props) {
 
     return (
         <>
-            <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                {t('console.operator_passkey_link_title')}
-            </h1>
+            <h1 className="auth-title">{t('console.operator_passkey_link_title')}</h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {t('console.operator_passkey_link_intro', { email })}
             </p>

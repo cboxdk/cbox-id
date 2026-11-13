@@ -20,5 +20,11 @@ return [
     'language' => [
         'label' => 'Kieli',
     ],
+
+    'theme' => [
+        'system' => 'Järjestelmä',
+        'light' => 'Vaalea',
+        'dark' => 'Tumma',
+    ],
     'skip_to_content' => 'Siirry sisältöön',
 ];

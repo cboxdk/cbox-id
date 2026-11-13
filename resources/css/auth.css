@@ -1,0 +1,350 @@
+/*
+ * THE SIGN-IN SURFACE — every page drawn in `AuthLayout` (sign-in, sign-up, MFA, OTP
+ * step-up, sudo, the account chooser, password reset, consent, device approval,
+ * signed-out) and the server-rendered error pages.
+ *
+ * It is drawn in the console's own vocabulary, so that sign-in and the product it leads to
+ * read as one thing: the shell's canvas wash, a 56px top bar carrying the same mark the
+ * rail carries, a 12px card with a visible 1px border, 8px controls, sentence case. The
+ * tokens are the design system's — and a customer's branded theme overrides those same
+ * tokens in `<head>`, so a branded door repaints without a rule here knowing about it.
+ *
+ * Only `.auth-*` selectors live here. The console's components (`.btn`, `.input`,
+ * `.divider`) are adjusted only inside `.auth-card`, never globally.
+ */
+@layer components {
+    .auth-page {
+        --auth-pad: 32px;
+        /* A step off the card, mixed from the theme's own ink so a customer's palette
+         * never tints it a colour of its own. */
+        --auth-inset: color-mix(in oklch, var(--foreground) 3.5%, var(--card));
+        display: flex;
+        flex-direction: column;
+        min-height: 100%;
+        min-height: 100dvh;
+        color: var(--foreground);
+    }
+
+    /* ── Top bar: the shell's 56px header, carrying only whose door this is. */
+    .auth-topbar {
+        display: flex;
+        align-items: center;
+        height: 56px;
+        padding: 0 20px;
+        flex-shrink: 0;
+    }
+
+    .auth-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 32px;
+        padding: 0 4px;
+        margin-left: -4px;
+        border-radius: var(--radius-md);
+        color: var(--foreground);
+        text-decoration: none;
+        user-select: none;
+    }
+    /* The rail's wordmark, exactly: the official logo used as a mask over the brand
+     * colour (ink in the dark), so it follows the theme and never shows the PNG's own
+     * pixels at a size it was not drawn for. */
+    .auth-wordmark {
+        display: block;
+        width: 56px;
+        height: 19px;
+        background: var(--primary);
+        mask: url('/brand/cbox-logo-neg-100.png') center / contain no-repeat;
+    }
+    :root[data-theme='dark'] .auth-wordmark {
+        background: var(--foreground);
+    }
+    @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) .auth-wordmark {
+            background: var(--foreground);
+        }
+    }
+    .auth-monogram {
+        display: block;
+        width: 22px;
+        height: 22px;
+        flex-shrink: 0;
+    }
+    .auth-brand-name {
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: -0.005em;
+        line-height: 1;
+    }
+    /* A customer's own logo: the height of the shell's mark, never wider than a mark. */
+    .auth-brand-logo {
+        display: block;
+        max-height: 24px;
+        max-width: 176px;
+        width: auto;
+        object-fit: contain;
+    }
+    .auth-brand-initial {
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        background: var(--accent);
+        color: var(--accent-foreground);
+    }
+
+    /* ── The column: the card, and the quiet footer under it. */
+    .auth-main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 16px 16px 56px;
+    }
+    .auth-column {
+        width: 100%;
+        max-width: 27rem;
+    }
+
+    .auth-card {
+        position: relative;
+        padding: var(--auth-pad);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--card-foreground);
+        box-shadow:
+            var(--shadow-card),
+            0 12px 32px -16px rgb(31 26 18 / 0.14);
+    }
+    :root[data-theme='dark'] .auth-card {
+        box-shadow:
+            var(--shadow-card),
+            0 16px 40px -16px rgb(0 0 0 / 0.5);
+    }
+    @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) .auth-card {
+            box-shadow:
+                var(--shadow-card),
+                0 16px 40px -16px rgb(0 0 0 / 0.5);
+        }
+    }
+
+    /* The page's heading — the console's display face at a card title's size, not a
+     * marketing headline. */
+    .auth-title {
+        font-family: var(--font-display);
+        font-size: 22px;
+        line-height: 1.25;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+        color: var(--foreground);
+        text-wrap: balance;
+    }
+
+    /* A strip at the card's foot for the one question that is not the form's: "New
+     * organization? Create one", "Already have an account? Sign in". */
+    .auth-card-foot {
+        margin: 28px calc(var(--auth-pad) * -1) calc(var(--auth-pad) * -1);
+        padding: 16px var(--auth-pad);
+        border-top: 1px solid var(--border);
+        border-radius: 0 0 var(--radius) var(--radius);
+        background: var(--auth-inset);
+        font-size: 13px;
+        text-align: center;
+        color: var(--muted-foreground);
+    }
+    .auth-card-foot > * + * {
+        margin-top: 6px;
+    }
+
+    /* One link style for the whole surface: the readable accent, underlined quietly so it
+     * is still a link to somebody who cannot tell the two colours apart (axe:
+     * link-in-text-block), and fully on hover. */
+    .auth-link {
+        color: var(--accent-strong);
+        font-weight: 500;
+        text-decoration: underline;
+        text-decoration-color: var(--accent-edge);
+        text-decoration-thickness: 1px;
+        text-underline-offset: 3px;
+        transition: text-decoration-color var(--dur-hover) var(--ease);
+    }
+    .auth-link:hover {
+        text-decoration-color: currentColor;
+    }
+    .auth-link.is-quiet {
+        color: var(--muted-foreground);
+        font-weight: 400;
+        text-decoration-color: color-mix(in oklch, var(--muted-foreground) 45%, transparent);
+    }
+    .auth-link.is-quiet:hover {
+        color: var(--foreground);
+    }
+
+    /* ── Inside the card: the console's controls, at sign-in's comfortable size. */
+    .auth-card .divider {
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: 0;
+        margin: 22px 0;
+    }
+    /* A card inside the card (the mandate, a sent link) is an inset, not a second lift. */
+    .auth-card .card {
+        box-shadow: none;
+        background: var(--auth-inset);
+    }
+
+    /* Every other way in, as one group: equal tiles, two to a row. An odd one out takes
+     * the whole row rather than leaving a hole. */
+    .auth-methods {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+    }
+    .auth-methods > :only-child,
+    .auth-methods > :last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
+    .auth-method {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 8px 12px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--control-border);
+        background: var(--card);
+        color: var(--foreground);
+        font-size: 13.5px;
+        font-weight: 500;
+        line-height: 1.25;
+        text-align: center;
+        text-decoration: none;
+        cursor: pointer;
+        transition:
+            background-color var(--dur-hover) var(--ease),
+            border-color var(--dur-hover) var(--ease);
+    }
+    .auth-method:hover:not(:disabled) {
+        border-color: var(--border-strong);
+        background: var(--auth-inset);
+    }
+    .auth-method:disabled {
+        opacity: 0.6;
+        cursor: progress;
+    }
+    .auth-method svg {
+        flex-shrink: 0;
+    }
+
+    /* A sentence the page says about the attempt: a failure, a link on its way. */
+    .auth-notice {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        padding: 12px 14px;
+        border-radius: var(--radius-md);
+        font-size: 13.5px;
+        line-height: 1.45;
+    }
+    .auth-notice.is-error {
+        background: var(--destructive-soft);
+        color: var(--destructive-strong);
+        border: 1px solid color-mix(in oklch, var(--destructive) 28%, transparent);
+    }
+    .auth-notice.is-info {
+        background: var(--auth-inset);
+        border: 1px solid var(--border);
+    }
+    .auth-notice-icon {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 999px;
+        flex-shrink: 0;
+        background: var(--accent-soft);
+        color: var(--accent-strong);
+    }
+
+    /* ── Under the card: who secures it, language, theme. One line, one height. */
+    .auth-foot {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px 16px;
+        margin-top: 16px;
+        padding: 0 4px;
+        font-size: 12px;
+        color: var(--muted-foreground);
+    }
+    .auth-foot-controls {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .auth-foot .auth-footer-control {
+        background: transparent;
+        border-color: transparent;
+    }
+    .auth-foot .auth-footer-control:hover:not(:disabled) {
+        background: var(--card);
+        border-color: var(--border);
+    }
+
+    /* The account menu's System / Light / Dark control, at footer size. */
+    .auth-theme {
+        display: inline-flex;
+        gap: 2px;
+        padding: 2px;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border);
+        background: color-mix(in oklch, var(--foreground) 4%, transparent);
+    }
+    .auth-theme button {
+        display: grid;
+        place-items: center;
+        width: 26px;
+        height: 22px;
+        border-radius: 6px;
+        color: var(--muted-foreground);
+        cursor: pointer;
+        transition:
+            background-color var(--dur-hover) var(--ease),
+            color var(--dur-hover) var(--ease);
+    }
+    .auth-theme button:hover {
+        color: var(--foreground);
+    }
+    .auth-theme button[data-state='on'] {
+        background: var(--card);
+        color: var(--foreground);
+        box-shadow:
+            0 0 0 1px var(--border),
+            0 1px 2px rgb(0 0 0 / 0.14);
+    }
+
+    @media (max-width: 479px) {
+        .auth-page {
+            --auth-pad: 22px;
+        }
+        .auth-topbar {
+            padding: 0 16px;
+        }
+        .auth-main {
+            justify-content: flex-start;
+            padding: 8px 16px 32px;
+        }
+        .auth-foot {
+            justify-content: center;
+        }
+    }
+}

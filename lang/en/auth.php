@@ -42,7 +42,7 @@ return [
     'login' => [
         'title' => 'Sign in',
         'purpose' => [
-            'default' => 'Welcome back. Sign in to continue.',
+            'default' => 'Sign in to your account to continue.',
             'device' => 'Sign in to approve the device that is waiting.',
             'app' => 'Sign in to continue to :app.',
         ],
@@ -80,7 +80,7 @@ return [
         ],
         'forgot_password' => 'Forgot password?',
         'admin_link' => 'I\'m an administrator',
-        'or' => 'OR',
+        'or' => 'or',
         'continue_with' => 'Continue with :provider',
         // The badge on the sign-in method this device used last, and what it means said in full
         // for a screen reader.
@@ -88,6 +88,11 @@ return [
         'last_used_hint' => 'The way you signed in last time on this device.',
         'magic_link' => 'Email me a magic link',
         'passkey' => 'Sign in with a passkey',
+        // The short names on the sign-in page's method tiles; the sentences above stay their accessible names.
+        'method' => [
+            'magic_link' => 'Magic link',
+            'passkey' => 'Passkey',
+        ],
         'passkey_failed' => 'Passkey sign-in failed.',
         'new_organization' => 'New organization?',
         'create_one' => 'Create one',

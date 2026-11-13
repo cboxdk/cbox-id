@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Prihlásiť sa',
         'purpose' => [
-            'default' => 'Vitajte späť. Prihláste sa a pokračujte.',
+            'default' => 'Pre pokračovanie sa prihláste do svojho účtu.',
             'device' => 'Prihláste sa a schváľte čakajúce zariadenie.',
             'app' => 'Prihláste sa a pokračujte do aplikácie :app.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => 'Zabudli ste heslo?',
         'admin_link' => 'Som správca',
-        'or' => 'ALEBO',
+        'or' => 'alebo',
         'continue_with' => 'Pokračovať s :provider',
         'last_used' => 'Naposledy použité',
         'last_used_hint' => 'Spôsob, ktorým ste sa naposledy prihlásili na tomto zariadení.',
         'magic_link' => 'Poslať prihlasovací odkaz e-mailom',
         'passkey' => 'Prihláste sa pomocou prístupového kľúča',
+        'method' => [
+            'magic_link' => 'Prihlasovací odkaz',
+            'passkey' => 'Prístupový kľúč',
+        ],
         'passkey_failed' => 'Prihlásenie prístupovým kľúčom sa nepodarilo.',
         'new_organization' => 'Nová organizácia?',
         'create_one' => 'Vytvoriť',

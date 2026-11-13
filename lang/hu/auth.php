@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Bejelentkezés',
         'purpose' => [
-            'default' => 'Üdv újra! Jelentkezz be a folytatáshoz.',
+            'default' => 'A folytatáshoz jelentkezz be a fiókodba.',
             'device' => 'Jelentkezz be a várakozó eszköz jóváhagyásához.',
             'app' => 'Jelentkezz be a folytatáshoz: :app.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => 'Elfelejtetted a jelszavad?',
         'admin_link' => 'Rendszergazda vagyok',
-        'or' => 'VAGY',
+        'or' => 'vagy',
         'continue_with' => 'Folytatás ezzel: :provider',
         'last_used' => 'Utolsó használat',
         'last_used_hint' => 'Az utolsó bejelentkezés módja ezen a készüléken.',
         'magic_link' => 'Bejelentkezési hivatkozás küldése e-mailben',
         'passkey' => 'Bejelentkezés hozzáférési kulccsal',
+        'method' => [
+            'magic_link' => 'Bejelentkezési hivatkozás',
+            'passkey' => 'Hozzáférési kulcs',
+        ],
         'passkey_failed' => 'Nem sikerült bejelentkezni a hozzáférési kulccsal.',
         'new_organization' => 'Új szervezet?',
         'create_one' => 'Létrehozás',

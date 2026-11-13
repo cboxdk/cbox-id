@@ -36,7 +36,7 @@ export default function StepUpDone({ plane, confirmed, home }: Props) {
 
     return (
         <div className="w-full max-w-sm mx-auto">
-            <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
+            <h1 className="auth-title">
                 {confirmed
                     ? t('auth.console_sign_in.done_heading')
                     : t('auth.console_sign_in.step_up_heading')}

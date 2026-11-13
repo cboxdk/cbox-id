@@ -101,7 +101,7 @@ it('signs a person in through the form and back out again', function (): void {
     // Back does not redraw the console from the browser's history: the page state was
     // encrypted and its key cleared on the way out, so the server is asked, and says no.
     $page->back();
-    $page->assertSee('Welcome back. Sign in to continue.')
+    $page->assertSee('Sign in to your account to continue.')
         ->assertDontSee('Welcome back, Ada')
         ->assertPathIs('/login');
 
@@ -109,7 +109,7 @@ it('signs a person in through the form and back out again', function (): void {
     // for again by URL, it is the door that answers.
     $page->navigate('/dashboard');
 
-    $page->assertSee('Welcome back. Sign in to continue.')
+    $page->assertSee('Sign in to your account to continue.')
         ->assertPathIs('/login');
 })->group('a11y');
 
@@ -152,7 +152,7 @@ it('returns a person to the page they were trying to reach', function (): void {
     // Asked for cold, signed out.
     $page = visit('/settings');
 
-    $page->assertSee('Welcome back. Sign in to continue.')
+    $page->assertSee('Sign in to your account to continue.')
         ->assertPathIs('/login');
 
     $page->fill('email', $email)

@@ -120,10 +120,7 @@ export default function LinkAccount({
                 </span>
             </div>
 
-            <h1
-                className="mt-5 font-semibold tracking-tight"
-                style={{ fontSize: '1.55rem', overflowWrap: 'anywhere' }}
-            >
+            <h1 className="auth-title mt-5" style={{ overflowWrap: 'anywhere' }}>
                 {rich('auth.link_account.heading', {
                     provider: provider.label,
                     email: <span>{email}</span>,
@@ -256,12 +253,7 @@ export default function LinkAccount({
 
 function AltLink({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
     return (
-        <button
-            type="button"
-            onClick={onClick}
-            className="underline underline-offset-2 text-left"
-            style={{ color: 'var(--accent-strong)' }}
-        >
+        <button type="button" onClick={onClick} className="auth-link text-left">
             {children}
         </button>
     );

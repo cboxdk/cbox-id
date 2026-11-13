@@ -19,9 +19,7 @@ export default function FirstRun({ multiTenant, misconfigured, unmigrated, claim
 
     return (
         <div>
-            <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                {t('auth.first_run.title')}
-            </h1>
+            <h1 className="auth-title">{t('auth.first_run.title')}</h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
                 {t('auth.first_run.lead')}
             </p>

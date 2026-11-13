@@ -23,5 +23,11 @@ return [
         'label' => 'Sprog',
     ],
 
+    'theme' => [
+        'system' => 'System',
+        'light' => 'Lyst',
+        'dark' => 'Mørkt',
+    ],
+
     'skip_to_content' => 'Gå til indhold',
 ];

@@ -2,6 +2,8 @@
 /* The shared Cbox shell (cbox-ui `CboxShell`): rail, header, palette, Help, phone layout. In
  * the components layer, so its resets never outrank a page's own components or utilities. */
 @import '@cboxdk/cbox-ui/shell.css' layer(components);
+/* The sign-in surface (AuthLayout) and the error pages: `.auth-*` only. */
+@import './auth.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -982,54 +984,6 @@
         opacity: 0.6;
         cursor: progress;
     }
-    /* Branded hero — a consistent DEEP blue in both light and dark, always with
-     * near-white text (never tied to --primary, which lightens in dark mode). */
-    .auth-hero {
-        position: relative;
-        isolation: isolate;
-        background:
-            radial-gradient(
-                90% 60% at 15% 0%,
-                color-mix(in oklch, #fff 18%, oklch(0.45 0.16 258)) 0%,
-                transparent 55%
-            ),
-            linear-gradient(
-                160deg,
-                oklch(0.45 0.16 258) 0%,
-                color-mix(in oklch, oklch(0.45 0.16 258) 62%, #05060a) 100%
-            );
-        color: oklch(0.985 0.005 250);
-    }
-    /* No dot grid: the design system keeps patterns and textures off product surfaces
-     * (grain exists only on cbox.dk). The panel is the gradient alone. */
-    .hero-feature {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 14px;
-    }
-    .hero-feature span.tick {
-        display: grid;
-        place-items: center;
-        width: 22px;
-        height: 22px;
-        border-radius: 9999px;
-        flex: none;
-        background: rgb(255 255 255 / 0.14);
-        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.16);
-    }
-
-    /* A top sheen + a hairline inner edge give the hero panel depth and crispness. */
-    .auth-hero::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        z-index: -1;
-        pointer-events: none;
-        background: radial-gradient(70% 45% at 50% 0%, rgb(255 255 255 / 0.1) 0%, transparent 70%);
-        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08);
-    }
-
     /* Auth-surface inputs: a larger, softer focus ring reads as premium without
      * shouting — scoped so the dense console keeps its tighter 2px ring.
      *

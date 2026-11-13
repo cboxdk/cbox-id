@@ -106,7 +106,7 @@ it('marks the method this device signed in with last, after signing out', functi
 
     // The sign-in page now badges the email step — where a password starts — and says why
     // to a screen reader, as a description of the button rather than part of its name.
-    $page->assertSee('Welcome back. Sign in to continue.')
+    $page->assertSee('Sign in to your account to continue.')
         ->assertSee('Last used')
         ->assertScript('document.querySelector("[data-last-used]")?.getAttribute("aria-describedby")', 'last-used-hint')
         ->assertScript('document.getElementById("last-used-hint")?.textContent', 'The way you signed in last time on this device.')

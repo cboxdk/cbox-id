@@ -56,9 +56,7 @@ export default function ChooseOrganization({
 
     return (
         <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-                {t('oauth.organization.heading')}
-            </h1>
+            <h1 className="auth-title">{t('oauth.organization.heading')}</h1>
             <p className="mt-1.5 text-sm" style={{ color: 'var(--muted)' }}>
                 {rich('oauth.organization.lead', { client: <b>{client.name}</b> })}
             </p>

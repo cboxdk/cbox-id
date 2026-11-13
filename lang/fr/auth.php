@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Connexion',
         'purpose' => [
-            'default' => 'Bon retour parmi nous. Connectez-vous pour continuer.',
+            'default' => 'Connectez-vous à votre compte pour continuer.',
             'device' => 'Connectez-vous pour approuver l’appareil en attente.',
             'app' => 'Connectez-vous pour continuer vers :app.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => 'Mot de passe oublié ?',
         'admin_link' => 'Je suis administrateur',
-        'or' => 'OU',
+        'or' => 'ou',
         'continue_with' => 'Continuer avec :provider',
         'last_used' => 'Dernière utilisation',
         'last_used_hint' => 'La méthode utilisée lors de votre dernière connexion sur cet appareil.',
         'magic_link' => 'M’envoyer un lien de connexion',
         'passkey' => 'Se connecter avec une clé d’accès',
+        'method' => [
+            'magic_link' => 'Lien de connexion',
+            'passkey' => 'Clé d’accès',
+        ],
         'passkey_failed' => 'Échec de la connexion avec la clé d’accès.',
         'new_organization' => 'Nouvelle organisation ?',
         'create_one' => 'Créez-en une',

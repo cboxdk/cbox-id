@@ -56,9 +56,7 @@ export default function Sudo({ reason, plane, passkey }: Props) {
                     <Icon name="shield" className="w-5 h-5" />
                 </span>
 
-                <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                    {consoleUiText('console.confirm_it_s_you_6176eec2')}
-                </h1>
+                <h1 className="auth-title">{consoleUiText('console.confirm_it_s_you_6176eec2')}</h1>
                 <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                     {reason ?? tc('console.this_is_a_protected_action_b796636f')}
                 </p>

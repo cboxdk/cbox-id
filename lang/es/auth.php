@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Iniciar sesión',
         'purpose' => [
-            'default' => 'Te damos la bienvenida de nuevo. Inicia sesión para continuar.',
+            'default' => 'Inicia sesión en tu cuenta para continuar.',
             'device' => 'Inicia sesión para aprobar el dispositivo que está esperando.',
             'app' => 'Inicia sesión para continuar a :app.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => '¿Has olvidado la contraseña?',
         'admin_link' => 'Soy administrador',
-        'or' => 'O',
+        'or' => 'o',
         'continue_with' => 'Continuar con :provider',
         'last_used' => 'Usado por última vez',
         'last_used_hint' => 'El método que usaste la última vez que iniciaste sesión en este dispositivo.',
         'magic_link' => 'Enviarme un enlace de acceso por correo',
         'passkey' => 'Iniciar sesión con una clave de acceso',
+        'method' => [
+            'magic_link' => 'Enlace de acceso',
+            'passkey' => 'Clave de acceso',
+        ],
         'passkey_failed' => 'Falló el inicio de sesión con la clave de acceso.',
         'new_organization' => '¿Nueva organización?',
         'create_one' => 'Crear',

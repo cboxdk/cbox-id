@@ -20,5 +20,11 @@ return [
     'language' => [
         'label' => 'Nyelv',
     ],
+
+    'theme' => [
+        'system' => 'Rendszer',
+        'light' => 'Világos',
+        'dark' => 'Sötét',
+    ],
     'skip_to_content' => 'Ugrás a tartalomra',
 ];

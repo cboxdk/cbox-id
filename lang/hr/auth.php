@@ -26,7 +26,7 @@ return [
     'login' => [
         'title' => 'Prijava',
         'purpose' => [
-            'default' => 'Dobro došli natrag. Prijavite se za nastavak.',
+            'default' => 'Prijavite se na svoj račun za nastavak.',
             'device' => 'Prijavite se kako biste odobrili uređaj koji čeka.',
             'app' => 'Prijavite se za nastavak u aplikaciju :app.',
         ],
@@ -57,12 +57,16 @@ return [
         ],
         'forgot_password' => 'Zaboravljena lozinka?',
         'admin_link' => 'Ja sam administrator',
-        'or' => 'ILI',
+        'or' => 'ili',
         'continue_with' => 'Nastavi s :provider',
         'last_used' => 'Posljednja upotreba',
         'last_used_hint' => 'Način na koji ste se prošli put prijavili na ovom uređaju.',
         'magic_link' => 'Pošalji mi poveznicu za prijavu e-poštom',
         'passkey' => 'Prijava s pristupnim ključem',
+        'method' => [
+            'magic_link' => 'Poveznica za prijavu',
+            'passkey' => 'Pristupni ključ',
+        ],
         'passkey_failed' => 'Prijava pristupnim ključem nije uspjela.',
         'new_organization' => 'Nova organizacija?',
         'create_one' => 'Stvori',

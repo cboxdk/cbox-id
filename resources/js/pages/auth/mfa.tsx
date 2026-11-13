@@ -2,7 +2,7 @@ import { MobileApproval } from '@/components/auth/MobileApproval';
 import { router, useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { useTranslator } from '@/i18n';
-import AuthLayout from '@/layouts/AuthLayout';
+import AuthLayout, { AuthCardFoot } from '@/layouts/AuthLayout';
 import type { PageProps } from '@/types';
 import { Button, Field, Icon, Input } from '@/ui';
 import { logout } from '@routes';
@@ -73,9 +73,7 @@ export default function Mfa({ factors }: Props) {
 
     return (
         <>
-            <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                {t('auth.mfa.title')}
-            </h1>
+            <h1 className="auth-title">{t('auth.mfa.title')}</h1>
 
             {method === 'recovery' && (
                 <>
@@ -302,22 +300,21 @@ export default function Mfa({ factors }: Props) {
                     </SwitchLink>
                 )
             )}
-            <div className="mt-4">
-                <a href="/login" className="text-sm underline underline-offset-2">
+            <div className="mt-3">
+                <a href="/login" className="text-sm auth-link">
                     {t('auth.login.passkey')}
                 </a>
             </div>
 
-            <div className="mt-6">
+            <AuthCardFoot>
                 <button
                     type="button"
                     onClick={() => router.post(logout.url())}
-                    className="text-sm underline underline-offset-2"
-                    style={{ color: 'var(--muted-foreground)' }}
+                    className="auth-link is-quiet"
                 >
                     {t('auth.common.cancel_and_sign_out')}
                 </button>
-            </div>
+            </AuthCardFoot>
         </>
     );
 }
@@ -335,13 +332,12 @@ function SwitchLink({
     children: React.ReactNode;
 }) {
     return (
-        <div className="mt-4">
+        <div className="mt-3.5">
             <button
                 type="button"
                 onClick={onClick}
                 disabled={disabled}
-                className="text-sm underline underline-offset-2"
-                style={{ color: 'var(--accent-strong)' }}
+                className="text-sm auth-link"
             >
                 {children}
             </button>

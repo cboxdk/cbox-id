@@ -48,9 +48,7 @@ export default function NoOrganization({
 
     return (
         <div className="w-full max-w-sm mx-auto">
-            <h1 className="text-2xl font-semibold tracking-tight">
-                {t('auth.no_organization.heading')}
-            </h1>
+            <h1 className="auth-title">{t('auth.no_organization.heading')}</h1>
             <p className="mt-1.5 text-sm" style={{ color: 'var(--muted)' }}>
                 {t('auth.no_organization.lead')}
             </p>

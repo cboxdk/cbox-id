@@ -44,9 +44,7 @@ export default function AcceptInvite({
 
     return (
         <>
-            <h1 className="font-semibold tracking-tight" style={{ fontSize: '1.7rem' }}>
-                {t('auth.accept_invite.heading')}
-            </h1>
+            <h1 className="auth-title">{t('auth.accept_invite.heading')}</h1>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted-foreground)' }}>
                 {inviterName !== null
                     ? rich('auth.accept_invite.lead_from', {

@@ -20,5 +20,11 @@ return [
     'language' => [
         'label' => 'Limbă',
     ],
+
+    'theme' => [
+        'system' => 'Sistem',
+        'light' => 'Luminos',
+        'dark' => 'Întunecat',
+    ],
     'skip_to_content' => 'Sari la conținut',
 ];
