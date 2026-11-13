@@ -1,8 +1,11 @@
-import { useTranslator as useConsoleTranslator } from '@/i18n';
+import { useTranslator } from '@/i18n';
+import type { MessageKey } from '@/i18n/keys';
 import { Link, router } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { ChevronRight } from 'lucide-react';
+import { Fragment, useEffect, useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import { listHref } from '@/lib/listHref';
+import { relativeTime } from '@/lib/time';
 import type {
     HelpContent,
     OrganizationFilter,
@@ -20,6 +23,9 @@ import {
     PageHeader,
     Pagination,
 } from '@/ui';
+import { type AppFace, type AppKindKey, AppMark, KIND_ICONS } from './AppMark';
+
+type AppGroup = 'first-party' | 'environment' | 'organizations';
 
 interface AppRow {
     id: string;
@@ -31,6 +37,15 @@ interface AppRow {
     kindLabel: string;
     owner: string | null;
     href: string;
+    group: AppGroup;
+    kind: AppKindKey;
+    /** Where it lives: the host of its first redirect URI, or null for an app no browser returns to. */
+    host: string | null;
+    signsIn: boolean;
+    redirectCount: number;
+    backchannelLogout: boolean;
+    lastUsedAt: string | null;
+    face: AppFace | null;
 }
 
 type Props = PageProps<{
@@ -39,6 +54,12 @@ type Props = PageProps<{
     pagination: PaginationState;
     platformApps: AppRow[];
     search: string;
+    /** The owner group in view, or null for every group. */
+    group: AppGroup | null;
+    /** Rows per group under the other narrowings; null where the list is one organization's. */
+    groupCounts: Record<AppGroup, number> | null;
+    kind: AppKindKey | null;
+    kindCounts: Record<AppKindKey, number>;
     /** No organization is chosen: every app in the environment is in view. */
     showsEveryOrganization: boolean;
     mayAdminister: boolean;
@@ -47,24 +68,75 @@ type Props = PageProps<{
     organizationFilter: OrganizationFilter | null;
 }>;
 
+const GROUPS: AppGroup[] = ['first-party', 'environment', 'organizations'];
+const KINDS: AppKindKey[] = ['web', 'spa', 'cli', 'service', 'agent', 'other'];
+
+const GROUP_TITLE: Record<AppGroup, MessageKey> = {
+    'first-party': 'console.apps_group_first_party',
+    environment: 'console.apps_group_environment',
+    organizations: 'console.apps_group_organizations',
+};
+
+const GROUP_LEAD: Record<AppGroup, MessageKey> = {
+    'first-party': 'console.apps_group_first_party_lead',
+    environment: 'console.apps_group_environment_lead',
+    organizations: 'console.apps_group_organizations_lead',
+};
+
+const KIND_LABEL: Record<AppKindKey, MessageKey> = {
+    web: 'console.apps_kind_web',
+    spa: 'console.apps_kind_spa',
+    cli: 'console.apps_kind_cli',
+    service: 'console.apps_kind_service',
+    agent: 'console.apps_kind_agent',
+    other: 'console.apps_kind_other',
+};
+
+/** This page's URL with one narrowing set or dropped — and back to page one. */
+function narrowed(parameter: string, value: string | null): string {
+    const query = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search);
+
+    if (value === null) {
+        query.delete(parameter);
+    } else {
+        query.set(parameter, value);
+    }
+
+    query.delete('page');
+
+    const path = typeof window === 'undefined' ? '' : window.location.pathname;
+    const rest = query.toString();
+
+    return rest === '' ? path : `${path}?${rest}`;
+}
+
+/**
+ * CONSOLE › APPS — every app registered here, in the groups a person looks for one in.
+ *
+ * WHO OWNS IT is the first cut (tabs, and section headings inside "All"): the environment's
+ * own first-party apps, its other apps, and the organizations' own. WHAT KIND it is is the
+ * second (chips). Both are in the URL, so a narrowed list can be linked and reloaded, and
+ * both say how many rows choosing them shows.
+ *
+ * Each row is the link to the app: its face from the catalog, its name, where it lives, what
+ * kind it is, who owns it and when it last asked for a token.
+ */
 export default function Clients({
     help,
     clients,
     pagination,
     platformApps,
     search,
+    group,
+    groupCounts,
+    kind,
+    kindCounts,
     showsEveryOrganization,
     mayAdminister,
     createHref,
     organizationFilter,
 }: Props) {
-    const { t: consoleRuntimeText } = useConsoleTranslator();
-    const { t: consoleFinalText } = useConsoleTranslator();
-
-    const { t: consoleUiText } = useConsoleTranslator();
-    const { t: consoleText } = useConsoleTranslator();
-    const { rich: consoleRich } = useConsoleTranslator();
-    const { t: consoleT } = useConsoleTranslator();
+    const { t, rich } = useTranslator();
     const [term, setTerm] = useState(search);
 
     // Debounced, and back to page one: a filter applied while on page four otherwise asks
@@ -85,116 +157,182 @@ export default function Clients({
         return () => clearTimeout(timer);
     }, [term, search]);
 
+    const newApp = mayAdminister ? (
+        <Button asChild variant="primary" className="shrink-0">
+            <Link href={createHref}>
+                {rich('console._part1_new_app_f8e9ca57', {
+                    part1: <Icon name="plus" className="w-4 h-4" />,
+                })}
+            </Link>
+        </Button>
+    ) : undefined;
+
+    const total = groupCounts === null ? null : GROUPS.reduce((n, g) => n + groupCounts[g], 0);
+    const narrowedAtAll = search !== '' || kind !== null || group !== null;
+
     return (
         <>
             <PageHeader
                 help={help}
-                description={consoleT(
+                description={t(
                     'console.every_app_that_signs_people_in_through_cbox_id_or_calls_bf1c3a89',
                 )}
-                actions={
-                    mayAdminister ? (
-                        <Button asChild variant="primary" className="shrink-0">
-                            <Link href={createHref}>
-                                {consoleRich('console._part1_new_app_f8e9ca57', {
-                                    part1: <Icon name="plus" className="w-4 h-4" />,
-                                })}
-                            </Link>
-                        </Button>
-                    ) : undefined
-                }
+                actions={newApp}
             />
 
-            <div className="mt-6 space-y-3">
+            {groupCounts !== null && (
+                <nav className="cbx-tabs mt-6" aria-label={t('console.apps_groups_label')}>
+                    <GroupTab
+                        href={narrowed('group', null)}
+                        current={group === null}
+                        label={t('console.apps_group_all')}
+                        count={total}
+                    />
+                    {GROUPS.map((each) => (
+                        <GroupTab
+                            key={each}
+                            href={narrowed('group', each)}
+                            current={group === each}
+                            label={t(GROUP_TITLE[each])}
+                            count={groupCounts[each]}
+                        />
+                    ))}
+                </nav>
+            )}
+
+            <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <Input
+                    type="search"
+                    className="md:max-w-sm"
+                    placeholder={t('console.apps_search_placeholder')}
+                    aria-label={t('console.search_apps_a10a36fa')}
+                    value={term}
+                    onChange={(event) => setTerm(event.target.value)}
+                />
                 {organizationFilter !== null && (
                     <FilterChips>
                         <OrganizationFilterChip filter={organizationFilter} />
                     </FilterChips>
                 )}
-                <Input
-                    type="search"
-                    style={{ maxWidth: '24rem' }}
-                    placeholder={consoleUiText('console.search_by_name_or_client_id_4231796c')}
-                    aria-label={consoleT('console.search_apps_a10a36fa')}
-                    value={term}
-                    onChange={(event) => setTerm(event.target.value)}
-                />
-                {/*
-                    SC 4.1.3: the list is replaced on a debounced keystroke with no focus
-                    change, so the count is the only thing that can report the filter
-                    narrowed to nothing.
-                */}
-                <output className="sr-only">
-                    {consoleRich('console.search_results_found', { count: pagination.total })}
-                </output>
             </div>
 
-            <div
-                className="mt-4 rounded-xl border overflow-hidden"
-                style={{ borderColor: 'var(--border)' }}
-            >
+            <nav className="idc-chips mt-3" aria-label={t('console.apps_kinds_label')}>
+                <Link
+                    href={narrowed('type', null)}
+                    className="idc-chip"
+                    aria-current={kind === null ? 'true' : undefined}
+                    preserveScroll
+                >
+                    {t('console.apps_kind_any')}
+                </Link>
+                {KINDS.filter((each) => kindCounts[each] > 0 || kind === each).map((each) => {
+                    const KindIcon = KIND_ICONS[each];
+
+                    return (
+                        <Link
+                            key={each}
+                            href={narrowed('type', kind === each ? null : each)}
+                            className="idc-chip"
+                            aria-current={kind === each ? 'true' : undefined}
+                            preserveScroll
+                        >
+                            <KindIcon className="h-3.5 w-3.5" strokeWidth={1.7} aria-hidden />
+                            {t(KIND_LABEL[each])}
+                            <span className="idc-chip-count">{kindCounts[each]}</span>
+                        </Link>
+                    );
+                })}
+            </nav>
+
+            {/*
+                SC 4.1.3: the list is replaced on a debounced keystroke with no focus
+                change, so the count is the only thing that can report the filter
+                narrowed to nothing.
+            */}
+            <output className="sr-only">
+                {rich('console.search_results_found', { count: pagination.total })}
+            </output>
+
+            <div className="mt-4">
                 {clients.length === 0 ? (
-                    search !== '' ? (
-                        <EmptyState
-                            icon="clients"
-                            title={consoleT('console.no_matching_apps_798636bc')}
-                            description={consoleFinalText(
-                                'console.no_app_matches_part1_try_a_different_name_or_client_id_e5aa7b40',
-                                { part1: search },
-                            )}
-                        />
-                    ) : (
-                        <EmptyState
-                            icon="clients"
-                            equivalent="apps.create"
-                            actions={
-                                mayAdminister ? (
-                                    <Button asChild variant="primary">
-                                        <Link href={createHref}>
-                                            {consoleRich('console._part1_new_app_f8e9ca57', {
-                                                part1: <Icon name="plus" className="w-4 h-4" />,
-                                            })}
+                    <div className="idc-rows">
+                        {narrowedAtAll ? (
+                            <EmptyState
+                                icon="clients"
+                                title={t('console.no_matching_apps_798636bc')}
+                                description={
+                                    search !== ''
+                                        ? t(
+                                              'console.no_app_matches_part1_try_a_different_name_or_client_id_e5aa7b40',
+                                              { part1: search },
+                                          )
+                                        : t('console.apps_no_match_filters')
+                                }
+                                actions={
+                                    <Button asChild>
+                                        <Link href={window.location.pathname}>
+                                            {t('console.apps_clear_filters')}
                                         </Link>
                                     </Button>
-                                ) : undefined
-                            }
-                            title={consoleT('console.no_apps_of_your_own_yet_3fdb87bf')}
-                            help={help}
-                            description={
-                                consoleRuntimeText(
-                                    'console.an_app_registered_here_can_sign_your_people_in_and_read_f35bdb6c',
-                                ) +
-                                (!showsEveryOrganization && platformApps.length > 0
-                                    ? consoleText(
-                                          'console._the_platform_apps_below_belong_to_this_environment_rat_9f21136f',
-                                      )
-                                    : '')
-                            }
-                            steps={[
-                                consoleRuntimeText(
-                                    'console.register_the_app_one_per_app_per_environment_bc8f1427',
-                                ),
-                                consoleRuntimeText(
-                                    'console.copy_its_client_id_and_secret_into_the_app_s_configurat_1948de40',
-                                ),
-                                consoleRuntimeText(
-                                    'console.add_the_exact_url_cbox_id_may_send_people_back_to_after_dfcd0f5e',
-                                ),
-                                consoleRuntimeText(
-                                    'console.have_the_app_declare_the_roles_it_understands_so_you_ca_9074afe0',
-                                ),
-                            ]}
-                        />
-                    )
+                                }
+                            />
+                        ) : (
+                            <EmptyState
+                                icon="clients"
+                                equivalent="apps.create"
+                                actions={newApp}
+                                title={t('console.no_apps_of_your_own_yet_3fdb87bf')}
+                                help={help}
+                                description={
+                                    t(
+                                        'console.an_app_registered_here_can_sign_your_people_in_and_read_f35bdb6c',
+                                    ) +
+                                    (!showsEveryOrganization && platformApps.length > 0
+                                        ? t(
+                                              'console._the_platform_apps_below_belong_to_this_environment_rat_9f21136f',
+                                          )
+                                        : '')
+                                }
+                                steps={[
+                                    t(
+                                        'console.register_the_app_one_per_app_per_environment_bc8f1427',
+                                    ),
+                                    t(
+                                        'console.copy_its_client_id_and_secret_into_the_app_s_configurat_1948de40',
+                                    ),
+                                    t(
+                                        'console.add_the_exact_url_cbox_id_may_send_people_back_to_after_dfcd0f5e',
+                                    ),
+                                    t(
+                                        'console.have_the_app_declare_the_roles_it_understands_so_you_ca_9074afe0',
+                                    ),
+                                ]}
+                            />
+                        )}
+                    </div>
                 ) : (
-                    clients.map((client, index) => (
-                        <AppLink
-                            key={client.id}
-                            app={client}
-                            last={index === clients.length - 1}
-                            showOwner={showsEveryOrganization}
-                        />
-                    ))
+                    <div className="idc-rows">
+                        {clients.map((client, index) => {
+                            // A heading where the group changes — and on the first row, so a
+                            // page that starts mid-group still says which group it is in.
+                            const heading =
+                                showsEveryOrganization &&
+                                group === null &&
+                                (index === 0 || clients[index - 1]?.group !== client.group);
+
+                            return (
+                                <Fragment key={client.id}>
+                                    {heading && (
+                                        <div className="idc-rows-group">
+                                            <h2>{t(GROUP_TITLE[client.group])}</h2>
+                                            <p>{t(GROUP_LEAD[client.group])}</p>
+                                        </div>
+                                    )}
+                                    <AppLink app={client} showOwner={showsEveryOrganization} />
+                                </Fragment>
+                            );
+                        })}
+                    </div>
                 )}
             </div>
 
@@ -210,33 +348,17 @@ export default function Clients({
             */}
             {!showsEveryOrganization && platformApps.length > 0 && (
                 <section className="mt-8">
-                    <h2
-                        className="text-xs font-medium uppercase mb-3"
-                        style={{ color: 'var(--muted-foreground)', letterSpacing: '0.06em' }}
-                    >
-                        {consoleRich('console.platform_apps_part1_part2_24834281', {
-                            part1: ' ',
-                            part2: (
-                                <span style={{ textTransform: 'none', fontWeight: 400 }}>
-                                    {consoleT(
-                                        'console._owned_by_this_environment_not_by_this_organization_fir_33b76fa6',
-                                    )}
-                                </span>
-                            ),
-                        })}
-                    </h2>
-                    <div
-                        className="rounded-xl border overflow-hidden"
-                        style={{ borderColor: 'var(--border)' }}
-                    >
-                        {platformApps.map((client, index) => (
-                            <AppLink
-                                key={client.id}
-                                app={client}
-                                last={index === platformApps.length - 1}
-                                showOwner={false}
-                                platformOwned
-                            />
+                    <div className="idc-rows">
+                        <div className="idc-rows-group">
+                            <h2>{t('console.apps_group_first_party')}</h2>
+                            <p>
+                                {t(
+                                    'console._owned_by_this_environment_not_by_this_organization_fir_33b76fa6',
+                                )}
+                            </p>
+                        </div>
+                        {platformApps.map((client) => (
+                            <AppLink key={client.id} app={client} showOwner={false} />
                         ))}
                     </div>
                 </section>
@@ -245,57 +367,77 @@ export default function Clients({
     );
 }
 
-function AppLink({
-    app,
-    last,
-    showOwner,
-    platformOwned = false,
+function GroupTab({
+    href,
+    current,
+    label,
+    count,
 }: {
-    app: AppRow;
-    last: boolean;
-    showOwner: boolean;
-    platformOwned?: boolean;
+    href: string;
+    current: boolean;
+    label: string;
+    count: number | null;
 }) {
-    const { t: consoleText } = useConsoleTranslator();
-    const { t: consoleT } = useConsoleTranslator();
     return (
         <Link
-            href={app.href}
-            className="flex items-center gap-3 p-4 transition-colors hover:bg-[var(--surface-2)]"
-            style={last ? undefined : { borderBottom: '1px solid var(--border)' }}
+            href={href}
+            className="idc-tab"
+            data-state={current ? 'active' : 'inactive'}
+            aria-current={current ? 'page' : undefined}
+            preserveScroll
         >
-            <div className="min-w-0 flex-1">
-                <span className="font-medium truncate">{app.name}</span>
-                <p className="text-sm truncate mono" style={{ color: 'var(--muted-foreground)' }}>
-                    {app.clientId}
-                </p>
+            {label}
+            {count !== null && <span className="idc-tab-count">{count}</span>}
+        </Link>
+    );
+}
+
+/** One app: the whole row is the link to it. */
+function AppLink({ app, showOwner }: { app: AppRow; showOwner: boolean }) {
+    const { t, locale } = useTranslator();
+
+    return (
+        <Link href={app.href} className="idc-row">
+            <AppMark name={app.name} kind={app.kind} face={app.face} />
+
+            <div className="idc-row-main">
+                <span className="idc-row-title">{app.name}</span>
+                <span className="idc-row-sub">
+                    {app.host !== null ? (
+                        <span className="mono">{app.host}</span>
+                    ) : (
+                        <span className="mono">{app.clientId}</span>
+                    )}
+                </span>
             </div>
 
-            {platformOwned && <Badge>{consoleT('console.platform_owned_c601b99a')}</Badge>}
-            {showOwner && app.owner !== null && <Badge>{app.owner}</Badge>}
-            {app.roleCount > 0 && (
-                <Badge>
-                    {app.roleCount}{' '}
-                    {app.roleCount === 1
-                        ? consoleText('console.role_4b168d88')
-                        : consoleText('console.roles_66cf5513')}
-                </Badge>
-            )}
-            {app.firstParty && !platformOwned && (
-                <span
-                    className="text-xs rounded-full px-2 py-0.5"
-                    style={{ background: 'var(--accent-soft)', color: 'var(--accent-strong)' }}
-                >
-                    {consoleT('console.first_party_ee374836')}
+            <div className="idc-row-meta">
+                <Badge>{app.kindLabel}</Badge>
+                {app.firstParty && app.group !== 'first-party' && (
+                    <Badge tone="info">{t('console.first_party_ee374836')}</Badge>
+                )}
+                {showOwner && app.owner !== null && app.group === 'organizations' && (
+                    <Badge>
+                        <Icon name="building" className="w-3 h-3" />
+                        {app.owner}
+                    </Badge>
+                )}
+                {app.roleCount > 0 && (
+                    <Badge>{t('console.apps_roles_count', { count: app.roleCount })}</Badge>
+                )}
+                {app.signsIn && app.redirectCount === 0 && (
+                    <Badge tone="warn">{t('console.apps_no_redirect')}</Badge>
+                )}
+                <span className="idc-row-when">
+                    {app.lastUsedAt === null
+                        ? t('console.apps_never_used')
+                        : t('console.apps_last_used', {
+                              when: relativeTime(app.lastUsedAt, locale),
+                          })}
                 </span>
-            )}
-            <Badge>{app.kindLabel}</Badge>
+            </div>
 
-            <Icon
-                name="chevron"
-                className="w-4 h-4 shrink-0"
-                style={{ color: 'var(--faint)', transform: 'rotate(-90deg)' }}
-            />
+            <ChevronRight className="idc-row-chevron h-4 w-4" aria-hidden />
         </Link>
     );
 }

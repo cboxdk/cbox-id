@@ -18,6 +18,7 @@ use App\Platform\AppKind;
 use App\Platform\Connect\ConnectSnippets;
 use App\Platform\Connect\Snippet;
 use App\Platform\Console\AppHeader;
+use App\Platform\Console\AppListing;
 use App\Platform\Console\AppTabs;
 use App\Platform\Console\ConsoleClients;
 use App\Platform\Console\ConsolePlane;
@@ -35,6 +36,7 @@ use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\RegisteredClient;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -79,7 +81,7 @@ use Inertia\ResponseFactory;
  */
 final readonly class ClientController extends ConsoleController
 {
-    private const PER_PAGE = 25;
+    private const PER_PAGE = 50;
 
     public function __construct(
         ResponseFactory $inertia,
@@ -89,7 +91,7 @@ final readonly class ClientController extends ConsoleController
         parent::__construct($inertia, $scope);
     }
 
-    public function index(Request $request, ScopeCatalog $catalog): Response
+    public function index(Request $request, ScopeCatalog $catalog, AppListing $listing): Response
     {
         $this->scope->assertMayAdminister();
 
@@ -103,17 +105,58 @@ final readonly class ClientController extends ConsoleController
          * reach that branch because their organization is implicit. A filter naming no
          * organization here matches nothing.
          */
-        $query = $filter->apply(Client::query())->orderByDesc('id');
+        $base = fn (): Builder => $filter->apply(Client::query());
 
         $term = trim($request->string('q')->toString());
+        $searched = fn (Builder $query): Builder => $term === '' ? $query : $query->where(fn (Builder $q): Builder => $q
+            ->where('name', 'like', '%'.$term.'%')
+            ->orWhere('client_id', 'like', '%'.$term.'%'));
 
-        if ($term !== '') {
-            $query->where(fn (Builder $q): Builder => $q
-                ->where('name', 'like', '%'.$term.'%')
-                ->orWhere('client_id', 'like', '%'.$term.'%'));
+        $showsEveryOrganization = ! $filter->active();
+
+        /*
+         * WHO OWNS IT — the environment's first-party apps, its other apps, and the
+         * organizations' — offered only where the list holds more than one of them: the
+         * whole environment, unfiltered. A list narrowed to one organization is all one
+         * group already.
+         */
+        $group = $request->string('group')->toString();
+        $group = $showsEveryOrganization && in_array($group, AppListing::GROUPS, true) ? $group : null;
+
+        $kind = $request->string('type')->toString();
+        $kind = in_array($kind, AppListing::KINDS, true) ? $kind : null;
+
+        $query = $searched($base());
+
+        if ($group !== null) {
+            $query = AppListing::inGroup($query, $group);
         }
 
-        $clients = $query->paginate(self::PER_PAGE)->withQueryString();
+        if ($kind !== null) {
+            $query = AppListing::ofKind($query, $kind);
+        }
+
+        $clients = AppListing::ordered($query)->paginate(self::PER_PAGE)->withQueryString();
+
+        /*
+         * The counts the group tabs and kind chips print, each under every OTHER narrowing
+         * in force — so a chip says how many rows choosing it would show.
+         */
+        $groupCounts = [];
+
+        if ($showsEveryOrganization) {
+            foreach (AppListing::GROUPS as $each) {
+                $counted = AppListing::inGroup($searched($base()), $each);
+                $groupCounts[$each] = ($kind === null ? $counted : AppListing::ofKind($counted, $kind))->count();
+            }
+        }
+
+        $kindCounts = [];
+
+        foreach (AppListing::KINDS as $each) {
+            $counted = AppListing::ofKind($searched($base()), $each);
+            $kindCounts[$each] = ($group === null ? $counted : AppListing::inGroup($counted, $group))->count();
+        }
 
         /*
          * Apps the ENVIRONMENT owns rather than the organization being administered —
@@ -126,7 +169,7 @@ final readonly class ClientController extends ConsoleController
          * that is all the organization plane is shown: the environment's own back-office
          * clients are not theirs to enumerate.
          */
-        $platformApps = Client::query()
+        $platformApps = $showsEveryOrganization ? new EloquentCollection : Client::query()
             ->whereNull('organization_id')
             ->when(
                 $this->scope->plane() === ConsolePlane::Organization,
@@ -134,6 +177,8 @@ final readonly class ClientController extends ConsoleController
             )
             ->orderBy('name')
             ->get();
+
+        $clientIds = $clients->getCollection()->pluck('client_id')->merge($platformApps->pluck('client_id'));
 
         /*
          * How many roles each app currently declares.
@@ -145,7 +190,7 @@ final readonly class ClientController extends ConsoleController
          * no engine.
          */
         $roleCounts = Role::query()
-            ->whereIn('client_id', $clients->getCollection()->pluck('client_id')->merge($platformApps->pluck('client_id')))
+            ->whereIn('client_id', $clientIds)
             ->whereNull('orphaned_at')
             ->get(['client_id'])
             ->groupBy('client_id')
@@ -156,20 +201,26 @@ final readonly class ClientController extends ConsoleController
         // enumerate the environment's other tenants.
         $owners = $this->scope->organizationNames($clients->pluck('organization_id'));
 
-        $showsEveryOrganization = ! $filter->active();
+        /** @var list<string> $faceIds */
+        $faceIds = array_values(array_filter($clientIds->all(), 'is_string'));
+        $faces = $listing->faces($faceIds);
 
         return $this->page('console/clients/index', __('console.applications_98e33b0f'), [
             'help' => HelpProps::for(HelpTopic::Apps),
             'clients' => $clients->getCollection()
-                ->map(fn (Client $client): array => $this->row($client, $roleCounts, $owners, $showsEveryOrganization))
+                ->map(fn (Client $client): array => $this->row($client, $roleCounts, $owners, $showsEveryOrganization, $faces))
                 ->values()
                 ->all(),
             'pagination' => PaginationProps::from($clients),
             'platformApps' => $platformApps
-                ->map(fn (Client $client): array => $this->row($client, $roleCounts, $owners, false))
+                ->map(fn (Client $client): array => $this->row($client, $roleCounts, $owners, false, $faces))
                 ->values()
                 ->all(),
             'search' => $term,
+            'group' => $group,
+            'groupCounts' => $groupCounts === [] ? null : $groupCounts,
+            'kind' => $kind,
+            'kindCounts' => $kindCounts,
             // Shown only when the whole environment is in view, where who owns a row is
             // the one thing its name does not say.
             'showsEveryOrganization' => $showsEveryOrganization,
@@ -370,6 +421,18 @@ final readonly class ClientController extends ConsoleController
                 'kind' => $kind->value,
                 'kindLabel' => $kind->label(),
             ],
+            // WHAT IT IS AT A GLANCE, above the instructions: where it lives, whether it is
+            // wired for sign-out, when it last asked for a token.
+            'summary' => [
+                'host' => AppListing::host($model),
+                'browserSignIn' => AppListing::signsInThroughBrowser($model),
+                'redirectCount' => count($model->redirect_uris ?? []),
+                'postLogoutCount' => count($model->post_logout_redirect_uris ?? []),
+                'backchannelLogout' => $model->backchannel_logout_uri !== null,
+                'scopeCount' => count($model->scopes ?? []),
+                'lastUsedAt' => $model->last_used_at?->toIso8601String(),
+                'createdAt' => $model->created_at?->toIso8601String(),
+            ],
             'issuer' => $issuer,
             'discovery' => $issuer.'/.well-known/openid-configuration',
             // One per SDK that can do this app's job, filled in with its real values.
@@ -403,6 +466,9 @@ final readonly class ClientController extends ConsoleController
                     ? $this->url('clients.secrets', $model->id)
                     : null,
                 'destroy' => $this->url('clients.destroy', $model->id),
+                // The tab where the URIs this summary counts are edited.
+                'signIn' => $mayManage ? $this->url('clients.sign-in', $model->id) : null,
+                'settings' => $mayManage ? $this->url('clients.settings', $model->id) : null,
             ],
         ]);
     }
@@ -419,12 +485,16 @@ final readonly class ClientController extends ConsoleController
          *
          * The scopes are NOT here any more. They have a tab of their own, and a details
          * form that also carried them would write back whatever that tab last loaded.
+         *
+         * EACH FORM SENDS ONLY ITS OWN FIELDS — the name from Settings, the URIs from Sign-in
+         * & logout — and a field a request does not carry keeps the app's current value, so
+         * saving one form never writes back what another changed since its page loaded.
          */
         $result = $this->act(UpdateApp::class, [
             'id' => $model->id,
-            'name' => $request->name(),
-            'redirect_uris' => $request->redirectUris(),
-            'post_logout_redirect_uris' => $request->postLogoutRedirectUris(),
+            'name' => $request->has('name') ? $request->name() : $model->name,
+            'redirect_uris' => $request->has('redirectUris') ? $request->redirectUris() : array_values($model->redirect_uris ?? []),
+            'post_logout_redirect_uris' => $request->has('postLogoutRedirectUris') ? $request->postLogoutRedirectUris() : array_values($model->post_logout_redirect_uris ?? []),
         ], ['name' => 'name', 'redirect_uris' => 'redirectUris', 'post_logout_redirect_uris' => 'postLogoutRedirectUris'], 'redirectUris');
 
         return $result instanceof RedirectResponse ? $result : back()->with('status', __('console.app_updated_131df7f6'));
@@ -507,11 +577,21 @@ final readonly class ClientController extends ConsoleController
      *
      * @param  Collection<string, int>  $roleCounts
      * @param  array<string, string>  $owners
+     * @param  array<string, array{iconUrl: string|null, iconDarkUrl: string|null, hue: string|null}>  $faces
      * @return array<string, mixed>
      */
-    private function row(Client $client, mixed $roleCounts, array $owners, bool $withOwner): array
+    private function row(Client $client, mixed $roleCounts, array $owners, bool $withOwner, array $faces = []): array
     {
         return [
+            'group' => AppListing::groupOf($client),
+            'kind' => AppListing::kindOf($client),
+            // Where it lives, as a person recognises it; null for an app no browser returns to.
+            'host' => AppListing::host($client),
+            'signsIn' => AppListing::signsInThroughBrowser($client),
+            'redirectCount' => count($client->redirect_uris ?? []),
+            'backchannelLogout' => $client->backchannel_logout_uri !== null,
+            'lastUsedAt' => $client->last_used_at?->toIso8601String(),
+            'face' => $faces[$client->client_id] ?? null,
             'id' => $client->id,
             'name' => $client->name,
             'clientId' => $client->client_id,

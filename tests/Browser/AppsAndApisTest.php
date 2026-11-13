@@ -126,8 +126,8 @@ it('draws the settings page', function (): void {
     visit('/apps/'.$client->id.'/settings')
         ->assertSee('Access token lifetime')
         ->assertSee('Token exchange')
-        ->assertSee('Back-channel logout')
         ->assertSee('Key prefix')
+        ->assertSee('Danger zone')
         ->assertSee('Account › API keys')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'c7-settings-light');
@@ -146,6 +146,7 @@ it('draws every app tab at phone width without a sideways scroll', function (str
         ->screenshot(filename: 'c7-mobile'.str_replace('/', '-', $tab === '' ? '/overview' : $tab));
 })->with([
     'overview' => ['', 'Connect it'],
+    'sign-in & logout' => ['/sign-in', 'Back-channel logout'],
     'scopes' => ['/scopes', 'Token audience'],
     'secrets' => ['/secrets', 'Live secrets'],
     'settings' => ['/settings', 'Key prefix'],

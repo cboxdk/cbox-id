@@ -26,6 +26,7 @@ final readonly class AppHeader
         private ConsoleClients $clients,
         private AppTabs $tabs,
         private CopyTargets $targets,
+        private AppListing $listing,
     ) {}
 
     public function for(Client $client, string $tab): AppHeaderProps
@@ -43,6 +44,12 @@ final readonly class AppHeader
             indexHref: route($this->scope->routeName('clients')),
             blueprintHref: $manages ? route($this->scope->routeName('clients.blueprint'), $client->id) : null,
             copy: $this->scope->plane() === ConsolePlane::Environment ? $this->copy($client) : null,
+            kind: AppListing::kindOf($client),
+            face: $this->listing->faces([$client->client_id])[$client->client_id] ?? null,
+            // Through the scope's own list, so an organization's console can name only itself.
+            owner: $client->organization_id === null
+                ? null
+                : ($this->scope->organizationNames([$client->organization_id])[$client->organization_id] ?? null),
         );
     }
 

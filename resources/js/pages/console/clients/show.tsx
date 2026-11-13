@@ -1,19 +1,11 @@
 import { useTranslator as useConsoleTranslator } from '@/i18n';
 import { Link, router, useForm } from '@inertiajs/react';
+import { useTranslator } from '@/i18n';
 import { useState } from 'react';
 import ConsoleLayout from '@/layouts/ConsoleLayout';
 import type { PageProps } from '@/types';
-import { lines } from '@/lib/apiSnippets';
-import {
-    ApiEquivalent,
-    Button,
-    ConfirmDelete,
-    Field,
-    Input,
-    Panel,
-    SnippetTabs,
-    Textarea,
-} from '@/ui';
+import { relativeTime } from '@/lib/time';
+import { Button, Field, Input, Kv, KvList, Panel, Pill, SnippetTabs } from '@/ui';
 import { AppFrame, type AppHeaderData, CopyableValue } from './frame';
 
 interface Snippet {
@@ -40,6 +32,16 @@ type Props = PageProps<{
         kind: string;
         kindLabel: string;
     };
+    summary: {
+        host: string | null;
+        browserSignIn: boolean;
+        redirectCount: number;
+        postLogoutCount: number;
+        backchannelLogout: boolean;
+        scopeCount: number;
+        lastUsedAt: string | null;
+        createdAt: string | null;
+    };
     issuer: string;
     discovery: string;
     snippets: Snippet[];
@@ -52,12 +54,16 @@ type Props = PageProps<{
         /** Null when this app holds no shared secret, or this administrator may not manage it. */
         secrets: string | null;
         destroy: string;
+        /** The Sign-in & logout tab; null for somebody who may only look at the app. */
+        signIn: string | null;
+        settings: string | null;
     };
 }>;
 
 export default function ClientDetail({
     appHeader,
     client,
+    summary,
     issuer,
     snippets,
     declaredRoles,
@@ -66,26 +72,18 @@ export default function ClientDetail({
 }: Props) {
     const { t: consoleFinalText } = useConsoleTranslator();
 
-    const { t: consoleUiText } = useConsoleTranslator();
     const { t: consoleText } = useConsoleTranslator();
     const { rich: consoleRich } = useConsoleTranslator();
     const { t: consoleT } = useConsoleTranslator();
-    const [confirming, setConfirming] = useState<'delete' | null>(null);
     const [sdk, setSdk] = useState(snippets[0]?.id ?? '');
     const [manifestOpen, setManifestOpen] = useState(false);
 
-    const details = useForm({
-        name: client.name,
-        redirectUris: client.redirectUris,
-        postLogoutRedirectUris: client.postLogoutRedirectUris,
-    });
-
     const manifest = useForm({ manifestUrl: client.manifestUrl });
-
-    const save = (): void => details.patch(urls.update, { preserveScroll: true });
 
     return (
         <AppFrame app={appHeader} issuer={issuer}>
+            <AtAGlance client={client} summary={summary} urls={urls} />
+
             {/*
                 ALWAYS, NOT ONLY IN THE MINUTE AFTER CREATION. This lived inside the reveal
                 card, which renders only when a plaintext secret was just flashed — so a
@@ -164,119 +162,6 @@ export default function ClientDetail({
                     </p>
                 </Panel>
             )}
-
-            {mayManage && (
-                <Panel title={consoleT('console.details_45989de4')}>
-                    <form
-                        className="space-y-4"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            save();
-                        }}
-                    >
-                        <Field
-                            label={consoleT('console.name_dcd1d522')}
-                            error={details.errors.name}
-                        >
-                            <Input
-                                name="name"
-                                value={details.data.name}
-                                onChange={(event) => details.setData('name', event.target.value)}
-                            />
-                        </Field>
-
-                        <Field
-                            label={
-                                <>
-                                    {consoleRich('console.redirect_uris_part1_part2_428a2fa5', {
-                                        part1: ' ',
-                                        part2: (
-                                            <span
-                                                style={{ color: 'var(--faint)', fontWeight: 400 }}
-                                            >
-                                                {consoleT('console._one_per_line_256f7ece')}
-                                            </span>
-                                        ),
-                                    })}
-                                </>
-                            }
-                            error={details.errors.redirectUris}
-                        >
-                            <Textarea
-                                name="redirectUris"
-                                rows={3}
-                                className="mono"
-                                spellCheck={false}
-                                placeholder="https://app.example.com/auth/callback"
-                                value={details.data.redirectUris}
-                                onChange={(event) =>
-                                    details.setData('redirectUris', event.target.value)
-                                }
-                            />
-                        </Field>
-
-                        <Field
-                            label={
-                                <>
-                                    {consoleRich('console.sign_out_uris_part1_part2_e713791a', {
-                                        part1: ' ',
-                                        part2: (
-                                            <span
-                                                style={{ color: 'var(--faint)', fontWeight: 400 }}
-                                            >
-                                                {consoleT('console._one_per_line_256f7ece')}
-                                            </span>
-                                        ),
-                                    })}
-                                </>
-                            }
-                            hint={consoleT(
-                                'console.where_cbox_id_sends_people_after_they_sign_out_of_this_3a65532f',
-                            )}
-                            error={details.errors.postLogoutRedirectUris}
-                        >
-                            <Textarea
-                                name="postLogoutRedirectUris"
-                                rows={3}
-                                className="mono"
-                                spellCheck={false}
-                                placeholder="https://app.example.com/signed-out"
-                                value={details.data.postLogoutRedirectUris}
-                                onChange={(event) =>
-                                    details.setData('postLogoutRedirectUris', event.target.value)
-                                }
-                            />
-                        </Field>
-
-                        <div className="flex flex-wrap items-start gap-2">
-                            <Button type="submit" variant="primary" loading={details.processing}>
-                                {consoleT('console.save_changes_dd0ae7a5')}
-                            </Button>
-                            <ApiEquivalent
-                                action="apps.update"
-                                values={{
-                                    name: details.data.name,
-                                    redirect_uris: lines(details.data.redirectUris),
-                                    post_logout_redirect_uris: lines(
-                                        details.data.postLogoutRedirectUris,
-                                    ),
-                                }}
-                            />
-                        </div>
-                    </form>
-                </Panel>
-            )}
-
-            <Panel title={consoleT('console.connects_via_45b211b3')}>
-                <p className="text-sm" style={{ color: 'var(--muted-foreground)' }}>
-                    {client.kindLabel}
-                </p>
-                <p className="mt-1 text-xs" style={{ color: 'var(--faint)' }}>
-                    {consoleT(
-                        'console.how_an_app_connects_is_fixed_at_registration_changing_i_0372baec',
-                    )}
-                </p>
-            </Panel>
 
             {mayManage && (
                 <Panel
@@ -358,33 +243,87 @@ export default function ClientDetail({
                     </p>
                 </Panel>
             )}
-
-            {mayManage && (
-                <Panel
-                    title={consoleT('console.delete_app_70ddc821')}
-                    description={consoleT(
-                        'console.anything_using_its_credentials_will_stop_working_this_c_da65f419',
-                    )}
-                >
-                    <Button size="sm" variant="danger" onClick={() => setConfirming('delete')}>
-                        {consoleT('console.delete_app_70ddc821')}
-                    </Button>
-                </Panel>
-            )}
-
-            <ConfirmDelete
-                open={confirming === 'delete'}
-                onOpenChange={(open) => !open && setConfirming(null)}
-                name={client.name}
-                consequence={consoleUiText(
-                    'console.anything_using_this_app_s_credentials_will_stop_working_1ea63206',
-                )}
-                onConfirm={() => {
-                    setConfirming(null);
-                    router.delete(urls.destroy);
-                }}
-            />
         </AppFrame>
+    );
+}
+
+/**
+ * WHAT THE APP IS, before how to connect it: its kind, where it lives, whether sign-out is
+ * wired, when it last asked for a token — each with the tab where it is changed.
+ */
+function AtAGlance({
+    client,
+    summary,
+    urls,
+}: {
+    client: Props['client'];
+    summary: Props['summary'];
+    urls: Props['urls'];
+}) {
+    const { t, locale } = useTranslator();
+    const edit = (href: string | null) =>
+        href === null ? null : (
+            <Link
+                href={href}
+                className="text-sm underline"
+                style={{ color: 'var(--accent-strong)' }}
+            >
+                {t('console.app_glance_change')}
+            </Link>
+        );
+
+    return (
+        <Panel title={t('console.app_glance_title')}>
+            <KvList>
+                <Kv prose label={t('console.app_glance_kind')}>
+                    {client.kindLabel}
+                    <span className="block text-xs" style={{ color: 'var(--faint)' }}>
+                        {t(
+                            'console.how_an_app_connects_is_fixed_at_registration_changing_i_0372baec',
+                        )}
+                    </span>
+                </Kv>
+                {summary.browserSignIn && (
+                    <Kv prose label={t('console.app_glance_sign_in')}>
+                        <span className="flex flex-wrap items-center gap-2">
+                            {summary.host !== null && <span className="mono">{summary.host}</span>}
+                            {summary.redirectCount === 0 ? (
+                                <Pill tone="warning">{t('console.apps_no_redirect')}</Pill>
+                            ) : (
+                                <span style={{ color: 'var(--muted-foreground)' }}>
+                                    {t('console.app_glance_redirects', {
+                                        count: summary.redirectCount,
+                                    })}
+                                </span>
+                            )}
+                            {edit(urls.signIn)}
+                        </span>
+                    </Kv>
+                )}
+                <Kv prose label={t('console.app_glance_logout')}>
+                    <span className="flex flex-wrap items-center gap-2">
+                        {summary.backchannelLogout ? (
+                            <Pill tone="success">{t('console.app_glance_backchannel_on')}</Pill>
+                        ) : (
+                            <Pill>{t('console.app_glance_backchannel_off')}</Pill>
+                        )}
+                        {summary.postLogoutCount > 0 && (
+                            <span style={{ color: 'var(--muted-foreground)' }}>
+                                {t('console.app_glance_post_logout', {
+                                    count: summary.postLogoutCount,
+                                })}
+                            </span>
+                        )}
+                        {edit(urls.signIn)}
+                    </span>
+                </Kv>
+                <Kv prose label={t('console.app_glance_last_used')}>
+                    {summary.lastUsedAt === null
+                        ? t('console.apps_never_used')
+                        : relativeTime(summary.lastUsedAt, locale)}
+                </Kv>
+            </KvList>
+        </Panel>
     );
 }
 

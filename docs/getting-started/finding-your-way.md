@@ -205,7 +205,7 @@ ends with the same short comparison of four things that are easy to mix up:
 
 1. **Developers › Applications › New app**. Answer what kind of app it is, and enter the
    redirect URIs. Its client ID and secret are on the next screen.
-2. You can change the redirect URIs later on the app's **Settings** tab.
+2. You can change the redirect URIs later on the app's **Sign-in & logout** tab.
 3. Browser-side keys are under **Developers › API keys**.
 4. **AI agents › Connect** gives the MCP server URL and setup for Claude Code, Claude
    Desktop, Cursor or VS Code. **Create a key for this agent** issues the key it uses.
