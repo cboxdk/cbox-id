@@ -19,6 +19,7 @@ use App\Platform\Apis\ApiAdministration;
 use App\Platform\Apis\ApiLinks;
 use Cbox\Id\OAuthServer\Contracts\Apis;
 use Cbox\Id\OAuthServer\Exceptions\InvalidApiDefinition;
+use Cbox\Id\OAuthServer\ValueObjects\ApiScopeDefinition;
 use Cbox\Id\OAuthServer\ValueObjects\NewApi;
 use Cbox\Id\Organization\Models\Organization;
 
@@ -77,13 +78,16 @@ final readonly class CreateApi implements Action
             throw ActionRefused::because('invalid_api', $refusal, 'client_id');
         }
 
+        $scopes = ApiScopeFields::definitions($context->array('scopes'));
+        ApiScopeFields::refuseDeclared(array_map(static fn (ApiScopeDefinition $scope): string => $scope->key, $scopes), 'scopes');
+
         try {
             $api = $this->admin->register(new NewApi(
                 identifier: $identifier,
                 name: trim($context->string('name')),
                 organizationId: $organizationId,
                 clientId: $clientId,
-                scopes: ApiScopeFields::definitions($context->array('scopes')),
+                scopes: $scopes,
             ), $context->actor());
         } catch (InvalidApiDefinition $refused) {
             throw ActionRefused::because('invalid_api', FrameworkMessage::from($refused), 'identifier');
