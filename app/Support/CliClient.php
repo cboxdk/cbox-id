@@ -75,12 +75,24 @@ final class CliClient
     /**
      * This environment's CLI client, if it has been provisioned.
      *
-     * Scoped by the tenancy the caller is already inside — the same lookup the
-     * authenticator uses, and it is by NAME because the id is generated.
+     * Scoped by the tenancy the caller is already inside, and by NAME because the id is
+     * generated — but never by the name alone. The name is free text anybody may give a
+     * client they self-register at /oauth/register, so the CLI's client is also what
+     * {@see provision()} makes it: public, first-party, the environment's own (no
+     * organization) and not self-registered. The oldest such row wins, so the answer does
+     * not depend on the database's row order.
      */
     public static function find(): ?Client
     {
-        return Client::query()->where('name', self::NAME)->first();
+        return Client::query()
+            ->where('name', self::NAME)
+            ->where('type', ClientType::Public->value)
+            ->where('first_party', true)
+            ->whereNull('organization_id')
+            ->whereNull('registration_access_token_hash')
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->first();
     }
 
     /**

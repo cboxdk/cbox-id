@@ -443,6 +443,31 @@ it('renders, never redirects, a metadata document it cannot use', function (): v
 
 // ── The `cbox` CLI: the device grant, named resource ────────────────────────────
 
+/*
+ * The CLI's client is found by what it IS (public, first-party, the environment's own, not
+ * self-registered), not by its name alone: anybody may self-register a client named "Cbox
+ * CLI" at /oauth/register, and that client then stood in /.well-known/cbox-cli and made
+ * provisioning report "already provisioned" (security finding #40).
+ */
+it('never takes a self-registered client named Cbox CLI for the CLI', function (): void {
+    $this->postJson('/oauth/register', [
+        'client_name' => CliClient::NAME,
+        'redirect_uris' => ['http://127.0.0.1:5555/callback'],
+    ])->assertCreated();
+
+    expect(CliClient::find())->toBeNull();
+    $this->getJson('/.well-known/cbox-cli')->assertNotFound();
+
+    [$client, $created] = CliClient::provision(app(ClientRegistry::class));
+
+    expect($created)->toBeTrue()
+        ->and($client->first_party)->toBeTrue()
+        ->and($client->isDynamicallyRegistered())->toBeFalse()
+        ->and(CliClient::find()?->is($client))->toBeTrue();
+
+    $this->getJson('/.well-known/cbox-cli')->assertOk()->assertJsonPath('client_id', $client->client_id);
+})->group('security');
+
 it('signs the cbox CLI in with the device grant to a token /mcp and REST both take', function (): void {
     [$client] = CliClient::provision(app(ClientRegistry::class));
 
