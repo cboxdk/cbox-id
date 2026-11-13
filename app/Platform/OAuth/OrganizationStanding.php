@@ -31,12 +31,26 @@ final class OrganizationStanding
             return false;
         }
 
+        // Once per request per organization: a console page asks for each intent and each
+        // render, and the answer cannot usefully change inside one request. Only for a routed
+        // request: a queue worker or a command holds one request object for its whole life,
+        // so there it is asked every time.
+        $request = app()->bound('request') && request()->route() !== null ? request() : null;
+        $memo = self::class.':'.$organizationId;
+
+        if ($request !== null && $request->attributes->has($memo)) {
+            return $request->attributes->get($memo) === true;
+        }
+
         $status = Organization::query()->withoutGlobalScopes()->whereKey($organizationId)->value('status');
 
         if (is_string($status)) {
             $status = OrganizationStatus::tryFrom($status);
         }
 
-        return $status instanceof OrganizationStatus && OrganizationAccess::isRevoked($status);
+        $closed = $status instanceof OrganizationStatus && OrganizationAccess::isRevoked($status);
+        $request?->attributes->set($memo, $closed);
+
+        return $closed;
     }
 }

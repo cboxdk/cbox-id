@@ -14,6 +14,7 @@ use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Enums\GrantPollStatus;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
+use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Organization\Models\Organization;
@@ -376,13 +377,15 @@ it('finishes an agent\'s held request from the console: 202, approve with sudo, 
 })->group('security');
 
 it('tells people how long a held action waits — the window the request is actually filed with', function (): void {
-    ['environment' => $environment] = agentsAdmin();
+    ['environment' => $environment, 'organization' => $workspace] = agentsAdmin();
 
     // The default: five minutes, never the fifteen the page used to say.
     expect($this->get(route('environment.approvals'))->assertOk()->inertiaProps('approvalWindow'))->toBe('5 minutes');
 
     config(['cbox-id.oauth.ciba.ttl_seconds' => 120]);
     $colleague = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->create('window@acme.example', 'Window', 'a-strong-unbreached-passphrase')->id);
+    // A colleague who runs the workspace: an approver must still hold it.
+    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->add($workspace->id, $colleague, MembershipRole::Owner));
     [$token] = agentKey($environment->id, $colleague, 'Timed agent', ['keys:read', 'keys:write'], ['min_danger' => 'critical', 'actions' => []]);
 
     $held = $this->withToken($token)->postJson('/api/v1/keys', ['name' => 'X', 'scopes' => ['keys:read']])->assertStatus(202)->json('approval');
@@ -399,6 +402,8 @@ it('lets only the person an action waits for approve it, and any administrator d
 
     // Held for somebody else: a colleague in the same workspace.
     $colleague = app(PlatformRoot::class)->run(fn () => app(Subjects::class)->create('colleague@acme.example', 'Colleague', 'a-strong-unbreached-passphrase')->id);
+    // A colleague who runs the workspace: an approver must still hold it.
+    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->add($workspace->id, $colleague, MembershipRole::Owner));
     [$token] = agentKey($environment->id, $colleague, 'Their agent', ['keys:read', 'keys:write'], ['min_danger' => 'critical', 'actions' => []]);
 
     $held = $this->withToken($token)->postJson('/api/v1/keys', ['name' => 'X', 'scopes' => ['keys:read']])->assertStatus(202)->json('approval');
