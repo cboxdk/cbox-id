@@ -7,6 +7,9 @@ namespace App\Platform\OAuth;
 use App\SignalsData\IdentityCapture;
 use App\SignalsData\SourceLedger;
 use App\SignalsData\SourceRefreshTokens;
+use Cbox\Id\Devices\Enums\DeviceStatus;
+use Cbox\Id\Devices\Models\Device;
+use Cbox\Id\Devices\Support\RevokeAuthenticatorDevice;
 use Cbox\Id\OAuthServer\Models\AccessToken;
 use Cbox\Id\OAuthServer\Models\RefreshToken;
 use Illuminate\Database\Eloquent\Builder;
@@ -41,7 +44,17 @@ use Illuminate\Support\Facades\DB;
 final readonly class GrantWithdrawal
 {
     /**
-     * The live grants of $userId issued from one of $sessionIds.
+     * The live grants of $userId issued from one of $sessionIds, except a trusted device's.
+     *
+     * A DEVICE-BOUND GRANT IS SPARED. The Cbox ID Authenticator holds a refresh family
+     * sender-constrained (DPoP) to the key of a device the person enrolled, and cannot sign
+     * in again on its own: withdrawing it signs the phone out, and with it CIBA approvals
+     * and push step-up. Ending other sessions (a password change, which proves the old
+     * password, or "sign out every other session") is not a reason to distrust a phone the
+     * person still trusts, even when the family is bound to one of the sessions being
+     * ended. The property is the grant's own: its `jkt` is the key of one of the person's
+     * ACTIVE devices. Removing the device revokes it ({@see RevokeAuthenticatorDevice}),
+     * and a password reset, deactivation and "sign out everywhere" withdraw every grant.
      *
      * @param  list<string>  $sessionIds
      */
@@ -51,7 +64,21 @@ final readonly class GrantWithdrawal
             return 0;
         }
 
-        return $this->withdraw(RefreshToken::query()->where('user_id', $userId)->whereIn('session_id', $sessionIds));
+        $deviceKeys = Device::query()
+            ->where('subject_id', $userId)
+            ->where('status', DeviceStatus::Active->value)
+            ->whereNotNull('dpop_jkt')
+            ->pluck('dpop_jkt')
+            ->filter(static fn (mixed $jkt): bool => is_string($jkt) && $jkt !== '')
+            ->values()
+            ->all();
+
+        return $this->withdraw(RefreshToken::query()
+            ->where('user_id', $userId)
+            ->whereIn('session_id', $sessionIds)
+            ->when($deviceKeys !== [], static fn (Builder $query): Builder => $query->where(
+                static fn (Builder $grant): Builder => $grant->whereNull('jkt')->orWhereNotIn('jkt', $deviceKeys),
+            )));
     }
 
     /**

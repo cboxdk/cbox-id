@@ -6,6 +6,7 @@ use App\Platform\CurrentUser;
 use App\Platform\Lifecycle\EndOtherSessions;
 use App\Platform\PlatformAuth;
 use App\Platform\Sudo;
+use Cbox\Id\Devices\Models\Device;
 use Cbox\Id\Identity\Contracts\AdminPasswords;
 use Cbox\Id\Identity\Contracts\AuthPolicies;
 use Cbox\Id\Identity\Contracts\PasswordReset;
@@ -20,11 +21,13 @@ use Cbox\Id\OAuthServer\Contracts\RefreshTokens;
 use Cbox\Id\OAuthServer\Contracts\TokenIssuer;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\Models\RefreshToken;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Illuminate\Support\Str;
 
 /**
  * WHEN A PERSON ENDS THEIR SESSIONS, THE APPS THOSE SESSIONS SIGNED IN TO END TOO.
@@ -174,4 +177,76 @@ it('keeps a session-less grant (the CLI\'s device sign-in) when other sessions e
     app(EndOtherSessions::class)->handle($me, $current);
 
     expect(soeRefreshes($cli, $deviceGrant))->toBe(200);
+});
+
+/**
+ * THE AUTHENTICATOR STAYS SIGNED IN UNLESS ITS PERSON'S ACCESS IS REALLY IN DOUBT.
+ *
+ * Its refresh family is DPoP-bound to the key of a device the person enrolled, and it cannot
+ * sign in again by itself: revoking it signs the phone out of CIBA approvals and push
+ * step-up. A password change (which proves the old password) and "sign out every other
+ * session" spare it, even when the family is bound to one of the sessions being ended. A
+ * password reset does not.
+ *
+ * @return array{0: string, 1: string} the person and the Authenticator's refresh token row id
+ */
+function soeAuthenticatorOn(string $me, string $sessionId): array
+{
+    Device::query()->create([
+        'subject_id' => $me, 'install_id' => (string) Str::ulid(),
+        'platform' => 'ios', 'name' => 'My phone', 'status' => 'active', 'dpop_jkt' => 'the-phone-key',
+    ]);
+    $raw = app(RefreshTokens::class)->issue(soeApp('Authenticator'), $me, null, ['openid', 'offline_access'], dpopJkt: 'the-phone-key', sessionId: $sessionId);
+
+    return [$me, (string) RefreshToken::query()->where('token_hash', hash('sha256', $raw))->value('id')];
+}
+
+function soeRevoked(string $tokenId): bool
+{
+    return RefreshToken::query()->whereKey($tokenId)->value('revoked_at') !== null;
+}
+
+it('spares the Authenticator\'s device-bound grant when other sessions end', function (string $door): void {
+    [$me] = soeSignedIn();
+    $phoneSession = app(SessionManager::class)->start($me, null, ['pwd']);
+    [, $authenticator] = soeAuthenticatorOn($me, $phoneSession->id);
+    $other = soeApp('Ledger');
+    $otherRefresh = app(RefreshTokens::class)->issue($other, $me, null, ['openid', 'offline_access'], sessionId: $phoneSession->id);
+
+    match ($door) {
+        'sign out every other session' => inertiaRequest(fn () => test()->from(route('account'))->post(route('account.sessions.revoke-others')))
+            ->assertSessionHasNoErrors(),
+        'change the password' => changeOwnPassword()->assertSessionHasNoErrors(),
+    };
+
+    expect(soeRevoked($authenticator))->toBeFalse()
+        // An ordinary app of the same ended session is still signed out.
+        ->and(soeRefreshes($other, $otherRefresh))->toBe(400)
+        ->and(app(SessionManager::class)->active($phoneSession->id))->toBeNull();
+})->with(['sign out every other session', 'change the password']);
+
+it('withdraws the Authenticator\'s device-bound grant on a password reset', function (): void {
+    $person = app(Subjects::class)->create('ada@acme.test', 'Ada', 'a-strong-unbreached-passphrase');
+    $session = app(SessionManager::class)->start($person->id, null, ['pwd']);
+    [, $authenticator] = soeAuthenticatorOn($person->id, $session->id);
+    $token = (string) app(PasswordReset::class)->request('ada@acme.test');
+
+    test()->from(route('password.reset', $token))->post(route('password.update'), [
+        'token' => $token,
+        'password' => 'brand-new-password-5678',
+        'password_confirmation' => 'brand-new-password-5678',
+    ])->assertRedirect();
+
+    expect(soeRevoked($authenticator))->toBeTrue();
+});
+
+it('withdraws a device-bound grant once its device is no longer trusted', function (): void {
+    [$me] = soeSignedIn();
+    $phoneSession = app(SessionManager::class)->start($me, null, ['pwd']);
+    [, $authenticator] = soeAuthenticatorOn($me, $phoneSession->id);
+    Device::query()->where('subject_id', $me)->update(['status' => 'revoked']);
+
+    changeOwnPassword()->assertSessionHasNoErrors();
+
+    expect(soeRevoked($authenticator))->toBeTrue();
 });
