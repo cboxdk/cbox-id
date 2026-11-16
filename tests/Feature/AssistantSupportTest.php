@@ -113,13 +113,13 @@ it('hydrates the signed organization card using current membership and rejects f
     $this->withToken(idSupportToken($this, $this->claims))->getJson($url)->assertForbidden();
 });
 
-it('does not expose operational support data through shared admin or billing-only membership', function (array $roles): void {
-    [$member, $subject] = addMember($this->workspace->organization->id, MembershipRole::Admin, 'support-limited@example.test');
+it('does not expose operational support data through a member without a native role or with billing only', function (array $roles): void {
+    [$member, $subject] = addMember($this->workspace->organization->id, MembershipRole::Member, 'support-limited@example.test');
     grantNativeProductRoles($member, $roles);
     $this->claims['sub'] = $subject;
     $this->withToken(idSupportToken($this, $this->claims))->postJson('/ai-assistant/hook')->assertForbidden();
     $this->withToken(idSupportToken($this, $this->claims, 'id_workspace_status'))->postJson('/ai-assistant/hook')->assertStatus($roles === [] ? 403 : 200);
-})->with(['shared admin without native role' => [[]], 'native billing only' => [['billing']]]);
+})->with(['member without native role' => [[]], 'native billing only' => [['billing']]]);
 
 it('rechecks native Reader revocation on the next signed support action', function (): void {
     [$member, $subject] = addMember($this->workspace->organization->id, MembershipRole::Member, 'support-revoked@example.test');
