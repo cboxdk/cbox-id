@@ -72,7 +72,9 @@ final readonly class ConsoleSignInController extends PageController
             $ask = new ConsoleStepUpRequest(acr: AuthenticationContextClass::Aal2->value);
         } elseif ($me->check() && ($enter = self::organizationToEnter($request)) !== null) {
             $ask = new ConsoleStepUpRequest(organization: $enter);
-        } elseif ($me->check()) {
+        } elseif ($me->check() && self::returnTo($request) === null) {
+            // A login-host return may follow an account switch. Only the verified
+            // callback can replace the console's previous identity; do not skip it.
             return redirect()->to($this->landing($request, $me->id()));
         }
 

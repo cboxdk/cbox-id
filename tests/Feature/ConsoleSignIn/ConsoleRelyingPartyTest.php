@@ -229,6 +229,57 @@ it('sends an unauthenticated console request to the login host and back into a c
     expect($this->get('https://'.RP_APP.'/dashboard')->headers->get('Location'))->not->toContain('/auth/start');
 })->group('security');
 
+it('rechecks the login identity when returning to an already signed-in console', function (string $answer): void {
+    $realm = consoleRealm();
+    $other = provisionAccount('other@acme.example');
+    signInToTheConsole($realm['subjectId']);
+    $previous = session(PlatformAuth::SESSION_KEY);
+    $console = session()->all();
+
+    // Two live login-host accounts, but the console still holds the first one.
+    atTheLoginHost($realm['subjectId']);
+    signInAsSubject($realm['subjectId']);
+    signInAsSubject($other['subjectId']);
+    $this->get('https://'.RP_LOGIN.'/settings/accounts?return_to='.urlencode('https://'.RP_APP.'/dashboard'))
+        ->assertOk();
+    $switch = $this->post('https://'.RP_LOGIN.'/settings/accounts', ['subject' => $other['subjectId']]);
+    $switch->assertRedirect('https://'.RP_APP.'/auth/start?return_to=%2Fdashboard');
+    $login = session()->all();
+
+    atTheConsole($console);
+    $start = $this->get((string) $switch->headers->get('Location'));
+    $authorize = (string) $start->headers->get('Location');
+    expect($authorize)->toStartWith('https://'.RP_LOGIN.'/oauth/authorize?');
+    $verifier = heldVerifier($authorize);
+    $console = session()->all();
+
+    if ($answer !== 'verified') {
+        parse_str((string) parse_url($authorize, PHP_URL_QUERY), $asked);
+        $state = $answer === 'cancelled' ? $asked['state'] : 'forged';
+        $this->get('https://'.RP_APP.'/auth/callback?state='.$state.'&error=access_denied')->assertStatus(400);
+        expect(session(PlatformAuth::SESSION_KEY))->toBe($previous)
+            ->and(session(PlatformAuth::ACTIVE_KEY))->toBe($realm['subjectId']);
+
+        return;
+    }
+
+    session()->flush();
+    session($login);
+    // The fresh authorization confirms the choice among the two live accounts.
+    $this->get($authorize)->assertRedirect('https://'.RP_LOGIN.'/settings/accounts');
+    $selected = $this->post('https://'.RP_LOGIN.'/settings/accounts', ['subject' => $other['subjectId']]);
+    $callback = answeredByTheLoginHost((string) $selected->headers->get('Location'), $verifier);
+    atTheConsole($console);
+    $this->get($callback)->assertRedirect('https://'.RP_APP.'/dashboard');
+
+    expect(session(PlatformAuth::ACTIVE_KEY))->toBe($other['subjectId'])
+        ->and(session(PlatformAuth::SESSION_KEY))->not->toBe($previous)
+        ->and(session(PlatformAuth::ORG_KEY))->toBe($other['organization']->id);
+    $this->get('https://'.RP_APP.'/dashboard')
+        ->assertRedirect('https://'.RP_APP.'/orgs/'.$other['organization']->slug.'/projects');
+    $this->get($realm['console'].'/users')->assertNotFound();
+})->with(['verified', 'cancelled', 'forged'])->group('security');
+
 it('has no console door in single-host mode', function (): void {
     installedDeployment();
     platformRootEnvironment();
@@ -635,8 +686,14 @@ it('lands on the page the login host named with return_to, and on no other origi
     atTheConsole($console);
     $this->get($callback)->assertRedirect('/orgs?tab=1');
 
-    // Signed in: straight there.
-    $this->get('https://'.RP_APP.'/auth/start?return_to='.urlencode('/orgs'))->assertRedirect('/orgs');
+    // Signed in too: the login host may have just switched to another account.
+    $authorizeUrl = (string) $this->get('https://'.RP_APP.'/auth/start?return_to='.urlencode('/orgs'))->headers->get('Location');
+    $verifier = heldVerifier($authorizeUrl);
+    $console = session()->all();
+    atTheLoginHost($realm['subjectId']);
+    $callback = answeredByTheLoginHost($authorizeUrl, $verifier);
+    atTheConsole($console);
+    $this->get($callback)->assertRedirect('/orgs');
 
     // Anything that is not a path on this host, or is the door itself, is ignored.
     foreach (['https://evil.example/x', '//evil.example/x', '/\\evil.example', '/auth/start?return_to=/auth/start'] as $bad) {
