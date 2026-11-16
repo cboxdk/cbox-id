@@ -195,7 +195,11 @@ it('copies only into an environment of this project that the person administers'
             ->assertSessionHasErrors(['environment' => $refusal]);
     }
 
-    // …and the project's own Staging, once this person's access no longer reaches it.
+    // …and the project's own Staging, once this person's access no longer reaches it. An
+    // owner or administrator reaches every environment, so the person is a developer now.
+    $membership = app(PlatformRoot::class)->run(fn () => app(Memberships::class)->of($tenant->organization->id, $tenant->owner->id));
+    app(PlatformRoot::class)->run(fn () => $membership->update(['role' => MembershipRole::Developer]));
+    grantNativeProductRoles($membership, ['developer']);
     app(PlatformRoot::class)->run(fn () => app(Memberships::class)->setEnvironmentAccess(
         $tenant->organization->id,
         $tenant->owner->id,

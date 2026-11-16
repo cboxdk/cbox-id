@@ -315,6 +315,32 @@ class AppServiceProvider extends ServiceProvider
             }
         });
 
+        // An organization's owner and administrators reach every environment it owns,
+        // including ones created later. On the model, so every door that writes a
+        // membership keeps it, and every reader of the flag (the framework's
+        // `accessibleEnvironmentIds()` among them) gives the same answer. Environment grants
+        // narrow members only.
+        //
+        // DEMOTED, THEY START WITH NONE. An owner or administrator moved to a role that is
+        // scoped reaches no environment until somebody grants them some: the flag would
+        // otherwise carry "every environment" into the narrower role, and grant rows left
+        // from before they were promoted would come back. Whoever demotes them chooses.
+        Membership::saving(static function (Membership $membership): void {
+            if (! $membership->role->supportsEnvironmentScoping()) {
+                $membership->all_environments = true;
+
+                return;
+            }
+
+            $original = $membership->exists && $membership->isDirty('role') ? $membership->getRawOriginal('role') : null;
+            $was = is_string($original) ? MembershipRole::tryFrom($original) : null;
+
+            if ($was !== null && ! $was->supportsEnvironmentScoping()) {
+                $membership->all_environments = false;
+                $membership->environments()->detach();
+            }
+        });
+
         // Joining an organization that requires SSO ends the person's local sessions, the
         // way the mandate switching on does (see SsoMandateOnJoin). On the model, so every
         // door that adds or reactivates a membership is covered.

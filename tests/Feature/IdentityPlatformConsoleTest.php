@@ -248,7 +248,9 @@ it('lets an owner remove a member and transfer ownership', function (): void {
     $this->post(route('orgs.settings.members.transfer-ownership', ['member' => $admin->id, 'organization' => $owner->organization_id]))->assertRedirect();
     expect(freshMembership($admin)->role)->toBe(MembershipRole::Owner)
         ->and(freshMembership($owner)->role)->toBe(MembershipRole::Admin);
-    expect(app(NativeProductAccess::class)->forSubject($ownerSubjectId, $account->id)->any())->toBeFalse()
+    // The former owner stays an administrator, and an administrator administers ID.
+    expect(app(NativeProductAccess::class)->forSubject($ownerSubjectId, $account->id)->isOwner())->toBeFalse()
+        ->and(app(NativeProductAccess::class)->forSubject($ownerSubjectId, $account->id)->canManageMembers())->toBeTrue()
         ->and(app(NativeProductAccess::class)->forSubject($adminSubjectId, $account->id)->isOwner())->toBeTrue();
 });
 

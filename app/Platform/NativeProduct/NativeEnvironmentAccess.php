@@ -43,6 +43,9 @@ final readonly class NativeEnvironmentAccess
             if ($locked->role === MembershipRole::Owner) {
                 throw new ActionRefused('not_manageable', 'The current owner has access to all environments.', 422);
             }
+            if (! $locked->role->supportsEnvironmentScoping()) {
+                throw new ActionRefused('not_manageable', 'An administrator has access to all environments.', 422);
+            }
             if (! hash_equals($this->version($locked), $version)) {
                 throw new ActionRefused('environment_access_changed', 'This member’s environment access changed. Reload it before saving.', 409, 'environment_access_version');
             }

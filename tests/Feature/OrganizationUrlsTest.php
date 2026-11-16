@@ -229,6 +229,31 @@ it('switches organization on the same page, or that page\'s list for a record', 
         ->assertRedirect(route('orgs.index'));
 });
 
+/**
+ * An organization made in another Cbox product makes its creator's colleagues
+ * administrators with no ID app role. Switching to it answered 403 on every page, so its
+ * administrator could not even invite anybody; an administrator administers it here too.
+ */
+it('opens another organization in full for its administrator, whatever ID app roles they hold', function (array $roles): void {
+    $first = provisionAccount('two-orgs@example.test');
+    $second = provisionAccount('second-owner@example.test');
+    $membership = app(PlatformRoot::class)->run(fn () => app(Memberships::class)->add($second['organization']->id, $first['subjectId'], MembershipRole::Admin));
+    grantNativeProductRoles($membership, $roles);
+    signInAsMember($first['subjectId']);
+    $secondSlug = orgSlug($second['organization']->id);
+
+    $switched = $this->post(route('orgs.switch'), [
+        'organization' => $second['organization']->id,
+        'path' => '/orgs/'.orgSlug($first['organization']->id).'/projects',
+    ])->assertRedirect(route('orgs.projects', ['org' => $secondSlug]));
+
+    nextRequest();
+    $this->get((string) $switched->headers->get('Location'))->assertOk();
+    nextRequest();
+    $this->get(route('orgs.settings.members', ['org' => $secondSlug]))->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('canManage', true));
+})->with(['no ID app role' => [[]], 'billing only' => [['billing']]]);
+
 it('keeps every v2 organization-console address answering, in the organization used last', function (): void {
     ['firstSlug' => $firstSlug] = twoOrganizations();
 
