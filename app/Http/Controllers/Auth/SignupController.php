@@ -10,6 +10,7 @@ use App\Mail\EmailVerificationMail;
 use App\Platform\IntendedUrl;
 use App\Platform\Locale\MailLocale;
 use App\Platform\MailLinks;
+use App\Platform\OAuth\AppSignIns;
 use App\Platform\Organizations\PersonalOrganizations;
 use App\Platform\PlatformAuth;
 use App\Platform\RiskGuard;
@@ -52,6 +53,9 @@ final readonly class SignupController extends PageController
              * pitch and means nothing to somebody signing up for a tax app.
              */
             'forApp' => $this->waitingApp(),
+            // The address the waiting app named (`login_hint`), filled in and editable,
+            // never submitted: an app that invited somebody knows where the invitation went.
+            'email' => is_string($old = request()->old('email')) ? $old : (app(AppSignIns::class)->pending(request())->loginHint ?? ''),
             /*
              * Empty when Turnstile is not configured, and then the widget and its script
              * are never referenced at all — which is what keeps the policy tight and, more

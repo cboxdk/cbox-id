@@ -301,3 +301,18 @@ it('gives an organization owner no way to open the environment\'s sign-up', func
     expect($refused->status())->not->toBe(200)
         ->and(SelfServiceSignup::enabledFor($environment->refresh()))->toBeFalse();
 })->group('security');
+
+it('fills sign-up with the address the app named in login_hint, and leaves it editable', function (): void {
+    selfServiceTenant(enabled: true);
+    $clientId = selfServiceApp();
+
+    authorizeRequest(selfServiceAuthorize($clientId, ['prompt' => 'create', 'login_hint' => 'nora@example.com']))
+        ->assertRedirect(route('signup'));
+
+    test()->get(route('signup'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('forApp', 'Cboxtax')->where('email', 'nora@example.com'));
+
+    // A hint that is not an address is dropped, as on sign-in; without an app, nothing.
+    authorizeRequest(selfServiceAuthorize($clientId, ['prompt' => 'create', 'login_hint' => 'not an address']));
+    test()->get(route('signup'))->assertInertia(fn (AssertableInertia $page) => $page->where('email', ''));
+});

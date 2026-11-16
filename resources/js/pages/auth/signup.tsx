@@ -13,6 +13,8 @@ type Props = PageProps<{
     identityOnly: boolean;
     /** The app an authorization is waiting to return to, when signing up for one. */
     forApp: string | null;
+    /** The address the waiting app named (`login_hint`), or ''. Filled in, still editable. */
+    email: string;
     /** Empty when Turnstile is not configured, and then nothing is ever fetched from it. */
     turnstileSiteKey: string;
     /** Stamped by the server: a timestamp the client invents measures nothing. */
@@ -23,6 +25,7 @@ export default function Signup({
     identityOnly,
     createsIdp,
     forApp,
+    email,
     turnstileSiteKey,
     renderedAt,
 }: Props) {
@@ -36,7 +39,7 @@ export default function Signup({
     const form = useForm({
         organization: '',
         name: '',
-        email: '',
+        email,
         password: '',
         // A human never fills this. A value in it is evidence for the risk scorer, not an
         // error — refusing it outright would tell a bot which field to leave alone next.
