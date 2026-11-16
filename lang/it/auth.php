@@ -29,6 +29,7 @@ return [
             'default' => 'Accedi al tuo account per continuare.',
             'device' => 'Accedi per approvare il dispositivo in attesa.',
             'app' => 'Accedi per continuare su :app.',
+            'passkey' => 'Conferma la tua identità con la passkey o la chiave di sicurezza per continuare.',
         ],
         'magic' => [
             'sent_to' => 'Abbiamo inviato un link di accesso monouso a :email.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'Il modo in cui hai effettuato l\'accesso l\'ultima volta su questo dispositivo.',
         'magic_link' => 'Inviami un link di accesso via email',
         'passkey' => 'Accedi con una passkey',
+        'passkey_unsupported' => 'Questo browser non supporta le passkey. Apri la pagina in un browser compatibile o sul dispositivo che contiene la tua passkey.',
         'method' => [
             'magic_link' => 'Link di accesso',
             'passkey' => 'Passkey',

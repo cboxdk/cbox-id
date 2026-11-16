@@ -29,6 +29,7 @@ return [
             'default' => 'Prijavite se na svoj račun za nastavak.',
             'device' => 'Prijavite se kako biste odobrili uređaj koji čeka.',
             'app' => 'Prijavite se za nastavak u aplikaciju :app.',
+            'passkey' => 'Potvrdite da ste to vi pristupnim ili sigurnosnim ključem za nastavak.',
         ],
         'magic' => [
             'sent_to' => 'Poslali smo jednokratnu poveznicu za prijavu na :email.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'Način na koji ste se prošli put prijavili na ovom uređaju.',
         'magic_link' => 'Pošalji mi poveznicu za prijavu e-poštom',
         'passkey' => 'Prijava s pristupnim ključem',
+        'passkey_unsupported' => 'Ovaj preglednik ne podržava pristupne ključeve. Otvorite stranicu u pregledniku koji ih podržava ili na uređaju s vašim pristupnim ključem.',
         'method' => [
             'magic_link' => 'Poveznica za prijavu',
             'passkey' => 'Pristupni ključ',

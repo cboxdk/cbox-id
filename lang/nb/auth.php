@@ -29,6 +29,7 @@ return [
             'default' => 'Logg inn på kontoen din for å fortsette.',
             'device' => 'Logg inn for å godkjenne enheten som venter.',
             'app' => 'Logg inn for å fortsette til :app.',
+            'passkey' => 'Bekreft at det er deg med passnøkkelen eller sikkerhetsnøkkelen din for å fortsette.',
         ],
         'magic' => [
             'sent_to' => 'Vi har sendt en innloggingslenke til engangsbruk til :email.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'Slik logget du inn sist på denne enheten.',
         'magic_link' => 'Send meg en innloggingslenke',
         'passkey' => 'Logg inn med passnøkkel',
+        'passkey_unsupported' => 'Denne nettleseren kan ikke bruke passnøkler. Åpne siden i en nettleser som kan, eller på enheten som har passnøkkelen din.',
         'method' => [
             'magic_link' => 'Innloggingslenke',
             'passkey' => 'Passnøkkel',

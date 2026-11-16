@@ -29,6 +29,7 @@ return [
             'default' => 'Pre pokračovanie sa prihláste do svojho účtu.',
             'device' => 'Prihláste sa a schváľte čakajúce zariadenie.',
             'app' => 'Prihláste sa a pokračujte do aplikácie :app.',
+            'passkey' => 'Ak chcete pokračovať, potvrďte svoju totožnosť prístupovým kľúčom alebo bezpečnostným kľúčom.',
         ],
         'magic' => [
             'sent_to' => 'Na adresu :email sme odoslali jednorazový prihlasovací odkaz.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'Spôsob, ktorým ste sa naposledy prihlásili na tomto zariadení.',
         'magic_link' => 'Poslať prihlasovací odkaz e-mailom',
         'passkey' => 'Prihláste sa pomocou prístupového kľúča',
+        'passkey_unsupported' => 'Tento prehliadač nepodporuje prístupové kľúče. Otvorte stránku v prehliadači, ktorý ich podporuje, alebo na zariadení s vaším prístupovým kľúčom.',
         'method' => [
             'magic_link' => 'Prihlasovací odkaz',
             'passkey' => 'Prístupový kľúč',

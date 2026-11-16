@@ -26,6 +26,11 @@ type Props = PageProps<{
     /** Why this person is being asked to sign in, when the server knows. */
     purpose: string;
     /**
+     * The app asked for a passkey (the console's operator step-up): the page offers that
+     * and nothing else, since any other way in comes back without the proof.
+     */
+    passkeyRequired: boolean;
+    /**
      * The app an authorization request sent this person here for, or null when they came
      * by themselves. Its icon is drawn when the environment's app catalog has one.
      */
@@ -51,6 +56,7 @@ const LAST_USED_HINT = 'last-used-hint';
 
 export default function Login({
     purpose,
+    passkeyRequired,
     signingInTo,
     email,
     signupOpen,
@@ -133,7 +139,8 @@ export default function Login({
      * signing anybody in.
      */
     const autofill = useRef<AbortController | null>(null);
-    const autofillOffered = methods.passkeys && mandate === undefined;
+    // No address field to wait behind when only a passkey is asked for.
+    const autofillOffered = methods.passkeys && mandate === undefined && !passkeyRequired;
     const passkeyFailed = t('auth.login.passkey_failed');
 
     const armAutofill = useCallback((): void => {
@@ -301,7 +308,38 @@ export default function Login({
                 </output>
             )}
 
-            {mandate !== undefined ? (
+            {passkeyRequired ? (
+                <div className="mt-6">
+                    {canUsePasskeys ? (
+                        <Button
+                            variant="primary"
+                            size="lg"
+                            className="w-full"
+                            loading={passkeyBusy}
+                            onClick={() => void signIn()}
+                        >
+                            <Icon name="key" className="w-4 h-4" />
+                            {t('auth.login.passkey')}
+                        </Button>
+                    ) : (
+                        <p role="alert" className="auth-notice is-error">
+                            <Icon name="warning" className="w-4 h-4 shrink-0 mt-0.5" />
+                            <span>{t('auth.login.passkey_unsupported')}</span>
+                        </p>
+                    )}
+                    <output
+                        className="text-xs text-center block mt-3 empty:mt-0"
+                        style={{
+                            color:
+                                passkeyMessage?.ok === true
+                                    ? 'var(--success-strong)'
+                                    : 'var(--destructive-strong)',
+                        }}
+                    >
+                        {passkeyMessage?.text ?? ''}
+                    </output>
+                </div>
+            ) : mandate !== undefined ? (
                 /*
                     THE MANDATE, and it REPLACES the form rather than sitting above it.
 
@@ -603,7 +641,7 @@ export default function Login({
                 </>
             )}
 
-            {((mandate === undefined && signupOpen) || adminUrl !== null) && (
+            {!passkeyRequired && ((mandate === undefined && signupOpen) || adminUrl !== null) && (
                 <AuthCardFoot>
                     {mandate === undefined && signupOpen && (
                         <p>

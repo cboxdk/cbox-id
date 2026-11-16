@@ -29,6 +29,7 @@ return [
             'default' => 'Log in op je account om verder te gaan.',
             'device' => 'Log in om het wachtende apparaat goed te keuren.',
             'app' => 'Log in om door te gaan naar :app.',
+            'passkey' => 'Bevestig met je passkey of beveiligingssleutel dat jij het bent om door te gaan.',
         ],
         'magic' => [
             'sent_to' => 'We hebben een eenmalige inloglink naar :email gestuurd.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'De methode waarmee je de vorige keer op dit apparaat inlogde.',
         'magic_link' => 'Stuur me een inloglink per e-mail',
         'passkey' => 'Inloggen met een passkey',
+        'passkey_unsupported' => 'Deze browser kan geen passkeys gebruiken. Open de pagina in een browser die dat wel kan, of op het apparaat met je passkey.',
         'method' => [
             'magic_link' => 'Inloglink',
             'passkey' => 'Passkey',

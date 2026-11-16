@@ -29,6 +29,7 @@ return [
             'default' => 'Devam etmek için hesabınıza giriş yapın.',
             'device' => 'Bekleyen cihazı onaylamak için giriş yapın.',
             'app' => ':app uygulamasına devam etmek için giriş yapın.',
+            'passkey' => 'Devam etmek için geçiş anahtarınız veya güvenlik anahtarınızla siz olduğunuzu doğrulayın.',
         ],
         'magic' => [
             'sent_to' => ':email adresine tek kullanımlık bir giriş bağlantısı gönderdik.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'Bu cihazda en son kullandığınız giriş yöntemi.',
         'magic_link' => 'Bana e-postayla giriş bağlantısı gönder',
         'passkey' => 'Geçiş anahtarıyla giriş yap',
+        'passkey_unsupported' => 'Bu tarayıcı geçiş anahtarlarını kullanamıyor. Sayfayı destekleyen bir tarayıcıda veya geçiş anahtarınızın bulunduğu cihazda açın.',
         'method' => [
             'magic_link' => 'Giriş bağlantısı',
             'passkey' => 'Geçiş anahtarı',

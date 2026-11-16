@@ -23,6 +23,8 @@ final readonly class AppSignIn
         public ?string $homeUrl = null,
         /** The address the app asked to have filled in (`login_hint`), when it is one. */
         public ?string $loginHint = null,
+        /** The app asked for a passkey (`acr_values` names the phishing-resistant class). */
+        public bool $passkeyRequired = false,
         public ?string $iconUrl = null,
         public ?string $iconDarkUrl = null,
     ) {}

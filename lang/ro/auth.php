@@ -29,6 +29,7 @@ return [
             'default' => 'Conectați-vă la cont pentru a continua.',
             'device' => 'Autentificați-vă pentru a aproba dispozitivul în așteptare.',
             'app' => 'Autentificați-vă pentru a continua către :app.',
+            'passkey' => 'Confirmă că ești tu cu cheia de acces sau cheia de securitate pentru a continua.',
         ],
         'magic' => [
             'sent_to' => 'Am trimis un link de autentificare de unică folosință la :email.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'Modul în care v-ați autentificat ultima dată pe acest dispozitiv.',
         'magic_link' => 'Trimiteți-mi un link de autentificare prin e-mail',
         'passkey' => 'Autentificare folosind o cheie de acces',
+        'passkey_unsupported' => 'Acest browser nu poate folosi chei de acces. Deschide pagina într-un browser compatibil sau pe dispozitivul care are cheia ta de acces.',
         'method' => [
             'magic_link' => 'Link de autentificare',
             'passkey' => 'Cheie de acces',

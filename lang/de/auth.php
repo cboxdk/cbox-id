@@ -29,6 +29,7 @@ return [
             'default' => 'Melden Sie sich bei Ihrem Konto an, um fortzufahren.',
             'device' => 'Melden Sie sich an, um das wartende Gerät zu genehmigen.',
             'app' => 'Melden Sie sich an, um mit :app fortzufahren.',
+            'passkey' => 'Bestätigen Sie mit Ihrem Passkey oder Sicherheitsschlüssel, dass Sie es sind, um fortzufahren.',
         ],
         'magic' => [
             'sent_to' => 'Wir haben einen Anmeldelink zur einmaligen Verwendung an :email gesendet.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'So haben Sie sich zuletzt auf diesem Gerät angemeldet.',
         'magic_link' => 'Anmeldelink per E-Mail senden',
         'passkey' => 'Mit Passkey anmelden',
+        'passkey_unsupported' => 'Dieser Browser kann keine Passkeys verwenden. Öffnen Sie die Seite in einem Browser, der es kann, oder auf dem Gerät mit Ihrem Passkey.',
         'method' => [
             'magic_link' => 'Anmeldelink',
             'passkey' => 'Passkey',

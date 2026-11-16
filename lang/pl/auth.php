@@ -29,6 +29,7 @@ return [
             'default' => 'Zaloguj się na swoje konto, aby kontynuować.',
             'device' => 'Zaloguj się, aby zatwierdzić urządzenie, które czeka.',
             'app' => 'Zaloguj się, aby przejść do aplikacji :app.',
+            'passkey' => 'Potwierdź swoją tożsamość kluczem dostępu lub kluczem bezpieczeństwa, aby kontynuować.',
         ],
         'magic' => [
             'sent_to' => 'Wysłaliśmy jednorazowy link do logowania na adres :email.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'Metoda użyta podczas ostatniego logowania na tym urządzeniu.',
         'magic_link' => 'Wyślij mi link do logowania',
         'passkey' => 'Zaloguj się przy użyciu klucza dostępu',
+        'passkey_unsupported' => 'Ta przeglądarka nie obsługuje kluczy dostępu. Otwórz stronę w przeglądarce, która je obsługuje, lub na urządzeniu z Twoim kluczem dostępu.',
         'method' => [
             'magic_link' => 'Link do logowania',
             'passkey' => 'Klucz dostępu',

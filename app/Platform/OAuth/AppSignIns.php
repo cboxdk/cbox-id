@@ -8,6 +8,7 @@ use App\Platform\AppCatalog\AppCatalog;
 use App\Platform\AppCatalog\CatalogEntry;
 use App\Platform\IntendedUrl;
 use App\Platform\Invitations\AppReturnTargets;
+use Cbox\Id\OAuthServer\Enums\AuthenticationContextClass;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Http\Request;
 
@@ -54,8 +55,21 @@ final readonly class AppSignIns
             'redirect' => $authorization->redirectUri,
             'hint' => $authorization->loginHint,
             'resume' => $resumeUrl,
+            'passkey' => self::asksForPasskey($authorization->acrValues),
             'at' => now()->getTimestamp(),
         ]);
+    }
+
+    /**
+     * Whether the request names the phishing-resistant class: the console's operator
+     * step-up does. Read from the raw `acr_values`, not from the framework's requirement,
+     * which drops the class where the deployment does not state it in tokens; the console
+     * still reads the passkey from the token's `amr`, so the sign-in page must offer it.
+     */
+    private static function asksForPasskey(?string $acrValues): bool
+    {
+        return $acrValues !== null
+            && in_array(AuthenticationContextClass::PhishingResistant->value, preg_split('/\s+/', trim($acrValues)) ?: [], true);
     }
 
     /**
@@ -169,7 +183,7 @@ final readonly class AppSignIns
     }
 
     /**
-     * @return array{client: string, name: string, redirect: string|null, hint: string|null, resume: string|null}|null
+     * @return array{client: string, name: string, redirect: string|null, hint: string|null, resume: string|null, passkey: bool}|null
      */
     private function noted(Request $request): ?array
     {
@@ -195,11 +209,12 @@ final readonly class AppSignIns
             'redirect' => is_string($noted['redirect'] ?? null) ? $noted['redirect'] : null,
             'hint' => is_string($noted['hint'] ?? null) ? $noted['hint'] : null,
             'resume' => is_string($noted['resume'] ?? null) ? $noted['resume'] : null,
+            'passkey' => ($noted['passkey'] ?? false) === true,
         ];
     }
 
     /**
-     * @param  array{client: string, name: string, redirect: string|null, hint: string|null, resume: string|null}  $noted
+     * @param  array{client: string, name: string, redirect: string|null, hint: string|null, resume: string|null, passkey: bool}  $noted
      */
     private function describe(array $noted): AppSignIn
     {
@@ -213,6 +228,7 @@ final readonly class AppSignIns
             // to, which `/oauth/authorize` matched against its registration.
             homeUrl: $this->launchUrl($entry) ?? ($noted['redirect'] === null ? null : AppReturnTargets::origin($noted['redirect'])),
             loginHint: $noted['hint'],
+            passkeyRequired: $noted['passkey'],
             iconUrl: $this->icons($entry)[0],
             iconDarkUrl: $this->icons($entry)[1],
         );

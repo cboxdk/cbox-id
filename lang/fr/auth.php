@@ -29,6 +29,7 @@ return [
             'default' => 'Connectez-vous à votre compte pour continuer.',
             'device' => 'Connectez-vous pour approuver l’appareil en attente.',
             'app' => 'Connectez-vous pour continuer vers :app.',
+            'passkey' => 'Confirmez votre identité avec votre clé d\'accès ou votre clé de sécurité pour continuer.',
         ],
         'magic' => [
             'sent_to' => 'Nous avons envoyé un lien de connexion à usage unique à :email.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'La méthode utilisée lors de votre dernière connexion sur cet appareil.',
         'magic_link' => 'M’envoyer un lien de connexion',
         'passkey' => 'Se connecter avec une clé d’accès',
+        'passkey_unsupported' => 'Ce navigateur ne prend pas en charge les clés d\'accès. Ouvrez la page dans un navigateur compatible ou sur l\'appareil qui contient votre clé d\'accès.',
         'method' => [
             'magic_link' => 'Lien de connexion',
             'passkey' => 'Clé d’accès',
