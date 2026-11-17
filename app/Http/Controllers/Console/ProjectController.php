@@ -88,7 +88,10 @@ final readonly class ProjectController extends ConsoleController
             try {
                 app(ProductAdmission::class)->assertGranted($actorId, $organizationId);
             } catch (ActionRefused $error) {
-                return to_route('product-signup.show')->withErrors(['registration' => $error->getMessage()]);
+                // Refused: /start is the gate, and it names this organization itself.
+                return $error->error === 'service_admission_required'
+                    ? to_route('product-signup.show')
+                    : to_route('product-signup.show')->withErrors(['registration' => $error->getMessage()]);
             }
         }
         $allAccess = $this->hasFullAccess($members);

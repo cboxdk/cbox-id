@@ -57,4 +57,9 @@ return [
     'feature2_description' => 'Administrați organizațiile, membrii și accesul într-un singur loc.',
     'feature3_title' => 'Conectare',
     'feature3_description' => 'Conectați aplicațiile prin OpenID Connect.',
+    'gate_title' => 'Organizația :organization nu are încă :service',
+    'gate_scope' => 'Este vorba despre platforme de identitate proprii pentru produsele voastre, unde se conectează clienții voștri. Administrarea :organization (membri, roluri și autentificare) nu necesită înscriere.',
+    'back_to_organization' => 'Înapoi la :organization',
+    'admitted_title' => ':organization are :service',
+    'open_console' => 'Mergi la consolă',
 ];

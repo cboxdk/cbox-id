@@ -57,4 +57,9 @@ return [
     'feature2_description' => 'Hantera organisationer, medlemmar och åtkomst på ett ställe.',
     'feature3_title' => 'Anslut',
     'feature3_description' => 'Anslut dina applikationer via OpenID Connect.',
+    'gate_title' => 'Organisationen :organization har inte :service ännu',
+    'gate_scope' => 'Det gäller egna identitetsplattformar för era produkter, där era kunder loggar in. Att administrera :organization (medlemmar, roller och inloggning) kräver ingen registrering.',
+    'back_to_organization' => 'Tillbaka till :organization',
+    'admitted_title' => ':organization har :service',
+    'open_console' => 'Gå till konsolen',
 ];

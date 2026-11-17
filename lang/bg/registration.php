@@ -57,4 +57,9 @@ return [
     'feature2_description' => 'Управлявайте организации, членове и достъп на едно място.',
     'feature3_title' => 'Свързване',
     'feature3_description' => 'Свържете приложенията си чрез OpenID Connect.',
+    'gate_title' => 'Организацията :organization все още няма :service',
+    'gate_scope' => 'Това се отнася за собствени платформи за идентичност за вашите продукти, в които влизат вашите клиенти. Управлението на :organization (членове, роли и вход) не изисква регистрация.',
+    'back_to_organization' => 'Обратно към :organization',
+    'admitted_title' => ':organization има :service',
+    'open_console' => 'Към конзолата',
 ];

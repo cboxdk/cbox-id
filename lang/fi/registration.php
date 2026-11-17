@@ -57,4 +57,9 @@ return [
     'feature2_description' => 'Hallitse organisaatioita, jäseniä ja käyttöoikeuksia yhdessä paikassa.',
     'feature3_title' => 'Yhdistä',
     'feature3_description' => 'Yhdistä sovelluksesi OpenID Connectin avulla.',
+    'gate_title' => 'Organisaatiolla :organization ei ole vielä palvelua :service',
+    'gate_scope' => 'Tämä koskee omia identiteettialustoja tuotteillenne, joihin asiakkaanne kirjautuvat. Organisaation :organization hallinta (jäsenet, roolit ja kirjautuminen) ei vaadi rekisteröitymistä.',
+    'back_to_organization' => 'Takaisin: :organization',
+    'admitted_title' => ':organization käyttää palvelua :service',
+    'open_console' => 'Siirry konsoliin',
 ];

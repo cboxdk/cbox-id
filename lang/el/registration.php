@@ -57,4 +57,9 @@ return [
     'feature2_description' => 'Διαχειριστείτε οργανισμούς, μέλη και πρόσβαση σε ένα σημείο.',
     'feature3_title' => 'Διασύνδεση',
     'feature3_description' => 'Συνδέστε τις εφαρμογές σας μέσω OpenID Connect.',
+    'gate_title' => 'Ο οργανισμός :organization δεν έχει ακόμη :service',
+    'gate_scope' => 'Αφορά δικές σας πλατφόρμες ταυτότητας για τα προϊόντα σας, όπου συνδέονται οι πελάτες σας. Η διαχείριση του :organization (μέλη, ρόλοι και σύνδεση) δεν απαιτεί εγγραφή.',
+    'back_to_organization' => 'Πίσω στο :organization',
+    'admitted_title' => 'Ο :organization έχει :service',
+    'open_console' => 'Μετάβαση στην κονσόλα',
 ];

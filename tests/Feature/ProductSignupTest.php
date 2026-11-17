@@ -88,6 +88,25 @@ it('redeems an invitation for the actual member team without joining the waitlis
     Http::assertSentCount(1);
 });
 
+it('never sends a signed-in person through the console and back when they sign in again', function (): void {
+    productSignupPerson(true);
+    Http::fake(['*/policy' => Http::response(['program' => productSignupPolicy()])]);
+    $this->get('/start')->assertOk()->assertDontSee(route('product-signup.signin'), false);
+    $this->get(route('product-signup.signin'))->assertRedirect(route('accounts'));
+});
+
+it('names the refused organization at the gate and lands it on its own administration, not on /start', function (): void {
+    multiTenantDeployment();
+    $root = platformRootEnvironment();
+    serveOnTestHost($root);
+    config(['service-access.identity_environment' => $root->id]);
+    [, $team] = app(PlatformRoot::class)->run(fn (): array => productSignupPerson(true));
+    Http::fake(['*/policy' => Http::response(['program' => productSignupPolicy()]), '*/check' => Http::response(['allowed' => false])]);
+    $this->get(route('orgs.show', ['org' => $team->slug]))->assertRedirect(route('orgs.settings.members'));
+    nextRequest();
+    $this->get('/start')->assertOk()->assertSee('The Ada team organization does not have')->assertSee('Administering Ada team');
+});
+
 it('cannot switch to a team the person does not belong to', function (): void {
     productSignupPerson();
     $team = app(Organizations::class)->create(new NewOrganization('Other', 'other'));

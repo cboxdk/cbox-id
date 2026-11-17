@@ -57,4 +57,9 @@ return [
     'feature2_description' => 'Upravljajte organizacijama, članovima i pristupom na jednom mjestu.',
     'feature3_title' => 'Povezivanje',
     'feature3_description' => 'Povežite svoje aplikacije putem protokola OpenID Connect.',
+    'gate_title' => 'Organizacija :organization još nema :service',
+    'gate_scope' => 'Ovo se odnosi na vlastite platforme identiteta za vaše proizvode, gdje se prijavljuju vaši kupci. Upravljanje organizacijom :organization (članovi, uloge i prijava) ne zahtijeva registraciju.',
+    'back_to_organization' => 'Natrag na :organization',
+    'admitted_title' => ':organization ima :service',
+    'open_console' => 'Idi na konzolu',
 ];

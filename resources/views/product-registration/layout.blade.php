@@ -17,7 +17,9 @@
             <img src="{{ asset('registration/cbox-logo.png') }}" alt="Cbox" width="112" height="34">
             <span aria-hidden="true">/</span><strong>{{ config('service-access.short_name') }}</strong>
         </a>
-        <a href="{{ route('product-signup.signin') }}">{{ __('registration.sign_in') }} <span aria-hidden="true">↗</span></a>
+        @if(($identity ?? null) === null)
+            <a href="{{ route('product-signup.signin') }}">{{ __('registration.sign_in') }} <span aria-hidden="true">↗</span></a>
+        @endif
     </header>
     <main class="registration-grid">
         <section class="registration-story" aria-labelledby="product-heading">

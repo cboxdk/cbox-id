@@ -51,9 +51,13 @@ final readonly class ProductSignupController
             return response()->view('product-registration.show', ['policy' => null, 'identity' => null, 'teams' => []], 503)->header('Cache-Control', 'no-store');
         }
 
+        $organization = $this->me->check() ? $this->me->organization() : null;
+
         return response()->view('product-registration.show', [
             'policy' => $policy,
             'identity' => $this->me->check() ? ['email' => $this->me->email(), 'verified' => $this->me->emailVerified(), 'organization' => $this->me->organizationId()] : null,
+            // The gate names the organization the console refused, and says so when it is in.
+            'organization' => $organization === null ? null : ['name' => $organization->name, 'admitted' => $this->admitted($organization->id)],
             'teams' => $this->me->check() ? $this->teams->choices($this->me->id()) : [],
         ])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');
     }
@@ -67,6 +71,12 @@ final readonly class ProductSignupController
 
     public function signin(Request $request): RedirectResponse
     {
+        // Signed in already, `/login` only bounces to the console, and a person without
+        // access is sent from there straight back here. Signing in again is choosing an
+        // account.
+        if ($this->me->check()) {
+            return $this->switch($request);
+        }
         $request->session()->put(IntendedUrl::KEY, route('product-signup.show'));
 
         return to_route('login');
@@ -133,14 +143,14 @@ final readonly class ProductSignupController
             }
             $email = $this->me->check() ? ($this->me->email() ?? '') : $request->string('email')->toString();
             $country = $request->filled('country') ? $request->string('country')->toString() : null;
-            $attempt = 'product-signup.join.'.hash('sha256', json_encode([$this->me->id(), $email, $country, $answers], JSON_THROW_ON_ERROR));
+            $attempt = 'product-signup.join.'.hash('sha256', json_encode([$this->me->id(), $this->me->organizationId(), $email, $country, $answers], JSON_THROW_ON_ERROR));
             $reference = $request->session()->get($attempt);
             if (! is_string($reference)) {
                 $reference = (string) Str::uuid();
                 $request->session()->put($attempt, $reference);
             }
             if ($this->me->check()) {
-                $this->runAction(JoinServiceWaitlist::class, ['program' => $policy->id, 'country' => $country, 'answers' => $answers, 'reference' => $reference]);
+                $this->runAction(JoinServiceWaitlist::class, ['program' => $policy->id, 'organization' => $this->me->organizationId(), 'country' => $country, 'answers' => $answers, 'reference' => $reference]);
             } else {
                 $this->billing->joinProductGuest($email, $country, $answers, $reference);
             }
@@ -191,6 +201,17 @@ final readonly class ProductSignupController
             return to_route('product-signup.show', ['invite' => 1])->withErrors($error->errors());
         } catch (ServiceAccessUnavailable) {
             return to_route('product-signup.show')->withErrors(['registration' => __('registration.unavailable')]);
+        }
+    }
+
+    private function admitted(string $organization): bool
+    {
+        try {
+            $this->admission->assertGranted($this->me->id(), $organization);
+
+            return true;
+        } catch (ActionRefused) {
+            return false;
         }
     }
 
