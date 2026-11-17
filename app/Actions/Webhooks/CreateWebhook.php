@@ -95,6 +95,7 @@ final readonly class CreateWebhook implements Action, Preflight
     public function preflight(ActionContext $context): void
     {
         IntegrationReach::owner($context);
+        IntegrationReach::assertAppOwns($context->principal, trim($context->string('url')));
         OutboundUrl::assertWebhook(trim($context->string('url')));
     }
 
@@ -105,6 +106,7 @@ final readonly class CreateWebhook implements Action, Preflight
         $scheme = SignatureScheme::from($context->nullableString('signature_scheme') ?? SignatureScheme::Cbox->value);
 
         IntegrationReach::assertUrl($url);
+        IntegrationReach::assertAppOwns($context->principal, $url);
 
         /** @var list<string> $eventTypes */
         $eventTypes = array_values(array_unique(array_filter($context->array('event_types'), is_string(...))));

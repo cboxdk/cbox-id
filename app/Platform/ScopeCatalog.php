@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Platform;
 
+use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Locale\ConsoleScopeCopy;
 use App\Platform\Scopes\ScopeRegistry;
 
@@ -34,6 +35,9 @@ final class ScopeCatalog
      * administrator grants them in the console; the management API refuses them until it
      * has a scope of its own for this. `app_catalog:resolve` is one: it answers, for any
      * person and organization in the environment, whether that person is an active member.
+     * The ones an app's own token keeps its customers in step with
+     * ({@see AppManagementScopes::MACHINE_SCOPES}) are others: each reaches every
+     * organization of the environment.
      *
      * Not here, deliberately:
      *  - `vault.lease` opens nothing without a grant from a holder of `vault.manage`;
@@ -43,7 +47,7 @@ final class ScopeCatalog
      *
      * @var list<string>
      */
-    public const array RESERVED_FOR_CONSOLE = ['vault.manage', 'decisions:read', 'app_catalog:resolve'];
+    public const array RESERVED_FOR_CONSOLE = ['vault.manage', 'decisions:read', 'app_catalog:resolve', 'organizations:read', 'organizations:write', 'invitations:write', 'webhooks:read', 'webhooks:write'];
 
     /**
      * The reserved platform scopes among $scopes.
@@ -118,6 +122,13 @@ final class ScopeCatalog
             // The app switcher's machine read (`GET /api/v1/app-catalog/for-user`): the app's
             // backend reads the catalog of a person it has signed in, with no grant from them.
             ['key' => 'app_catalog:resolve', 'label' => 'Read a person\'s app catalog', 'description' => 'Let this app\'s backend read the apps a person it signed in sees in the app switcher, for one of their organizations, with its own client-credentials token.', 'category' => self::PLATFORM_API, 'recommended' => false],
+            // A billing or CRM backend keeping its customers and this environment's organizations
+            // one to one, with its own client-credentials token ({@see AppManagementScopes::MACHINE_WRITES}).
+            ['key' => 'organizations:read', 'label' => 'Read organizations', 'description' => 'Let this app\'s backend list and read every organization in this environment with its own client-credentials token.', 'category' => self::PLATFORM_API, 'recommended' => false],
+            ['key' => 'organizations:write', 'label' => 'Create organizations', 'description' => 'Let this app\'s backend create organizations with its own client-credentials token. It cannot update, suspend, delete or hand over one.', 'category' => self::PLATFORM_API, 'recommended' => false],
+            ['key' => 'invitations:write', 'label' => 'Invite people to organizations', 'description' => 'Let this app\'s backend send and resend invitations to an organization with its own client-credentials token. It cannot revoke one.', 'category' => self::PLATFORM_API, 'recommended' => false],
+            ['key' => 'webhooks:read', 'label' => 'Read its own webhooks', 'description' => 'Let this app\'s backend list the webhook endpoints on its own registered origins, with its own client-credentials token.', 'category' => self::PLATFORM_API, 'recommended' => false],
+            ['key' => 'webhooks:write', 'label' => 'Register its own webhook', 'description' => 'Let this app\'s backend register, repoint and remove a webhook on one of its own registered origins, so it receives this environment\'s events as they happen.', 'category' => self::PLATFORM_API, 'recommended' => false],
             ['key' => 'decisions:read', 'label' => 'Ask for authorization decisions', 'description' => "Let this app call the decision endpoint for a person's permissions and entitlements in an organization.", 'category' => self::PLATFORM_API, 'recommended' => false],
         ];
     }

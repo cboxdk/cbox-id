@@ -18,6 +18,7 @@ use App\Platform\Actions\Preflight;
 use App\Platform\Actions\RatedByInput;
 use App\Platform\Console\WebhookEventCatalogue;
 use App\Platform\Integrations\IntegrationAudit;
+use App\Platform\Integrations\IntegrationReach;
 use App\Platform\Integrations\OutboundUrl;
 use App\Platform\PublicIds\WebhookIdFormat;
 
@@ -136,6 +137,8 @@ final readonly class UpdateWebhook implements Action, Preflight, RatedByInput
 
         if ($context->has('url')) {
             $after['url'] = trim($context->string('url'));
+
+            IntegrationReach::assertAppOwns($context->principal, $after['url']);
 
             OutboundUrl::assertWebhook($after['url']);
         }

@@ -7,7 +7,9 @@ namespace App\Platform\Integrations;
 use App\Platform\Actions\ActionContext;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Input\Field;
+use App\Platform\Actions\Principal\AppTokenPrincipal;
 use App\Platform\Actions\Principal\Principal;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\Organization\Models\Organization;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -153,5 +155,84 @@ final class IntegrationReach
         if (filter_var($url, FILTER_VALIDATE_URL) === false || ! in_array($scheme, ['https', 'http'], true)) {
             throw ActionRefused::because('invalid_url', 'The URL must be an absolute http(s) URL.', $field);
         }
+    }
+
+    /**
+     * The origins an app's own token owns: those of its registered redirect URIs. Its token
+     * sees and changes only the webhook endpoints there, so a backend keeps the endpoint it
+     * receives on and never learns or moves anybody else's. Null for every other principal.
+     *
+     * @return list<string>|null
+     */
+    public static function appOrigins(Principal $principal): ?array
+    {
+        if (! $principal instanceof AppTokenPrincipal) {
+            return null;
+        }
+
+        $origins = [];
+
+        foreach (app(ClientRegistry::class)->byClientId($principal->id())->redirect_uris ?? [] as $uri) {
+            $origin = self::origin($uri);
+
+            if ($origin !== null) {
+                $origins[] = $origin;
+            }
+        }
+
+        return array_values(array_unique($origins));
+    }
+
+    /**
+     * Refuse an app's own token a URL off its own origins.
+     *
+     * @throws ActionRefused
+     */
+    public static function assertAppOwns(Principal $principal, string $url): void
+    {
+        $origins = self::appOrigins($principal);
+
+        if ($origins !== null && ! in_array(self::origin($url), $origins, true)) {
+            throw new ActionRefused('forbidden', 'An app\'s own token may only point a webhook at one of its own registered origins.', 403);
+        }
+    }
+
+    /**
+     * Narrow $query (rows with a `url`) to an app token's own origins. Unchanged for any other principal.
+     *
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
+     * @return Builder<TModel>
+     */
+    public static function ownedByApp(Builder $query, Principal $principal): Builder
+    {
+        $origins = self::appOrigins($principal);
+
+        if ($origins === null) {
+            return $query;
+        }
+
+        if ($origins === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(static function (Builder $owned) use ($origins): void {
+            foreach ($origins as $origin) {
+                $owned->orWhere('url', $origin)->orWhere('url', 'like', addcslashes($origin, '%_\\').'/%');
+            }
+        });
+    }
+
+    /** `scheme://host[:port]`, lower-cased; null for anything that is not an absolute http(s) URL. */
+    public static function origin(string $url): ?string
+    {
+        $parts = parse_url($url);
+
+        if (! is_array($parts) || ! isset($parts['scheme'], $parts['host']) || ! in_array(strtolower($parts['scheme']), ['http', 'https'], true)) {
+            return null;
+        }
+
+        return strtolower($parts['scheme']).'://'.strtolower($parts['host']).(isset($parts['port']) ? ':'.$parts['port'] : '');
     }
 }

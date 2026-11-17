@@ -9,6 +9,7 @@ use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\Approvals\StepUpPolicy;
+use App\Platform\Actions\Danger;
 use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
@@ -18,9 +19,10 @@ use Illuminate\Auth\Access\AuthorizationException;
  * An app's own client-credentials token on the environment plane: the app's backend, acting
  * for nobody, in the environment that issued the token.
  *
- * It reaches only the actions whose scope is marked `machine` in
- * {@see AppManagementScopes::APP_SCOPES} and that the token carries — every other action
- * stays a key's or a person's. Authenticated by {@see AuthenticateEnvironmentApi}; the scope
+ * It reaches only the actions whose scope is a machine scope
+ * ({@see AppManagementScopes::machine()}) and that the token carries, and of the writes among
+ * them only {@see AppManagementScopes::MACHINE_WRITES} — every other action stays a key's or
+ * a person's. Authenticated by {@see AuthenticateEnvironmentApi}; the scope
  * is asked again here, because the route is one door of several.
  */
 final readonly class AppTokenPrincipal implements Principal
@@ -46,6 +48,12 @@ final readonly class AppTokenPrincipal implements Principal
     {
         if ($action->plane !== ActionPlane::Environment || ! AppManagementScopes::machine($action->scope) || ! ScopeRegistry::satisfiedBy($action->scope, $this->token->hasScope(...))) {
             throw new AuthorizationException("This token is missing the required scope: {$action->scope}.");
+        }
+
+        // Reads under its scopes, and of the writes only the ones listed: an app's token
+        // creates and invites, it never removes, suspends or hands over.
+        if ($action->danger !== Danger::Read && ! in_array($action->name, AppManagementScopes::MACHINE_WRITES, true)) {
+            throw new AuthorizationException("An app's own token cannot run {$action->name}; use a management key or the console.");
         }
     }
 

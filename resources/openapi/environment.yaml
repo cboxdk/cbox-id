@@ -11412,6 +11412,8 @@ paths:
           EnvironmentApiKey: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         400:
           $ref: '#/components/responses/EnvironmentRequired'
@@ -11476,6 +11478,8 @@ paths:
           EnvironmentApiKey: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       requestBody:
         required: true
         content:
@@ -11588,6 +11592,8 @@ paths:
           EnvironmentApiKey: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         200:
           description: OK
@@ -11654,6 +11660,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       requestBody:
         required: true
         content:
@@ -11749,6 +11757,8 @@ paths:
           EnvironmentApiKey: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         200:
           description: 'The archived organization.'
@@ -11823,6 +11833,8 @@ paths:
           EnvironmentApiKey: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         200:
           description: OK
@@ -11896,6 +11908,8 @@ paths:
           EnvironmentApiKey: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         200:
           description: OK
@@ -11969,6 +11983,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       requestBody:
         required: true
         content:
@@ -12125,6 +12141,8 @@ paths:
           EnvironmentApiKey: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         200:
           description: OK
@@ -12198,6 +12216,8 @@ paths:
           EnvironmentApiKey: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       requestBody:
         required: true
         content:
@@ -12292,6 +12312,8 @@ paths:
           EnvironmentApiKey: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         204:
           description: Done.
@@ -12364,6 +12386,8 @@ paths:
           EnvironmentApiKey: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       requestBody:
         required: true
         content:
@@ -12457,6 +12481,8 @@ paths:
           EnvironmentApiKey: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         200:
           description: OK
@@ -12611,6 +12637,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       requestBody:
         required: true
         content:
@@ -12715,6 +12743,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         204:
           description: Withdrawn.
@@ -12858,6 +12888,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         200:
           description: 'Sent again.'
@@ -13860,6 +13892,8 @@ paths:
           EnvironmentApiKey: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         200:
           description: OK
@@ -13931,6 +13965,8 @@ paths:
           EnvironmentApiKey: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       requestBody:
         required: true
         content:
@@ -14048,6 +14084,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       requestBody:
         required: false
         content:
@@ -25342,6 +25380,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       requestBody:
         required: true
         content:
@@ -25512,6 +25552,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         200:
           description: OK
@@ -25589,6 +25631,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         204:
           description: Done.
@@ -25651,6 +25695,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         200:
           description: OK
@@ -25722,6 +25768,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       requestBody:
         required: false
         content:
@@ -25820,6 +25868,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         200:
           description: OK
@@ -25894,6 +25944,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         200:
           description: OK
@@ -25968,6 +26020,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       responses:
         200:
           description: OK
@@ -26042,6 +26096,8 @@ paths:
           ManagementAccessToken: []
         -
           WorkspaceAccessToken: []
+        -
+          AppAccessToken: []
       requestBody:
         required: true
         content:

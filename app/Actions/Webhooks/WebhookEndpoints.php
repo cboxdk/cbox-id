@@ -23,7 +23,7 @@ final class WebhookEndpoints
     /** @throws ActionRefused */
     public static function visible(ActionContext $context): WebhookEndpoint
     {
-        $endpoint = IntegrationReach::visible(WebhookEndpoint::query(), IntegrationReach::confinedTo($context->principal))
+        $endpoint = IntegrationReach::ownedByApp(IntegrationReach::visible(WebhookEndpoint::query(), IntegrationReach::confinedTo($context->principal)), $context->principal)
             ->whereKey($context->string('id'))
             ->first();
 

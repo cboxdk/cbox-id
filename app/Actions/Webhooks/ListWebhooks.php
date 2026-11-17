@@ -41,7 +41,7 @@ final class ListWebhooks implements Action
 
     public function handle(ActionContext $context): ActionResult
     {
-        $query = IntegrationReach::visible(WebhookEndpoint::query(), IntegrationReach::confinedTo($context->principal));
+        $query = IntegrationReach::ownedByApp(IntegrationReach::visible(WebhookEndpoint::query(), IntegrationReach::confinedTo($context->principal)), $context->principal);
 
         return $this->page($query, $context, static fn (WebhookEndpoint $endpoint): array => WebhookResource::from($endpoint));
     }

@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Platform\Actions;
 
 use App\Http\Middleware\AuthenticateEnvironmentApi;
+use App\Platform\Actions\Principal\AppTokenPrincipal;
+use App\Platform\Integrations\IntegrationReach;
 use App\Platform\ScopeCatalog;
 use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Platform\Contracts\ManagementScopes;
@@ -316,9 +318,35 @@ class AppManagementScopes extends EnumManagementScopes
         return ! str_ends_with($known, ':read') && ! (self::APP_SCOPES[$known]['reads'] ?? false);
     }
 
+    /**
+     * Scopes an app's own client-credentials token may also carry: what a billing or CRM
+     * backend needs to keep its customers and the environment's organizations one to one,
+     * with nobody approving each write, and to receive the changes as they happen on a webhook
+     * it registers itself. Under the write scopes the token reaches only
+     * {@see self::MACHINE_WRITES}; every other write under them (delete, suspend, domains,
+     * ownership, standing approvals) stays a key's or a person's. Its webhooks are only those on
+     * its own origins ({@see IntegrationReach::appOrigins()}).
+     *
+     * @var list<string>
+     */
+    public const array MACHINE_SCOPES = ['organizations:read', 'organizations:write', 'invitations:write', 'webhooks:read', 'webhooks:write'];
+
+    /**
+     * The only writes an app's own token may run ({@see AppTokenPrincipal::authorize()}): it
+     * creates an organization, invites its people, and keeps the webhook it receives on. It
+     * cannot remove, suspend or hand over an organization, so a leaked app secret adds
+     * organizations and invitations and points events at the app's own origin, nothing more —
+     * each one in the audit trail under the app's name.
+     *
+     * @var list<string>
+     */
+    public const array MACHINE_WRITES = ['organizations.create', 'invitations.send', 'invitations.resend', 'webhooks.create', 'webhooks.update', 'webhooks.delete', 'webhooks.resume'];
+
     /** Whether an app's own client-credentials token may carry $scope on the environment plane. */
     public static function machine(string $scope): bool
     {
-        return self::APP_SCOPES[self::resolve($scope)]['machine'] ?? false;
+        $known = self::resolve($scope);
+
+        return (self::APP_SCOPES[$known]['machine'] ?? false) || in_array($known, self::MACHINE_SCOPES, true);
     }
 }
