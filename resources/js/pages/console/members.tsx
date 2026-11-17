@@ -150,12 +150,17 @@ export default function Members({
 
                             {member.manageable ? (
                                 <>
-                                    <NativeRoleEditor
-                                        key={member.id}
-                                        member={member}
-                                        organization={organization}
-                                        assignableRoles={assignableRoles}
-                                    />
+                                    {/* An administrator holds every ID permission; app roles are for members. */}
+                                    {member.role === 'admin' ? (
+                                        <Badge className="shrink-0">{member.roleLabel}</Badge>
+                                    ) : (
+                                        <NativeRoleEditor
+                                            key={member.id}
+                                            member={member}
+                                            organization={organization}
+                                            assignableRoles={assignableRoles}
+                                        />
+                                    )}
 
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
@@ -216,9 +221,11 @@ export default function Members({
                                 <Badge className="shrink-0">
                                     {member.role === 'owner'
                                         ? consoleShortText('console.owner_4b1b8aa3')
-                                        : member.roles
-                                              .map((key) => nativeRoleNames[key] ?? key)
-                                              .join(', ') || consoleT('console.native_no_access')}
+                                        : member.role === 'admin'
+                                          ? member.roleLabel
+                                          : member.roles
+                                                .map((key) => nativeRoleNames[key] ?? key)
+                                                .join(', ') || consoleT('console.native_no_access')}
                                 </Badge>
                             )}
                         </div>

@@ -68,6 +68,14 @@ final readonly class NativeProductAccess
             if ($membership->role === MembershipRole::Owner) {
                 return OrganizationCapabilities::fromAppPermissions(true, []);
             }
+            // An administrator of the organization administers it here too, whatever ID app
+            // roles they hold: app roles narrow members, never administrators. An
+            // organization made in another Cbox product carries no ID app role, and its
+            // administrators met a 403 on every page here, unable even to invite anybody.
+            // ID's own invitations make members, whose access is their app roles below.
+            if ($membership->role === MembershipRole::Admin) {
+                return OrganizationCapabilities::fromAppPermissions(false, NativeProductManifest::PERMISSIONS);
+            }
 
             $decision = $this->decisions->decide($subjectId, $organizationId, $clientId, NativeProductManifest::PERMISSIONS);
             if ($decision->userId !== $subjectId || $decision->organizationId !== $organizationId || $decision->clientId !== $clientId) {

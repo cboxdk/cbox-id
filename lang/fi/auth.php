@@ -29,6 +29,7 @@ return [
             'default' => 'Jatka kirjautumalla tilillesi.',
             'device' => 'Kirjaudu sisään hyväksymään odottava laite.',
             'app' => 'Kirjaudu sisään jatkaaksesi sovellukseen :app.',
+            'passkey' => 'Vahvista henkilöllisyytesi pääsyavaimella tai suojausavaimella jatkaaksesi.',
         ],
         'magic' => [
             'sent_to' => 'Lähetimme kertakäyttöisen kirjautumislinkin osoitteeseen :email.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'Edellinen kirjautumistapa tässä laitteessa.',
         'magic_link' => 'Lähetä kirjautumislinkki sähköpostitse',
         'passkey' => 'Kirjaudu sisään pääsyavaimella',
+        'passkey_unsupported' => 'Tämä selain ei tue pääsyavaimia. Avaa sivu selaimessa, joka tukee niitä, tai laitteella, jolla pääsyavaimesi on.',
         'method' => [
             'magic_link' => 'Kirjautumislinkki',
             'passkey' => 'Pääsyavain',

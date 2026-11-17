@@ -29,6 +29,7 @@ return [
             'default' => 'Inicie sessão na sua conta para continuar.',
             'device' => 'Inicie sessão para aprovar o dispositivo que está à espera.',
             'app' => 'Inicie sessão para continuar para :app.',
+            'passkey' => 'Confirme que é você com a sua chave de acesso ou chave de segurança para continuar.',
         ],
         'magic' => [
             'sent_to' => 'Enviámos uma ligação de início de sessão de utilização única para :email.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'O método que utilizou para iniciar sessão da última vez neste dispositivo.',
         'magic_link' => 'Enviar-me uma ligação de acesso por e-mail',
         'passkey' => 'Iniciar sessão com uma chave de acesso',
+        'passkey_unsupported' => 'Este navegador não pode usar chaves de acesso. Abra a página num navegador compatível ou no dispositivo que tem a sua chave de acesso.',
         'method' => [
             'magic_link' => 'Ligação de acesso',
             'passkey' => 'Chave de acesso',

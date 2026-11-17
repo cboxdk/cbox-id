@@ -70,7 +70,7 @@ it('resolves the membership of the administered environment instead of the first
 
 it('lets a native Reader enter the selected environment but refuses writes and removed row access', function (): void {
     $owner = crudSetup();
-    [$reader, $subject] = addMember($owner['member']->organization_id, MembershipRole::Admin, 'row-reader@example.test');
+    [$reader, $subject] = addMember($owner['member']->organization_id, MembershipRole::Member, 'row-reader@example.test');
     grantNativeProductRoles($reader, ['viewer']);
     app(PlatformRoot::class)->run(fn () => app(Memberships::class)->setEnvironmentAccess($reader->organization_id, $subject, false, [$owner['envId']]));
     actAsEnvironmentAdmin($subject, $owner['envId']);

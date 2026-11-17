@@ -636,7 +636,7 @@ it('mints nothing for the session once the administrator is demoted to a read-on
 
         return (string) DB::table('projects')->where('id', $projectId)->value('organization_id');
     });
-    [$member, $developer] = memberWithRole($workspace, MembershipRole::Admin, 'dev@acme.example');
+    [$member, $developer] = memberWithRole($workspace, MembershipRole::Member, 'dev@acme.example');
     grantNativeProductRoles($member, ['developer']);
     actAsEnvironmentAdmin($developer, $environmentId);
     $parcels = supportApp();

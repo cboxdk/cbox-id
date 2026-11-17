@@ -29,6 +29,7 @@ return [
             'default' => 'Log ind på din konto for at fortsætte.',
             'device' => 'Log ind for at godkende den enhed der venter.',
             'app' => 'Log ind for at fortsætte til :app.',
+            'passkey' => 'Bekræft at det er dig med din adgangsnøgle eller sikkerhedsnøgle for at fortsætte.',
         ],
         'magic' => [
             'sent_to' => 'Vi har sendt et loginlink til :email. Det kan kun bruges én gang.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'Sådan loggede du ind sidste gang på denne enhed.',
         'magic_link' => 'Send mig et loginlink',
         'passkey' => 'Log ind med adgangsnøgle',
+        'passkey_unsupported' => 'Denne browser kan ikke bruge adgangsnøgler. Åbn siden i en browser der kan, eller på den enhed der har din adgangsnøgle.',
         'method' => [
             'magic_link' => 'Loginlink',
             'passkey' => 'Adgangsnøgle',

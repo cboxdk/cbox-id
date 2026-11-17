@@ -392,6 +392,32 @@ it('lets a signed-in person sign in again when a relying party asked for it', fu
     $this->get($resume)->assertOk()->assertInertia(fn ($page) => $page->component('oauth/consent'));
 });
 
+/**
+ * The console's operator step-up asks for `urn:cbox-id:phr` and reads the passkey from the
+ * token's `amr`. The sign-in page used to offer Google, a password and a phone approval for
+ * it, and each of those came back without the passkey and was refused by the console: a
+ * dead end. It offers the passkey alone now, also where the deployment does not state the
+ * class in tokens and the framework therefore does not enforce it here.
+ */
+it('offers only a passkey when the sign-in again is for a passkey step-up', function (?string $acr, bool $passkeyOnly) {
+    [, $org] = stepUpUser(sessionAgeSeconds: 86_400);
+    $clientId = stepUpClient($org->id);
+
+    authorizeRequest(stepUpParams($clientId, ['max_age' => '0', ...($acr === null ? [] : ['acr_values' => $acr])]))
+        ->assertRedirect(route('accounts.add'));
+
+    $this->get(route('accounts.add'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('auth/login')
+        ->where('passkeyRequired', $passkeyOnly)
+        ->where('methods.passkeys', true)
+        ->where('purpose', $passkeyOnly ? __('auth.login.purpose.passkey') : __('auth.login.purpose.app', ['app' => 'Payments'])));
+})->with([
+    'the operator step-up' => ['urn:cbox-id:phr', true],
+    'phr among acceptable classes' => ['urn:cbox-id:aal2 urn:cbox-id:phr', true],
+    'a plain re-authentication' => [null, false],
+    'a second factor' => ['urn:cbox-id:aal2', false],
+]);
+
 it('still sends a signed-in person home from the sign-in doors when nothing asked for a sign-in', function () {
     stepUpUser();
     $before = session(PlatformAuth::SESSION_KEY);

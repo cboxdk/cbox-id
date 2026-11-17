@@ -54,8 +54,11 @@ function downgradeTo(string $organizationId, string $subjectId, MembershipRole $
     if ($directory) {
         app(PlatformRoot::class)->run(fn () => app(Memberships::class)->changeRole($organizationId, $subjectId, $role));
     } else {
-        grantNativeProductRoles($member, [$role->value]);
-        expect(freshMembership($member)?->role)->toBe(MembershipRole::Admin);
+        // An administrator always holds every ID permission, so the capability is taken
+        // away by making them a member whose ID app role is the narrower one.
+        app(PlatformRoot::class)->run(fn () => app(Memberships::class)->changeRole($organizationId, $subjectId, MembershipRole::Member));
+        grantNativeProductRoles(freshMembership($member), [$role->value]);
+        expect(freshMembership($member)?->role)->toBe(MembershipRole::Member);
     }
 }
 

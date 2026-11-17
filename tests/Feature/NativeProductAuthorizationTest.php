@@ -64,21 +64,31 @@ it('rechecks native ownership and catalog validity on the next HTTP request', fu
     }
 })->with(['organization', 'membership', 'subject', 'locked subject', 'ownership', 'client', 'registration', 'root environment']);
 
-it('publishes stable native definitions without granting shared administrators product access', function () {
+it('publishes stable native definitions, narrows members by app role and never an administrator', function () {
     $account = provisionAccount();
-    [$member, $subject] = addMember($account['organization']->id, MembershipRole::Admin, 'native-admin@example.test');
+    $organizationId = $account['organization']->id;
+    [$admin, $adminId] = addMember($organizationId, MembershipRole::Admin, 'native-admin@example.test');
+    [$member, $subject] = addMember($organizationId, MembershipRole::Member, 'native-member@example.test');
     $client = app(NativeProductClient::class)->clientId();
     syncNativeProductCatalog();
     expect(app(NativeProductClient::class)->clientId())->toBe($client);
-    expect(app(NativeProductAccess::class)->forSubject($subject, $account['organization']->id)->any())->toBeFalse();
+
+    // An administrator administers the organization here, whatever app roles they hold.
+    grantNativeProductRoles($admin, ['billing']);
+    $access = app(NativeProductAccess::class)->forSubject($adminId, $organizationId);
+    expect($access->canManageEnvironments())->toBeTrue()->and($access->canManageMembers())->toBeTrue()
+        ->and($access->canManageBilling())->toBeTrue();
+    $service = app(NativeProductMembers::class);
+
+    // A member reaches what their app roles give, and nothing without one.
+    expect(app(NativeProductAccess::class)->forSubject($subject, $organizationId)->any())->toBeFalse();
     grantNativeProductRoles($member, ['viewer', 'billing']);
-    $access = app(NativeProductAccess::class)->forSubject($subject, $account['organization']->id);
+    $access = app(NativeProductAccess::class)->forSubject($subject, $organizationId);
     expect($access->canReadEnvironments())->toBeTrue()->and($access->canManageEnvironments())->toBeFalse()
         ->and($access->canReadBilling())->toBeTrue()->and($access->canManageMembers())->toBeFalse();
-    $service = app(NativeProductMembers::class);
     $version = $service->access($member)['roles_version'];
     $service->replace($member, [], $version, AuditActor::system());
-    expect(app(NativeProductAccess::class)->forSubject($subject, $account['organization']->id)->any())->toBeFalse();
+    expect(app(NativeProductAccess::class)->forSubject($subject, $organizationId)->any())->toBeFalse();
     expect(fn () => $service->replace($member, ['admin'], $version, AuditActor::system()))->toThrow(ActionRefused::class);
 });
 
@@ -134,7 +144,7 @@ it('fences native invitations by organization and excludes revoked invitations',
 
 it('uses independent optimistic versions for environment access and denies an empty selected scope', function () {
     $account = provisionAccount();
-    [$member, $subject] = addMember($account['organization']->id, MembershipRole::Admin, 'native-scoped@example.test');
+    [$member, $subject] = addMember($account['organization']->id, MembershipRole::Member, 'native-scoped@example.test');
     grantNativeProductRoles($member, ['viewer']);
     $rows = app(NativeEnvironmentAccess::class);
     $version = $rows->version($member);
@@ -191,9 +201,9 @@ it('renders environment Reader controls read-only while retaining readable recor
     expect(User::query()->findOrFail($user->id)->name)->toBe('Readable');
 });
 
-it('denies project pages and writes without native operational authority despite all-environment selection', function (array $roles): void {
+it('denies project pages and writes without native operational authority despite all-environment selection', function (MembershipRole $role, array $roles): void {
     $account = provisionAccount();
-    [$member, $subject] = addMember($account['organization']->id, MembershipRole::Admin, 'project-denied@example.test');
+    [$member, $subject] = addMember($account['organization']->id, $role, 'project-denied@example.test');
     grantNativeProductRoles($member, $roles);
     $rows = app(NativeEnvironmentAccess::class);
     $rows->replace($member, true, [], $rows->version($member));
@@ -202,7 +212,65 @@ it('denies project pages and writes without native operational authority despite
     $this->get(route('orgs.projects.show', $account['project']->id))->assertForbidden();
     $this->get(route('orgs.projects.create'))->assertForbidden();
     $this->post(route('orgs.projects.store'), ['name' => 'Forbidden'])->assertForbidden();
-})->with(['billing only' => [['billing']], 'no app role' => [[]]]);
+})->with(['member with billing only' => [MembershipRole::Member, ['billing']], 'member with no app role' => [MembershipRole::Member, []]]);
+
+/**
+ * An administrator reaches every environment of their organization, as an owner does:
+ * environment grants narrow the other roles only. One restricted before the rule (a row
+ * written while the console still offered it) is given every environment by the migration.
+ */
+it('gives an administrator every environment of their organization and nothing narrower', function (): void {
+    $account = provisionAccount();
+    $other = app(TenantProvisioner::class)->addEnvironment($account['project'], 'Staging');
+    [$admin, $subject] = addMember($account['organization']->id, MembershipRole::Admin, 'every-env-admin@example.test');
+    $all = fn (): array => app(PlatformRoot::class)->run(fn () => app(Memberships::class)->accessibleEnvironmentIds($account['organization']->id, $subject));
+    expect($all())->toHaveCount(2)->toContain($other->id);
+
+    $rows = app(NativeEnvironmentAccess::class);
+    expect(fn () => $rows->replace($admin, false, [$other->id], $rows->version($admin)))->toThrow(ActionRefused::class);
+    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->setEnvironmentAccess($account['organization']->id, $subject, false, [$other->id]));
+    expect($all())->toHaveCount(2);
+
+    DB::table('memberships')->where('id', $admin->id)->update(['all_environments' => false]);
+    expect($all())->toBe([$other->id]);
+    (require database_path('migrations/2026_11_16_120000_give_organization_administrators_every_environment.php'))->up();
+    expect($all())->toHaveCount(2);
+
+    signInAsMember($subject);
+    $this->get(route('orgs.projects'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->has('projects.0.environments', 2)->where('canManage', true));
+});
+
+/**
+ * Demoted from administrator, a person reaches no environment until one is granted: not
+ * every environment carried over from the administrator role, and not the grants they
+ * held as a member before they were promoted.
+ */
+it('takes every environment away from an administrator who is demoted', function (MembershipRole $to): void {
+    $account = provisionAccount();
+    $organizationId = $account['organization']->id;
+    $other = app(TenantProvisioner::class)->addEnvironment($account['project'], 'Staging');
+    [$member, $subject] = addMember($organizationId, MembershipRole::Member, 'demoted-admin@example.test');
+    $memberships = app(Memberships::class);
+    $reach = fn (): array => app(PlatformRoot::class)->run(fn () => $memberships->accessibleEnvironmentIds($organizationId, $subject));
+
+    app(PlatformRoot::class)->run(fn () => $memberships->setEnvironmentAccess($organizationId, $subject, false, [$other->id]));
+    app(PlatformRoot::class)->run(fn () => $memberships->changeRole($organizationId, $subject, MembershipRole::Admin));
+    expect($reach())->toHaveCount(2);
+
+    app(PlatformRoot::class)->run(fn () => $memberships->changeRole($organizationId, $subject, $to));
+    expect($reach())->toBe([]);
+
+    // Granted again by whoever demoted them, it holds.
+    $rows = app(NativeEnvironmentAccess::class);
+    $member = app(PlatformRoot::class)->run(fn () => $memberships->of($organizationId, $subject));
+    $rows->replace($member, false, [$other->id], $rows->version($member));
+    expect($reach())->toBe([$other->id]);
+
+    // A role change that keeps the person scoped leaves their grants alone.
+    app(PlatformRoot::class)->run(fn () => $memberships->changeRole($organizationId, $subject, $to === MembershipRole::Viewer ? MembershipRole::Developer : MembershipRole::Viewer));
+    expect($reach())->toBe([$other->id]);
+})->with([MembershipRole::Member, MembershipRole::Developer, MembershipRole::Viewer]);
 
 it('keeps native Reader project pages within selected rows and rechecks revoked access', function (): void {
     $account = provisionAccount();

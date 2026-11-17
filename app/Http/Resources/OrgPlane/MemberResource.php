@@ -8,7 +8,6 @@ use App\Platform\Invitations\ValueObjects\PendingInvitationSummary;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\NativeProduct\NativeProductMembers;
 use Cbox\Id\Identity\ValueObjects\Subject;
-use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Membership;
 
 /**
@@ -39,7 +38,7 @@ final class MemberResource
             'status' => $member->status->value,
             'environment_ids' => app(NativeEnvironmentAccess::class)->ids($member->organization_id, $member->user_id),
             'environment_access_version' => app(NativeEnvironmentAccess::class)->version($member),
-            'all_environments' => $member->role === MembershipRole::Owner || $member->all_environments === true,
+            'all_environments' => ! $member->role->supportsEnvironmentScoping() || $member->all_environments === true,
         ];
     }
 

@@ -45,6 +45,7 @@ return [
             'default' => 'Sign in to your account to continue.',
             'device' => 'Sign in to approve the device that is waiting.',
             'app' => 'Sign in to continue to :app.',
+            'passkey' => 'Confirm it\'s you with your passkey or security key to continue.',
         ],
         'magic' => [
             'sent_to' => 'We sent a one-time sign-in link to :email.',
@@ -88,6 +89,7 @@ return [
         'last_used_hint' => 'The way you signed in last time on this device.',
         'magic_link' => 'Email me a magic link',
         'passkey' => 'Sign in with a passkey',
+        'passkey_unsupported' => 'This browser cannot use passkeys. Open this page in a browser that can, or on the device that holds your passkey.',
         // The short names on the sign-in page's method tiles; the sentences above stay their accessible names.
         'method' => [
             'magic_link' => 'Magic link',

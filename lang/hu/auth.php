@@ -29,6 +29,7 @@ return [
             'default' => 'A folytatáshoz jelentkezz be a fiókodba.',
             'device' => 'Jelentkezz be a várakozó eszköz jóváhagyásához.',
             'app' => 'Jelentkezz be a folytatáshoz: :app.',
+            'passkey' => 'A folytatáshoz erősítse meg személyazonosságát azonosítókulccsal vagy biztonsági kulccsal.',
         ],
         'magic' => [
             'sent_to' => 'Egyszer használható bejelentkezési hivatkozást küldtünk a következő címre: :email.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'Az utolsó bejelentkezés módja ezen a készüléken.',
         'magic_link' => 'Bejelentkezési hivatkozás küldése e-mailben',
         'passkey' => 'Bejelentkezés hozzáférési kulccsal',
+        'passkey_unsupported' => 'Ez a böngésző nem támogatja az azonosítókulcsokat. Nyissa meg az oldalt egy támogatott böngészőben vagy azon az eszközön, amelyen az azonosítókulcsa van.',
         'method' => [
             'magic_link' => 'Bejelentkezési hivatkozás',
             'passkey' => 'Hozzáférési kulcs',

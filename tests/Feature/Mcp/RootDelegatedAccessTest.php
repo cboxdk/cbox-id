@@ -179,17 +179,22 @@ it('uses native app permissions rather than shared membership tier at the organi
     $this->withToken($token)->getJson('/api/v1/workspace/members')->assertOk();
 })->group('security');
 
-it('does not turn a shared organization admin into an ID product admin', function (): void {
+it('makes an organization admin an ID admin of that organization and of no other', function (): void {
     [, $subject] = addMember($this->account['organization']->id, MembershipRole::Admin, 'shared-admin@example.test');
     $token = rootToken($subject, null, $this->account['organization']->id);
 
-    expect(app(RootDelegatedAccess::class)->organizationOf($subject, $this->account['organization']->id))->toBeNull();
-    $this->withToken($token)->getJson('/api/v1/workspace/projects')->assertForbidden();
-    $this->withToken($token)->getJson('/api/v1/apis', ['Cbox-Environment' => $this->account['environment']->id])->assertForbidden();
+    expect(app(RootDelegatedAccess::class)->organizationOf($subject, $this->account['organization']->id))->not->toBeNull();
+    $this->withToken($token)->getJson('/api/v1/workspace/projects')->assertOk();
+    $this->withToken($token)->getJson('/api/v1/apis', ['Cbox-Environment' => $this->account['environment']->id])->assertOk();
+
+    // Another tenant's organization and its environment are not theirs (as if absent).
+    $foreign = provisionAccount('foreign-tenant@example.test');
+    expect(app(RootDelegatedAccess::class)->organizationOf($subject, $foreign['organization']->id))->toBeNull();
+    $this->withToken($token)->getJson('/api/v1/apis', ['Cbox-Environment' => $foreign['environment']->id])->assertNotFound();
 })->group('security');
 
 it('keeps native Reader access read-only and revokes it on the next token request', function (): void {
-    [$member, $subject] = addMember($this->account['organization']->id, MembershipRole::Admin, 'native-reader@example.test');
+    [$member, $subject] = addMember($this->account['organization']->id, MembershipRole::Member, 'native-reader@example.test');
     app(PlatformRoot::class)->run(function () use ($member): void {
         $client = app(NativeProductClient::class)->clientId();
         app(AppMemberRoles::class)->replace($member, $client, ['viewer'], hash('sha256', '[]'), AuditActor::user($this->account['subjectId']));

@@ -112,6 +112,23 @@ final readonly class LoginController extends PageController
 
         $upstream = $through->connection();
 
+        // The app this sign-in is on its way to, when an authorization request sent the
+        // person here ({@see AppSignIns}); null for somebody who came by themselves.
+        $app = app(AppSignIns::class)->pending($request);
+
+        /*
+         * A PASSKEY, AND NOTHING ELSE, when the app asked for one (the console's operator
+         * step-up does). Any other way in comes back without the proof and is refused at
+         * the other end, so offering Google, a password or a phone approval here led to a
+         * dead end every time; and the identity provider this environment signs in through
+         * is not followed either, for the same reason.
+         */
+        $passkeyRequired = $app?->passkeyRequired === true && app(SignInMethods::class)->passkeysEnabled();
+
+        if ($passkeyRequired) {
+            $upstream = null;
+        }
+
         /*
          * STRAIGHT TO THE IDENTITY PROVIDER this environment signs in through — no page, no
          * button. Somebody with a session there comes back signed in without seeing
@@ -147,12 +164,9 @@ final readonly class LoginController extends PageController
         // React exists. See BrandContext.
         $brand->brand($organization);
 
-        // The app this sign-in is on its way to, when an authorization request sent the
-        // person here ({@see AppSignIns}); null for somebody who came by themselves.
-        $app = app(AppSignIns::class)->pending($request);
-
         return $this->page('auth/login', __('auth.login.title'), [
-            'purpose' => $this->purpose($app),
+            'purpose' => $passkeyRequired ? __('auth.login.purpose.passkey') : $this->purpose($app),
+            'passkeyRequired' => $passkeyRequired,
             // The app's name and icon. With one, the page says where the person is going
             // and its sign-up line offers an account, not a new organization.
             'signingInTo' => $app?->props(),
@@ -162,12 +176,12 @@ final readonly class LoginController extends PageController
             // the address the app named (`login_hint`): filled in, never submitted.
             'email' => is_string($old = $request->old('email')) ? $old : ($app->loginHint ?? ''),
             'signupOpen' => $signup->isOpen(),
-            'providers' => $this->providers($organization?->id, $upstream),
+            'providers' => $passkeyRequired ? [] : $this->providers($organization?->id, $upstream),
             // The environment's own switches under the deployment's: a button for a method
             // that is off would lead to a refusal, so it is not drawn.
             'methods' => [
                 'passkeys' => app(SignInMethods::class)->passkeysEnabled(),
-                'magicLink' => app(SignInMethods::class)->magicLinkEnabled(),
+                'magicLink' => ! $passkeyRequired && app(SignInMethods::class)->magicLinkEnabled(),
             ],
             /*
              * WHICH WAY THIS DEVICE SIGNED IN LAST — `google`, `passkey`, `password`,

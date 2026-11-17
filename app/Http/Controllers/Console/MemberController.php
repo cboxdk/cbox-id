@@ -160,9 +160,10 @@ final readonly class MemberController extends ConsoleController
                     // the browser: the buttons a page draws and the writes the server
                     // accepts must come from one rule.
                     'manageable' => $canManage && ! $isSelf && $membership->role !== MembershipRole::Owner,
-                    'scoped' => $membership->role !== MembershipRole::Owner,
-                    'allEnvironments' => $membership->role === MembershipRole::Owner || $membership->all_environments === true,
-                    'accessCount' => $membership->role === MembershipRole::Owner ? $environmentCount : count($accessByUser[$membership->user_id] ?? []),
+                    // An owner and an administrator reach every environment; grants narrow everybody else.
+                    'scoped' => $membership->role->supportsEnvironmentScoping(),
+                    'allEnvironments' => ! $membership->role->supportsEnvironmentScoping() || $membership->all_environments === true,
+                    'accessCount' => $membership->role->supportsEnvironmentScoping() ? count($accessByUser[$membership->user_id] ?? []) : $environmentCount,
                 ];
             })->values()->all(),
             'pagination' => PaginationProps::from($roster),

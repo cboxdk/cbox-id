@@ -29,6 +29,7 @@ return [
             'default' => 'Logga in på ditt konto för att fortsätta.',
             'device' => 'Logga in för att godkänna enheten som väntar.',
             'app' => 'Logga in för att fortsätta till :app.',
+            'passkey' => 'Bekräfta att det är du med din nyckel eller säkerhetsnyckel för att fortsätta.',
         ],
         'magic' => [
             'sent_to' => 'Vi har skickat en inloggningslänk för engångsbruk till :email.',
@@ -63,6 +64,7 @@ return [
         'last_used_hint' => 'Så loggade du in senast på den här enheten.',
         'magic_link' => 'Skicka en inloggningslänk till mig',
         'passkey' => 'Logga in med lösennyckel',
+        'passkey_unsupported' => 'Den här webbläsaren kan inte använda nycklar. Öppna sidan i en webbläsare som kan, eller på enheten som har din nyckel.',
         'method' => [
             'magic_link' => 'Inloggningslänk',
             'passkey' => 'Lösennyckel',
