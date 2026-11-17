@@ -272,6 +272,18 @@ it('refreshes a kept answer in the background and keeps it when Billing is away'
     $this->get(route('orgs.projects.show', $project->id))->assertForbidden();
 });
 
+it('asks Billing again at once when the kept answer is a refusal, so a fresh grant opens the page', function (): void {
+    [$project, $team, $billing] = admittedTeamWithProject();
+    $person = app(CurrentUser::class)->id();
+    $billing['allowed'] = false;
+    (new RefreshBillingSnapshot(RefreshBillingSnapshot::ADMISSION, [$person, $team->id]))->handle(app(ProductAdmission::class), app(ProductBilling::class));
+    $billing['allowed'] = true;
+    Bus::fake([RefreshBillingSnapshot::class]);
+    nextRequest();
+
+    $this->get(route('orgs.projects.show', $project->id))->assertOk();
+});
+
 it('renders the product signup page from the kept policy while Billing is down', function (): void {
     $billing = new ArrayObject(['up' => true, 'calls' => 0]);
     Http::fake(['*/policy' => function () use ($billing) {
