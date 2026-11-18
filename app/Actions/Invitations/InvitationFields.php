@@ -34,12 +34,21 @@ final class InvitationFields
      *
      * @throws ActionRefused
      */
-    public static function find(string $organizationId, string $invitationId): Invitation
+    public static function find(string $organizationId, string $invitationId, ?ActionContext $context = null): Invitation
     {
-        return Invitation::query()
+        $invitation = Invitation::query()
             ->whereKey($invitationId)
             ->where('organization_id', $organizationId)
             ->first() ?? throw ActionRefused::notFound('invitation');
+
+        // Through an app, only the invitations that app sent: another app's is not found.
+        $app = $context?->principal instanceof DelegatedTokenPrincipal ? $context->principal->app() : null;
+
+        if ($app !== null && InvitationContext::query()->where('organization_id', $organizationId)->where('invitation_id', $invitation->id)->value('client_id') !== $app) {
+            throw ActionRefused::notFound('invitation');
+        }
+
+        return $invitation;
     }
 
     /**

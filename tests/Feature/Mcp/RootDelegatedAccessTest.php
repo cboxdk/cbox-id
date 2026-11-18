@@ -7,6 +7,7 @@ use App\Mcp\ActionTool;
 use App\Platform\Actions\ActionPlane;
 use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ActionApprovalRequest;
+use App\Platform\Api\ApiHost;
 use App\Platform\Api\ManagementAudience;
 use App\Platform\AppMemberRoles;
 use App\Platform\EnvironmentOrigin;
@@ -49,6 +50,7 @@ use Cbox\Id\Platform\Models\PlatformOperator;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 /*
 |--------------------------------------------------------------------------
@@ -705,3 +707,121 @@ it('refuses legacy operator tokens that do not attest to strong authentication',
     $token = rootToken($operator->subject_id);
     $this->withToken($token)->postJson('/api/v1/platform/operators', [])->assertUnauthorized();
 });
+
+// ── An app acting for the person, on its own roster ────────────────────────────
+
+/** A confidential app registered at the root, as Brain is. */
+function rootApp(string $name = 'Brain', ?string $organizationId = null): Client
+{
+    return app(PlatformRoot::class)->run(fn (): Client => app(ClientRegistry::class)->register(new NewClient(
+        $name,
+        ClientType::Confidential,
+        ['https://'.Str::slug($name).'.example.test/callback'],
+        ['authorization_code', 'refresh_token'],
+        ['openid', 'invitations:write', 'roles:write', 'organizations:write', 'members:write'],
+        organizationId: $organizationId,
+    ))->client) ?? throw new LogicException('no platform root');
+}
+
+/** A token the root issued $client for $subjectId, bound to $organizationId, for the management plane. */
+function rootAppToken(Client $client, string $subjectId, string $organizationId, array $scopes = ['invitations:write', 'roles:write']): string
+{
+    return app(PlatformRoot::class)->run(fn (): string => app(TokenIssuer::class)->issueForUser(
+        $client, $subjectId, $organizationId, $scopes, rootMcpResource(),
+    )->token) ?? throw new LogicException('no platform root');
+}
+
+it('lets an app invite to its own roster in the root as the person, signed by them', function (): void {
+    $app = rootApp();
+    $org = $this->account['organization']->id;
+    $token = rootAppToken($app, $this->account['subjectId'], $org);
+
+    $this->withToken($token)->postJson("/api/v1/organizations/{$org}/invitations", ['email' => 'new@acme.example', 'client_id' => $app->client_id])
+        ->assertCreated()
+        ->assertJsonPath('data.email', 'new@acme.example');
+
+    $entry = AuditEntry::query()->where('action', 'organization.invitation_created')->latest('id')->first();
+    expect($entry?->actor_id)->toBe($this->account['subjectId']);
+})->group('security');
+
+it('lets an app re-send and revoke only the invitations it sent', function (): void {
+    $app = rootApp();
+    $other = rootApp('Billing');
+    $org = $this->account['organization']->id;
+    $ours = rootAppToken($app, $this->account['subjectId'], $org);
+    $theirs = rootAppToken($other, $this->account['subjectId'], $org);
+    $invitations = "/api/v1/organizations/{$org}/invitations";
+
+    $mine = $this->withToken($ours)->postJson($invitations, ['email' => 'mine@acme.example', 'client_id' => $app->client_id])->assertCreated()->json('data.id');
+    $billing = $this->withToken($theirs)->postJson($invitations, ['email' => 'theirs@acme.example', 'client_id' => $other->client_id])->assertCreated()->json('data.id');
+
+    $this->withToken($ours)->postJson("{$invitations}/{$billing}/resend")->assertNotFound();
+    $this->withToken($ours)->deleteJson("{$invitations}/{$billing}")->assertNotFound();
+
+    $fresh = $this->withToken($ours)->postJson("{$invitations}/{$mine}/resend")->assertSuccessful()->json('data.id');
+    $this->withToken($ours)->deleteJson("{$invitations}/{$fresh}")->assertSuccessful();
+})->group('security');
+
+it('holds an app to its own roster, its own client id, the member tier and the bound organization', function (): void {
+    $app = rootApp();
+    $other = rootApp('Billing');
+    $org = $this->account['organization']->id;
+    $token = rootAppToken($app, $this->account['subjectId'], $org, ['invitations:write', 'roles:write', 'organizations:write', 'members:write']);
+    $invite = "/api/v1/organizations/{$org}/invitations";
+
+    // Another app's invitations, none, or a higher tier: refused.
+    $this->withToken($token)->postJson($invite, ['email' => 'a@acme.example', 'client_id' => $other->client_id])->assertForbidden();
+    $this->withToken($token)->postJson($invite, ['email' => 'b@acme.example'])->assertForbidden();
+    $this->withToken($token)->postJson($invite, ['email' => 'c@acme.example', 'client_id' => $app->client_id, 'role' => 'admin'])->assertForbidden();
+
+    // Anything beyond the app's roster, even with the scope: refused.
+    $this->withToken($token)->patchJson("/api/v1/organizations/{$org}", ['name' => 'Renamed'])->assertForbidden();
+
+    // Another organization: not found.
+    $foreign = provisionAccount('rival@rival.example')['organization']->id;
+    $this->withToken($token)->postJson("/api/v1/organizations/{$foreign}/invitations", ['email' => 'd@acme.example', 'client_id' => $app->client_id])->assertNotFound();
+})->group('security');
+
+it('refuses an app token for a person who does not administer the organization, or has left it', function (): void {
+    $app = rootApp();
+    $org = $this->account['organization']->id;
+    [, $member] = addMember($org, MembershipRole::Member, 'plain@acme.example');
+
+    $this->withToken(rootAppToken($app, $member, $org))
+        ->postJson("/api/v1/organizations/{$org}/invitations", ['email' => 'x@acme.example', 'client_id' => $app->client_id])
+        ->assertForbidden();
+
+    [, $admin] = addMember($org, MembershipRole::Admin, 'admin@acme.example');
+    $token = rootAppToken($app, $admin, $org);
+    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->remove($org, $admin));
+
+    $this->withToken($token)
+        ->postJson("/api/v1/organizations/{$org}/invitations", ['email' => 'y@acme.example', 'client_id' => $app->client_id])
+        ->assertClientError();
+
+    expect(AuditEntry::query()->where('action', 'organization.invitation_created')->exists())->toBeFalse();
+})->group('security');
+
+it('does not treat the cbox CLI or a public client as an app acting on its roster', function (): void {
+    $org = $this->account['organization']->id;
+    $token = rootToken($this->account['subjectId'], ['invitations:write'], $org);
+
+    $this->withToken($token)->postJson("/api/v1/organizations/{$org}/invitations", ['email' => 'z@acme.example'])
+        ->assertStatus(400)
+        ->assertJsonPath('error', 'environment_required');
+})->group('security');
+
+it('takes the app\'s token for the API host there, as the person', function (): void {
+    $app = rootApp();
+    $org = $this->account['organization']->id;
+    $token = app(PlatformRoot::class)->run(fn (): string => app(TokenIssuer::class)->issueForUser(
+        $app, $this->account['subjectId'], $org, ['invitations:write'], (string) ManagementAudience::api(),
+    )->token);
+
+    $this->withToken((string) $token)
+        ->postJson('http://'.ApiHost::name()."/v1/organizations/org_{$org}/invitations", ['email' => 'api@acme.example', 'client_id' => $app->client_id])
+        ->assertCreated();
+
+    expect(AuditEntry::query()->where('action', 'organization.invitation_created')->latest('id')->first()?->actor_id)
+        ->toBe($this->account['subjectId']);
+})->group('security');

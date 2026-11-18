@@ -52,7 +52,7 @@ final readonly class ResendInvitation implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $organization = OrganizationFields::find($context, $context->string('organization_id'));
-        $invitation = InvitationFields::find($organization->id, $context->string('invitation_id'));
+        $invitation = InvitationFields::find($organization->id, $context->string('invitation_id'), $context);
 
         // A key is nobody, so the mail is signed as the first one was; a person signs it
         // with their own name.

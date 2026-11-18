@@ -14,6 +14,7 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\CustomerConsole;
 use App\Platform\EnvironmentKeyAuditLog;
 use App\Platform\OAuth\DelegatedAccess;
+use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
@@ -66,14 +67,38 @@ use Illuminate\Auth\Access\AuthorizationException;
  * The trail names the person — a user of this environment, as their console's acts are —
  * and every entry the action causes records the client they used
  * ({@see EnvironmentKeyAuditLog}).
+ *
+ * THROUGH AN APP, AT THE PLATFORM ROOT. The root's own organizations — every customer of
+ * the platform's apps since the single realm — have no organization console of their own
+ * to mirror, and a root token otherwise stands for a workspace member acting in one of
+ * their workspace's environments ({@see RootDelegatedAccess}). A registered app that signs
+ * a person in at the root and asks for a token bound to one of their organizations gets
+ * this principal instead, with `$throughApp`: the same two limits, the same confinement,
+ * the same "only Critical waits for the person", and a third limit — only that app's own
+ * roster ({@see self::APP_ROSTER}): who is invited to it, and which of ITS roles a member
+ * holds. Never another app's roles, never the organization tier, never anything else in
+ * the root environment. The actions ask {@see self::app()} for the rest.
  */
 final readonly class DelegatedTokenPrincipal implements PersonPrincipal, SignedInPerson, TokenAuthenticated
 {
+    /**
+     * What a person's token reaches through an app at the platform root: inviting people
+     * to the app and giving them its roles. Each action also holds the app to its own
+     * `client_id` ({@see self::app()}).
+     */
+    public const array APP_ROSTER = [
+        'invitations.send',
+        'invitations.resend',
+        'invitations.revoke',
+        'members.apps.roles.replace',
+    ];
+
     /**
      * @param  list<string>  $scopes  the scopes the token carries
      * @param  OrganizationChoice|null  $organization  the organization the token is bound to, while the person is an active member of it
      * @param  bool  $customerConsole  whether this is a customer's environment, whose own console is an admin portal
      * @param  Introspection|null  $token  the token itself, for its `acr` / `auth_time` ({@see TokenAuthenticated})
+     * @param  bool  $throughApp  a root token an app holds for the person: that app's own roster only ({@see self::APP_ROSTER})
      */
     public function __construct(
         private string $subjectId,
@@ -86,7 +111,27 @@ final readonly class DelegatedTokenPrincipal implements PersonPrincipal, SignedI
         private bool $customerConsole,
         private ?int $expiresAt = null,
         private ?Introspection $token = null,
+        private bool $throughApp = false,
     ) {}
+
+    /** The app whose own roster is all this reaches, or null for a token that reaches the person's console. */
+    public function app(): ?string
+    {
+        return $this->throughApp ? $this->clientId : null;
+    }
+
+    /**
+     * Refuse unless $clientId is the app this token reaches through, when it reaches
+     * through one: an app gives out its own roles and invites to itself, never another's.
+     *
+     * @throws AuthorizationException
+     */
+    public function assertOwnApp(?string $clientId): void
+    {
+        if ($this->throughApp && $clientId !== $this->clientId) {
+            throw new AuthorizationException('A sign-in through an app reaches that app\'s own roles and invitations only.');
+        }
+    }
 
     public function token(): ?Introspection
     {
@@ -130,6 +175,10 @@ final readonly class DelegatedTokenPrincipal implements PersonPrincipal, SignedI
 
         if (! app(ManagementScopes::class)->knows($action->scope) || ! ScopeRegistry::satisfies($this->scopes, $action->scope)) {
             throw new AuthorizationException("This sign-in was not granted the required scope: {$action->scope}.");
+        }
+
+        if ($this->throughApp && ! in_array($action->name, self::APP_ROSTER, true)) {
+            throw new AuthorizationException('A sign-in through an app reaches that app\'s own roles and invitations only.');
         }
 
         if ($action->consoleGate !== ConsoleGate::Administer) {

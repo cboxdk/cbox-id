@@ -17,6 +17,7 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Invitations\Contracts\OrganizationInvitations;
 use App\Platform\Invitations\Exceptions\InvitationRefused;
 use App\Platform\Invitations\ValueObjects\NewInvitation;
@@ -24,6 +25,7 @@ use App\Platform\OrgAccessRoles;
 use App\Platform\OrgRoles;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Illuminate\Auth\Access\AuthorizationException;
 
 /**
  * Invite somebody into an organization by address — through {@see OrganizationInvitations},
@@ -78,12 +80,23 @@ final readonly class SendInvitation implements Action
     {
         $organization = OrganizationFields::find($context, $context->string('organization_id'));
 
-        if (TenantRoster::confined($context) !== null) {
-            TenantRoster::assertManagedHere($organization->id, 'email');
-        }
-
         $clientId = $context->nullableString('client_id');
         $clientId = $clientId === null ? null : trim($clientId);
+        $tier = MembershipRole::tryFrom($context->string('role')) ?? MembershipRole::Member;
+        $principal = $context->principal;
+
+        if ($principal instanceof DelegatedTokenPrincipal && $principal->app() !== null) {
+            // An app invites to itself, as a plain member with its own roles. That is the
+            // app's roster rather than the organization's, so a customer's is not
+            // "managed elsewhere" for it: Workspace › Team keeps the tier.
+            $principal->assertOwnApp($clientId);
+
+            if ($tier !== MembershipRole::Member) {
+                throw new AuthorizationException('A sign-in through an app invites members only; the organization\'s tier is given in Cbox ID.');
+            }
+        } elseif (TenantRoster::confined($context) !== null) {
+            TenantRoster::assertManagedHere($organization->id, 'email');
+        }
 
         $offered = null;
         $roleIds = [];
@@ -91,6 +104,11 @@ final readonly class SendInvitation implements Action
         foreach (array_unique(array_filter($context->array('roles'), static fn (mixed $ref): bool => is_string($ref) && $ref !== '')) as $reference) {
             $role = RoleFields::reference((string) $reference, $clientId)
                 ?? throw ActionRefused::because('unknown_role', new ActionMessage('console.no_role_part1_exists_in_this_environment_2da98fb0', ['part1' => (string) ($reference)]), 'roles');
+
+            if ($principal instanceof DelegatedTokenPrincipal && $principal->app() !== null) {
+                // By id a role of any app resolves; through an app, only its own.
+                $principal->assertOwnApp($role->client_id);
+            }
 
             $offered ??= $this->catalog->tenantAssignable($organization->id)->pluck('id')->all();
 
@@ -108,7 +126,7 @@ final readonly class SendInvitation implements Action
             $sent = $this->invitations->send(new NewInvitation(
                 organizationId: $organization->id,
                 email: trim($context->string('email')),
-                role: MembershipRole::tryFrom($context->string('role')) ?? MembershipRole::Member,
+                role: $tier,
                 inviter: InvitationFields::inviter($context, $inviterName === null ? null : trim($inviterName), $clientId),
                 accessRoleIds: array_values(array_unique($roleIds)),
                 clientId: $clientId,
