@@ -5,100 +5,104 @@ declare(strict_types=1);
 use Cbox\Id\Identity\Contracts\RelyingParties;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
-use Cbox\Id\Organization\Models\Environment;
+
+/**
+ * The public website on the apex host, in LOGIN-HOST MODE as production runs it: sign-in
+ * and the issuer on LOGIN_HOST, the console on APP_HOST, a tenant on TENANT_HOST
+ * (`loginHostMode()` and the host names live in tests/Pest.php). The website's links
+ * and redirects go to the login host, the only one that serves /login, /start and /oauth/*.
+ */
+const MARKETING_HOST = 'cboxid.test';
 
 beforeEach(function (): void {
-    multiTenantDeployment();
-    platformRootEnvironment();
-    installedDeployment();
+    $this->tenant = loginHostMode();
     config([
-        'app.url' => 'https://app.cboxid.com',
-        'marketing.host' => 'cboxid.com',
-        'marketing.app_url' => 'https://login.cboxid.com',
-        'cbox-id.tenancy.account_host' => 'app.cboxid.com',
-        'cbox-id.environments.base_domains' => ['cboxid.com'],
-        'cbox-id.issuer' => 'https://app.cboxid.com',
+        'app.url' => 'https://'.APP_HOST,
+        'marketing.host' => MARKETING_HOST,
+        'marketing.app_url' => 'https://'.LOGIN_HOST,
     ]);
 });
 
-it('serves a public website without a login session and links to the application', function (): void {
-    $response = $this->get('https://cboxid.com/')->assertOk()
+it('serves a public website without a login session and links to the login host', function (): void {
+    $response = $this->get('https://'.MARKETING_HOST.'/')->assertOk()
         ->assertSee('One identity layer.')
-        ->assertSee('https://login.cboxid.com/login')
-        ->assertSee('https://login.cboxid.com/start')
+        ->assertSee('https://'.LOGIN_HOST.'/login')
+        ->assertSee('https://'.LOGIN_HOST.'/start')
+        ->assertDontSee('https://'.APP_HOST.'/login')
         ->assertHeader('X-Frame-Options', 'DENY');
 
     expect($response->headers->getCookies())->toBeEmpty();
     expect($response->headers->get('Cache-Control'))->toContain('public');
 });
 
-it('moves old interactive URLs to the application without losing query parameters', function (): void {
-    $this->get('https://cboxid.com/login?return_to=%2Faccount&mode=passkey')
+it('links to pages the login host serves', function (): void {
+    $this->get('https://'.LOGIN_HOST.'/login')->assertOk()->assertDontSee('One identity layer.');
+    $this->get('https://'.LOGIN_HOST.'/start')->assertOk()->assertDontSee('One identity layer.');
+});
+
+it('moves old interactive URLs to the login host without losing query parameters', function (): void {
+    $this->get('https://'.MARKETING_HOST.'/login?return_to=%2Faccount&mode=passkey')
         ->assertStatus(307)
-        ->assertRedirect('https://login.cboxid.com/login?return_to=%2Faccount&mode=passkey')
+        ->assertRedirect('https://'.LOGIN_HOST.'/login?return_to=%2Faccount&mode=passkey')
         ->assertHeader('Cache-Control', 'no-store, private');
 
-    $this->post('https://cboxid.com/login', ['email' => 'alex@example.com'])
-        ->assertStatus(307)->assertRedirect('https://login.cboxid.com/login');
+    $this->post('https://'.MARKETING_HOST.'/login', ['email' => 'alex@example.com'])
+        ->assertStatus(307)->assertRedirect('https://'.LOGIN_HOST.'/login');
 });
 
-it('starts authorization on the application host before creating pending session state', function (): void {
-    $this->get('https://cboxid.com/oauth/authorize?client_id=existing&state=opaque')
+it('starts authorization on the login host before creating pending session state', function (): void {
+    $this->get('https://'.MARKETING_HOST.'/oauth/authorize?client_id=existing&state=opaque')
         ->assertStatus(307)
-        ->assertRedirect('https://login.cboxid.com/oauth/authorize?client_id=existing&state=opaque');
+        ->assertRedirect('https://'.LOGIN_HOST.'/oauth/authorize?client_id=existing&state=opaque');
 });
 
-it('keeps tenant discovery and sign-in on the existing tenant origin', function (): void {
-    Environment::query()->create(['name' => 'Cbox', 'slug' => 'cbox', 'status' => 'active', 'is_default' => false]);
-
-    $this->getJson('https://cbox.cboxid.com/.well-known/openid-configuration')
-        ->assertOk()->assertJsonPath('issuer', 'https://cbox.cboxid.com')
-        ->assertJsonPath('authorization_endpoint', 'https://cbox.cboxid.com/oauth/authorize');
-    $this->get('https://cbox.cboxid.com/login')->assertOk()->assertDontSee('One identity layer.');
-    $this->get('https://app.cboxid.com/login')->assertOk()->assertDontSee('One identity layer.');
+it('keeps tenant discovery and sign-in on the tenant origin', function (): void {
+    $this->getJson('https://'.TENANT_HOST.'/.well-known/openid-configuration')
+        ->assertOk()->assertJsonPath('issuer', 'https://'.TENANT_HOST)
+        ->assertJsonPath('authorization_endpoint', 'https://'.TENANT_HOST.'/oauth/authorize');
+    $this->get('https://'.TENANT_HOST.'/login')->assertOk()->assertDontSee('One identity layer.');
 });
 
-it('uses the new application issuer and redirects old protocol addresses', function (): void {
-    $this->getJson('https://cboxid.com/.well-known/oauth-authorization-server')
-        ->assertStatus(307)->assertRedirect('https://login.cboxid.com/.well-known/oauth-authorization-server');
-    $this->getJson('https://app.cboxid.com/.well-known/oauth-authorization-server')
-        ->assertOk()->assertJsonPath('issuer', 'https://app.cboxid.com');
-    $this->getJson('https://app.cboxid.com/.well-known/jwks.json')->assertOk();
-    $this->postJson('https://cboxid.com/oauth/token')->assertStatus(307)
-        ->assertRedirect('https://login.cboxid.com/oauth/token');
-    $this->getJson('https://cboxid.com/up')->assertOk();
-    $this->getJson('https://app.cboxid.com/.well-known/openid-configuration')->assertNotFound();
+it('redirects old protocol addresses to the login host issuer', function (): void {
+    $this->getJson('https://'.MARKETING_HOST.'/.well-known/oauth-authorization-server')
+        ->assertStatus(307)->assertRedirect('https://'.LOGIN_HOST.'/.well-known/oauth-authorization-server');
+    $this->getJson('https://'.LOGIN_HOST.'/.well-known/oauth-authorization-server')
+        ->assertOk()->assertJsonPath('issuer', 'https://'.LOGIN_HOST);
+    $this->getJson('https://'.LOGIN_HOST.'/.well-known/jwks.json')->assertOk();
+    $this->postJson('https://'.MARKETING_HOST.'/oauth/token')->assertStatus(307)
+        ->assertRedirect('https://'.LOGIN_HOST.'/oauth/token');
+    $this->getJson('https://'.MARKETING_HOST.'/up')->assertOk();
+    // The console host issues nothing.
+    $this->getJson('https://'.APP_HOST.'/.well-known/openid-configuration')->assertNotFound();
 });
 
-it('keeps the root passkey scope while moving its browser origin and isolates tenant passkeys', function (): void {
+it('keeps the root passkey scope on the login host origin and isolates tenant passkeys', function (): void {
     config([
-        'cbox-id.webauthn.rp_id' => 'cboxid.com',
-        'cbox-id.webauthn.origin' => 'https://app.cboxid.com',
+        'cbox-id.webauthn.rp_id' => MARKETING_HOST,
+        'cbox-id.webauthn.origin' => 'https://'.LOGIN_HOST,
     ]);
     app(EnvironmentContext::class)->set(GenericEnvironment::of(platformRootEnvironment()->environmentKey()));
     $root = app(RelyingParties::class)->current();
-    expect($root->id)->toBe('cboxid.com')->and($root->origin)->toBe('https://app.cboxid.com');
+    expect($root->id)->toBe(MARKETING_HOST)->and($root->origin)->toBe('https://'.LOGIN_HOST);
 
-    $tenant = Environment::query()->create(['name' => 'Cbox', 'slug' => 'cbox', 'status' => 'active', 'is_default' => false]);
-    app(EnvironmentContext::class)->set(GenericEnvironment::of($tenant->environmentKey()));
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($this->tenant->environmentKey()));
     $party = app(RelyingParties::class)->current();
-    expect($party->id)->toBe('cbox.cboxid.com')->and($party->origin)->toBe('https://cbox.cboxid.com');
+    expect($party->id)->toBe(TENANT_HOST)->and($party->origin)->toBe('https://'.TENANT_HOST);
 });
 
 it('canonicalizes www and publishes a sitemap for the public homepage', function (): void {
-    $this->get('https://www.cboxid.com/?ref=docs')->assertStatus(308)
-        ->assertRedirect('https://cboxid.com/?ref=docs');
-    $this->get('https://cboxid.com/robots.txt')->assertOk()->assertSee('https://cboxid.com/sitemap.xml');
-    $this->get('https://cboxid.com/sitemap.xml')->assertOk()->assertSee('<loc>https://cboxid.com/</loc>', false);
+    $this->get('https://www.'.MARKETING_HOST.'/?ref=docs')->assertStatus(308)
+        ->assertRedirect('https://'.MARKETING_HOST.'/?ref=docs');
+    $this->get('https://'.MARKETING_HOST.'/robots.txt')->assertOk()->assertSee('https://'.MARKETING_HOST.'/sitemap.xml');
+    $this->get('https://'.MARKETING_HOST.'/sitemap.xml')->assertOk()->assertSee('<loc>https://'.MARKETING_HOST.'/</loc>', false);
 });
 
-it('leaves the existing homepage alone when marketing is not configured or shares the app host', function (): void {
+it('leaves the console homepage alone', function (): void {
+    $this->get('https://'.APP_HOST.'/')->assertRedirect()->assertDontSee('One identity layer.');
     config(['marketing.host' => null]);
-    $this->get('https://app.cboxid.com/')->assertRedirect('https://app.cboxid.com/login');
-    config(['marketing.host' => 'app.cboxid.com', 'marketing.app_url' => 'https://app.cboxid.com']);
-    $this->get('https://app.cboxid.com/')->assertRedirect('https://app.cboxid.com/login');
+    $this->get('https://'.APP_HOST.'/')->assertRedirect()->assertDontSee('One identity layer.');
 });
 
 it('does not serve marketing or redirect on unrelated wildcard hosts', function (): void {
-    $this->get('https://unknown.cboxid.com/login')->assertNotFound();
+    $this->get('https://unknown.'.MARKETING_HOST.'/login')->assertNotFound();
 });
