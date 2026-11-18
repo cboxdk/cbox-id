@@ -14,7 +14,7 @@ beforeEach(function (): void {
     config([
         'app.url' => 'https://app.cboxid.com',
         'marketing.host' => 'cboxid.com',
-        'marketing.app_url' => 'https://app.cboxid.com',
+        'marketing.app_url' => 'https://login.cboxid.com',
         'cbox-id.tenancy.account_host' => 'app.cboxid.com',
         'cbox-id.environments.base_domains' => ['cboxid.com'],
         'cbox-id.issuer' => 'https://app.cboxid.com',
@@ -24,8 +24,8 @@ beforeEach(function (): void {
 it('serves a public website without a login session and links to the application', function (): void {
     $response = $this->get('https://cboxid.com/')->assertOk()
         ->assertSee('One identity layer.')
-        ->assertSee('https://app.cboxid.com/login')
-        ->assertSee('https://app.cboxid.com/start')
+        ->assertSee('https://login.cboxid.com/login')
+        ->assertSee('https://login.cboxid.com/start')
         ->assertHeader('X-Frame-Options', 'DENY');
 
     expect($response->headers->getCookies())->toBeEmpty();
@@ -35,17 +35,17 @@ it('serves a public website without a login session and links to the application
 it('moves old interactive URLs to the application without losing query parameters', function (): void {
     $this->get('https://cboxid.com/login?return_to=%2Faccount&mode=passkey')
         ->assertStatus(307)
-        ->assertRedirect('https://app.cboxid.com/login?return_to=%2Faccount&mode=passkey')
+        ->assertRedirect('https://login.cboxid.com/login?return_to=%2Faccount&mode=passkey')
         ->assertHeader('Cache-Control', 'no-store, private');
 
     $this->post('https://cboxid.com/login', ['email' => 'alex@example.com'])
-        ->assertStatus(307)->assertRedirect('https://app.cboxid.com/login');
+        ->assertStatus(307)->assertRedirect('https://login.cboxid.com/login');
 });
 
 it('starts authorization on the application host before creating pending session state', function (): void {
     $this->get('https://cboxid.com/oauth/authorize?client_id=existing&state=opaque')
         ->assertStatus(307)
-        ->assertRedirect('https://app.cboxid.com/oauth/authorize?client_id=existing&state=opaque');
+        ->assertRedirect('https://login.cboxid.com/oauth/authorize?client_id=existing&state=opaque');
 });
 
 it('keeps tenant discovery and sign-in on the existing tenant origin', function (): void {
@@ -60,12 +60,12 @@ it('keeps tenant discovery and sign-in on the existing tenant origin', function 
 
 it('uses the new application issuer and redirects old protocol addresses', function (): void {
     $this->getJson('https://cboxid.com/.well-known/oauth-authorization-server')
-        ->assertStatus(307)->assertRedirect('https://app.cboxid.com/.well-known/oauth-authorization-server');
+        ->assertStatus(307)->assertRedirect('https://login.cboxid.com/.well-known/oauth-authorization-server');
     $this->getJson('https://app.cboxid.com/.well-known/oauth-authorization-server')
         ->assertOk()->assertJsonPath('issuer', 'https://app.cboxid.com');
     $this->getJson('https://app.cboxid.com/.well-known/jwks.json')->assertOk();
     $this->postJson('https://cboxid.com/oauth/token')->assertStatus(307)
-        ->assertRedirect('https://app.cboxid.com/oauth/token');
+        ->assertRedirect('https://login.cboxid.com/oauth/token');
     $this->getJson('https://cboxid.com/up')->assertOk();
     $this->getJson('https://app.cboxid.com/.well-known/openid-configuration')->assertNotFound();
 });
@@ -95,7 +95,7 @@ it('canonicalizes www and publishes a sitemap for the public homepage', function
 it('leaves the existing homepage alone when marketing is not configured or shares the app host', function (): void {
     config(['marketing.host' => null]);
     $this->get('https://app.cboxid.com/')->assertRedirect('https://app.cboxid.com/login');
-    config(['marketing.host' => 'app.cboxid.com']);
+    config(['marketing.host' => 'app.cboxid.com', 'marketing.app_url' => 'https://app.cboxid.com']);
     $this->get('https://app.cboxid.com/')->assertRedirect('https://app.cboxid.com/login');
 });
 
