@@ -14,11 +14,13 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Exceptions\SlugAlreadyTaken;
 use Cbox\Id\Organization\ValueObjects\OrganizationChanges;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -66,6 +68,13 @@ final readonly class UpdateOrganization implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $organization = OrganizationFields::find($context, $context->string('id'));
+
+        // Through an app, the name only: the slug is every app's URL, and the metadata
+        // another integrator's.
+        if ($context->principal instanceof DelegatedTokenPrincipal && $context->principal->app() !== null
+            && ($context->has('slug') || $context->has('metadata'))) {
+            throw new AuthorizationException('A sign-in through an app changes the organization\'s name only.');
+        }
 
         $slug = $context->has('slug') ? $context->string('slug') : null;
 

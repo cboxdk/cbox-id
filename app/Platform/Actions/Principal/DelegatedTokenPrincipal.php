@@ -83,14 +83,16 @@ final readonly class DelegatedTokenPrincipal implements PersonPrincipal, SignedI
 {
     /**
      * What a person's token reaches through an app at the platform root: inviting people
-     * to the app and giving them its roles. Each action also holds the app to its own
-     * `client_id` ({@see self::app()}).
+     * to the app, giving them its roles, and the organization's name. Each action also
+     * holds the app to its own `client_id` ({@see self::app()}), and a rename to the name
+     * alone. The person's own name is the account plane's (`account.profile.update`).
      */
     public const array APP_ROSTER = [
         'invitations.send',
         'invitations.resend',
         'invitations.revoke',
         'members.apps.roles.replace',
+        'organizations.update',
     ];
 
     /**

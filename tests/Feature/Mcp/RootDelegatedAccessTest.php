@@ -718,7 +718,7 @@ function rootApp(string $name = 'Brain', ?string $organizationId = null): Client
         ClientType::Confidential,
         ['https://'.Str::slug($name).'.example.test/callback'],
         ['authorization_code', 'refresh_token'],
-        ['openid', 'invitations:write', 'roles:write', 'organizations:write', 'members:write'],
+        ['openid', 'invitations:write', 'roles:write', 'organizations:write', 'members:write', 'account:profile:write'],
         organizationId: $organizationId,
     ))->client) ?? throw new LogicException('no platform root');
 }
@@ -774,8 +774,10 @@ it('holds an app to its own roster, its own client id, the member tier and the b
     $this->withToken($token)->postJson($invite, ['email' => 'b@acme.example'])->assertForbidden();
     $this->withToken($token)->postJson($invite, ['email' => 'c@acme.example', 'client_id' => $app->client_id, 'role' => 'admin'])->assertForbidden();
 
-    // Anything beyond the app's roster, even with the scope: refused.
-    $this->withToken($token)->patchJson("/api/v1/organizations/{$org}", ['name' => 'Renamed'])->assertForbidden();
+    // The organization's slug or metadata, and anything beyond the app's roster, even with the scope: refused.
+    $this->withToken($token)->patchJson("/api/v1/organizations/{$org}", ['slug' => 'renamed'])->assertForbidden();
+    $this->withToken($token)->patchJson("/api/v1/organizations/{$org}", ['name' => 'Renamed', 'metadata' => ['a' => 'b']])->assertForbidden();
+    $this->withToken($token)->postJson("/api/v1/organizations/{$org}/members", ['user_id' => $this->account['subjectId']])->assertForbidden();
 
     // Another organization: not found.
     $foreign = provisionAccount('rival@rival.example')['organization']->id;
@@ -824,4 +826,24 @@ it('takes the app\'s token for the API host there, as the person', function (): 
 
     expect(AuditEntry::query()->where('action', 'organization.invitation_created')->latest('id')->first()?->actor_id)
         ->toBe($this->account['subjectId']);
+})->group('security');
+
+it('lets an app rename the organization and the person as the person', function (): void {
+    $app = rootApp();
+    $org = $this->account['organization']->id;
+    $token = rootAppToken($app, $this->account['subjectId'], $org, ['organizations:write', 'account:profile:write']);
+
+    $this->withToken($token)->patchJson("/api/v1/organizations/{$org}", ['name' => 'Acme Labs'])->assertOk();
+    $this->withToken($token)->patchJson('/api/v1/me/profile', ['name' => 'Ada Owner'])->assertOk();
+
+    $entry = AuditEntry::query()->where('action', 'organization.renamed')->latest('id')->first();
+    expect($this->account['organization']->refresh()->name)->toBe('Acme Labs')
+        ->and($entry?->actor_id)->toBe($this->account['subjectId'])
+        ->and(app(PlatformRoot::class)->run(fn () => app(Subjects::class)->find($this->account['subjectId'])?->name))->toBe('Ada Owner');
+
+    // A member who does not administer it cannot rename it.
+    [, $member] = addMember($org, MembershipRole::Member, 'plain-rename@acme.example');
+    $this->withToken(rootAppToken($app, $member, $org, ['organizations:write']))
+        ->patchJson("/api/v1/organizations/{$org}", ['name' => 'Hijacked'])->assertForbidden();
+    expect($this->account['organization']->refresh()->name)->toBe('Acme Labs');
 })->group('security');
