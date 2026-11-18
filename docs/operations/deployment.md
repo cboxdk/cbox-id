@@ -759,20 +759,28 @@ and fonts from bunny.net, both refused by the app's own CSP.
 
 ## Separate marketing and application hosts
 
-The hosted console runs at `https://app.cboxid.com`; `https://cboxid.com` serves the
-public product website from the same application image. Enable the split with:
+The hosted console runs at `https://app.cboxid.com`, sign-in and the issuer at
+`https://login.cboxid.com`, and `https://cboxid.com` serves the public product website,
+all from the same application image. Production sets:
 
 ```dotenv
 APP_URL=https://app.cboxid.com
-CBOX_ID_ISSUER=https://app.cboxid.com
+CBOX_ID_ISSUER=https://login.cboxid.com
 CBOX_ID_CONSOLE_HOST=app.cboxid.com
+CBOX_ID_LOGIN_HOST=login.cboxid.com
 CBOX_ID_MARKETING_HOST=cboxid.com
-CBOX_ID_MARKETING_APP_URL=https://app.cboxid.com
+CBOX_ID_MARKETING_APP_URL=https://login.cboxid.com
 CBOX_ID_WEBAUTHN_RP_ID=cboxid.com
-CBOX_ID_WEBAUTHN_ORIGIN=https://app.cboxid.com
+CBOX_ID_WEBAUTHN_ORIGIN=https://login.cboxid.com
 ```
 
-Route both hosts to the application and set the platform root environment's domain
+`CBOX_ID_MARKETING_APP_URL` is where the website's "Sign in" and "Join early access"
+links and its redirects go, so it names the host that serves `/login`, `/start` and
+`/oauth/*`: the login host when `CBOX_ID_LOGIN_HOST` is set, otherwise the single
+application host. With a login host, pointing it at the console host sends every
+sign-in link to a 404.
+
+Route all three hosts to the application and set the platform root environment's domain
 to `app.cboxid.com`. Existing tenant hosts, including `cbox.cboxid.com`, retain
 their own issuers. Register the new callback address with external login providers.
 There is no special callback forwarding or provider-specific migration behavior.
