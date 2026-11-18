@@ -20,7 +20,7 @@ on:
 jobs:
   baselines:
     runs-on: ubuntu-latest
-    # The SAME image the `test` job in ci.yml judges them in — the cbox base image's dev
+    # The SAME image the `browser` job in ci.yml judges them in — the cbox base image's dev
     # tier, Playwright's Chromium baked in, pinned by `-v1`. A baseline drawn anywhere
     # else is a picture of a different renderer.
     container:

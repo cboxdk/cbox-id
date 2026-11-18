@@ -8,6 +8,12 @@ on:
     # Weekly, so advisories that land after a deploy are still surfaced.
     - cron: "0 6 * * 1"
 
+# A new push to a pull request cancels that pull request's older run. Runs on main, on a
+# dispatch or on the schedule are never cancelled: each has a group of its own commit.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
