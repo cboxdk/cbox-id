@@ -22,7 +22,7 @@
 name: cbox-id
 # The base image the production image (Dockerfile) is built FROM, so the PHP, extensions,
 # nginx and cbox-init are production's; the code is the working copy rather than a build.
-image: ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1
+image: ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-trixie-v2
 port: 80
 source: true
 url: APP_URL

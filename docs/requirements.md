@@ -26,7 +26,7 @@ the crypto layer in `cboxdk/laravel-id` needs both and `php artisan cbox-id:doct
 fails loudly if either is missing. `ext-pcntl` and `ext-posix` are required by
 `cboxdk/laravel-queue-autoscale`, so Composer refuses to install without them; the doctor
 checks them again in the CLI the queue manager actually runs under. The
-`ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1` base image — what the
+`ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-trixie-v2` base image — what the
 `Dockerfile` builds the production image from, and what `cbox.yaml` runs locally — ships
 all four.
 

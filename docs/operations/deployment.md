@@ -34,7 +34,7 @@ Everything lives in one namespace, `cbox-id`.
 
 | Piece | How it runs |
 |---|---|
-| **Web** | A Deployment of **2 replicas** of `ghcr.io/cboxdk/cbox-id` (this repository's `Dockerfile`, built on the `php-fpm-nginx:8.5-bookworm-v1` base). `cbox-init` is PID 1 and runs nginx and PHP-FPM. Rolling updates add one new pod before removing an old one, so two stay serving; a disruption budget keeps at least one up during node maintenance, and the replicas are spread across nodes. |
+| **Web** | A Deployment of **2 replicas** of `ghcr.io/cboxdk/cbox-id` (this repository's `Dockerfile`, built on the `php-fpm-nginx:8.5-trixie-v2` base). `cbox-init` is PID 1 and runs nginx and PHP-FPM. Rolling updates add one new pod before removing an old one, so two stay serving; a disruption budget keeps at least one up during node maintenance, and the replicas are spread across nodes. |
 | **Worker** | A Deployment of **1 replica** of the same image, with nginx and PHP-FPM switched off. `cbox-init` runs two processes in it: the **scheduler** (`php artisan schedule:work`) and the **queue manager** (`php artisan queue:autoscale`, which starts and sizes the `queue:work` processes itself). The pod is replaced on a rollout, never overlapped, so there is exactly one scheduler. |
 | **Migrations** | A suspended CronJob, `cbox-id-migrate`, used only as a template: each release creates a Job from it on the new image, running `php artisan migrate --force`, **before** the web and worker pods roll. |
 | **Releases** | The CronJob `cbox-id-release`, every five minutes — see [Releases from main](#releases-from-main). |

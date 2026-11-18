@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # Image for cboxdk/cbox-id — the Laravel 13 + Inertia/React/Tailwind v4 identity app on
-# PHP 8.5, built FROM the public cbox php-fpm-nginx base image (8.5-bookworm-v1, the same
+# PHP 8.5, built FROM the public cbox php-fpm-nginx base image (8.5-trixie-v2, the same
 # tag the local cbox.yaml runs and CI tests in). Built and pushed to ghcr.io/cboxdk/cbox-id
 # by .github/workflows/build-image.yml on GitHub-hosted runners (linux/amd64 and
 # linux/arm64, each native), for pushes to main and `v*` tags. Production (cboxid.com, on
@@ -12,7 +12,7 @@
 # ---- build stage: composer + frontend (vite) ----
 # Runs on the build host's native arch; vendor/ + public/build are arch-neutral,
 # so the runtime image just COPYs them.
-FROM --platform=$BUILDPLATFORM ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1 AS build
+FROM --platform=$BUILDPLATFORM ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-trixie-v2 AS build
 WORKDIR /var/www/html
 
 # PHP deps first for layer caching. --no-scripts: no app env at build time; the
@@ -38,7 +38,7 @@ ARG TARGETARCH
 COPY docker-runtime-tools.sh /tmp/download-runtime-tools.sh
 RUN sh /tmp/download-runtime-tools.sh "$TARGETARCH" /tmp/cbox-runtime-tools
 
-FROM ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-bookworm-v1@sha256:d24615a92fc4c148ed9ff943db0c5ec98c0f2e413e3ef73b232ae563ad5bd0f5
+FROM ghcr.io/cboxdk/php-baseimages/php-fpm-nginx:8.5-trixie-v2@sha256:e9ea34d5a7621627e02369c0dc20ef22b6942550a8b8cecbac14ce8a40853a47
 COPY --from=runtime-tools --chmod=0755 /tmp/cbox-runtime-tools/cbox-init /usr/local/bin/cbox-init
 COPY --from=runtime-tools --chmod=0755 /tmp/cbox-runtime-tools/fpm-exporter /usr/local/bin/fpm-exporter
 WORKDIR /var/www/html
