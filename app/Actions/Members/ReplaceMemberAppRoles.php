@@ -16,6 +16,7 @@ use App\Platform\Actions\ConsoleGate;
 use App\Platform\Actions\Danger;
 use App\Platform\Actions\Input\Field;
 use App\Platform\Actions\Input\InputSchema;
+use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\AppMemberRoles;
 use Cbox\Id\AccessControl\Models\Role;
 use Cbox\Id\OAuthServer\Models\Client;
@@ -47,6 +48,12 @@ final readonly class ReplaceMemberAppRoles implements Action
         $organization = OrganizationFields::find($context, $context->string('organization_id'));
         $member = MemberFields::find($organization->id, $context->string('user_id'));
         $clientId = $context->string('client_id');
+
+        if ($context->principal instanceof DelegatedTokenPrincipal) {
+            // Through an app, only that app's own roles.
+            $context->principal->assertOwnApp($clientId);
+        }
+
         $client = Client::query()->where('client_id', $clientId)
             ->where(fn ($query) => $query->whereNull('organization_id')->orWhere('organization_id', $organization->id))->first();
         if ($client === null) {

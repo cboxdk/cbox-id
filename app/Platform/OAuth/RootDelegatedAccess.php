@@ -6,22 +6,28 @@ namespace App\Platform\OAuth;
 
 use App\Http\Middleware\AuthenticateMcp;
 use App\Mcp\McpProtectedResources;
+use App\Platform\Actions\Approvals\PlatformRootApprovals;
+use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Actions\Principal\RootOperatorPrincipal;
 use App\Platform\Actions\Principal\RootPersonPrincipal;
 use App\Platform\Api\ManagementAudience;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\NativeProduct\NativeProductAccess;
+use App\Platform\OAuth\Contracts\AuthorizationOrganizations;
+use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use App\Platform\OAuth\ValueObjects\RootOrganization;
 use App\Platform\OAuth\ValueObjects\RootSignIn;
 use App\Platform\PlaneResolver;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\Dpop\DpopResourceGuard;
 use Cbox\Id\OAuthServer\Enums\AuthenticationContextClass;
+use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Exceptions\InvalidDpopProof;
 use Cbox\Id\OAuthServer\ValueObjects\AuthenticationRequirement;
 use Cbox\Id\OAuthServer\ValueObjects\ProtectedResource;
@@ -83,6 +89,8 @@ final readonly class RootDelegatedAccess
         private Organizations $organizations,
         private PlatformOperators $operators,
         private DelegatedAccess $delegated,
+        private ClientRegistry $clients,
+        private AuthorizationOrganizations $choices,
     ) {}
 
     /**
@@ -148,6 +156,68 @@ final readonly class RootDelegatedAccess
         return $operatorId !== null
             ? new RootOperatorPrincipal($signIn, $workspace, $operatorId)
             : new RootPersonPrincipal($signIn, $workspace);
+    }
+
+    /**
+     * The person a REGISTERED APP's root token stands for, inside the one organization the
+     * token is bound to — or null when the bearer is not that.
+     *
+     * The root's organizations are its own tenants: every customer of the platform's apps
+     * signs in here, and an app administers its people in the root environment. With its
+     * environment key it is nobody, so every write there waits for an approver it does
+     * not have ({@see PlatformRootApprovals}). As the person who is using it, it is what
+     * they could do themselves, and less: a {@see DelegatedTokenPrincipal} confined to the
+     * organization, held to the app's own roster.
+     *
+     * What makes it that, every one asked:
+     *  - a valid root token ({@see self::signIn()}), bound to an organization (`org`);
+     *  - issued to a confidential client registered in the root environment — an app with
+     *    a secret, not the `cbox` CLI (public) and not a self-registered MCP client;
+     *  - an app of that organization, or of none (a platform app);
+     *  - and the person still an active member of it, asked now.
+     *
+     * Whether their role there administers the organization is the action's question
+     * ({@see DelegatedTokenPrincipal::authorize()}), as it is for any person's token.
+     */
+    public function appSignIn(Request $request): ?DelegatedTokenPrincipal
+    {
+        $signIn = $this->signIn($request);
+        $environmentId = $this->root->environment()?->environmentKey();
+
+        if ($signIn === null || $signIn->organizationId === null || ! is_string($environmentId) || $environmentId === '') {
+            return null;
+        }
+
+        $organizationId = $signIn->organizationId;
+
+        $choice = $this->root->run(function () use ($signIn, $organizationId): ?OrganizationChoice {
+            $client = $this->clients->byClientId($signIn->clientId);
+
+            if ($client === null || $client->type !== ClientType::Confidential || $client->isDynamicallyRegistered()
+                || ($client->organization_id !== null && $client->organization_id !== $organizationId)) {
+                return null;
+            }
+
+            return $this->choices->usableBy($signIn->subjectId, $organizationId);
+        });
+
+        if (! $choice instanceof OrganizationChoice) {
+            return null;
+        }
+
+        return new DelegatedTokenPrincipal(
+            subjectId: $signIn->subjectId,
+            personName: $signIn->personName,
+            clientId: $signIn->clientId,
+            clientName: $signIn->clientName,
+            environmentId: $environmentId,
+            scopes: $signIn->scopes,
+            organization: $choice,
+            customerConsole: false,
+            expiresAt: $signIn->expiresAt,
+            token: $signIn->token,
+            throughApp: true,
+        );
     }
 
     /** The facts of a valid root token, or null. */

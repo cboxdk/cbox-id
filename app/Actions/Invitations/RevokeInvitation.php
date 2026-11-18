@@ -46,7 +46,7 @@ final readonly class RevokeInvitation implements Action
     public function handle(ActionContext $context): ActionResult
     {
         $organization = OrganizationFields::find($context, $context->string('organization_id'));
-        $invitation = InvitationFields::find($organization->id, $context->string('invitation_id'));
+        $invitation = InvitationFields::find($organization->id, $context->string('invitation_id'), $context);
 
         try {
             $this->invitations->revoke($organization->id, $invitation->id, $context->actor()->id);

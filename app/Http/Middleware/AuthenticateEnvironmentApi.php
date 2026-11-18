@@ -217,6 +217,31 @@ final class AuthenticateEnvironmentApi
      */
     private function asOrganizationMember(Request $request, Closure $next, ?string $scope, bool $admitted): Response
     {
+        $reference = $request->headers->get(self::ENVIRONMENT_HEADER);
+        $named = is_string($reference) && trim($reference) !== '';
+
+        // An app acting for the person, in the root environment its organization lives in:
+        // no environment to name, and only that app's own roster ({@see RootDelegatedAccess::appSignIn()}).
+        $app = $named || $scope === null ? null : $this->root->appSignIn($request);
+
+        if ($app !== null) {
+            if (! $admitted) {
+                return $this->deny('forbidden', 'This endpoint takes an environment API key (Bearer cbid_env_…). A signed-in access token reaches the management actions and their approvals only.', 403);
+            }
+
+            if (! $this->scopes->knows($scope) || ! ScopeRegistry::satisfies($app->managementScopes(), $scope)) {
+                return $this->deny('forbidden', "This sign-in was not granted the required scope: {$scope}.", 403);
+            }
+
+            $this->context->setDelegated($app);
+
+            try {
+                return $next($request);
+            } finally {
+                $this->context->clear();
+            }
+        }
+
         $person = $this->root->principal($request);
 
         if ($person === null) {
@@ -237,9 +262,7 @@ final class AuthenticateEnvironmentApi
             }
         }
 
-        $reference = $request->headers->get(self::ENVIRONMENT_HEADER);
-
-        if (! is_string($reference) || trim($reference) === '') {
+        if (! $named) {
             return $this->deny('environment_required', 'Name the environment to act in with the '.self::ENVIRONMENT_HEADER.' header: an environment id or slug of your organization.', 400);
         }
 
