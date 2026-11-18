@@ -57,4 +57,9 @@ return [
     'feature2_description' => 'Gestisci organizzazioni, membri e accessi in un unico posto.',
     'feature3_title' => 'Connetti',
     'feature3_description' => 'Connetti le tue applicazioni tramite OpenID Connect.',
+    'gate_title' => 'L’organizzazione :organization non ha ancora :service',
+    'gate_scope' => 'Riguarda le vostre piattaforme di identità per i vostri prodotti, dove accedono i vostri clienti. Gestire :organization (membri, ruoli e accesso) non richiede alcuna iscrizione.',
+    'back_to_organization' => 'Torna a :organization',
+    'admitted_title' => ':organization ha :service',
+    'open_console' => 'Vai alla console',
 ];

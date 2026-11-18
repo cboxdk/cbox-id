@@ -57,4 +57,9 @@ return [
     'feature2_description' => 'Kuruluşları, üyeleri ve erişimi tek bir yerden yönetin.',
     'feature3_title' => 'Bağlantı',
     'feature3_description' => 'Uygulamalarınızı OpenID Connect üzerinden bağlayın.',
+    'gate_title' => ':organization kuruluşunda henüz :service yok',
+    'gate_scope' => 'Bu, müşterilerinizin oturum açtığı, kendi ürünleriniz için kimlik platformlarını kapsar. :organization yönetimi (üyeler, roller ve oturum açma) kayıt gerektirmez.',
+    'back_to_organization' => ':organization kuruluşuna dön',
+    'admitted_title' => ':organization kuruluşunda :service var',
+    'open_console' => 'Konsola git',
 ];

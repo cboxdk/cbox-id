@@ -57,4 +57,9 @@ return [
     'feature2_description' => 'Kezelje a szervezeteket, tagokat és hozzáféréseket egy helyen.',
     'feature3_title' => 'Összekapcsolás',
     'feature3_description' => 'Kapcsolja össze alkalmazásait az OpenID Connect segítségével.',
+    'gate_title' => 'A(z) :organization szervezetnek még nincs :service hozzáférése',
+    'gate_scope' => 'Ez a saját termékeitekhez tartozó identitásplatformokra vonatkozik, ahol az ügyfeleitek bejelentkeznek. A(z) :organization kezelése (tagok, szerepkörök és bejelentkezés) nem igényel regisztrációt.',
+    'back_to_organization' => 'Vissza ide: :organization',
+    'admitted_title' => 'A(z) :organization hozzáfér ehhez: :service',
+    'open_console' => 'Ugrás a konzolra',
 ];

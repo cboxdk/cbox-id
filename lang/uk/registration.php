@@ -57,4 +57,9 @@ return [
     'feature2_description' => 'Керуйте організаціями, учасниками та доступом в одному місці.',
     'feature3_title' => 'Підключення',
     'feature3_description' => 'Підключайте свої застосунки через OpenID Connect.',
+    'gate_title' => 'Організація :organization ще не має :service',
+    'gate_scope' => 'Це стосується власних платформ ідентичності для ваших продуктів, де входять ваші клієнти. Керування :organization (учасники, ролі та вхід) не потребує реєстрації.',
+    'back_to_organization' => 'Назад до :organization',
+    'admitted_title' => ':organization має :service',
+    'open_console' => 'Перейти до консолі',
 ];

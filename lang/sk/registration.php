@@ -57,4 +57,9 @@ return [
     'feature2_description' => 'Spravujte organizácie, členov a prístup na jednom mieste.',
     'feature3_title' => 'Prepojenie',
     'feature3_description' => 'Prepojte svoje aplikácie prostredníctvom OpenID Connect.',
+    'gate_title' => 'Organizácia :organization zatiaľ nemá :service',
+    'gate_scope' => 'Týka sa to vlastných platforiem identít pre vaše produkty, kde sa prihlasujú vaši zákazníci. Správa :organization (členovia, roly a prihlasovanie) nevyžaduje registráciu.',
+    'back_to_organization' => 'Späť na :organization',
+    'admitted_title' => ':organization má :service',
+    'open_console' => 'Prejsť do konzoly',
 ];

@@ -57,4 +57,9 @@ return [
     'feature2_description' => 'Administrér organisationer, medlemmer og adgang ét sted.',
     'feature3_title' => 'Forbind',
     'feature3_description' => 'Forbind dine applikationer med OpenID Connect.',
+    'gate_title' => 'Organisationen :organization har ikke :service endnu',
+    'gate_scope' => 'Det gælder egne identitetsplatforme til jeres produkter, hvor jeres kunder logger ind. Administration af :organization (medlemmer, roller og login) kræver ingen tilmelding.',
+    'back_to_organization' => 'Tilbage til :organization',
+    'admitted_title' => ':organization har :service',
+    'open_console' => 'Gå til konsollen',
 ];

@@ -49,6 +49,7 @@ final readonly class ProductAdmission
             return;
         }
         $key = self::key($subject, $organization);
+        $kept = $this->snapshots->read($key);
         try {
             $allowed = $this->snapshots->remember(
                 $key,
@@ -58,6 +59,15 @@ final readonly class ProductAdmission
             );
             if (! is_bool($allowed)) {
                 $allowed = $this->refresh($subject, $organization);
+            } elseif ($allowed === false && ($kept['value'] ?? null) === false) {
+                // A kept refusal is asked again at once: whoever is refused is waiting on it,
+                // having just been given access, and a queued refresh left them at the gate.
+                // A kept grant is still served without asking.
+                try {
+                    $allowed = $this->refresh($subject, $organization);
+                } catch (ServiceAccessUnavailable) {
+                    // Billing away: the kept refusal stands.
+                }
             }
         } catch (ServiceAccessUnavailable) {
             throw new ActionRefused('service_admission_unavailable', __('service_access.unavailable'), 503);

@@ -5,16 +5,29 @@
     <p>{{ __('registration.unavailable') }}</p>
     <a class="registration-button" href="{{ route('product-signup.show') }}">{{ __('registration.retry') }}</a>
 @else
+    @php($organization ??= null)
+    @php($admitted = $organization['admitted'] ?? false)
     <p class="registration-eyebrow">{{ __('registration.'.$policy->mode.'_eyebrow') }}</p>
-    <h2 id="registration-heading">{{ __('registration.'.$policy->mode.'_title') }}</h2>
-    <p>{{ __('registration.'.$policy->mode.'_description', ['service' => config('service-access.name')]) }}</p>
+    @if($organization === null)
+        <h2 id="registration-heading">{{ __('registration.'.$policy->mode.'_title') }}</h2>
+        <p>{{ __('registration.'.$policy->mode.'_description', ['service' => config('service-access.name')]) }}</p>
+    @elseif($admitted)
+        <h2 id="registration-heading">{{ __('registration.admitted_title', ['organization' => $organization['name'], 'service' => config('service-access.name')]) }}</h2>
+        <a class="registration-button" href="{{ route('dashboard') }}">{{ __('registration.open_console') }}</a>
+    @else
+        <h2 id="registration-heading">{{ __('registration.gate_title', ['organization' => $organization['name'], 'service' => config('service-access.name')]) }}</h2>
+        <p>{{ __('registration.gate_scope', ['organization' => $organization['name']]) }}</p>
+        <p>{{ __('registration.'.$policy->mode.'_description', ['service' => config('service-access.name')]) }}</p>
+        <a class="registration-other" href="{{ route('dashboard') }}">{{ __('registration.back_to_organization', ['organization' => $organization['name']]) }}</a>
+    @endif
     @if($identity !== null)
         <div class="registration-account"><span>{{ $identity['email'] }}</span><a href="{{ route('product-signup.switch') }}">{{ __('registration.change_account') }}</a></div>
     @endif
     @if($errors->any())
         <div class="registration-errors" role="alert" tabindex="-1"><ul>@foreach($errors->all() as $message)<li>{{ $message }}</li>@endforeach</ul></div>
     @endif
-    @if(session('service-registration.joined'))
+    @if($admitted)
+    @elseif(session('service-registration.joined'))
         <div class="registration-status" role="status"><strong>{{ __('registration.joined_title') }}</strong><p>{{ __('registration.'.(session('service-registration.joined') === 'guest' ? 'check_email' : 'joined')) }}</p></div>
     @elseif($policy->mode === 'waitlist')
         @if($policy->loginRequired && $identity === null)
@@ -68,8 +81,8 @@
             </form>
         </details>
     @endif
-    @if($policy->mode !== 'paused')
-        <details class="registration-invitation" @if(request()->boolean('invite') || $errors->has('code')) open @endif>
+    @if($policy->mode !== 'paused' && ! $admitted)
+        <details class="registration-invitation" @if(request()->boolean('invite') || $errors->has('code') || ($organization !== null && $policy->mode === 'invite_only')) open @endif>
             <summary>{{ __('registration.have_invitation') }}</summary>
             <form method="POST" action="{{ route('product-signup.admit') }}" class="registration-form">
                 @csrf

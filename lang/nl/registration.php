@@ -57,4 +57,9 @@ return [
     'feature2_description' => 'Beheer organisaties, leden en toegang op één plek.',
     'feature3_title' => 'Verbinden',
     'feature3_description' => 'Verbind je applicaties via OpenID Connect.',
+    'gate_title' => 'De organisatie :organization heeft :service nog niet',
+    'gate_scope' => 'Dit gaat over eigen identiteitsplatforms voor jullie producten, waar jullie klanten inloggen. Beheer van :organization (leden, rollen en inloggen) vereist geen aanmelding.',
+    'back_to_organization' => 'Terug naar :organization',
+    'admitted_title' => ':organization heeft :service',
+    'open_console' => 'Naar de console',
 ];
