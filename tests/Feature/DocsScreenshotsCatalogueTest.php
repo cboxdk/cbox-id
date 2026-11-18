@@ -142,8 +142,7 @@ it('retakes the screenshots on every release tag, in CI\'s image, through a pull
         ->and($on['push'])->not->toHaveKey('branches');
 
     $job = $workflow['jobs']['screenshots'];
-    $ciImage = str_replace('${{ matrix.php }}', '8.5', (string) $ci['jobs']['test']['container']['image']);
-    expect($job['container']['image'])->toBe($ciImage);
+    expect($job['container']['image'])->toBe($ci['jobs']['browser']['container']['image']);
 
     $steps = collect($job['steps']);
     expect($steps->pluck('run')->filter()->implode("\n"))
