@@ -45,6 +45,7 @@ permissions:
 jobs:
   screenshots:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     # The SAME image ci.yml's `browser` job and visual-baselines.yml draw in. A picture drawn
     # anywhere else is a picture of a different renderer.
     container:
