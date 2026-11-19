@@ -56,6 +56,7 @@ jobs:
     # `composer install`, `npm ci` and the suite all execute code from the branch. The
     # org's own runners are for private repositories only.
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     container:
       image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev-v2
 
@@ -104,6 +105,7 @@ jobs:
     needs: changes
     if: always() && (github.event_name != 'pull_request' || needs.changes.outputs.frontend == 'true')
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     # `browser` RUNS IN THE IMAGE `.github/workflows/visual-baselines.yml` draws the
     # baselines in — the same php-cli 8.5 dev image as every job here. A baseline is a
@@ -189,6 +191,7 @@ jobs:
   # ---------------------------------------------------------------------------
   supply-chain:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     container:
       image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev-v2
 
@@ -235,6 +238,7 @@ jobs:
     # runs `pr-tests` instead.
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -344,6 +348,7 @@ jobs:
   changes:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       frontend: ${{ steps.pick.outputs.frontend }}
       config: ${{ steps.pick.outputs.config }}
@@ -372,6 +377,7 @@ jobs:
   pr-tests:
     needs: changes
     runs-on: ubuntu-latest
+    timeout-minutes: 40
     services:
       db:
         image: postgres:18
@@ -442,6 +448,7 @@ jobs:
     # On a pull request `pr-tests` runs these two files when the change touches them.
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     container:
       image: ghcr.io/cboxdk/php-baseimages/php-cli:8.5-trixie-dev-v2
     services:
@@ -476,6 +483,7 @@ jobs:
 
   image-handoff:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     permissions:
       contents: read
     steps:
