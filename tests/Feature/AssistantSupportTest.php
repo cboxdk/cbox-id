@@ -7,6 +7,8 @@ use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\NativeProduct\NativeProductClient;
 use App\Platform\NativeProduct\NativeProductManifest;
 use Cbox\Id\AccessControl\Contracts\AppManifests;
+use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
@@ -15,6 +17,7 @@ use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use Inertia\Testing\AssertableInertia;
 
 beforeEach(function (): void {
     $this->withoutVite();
@@ -52,6 +55,41 @@ it('binds the embedded support session to the signed-in organization and root su
         ->and($identity->account_id)->toBe($this->workspace->organization->id)
         ->and($identity->service_context->environment)->toBe($this->root->id)
         ->and($response->headers->get('Cache-Control'))->toContain('no-store');
+});
+
+// Help (cbox-ui 0.15) searches and reads articles from Assistant's API in the browser.
+function idSupportConnectSrc(mixed $response): string
+{
+    return collect(explode(';', (string) $response->headers->get('Content-Security-Policy')))
+        ->map(fn (string $part): string => trim($part))->first(fn (string $part): bool => str_starts_with($part, 'connect-src ')) ?? '';
+}
+
+it('admits the Assistant API origin in connect-src on a console page with Help', function (): void {
+    config(['ai-assistant-connector.api_url' => 'https://api.assistant.example/api/v1']);
+    signInAsMember($this->workspace->owner->id);
+
+    expect(idSupportConnectSrc($this->get(route('dashboard'))->assertOk()))
+        ->toContain(' https://api.assistant.example')->not->toContain('/api/v1');
+});
+
+it('keeps the Assistant API out of connect-src on the sign-in page', function (): void {
+    config(['ai-assistant-connector.api_url' => 'https://api.assistant.example/api/v1']);
+
+    expect(idSupportConnectSrc($this->get(route('login'))->assertOk()))->toBe("connect-src 'self'");
+});
+
+it('keeps the Assistant API out of connect-src on the consent page of a member who has Help', function (): void {
+    // The shell prop is built for a signed-in member here, but the consent page does not draw it.
+    config(['ai-assistant-connector.api_url' => 'https://api.assistant.example/api/v1']);
+    signInAsMember($this->workspace->owner->id);
+    $client = app(PlatformRoot::class)->run(fn () => app(ClientRegistry::class)->register(
+        new NewClient('App', redirectUris: ['https://app.test/cb'], organizationId: $this->workspace->organization->id),
+    ))->client->client_id;
+
+    $consent = authorizeRequest(['client_id' => $client, 'redirect_uri' => 'https://app.test/cb', 'scope' => 'openid'])
+        ->assertOk()->assertInertia(fn (AssertableInertia $page) => $page->component('oauth/consent'));
+
+    expect(idSupportConnectSrc($consent))->toBe("connect-src 'self'");
 });
 
 it('executes a signed bridge tool and limits environments to the members current grants', function (): void {

@@ -14,13 +14,24 @@ use Illuminate\Http\Request;
  * route the `<cbox-support>` element fetches its session from; it exists only when support is
  * configured and this person may open it, and without it Help says it is not available here.
  * Read from config and the session only: the browser calls Assistant after first paint.
+ *
+ * Help (cbox-ui 0.15) searches and reads articles from Assistant's API in the browser. When
+ * Help is on, the request is marked ({@see self::ON}), and a page drawn inside the shell
+ * admits the API's origin in `connect-src` ({@see SecurityHeaders}); doors do not.
  */
 final readonly class IdHelpConfig implements HelpConfig
 {
+    /** Request attribute: Help is on for this person on this request. */
+    public const ON = 'cbox.help.on';
+
     public function resolve(Request $request): ShellHelp
     {
         $session = app(SupportContext::class)->sessionUrl($request);
         $portal = config('ai-assistant-connector.support.portal_url');
+
+        if ($session !== null) {
+            $request->attributes->set(self::ON, true);
+        }
 
         return new ShellHelp(
             enabled: $session !== null,

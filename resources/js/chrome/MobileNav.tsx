@@ -112,7 +112,7 @@ export function MobileNav({
                     </Primitive.Title>
 
                     <div className="cbx-sheet-hd">
-                        <span className="cbx-sheet-grab" aria-hidden="true" />
+                        <span className="idc-sheet-grab" aria-hidden="true" />
                         <Primitive.Close
                             className="cbx-sheet-close"
                             aria-label={consoleT('console.close_menu_6ccd5c78')}

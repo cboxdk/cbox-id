@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e90d93d1ee578748b53acfe9d401253e",
+    "content-hash": "42c8842896855b23d5b29cc7bd6ab052",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -434,16 +434,16 @@
         },
         {
             "name": "cboxdk/laravel-assistant-client",
-            "version": "v0.2.1",
+            "version": "v0.2.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-assistant-client.git",
-                "reference": "b24a6a8642cb0ca2f9db9f3a0e5b19cc8e809e6f"
+                "reference": "05b43d91d4262e40e21483f93b715a6471e172f8"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-assistant-client/zipball/b24a6a8642cb0ca2f9db9f3a0e5b19cc8e809e6f",
-                "reference": "b24a6a8642cb0ca2f9db9f3a0e5b19cc8e809e6f",
+                "url": "https://api.github.com/repos/cboxdk/laravel-assistant-client/zipball/05b43d91d4262e40e21483f93b715a6471e172f8",
+                "reference": "05b43d91d4262e40e21483f93b715a6471e172f8",
                 "shasum": ""
             },
             "require": {
@@ -487,9 +487,10 @@
             "description": "Cbox Assistant client for Laravel: signed tools, product support and curated knowledge.",
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-assistant-client/issues",
-                "source": "https://github.com/cboxdk/laravel-assistant-client/tree/v0.2.1"
+                "source": "https://github.com/cboxdk/laravel-assistant-client/tree/v0.2.3"
             },
-            "time": "2026-11-10T17:47:05+00:00"
+            "time": "2026-11-23T14:22:22+00:00",
+            "published-time": "2026-11-23T14:24:19+00:00"
         },
         {
             "name": "cboxdk/laravel-audit-chain",
@@ -15782,5 +15783,5 @@
     "platform-overrides": {
         "php": "8.5.0"
     },
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.11.0"
 }

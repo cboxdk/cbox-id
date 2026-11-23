@@ -6,8 +6,10 @@ namespace App\Http\Middleware;
 
 use App\Platform\Appearance\BrandImages;
 use App\Platform\CspNonce;
+use App\Platform\Locale\HostedTranslations;
 use App\Platform\PlaneResolver;
 use App\Platform\Realtime\LiveUpdates;
+use App\Platform\Shell\IdHelpConfig;
 use App\Platform\Turnstile;
 use Cbox\AiAssistant\Connector\Support\SupportSession;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
@@ -58,6 +60,12 @@ final class SecurityHeaders
         $billing = $request->routeIs('orgs.settings.billing') && (bool) config('billing-client.api_token');
         $turnstile = $this->turnstile->configured();
         $support = config('ai-assistant-connector.support.enabled') === true ? ' '.app(SupportSession::class)->frameOrigin() : '';
+        // Help searches and reads articles from Assistant's API in the browser, so a page drawn
+        // inside the shell with Help on admits the API's origin (it follows `api_url`). A door
+        // (sign-in, sign-up, consent) never does, even when the shell prop was built for it.
+        $helpApi = $support !== '' && $request->attributes->get(IdHelpConfig::ON) === true && app(HostedTranslations::class)->drawsShell()
+            ? ' '.preg_replace('#^(https?://[^/]+).*$#', '$1', app(SupportSession::class)->apiUrl())
+            : '';
 
         // The Vite dev server, and ONLY on a local install that is actually running it.
         // Empty everywhere else, so the deployed policy is byte-for-byte what it was.
@@ -112,7 +120,7 @@ final class SecurityHeaders
                 "font-src 'self' data:",
                 // …plus the dev server's websocket, which is how Fast Refresh reaches the
                 // page. Empty in every environment that is not a local install.
-                "connect-src 'self'".$dev.$devSocket.self::realtimeSocket($request).($billing ? ' https://api.stripe.com https://link.com https://*.link.com' : ''),
+                "connect-src 'self'".$dev.$devSocket.self::realtimeSocket($request).$helpApi.($billing ? ' https://api.stripe.com https://link.com https://*.link.com' : ''),
                 // Turnstile renders its challenge in an iframe from its own origin.
                 // Omitted entirely when Turnstile is off, so default-src 'self' governs.
                 ($turnstile || $billing || $support !== '') ? "frame-src 'self'".$support.($turnstile ? ' '.Turnstile::ORIGIN : '').($billing ? ' https://js.stripe.com https://*.js.stripe.com https://hooks.stripe.com https://link.com https://*.link.com' : '') : null,
