@@ -72,6 +72,12 @@ final class HostedTranslations
         }, 'errors'];
     }
 
+    /** Whether the page marked for this request is drawn inside `CboxShell` (it gets the `shell` catalog). */
+    public function drawsShell(): bool
+    {
+        return in_array('shell', $this->namespaces ?? [], true);
+    }
+
     public function toProps(): ?I18nProps
     {
         if ($this->namespaces === null) {
