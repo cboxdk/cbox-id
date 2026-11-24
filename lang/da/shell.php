@@ -161,7 +161,7 @@ return [
     'where_you_work_trail_eaa8c560' => 'Hvor du arbejder: {trail}',
     'your_apps_13b17cc7' => 'Dine apps',
     'your_conversations_903532e0' => 'Dine samtaler',
-    'move_683a62ce' => 'naviger',
+    'move_683a62ce' => 'flyt',
     'new_tab_f76c8171' => 'ny fane',
     'open_2348f998' => 'åbn',
     'app_home_66db5f18' => '{app} – forside',
