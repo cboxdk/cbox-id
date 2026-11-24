@@ -161,7 +161,7 @@ return [
     'where_you_work_trail_eaa8c560' => 'Hvor du jobber: {trail}',
     'your_apps_13b17cc7' => 'Appene dine',
     'your_conversations_903532e0' => 'Samtalene dine',
-    'move_683a62ce' => 'naviger',
+    'move_683a62ce' => 'flytt',
     'new_tab_f76c8171' => 'ny fane',
     'open_2348f998' => 'åpne',
     'app_home_66db5f18' => '{app} – forside',

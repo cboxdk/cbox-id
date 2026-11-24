@@ -25,7 +25,7 @@ return [
     'article_29d94922' => 'Artikkeli',
     'articles_ask_cbox_chat_with_support_82f3e8a4' => 'Artikkelit, Ask Cbox, tukichat',
     'ask_b8c209cd' => 'Kysy',
-    'ask_cbox_0afc5f8e' => 'Ask Cbox',
+    'ask_cbox_0afc5f8e' => 'Kysy Cboxilta',
     'ask_cbox_query_04d56bef' => 'Ask Cbox: ”{query}”',
     'ask_a_follow_up_281428ab' => 'Esitä jatkokysymys',
     'ask_a_follow_up_b8eb5c8f' => 'Esitä jatkokysymys…',
