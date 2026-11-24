@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "42c8842896855b23d5b29cc7bd6ab052",
+    "content-hash": "227624d3b0c25439926dfbf53e673d91",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -562,16 +562,16 @@
         },
         {
             "name": "cboxdk/laravel-billing-client",
-            "version": "v0.6.0",
+            "version": "v0.6.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-billing-client.git",
-                "reference": "94153b65a350ba325cdc0da612f07633ddd870bd"
+                "reference": "cd652e7e3f566f43bbc74ec9057a10f39edf5d93"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-billing-client/zipball/94153b65a350ba325cdc0da612f07633ddd870bd",
-                "reference": "94153b65a350ba325cdc0da612f07633ddd870bd",
+                "url": "https://api.github.com/repos/cboxdk/laravel-billing-client/zipball/cd652e7e3f566f43bbc74ec9057a10f39edf5d93",
+                "reference": "cd652e7e3f566f43bbc74ec9057a10f39edf5d93",
                 "shasum": ""
             },
             "require": {
@@ -616,9 +616,10 @@
             ],
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-billing-client/issues",
-                "source": "https://github.com/cboxdk/laravel-billing-client/tree/v0.6.0"
+                "source": "https://github.com/cboxdk/laravel-billing-client/tree/v0.6.4"
             },
-            "time": "2026-11-11T13:10:15+00:00"
+            "time": "2026-11-24T13:33:42+00:00",
+            "published-time": "2026-11-24T13:34:00+00:00"
         },
         {
             "name": "cboxdk/laravel-console-kit",
