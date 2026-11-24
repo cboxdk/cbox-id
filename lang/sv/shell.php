@@ -25,7 +25,7 @@ return [
     'article_29d94922' => 'Artikel',
     'articles_ask_cbox_chat_with_support_82f3e8a4' => 'Artiklar, Ask Cbox, chatt med support',
     'ask_b8c209cd' => 'Fråga',
-    'ask_cbox_0afc5f8e' => 'Ask Cbox',
+    'ask_cbox_0afc5f8e' => 'Fråga Cbox',
     'ask_cbox_query_04d56bef' => 'Ask Cbox: ”{query}”',
     'ask_a_follow_up_281428ab' => 'Ställ en följdfråga',
     'ask_a_follow_up_b8eb5c8f' => 'Ställ en följdfråga…',
