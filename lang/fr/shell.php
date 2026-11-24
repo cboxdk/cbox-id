@@ -50,7 +50,7 @@ return [
     'creating_c79ed949' => 'Création…',
     'current_e0d1b682' => 'Actuel',
     'dark_60acc53f' => 'Sombre',
-    'discard_eb1a70e3' => 'Annuler les modifications',
+    'discard_eb1a70e3' => 'Abandonner',
     'discard_this_creation_flow_104b758f' => 'Abandonner cette création ?',
     'discard_thing_faf705b3' => 'Abandonner {thing} ?',
     'expand_area_1a6872d2' => 'Développer {area}',

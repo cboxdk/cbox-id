@@ -50,7 +50,7 @@ return [
     'creating_c79ed949' => 'Skapar…',
     'current_e0d1b682' => 'Nuvarande',
     'dark_60acc53f' => 'Mörkt',
-    'discard_eb1a70e3' => 'Ignorera',
+    'discard_eb1a70e3' => 'Förkasta',
     'discard_this_creation_flow_104b758f' => 'Förkasta hela skapandet?',
     'discard_thing_faf705b3' => 'Förkasta {thing}?',
     'expand_area_1a6872d2' => 'Fäll ut {area}',
