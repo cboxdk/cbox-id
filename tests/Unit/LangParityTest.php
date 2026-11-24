@@ -93,6 +93,12 @@ it('keeps every placeholder and plural form', function (string $locale, string $
         }
         expect($unexpected)->toBe([], "{$locale}: {$key} contains an unexpected alphabet");
 
+        // "Loading…" is "Indlæser…", not "Indlæser...": three full stops read as a typo next
+        // to the shell's own ellipses.
+        if (str_ends_with($line, '…')) {
+            expect($theirs)->not->toEndWith('...', "{$locale}: {$key} ends in three full stops, not \"…\"");
+        }
+
         expect(trim($theirs))->not->toBe('', "{$locale}: {$key} is empty")
             ->and(placeholdersIn($theirs))->toBe(placeholdersIn($line), "{$locale}: {$key} changes its placeholders")
             ->and(substr_count($theirs, '|'))->toBe(
