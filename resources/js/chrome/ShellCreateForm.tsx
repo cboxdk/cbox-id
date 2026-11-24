@@ -1,6 +1,6 @@
 import { CreateField, CreateForm, CreateSubmit, type ShellCreateForm } from '@cboxdk/cbox-ui';
 import { router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ShellCreateFieldSpec } from '@/types';
 
 /** The values a form starts with: each field's default, else empty. */
@@ -47,9 +47,20 @@ export function ShellCreateFormFields({
     url: string;
     fields: ShellCreateFieldSpec[];
 }) {
-    const [values, setValues] = useState(() => initialValues(fields));
+    const [initial] = useState(() => initialValues(fields));
+    const [values, setValues] = useState(initial);
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [busy, setBusy] = useState(false);
+    const dirty = Object.keys(initial).some((name) => values[name] !== initial[name]);
+
+    // The sheet asks "Discard …?" before closing or going back over typed values, and holds
+    // still while the form posts.
+    useEffect(() => {
+        form.setDirty?.(dirty);
+    }, [form, dirty]);
+    useEffect(() => {
+        form.setBusy?.(busy);
+    }, [form, busy]);
 
     return (
         <CreateForm
