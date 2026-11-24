@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SHELL_MESSAGES } from './shell';
@@ -10,10 +10,11 @@ import { SHELL_MESSAGES } from './shell';
  */
 describe('the shell catalogue', () => {
     it('has a line for every word the installed cbox-ui asks for', () => {
-        const bundle = readFileSync(
-            join(process.cwd(), 'node_modules/@cboxdk/cbox-ui/dist/index.js'),
-            'utf8',
-        );
+        const dist = join(process.cwd(), 'node_modules/@cboxdk/cbox-ui/dist');
+        const bundle = readdirSync(dist)
+            .filter((file) => file.endsWith('.js'))
+            .map((file) => readFileSync(join(dist, file), 'utf8'))
+            .join('\n');
         const asked = new Set<string>();
 
         // The bundle writes non-ASCII as \xB7 and \u2026, which JSON does not read.
