@@ -112,6 +112,25 @@ it('works the phone shell: tabs, More, the context sheet, the palette and "+"', 
 
     shellShot($page, "phone-create-{$theme}");
 
+    // An untouched form closes without a question.
+    $page->click('.cbx-create-sheet button[aria-label="Close"]')
+        ->assertMissing('.cbx-create-sheet')
+        ->assertDontSee('Discard');
+
+    // Over a typed value, "Back" asks about this form only, on screen, and "Keep editing"
+    // keeps the value; closing asks about the whole flow, and "Discard" closes.
+    $page->click('button[aria-label="New user"]')
+        ->fill('Email address', 'road.runner@acme.test')
+        ->click('.cbx-create-sheet button[aria-label="Back to Create"]')
+        ->assertSee('Discard user?')
+        ->assertScript('(() => { const r = document.querySelector(".cbx-ui-sheet-title").getBoundingClientRect(); return r.top >= 0 && r.bottom <= window.innerHeight; })()', true)
+        ->click('button:has-text("Keep editing")')
+        ->assertValue('input[type="email"]', 'road.runner@acme.test')
+        ->click('.cbx-create-sheet button[aria-label="Close"]')
+        ->assertSee('Discard this creation flow?')
+        ->click('.cbx-ui-sheet button:has-text("Discard")')
+        ->assertMissing('.cbx-create-sheet');
+
     $page->navigate(envConsole('/users'))->assertVisible('button.cbx-m-pill');
 
     // The context sheet, and a switch to the sandbox from it.

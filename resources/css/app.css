@@ -4,6 +4,8 @@
 @import '@cboxdk/cbox-ui/shell.css' layer(components);
 /* The shell's page navigation (PageTabs: the phone's section chooser), styled apart from shell.css. */
 @import '@cboxdk/cbox-ui/page-tabs.css' layer(components);
+/* The shell's own sheets and controls (the create sheet's "Discard …?" question): `cbx-ui-*` only. */
+@import '@cboxdk/cbox-ui/controls.css' layer(components);
 /* The sign-in surface (AuthLayout) and the error pages: `.auth-*` only. */
 @import './auth.css';
 
