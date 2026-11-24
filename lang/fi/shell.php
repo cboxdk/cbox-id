@@ -161,7 +161,7 @@ return [
     'where_you_work_trail_eaa8c560' => 'Missä työskentelet: {trail}',
     'your_apps_13b17cc7' => 'Omat sovellukset',
     'your_conversations_903532e0' => 'Omat keskustelut',
-    'move_683a62ce' => 'liiku',
+    'move_683a62ce' => 'siirry',
     'new_tab_f76c8171' => 'uusi välilehti',
     'open_2348f998' => 'avaa',
     'app_home_66db5f18' => '{app} – etusivu',
