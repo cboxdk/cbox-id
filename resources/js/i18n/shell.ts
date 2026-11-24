@@ -4,6 +4,8 @@ import type { MessageKey } from './keys';
 
 export const SHELL_MESSAGES: Readonly<Record<string, MessageKey>> = {
     '(locked)': 'shell.locked_f832bb4f',
+    '(optional)': 'shell.optional_0059798b',
+    '(required)': 'shell.required_89db19f6',
     Account: 'shell.account_7e1b0d56',
     'Account and preferences': 'shell.account_and_preferences_e643fe6f',
     Actions: 'shell.actions_ff8059dc',
@@ -32,6 +34,7 @@ export const SHELL_MESSAGES: Readonly<Record<string, MessageKey>> = {
     Close: 'shell.close_7d9eb7ac',
     'Close Help': 'shell.close_help_2bc7ac88',
     'Collapse {area}': 'shell.collapse_area_e7e63674',
+    'Continue the conversation': 'shell.continue_the_conversation_fce45c32',
     "Couldn't load inbox": 'shell.couldn_t_load_inbox_e3bb386d',
     Create: 'shell.create_4759498a',
     'Create and use in {thing}': 'shell.create_and_use_in_thing_e6e13c81',
@@ -41,6 +44,9 @@ export const SHELL_MESSAGES: Readonly<Record<string, MessageKey>> = {
     'Creating…': 'shell.creating_c79ed949',
     Current: 'shell.current_e0d1b682',
     Dark: 'shell.dark_60acc53f',
+    Discard: 'shell.discard_eb1a70e3',
+    'Discard this creation flow?': 'shell.discard_this_creation_flow_104b758f',
+    'Discard {thing}?': 'shell.discard_thing_faf705b3',
     'Expand {area}': 'shell.expand_area_1a6872d2',
     'For this page': 'shell.for_this_page_7cc5376a',
     'For {page}': 'shell.for_page_4c4da7ba',
@@ -59,6 +65,7 @@ export const SHELL_MESSAGES: Readonly<Record<string, MessageKey>> = {
     'Inbox · all caught up': 'shell.inbox_all_caught_up_23472fea',
     'Inbox · {count} unread': 'shell.inbox_count_unread_13b97e0d',
     'It could not be created. Try again.': 'shell.it_could_not_be_created_try_again_0b4e07df',
+    'Keep editing': 'shell.keep_editing_e76fd2ad',
     Language: 'shell.language_a4fe6526',
     Light: 'shell.light_dbcd5e7b',
     'Load failed': 'shell.load_failed_d352597f',
@@ -76,6 +83,8 @@ export const SHELL_MESSAGES: Readonly<Record<string, MessageKey>> = {
     'New {thing}': 'shell.new_thing_e0a2ac4d',
     'New {thing} in {name}': 'shell.new_thing_in_name_a0b033d8',
     'No apps available': 'shell.no_apps_available_47684644',
+    'No articles match. Send it to ask Cbox.':
+        'shell.no_articles_match_send_it_to_ask_cbox_d7c3f67f',
     'No notifications yet': 'shell.no_notifications_yet_37ecf360',
     'No page matches. Search finds records too.':
         'shell.no_page_matches_search_finds_records_too_baace102',
@@ -89,6 +98,8 @@ export const SHELL_MESSAGES: Readonly<Record<string, MessageKey>> = {
     'Now {name}': 'shell.now_name_7949e96a',
     'On this page': 'shell.on_this_page_b5658fc8',
     'On {page}': 'shell.on_page_67000f99',
+    'Only this task is discarded. The task underneath keeps its values.':
+        'shell.only_this_task_is_discarded_the_task_underne_ffd0e51f',
     'Open in new tab ↗': 'shell.open_in_new_tab_891ed2b8',
     'Open the full article': 'shell.open_the_full_article_4744297e',
     Pages: 'shell.pages_9046da16',
@@ -141,6 +152,8 @@ export const SHELL_MESSAGES: Readonly<Record<string, MessageKey>> = {
     'Try again': 'shell.try_again_d8b8392e',
     'Unpin navigation': 'shell.unpin_navigation_5e6e075c',
     Unread: 'shell.unread_1b9f384c',
+    'Unsaved entries in every task will be lost.':
+        'shell.unsaved_entries_in_every_task_will_be_lost_d5c059cf',
     'View all': 'shell.view_all_30a64216',
     'What do you want to create?': 'shell.what_do_you_want_to_create_7be670de',
     'When a Cbox app sends you something — invitation accepted, billing event, security alert — it lands here.':
