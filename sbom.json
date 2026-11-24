@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:9801a8e3-8b26-4ec4-9604-1a2db9529a2e",
+    "serialNumber": "urn:uuid:f8f138ee-da80-474b-afec-2f9b8fa6089c",
     "version": 1,
     "metadata": {
         "tools": [
@@ -149,11 +149,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-billing-client@v0.6.0",
+            "bom-ref": "pkg:composer/cboxdk/laravel-billing-client@v0.6.4",
             "group": "cboxdk",
             "name": "laravel-billing-client",
-            "version": "v0.6.0",
-            "purl": "pkg:composer/cboxdk/laravel-billing-client@v0.6.0",
+            "version": "v0.6.4",
+            "purl": "pkg:composer/cboxdk/laravel-billing-client@v0.6.4",
             "description": "Cbox Billing \u2014 app-local enforcement SDK: leases allowance from a remote Cbox Billing service and enforces hard limits locally on the hot path, buffering and reporting usage in the background.",
             "licenses": [
                 {
