@@ -161,7 +161,7 @@ return [
     'where_you_work_trail_eaa8c560' => 'Dove lavori: {trail}',
     'your_apps_13b17cc7' => 'Le tue app',
     'your_conversations_903532e0' => 'Le tue conversazioni',
-    'move_683a62ce' => 'naviga',
+    'move_683a62ce' => 'sposta',
     'new_tab_f76c8171' => 'nuova scheda',
     'open_2348f998' => 'apri',
     'app_home_66db5f18' => 'Home di {app}',
