@@ -138,6 +138,23 @@ it('serves only the approved generated guides', function (): void {
     $this->get('/ai-assistant/guides/private')->assertNotFound();
 });
 
+it('shows a guide in Danish to a Danish reader and in English to anyone else', function (): void {
+    $this->get('/ai-assistant/guides/id-onboarding', ['Accept-Language' => 'da-DK,da;q=0.9,en;q=0.5'])->assertOk()
+        ->assertSee('<html lang="da"', false)->assertSee('Kom i gang med dine brugere, organisationer og sikkerhed');
+    $this->get('/ai-assistant/guides/id-onboarding', ['Accept-Language' => 'sv'])->assertOk()
+        ->assertSee('<html lang="en"', false)->assertSee('Getting started with your users, organizations and security');
+});
+
+it('publishes a Danish version of every English guide, each with its own file', function (): void {
+    $manifest = require resource_path('assistant/manifest.php');
+    foreach ($manifest as $key => $document) {
+        expect(resource_path('assistant/'.$document['file']))->toBeFile("{$key}: {$document['file']} is missing");
+    }
+    $paths = fn (string $locale): array => collect($manifest)->where('locale', $locale)->pluck('path')->sort()->values()->all();
+    expect($paths('da'))->toBe($paths('en'), 'Every English guide needs a Danish entry with the same path');
+    expect(collect($manifest)->pluck('file')->duplicates()->all())->toBe([]);
+});
+
 it('reads onboarding through the signed bridge without exposing other environments', function (): void {
     [$member, $subject] = addMember($this->workspace->organization->id, MembershipRole::Member, 'onboarding-reader@example.test');
     grantNativeProductRoles($member, ['viewer']);
