@@ -18,6 +18,7 @@ use App\ServiceConnections\ServiceConnection;
 use Cbox\Id\OAuthServer\Exceptions\InvalidClientMetadata;
 use Cbox\Id\OAuthServer\Exceptions\ScopeNotGrantable;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\ValueObjects\ClientBlueprint;
 use Cbox\Id\OAuthServer\ValueObjects\ScopeHolder;
 use Cbox\Id\Organization\Models\Organization;
 
@@ -104,15 +105,25 @@ final class AppFields
             abort_unless($organizationId === $confinedTo, 403);
         }
 
-        // The platform's own realm holds no organization's apps, whoever asks and through
-        // whichever door: see PlatformRealmClients. After the confinement check, so a person
-        // confined to another organization is still answered 403 for that.
-        if (! app(PlatformRealmClients::class)->mayCreate($organizationId)) {
-            throw ActionRefused::because('organization_apps_not_allowed', new ActionMessage(PlatformRealmClients::MESSAGE_KEY), 'organization_id');
-        }
-
         if ($organizationId !== null && Organization::query()->whereKey($organizationId)->doesntExist()) {
             throw ActionRefused::because('organization_not_found', new ActionMessage('console.no_organization_with_that_organization_id_exists_in_thi_5c5c6245'), 'organization_id');
+        }
+    }
+
+    /**
+     * Refuse an organization's app in the platform's own realm unless it is a machine client,
+     * whoever asks and through whichever door: see PlatformRealmClients. Asked once the app
+     * is described, after {@see assertMayOwn()}, so a person confined to another
+     * organization is still answered 403 for that.
+     *
+     * @throws ActionRefused
+     */
+    public static function assertRealmAdmits(?string $organizationId, ClientBlueprint $blueprint): void
+    {
+        $machineOnly = PlatformRealmClients::isMachineOnly($blueprint->type, $blueprint->grantTypes, $blueprint->redirectUris);
+
+        if (! app(PlatformRealmClients::class)->mayCreate($organizationId, $machineOnly)) {
+            throw ActionRefused::because('organization_apps_not_allowed', new ActionMessage(PlatformRealmClients::MESSAGE_KEY), 'organization_id');
         }
     }
 

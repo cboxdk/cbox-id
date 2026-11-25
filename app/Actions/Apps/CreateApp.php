@@ -97,6 +97,8 @@ final readonly class CreateApp implements Action
             throw AppFields::invalid($refused, is_array($document) ? 'blueprint' : 'redirect_uris');
         }
 
+        AppFields::assertRealmAdmits($organizationId, $blueprint);
+
         AppFields::refuseReserved($context, $blueprint->scopes);
 
         $jwks = $this->jwks($context);

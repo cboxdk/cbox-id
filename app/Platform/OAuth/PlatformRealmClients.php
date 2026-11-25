@@ -10,6 +10,7 @@ use App\ServiceConnections\OrganizationConnections;
 use App\ServiceConnections\ServiceConnection;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentResolver;
+use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 use Illuminate\Auth\Access\AuthorizationException;
 
@@ -35,6 +36,13 @@ use Illuminate\Auth\Access\AuthorizationException;
  * A client that registered ITSELF for the platform's `/mcp` (no organization, a
  * registration access token) is not a customer's app and is left to the gate that already
  * confines it to that audience.
+ *
+ * A MACHINE CLIENT is not either. A confidential client whose only grant is
+ * `client_credentials`, with no redirect URI, never shows the sign-in page to anybody: it
+ * signs in as itself, and its token names the organization that owns it. So an organization
+ * may own one here ({@see isMachineOnly()}), which is how an organization's backend calls the
+ * platform's own APIs as itself. It stays machine-only: a change that gives it another grant,
+ * a redirect URI or a public type is refused like any other organization's app.
  *
  * A SERVICE CONNECTION'S CLIENT is not a customer's app either. The platform creates it for
  * an organization when the organization's administrator connects two of the platform's own
@@ -79,10 +87,32 @@ final class PlatformRealmClients
         return $realm !== null && $environmentId === $realm;
     }
 
-    /** Whether a client owned by `$organizationId` may be created here, in the current environment. */
-    public function mayCreate(?string $organizationId): bool
+    /**
+     * Whether a client owned by `$organizationId` may be created here, in the current
+     * environment: anywhere but the platform realm, and there only a machine client.
+     */
+    public function mayCreate(?string $organizationId, bool $machineOnly = false): bool
     {
-        return $organizationId === null || ! $this->governs();
+        return $organizationId === null || $machineOnly || ! $this->governs();
+    }
+
+    /**
+     * A client that only ever acts as itself: confidential, `client_credentials` and no other
+     * grant, no redirect URI. Nobody signs in through it.
+     *
+     * @param  array<array-key, mixed>|null  $grantTypes
+     * @param  array<array-key, mixed>|null  $redirectUris
+     */
+    public static function isMachineOnly(?ClientType $type, ?array $grantTypes, ?array $redirectUris): bool
+    {
+        return $type === ClientType::Confidential
+            && array_values($grantTypes ?? []) === ['client_credentials']
+            && ($redirectUris ?? []) === [];
+    }
+
+    private static function isMachineClient(Client $client): bool
+    {
+        return self::isMachineOnly($client->type, $client->grant_types, $client->redirect_uris);
     }
 
     /** Whether this client may exist, be changed and be served where it lives. */
@@ -90,7 +120,8 @@ final class PlatformRealmClients
     {
         return $client->organization_id === null
             || ! $this->governs($client->environment_id)
-            || $this->isServiceConnection($client->environment_id, $client->client_id);
+            || ($this->isServiceConnection($client->environment_id, $client->client_id)
+                ?? self::isMachineClient($client));
     }
 
     /**
@@ -114,16 +145,27 @@ final class PlatformRealmClients
         }
     }
 
-    /** Whether an unrevoked service connection in `$environmentId` uses `$clientId`. */
-    private function isServiceConnection(string $environmentId, string $clientId): bool
+    /**
+     * Whether a service connection in `$environmentId` uses `$clientId` and is unrevoked;
+     * null when none ever did. A connection's client is admitted by its connection alone,
+     * never as a machine client: it holds scopes the platform granted the connection, so a
+     * row left behind by a revoked connection stays refused.
+     */
+    private function isServiceConnection(string $environmentId, string $clientId): ?bool
     {
-        return $this->environments->withoutScope(
-            static fn (): bool => ServiceConnection::query()
+        $revokedAt = $this->environments->withoutScope(
+            static fn (): array => ServiceConnection::query()
                 ->where('environment_id', $environmentId)
                 ->where('service_client_id', $clientId)
-                ->whereNull('revoked_at')
-                ->exists(),
-        ) === true;
+                ->pluck('revoked_at')
+                ->all(),
+        );
+
+        if ($revokedAt === []) {
+            return null;
+        }
+
+        return in_array(null, $revokedAt, true);
     }
 
     /**
@@ -140,21 +182,23 @@ final class PlatformRealmClients
         }
 
         $theirs = $this->environments->withoutScope(
-            static fn (): bool => Client::query()
+            static fn (): ?Client => Client::query()
                 ->where('environment_id', $realm)
                 ->where('client_id', $clientId)
                 ->whereNotNull('organization_id')
-                ->exists(),
-        ) === true;
+                ->first(),
+        );
 
-        return $theirs && ! $this->isServiceConnection($realm, $clientId);
+        return $theirs instanceof Client
+            && ! ($this->isServiceConnection($realm, $clientId) ?? self::isMachineClient($theirs));
     }
 
     /**
      * The backstop under every door: an organization's client is not written into the
-     * platform realm, and an existing one is not handed to an organization. Deleting one,
-     * and the bookkeeping writes on a row that is already there, are left alone so what
-     * exists can be cleaned up.
+     * platform realm, an existing one is not handed to an organization, and an
+     * organization's machine client is not turned into anything else. Deleting one, and the
+     * bookkeeping writes on a row that is already there, are left alone so what exists can
+     * be cleaned up.
      */
     public static function guard(): void
     {
@@ -163,7 +207,11 @@ final class PlatformRealmClients
                 return;
             }
 
-            if ($client->exists && ! $client->isDirty('organization_id')) {
+            if ($client->exists && ! $client->isDirty(['organization_id', 'type', 'grant_types', 'redirect_uris'])) {
+                return;
+            }
+
+            if (self::isMachineClient($client)) {
                 return;
             }
 
