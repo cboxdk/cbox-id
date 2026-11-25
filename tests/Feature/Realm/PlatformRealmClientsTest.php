@@ -9,6 +9,7 @@ use App\Platform\Actions\ActionRefused;
 use App\Platform\Actions\Principal\Principal;
 use App\Platform\OAuth\PlatformRealmClients;
 use App\ServiceConnections\Contracts\Connections;
+use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\GenericEnvironment;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
@@ -91,7 +92,7 @@ it('refuses to register an organization\'s client in the platform realm, whoever
     ['workspaceId' => $workspaceId] = prcDeployment();
 
     $register = fn (?string $organizationId) => app(PlatformRoot::class)->run(
-        fn () => app(ClientRegistry::class)->register(new NewClient(name: 'Probe', organizationId: $organizationId)),
+        fn () => app(ClientRegistry::class)->register(new NewClient(name: 'Probe', redirectUris: ['https://app.example/cb'], grantTypes: ['authorization_code'], organizationId: $organizationId)),
     );
 
     expect(fn () => $register($workspaceId))->toThrow(AuthorizationException::class);
@@ -168,8 +169,13 @@ it('answers 404 on the real route for such a client', function (): void {
 
     $theirs = prcClientRow($rootId, $workspaceId);
 
-    $this->post('https://cboxid.com/oauth/token', ['grant_type' => 'client_credentials', 'client_id' => $theirs])
+    // At the realm's issuer, its login host: cboxid.com answers 404 for every client.
+    config(['cbox-id.hosts.login' => 'login.cboxid.test', 'cbox-id.issuer' => 'https://login.cboxid.test']);
+    $ours = prcClientRow($rootId, null);
+
+    $this->post('https://login.cboxid.test/oauth/token', ['grant_type' => 'client_credentials', 'client_id' => $theirs])
         ->assertNotFound();
+    expect($this->post('https://login.cboxid.test/oauth/token', ['grant_type' => 'client_credentials', 'client_id' => $ours])->status())->not->toBe(404);
 })->group('security');
 
 it('refuses apps.create for an organization in the platform realm, for the API and MCP alike', function (): void {
@@ -237,13 +243,77 @@ it('creates and serves the client of a service connection, which the platform ma
 
     expect(app(PlatformRealmClients::class)->refusesToServe($lookalike))->toBeTrue()
         ->and(fn () => app(PlatformRoot::class)->run(
-            fn () => app(ClientRegistry::class)->register(new NewClient(name: 'Service connection: cbox_billing', organizationId: $workspaceId)),
+            fn () => app(ClientRegistry::class)->register(new NewClient(name: 'Service connection: cbox_billing', redirectUris: ['https://app.example/cb'], grantTypes: ['authorization_code'], organizationId: $workspaceId)),
         ))->toThrow(AuthorizationException::class);
 
     // Revoked: the client goes with the connection, and a row left behind is not served.
     DB::table('service_connections')->where('id', $connectionId)->update(['revoked_at' => now()]);
 
     expect(app(PlatformRealmClients::class)->refusesToServe($serviceClient))->toBeTrue();
+})->group('security');
+
+it('lets an organization own a machine client in the platform realm, and serves it a token for that organization', function (): void {
+    ['rootId' => $rootId, 'workspaceId' => $workspaceId] = prcDeployment();
+
+    // Through the action every door runs, as a person confined to their organization.
+    $principal = Mockery::mock(Principal::class);
+    $principal->shouldReceive('confinedToOrganization')->andReturn($workspaceId);
+    $principal->shouldReceive('auditActor')->andReturn(AuditActor::user('user_admin'));
+
+    $result = app(PlatformRoot::class)->run(fn () => app(CreateApp::class)->handle(new ActionContext($principal, [
+        'name' => 'Backend job',
+        'type' => 'service',
+        'organization_id' => $workspaceId,
+    ])));
+
+    $client = Client::query()->withoutGlobalScopes()->where('name', 'Backend job')->sole();
+    $secret = $result->value->secret;
+
+    expect($client->organization_id)->toBe($workspaceId)
+        ->and($client->environment_id)->toBe($rootId)
+        ->and(app(PlatformRealmClients::class)->refusesToServe($client->client_id))->toBeFalse()
+        ->and($secret)->toBeString();
+
+    // The platform realm's issuer is its login host, as login.cboxid.com is in production.
+    config(['cbox-id.hosts.login' => 'login.cboxid.test', 'cbox-id.issuer' => 'https://login.cboxid.test']);
+
+    $token = $this->post('https://login.cboxid.test/oauth/token', [
+        'grant_type' => 'client_credentials', 'client_id' => $client->client_id, 'client_secret' => $secret,
+    ])->assertOk()->json('access_token');
+
+    $claims = json_decode((string) base64_decode(strtr(explode('.', $token)[1], '-_', '+/')), true);
+
+    expect($claims['org'])->toBe($workspaceId)
+        ->and($claims['sub'])->toBe($client->client_id);
+})->group('security');
+
+it('refuses to turn an organization\'s machine client in the platform realm into a sign-in app', function (): void {
+    ['workspaceId' => $workspaceId] = prcDeployment();
+
+    $client = app(PlatformRoot::class)->run(
+        fn () => app(ClientRegistry::class)->register(new NewClient(name: 'Machine', organizationId: $workspaceId))->client,
+    );
+
+    foreach ([
+        ['grant_types' => ['client_credentials', 'authorization_code']],
+        ['redirect_uris' => ['https://app.example/cb']],
+        ['type' => ClientType::Public],
+    ] as $change) {
+        app(PlatformRoot::class)->run(function () use ($client, $change): void {
+            $fresh = Client::query()->whereKey($client->getKey())->sole();
+            $fresh->forceFill($change);
+
+            expect(fn () => $fresh->save())->toThrow(AuthorizationException::class);
+        });
+    }
+
+    // The same request as a sign-in app is still refused at the action.
+    $principal = Mockery::mock(Principal::class);
+    $principal->shouldReceive('confinedToOrganization')->andReturn($workspaceId);
+
+    expect(fn () => app(PlatformRoot::class)->run(fn () => app(CreateApp::class)->handle(new ActionContext($principal, [
+        'name' => 'Customer web app', 'type' => 'web', 'redirect_uris' => ['https://app.example/cb'], 'organization_id' => $workspaceId,
+    ]))))->toThrow(ActionRefused::class);
 })->group('security');
 
 it('changes nothing while the rule is off, and nothing on a single-tenant install', function (): void {
