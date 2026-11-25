@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "227624d3b0c25439926dfbf53e673d91",
+    "content-hash": "d9b7263823d43ef3ca38600988dbf622",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -434,16 +434,16 @@
         },
         {
             "name": "cboxdk/laravel-assistant-client",
-            "version": "v0.2.3",
+            "version": "v0.2.4",
             "source": {
                 "type": "git",
                 "url": "https://github.com/cboxdk/laravel-assistant-client.git",
-                "reference": "05b43d91d4262e40e21483f93b715a6471e172f8"
+                "reference": "6b54367638dc24cc0d7db15780b9dbe4c94485be"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/cboxdk/laravel-assistant-client/zipball/05b43d91d4262e40e21483f93b715a6471e172f8",
-                "reference": "05b43d91d4262e40e21483f93b715a6471e172f8",
+                "url": "https://api.github.com/repos/cboxdk/laravel-assistant-client/zipball/6b54367638dc24cc0d7db15780b9dbe4c94485be",
+                "reference": "6b54367638dc24cc0d7db15780b9dbe4c94485be",
                 "shasum": ""
             },
             "require": {
@@ -487,10 +487,10 @@
             "description": "Cbox Assistant client for Laravel: signed tools, product support and curated knowledge.",
             "support": {
                 "issues": "https://github.com/cboxdk/laravel-assistant-client/issues",
-                "source": "https://github.com/cboxdk/laravel-assistant-client/tree/v0.2.3"
+                "source": "https://github.com/cboxdk/laravel-assistant-client/tree/v0.2.4"
             },
-            "time": "2026-11-23T14:22:22+00:00",
-            "published-time": "2026-11-23T14:24:19+00:00"
+            "time": "2026-11-25T09:46:04+00:00",
+            "published-time": "2026-11-25T09:59:57+00:00"
         },
         {
             "name": "cboxdk/laravel-audit-chain",

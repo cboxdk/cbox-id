@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:f8f138ee-da80-474b-afec-2f9b8fa6089c",
+    "serialNumber": "urn:uuid:ce5e5385-86d6-45a9-8ec0-293a2ea47554",
     "version": 1,
     "metadata": {
         "tools": [
@@ -117,11 +117,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/cboxdk/laravel-assistant-client@v0.2.3",
+            "bom-ref": "pkg:composer/cboxdk/laravel-assistant-client@v0.2.4",
             "group": "cboxdk",
             "name": "laravel-assistant-client",
-            "version": "v0.2.3",
-            "purl": "pkg:composer/cboxdk/laravel-assistant-client@v0.2.3",
+            "version": "v0.2.4",
+            "purl": "pkg:composer/cboxdk/laravel-assistant-client@v0.2.4",
             "description": "Cbox Assistant client for Laravel: signed tools, product support and curated knowledge.",
             "licenses": [
                 {

@@ -7,12 +7,14 @@ use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\NativeProduct\NativeProductClient;
 use App\Platform\NativeProduct\NativeProductManifest;
 use Cbox\Id\AccessControl\Contracts\AppManifests;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\TenantProvisioner;
 use Cbox\Id\Platform\ValueObjects\TenantBlueprint;
+use Cbox\Id\UserProperties\Models\PropertyDocument;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Illuminate\Support\Facades\Http;
@@ -56,6 +58,24 @@ it('binds the embedded support session to the signed-in organization and root su
         ->and($identity->service_context->environment)->toBe($this->root->id)
         ->and($response->headers->get('Cache-Control'))->toContain('no-store');
 });
+
+// Help asks Assistant for guides in the language the console is read in: the saved console
+// language first, ahead of the browser's, as `locale.console` resolves it for the page.
+it('asks Help for guides in the console language the person reads', function (?string $saved, string $browser, string $expected): void {
+    signInAsMember($this->workspace->owner->id);
+    app(EnvironmentContext::class)->set($this->root);
+    if ($saved !== null) {
+        PropertyDocument::query()->create(['user_id' => $this->workspace->owner->id, 'namespace' => 'preferences', 'data' => (object) ['language' => $saved], 'version' => 1]);
+    }
+
+    $response = $this->withHeader('Accept-Language', $browser)->getJson('/support/session')->assertOk();
+    parse_str((string) parse_url((string) $response->json('search_url'), PHP_URL_QUERY), $search);
+    parse_str((string) parse_url((string) $response->json('topics_url'), PHP_URL_QUERY), $topics);
+    expect($search['locale'] ?? null)->toBe($expected)->and($topics['locale'] ?? null)->toBe($expected);
+})->with([
+    'Danish saved, English browser' => ['da', 'en', 'da'],
+    'nothing saved, English browser' => [null, 'en', 'en'],
+]);
 
 // Help (cbox-ui 0.15) searches and reads articles from Assistant's API in the browser.
 function idSupportConnectSrc(mixed $response): string
