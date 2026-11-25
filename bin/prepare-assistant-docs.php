@@ -6,6 +6,8 @@ declare(strict_types=1);
 $root = dirname(__DIR__);
 $manifest = require $root.'/resources/assistant/manifest.php';
 $check = in_array('--check', $argv, true);
+// A translation has no source: it is written by hand in resources/assistant.
+$manifest = array_filter($manifest, fn (array $document): bool => isset($document['source']));
 $paths = [];
 foreach ($manifest as $document) {
     $paths[realpath($root.'/'.$document['source'])] = '/'.$document['path'];
