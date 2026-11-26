@@ -162,7 +162,7 @@ it('has no accessibility issues on the ported console pages', function (string $
         // A page that threw during render is a page axe found nothing wrong with.
         ->assertNoJavaScriptErrors();
 })->with([
-    'projects' => ['/projects', 'Projects'],
+    'projects' => ['/projects', 'Identity platforms'],
     'members' => ['/team', 'Team'],
     'orgs.settings.api-keys.organization' => ['/keys/workspace', 'API keys'],
     'webhooks' => ['/webhooks', 'Webhooks'],
