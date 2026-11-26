@@ -472,7 +472,7 @@ final class V1OpenApi
 
         A token is accepted for the audience `https://api.cboxid.com` or `https://app.cboxid.com/mcp`, and, during the transition, an issuer's own `{issuer}/mcp`.
 
-        **Shapes.** A resource is the object itself, with `object` naming what it is. A list is `{"object": "list", "data": […], "has_more": …, "next_cursor": …}`; pass `next_cursor` as `after` for the next page. A failure is an RFC 9457 problem (`application/problem+json`) whose `error` is a stable code and whose `type` links to its explanation; a validation failure adds `errors`, keyed by field. An action that needs a person's approval answers `202` with the approval it waits for (`object: "approval"`) and its `poll_url`.
+        **Shapes.** A resource is the object itself, with `object` naming what it is. A list is `{"object": "list", "data": […], "has_more": …, "next_cursor": …}`; pass `next_cursor` as `after` for the next page. A failure is an RFC 9457 problem (`application/problem+json`) whose `error` is a stable code and whose `type` links to its explanation; a validation failure adds `errors`, keyed by field. An action that needs a person's approval answers `202` with the approval it waits for (`object: "approval"`, id `idapr_…`) and its `poll_url`; once approved, repeat the request with that id in `Cbox-Approval`.
 
         **A child is addressed directly.** `/v1/organization-memberships/{id}` is a member of an organization; the organization is named in the query (`organization_id`). The same holds for invitations, role assignments, portal links and the other children listed below.
 

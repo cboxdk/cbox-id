@@ -48,6 +48,23 @@ it('answers a public id of the wrong kind as a record that is not there', functi
     PublicId::decode('org_'.A_ULID, 'user');
 })->throws(NotFoundHttpException::class);
 
+it('reads a retired prefix as its kind, and writes only the current one', function (): void {
+    expect(PublicId::encode('approval', A_ULID))->toBe('idapr_'.A_ULID)
+        ->and(PublicId::decode('apr_'.A_ULID, 'approval'))->toBe(A_ULID)
+        ->and(PublicId::decode('idapr_'.A_ULID, 'approval'))->toBe(A_ULID)
+        ->and(PublicId::isOf('approval', 'apr_'.A_ULID))->toBeTrue()
+        ->and(PublicIdTree::strip(['approval_id' => 'apr_'.A_ULID]))->toBe(['approval_id' => A_ULID])
+        ->and(PublicIdTree::decode(['approval_id' => 'apr_'.A_ULID]))->toBe(['approval_id' => A_ULID]);
+
+    foreach (PublicId::RETIRED_PREFIXES as $prefix => $kind) {
+        expect(PublicId::PREFIXES)->not->toContain($prefix)->toHaveKey($kind);
+    }
+});
+
+it('answers a retired prefix where another kind belongs as a record that is not there', function (): void {
+    PublicId::decode('apr_'.A_ULID, 'user');
+})->throws(NotFoundHttpException::class);
+
 it('leaves what is not a registered public id for the handler to look up', function (): void {
     expect(PublicId::decode('cid_'.A_ULID, 'user'))->toBe('cid_'.A_ULID)
         ->and(PublicId::decode('zzz_'.A_ULID, 'user'))->toBe('zzz_'.A_ULID)

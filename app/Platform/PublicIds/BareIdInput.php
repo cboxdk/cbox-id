@@ -29,38 +29,67 @@ final class BareIdInput
 {
     public const string METRIC = 'cbox_id_bare_id_input_total';
 
+    /**
+     * Public ids read under a prefix their kind no longer wears ({@see PublicId::RETIRED_PREFIXES}),
+     * on every surface, `/api/v1` too (surface `api`): a caller may poll there with an id `/v1`
+     * gave it. The retired prefix goes on 2027-01-15; this says who to tell first. Labels as
+     * {@see METRIC}'s, plus `prefix`.
+     */
+    public const string RETIRED_PREFIX_METRIC = 'cbox_id_retired_prefix_input_total';
+
     private const string CALLER = 'cbox_id.bare_id_caller';
 
     public static function record(string $kind): void
     {
-        if (! app()->bound('request')) {
+        $at = self::at();
+
+        if ($at === null || $at['surface'] === 'api') {
             return;
+        }
+
+        Telemetry::counter(self::METRIC, 'Bare ULIDs read where a public id belongs, by surface, kind, caller and route.')
+            ->inc(1, ['surface' => $at['surface'], 'kind' => $kind, 'caller_kind' => $at['caller_kind'], 'caller' => $at['caller'], 'route' => $at['route']]);
+    }
+
+    public static function recordRetiredPrefix(string $kind, string $prefix): void
+    {
+        $at = self::at();
+
+        if ($at === null) {
+            return;
+        }
+
+        Telemetry::counter(self::RETIRED_PREFIX_METRIC, 'Public ids read under a retired prefix, by surface, kind, prefix, caller and route.')
+            ->inc(1, ['surface' => $at['surface'], 'kind' => $kind, 'prefix' => $prefix, 'caller_kind' => $at['caller_kind'], 'caller' => $at['caller'], 'route' => $at['route']]);
+    }
+
+    /**
+     * Where the current routed request read the id; null outside one.
+     *
+     * @return array{surface: string, caller_kind: string, caller: string, route: string}|null
+     */
+    private static function at(): ?array
+    {
+        if (! app()->bound('request')) {
+            return null;
         }
 
         $request = app('request');
         $route = $request->route();
 
         if (! $route instanceof Route) {
-            return;
+            return null;
         }
 
         $uri = ltrim($route->uri(), '/');
-
-        if ($uri === 'api' || str_starts_with($uri, 'api/')) {
-            return;
-        }
-
-        $surface = $uri === 'v1' || str_starts_with($uri, 'v1/') ? 'v1' : 'console';
+        $surface = match (true) {
+            $uri === 'api' || str_starts_with($uri, 'api/') => 'api',
+            $uri === 'v1' || str_starts_with($uri, 'v1/') => 'v1',
+            default => 'console',
+        };
         [$callerKind, $caller] = self::caller($request, $surface);
 
-        Telemetry::counter(self::METRIC, 'Bare ULIDs read where a public id belongs, by surface, kind, caller and route.')
-            ->inc(1, [
-                'surface' => $surface,
-                'kind' => $kind,
-                'caller_kind' => $callerKind,
-                'caller' => $caller,
-                'route' => $request->method().' /'.$uri,
-            ]);
+        return ['surface' => $surface, 'caller_kind' => $callerKind, 'caller' => $caller, 'route' => $request->method().' /'.$uri];
     }
 
     /** @return array{0: string, 1: string} */
