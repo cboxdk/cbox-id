@@ -1,7 +1,7 @@
 {
     "bomFormat": "CycloneDX",
     "specVersion": "1.5",
-    "serialNumber": "urn:uuid:b5a704ab-a0da-4616-8ad7-63d8a3718949",
+    "serialNumber": "urn:uuid:23f9c640-a8ef-4e0a-a6d9-3cd9586a5dc2",
     "version": 1,
     "metadata": {
         "tools": [
@@ -565,11 +565,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/egulias/email-validator@4.0.4",
+            "bom-ref": "pkg:composer/egulias/email-validator@4.0.5",
             "group": "egulias",
             "name": "email-validator",
-            "version": "4.0.4",
-            "purl": "pkg:composer/egulias/email-validator@4.0.4",
+            "version": "4.0.5",
+            "purl": "pkg:composer/egulias/email-validator@4.0.5",
             "description": "A library for validating emails against several RFCs",
             "licenses": [
                 {
@@ -1601,11 +1601,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/console@v8.1.11",
+            "bom-ref": "pkg:composer/symfony/console@v8.1.12",
             "group": "symfony",
             "name": "console",
-            "version": "v8.1.11",
-            "purl": "pkg:composer/symfony/console@v8.1.11",
+            "version": "v8.1.12",
+            "purl": "pkg:composer/symfony/console@v8.1.12",
             "description": "Eases the creation of beautiful and testable command line interfaces",
             "licenses": [
                 {
@@ -1697,11 +1697,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/filesystem@v8.1.11",
+            "bom-ref": "pkg:composer/symfony/filesystem@v8.1.12",
             "group": "symfony",
             "name": "filesystem",
-            "version": "v8.1.11",
-            "purl": "pkg:composer/symfony/filesystem@v8.1.11",
+            "version": "v8.1.12",
+            "purl": "pkg:composer/symfony/filesystem@v8.1.12",
             "description": "Provides basic utilities for the filesystem",
             "licenses": [
                 {
@@ -1713,11 +1713,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/finder@v8.1.11",
+            "bom-ref": "pkg:composer/symfony/finder@v8.1.12",
             "group": "symfony",
             "name": "finder",
-            "version": "v8.1.11",
-            "purl": "pkg:composer/symfony/finder@v8.1.11",
+            "version": "v8.1.12",
+            "purl": "pkg:composer/symfony/finder@v8.1.12",
             "description": "Finds files and directories via an intuitive fluent interface",
             "licenses": [
                 {
@@ -1729,11 +1729,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/http-foundation@v8.1.11",
+            "bom-ref": "pkg:composer/symfony/http-foundation@v8.1.12",
             "group": "symfony",
             "name": "http-foundation",
-            "version": "v8.1.11",
-            "purl": "pkg:composer/symfony/http-foundation@v8.1.11",
+            "version": "v8.1.12",
+            "purl": "pkg:composer/symfony/http-foundation@v8.1.12",
             "description": "Defines an object-oriented layer for the HTTP specification",
             "licenses": [
                 {
@@ -1745,11 +1745,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/http-kernel@v8.1.11",
+            "bom-ref": "pkg:composer/symfony/http-kernel@v8.1.12",
             "group": "symfony",
             "name": "http-kernel",
-            "version": "v8.1.11",
-            "purl": "pkg:composer/symfony/http-kernel@v8.1.11",
+            "version": "v8.1.12",
+            "purl": "pkg:composer/symfony/http-kernel@v8.1.12",
             "description": "Provides a structured process for converting a Request into a Response",
             "licenses": [
                 {
@@ -1761,11 +1761,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/intl@v8.1.10",
+            "bom-ref": "pkg:composer/symfony/intl@v8.1.12",
             "group": "symfony",
             "name": "intl",
-            "version": "v8.1.10",
-            "purl": "pkg:composer/symfony/intl@v8.1.10",
+            "version": "v8.1.12",
+            "purl": "pkg:composer/symfony/intl@v8.1.12",
             "description": "Provides access to the localization data of the ICU library",
             "licenses": [
                 {
@@ -1777,11 +1777,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/mailer@v8.1.10",
+            "bom-ref": "pkg:composer/symfony/mailer@v8.1.12",
             "group": "symfony",
             "name": "mailer",
-            "version": "v8.1.10",
-            "purl": "pkg:composer/symfony/mailer@v8.1.10",
+            "version": "v8.1.12",
+            "purl": "pkg:composer/symfony/mailer@v8.1.12",
             "description": "Helps sending emails",
             "licenses": [
                 {
@@ -1793,11 +1793,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/mime@v8.1.10",
+            "bom-ref": "pkg:composer/symfony/mime@v8.1.12",
             "group": "symfony",
             "name": "mime",
-            "version": "v8.1.10",
-            "purl": "pkg:composer/symfony/mime@v8.1.10",
+            "version": "v8.1.12",
+            "purl": "pkg:composer/symfony/mime@v8.1.12",
             "description": "Allows manipulating MIME messages",
             "licenses": [
                 {
@@ -1953,11 +1953,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/polyfill-php85@v1.43.0",
+            "bom-ref": "pkg:composer/symfony/polyfill-php85@v1.44.0",
             "group": "symfony",
             "name": "polyfill-php85",
-            "version": "v1.43.0",
-            "purl": "pkg:composer/symfony/polyfill-php85@v1.43.0",
+            "version": "v1.44.0",
+            "purl": "pkg:composer/symfony/polyfill-php85@v1.44.0",
             "description": "Symfony polyfill backporting some PHP 8.5+ features to lower PHP versions",
             "licenses": [
                 {
@@ -2017,11 +2017,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/process@v8.1.10",
+            "bom-ref": "pkg:composer/symfony/process@v8.1.12",
             "group": "symfony",
             "name": "process",
-            "version": "v8.1.10",
-            "purl": "pkg:composer/symfony/process@v8.1.10",
+            "version": "v8.1.12",
+            "purl": "pkg:composer/symfony/process@v8.1.12",
             "description": "Executes commands in sub-processes",
             "licenses": [
                 {
@@ -2033,11 +2033,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/routing@v8.1.11",
+            "bom-ref": "pkg:composer/symfony/routing@v8.1.12",
             "group": "symfony",
             "name": "routing",
-            "version": "v8.1.11",
-            "purl": "pkg:composer/symfony/routing@v8.1.11",
+            "version": "v8.1.12",
+            "purl": "pkg:composer/symfony/routing@v8.1.12",
             "description": "Maps an HTTP request to a set of configuration variables",
             "licenses": [
                 {
@@ -2065,11 +2065,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/string@v8.1.10",
+            "bom-ref": "pkg:composer/symfony/string@v8.1.12",
             "group": "symfony",
             "name": "string",
-            "version": "v8.1.10",
-            "purl": "pkg:composer/symfony/string@v8.1.10",
+            "version": "v8.1.12",
+            "purl": "pkg:composer/symfony/string@v8.1.12",
             "description": "Provides an object-oriented API to strings and deals with bytes, UTF-8 code points and grapheme clusters in a unified way",
             "licenses": [
                 {
@@ -2081,11 +2081,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/translation@v8.1.11",
+            "bom-ref": "pkg:composer/symfony/translation@v8.1.12",
             "group": "symfony",
             "name": "translation",
-            "version": "v8.1.11",
-            "purl": "pkg:composer/symfony/translation@v8.1.11",
+            "version": "v8.1.12",
+            "purl": "pkg:composer/symfony/translation@v8.1.12",
             "description": "Provides tools to internationalize your application",
             "licenses": [
                 {
@@ -2129,11 +2129,11 @@
         },
         {
             "type": "library",
-            "bom-ref": "pkg:composer/symfony/var-dumper@v8.1.10",
+            "bom-ref": "pkg:composer/symfony/var-dumper@v8.1.12",
             "group": "symfony",
             "name": "var-dumper",
-            "version": "v8.1.10",
-            "purl": "pkg:composer/symfony/var-dumper@v8.1.10",
+            "version": "v8.1.12",
+            "purl": "pkg:composer/symfony/var-dumper@v8.1.12",
             "description": "Provides mechanisms for walking through any arbitrary PHP variable",
             "licenses": [
                 {
