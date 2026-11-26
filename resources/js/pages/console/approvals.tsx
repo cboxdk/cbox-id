@@ -11,6 +11,7 @@ interface Request {
     bindingMessage: string | null;
     selfRegistered: boolean;
     resource: { identifier: string; name: string | null } | null;
+    organization: { id: string; name: string | null } | null;
     scopes: { value: string; label: string }[];
     urls: { approve: string; deny: string };
 }
@@ -108,6 +109,16 @@ function RequestCard({ request }: { request: Request }) {
                         {consoleT('console.confirm_this_matches_your_device_ceb0f1cb')}
                     </p>
                     <p className="mt-1 font-medium">{request.bindingMessage}</p>
+                </div>
+            )}
+
+            {request.organization != null && (
+                <div className="mt-5">
+                    <p className="cbx-page-eyebrow">{consoleT('console.organization_d764d425')}</p>
+                    <p className="mt-1 font-medium">{request.organization.name}</p>
+                    <p className="mt-0.5 text-xs font-mono break-all" style={{ color: 'var(--faint)' }}>
+                        {request.organization.id}
+                    </p>
                 </div>
             )}
 

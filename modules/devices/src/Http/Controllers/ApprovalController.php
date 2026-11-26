@@ -19,6 +19,7 @@ use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Enums\GrantPollStatus;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
+use Cbox\Id\Organization\Contracts\Organizations;
 use DateTimeInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -100,15 +101,10 @@ final class ApprovalController
         $reported = ! $approve && $request->input('reason') === 'not_me';
         $subjectId = $this->subject($request);
 
-        // The organization is taken from the REQUEST's own recorded context, not from
-        // the approver's token. Reading it off the token means a user who belongs to
-        // orgs A and B, whose app happens to hold a token claiming org A, mints the
-        // agent a token scoped to A even when the request came from a client owned by
-        // B. The console has that bug; the app, which has no org switcher at all, would
-        // hit it constantly.
-        $organizationId = $approve
-            ? BackchannelAuthRequest::query()->whereKey($id)->value('organization_id')
-            : null;
+        // The requested binding wins over the handset's ambient organization. Legacy
+        // requests retain their recorded grant context; client ownership is not consent.
+        $approval = $approve ? BackchannelAuthRequest::query()->whereKey($id)->where('user_id', $subjectId)->first() : null;
+        $organizationId = $approval->requested_organization_id ?? $approval?->organization_id;
 
         $settled = $approve
             ? $this->ciba->approve($id, $subjectId, is_string($organizationId) ? $organizationId : null)
@@ -204,7 +200,9 @@ final class ApprovalController
             // What the token will be for (RFC 8707), when the request named it: the
             // operator's name for the resource and, always, its identifier.
             'resource' => $this->resource($approval),
-            'organization_id' => $approval->organization_id,
+            'organization_id' => $approval->requested_organization_id ?? $approval->organization_id,
+            'organization_name' => $approval->requested_organization_id === null ? null
+                : app(Organizations::class)->find($approval->requested_organization_id)?->name,
             'requested_at' => $this->iso($approval->getAttribute('created_at')),
             'expires_at' => $this->iso($approval->getAttribute('expires_at')),
         ];

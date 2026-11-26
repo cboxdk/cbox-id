@@ -6,6 +6,8 @@ namespace App\Platform\Agents;
 
 use Cbox\Id\Devices\Support\DeviceConfig;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
+use Cbox\Id\OAuthServer\Contracts\OrganizationBoundBackchannelAuthentication;
+use Cbox\Id\OAuthServer\Exceptions\CibaAccessDenied;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\AuthorizedGrant;
 use Cbox\Id\OAuthServer\ValueObjects\BackchannelAuthenticationResult;
@@ -22,7 +24,7 @@ use Throwable;
  * The link is the Approvals page on the host that took the request — the issuer the client
  * called, which is the environment the person signs in to.
  */
-final readonly class MailingBackchannelAuthentication implements BackchannelAuthentication
+final readonly class MailingBackchannelAuthentication implements OrganizationBoundBackchannelAuthentication
 {
     public function __construct(
         private BackchannelAuthentication $inner,
@@ -44,6 +46,33 @@ final readonly class MailingBackchannelAuthentication implements BackchannelAuth
     ): BackchannelAuthenticationResult {
         $result = $this->inner->request($client, $scopes, $loginHint, $bindingMessage, $nonce, $requestedExpiry, $resource);
 
+        $this->notify($client, $result);
+
+        return $result;
+    }
+
+    public function requestForOrganization(
+        Client $client,
+        array $scopes,
+        string $loginHint,
+        string $organizationId,
+        ?string $bindingMessage = null,
+        ?string $nonce = null,
+        ?int $requestedExpiry = null,
+        ?string $resource = null,
+    ): BackchannelAuthenticationResult {
+        if (! $this->inner instanceof OrganizationBoundBackchannelAuthentication) {
+            throw new CibaAccessDenied('The decorated service does not support organization binding.');
+        }
+
+        $result = $this->inner->requestForOrganization($client, $scopes, $loginHint, $organizationId, $bindingMessage, $nonce, $requestedExpiry, $resource);
+        $this->notify($client, $result);
+
+        return $result;
+    }
+
+    private function notify(Client $client, BackchannelAuthenticationResult $result): void
+    {
         // Fails open, like the mail itself: the request was filed, and that is the answer.
         try {
             $name = $client->name !== '' ? $client->name : (string) $client->client_id;
@@ -62,7 +91,6 @@ final readonly class MailingBackchannelAuthentication implements BackchannelAuth
             ]);
         }
 
-        return $result;
     }
 
     public function approve(string $requestId, string $subjectId, ?string $organizationId = null): bool

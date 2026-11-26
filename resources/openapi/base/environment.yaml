@@ -3084,7 +3084,8 @@ components:
             properties:
               scope: { type: string }
               label: { type: string, description: 'Human wording, identical to the console.' }
-        organization_id: { type: [string, 'null'] }
+        organization_id: { type: [string, 'null'], description: 'The organization pinned at initiation, or the recorded grant context of a legacy unbound request. Never the handset token organization.' }
+        organization_name: { type: [string, 'null'], description: 'Current name of the pinned organization. Display its id even if its name is unavailable. Null for legacy unbound requests.' }
         requested_at: { type: [string, 'null'], format: date-time }
         expires_at: { type: [string, 'null'], format: date-time }
         status: { type: string, enum: [pending, approved, denied, expired, reported] }
