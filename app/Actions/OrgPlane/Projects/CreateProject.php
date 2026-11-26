@@ -36,7 +36,7 @@ use Illuminate\Support\Facades\DB;
  */
 #[AsAction(
     name: 'projects.create',
-    summary: 'Create a project: another independently-billed IdP product, with its own environment allowance.',
+    summary: 'Create an identity platform: sign-in for another independently-billed product, with its own environment allowance.',
     scope: 'id:projects:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
@@ -45,7 +45,7 @@ use Illuminate\Support\Facades\DB;
     consoleRoutes: ['orgs.projects.store'],
     consoleGate: ConsoleGate::ManageEnvironments,
     schema: 'Project',
-    tag: 'Projects',
+    tag: 'Identity platforms',
 )]
 final readonly class CreateProject implements Action
 {

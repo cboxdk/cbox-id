@@ -103,9 +103,8 @@ The owner can delete the organization under **Settings › Delete organization**
 typing its name and confirming their password. Every member loses access at once and it
 disappears from every list; the records are kept for the audit trail. Apps that signed
 members in to it can no longer refresh their tokens. Apps registered for back-channel
-logout are told to sign those members out. An organization (an
-organization that owns projects) cannot be deleted this way: close its projects under
-Organization › Projects first.
+logout are told to sign those members out. An organization that owns identity platforms
+cannot be deleted this way: close them under Organization › Identity platforms first.
 
 ## Related
 

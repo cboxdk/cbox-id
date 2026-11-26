@@ -35,7 +35,7 @@ hvilket token der når den, og hvor dens MCP-værktøj står.
 | Lag | Sti | Vært | Legitimation | Hvad det dækker |
 |---|---|---|---|---|
 | **Miljø** | `/api/v1/…` | miljøets | en hemmelig nøgle (`cbid_env_…`) eller et token, en person har delegeret | organisationer, brugere, applikationer, API'er, nøgler, login, styring, alt inden for ét miljø |
-| **Organisation** | `/api/v1/workspace/…` | roden | en organisationsnøgle (`cbid_ws_…`) eller et teammedlems token | projekter, miljøer, teamet, nøgler |
+| **Organisation** | `/api/v1/workspace/…` | roden | en organisationsnøgle (`cbid_ws_…`) eller et teammedlems token | identitetsplatforme, miljøer, teamet, nøgler |
 | **Konto** | `/api/v1/me/…` | der, hvor personen logger ind | kun et token, personen har delegeret | én persons egen profil, sessioner, app-tilladelser, personlige nøgler, enheder |
 | **Platform** | `/api/v1/platform/…` | roden | kun en platformoperatørs token | installationen: organisationer, miljøer, operatører |
 

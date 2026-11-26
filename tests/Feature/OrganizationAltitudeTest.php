@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Platform\Billing\PlanOffers;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\EnvironmentConsolePath;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
@@ -10,6 +11,7 @@ use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\PlatformOperators;
+use Cbox\Id\Platform\Models\Project;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -43,19 +45,20 @@ function railOf(string $url): array
         ->all();
 }
 
-it('lands an organization member with one environment on Projects, not inside that environment\'s console', function (): void {
+it('lands an organization member with one environment on its home, not inside that environment\'s console', function (): void {
     ['subjectId' => $subjectId] = aWorkspace();
     signInAsMember($subjectId);
 
     // `/dashboard` is where every sign-in lands. It used to mint a handoff into the one
     // environment, so every sign-in at the account host — Google included — dropped the
     // person into a tenant console they had not asked to open. The console opens when
-    // somebody asks for it: Projects › Open console, the switcher, or a sign-in that
-    // started at that console's own /admin.
-    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('orgs.projects'));
+    // somebody asks for it: Identity platforms › Open console, the switcher, or a sign-in
+    // that started at that console's own /admin. Since 2026-11-25 the landing is the
+    // organization's home, its people first, rather than the list of identity platforms.
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('orgs.overview'));
 })->group('security');
 
-it('lands an organization with several environments on Projects, where each has its own console', function (): void {
+it('lands an organization with several environments on its home, where each has its own console', function (): void {
     ['subjectId' => $subjectId, 'project' => $project] = aWorkspace();
 
     Environment::query()->create([
@@ -65,7 +68,7 @@ it('lands an organization with several environments on Projects, where each has 
 
     signInAsMember($subjectId);
 
-    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('orgs.projects'));
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('orgs.overview'));
 });
 
 it('does not count a suspended environment as somewhere to work', function (): void {
@@ -74,7 +77,7 @@ it('does not count a suspended environment as somewhere to work', function (): v
     $environment->forceFill(['status' => EnvironmentStatus::Suspended])->save();
     signInAsMember($subjectId);
 
-    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('orgs.projects'));
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('orgs.overview'));
 });
 
 it('never hands somebody who may not administer environments to the handoff', function (): void {
@@ -220,4 +223,91 @@ it('sends the environment console\'s account links to the app host\'s own accoun
         ->and($account['switchAccountUrl'])->toBe('/settings/accounts');
 
     $this->get('https://cboxid.com'.$account['profileUrl'])->assertOk();
+});
+
+/**
+ * MOST ORGANIZATIONS ONLY RUN THEIR OWN TEAM. Landing them on a list of identity
+ * platforms they never asked for read as "create a project" being the point of Cbox ID;
+ * the home leads with their people and offers to build sign-in for a product, and the list
+ * joins the rail once there is something in it.
+ */
+it('opens an organization with no identity platform on its home, and adds the list once it creates one', function (): void {
+    ['subjectId' => $subjectId, 'project' => $project, 'environment' => $environment] = aWorkspace();
+    Environment::query()->whereKey($environment->id)->delete();
+    Project::query()->whereKey($project->id)->delete();
+    signInAsMember($subjectId);
+    confirmStepUp();
+
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('orgs.overview'));
+
+    $home = $this->get('https://cboxid.com'.orgPath('/overview'))->assertOk();
+
+    expect($home->inertiaPage()['component'])->toBe('console/orgs/home')
+        ->and($home->inertiaProps('people'))->toBe(1)
+        ->and($home->inertiaProps('platformsHref'))->toBeNull()
+        ->and($home->inertiaProps('createPlatformHref'))->toBe(route('orgs.projects.create'))
+        ->and(railOf('https://cboxid.com'.orgPath('/overview'))['identity-platform'])
+        ->toContain('orgs.overview')->not->toContain('orgs.projects');
+
+    // Created with its production environment, so it is usable when its page opens.
+    $this->post('https://cboxid.com'.orgPath('/projects'), ['name' => 'Ledger'])->assertSessionHasNoErrors();
+    $created = Project::query()->where('name', 'Ledger')->sole();
+    nextRequest();
+
+    expect(Environment::query()->where('project_id', $created->id)->pluck('type')->map(fn ($type) => $type->value)->all())->toBe(['production'])
+        ->and(railOf('https://cboxid.com'.orgPath('/overview'))['identity-platform'])->toContain('orgs.projects');
+});
+
+it('creates an identity platform only on a plan it offered, and sends a paid one to its review', function (): void {
+    ['subjectId' => $subjectId] = aWorkspace();
+    signInAsMember($subjectId);
+    confirmStepUp();
+
+    app()->instance(PlanOffers::class, new class implements PlanOffers
+    {
+        public function forOrganization(string $organizationId): array
+        {
+            return [
+                ['key' => 'id-free', 'name' => 'Free', 'priceMinor' => 0, 'totalMinor' => 0, 'currency' => 'DKK', 'interval' => 'month', 'environments' => 1],
+                ['key' => 'id-pro', 'name' => 'Pro', 'priceMinor' => 49900, 'totalMinor' => 62375, 'currency' => 'DKK', 'interval' => 'month', 'environments' => 3],
+            ];
+        }
+
+        public function reviewUrl(string $projectId, string $plan): ?string
+        {
+            return '/review/'.$projectId.'/'.$plan;
+        }
+    });
+
+    $form = $this->get('https://cboxid.com'.orgPath('/projects/new'))->assertOk();
+    expect($form->inertiaProps('defaultPlan'))->toBe('id-free');
+
+    // A key the form never offered makes nothing.
+    $this->post('https://cboxid.com'.orgPath('/projects'), ['name' => 'Forged', 'plan' => 'id-enterprise'])
+        ->assertSessionHasErrors('plan');
+    expect(Project::query()->where('name', 'Forged')->exists())->toBeFalse();
+
+    // A paid plan is confirmed on Billing's review, after the platform exists.
+    $response = $this->post('https://cboxid.com'.orgPath('/projects'), ['name' => 'Ledger', 'plan' => 'id-pro']);
+    $created = Project::query()->where('name', 'Ledger')->sole();
+    $response->assertRedirect('/review/'.$created->id.'/id-pro');
+
+    // The free one goes straight to its page.
+    $this->post('https://cboxid.com'.orgPath('/projects'), ['name' => 'Notes', 'plan' => 'id-free'])
+        ->assertRedirect(route('orgs.projects.show', Project::query()->where('name', 'Notes')->sole()->id));
+});
+
+it('says inside an environment console whose users these are, with the way back', function (): void {
+    ['subjectId' => $subjectId, 'environment' => $environment, 'organization' => $workspace, 'project' => $project] = aWorkspace();
+
+    serveOnTestHost($environment);
+    app(EnvironmentContext::class)->set(GenericEnvironment::of($environment->id));
+    actAsEnvironmentAdmin($subjectId, $environment->id);
+
+    $frame = $this->get(route('environment.home'))->assertOk()->inertiaProps('shell.environmentFrame');
+
+    expect(array_diff_key($frame, ['backHref' => true]))->toBe([
+        'platform' => $project->name,
+        'organization' => $workspace->name,
+    ])->and($frame['backHref'])->toEndWith('/orgs/'.orgSlug($workspace->id));
 });

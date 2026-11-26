@@ -81,6 +81,7 @@ use App\Http\Controllers\Console\Organization\OrganizationPortalLinkController;
 use App\Http\Controllers\Console\Organization\OrganizationSettingsController;
 use App\Http\Controllers\Console\Organization\OrganizationStandingApprovalsController;
 use App\Http\Controllers\Console\Organization\OrganizationSupportController;
+use App\Http\Controllers\Console\OrganizationHomeController;
 use App\Http\Controllers\Console\OrganizationLookupController;
 use App\Http\Controllers\Console\OrganizationPickerController;
 use App\Http\Controllers\Console\OutboundSyncController;
@@ -1072,6 +1073,8 @@ Route::middleware(['plane:console', EnforceImpersonationWindow::class, 'platform
         // ⌘K's records on an organization page: in the organization the address names, for
         // somebody who administers it. JSON for the shared shell's palette.
         Route::get('/search', ConsoleSearchController::class)->name('search');
+
+        Route::get('/overview', OrganizationHomeController::class)->name('overview');
 
         Route::get('/projects', [ProjectController::class, 'index'])->name('projects');
         Route::get('/projects/new', [ProjectController::class, 'create'])->name('projects.create');

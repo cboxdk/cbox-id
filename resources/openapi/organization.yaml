@@ -6,7 +6,7 @@ info:
   version: 1.0.0
   description: |
     The **organization plane** — the customer's own Cbox account, above every environment it owns. Manage the
-    organization, its **projects** (IdP products, each a billing anchor) and their
+    organization, its **identity platforms** (sign-in products, each a billing anchor) and their
     environments, its team, and its keys with an organization key.
 
     **Scopes.** An organization key carries a ROLE and, optionally, SCOPES. The role bounds
@@ -70,7 +70,7 @@ tags:
   -
     name: Organization
   -
-    name: Projects
+    name: 'Identity platforms'
   -
     name: Environments
   -
@@ -790,7 +790,7 @@ paths:
                   default: production
                 project_id:
                   type: string
-                  description: "The project (billing anchor) to create the environment under. Defaults to the organization's first project when omitted."
+                  description: "The identity platform (billing anchor) to create the environment under. Defaults to the organization's first identity platform when omitted."
                 initial_key:
                   type:
                     - object
@@ -831,7 +831,7 @@ paths:
         403:
           $ref: '#/components/responses/Forbidden'
         404:
-          description: 'No such project in this organization'
+          description: 'No such identity platform in this organization'
           content:
             application/json:
               schema:
@@ -842,7 +842,7 @@ paths:
         409:
           $ref: '#/components/responses/Conflict'
         422:
-          description: "Validation failed, the project's plan limit is reached, or `initial_key` asks for a scope no management key can carry"
+          description: "Validation failed, the identity platform's plan limit is reached, or `initial_key` asks for a scope no management key can carry"
           content:
             application/json:
               schema:
@@ -2066,11 +2066,11 @@ paths:
   /workspace/projects:
     get:
       tags:
-        - Projects
-      summary: 'List projects'
+        - 'Identity platforms'
+      summary: 'List identity platforms'
       operationId: projects_list
       x-action: projects.list
-      description: 'Requires scope `workspace:read` and permission to read environments. Human callers see only projects containing environments they may access; environment counts include only those environments. Billing-only members cannot list projects.'
+      description: 'Requires scope `workspace:read` and permission to read environments. Human callers see only identity platforms containing environments they may access; environment counts include only those environments. Billing-only members cannot list identity platforms.'
       parameters:
         -
           $ref: '#/components/parameters/CboxApproval'
@@ -2116,8 +2116,8 @@ paths:
       x-danger: read
     post:
       tags:
-        - Projects
-      summary: 'Create a project'
+        - 'Identity platforms'
+      summary: 'Create an identity platform'
       description: 'Stand up another independently-billed IdP product. Requires scope `projects:write` and the `manage-environments` capability (`id:write` for human members, or current ownership).'
       operationId: projects_create
       x-action: projects.create
@@ -2150,7 +2150,7 @@ paths:
                   type: integer
                   minimum: 1
                   maximum: 100
-                  description: "Optional lower per-project environment allowance. Defaults to the account's current Billing entitlement and cannot exceed it."
+                  description: "Optional lower environment allowance per identity platform. Defaults to the account's current Billing entitlement and cannot exceed it."
       responses:
         201:
           description: Created
@@ -2182,7 +2182,7 @@ paths:
   /workspace/projects/verification/resend:
     post:
       tags:
-        - Projects
+        - 'Identity platforms'
       summary: "Re-send the signup confirmation the organization's first environment is waiting on, to the owner's address on file."
       description: 'Requires scope `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. Danger: write.'
       operationId: projects_verification_resend
@@ -2237,8 +2237,8 @@ paths:
   '/workspace/projects/{id}':
     delete:
       tags:
-        - Projects
-      summary: 'Delete a project that holds no environments. One that still has environments, or a plan that still renews, is refused.'
+        - 'Identity platforms'
+      summary: 'Delete an identity platform that holds no environments. One that still has environments, or a plan that still renews, is refused.'
       description: 'Requires scope `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. Danger: destructive.'
       operationId: projects_delete
       x-action: projects.delete
@@ -2290,8 +2290,8 @@ paths:
                 $ref: '#/components/schemas/Error'
     patch:
       tags:
-        - Projects
-      summary: 'Rename a project.'
+        - 'Identity platforms'
+      summary: 'Rename an identity platform.'
       description: 'Requires scope `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. Danger: write.'
       operationId: projects_rename
       x-action: projects.rename
@@ -2365,8 +2365,8 @@ paths:
   '/workspace/projects/{id}/reactivate':
     post:
       tags:
-        - Projects
-      summary: 'Reactivate a suspended project, so environments can be added to it again.'
+        - 'Identity platforms'
+      summary: 'Reactivate a suspended identity platform, so environments can be added to it again.'
       description: 'Requires scope `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. Danger: write.'
       operationId: projects_reactivate
       x-action: projects.reactivate
@@ -2428,8 +2428,8 @@ paths:
   '/workspace/projects/{id}/suspend':
     post:
       tags:
-        - Projects
-      summary: 'Suspend a project: its environments stay live, but no new ones can be added until it is reactivated.'
+        - 'Identity platforms'
+      summary: 'Suspend an identity platform: its environments stay live, but no new ones can be added until it is reactivated.'
       description: 'Requires scope `id:projects:write` (until v3.1 also accepted as `projects:write`) and a role that may `manage-environments`. Danger: write.'
       operationId: projects_suspend
       x-action: projects.suspend
@@ -2520,7 +2520,7 @@ components:
         maxLength: 255
   responses:
     AdmissionUnavailable:
-      description: 'Billing admission is unavailable. No project or environment is created; retry later.'
+      description: 'Billing admission is unavailable. No identity platform or environment is created; retry later.'
       content:
         application/json:
           schema:
@@ -2662,7 +2662,7 @@ components:
             - suspended
         environment_limit:
           type: integer
-          description: 'Local per-project ceiling; creating environments also requires sufficient current Billing entitlement.'
+          description: 'Local ceiling per identity platform; creating environments also requires sufficient current Billing entitlement.'
         environments_used:
           type: integer
           description: 'Number of environments visible to the caller.'
@@ -2684,7 +2684,7 @@ components:
           type: string
         project_id:
           type: string
-          description: 'The project (billing anchor) this environment belongs to.'
+          description: 'The identity platform (billing anchor) this environment belongs to.'
         domain:
           type:
             - string

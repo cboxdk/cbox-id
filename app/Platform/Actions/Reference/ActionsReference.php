@@ -322,7 +322,7 @@ final readonly class ActionsReference
     {
         return match ($plane) {
             ActionPlane::Environment => "All {$count} actions inside one environment — organizations, users, apps, APIs, keys, sign-in, governance — with their REST route, scope, danger, MCP tool and CLI command.",
-            ActionPlane::Organization => "All {$count} organization actions — projects, environments, the team and keys — with their REST route, scope, danger, MCP tool and CLI command.",
+            ActionPlane::Organization => "All {$count} organization actions — identity platforms, environments, the team and keys — with their REST route, scope, danger, MCP tool and CLI command.",
             ActionPlane::Account => "All {$count} actions a person runs on their own account — sessions, app grants, personal keys, devices — with their REST route, scope, danger, MCP tool and CLI command.",
             ActionPlane::Platform => "All {$count} platform-operator actions on the deployment itself, with their REST route, scope, danger, MCP tool and CLI command.",
         };
@@ -340,7 +340,9 @@ final readonly class ActionsReference
                 $common,
             ],
             ActionPlane::Organization => [
-                'The organization plane is the customer\'s own Cbox account, above every environment it owns: projects, environments (and their custom domains), the team, organization keys and the keys of each environment. It is served on the platform root and resolves no environment.',
+                'The organization plane is the customer\'s own Cbox account, above every environment it owns: identity platforms, environments (and their custom domains), the team, organization keys and the keys of each environment. It is served on the platform root and resolves no environment.',
+                '',
+                'Identity platforms retain the API resource name `projects`, the `project_id` field, and the `projects.*` action names. The console name changed; routes, scopes, MCP tool names and CLI commands remain compatible.',
                 '',
                 $common,
             ],

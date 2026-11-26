@@ -231,7 +231,7 @@ it('lands a support session on the targets current native access and honors revo
     ])->assertRedirect(route('dashboard'));
     nextRequest();
     useOrganizationInUrls($organization->id);
-    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('orgs.projects'));
+    $this->get('https://cboxid.com/dashboard')->assertRedirect(route('orgs.overview'));
     expect($this->get(route('orgs.projects'))->assertOk()->inertiaProps('impersonation.email'))->toBe($subject->email);
 
     $roles = app(NativeProductMembers::class);

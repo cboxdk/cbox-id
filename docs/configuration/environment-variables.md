@@ -52,7 +52,7 @@ issuer — resolved per request from the host.
 | `CBOX_ID_OPERATORS_RECONFIRM_SECONDS` | With the setting above on: how fresh the passkey proof must be for a destructive or critical action, a step-up page in the root console, or starting an impersonation. | `300` | |
 | `CBOX_ID_OPERATORS_ENROLMENT_LINK_MINUTES` | Default lifetime of a link from `php artisan cbox-id:operator:passkey-link`. | `15` | At most 60. |
 
-Note that a self-serve signup provisions the organization, its owner and its first project
+Note that a self-serve signup provisions the organization, its owner and its first identity platform
 immediately, but its **environment** only once the owner confirms their email address —
 so an unverified signup never stands up a routable IdP. Nothing configures this; it is
 how self-serve signup works. See
@@ -487,7 +487,7 @@ tenant behind that address. Each value is requests **per minute, per credential*
 
 | Variable | What it does | Default | When to change |
 |---|---|---|---|
-| `CBOX_ID_API_RATE_LIMIT_ORGANIZATION` | Budget for the organization plane (`/api/v1/workspace/*`). | `120` | Raise for an organization driving many projects/environments from CI. |
+| `CBOX_ID_API_RATE_LIMIT_ORGANIZATION` | Budget for the organization plane (`/api/v1/workspace/*`). | `120` | Raise for an organization driving many identity platforms/environments from CI. |
 | `CBOX_ID_API_RATE_LIMIT_ENVIRONMENT` | Budget for the environment plane (`/api/v1/organizations`, `/api/v1/users`). | `240` | Raise for bulk provisioning; this is the plane a Terraform/SDK sync hammers. |
 | `CBOX_ID_API_RATE_LIMIT_VAULT` | Budget for the token-vault endpoints. | `120` | Rarely. |
 | `CBOX_ID_API_RATE_LIMIT_APPS` | Budget for the app-manifest push endpoint. | `60` | Rarely — a manifest push is a deploy-time event. |

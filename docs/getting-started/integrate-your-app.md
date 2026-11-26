@@ -17,11 +17,12 @@ that missing step. It takes about two minutes.
 
 ## 1. Sign in to the environment console
 
-Sign in to your organization. If it has exactly one environment you may administer, you
-land in that environment's console straight away; otherwise open **Projects** and choose
+Sign in to your organization. From its **Overview**, open **Identity platforms** and choose
 **Open console** beside the environment. The environment console is `/admin` on the
 environment's own host, `https://<environment>.cboxauth.com/admin`. If you have not created
-an environment yet, sign up at cboxid.com (or, self-hosting, follow the [self-hosting quickstart](../self-hosting/quickstart.md)) first.
+an identity platform yet, choose **Create an identity platform** on **Overview**, enter
+your product's name and choose a plan. For a self-hosted install, follow the
+[self-hosting quickstart](../self-hosting/quickstart.md) first.
 
 Hosted environments live under `cboxid.com`, one subdomain per environment. If you run
 Cbox ID yourself, substitute your own host everywhere this page writes

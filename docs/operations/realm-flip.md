@@ -7,7 +7,7 @@ description: The one-time data migration that makes the cbox environment the pla
 # The realm flip
 
 A deployment that grew a platform root **and** a `cbox` environment holds each customer
-twice: an organization and a person in the root (projects, keys, billing, the team), and
+twice: an organization and a person in the root (identity platforms, keys, billing, the team), and
 again in `cbox` (every Cbox app). `organization_links` joins the two.
 `php artisan cbox-id:realm:flip` makes the `cbox` environment the platform root and
 retires the old one. The organization and the person that survive are the `cbox` ones,
@@ -51,9 +51,9 @@ The dry run lists each of these and exits non-zero:
 
 - There is not exactly one default environment, or no environment has the configured
   `cbox` slug (`CBOX_ID_CBOX_ENVIRONMENT`).
-- A root organization that owns projects, keys, billing rows, connections or domains has
+- A root organization that owns identity platforms, keys, billing rows, connections or domains has
   no link. Link it with `php artisan orgs:link`, or pass `--create-missing`. There is no
-  "skip": an organization that owns a project cannot be dropped, because its
+  "skip": an organization that owns an identity platform cannot be dropped, because its
   environments would stop being served.
 - A member of a surviving organization, or a platform operator, has no `cbox` account.
   A person is matched by linked `sub` first (the identity the root signed in through),

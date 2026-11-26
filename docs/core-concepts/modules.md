@@ -11,7 +11,7 @@ Seven capability areas live under `modules/` rather than in `app/`:
 | Module | Console area | What it adds |
 | --- | --- | --- |
 | `analytics` | Overview → Sign-in activity (`/sign-in-activity`) | Authentication activity dashboards over a pluggable event store. See [Analytics storage](../operations/analytics.md). |
-| `billing` | Organization → Billing | The organization's usage rollup and its per-project plan allowances. Off switches the page and its route off entirely — a deployment that does not bill carries no billing surface. Set `CBOX_BILLING_ENABLED=false`. |
+| `billing` | Organization → Billing | The organization's usage rollup and its plan allowances per identity platform. Off switches the page and its route off entirely — a deployment that does not bill carries no billing surface. Set `CBOX_BILLING_ENABLED=false`. |
 | `compliance` | Logs → Audit trail, Exports & retention | Audit-trail export to a JSONL bundle or a SIEM endpoint, chain verification, retention, and a data-subject export. |
 | `connectors` | Connectors → Catalog, Connections | One catalog and connections view over outbound SCIM provisioning, webhooks, inbound directory sync and upstream IdP federation. |
 | `devices` | Sign-in → Trusted devices (`/trusted-devices`; Authentication in an environment console), and Account → Trusted devices | A phone as an authenticator: approval pushes on the CIBA path, security alerts, and the REST surface the app talks to. Off by default. See [Trusted devices](../guides/trusted-devices.md). |
@@ -20,8 +20,8 @@ Seven capability areas live under `modules/` rather than in `app/`:
 
 **All seven are always present.** There is nothing to license, unlock or install — but
 several can be switched off, and off means *absent*: no route, no nav entry, no page. A
-member who may not read billing is redirected to Projects by the page itself; a
-deployment with `billing` switched off has no `/billing` to redirect from. Those are
+member who may not read billing is refused by the page itself; a
+deployment with `billing` switched off has no `/billing` at all. Those are
 different questions and the module asks both.
 
 ## Why they are modules and not just `app/` code

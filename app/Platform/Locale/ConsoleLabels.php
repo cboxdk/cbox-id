@@ -70,7 +70,7 @@ final class ConsoleLabels
         'Permissions' => 'console.permissions_abccc78c',
         'Pipes' => 'console.pipes_685afe34',
         'Platform' => 'console.platform_c78ffe19',
-        'Projects' => 'console.projects_04e2a972',
+        'Identity platforms' => 'console.projects_04e2a972',
         'Publishable keys' => 'console.publishable_keys_67713eb6',
         'Queues' => 'console.queues_be77db11',
         'Radar' => 'console.radar_524f8327',

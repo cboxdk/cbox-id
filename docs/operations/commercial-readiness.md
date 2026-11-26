@@ -23,16 +23,16 @@ CBOX_ID_PRODUCT_BILLING_TOKEN=<product-admission credential>
 
 Run migrations, `php artisan id:native-product:sync`, then `php artisan billing:sync-definitions`. A failure stops release. These commands synchronize definitions only. Grant early access, app roles and product features manually in their authoritative services. The current Owner is resolved from live ID ownership; a shared organization Admin does not acquire native product Admin.
 
-Run `php artisan cbox-id:doctor` under the actual production configuration. Its Billing check verifies the required URL and credential settings, not remote grants or payment functionality. Verify those separately with disposable accounts. Missing or unavailable central admission/feature decisions fail closed; no cached local plan or subscription projection authorizes a new project or environment. Identity authentication and personal account recovery remain separate from paid product access.
+Run `php artisan cbox-id:doctor` under the actual production configuration. Its Billing check verifies the required URL and credential settings, not remote grants or payment functionality. Verify those separately with disposable accounts. Missing or unavailable central admission/feature decisions fail closed; no cached local plan or subscription projection authorizes a new identity platform or environment. Identity authentication and personal account recovery remain separate from paid product access.
 
-Environment creation checks the current central allowance inside the project transaction. A project can impose a lower limit, but cannot raise the central ceiling. The app does not run `billing:sync-catalog` or apply subscription webhooks to local access grants. Definition sync, financial changes and access assignment remain distinct operations.
+Environment creation checks the current central allowance inside the identity platform transaction. An identity platform can impose a lower limit, but cannot raise the central ceiling. The app does not run `billing:sync-catalog` or apply subscription webhooks to local access grants. Definition sync, financial changes and access assignment remain distinct operations.
 
 ## Payment and access acceptance in staging
 
 Use Billing's sandbox/test gateway and disposable accounts. Never put real card details into fixtures.
 
 1. Sign up and verify email. Confirm waitlisted users cannot enter the native product. Manually admit the exact organization, then explicitly assign the required product roles and feature grants.
-2. Verify a Billing-only member can read financial information without receiving operational project data. Reader must not edit invoices or cards; Editor must not acquire Billing or member-management rights.
+2. Verify a Billing-only member can read financial information without receiving operational identity platform data. Reader must not edit invoices or cards; Editor must not acquire Billing or member-management rights.
 3. Save invoice details, including country and VAT number. Reload and verify persistence in central Billing. Test English, Danish and phone width.
 4. Add a test card through the provider element; exercise 3-D Secure and its return path. Set another card as default, then remove the old card. Card setup performs a full document navigation so the billing-specific CSP is installed. The app never receives raw card data.
 5. Revoke admission, app roles or feature grants, then repeat a request and queued human action. Confirm refusal without changing shared membership or another app's assignments. Repeat with a second organization and foreign row IDs.

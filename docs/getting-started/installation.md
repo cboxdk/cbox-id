@@ -50,7 +50,7 @@ generates one), the deployment shape, and the public issuer URL. Then it:
    never overwriting a value that is already there;
 5. creates the platform-root environment and stamps it `is_default`;
 6. creates the first platform operator;
-7. in the multi-tenant shape, creates the first organization, its project and its own
+7. in the multi-tenant shape, creates the first organization, its identity platform and its own
    environment;
 8. mints the signing key, so the JWKS answers on the first request;
 9. runs `cbox-id:doctor` and fails if the deployment it just built is unhealthy.
@@ -143,7 +143,7 @@ Cbox ID has three layers, top to bottom:
    and audit trail. Org admins and members sign in at `/login`.
 
 In the multi-tenant shape an **organization** sits between the operator and the
-environments: the customer of Cbox that owns projects and environments. See
+environments: the customer of Cbox that owns identity platforms and environments. See
 [Organizations & customers](../core-concepts/organizations-and-customers.md).
 
 The install creates the first two. Enrol a passkey or TOTP factor on the operator

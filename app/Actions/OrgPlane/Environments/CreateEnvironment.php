@@ -50,7 +50,7 @@ use Illuminate\Support\Facades\DB;
  */
 #[AsAction(
     name: 'environments.create',
-    summary: 'Create an environment under one of the organization\'s projects; with `initial_key`, also mint its first management key, returned once as `initial_key.token`.',
+    summary: 'Create an environment under one of the organization\'s identity platforms; with `initial_key`, also mint its first management key, returned once as `initial_key.token`.',
     scope: 'id:environments:write',
     danger: Danger::Critical,
     plane: ActionPlane::Organization,
@@ -75,7 +75,7 @@ final readonly class CreateEnvironment implements Action
         return InputSchema::of([
             Field::string('name')->required()->max(120),
             Field::string('type')->oneOf(array_map(static fn (EnvironmentType $type): string => $type->value, EnvironmentType::cases()))->describe('Default `production`.'),
-            Field::string('project_id')->max(64)->describe('The project (billing anchor) to create it under. Defaults to the organization\'s first project.'),
+            Field::string('project_id')->max(64)->describe('The identity platform (billing anchor) to create it under. Defaults to the organization\'s first identity platform.'),
             Field::object('initial_key', [
                 Field::string('name')->required()->max(120),
                 Field::list('scopes', Field::string('scope')->max(64))->required()->min(1)->max(64)->describe('The environment-key scopes it carries, for example `apis:write`.'),

@@ -24,6 +24,7 @@ environment.
 > The console calls that customer of Cbox an **organization** (a *workspace* before v3), and "account" below is
 > the older name for it. See
 > [Organizations & customers](organizations-and-customers.md).
+> The historical term "project" below is now **identity platform** in the console.
 
 ## The problem this solves
 

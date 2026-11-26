@@ -336,6 +336,11 @@ export type ConsoleShell = CboxShellProp & {
     section?: string | null;
     /** The create sheet's forms, by creatable key: where each posts and its fields. */
     createForms?: Record<string, { url: string; fields: ShellCreateFieldSpec[] }>;
+    /**
+     * Inside a customer environment's console: the identity platform it belongs to, its
+     * organization, and the way back there (`App\Platform\Shell\IdShell::environmentFrame()`).
+     */
+    environmentFrame?: { platform: string; organization: string; backHref: string } | null;
 };
 
 /**

@@ -24,7 +24,7 @@ you signed in and what you administer:
 
 | Console | Where | Who it is for |
 |---|---|---|
-| **Organization console** | The platform root host of a hosted deployment | Your own Cbox organization: projects, team, keys, billing |
+| **Organization console** | The platform root host of a hosted deployment | Your own Cbox organization: identity platforms, team, keys, billing |
 | **Customer organization console** | A single-tenant install; a customer's environment host only shows the person's own pages unless the deployment turns the customer console on | One organization: on a single-tenant install everything, apps included |
 | **Environment console** | `/admin` on an environment's own host | One environment: every organization in it, their users, and the product's apps, hooks and settings |
 
@@ -61,11 +61,11 @@ Where you are on the left, search and your account on the right:
 Acme ▾  /  Checkout ▾  /  Production ▾ [PRODUCTION]  /  All organizations ▾      Go to… ⌘K   (avatar)
 ```
 
-- **Organization ▾ / Project ▾ / Environment ▾** is one context switcher, the same on every
+- **Organization ▾ / Identity platform ▾ / Environment ▾** is one context switcher, the same on every
   console. Choosing another environment opens the same page there. The badge names the
   environment's type in words. On the organization console no environment is current, so
   the second crumb is **Environments ▾**, every environment you may open grouped by
-  project. [Organizations &
+  identity platform. [Organizations &
   customers](../core-concepts/organizations-and-customers.md#moving-between-them)
   describes each menu.
 - **All organizations ▾** (environment console only) filters every page to one of your
@@ -136,22 +136,34 @@ withhold it.
 What an organization member sees at the platform root of a hosted deployment. The rail is the
 organization and nothing else:
 
-- **Organization:** Projects, Team, Keys, Environment domains, Billing, Organization settings.
+- **Organization:** Overview, Identity platforms (once the organization owns one), Team,
+  Keys, Environment domains, Billing, Organization settings.
 - **Team sign-in:** Enterprise SSO, Authentication policy. How your own team signs in to
   Cbox, not how your product's users sign in.
 - **Logs:** Audit log.
 - **Account:** Security, Sessions & activity.
 
-There is no Overview page and no setup guide here. The pages that administer end users
+**Overview** is the organization's home (`/orgs/{org}/overview`), not an environment's
+Overview, and there is no setup guide here. The pages that administer end users
 (roles, apps, webhooks and the rest) are hidden from this rail and still reachable by
 URL, with a notice that says the page manages the organization's own record in Cbox, not
 your product. [Organizations &
 customers](../core-concepts/organizations-and-customers.md#the-organization-console)
 explains why they are hidden rather than redirected.
 
-After signing in, a member lands on **Projects**, where each environment has **Open
-console**. **Sign out** on any console signs you out of every console that sign-in
-opened, and lands on **You're signed out**. It does not sign out a tenant's own users on
+After signing in, a member lands on **Overview**: the number of people (a link to
+**Team**), shortcuts to **Team sign-in**, **Plan and billing** and **Activity** (the audit
+log), and, for a member who may create one, a card **Build sign-in for your own product**
+with **Create an identity platform**. An identity platform is sign-in for one of your own
+products: its users, sign-in page, environments and plan. **New identity platform** asks
+for the product's name and, where the deployment offers plans, a plan (the cheapest is
+preselected, with prices shown). Before creating anything, it asks you to confirm it is
+you if your session needs a fresh confirmation. Its production environment is created
+with it, and a paid plan is then reviewed with tax and confirmed under **Billing**.
+Under **Identity platforms** each environment has **Open console**.
+
+**Sign out** on any console signs you out of every console that sign-in opened, and lands
+on **You're signed out**. It does not sign out a tenant's own users on
 the same host.
 
 ## The customer organization console, area by area
@@ -307,9 +319,13 @@ It has no Account area. Your own password, passkeys and sessions belong to your
 organization, so **Account** and **Switch account** in the account menu open on the
 organization host.
 
-The topbar reads `<Organization> ▾ / <Project> ▾ / <Environment> ▾ [badge] / <acting
-organization> ▾`. The organization crumb goes back to the organization's Projects page; the
-environment crumb opens the same page in another environment.
+The topbar reads `<Organization> ▾ / <Identity platform> ▾ / <Environment> ▾ [badge] / <acting
+organization> ▾`. The organization crumb goes back to the organization's home (**Overview**);
+the environment crumb opens the same page in another environment.
+
+A note above every page says *You are managing the people who sign in to &lt;platform&gt;,
+your product. Your own team is not here.*, with **Back to &lt;organization&gt;**, which
+opens the organization's home (**Overview**).
 
 ## Chrome
 
@@ -318,9 +334,9 @@ environment crumb opens the same page in another environment.
 A signed-in user who belongs to several organizations or customer organizations switches from the
 first crumb of the topbar. The switch is server-verified against membership (you can only
 switch into one you actually belong to) and the role updates with it. The security model
-is described in [Security](../security/_index.md#organization-switcher). The project and
-environment crumbs list only the environments you may administer, and open them through
-the same signed handoff as **Open console** on Projects.
+is described in [Security](../security/_index.md#organization-switcher). The identity
+platform and environment crumbs list only the environments you may administer, and open
+them through the same signed handoff as **Open console** on Identity platforms.
 
 The environment console has a second, unrelated picker after it: which organization the
 console is **acting on**. It is a search rather than a list, because an environment with

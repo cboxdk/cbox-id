@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { router } from '@inertiajs/react';
 import { billingMoney } from '@/lib/billing';
 import { Button, Dialog, Panel } from '@/ui';
@@ -66,6 +66,18 @@ export default function ProjectPayments({
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const [notice, setNotice] = useState('');
+    // `?review={project}&plan={key}`: a platform just created on a paid plan. Its price review
+    // opens at once, so the plan chosen on the create form is confirmed here with tax.
+    const reviewed = useRef(false);
+    useEffect(() => {
+        if (reviewed.current || !canManage) return;
+        reviewed.current = true;
+        const query = new URLSearchParams(window.location.search);
+        const p = projects.find((candidate) => candidate.id === query.get('review'));
+        const plan = plans.find((candidate) => candidate.key === query.get('plan'));
+        if (p && plan && !p.subscription) void review(p, 'plan', plan);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     const money = (amount: number, currency: string) => billingMoney(amount, currency, locale);
     async function post<T>(url: string, body: object): Promise<T> {
         const response = await fetch(url, {

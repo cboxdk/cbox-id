@@ -196,7 +196,7 @@ it('sends / to the organization this browser used last, remembered by a cookie a
     nextRequest();
     $this->withCookie(LastUsedOrganization::COOKIE, 'somebody-elses')
         ->get($app.'/dashboard')
-        ->assertRedirect($app.'/orgs/'.$firstSlug.'/projects');
+        ->assertRedirect($app.'/orgs/'.$firstSlug.'/overview');
 });
 
 it('switches organization on the same page, or that page\'s list for a record', function (): void {

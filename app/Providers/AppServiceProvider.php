@@ -19,7 +19,9 @@ use App\Platform\Actions\Principal\OAuthDelegatedTokens;
 use App\Platform\Agents\ApprovalMail;
 use App\Platform\Agents\MailingBackchannelAuthentication;
 use App\Platform\AuthoritativeDnsResolver;
+use App\Platform\Billing\NoPlanOffers;
 use App\Platform\Billing\NoProjectSubscriptions;
+use App\Platform\Billing\PlanOffers;
 use App\Platform\Billing\ProjectSubscriptions;
 use App\Platform\ClaimingPasswordReset;
 use App\Platform\Connect\ActionSnippets;
@@ -108,6 +110,7 @@ class AppServiceProvider extends ServiceProvider
         // A deployment without the billing module has no per-project plans; the module
         // binds its own answer over this one.
         $this->app->bindIf(ProjectSubscriptions::class, NoProjectSubscriptions::class);
+        $this->app->bindIf(PlanOffers::class, NoPlanOffers::class);
 
         // Where a phone approval was asked from — city, country, browser, the app being
         // signed in to — and the approver's language, for the push and the approvals API.

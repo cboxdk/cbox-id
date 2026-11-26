@@ -276,7 +276,7 @@ it('rechecks the login identity when returning to an already signed-in console',
         ->and(session(PlatformAuth::SESSION_KEY))->not->toBe($previous)
         ->and(session(PlatformAuth::ORG_KEY))->toBe($other['organization']->id);
     $this->get('https://'.RP_APP.'/dashboard')
-        ->assertRedirect('https://'.RP_APP.'/orgs/'.$other['organization']->slug.'/projects');
+        ->assertRedirect('https://'.RP_APP.'/orgs/'.$other['organization']->slug.'/overview');
     $this->get($realm['console'].'/users')->assertNotFound();
 })->with(['verified', 'cancelled', 'forged'])->group('security');
 

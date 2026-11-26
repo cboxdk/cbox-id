@@ -110,7 +110,7 @@ final class ConsoleSynonyms
         'dashboard' => ['home', 'overview'],
         'account' => ['profile', 'my password', 'my passkeys', 'my MFA', 'security'],
         'account.activity' => ['my sessions', 'sign out everywhere', 'devices'],
-        'orgs.projects' => ['environments', 'production', 'sandbox', 'new environment'],
+        'orgs.projects' => ['projects', 'identity provider', 'idp', 'environments', 'production', 'sandbox', 'new environment'],
         'orgs.settings.members' => ['team', 'teammates', 'invite', 'colleagues'],
         'orgs.environment-domains' => ['custom domain', 'CNAME', 'vanity domain', 'auth domain'],
         'orgs.settings' => ['organization name', 'delete organization'],

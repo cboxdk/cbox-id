@@ -45,7 +45,7 @@ use Throwable;
  */
 #[AsAction(
     name: 'projects.delete',
-    summary: 'Delete a project that holds no environments. One that still has environments, or a plan that still renews, is refused.',
+    summary: 'Delete an identity platform that holds no environments. One that still has environments, or a plan that still renews, is refused.',
     scope: 'id:projects:write',
     danger: Danger::Destructive,
     plane: ActionPlane::Organization,
@@ -53,7 +53,7 @@ use Throwable;
     status: 204,
     consoleRoutes: ['orgs.projects.destroy'],
     consoleGate: ConsoleGate::ManageEnvironments,
-    tag: 'Projects',
+    tag: 'Identity platforms',
 )]
 final readonly class DeleteProject implements Action
 {

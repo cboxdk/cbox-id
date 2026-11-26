@@ -645,7 +645,7 @@ Export an app's configuration as a blueprint — no client id, secret, key set o
 
 ### <a id="apps.copy"></a>apps.copy
 
-Copy an app into another environment of this project, with a new client id and secret there. A person on the environment console only; a key exports the blueprint instead.
+Copy an app into another environment of this identity platform, with a new client id and secret there. A person on the environment console only; a key exports the blueprint instead.
 
 | | |
 |---|---|
@@ -659,7 +659,7 @@ Copy an app into another environment of this project, with a new client id and s
 | Input | Type | Required | Description |
 |---|---|---|---|
 | `id` | string (path) | yes | The app's id, or its `client_id`. |
-| `environment_id` | string | yes | The environment to copy into: another environment of this project. At most 64 characters. |
+| `environment_id` | string | yes | The environment to copy into: another environment of this identity platform. At most 64 characters. |
 | `name` | string | yes | What to call the copy there. At least 1 characters. At most 190 characters. |
 | `redirect_uris` | list of string | no | Its redirect URIs there — staging's callback is rarely production's. Left out, none. At most 50 items. |
 

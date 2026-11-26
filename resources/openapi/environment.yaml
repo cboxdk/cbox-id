@@ -2785,7 +2785,7 @@ paths:
     post:
       tags:
         - Applications
-      summary: 'Copy an app into another environment of this project, with a new client id and secret there. A person on the environment console only; a key exports the blueprint instead.'
+      summary: 'Copy an app into another environment of this identity platform, with a new client id and secret there. A person on the environment console only; a key exports the blueprint instead.'
       description: 'Requires scope `apps:write`. Danger: critical.'
       operationId: apps_copy
       x-action: apps.copy
@@ -2828,7 +2828,7 @@ paths:
               properties:
                 environment_id:
                   type: string
-                  description: 'The environment to copy into: another environment of this project.'
+                  description: 'The environment to copy into: another environment of this identity platform.'
                   maxLength: 64
                 name:
                   type: string

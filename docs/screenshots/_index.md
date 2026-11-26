@@ -14,7 +14,7 @@ referenced by other pages, not standalone reading — start from the
 
 Every picture here is taken from the running app by `tests/Browser/DocsScreenshotsTest.php`,
 over the demo world `database/seeders/DemoEnvironmentSeeder.php` builds: the organization
-**Lovelace Labs** (owner Ada Lovelace), its project **Ledger** and environment of the same
+**Lovelace Labs** (owner Ada Lovelace), its identity platform **Ledger** and environment of the same
 name, four apps, the customer organizations Acme Corp (Enterprise SSO and a verified
 domain), Globex (Directory Sync) and Initech, agents with approvals waiting, audit events, a
 webhook and a log stream. Light theme, 1440×900, viewport only.
@@ -50,7 +50,7 @@ page it illustrates, and add its row here.
 | --- | --- |
 | `hosted-sign-in.png` | An environment's hosted sign-in page (`/login` on its host) |
 | `workspace-sign-up.png` | Organization sign-up on the account host (`/signup`) |
-| `workspace-projects.png` | Organization › Projects (`/projects`, account host) |
+| `workspace-projects.png` | Organization › Identity platforms (`/projects`, account host) |
 | `environment-overview.png` | Environment console › Home › Overview (`/admin`) |
 | `get-started.png` | Home › Get started (`/admin/get-started`) |
 | `context-switcher.png` | The topbar's environment switcher, open |

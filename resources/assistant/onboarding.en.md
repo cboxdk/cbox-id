@@ -8,7 +8,7 @@ During early access, product admission may still require an invitation.
 
 ## Your team and your customers are different scopes
 
-Your **organization** is the team managing Cbox ID. A **project** is your product; its
+Your **organization** is the team managing Cbox ID. An **identity platform** provides sign-in for your product; its
 **environments** separate identity data and configuration. A **customer organization**
 is a tenant inside that product. Do not invite your customers into your administrative
 organization to let them use your app.
@@ -21,7 +21,12 @@ which tenant. An organization switch needs a newly verified access context.
 
 ## Get a login working first
 
-Open your project's environment and choose **Get started**. Pick the framework,
+From your organization's **Overview**, choose **Create an identity platform** if you need
+sign-in for your own product. Enter the product name and choose an available plan. Free
+does not require checkout; a paid plan continues to Billing for review and confirmation.
+Managing your own team does not require creating an identity platform.
+
+Open your identity platform's environment and choose **Get started**. Pick the framework,
 create an app, register its exact callback and logout addresses, and follow the
 quickstart. Keep confidential client credentials on the server. Test login and logout
 with a non-production account before connecting real users.
@@ -81,7 +86,7 @@ read only environments you can access and cite the relevant documentation. If yo
 need a person, continue through the configured human-support handoff. An incomplete
 or unavailable status must not be represented as successful setup.
 
-When onboarding emails are enabled, they should refer to the specific project's next
+When onboarding emails are enabled, they should refer to the specific identity platform's next
 step and stop when that shared goal is completed, including by a teammate. Product
 help and tips are separate from necessary account/security mail and follow their
 communication preferences. Upgrading remains a deliberate action.

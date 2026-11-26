@@ -9,9 +9,9 @@ description: The five layers, the difference between your organization and your 
 Read this before the rest. Two things in Cbox ID are organizations, and the console keeps
 them apart by where they appear:
 
-![Projects in the organization console](../screenshots/workspace-projects.png)
+![Identity platforms in the organization console](../screenshots/workspace-projects.png)
 
-- your **organization** is your own Cbox account: it owns projects, environments, a team
+- your **organization** is your own Cbox account: it owns identity platforms, environments, a team
   and a bill. It is always the first crumb of the topbar;
 - a **customer organization** is a team of *your* customers, inside one of your
   environments. It is a resource of that environment, listed under **Organizations**.
@@ -19,9 +19,9 @@ them apart by where they appear:
 ## The chain
 
 ```
-Organization  →  Project  →  Environment  →  Customer org  →  Subject
-(you, the        (one IdP      (that product's    (one of YOUR      (a person who
- Cbox account)    product)      prod/sandbox)      customers' teams)  signs in)
+Organization  →  Identity platform  →  Environment  →  Customer org  →  Subject
+(you, the        (sign-in for one      (that product's    (one of YOUR      (a person who
+ Cbox account)    of your products)     prod/sandbox)      customers' teams)  signs in)
 ```
 
 Read left to right, it is one sentence: *you* own *products*, each product has *stages*,
@@ -30,8 +30,8 @@ each stage holds *your customers' teams*, and each team has *people*.
 | Layer | What it is | Who it belongs to |
 |---|---|---|
 | **Organization** | You. The billing customer of Cbox, and the team your colleagues join to administer your products. | Cbox ID |
-| **Project** | One identity product you run. The plan and the environment allowance live here, so two products bill separately from one organization. | Your organization |
-| **Environment** | A stage of that product: production, sandbox. A hard boundary with its own users, signing keys, issuer, branding and sign-in page. | Your project |
+| **Identity platform** | Sign-in for one of your own products: its users, its sign-in page, its environments and its own plan. The plan and the environment allowance live here, so two products bill separately from one organization. The API still calls it a project (`/api/v1/workspace/projects`). | Your organization |
+| **Environment** | A stage of that product: production, staging, sandbox. A hard boundary with its own users, signing keys, issuer, branding and sign-in page. | Your identity platform |
 | **Customer organization** | One of your customers' companies or teams. An arbitrary-depth tree, so a group can hold companies and a company divisions. | Your environment |
 | **Subject** | A person who signs in to your product. | Your environment's user pool |
 
@@ -53,8 +53,8 @@ row; where the row lives says which one it is:
   customers' teams. On your environment's own host there is only this kind, so its pages
   just say *organization*.
 
-**The tell: your organization owns projects. A customer organization does not.** If the
-thing in front of you has projects, environments and a bill, it is your organization. If
+**The tell: your organization owns identity platforms. A customer organization does not.** If the
+thing in front of you has identity platforms, environments and a bill, it is your organization. If
 it has members, roles and SSO connections and lives inside one environment, it is one of
 your customers.
 
@@ -69,7 +69,7 @@ Its rail holds your organization and nothing else:
 
 | Area | Pages |
 |---|---|
-| **Organization** | Projects, Team, API keys, Environment domains, Billing, Organization settings |
+| **Organization** | Overview, Identity platforms (once the organization owns one), Team, API keys, Environment domains, Billing, Organization settings |
 | **Team sign-in** | Enterprise SSO, Authentication policy: how your own team signs in to Cbox |
 | **Audit log** | Audit log |
 | **Account** | Security, Sessions & activity |
@@ -90,10 +90,19 @@ Those pages are **hidden from the rail, not redirected.** Three reasons:
   every route, forever; a filter on what the rail shows cannot lock anybody out.
 - **The page says what it is.** Reached by URL, it shows a notice above the content: the
   page manages your organization's own record in Cbox, not your product, with a link to
-  Projects.
+  Identity platforms.
 
-The organization console also has no Overview page (`/dashboard`) and no setup guide
-(`/get-started`). Both described your organization's own record, not your product.
+The organization console's **Overview** is the organization's home at
+`/orgs/{org}/overview` (see [Where you land after signing in](#where-you-land-after-signing-in)).
+It has no environment Overview (`/dashboard`) and no setup guide (`/get-started`): both
+described your organization's own record, not your product.
+
+**Identity platforms** appears on the rail once the organization owns at least one.
+**New identity platform** asks for the product's name and, where the deployment bills, a
+plan: the cheapest is preselected and each shows its price. A fresh identity confirmation
+is required before anything is created.
+The platform's production environment is created with it. A paid plan is then reviewed
+with tax and confirmed under **Billing**.
 
 An operator and a single-tenant install (where the root environment *is* the product)
 keep every page there. Your customers get the narrower console below.
@@ -155,11 +164,15 @@ the consoles differ on purpose now.
 
 ### An environment console
 
-At `/admin` on that environment's own host, reached from **Projects** with **Open
+At `/admin` on that environment's own host, reached from **Identity platforms** with **Open
 console**, or from the environment switcher in any console's topbar. Its rail is about
-your product, in the words other identity platforms use for the same things. Nothing on
+your product, in the words other identity products use for the same things. Nothing on
 it is about your Cbox organization, and everything your customers' own console leaves out is
 here.
+
+A note above every page says *You are managing the people who sign in to &lt;platform&gt;,
+your product. Your own team is not here.*, with **Back to &lt;organization&gt;**, which
+opens the organization's home.
 
 | Area | Pages |
 |---|---|
@@ -182,9 +195,9 @@ beside it: what people may do once they are in. The URLs did not change when pag
 renamed or re-filed, so bookmarks and links keep working. [Finding your
 way](../getting-started/finding-your-way.md) walks the common tasks click by click.
 
-## Deleting an environment or a project
+## Deleting an environment or an identity platform
 
-Both are on the project's page (**Projects**, then the project), for a member who may
+Both are on the identity platform's page (**Identity platforms**, then the platform), for a member who may
 manage environments and reaches all of them.
 
 **Delete** on an environment's row removes the environment and everything in it: its
@@ -199,9 +212,10 @@ Two things are kept. The organization's log records the deletion (who, which env
 how much was in it). The platform's own tamper-evident audit trail of the environment stays
 in the database, unread by any console, because that trail is append-only.
 
-**Delete project** removes a project that has no environments left, suspended or not. A
-project that still has environments, or a plan that still renews under **Billing**, is
-refused with the reason. Deleting a project never deletes environments for you.
+**Delete identity platform** removes an identity platform that has no environments left,
+suspended or not. One that still has environments, or a plan that still renews under
+**Billing**, is refused with the reason. Deleting an identity platform never deletes
+environments for you.
 
 ## Moving between them
 
@@ -214,21 +228,21 @@ Acme ▾  /  Checkout ▾  /  Production ▾ [PRODUCTION]  /  All organizations 
 
 - **Organization ▾** lists the organizations you belong to. On the organization console
   choosing one switches to it; on an environment console it opens the organization
-  console, where your session is. An organization that owns no projects shows its name
+  console, where your session is. An organization that owns no identity platforms shows its name
   here with nothing after it.
-- **Project ▾** lists your organization's projects. Choosing one opens the environment there
-  that matches the one you are in: production for production.
-- **Environment ▾** lists the environments of this project you may administer, each with
+- **Identity platform ▾** lists your organization's identity platforms. Choosing one opens the
+  environment there that matches the one you are in: production for production.
+- **Environment ▾** lists the environments of this identity platform you may administer, each with
   its type. Choosing one opens the **same page** there: Users in sandbox becomes Users in
   production. A page about one record (a user, an app) opens that list instead, and a
   page the other environment does not have opens its Overview.
 - On the organization console no environment is current, so the second crumb is
-  **Environments ▾**: every environment you may open, grouped by project.
+  **Environments ▾**: every environment you may open, grouped by identity platform.
 - **All organizations ▾**, on an environment console only, filters every page to one of
   your customer organizations. It is a search, because an environment can hold thousands.
 
 Only what you may open is listed. A Viewer sees no environments, and a member limited to
-some environments sees those. Another organization's projects appear only once you
+some environments sees those. Another organization's identity platforms appear only once you
 switch to it. Each menu gets a search box once it holds more than eight entries.
 
 Switching environment goes through the same signed handoff as **Open console**; the page
@@ -257,9 +271,13 @@ pages are a **Platform** area of the console's rail.
 
 ## Where you land after signing in
 
-A member of an organization lands on **Projects**, which lists every environment with **Open
-console** beside it. Signing in at `cboxid.com` never opens an environment's console by
-itself.
+A member of an organization lands on the organization's home, **Organization › Overview**
+(`/orgs/{org}/overview`). It shows how many people are in the organization (a link to
+**Team**), shortcuts to **Team sign-in**, **Plan and billing** and **Activity** (the audit
+log), and, for a member who may create one, a card **Build sign-in for your own product**
+with **Create an identity platform**. Your environments are under **Identity platforms**,
+each with **Open console** beside it. Signing in at `cboxid.com` never opens an
+environment's console by itself.
 
 The one exception is a sign-in that started at an environment's console. If you open
 `acme.cboxauth.com/admin/users` signed out, you sign in at `cboxid.com` and land back on

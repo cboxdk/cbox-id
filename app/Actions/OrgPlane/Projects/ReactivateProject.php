@@ -20,7 +20,7 @@ use Cbox\Id\Platform\Contracts\Projects;
 /** Reactivate a suspended project, so environments can be added to it again. */
 #[AsAction(
     name: 'projects.reactivate',
-    summary: 'Reactivate a suspended project, so environments can be added to it again.',
+    summary: 'Reactivate a suspended identity platform, so environments can be added to it again.',
     scope: 'id:projects:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
@@ -28,7 +28,7 @@ use Cbox\Id\Platform\Contracts\Projects;
     consoleRoutes: ['orgs.projects.reactivate'],
     consoleGate: ConsoleGate::ManageEnvironments,
     schema: 'Project',
-    tag: 'Projects',
+    tag: 'Identity platforms',
 )]
 final readonly class ReactivateProject implements Action
 {

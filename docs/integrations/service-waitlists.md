@@ -58,11 +58,11 @@ This feature choice concerns that feature's updates or test group. It does not i
 
 ## ID accounts versus the ID product
 
-`/signup` creates a person in Cbox ID; it does not create a project, environment or
+`/signup` creates a person in Cbox ID; it does not create an identity platform, environment or
 subscription. Plain identity teams are also independent of product admission.
 `/start` is the branded signup/waitlist page for customers of the ID product. Its
 invitation flow admits the verified person's chosen team before product provisioning.
-Project and environment writers enforce admission through both the browser and API.
+Identity platform and environment writers enforce admission through both the browser and API.
 
 Set `CBOX_ID_PRODUCT_ACCESS_ENABLED=true` and `CBOX_ID_PRODUCT_BILLING_TOKEN` to a
 server-only Billing token bound to the `cbox-id` product, with `access:enroll` and

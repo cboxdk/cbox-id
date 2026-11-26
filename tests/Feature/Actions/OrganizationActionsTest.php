@@ -329,7 +329,7 @@ it('runs the same actions from the organization console, recorded as the person'
         ->assertSessionHasNoErrors();
     $this->from(route('orgs.projects.show', $account['project']->id))
         ->post(route('orgs.projects.environments.store', $account['project']->id), ['name' => 'Third', 'type' => 'sandbox'])
-        ->assertSessionHasErrors(['name' => 'This project is at its environment limit. Upgrade its plan to add more.']);
+        ->assertSessionHasErrors(['name' => 'This identity platform is at its environment limit. Upgrade its plan to add more.']);
 
     $entry = workspaceLog($workspace->id, 'organization.environment_created')[0] ?? null;
 

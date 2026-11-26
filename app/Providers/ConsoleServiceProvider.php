@@ -102,7 +102,11 @@ final class ConsoleServiceProvider extends ServiceProvider
         // The area KEY stays `identity-platform`: it is the socket the billing module
         // plugs into, and a key is not something a person reads.
         $nav->area('identity-platform', 'Organization', 'briefcase', 15)
-            ->page('orgs.projects', 'Projects', feature: 'organization.projects', order: 10)
+            // HOME FIRST: who is in the organization, how they sign in, what it pays — what
+            // most organizations come for. Building sign-in for one's own product is a card
+            // on it, and the list below appears once there is one.
+            ->page('orgs.overview', 'Overview', feature: 'organization.home', order: 5)
+            ->page('orgs.projects', 'Identity platforms', feature: 'organization.projects', order: 10)
             // TEAM — the people who administer the workspace. Not "Members", which is the
             // People page of every organization, and not "Administrators", which a Viewer on
             // the list is not.
@@ -312,8 +316,15 @@ final class ConsoleServiceProvider extends ServiceProvider
         // capability: a person who administers this account belongs in the area even if
         // every page inside it happens to be closed to them, and `ownsIdentityProviders()`
         // is the same question phrased for the layout.
+        // The organization's home, at the platform root: everybody who belongs to it. Elsewhere
+        // the console's own Overview area is the home.
+        $features->register('organization.home', static fn (): bool => app(ConsoleScope::class)->atOrganizationAltitude());
+        // Identity platforms appear in the rail once the organization HAS one. Until then the
+        // home offers to create the first, so an organization that only runs its own team is
+        // never shown an empty list of something it did not ask for.
         $features->register('organization.projects', static fn (): bool => app(ConsoleScope::class)->ownsIdentityProviders()
-            && $can()?->canReadEnvironments() === true);
+            && $can()?->canReadEnvironments() === true
+            && app(ConsoleScope::class)->organizationOwnsPlatforms());
         $features->register('organization.members', static fn (): bool => $can()?->canReadMembers() === true);
         $features->register('organization.own', static fn (): bool => $can()?->isOwner() === true);
         $features->register('organization.manage', static fn (): bool => $can()?->canManageMembers() === true);

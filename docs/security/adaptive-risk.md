@@ -92,7 +92,7 @@ ever allows, and only on deployments that asked for it.
 
 Independently of risk mode, a self-serve signup on the platform root no longer
 provisions an environment up front. It creates the **organization (its home organization),
-its owner member and its first project**; the **environment** — the routable IdP whose
+its owner member and its first identity platform**; the **environment** — the routable IdP whose
 signing key is warmed on creation — is released by `App\Platform\SignupProvisioner`
 only when the owner opens the emailed verification link.
 

@@ -107,6 +107,7 @@ final readonly class IdShell
         ], static fn (mixed $value): bool => $value !== null);
 
         $shell['apps'] = [...$built->apps->toArray(), 'productsUrl' => 'https://cbox.dk'];
+        $shell['environmentFrame'] = self::environmentFrame($this->request, $shell['context'] ?? null);
 
         // Records are searched in the console the page stands in, behind that console's own
         // door: an environment console's in that environment, an organization page's in the
@@ -125,6 +126,44 @@ final readonly class IdShell
         }
 
         return $shell;
+    }
+
+    /**
+     * THE LINE ABOVE EVERY PAGE OF A CUSTOMER ENVIRONMENT'S CONSOLE: these are the people who
+     * sign in to the organization's product, not its team, and the way back to the
+     * organization. Moving into an identity platform swaps the whole rail, and "Users" there
+     * are the product's customers; the crumb names the place, but people read a crumb when
+     * they are already lost.
+     *
+     * From the context levels the header already resolved, so it costs no query. Null outside
+     * a customer environment's console (the platform root's own is nobody's product).
+     *
+     * @return array{platform: string, organization: string, backHref: string}|null
+     */
+    private static function environmentFrame(Request $request, mixed $context): ?array
+    {
+        $parts = ShellRequest::environmentPathParts($request);
+        $levels = is_array($context) && is_array($context['levels'] ?? null) ? $context['levels'] : [];
+        $names = [];
+
+        foreach ($levels as $level) {
+            $current = is_array($level) ? ($level['current'] ?? null) : null;
+
+            if (is_array($level) && is_string($level['key'] ?? null) && is_array($current) && is_string($current['name'] ?? null)) {
+                $names[$level['key']] = $current['name'];
+            }
+        }
+
+        if (count($parts) < 3 || ! isset($names['organization'], $names['project'])) {
+            return null;
+        }
+
+        return [
+            'platform' => $names['project'],
+            'organization' => $names['organization'],
+            // The organization's front door, which lands on its home.
+            'backHref' => route('orgs.show', ['org' => $parts[0]]),
+        ];
     }
 
     /**
