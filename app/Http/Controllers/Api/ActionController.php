@@ -23,6 +23,7 @@ use App\Platform\EnvironmentApiContext;
 use App\Platform\OAuth\Exceptions\StepUpAuthenticationRequired;
 use App\Platform\OAuth\ManagementStepUp;
 use App\Platform\OrganizationApiContext;
+use App\Platform\PublicIds\PublicId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -66,7 +67,7 @@ final readonly class ActionController
                 $principal,
                 $input,
                 $request->headers->get('Idempotency-Key'),
-                $request->headers->get('Cbox-Approval'),
+                self::approvalId($request),
                 ActionVia::overRest($principal, $request),
             );
         } catch (ApprovalRequired $held) {
@@ -163,5 +164,16 @@ final readonly class ActionController
         }
 
         return response()->json($body, $status, $headers);
+    }
+
+    /**
+     * The approval `Cbox-Approval` names, as stored: the id comes back as the `202` gave it,
+     * `idapr_01j…` on `/v1`, bare on `/api/v1`, and a retired `apr_01j…` still reads.
+     */
+    private static function approvalId(Request $request): ?string
+    {
+        $id = $request->headers->get('Cbox-Approval');
+
+        return is_string($id) ? PublicId::decode($id, 'approval') : null;
     }
 }

@@ -31,6 +31,22 @@ its old name working **until v3.1**; move to the new names before then.
   The rewrite to the v3 names (and the outbox column rename) ships one release later, once
   v2 can no longer come back.
 
+### Approval ids are idapr_, not apr_
+
+An approval's public id is `idapr_01K…` (2026-11-26: a contested prefix goes to the app that
+owns the domain, and `apr` has none). `apr_…` is still read wherever an approval id comes
+in until **15 January 2027**. `cbox_id_retired_prefix_input_total` counts who still sends
+one, by its `caller` label: move those callers first.
+
+- **One data migration**, `2026_11_26_120000_rename_the_approval_public_id_prefix`: it
+  rewrites the approval ids in stored webhook deliveries to endpoints that receive public
+  ids, so a retry or redelivery sends the new form. Ids are stored bare, so no key or
+  foreign-key column changes. The release before keeps working on the rewritten rows: it
+  reads `idapr_…` there as an opaque string, as it did with any id it does not know.
+- **A caller that matches `apr_` itself** (a regex, a `startsWith`, a stored id parsed by
+  prefix) must accept `idapr_` before 15 January 2027. Treat ids as opaque and nothing
+  changes.
+
 ### Organization keys stay cbid_ws_ in v3.0
 
 New organization keys are still minted `cbid_ws_…`: the released cbox-cli reads a

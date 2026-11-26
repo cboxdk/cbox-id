@@ -68,7 +68,7 @@ final class PublicId
         'access_review' => 'arc',
         'access_review_item' => 'ari',
         'radar_rule' => 'rdr',
-        'approval' => 'apr',
+        'approval' => 'idapr',
         'support_session' => 'sup',
         'app_catalog_entry' => 'capp',
         'fga_store' => 'fga',
@@ -81,6 +81,21 @@ final class PublicId
         'brand_profile' => 'brd',
         'mfa_factor' => 'mfa',
         'passkey' => 'psk',
+    ];
+
+    /**
+     * Prefixes a kind wore before, and the kind: still read as that kind, never written.
+     *
+     * `apr` was an approval's until 2026-11-26, when contested prefixes went to the app that
+     * owns the domain and the others took app-tagged ones (`idapr`). An `apr_…` id a caller
+     * holds, and an `apr_…` link a person was sent, keep working until 2027-01-15, when the
+     * entry goes (Sylvester's date); {@see BareIdInput::recordRetiredPrefix()} says who still
+     * sends one.
+     *
+     * @var array<string, string>
+     */
+    public const array RETIRED_PREFIXES = [
+        'apr' => 'approval',
     ];
 
     /** A ULID as Laravel stores it (lower case) or as a person may type it (upper case). */
@@ -146,6 +161,12 @@ final class PublicId
             throw new NotFoundHttpException('No such '.str_replace('_', ' ', $expectedType).'.');
         }
 
+        $written = strstr($value, '_', true);
+
+        if (is_string($written) && isset(self::RETIRED_PREFIXES[$written])) {
+            BareIdInput::recordRetiredPrefix($expectedType, $written);
+        }
+
         return $ulid;
     }
 
@@ -173,7 +194,8 @@ final class PublicId
 
     /**
      * A registered public id's prefix and ULID; null for anything else (a bare ULID, a slug,
-     * a `cid_` client id, a prefix nobody registered).
+     * a `cid_` client id, a prefix nobody registered). A retired prefix reads as the one its
+     * kind wears now: `apr_01j…` is `['idapr', '01j…']`.
      *
      * @return array{0: string, 1: string}|null
      */
@@ -181,6 +203,10 @@ final class PublicId
     {
         if (preg_match('/\A([a-z]+)_('.self::ULID.')\z/', $value, $match) !== 1) {
             return null;
+        }
+
+        if (isset(self::RETIRED_PREFIXES[$match[1]])) {
+            return [self::prefix(self::RETIRED_PREFIXES[$match[1]]), $match[2]];
         }
 
         return in_array($match[1], self::PREFIXES, true) ? [$match[1], $match[2]] : null;

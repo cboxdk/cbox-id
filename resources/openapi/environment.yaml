@@ -26273,7 +26273,7 @@ components:
       name: Cbox-Approval
       in: header
       required: false
-      description: 'The id of an approval this key asked for (from a `202 approval_required`), once the person approved it. Spent by this request, once.'
+      description: 'The id of an approval this key asked for (from a `202 approval_required`), once the person approved it. Send it as the `202` gave it, `idapr_…` (an `apr_…` id from before 2026-11-26 is read until 2027-01-15) or the bare id. Spent by this request, once.'
       schema:
         type: string
     IdempotencyKey:

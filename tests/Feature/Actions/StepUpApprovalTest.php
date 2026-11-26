@@ -7,7 +7,9 @@ use App\Platform\Actions\ActionRegistry;
 use App\Platform\Actions\Approvals\ActionApprovalRequest;
 use App\Platform\Actions\Danger;
 use App\Platform\Api\ApiHost;
+use App\Platform\Api\CredentialEnvironment;
 use App\Platform\Console\WebhookEventCatalogue;
+use App\Platform\PublicIds\BareIdInput;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
@@ -18,6 +20,7 @@ use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
 use Cbox\Id\Platform\PlatformRoot;
 use Cbox\Id\Platform\ValueObjects\KeyProvenance;
 use Cbox\Ssrf\Contracts\Resolver;
+use Cbox\Telemetry\Facades\Telemetry;
 use Illuminate\Support\Facades\Mail;
 
 /*
@@ -286,18 +289,26 @@ it('keeps the ids a held webhook create asked for: the surface it was asked on, 
     $this->withToken($key)->withHeader('Cbox-Approval', $held)->postJson($v1, $body)
         ->assertStatus(409);
 
-    $this->withToken($key)->withHeader('Cbox-Approval', $held)->postJson('/api/v1/webhooks', $body)
+    // An approval id under its retired prefix (`apr_`, until 2026-11-26) still reads, and is counted.
+    $telemetry = Telemetry::fake();
+    $this->withToken($key)->withHeader('Cbox-Approval', 'apr_'.$held)->postJson('/api/v1/webhooks', $body)
         ->assertCreated()->assertJsonPath('data.id_format', 'raw');
+    $telemetry->assertCounterIncremented(BareIdInput::RETIRED_PREFIX_METRIC, [
+        'surface' => 'api', 'kind' => 'approval', 'prefix' => 'apr',
+        'caller_kind' => 'environment_key', 'caller' => CredentialEnvironment::keyId($key), 'route' => 'POST /api/v1/webhooks',
+    ]);
 
     // Held on /v1: the default is part of what the owner approves.
     $this->flushHeaders();
-    $heldOnV1 = $this->withToken($key)->postJson($v1, [...$body, 'url' => 'https://v1.acme.example/in'])->assertStatus(202)->json('id');
-    $heldOnV1 = substr((string) $heldOnV1, strlen('apr_'));
+    $publicOnV1 = (string) $this->withToken($key)->postJson($v1, [...$body, 'url' => 'https://v1.acme.example/in'])->assertStatus(202)->json('id');
+    $heldOnV1 = substr($publicOnV1, strlen('idapr_'));
 
-    expect(ActionApprovalRequest::query()->whereKey($heldOnV1)->value('input'))->toMatchArray(['id_format' => 'prefixed'])
+    expect($publicOnV1)->toBe('idapr_'.$heldOnV1)
+        ->and(ActionApprovalRequest::query()->whereKey($heldOnV1)->value('input'))->toMatchArray(['id_format' => 'prefixed'])
         ->and(approveAsOwner($heldOnV1, $owner))->toBeTrue();
 
-    $this->withToken($key)->withHeader('Cbox-Approval', $heldOnV1)->postJson($v1, [...$body, 'url' => 'https://v1.acme.example/in'])
+    // Repeated with the id exactly as `/v1` gave it.
+    $this->withToken($key)->withHeader('Cbox-Approval', $publicOnV1)->postJson($v1, [...$body, 'url' => 'https://v1.acme.example/in'])
         ->assertCreated()->assertJsonPath('id_format', 'prefixed');
 })->group('security');
 

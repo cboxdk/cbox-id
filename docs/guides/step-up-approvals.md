@@ -117,6 +117,11 @@ A held call answers `202 Accepted` with a `Retry-After` header:
 }
 ```
 
+On the API host's `/v1` the body is the approval itself (`"object": "approval"`), and its
+id is a public id, `idapr_01K…`. Approvals held before 26 November 2026 had `apr_01K…`;
+that form is still read until 15 January 2027, so a stored one keeps working until then. Either way, send the id
+exactly as you got it.
+
 1. **Show the person the binding code.** Print it in your CLI, post it in the chat the
    agent is working in, or whatever fits.
 2. **Poll `poll_url`** no faster than `Retry-After` seconds. It answers
