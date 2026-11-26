@@ -14,6 +14,7 @@ use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\Contracts\EnvironmentApiKeys;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 
@@ -188,7 +189,8 @@ it('issues the app a plan-bound token for the covered client, marked as the gran
             'approval' => 'standing_grant',
             'standing_grant_id' => $id,
             'client_id' => $w->ci->client_id,
-            'environment_id' => 'env_staging',
+            // Stored and echoed under Infra's own prefix, whichever form Dash sent.
+            'environment_id' => 'ifenv_staging',
             'environment_kind' => 'staging',
         ]])
         ->and($answer->json('authorization_details.0.standing_grant_id'))->toBe($id);
@@ -200,6 +202,49 @@ it('issues the app a plan-bound token for the covered client, marked as the gran
     expect($used->actor_id)->toBe($w->ci->client_id)
         ->and($used->context['plan_digest'])->toBe(SA_DIGEST)
         ->and($used->context['token_id'])->toBe($claims['jti']);
+});
+
+it('reads Cbox Infra\'s old env_ environment id as its ifenv_ one until 2027-01-15', function (): void {
+    $w = saWorld();
+    $id = saGrant($w)->json('data.id');
+
+    expect(StandingApproval::query()->findOrFail($id)->environment_ref)->toBe('ifenv_staging')
+        // Asked again in the new form: the same grant, not a second one.
+        ->and(saGrant($w, ['environment_ref' => 'ifenv_staging'])->json('data.id'))->toBe($id);
+
+    saExchange($w, saCiToken($w->ci), ['environment_id' => 'ifenv_staging'])->assertOk();
+    saExchange($w, saCiToken($w->ci))->assertOk();
+
+    // A row the migration has not reached yet still covers either form.
+    StandingApproval::query()->whereKey($id)->update(['environment_ref' => 'env_staging']);
+    saExchange($w, saCiToken($w->ci), ['environment_id' => 'ifenv_staging'])->assertOk();
+
+    // Another environment is still another environment, in either form.
+    saExchange($w, saCiToken($w->ci), ['environment_id' => 'ifenv_other'])->assertStatus(400)->assertJsonPath('error', 'invalid_grant');
+});
+
+it('rewrites stored env_ environment refs to ifenv_, active and revoked alike, and back', function (): void {
+    $w = saWorld();
+    $active = saGrant($w)->json('data.id');
+    $revoked = saGrant($w, ['environment_ref' => 'env_dev', 'environment_kind' => 'development'])->json('data.id');
+    StandingApproval::query()->whereKey([$active, $revoked])->update(['environment_ref' => DB::raw("replace(environment_ref, 'ifenv_', 'env_')")]);
+    StandingApproval::query()->whereKey($revoked)->update(['revoked_at' => now()]);
+    $other = saGrant($w, ['environment_ref' => 'stage-eu', 'environment_kind' => 'testing'])->json('data.id');
+
+    $migration = require database_path('migrations/2026_11_26_150000_rename_cbox_infra_environment_refs_in_standing_approvals.php');
+    $migration->up();
+
+    // By id: the database returns the rows in no particular order.
+    $refs = fn (): array => StandingApproval::query()->whereKey([$active, $revoked, $other])->orderBy('id')->pluck('environment_ref', 'id')->all();
+    $sorted = function (array $expected): array {
+        ksort($expected);
+
+        return $expected;
+    };
+    expect($refs())->toBe($sorted([$active => 'ifenv_staging', $revoked => 'ifenv_dev', $other => 'stage-eu']));
+
+    $migration->down();
+    expect($refs())->toBe($sorted([$active => 'env_staging', $revoked => 'env_dev', $other => 'stage-eu']));
 });
 
 it('refuses a production-class environment at the exchange too', function (): void {
