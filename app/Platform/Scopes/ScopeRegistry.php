@@ -101,6 +101,8 @@ final class ScopeRegistry
         'operator:environments:write' => ['id:admin-environments:write'],
         'operator:operators:write' => ['id:admin-operators:write'],
         'operator:organizations:write' => ['id:admin-tenant-organizations:write'],
+        'operator:service-connections:read' => ['id:admin-service-connections:read'],
+        'operator:service-connections:write' => ['id:admin-service-connections:write'],
         'operator:workspaces:write' => ['id:admin-organizations:write'],
         'organizations:read' => ['id:organizations:read'],
         'organizations:write' => ['id:organizations:write'],

@@ -171,6 +171,7 @@ final class V1Paths
         '/workspace/keys' => '/organization-keys',
         '/platform/environments' => '/admin/environments',
         '/platform/operators' => '/admin/operators',
+        '/platform/sites-assets-migrations' => '/admin/sites-assets-migrations',
         '/me/two-factor/apps' => '/me/totp-factors',
         '/sso/connections' => '/sso-connections',
         '/sso/domains' => '/organization-domains',

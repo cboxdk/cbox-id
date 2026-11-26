@@ -15,6 +15,7 @@ use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use App\ServiceConnections\ConnectionEvents;
 use App\ServiceConnections\Contracts\ReadsConnectionEvents;
 use App\ServiceConnections\ServiceConnection;
+use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\Contracts\TokenIssuer;
@@ -107,6 +108,65 @@ it('issues real organization-bound tokens and invalidates them on central revoca
     expect($token->scopes)->toBe(['billing:engage:sync']);
     $this->withToken('admin')->deleteJson('/api/v1/service-connections/'.$id)->assertOk();
     expect($this->realIntrospector->introspect($response->json('access_token'))->active)->toBeFalse();
+});
+
+it('isolates Assets leases by organization and consumer and rotates a revoked connection without reviving old tokens', function (): void {
+    // Exercise the public API with real signed caller tokens, not the fixture introspector.
+    app()->instance(TokenIntrospector::class, $this->realIntrospector);
+    $issuer = app(TokenIssuer::class);
+    $person = app(Subjects::class)->create('assets-admin@example.test', 'Assets admin');
+    app(Memberships::class)->add($this->organization->id, $person->id, MembershipRole::Admin);
+    $consumer = Client::query()->where('client_id', $this->consumer)->sole();
+    $provider = app(ClientRegistry::class)->register(new NewClient(name: 'Assets', scopes: ['service_connections.inspect']))->client;
+    $unrelated = app(ClientRegistry::class)->register(new NewClient(name: 'Unrelated', scopes: ['service_connections.lease', 'service_connections.inspect']))->client;
+    config(['service-connections.services.cbox_assets.client_id' => $provider->client_id]);
+    $base = 'http://'.ApiHost::name().'/v1/service-connections/';
+    $admin = $issuer->issueForUser($consumer, $person->id, $this->organization->id, ['service_connections.manage'])->token;
+    $machine = $issuer->issueClientCredentials($consumer, ['service_connections.lease'])->token;
+    $providerToken = $issuer->issueClientCredentials($provider, ['service_connections.inspect'])->token;
+    $otherMachine = $issuer->issueClientCredentials($unrelated)->token;
+
+    $id = $this->withToken($admin)->putJson($base.'cbox_assets')->assertOk()->assertJsonMissingPath('client_secret')->json('id');
+    $this->withToken($admin)->putJson($base.'cbox_assets')->assertOk()->assertJsonPath('id', $id);
+    $otherOrg = app(Organizations::class)->create(new NewOrganization('Other', 'other-assets'));
+    app(Memberships::class)->add($otherOrg->id, $person->id, MembershipRole::Admin);
+    $otherAdmin = $issuer->issueForUser($consumer, $person->id, $otherOrg->id, ['service_connections.manage'])->token;
+    $otherId = $this->withToken($otherAdmin)->putJson($base.'cbox_assets')->assertOk()->json('id');
+    expect($otherId)->not->toBe($id);
+
+    $lease = $this->withToken($machine)->postJson($base.$id.'/lease')->assertOk()->json('access_token');
+    $otherLease = $this->withToken($machine)->postJson($base.$otherId.'/lease')->assertOk()->json('access_token');
+    $token = $this->realIntrospector->introspect($lease);
+    $otherToken = $this->realIntrospector->introspect($otherLease);
+    expect($token->active)->toBeTrue()
+        ->and($token->claims['org'])->toBe($this->organization->id)
+        ->and($token->claims['aud'])->toBe('https://api.cboxassets.com')
+        ->and($token->scopes)->toBe(['assets:consumer:read', 'assets:consumer:write'])
+        ->and($token->subject)->toBe($token->clientId)
+        ->and($token->clientId)->not->toBe($this->consumer)
+        ->and($otherToken->claims['org'])->toBe($otherOrg->id)
+        ->and($otherToken->clientId)->not->toBe($token->clientId);
+    $this->withToken($providerToken)->postJson($base.$id.'/inspect')->assertOk()
+        ->assertJsonPath('active', true)->assertJsonPath('organization_id', 'org_'.$this->organization->id)
+        ->assertJsonPath('service_client_id', $token->clientId)->assertJsonPath('consumer_client_id', $this->consumer);
+    $this->withToken($otherMachine)->postJson($base.$id.'/lease')->assertForbidden();
+    $this->withToken($otherMachine)->postJson($base.$id.'/inspect')->assertForbidden();
+    $this->withToken($otherAdmin)->deleteJson($base.$id)->assertNotFound();
+    // An Assets lease is never an ID management credential, regardless of the path.
+    $this->withToken($lease)->postJson($base.$id.'/inspect')->assertUnauthorized();
+
+    $this->withToken($admin)->deleteJson($base.$id)->assertOk();
+    $this->withToken($providerToken)->postJson($base.$id.'/inspect')->assertOk()->assertJsonPath('active', false);
+    $this->withToken($machine)->postJson($base.$id.'/lease')->assertNotFound();
+    expect($this->realIntrospector->introspect($lease)->active)->toBeFalse()
+        ->and($this->realIntrospector->introspect($otherLease)->active)->toBeTrue();
+
+    $this->withToken($admin)->putJson($base.'cbox_assets')->assertOk()->assertJsonPath('id', $id);
+    $renewed = $this->withToken($machine)->postJson($base.$id.'/lease')->assertOk()->json('access_token');
+    expect($this->realIntrospector->introspect($renewed)->active)->toBeTrue()
+        ->and($this->realIntrospector->introspect($renewed)->clientId)->not->toBe($token->clientId)
+        ->and($this->realIntrospector->introspect($lease)->active)->toBeFalse()
+        ->and(ServiceConnection::query()->count())->toBe(2);
 });
 
 it('limits live grant inspection to its provider and consumer and reports central revocation', function (): void {

@@ -41,6 +41,14 @@ final class PlatformScopes
             'label' => 'Manage operators',
             'description' => 'Add platform operators, and suspend or reactivate them.',
         ],
+        'operator:service-connections:read' => [
+            'label' => 'Preview Sites service connections',
+            'description' => 'Preview the fixed Sites-to-Assets grants in the deployment-attested migration inventory.',
+        ],
+        'operator:service-connections:write' => [
+            'label' => 'Migrate Sites service connections',
+            'description' => 'Provision the fixed Sites-to-Assets grants in the deployment-attested migration inventory after approval.',
+        ],
     ];
 
     /** @return list<string> */

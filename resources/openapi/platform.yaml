@@ -19,7 +19,8 @@ info:
     without a valid operator token gets `401`.
 
     **Scopes.** `operator:workspaces:write`, `operator:environments:write`,
-    `operator:organizations:write`, `operator:operators:write` — split by blast radius, so
+    `operator:organizations:write`, `operator:operators:write`,
+    `operator:service-connections:read`, `operator:service-connections:write` — split by blast radius, so
     a token that only onboards customers cannot add an operator.
 
     **Every write is critical.** Each one changes who can reach the deployment or a
@@ -584,6 +585,118 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
+  /platform/sites-assets-migrations/plan:
+    get:
+      operationId: admin_service_connections_sites_assets_plan
+      tags:
+        - 'Service connections'
+      summary: 'Preview the deployment-attested Sites migration'
+      parameters:
+        -
+          $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: 'Exact fixed grants and manifest digest; no credentials or writes.'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - plan
+                    properties:
+                      plan:
+                        $ref: '#/components/schemas/SitesAssetsMigrationPlan'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          description: 'An attested organization is inactive or an existing grant conflicts with the migration.'
+        503:
+          description: 'The migration manifest or fixed client registration is absent, invalid or expired.'
+      x-action: admin.service_connections.sites_assets.plan
+      x-scope: 'operator:service-connections:read'
+      x-scope-aliases: []
+      x-danger: read
+  /platform/sites-assets-migrations/provision:
+    post:
+      operationId: admin_service_connections_sites_assets_provision
+      tags:
+        - 'Service connections'
+      summary: 'Provision the exact Sites migration plan after operator approval'
+      parameters:
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - plan
+              properties:
+                plan:
+                  $ref: '#/components/schemas/SitesAssetsMigrationPlan'
+      responses:
+        200:
+          description: 'Connections created or reused without exposing their credentials.'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - connections
+                    properties:
+                      connections:
+                        type: array
+                        items:
+                          type: object
+                          required:
+                            - object
+                            - id
+                            - organization_id
+                            - service_client_id
+                          properties:
+                            object:
+                              type: string
+                              const: service_connection
+                            id:
+                              type: string
+                            organization_id:
+                              type: string
+                            service_client_id:
+                              type: string
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          description: 'The plan changed, an organization or connection is unavailable, or approval is pending, spent or mismatched.'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        503:
+          description: 'The migration manifest or fixed client registration is absent, invalid or expired.'
+      x-action: admin.service_connections.sites_assets.provision
+      x-scope: 'operator:service-connections:write'
+      x-scope-aliases: []
+      x-danger: critical
   /platform/workspaces:
     post:
       tags:
@@ -827,6 +940,51 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    SitesAssetsMigrationPlan:
+      type: object
+      additionalProperties: false
+      required:
+        - manifest_digest
+        - environment_id
+        - consumer_client_id
+        - provider_client_id
+        - organization_ids
+        - evidence
+        - expires_at
+        - service
+        - audience
+        - scopes
+      properties:
+        manifest_digest:
+          type: string
+          maxLength: 64
+        environment_id:
+          type: string
+        consumer_client_id:
+          type: string
+        provider_client_id:
+          type: string
+        organization_ids:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: string
+        evidence:
+          type: string
+          maxLength: 300
+        expires_at:
+          type: string
+          format: date-time
+        service:
+          type: string
+        audience:
+          type: string
+        scopes:
+          type: array
+          maxItems: 2
+          items:
+            type: string
     ProvisionedWorkspace:
       type: object
       required:
