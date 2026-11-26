@@ -49,6 +49,16 @@ final readonly class StandingApprovals
     /** The kinds that never carry a standing approval. */
     private const array PRODUCTION_CLASS = ['production'];
 
+    /**
+     * Cbox Infra's environment ids are `ifenv_…` (2026-11-26, Brain mem_eIfIC47FAH449OjpW5LtEa);
+     * they were `env_…`. A grant is stored under the new prefix, and an `env_…` id still names
+     * the same environment until 2027-01-15 (mem_lWgiOrQJOMxIbNiJIYBW6R), when this goes: Dash
+     * sends the old form until it drops its own translation.
+     */
+    private const string ENVIRONMENT_PREFIX = 'ifenv_';
+
+    private const string RETIRED_ENVIRONMENT_PREFIX = 'env_';
+
     /** An environment kind: a lower-case word. */
     private const string KIND_PATTERN = '/^[a-z][a-z0-9-]{0,31}$/D';
 
@@ -56,6 +66,29 @@ final readonly class StandingApprovals
         private Memberships $memberships,
         private AuditLog $audit,
     ) {}
+
+    /** The app's environment id as a grant stores it: `env_X` is `ifenv_X`. */
+    public static function environmentRef(string $ref): string
+    {
+        return str_starts_with($ref, self::RETIRED_ENVIRONMENT_PREFIX)
+            ? self::ENVIRONMENT_PREFIX.substr($ref, strlen(self::RETIRED_ENVIRONMENT_PREFIX))
+            : $ref;
+    }
+
+    /**
+     * Every spelling a stored grant may have for this environment, while rows written before
+     * the rename may still be read.
+     *
+     * @return list<string>
+     */
+    private static function environmentRefs(string $ref): array
+    {
+        $current = self::environmentRef($ref);
+
+        return str_starts_with($current, self::ENVIRONMENT_PREFIX)
+            ? [$current, self::RETIRED_ENVIRONMENT_PREFIX.substr($current, strlen(self::ENVIRONMENT_PREFIX))]
+            : [$current];
+    }
 
     public static function productionClass(string $kind): bool
     {
@@ -71,6 +104,7 @@ final readonly class StandingApprovals
     public function grant(Organization $organization, string $clientId, string $appClientId, string $environmentRef, string $environmentKind, string $grantedBy, AuditActor $actor): StandingApproval
     {
         $kind = mb_strtolower(trim($environmentKind));
+        $environmentRef = self::environmentRef($environmentRef);
 
         if (preg_match(self::KIND_PATTERN, $kind) !== 1) {
             throw new ActionRefused('invalid_environment_kind', 'The environment kind is a lower-case word such as staging or development.', 422, 'environment_kind');
@@ -101,7 +135,7 @@ final readonly class StandingApprovals
                 ->where('organization_id', $organization->id)
                 ->where('client_id', $clientId)
                 ->where('app_client_id', $appClientId)
-                ->where('environment_ref', $environmentRef)
+                ->whereIn('environment_ref', self::environmentRefs($environmentRef))
                 ->lockForUpdate()
                 ->first();
 
@@ -192,7 +226,7 @@ final readonly class StandingApprovals
             ->where('organization_id', $organizationId)
             ->where('client_id', $clientId)
             ->where('app_client_id', $appClientId)
-            ->where('environment_ref', $environmentRef)
+            ->whereIn('environment_ref', self::environmentRefs($environmentRef))
             ->first();
     }
 
