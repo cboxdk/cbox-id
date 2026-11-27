@@ -14,6 +14,19 @@ package's own breaking changes are in
 this file covers what an **operator of this deployment** has to do, and repeats the
 package changes that need action here rather than in a client.
 
+## Organization-bound CIBA (2026-11-27)
+
+This app requires `laravel-id` 2.10.0. Before new workers serve requests, run
+`2026_11_26_180000_add_requested_organization_to_ciba_requests`; its nullable column
+preserves existing unbound requests. Keep the column during code rollback.
+
+The Infra client/environment/resource tuple in `config/ciba.php` is empty by default.
+Update every browser and mobile approval host before configuring it. Before reverting
+to an older host, disable bound starts and drain or invalidate pending bound requests;
+an older approval host must not process one without displaying its organization.
+PHP callers need `laravel-id-client` 0.19.11 for `startForOrganization()` and the
+validated server echo. See [Approvals](docs/guides/agent-approvals.md).
+
 ## Device authentication evidence (2026-11-27)
 
 The device approval correction requires `laravel-id` 2.9.1 and its migration

@@ -41,6 +41,9 @@ were doing needs an explanation before it gets an approval.
 
 ## Things worth knowing
 
+- **Organization-bound requests name the organization.** Check both its name and id.
+  Switching organizations in the console does not change the request. Losing membership
+  before approval or token redemption prevents the bound request from completing.
 - **Approval is tied to you.** It is your consent, recorded against your account —
   approving another person's request is not possible, and a request that does not
   belong to you is refused rather than silently approved.
@@ -75,6 +78,31 @@ agent to act as them, and nobody can give it on their behalf. Denying withholds 
 so an administrator can shut down a request that looks wrong.
 
 ## Building one
+
+### Opt-in organization binding
+
+The Cbox extension `organization_id` on `POST /oauth/backchannel_authentication` accepts
+a bare organization ULID or `org_<ULID>` and echoes a normalized bare id on success.
+Use the SDK's `OrganizationBoundBackchannelAuthentication::startForOrganization()` and
+require that echo; an old server may otherwise silently ignore the new field. The original
+unbound flow is unchanged. The mobile detail response exposes `organization_id` and nullable
+`organization_name`; browser and Authenticator must display both before approval.
+
+This app enables binding only for the exact tuple configured by
+`CBOX_ID_CIBA_INFRA_ENVIRONMENT_ID`, `CBOX_ID_CIBA_INFRA_CLIENT_ID` and
+`CBOX_ID_CIBA_INFRA_RESOURCE`. Empty defaults refuse every bound request. The client must
+also be operator-registered, confidential and eligible for the CIBA grant and resource;
+the approving person must have active membership in the active organization in that issuer
+environment. Client ownership alone is not eligibility. The engine repeats these checks
+at approval and redemption. Infra must still enforce its own domain authorization.
+
+Roll out the additive engine migration and every approval surface before setting this
+tuple. Existing pending requests remain unbound. A rollback to an older engine must first
+disable new bound starts and drain or invalidate bound requests; never let an old approval
+host process one without displaying its organization. Local implementation and tests do
+not enable the production tuple or authorize a deployment.
+
+### Start an unbound request
 
 This page is for the person who receives a request. If you are building the thing that
 sends them, the shape is short.

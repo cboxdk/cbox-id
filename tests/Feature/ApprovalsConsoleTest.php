@@ -8,8 +8,10 @@ use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Contracts\OrganizationBoundBackchannelAuthentication;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Enums\GrantPollStatus;
+use Cbox\Id\OAuthServer\Exceptions\CibaAccessDenied;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
@@ -201,3 +203,39 @@ it('does not mark an operator-registered client, nor invent a resource', functio
             ->where('requests.0.selfRegistered', false)
             ->where('requests.0.resource', null));
 });
+
+it('shows and approves the pinned organization rather than the current console organization', function (bool $revoked): void {
+    [$subjectId, $ambient] = approvalsMember();
+    $org = app(Organizations::class)->create(new NewOrganization('Sandbox B', 'sandbox-b'));
+    app(Memberships::class)->add($org->id, $subjectId, MembershipRole::Member);
+    $client = app(ClientRegistry::class)->register(new NewClient('Infra', ClientType::Confidential,
+        grantTypes: ['urn:openid:params:grant-type:ciba'], scopes: ['openid']))->client;
+    config()->set('cbox-id.oauth.protected_resources', [['identifier' => 'https://infra.test/approval', 'name' => 'Infra', 'scopes' => []]]);
+    config()->set('ciba.infra', ['client_id' => $client->client_id, 'environment_id' => $client->environment_id, 'resource' => 'https://infra.test/approval']);
+    $ciba = app(BackchannelAuthentication::class);
+    expect($ciba)->toBeInstanceOf(OrganizationBoundBackchannelAuthentication::class);
+    $request = $ciba->requestForOrganization($client, ['openid'], $subjectId, $org->id, 'Delete sandbox B', 'nonce', 120, 'https://infra.test/approval');
+    expect($request->organizationId)->toBe($org->id)->not->toBe($ambient);
+    test()->get(route('approvals'))->assertOk()->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('requests.0.organization.id', $org->id)->where('requests.0.organization.name', 'Sandbox B'));
+    if ($revoked) {
+        app(Memberships::class)->remove($org->id, $subjectId);
+        test()->post(route('approvals.approve', $request->requestId))->assertConflict();
+        expect(BackchannelAuthRequest::query()->findOrFail($request->requestId)->status)->toBe(GrantPollStatus::Pending);
+
+        return;
+    }
+    test()->from(route('approvals'))->post(route('approvals.approve', $request->requestId))->assertRedirect();
+    expect($ciba->redeem($client->client_id, $request->authReqId)->organizationId)->toBe($org->id);
+})->with([false, true]);
+
+it('refuses organization binding until the exact Infra registration is configured', function (string $mismatch): void {
+    [$subjectId, $org] = approvalsMember();
+    $client = app(ClientRegistry::class)->register(new NewClient('Infra', ClientType::Confidential,
+        grantTypes: ['urn:openid:params:grant-type:ciba'], scopes: ['openid']))->client;
+    $config = ['client_id' => $client->client_id, 'environment_id' => $client->environment_id, 'resource' => 'https://infra.test/approval'];
+    config()->set('ciba.infra', $mismatch === 'unconfigured' ? [] : array_replace($config, [$mismatch => 'wrong']));
+    expect(fn () => app(BackchannelAuthentication::class)->requestForOrganization($client, ['openid'], $subjectId, $org, resource: 'https://infra.test/approval'))
+        ->toThrow(CibaAccessDenied::class);
+    expect(BackchannelAuthRequest::query()->count())->toBe(0);
+})->with(['unconfigured', 'client_id', 'environment_id', 'resource']);

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Mail\ApprovalRequestMail;
 use App\Platform\Agents\ApprovalMail;
+use App\Platform\Agents\MailingBackchannelAuthentication;
 use Cbox\Id\Devices\Contracts\PushTransport;
+use Cbox\Id\Devices\Decorators\PushNotifyingBackchannelAuthentication;
 use Cbox\Id\Devices\Enums\DevicePlatform;
 use Cbox\Id\Devices\Enums\DeviceStatus;
 use Cbox\Id\Devices\Models\Device;
@@ -14,9 +16,15 @@ use Cbox\Id\Kernel\Crypto\Contracts\SecretBox;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\Exceptions\CibaAccessDenied;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\ValueObjects\BackchannelAuthenticationResult;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -42,6 +50,43 @@ function approvalMailAgent(string $name = 'Release agent'): Client
 {
     return app(ClientRegistry::class)->register(new NewClient($name, ClientType::Confidential, scopes: ['openid']))->client;
 }
+
+it('notifies a bound request only after its organization is accepted', function (): void {
+    $subjectId = approvalMailPerson();
+    $org = app(Organizations::class)->create(new NewOrganization('Sandbox', 'sandbox'));
+    app(Memberships::class)->add($org->id, $subjectId, MembershipRole::Member);
+    $client = app(ClientRegistry::class)->register(new NewClient('Infra', ClientType::Confidential, scopes: ['openid'], grantTypes: ['urn:openid:params:grant-type:ciba']))->client;
+    config()->set('ciba.infra', ['client_id' => $client->client_id, 'environment_id' => $client->environment_id, 'resource' => 'https://infra.test/approval']);
+    $ciba = app(BackchannelAuthentication::class);
+    $pending = $ciba->requestForOrganization($client, ['openid'], $subjectId, $org->id, resource: 'https://infra.test/approval');
+    Mail::assertQueued(ApprovalRequestMail::class, 1);
+    expect($pending->organizationId)->toBe($org->id);
+
+    Mail::fake();
+    $transport = new FakePushTransport;
+    app()->instance(PushTransport::class, $transport);
+    approvalMailPhone($subjectId);
+    $ciba->requestForOrganization($client, ['openid'], $subjectId, $org->id, resource: 'https://infra.test/approval');
+    expect($transport->count())->toBe(1);
+    Mail::assertNothingOutgoing();
+
+    app(Memberships::class)->remove($org->id, $subjectId);
+    expect(fn () => $ciba->requestForOrganization($client, ['openid'], $subjectId, $org->id, resource: 'https://infra.test/approval'))
+        ->toThrow(CibaAccessDenied::class);
+    expect($transport->count())->toBe(1);
+    Mail::assertNothingOutgoing();
+});
+
+it('keeps a legacy decorator usable but refuses to discard an organization binding', function (string $decorator): void {
+    $inner = Mockery::mock(BackchannelAuthentication::class);
+    $client = approvalMailAgent();
+    $result = new BackchannelAuthenticationResult('request', 'secret', approvalMailPerson(), 120, 5);
+    $inner->shouldReceive('request')->once()->andReturn($result);
+    $wrapped = app()->makeWith($decorator, ['inner' => $inner]);
+    expect($wrapped->request($client, ['openid'], $result->subjectId))->toBe($result);
+    expect(fn () => $wrapped->requestForOrganization($client, ['openid'], $result->subjectId, strtolower((string) Str::ulid())))
+        ->toThrow(CibaAccessDenied::class);
+})->with([MailingBackchannelAuthentication::class, PushNotifyingBackchannelAuthentication::class]);
 
 function approvalMailPerson(string $email = 'alex@acme.test'): string
 {

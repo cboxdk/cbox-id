@@ -13,6 +13,8 @@ use Cbox\Id\Devices\Support\DeviceConfig;
 use Cbox\Id\Devices\ValueObjects\ApprovalOrigin;
 use Cbox\Id\Devices\ValueObjects\PushPayload;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
+use Cbox\Id\OAuthServer\Contracts\OrganizationBoundBackchannelAuthentication;
+use Cbox\Id\OAuthServer\Exceptions\CibaAccessDenied;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\AuthorizedGrant;
 use Cbox\Id\OAuthServer\ValueObjects\BackchannelAuthenticationResult;
@@ -46,7 +48,7 @@ use Throwable;
  * console's own approval page still works. Notification is an enhancement to CIBA, not
  * a dependency of it — and the FailOpen test exists to keep it that way.
  */
-final class PushNotifyingBackchannelAuthentication implements BackchannelAuthentication
+final class PushNotifyingBackchannelAuthentication implements OrganizationBoundBackchannelAuthentication
 {
     public function __construct(
         private readonly BackchannelAuthentication $inner,
@@ -75,6 +77,26 @@ final class PushNotifyingBackchannelAuthentication implements BackchannelAuthent
     ): BackchannelAuthenticationResult {
         $result = $this->inner->request($client, $scopes, $loginHint, $bindingMessage, $nonce, $requestedExpiry, $resource);
 
+        $this->notify($client, $result);
+
+        return $result;
+    }
+
+    public function requestForOrganization(
+        Client $client,
+        array $scopes,
+        string $loginHint,
+        string $organizationId,
+        ?string $bindingMessage = null,
+        ?string $nonce = null,
+        ?int $requestedExpiry = null,
+        ?string $resource = null,
+    ): BackchannelAuthenticationResult {
+        if (! $this->inner instanceof OrganizationBoundBackchannelAuthentication) {
+            throw new CibaAccessDenied('The decorated service does not support organization binding.');
+        }
+
+        $result = $this->inner->requestForOrganization($client, $scopes, $loginHint, $organizationId, $bindingMessage, $nonce, $requestedExpiry, $resource);
         $this->notify($client, $result);
 
         return $result;

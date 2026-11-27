@@ -25080,6 +25080,12 @@ components:
           type:
             - string
             - 'null'
+          description: 'The organization pinned at initiation, or the recorded grant context of a legacy unbound request. Never the handset token organization.'
+        organization_name:
+          type:
+            - string
+            - 'null'
+          description: 'Current name of the pinned organization. Display its id even if its name is unavailable. Null for legacy unbound requests.'
         requested_at:
           type:
             - string

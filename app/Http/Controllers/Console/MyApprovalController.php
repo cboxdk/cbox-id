@@ -16,6 +16,7 @@ use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\Organization\Contracts\Organizations;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Response;
 use InvalidArgumentException;
@@ -78,9 +79,10 @@ final readonly class MyApprovalController extends ConsoleController
         }
 
         $resources = app(ProtectedResources::class);
+        $organizations = app(Organizations::class)->findMany($requests->pluck('requested_organization_id')->filter(static fn (mixed $id): bool => is_string($id))->values()->all());
 
         return $this->page('console/approvals', __('console.approvals_2bfc3471'), [
-            'requests' => $requests->map(function (BackchannelAuthRequest $request) use ($names, $selfRegistered, $resources): array {
+            'requests' => $requests->map(function (BackchannelAuthRequest $request) use ($names, $selfRegistered, $resources, $organizations): array {
                 $clientId = (string) $request->client_id;
                 $resource = is_string($request->resource) && $request->resource !== '' ? $request->resource : null;
 
@@ -99,6 +101,10 @@ final readonly class MyApprovalController extends ConsoleController
                         'name' => $resources->find($resource)?->name,
                     ],
                     'bindingMessage' => $request->binding_message,
+                    'organization' => $request->requested_organization_id === null ? null : [
+                        'id' => $request->requested_organization_id,
+                        'name' => $organizations[$request->requested_organization_id]->name ?? null,
+                    ],
                     'scopes' => array_map(static fn (string $scope): array => [
                         'value' => $scope,
                         'label' => isset(self::SCOPE_LABELS[$scope]) ? __(self::SCOPE_LABELS[$scope]) : $scope,
@@ -149,7 +155,11 @@ final readonly class MyApprovalController extends ConsoleController
 
         // Bound to the acting subject rather than checked against it: a request belonging to
         // somebody else is refused by the service, which is where that rule belongs.
-        $backchannel->approve($request, $me->id(), $me->organizationId());
+        $approved = $backchannel->approve($request, $me->id(), $row->requested_organization_id ?? $me->organizationId());
+
+        if ($row?->requested_organization_id !== null) {
+            abort_unless($approved, 409, 'This request is no longer actionable.');
+        }
 
         return back()->with('status', __('console.request_approved_cab80f7b'));
     }

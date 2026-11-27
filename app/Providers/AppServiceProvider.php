@@ -17,6 +17,7 @@ use App\Platform\Actions\AppManagementScopes;
 use App\Platform\Actions\Principal\DelegatedTokens;
 use App\Platform\Actions\Principal\OAuthDelegatedTokens;
 use App\Platform\Agents\ApprovalMail;
+use App\Platform\Agents\InfraCibaOrganizationPolicy;
 use App\Platform\Agents\MailingBackchannelAuthentication;
 use App\Platform\AuthoritativeDnsResolver;
 use App\Platform\Billing\NoProjectSubscriptions;
@@ -71,6 +72,7 @@ use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
+use Cbox\Id\OAuthServer\Contracts\CibaOrganizationPolicy;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Contracts\TokenExchange;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
@@ -132,6 +134,8 @@ class AppServiceProvider extends ServiceProvider
         // root is nobody's identity provider. Both inert everywhere but the root of a
         // multi-tenant deployment. See App\Platform\OAuth\RootMcpOAuth.
         $this->app->extend(AudienceResolver::class, fn (AudienceResolver $inner): AudienceResolver => new RootMcpAudiences($inner));
+
+        $this->app->bind(CibaOrganizationPolicy::class, InfraCibaOrganizationPolicy::class);
 
         // Cbox Infra's standing CI approvals (ADR-0017 Addendum A): the token exchange also
         // issues a plan-bound approval for a machine client an organization owner's standing

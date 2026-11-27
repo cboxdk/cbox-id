@@ -13,6 +13,10 @@ use Cbox\Id\OAuthServer\Enums\GrantPollStatus;
 use Cbox\Id\OAuthServer\Models\BackchannelAuthRequest;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
+use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Contracts\Organizations;
+use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -240,3 +244,26 @@ it('tells the app when a client registered itself and what the token is for', fu
         ->assertJsonPath('data.client_self_registered', false)
         ->assertJsonPath('data.resource', null);
 })->group('security');
+
+it('uses the requested organization on the handset even with another or no token organization', function (bool $ambient): void {
+    $organizations = app(Organizations::class);
+    $memberships = app(Memberships::class);
+    $a = $organizations->create(new NewOrganization('A', 'org-a'));
+    $b = $organizations->create(new NewOrganization('B', 'org-b'));
+    foreach ([$a, $b] as $org) {
+        $memberships->add($org->id, $this->alice, MembershipRole::Member);
+    }
+    $token = Mockery::mock(TokenIntrospector::class);
+    $token->shouldReceive('introspect')->with('bound-phone')->andReturn(Introspection::active($this->alice, 'cid_authenticator', ['approvals.read', 'approvals.write'], $ambient ? ['org' => $a->id] : []));
+    app()->instance(TokenIntrospector::class, $token);
+    $client = app(ClientRegistry::class)->register(new NewClient('Infra', ClientType::Confidential,
+        grantTypes: ['urn:openid:params:grant-type:ciba'], scopes: ['openid']))->client;
+    config()->set('cbox-id.oauth.protected_resources', [['identifier' => 'https://infra.test/approval', 'name' => 'Infra', 'scopes' => []]]);
+    config()->set('ciba.infra', ['client_id' => $client->client_id, 'environment_id' => $client->environment_id, 'resource' => 'https://infra.test/approval']);
+    $ciba = app(BackchannelAuthentication::class);
+    $pending = $ciba->requestForOrganization($client, ['openid'], $this->alice, $b->id, resource: 'https://infra.test/approval');
+    $this->getJson("/api/v1/approvals/{$pending->requestId}", approvalAuth('bound-phone'))
+        ->assertOk()->assertJsonPath('data.organization_id', $b->id)->assertJsonPath('data.organization_name', 'B');
+    $this->postJson("/api/v1/approvals/{$pending->requestId}/approve", [], approvalAuth('bound-phone'))->assertOk();
+    expect($ciba->redeem($client->client_id, $pending->authReqId)->organizationId)->toBe($b->id);
+})->with([true, false])->group('security');
