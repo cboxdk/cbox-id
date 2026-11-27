@@ -87,6 +87,17 @@ state machine:
 | `expired_token` | The code aged out (10 minutes). | Stop, and offer to start again. |
 | 200 with tokens | Done. | Store them (see below) and carry on. |
 
+### Authentication strength
+
+The tokens retain the approving session's authentication time and methods, including
+through refresh. Approval itself is consent, not an extra authentication factor. A
+password-only session does not become MFA by approving a device or completing a Radar
+email challenge.
+
+Tokens issued before authentication evidence was retained stay without it, including
+their refresh tokens. To call an API that requires AAL2, start a new device flow and
+approve it from a session authenticated with MFA; refreshing an old token cannot upgrade it.
+
 ## Language support
 
 **Go** — first-class, two calls:
