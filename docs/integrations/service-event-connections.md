@@ -54,18 +54,28 @@ consumer scopes under another API: registered APIs take precedence and would
 change the existing MCP or lease grants. This needs no engine upgrade or data
 migration; deploy the host change and rebuild its configuration cache normally.
 
-Sites obtains an ID-issuer-audience person token with the selected organization
-in its signed `org` claim, then calls `PUT /v1/service-connections/cbox_assets`
+Sites requests `resource=https://api.cboxid.com` and only
+`scope=id:service-connections:write` in its person authorization-code/PKCE flow.
+The root's API resource advertises that scope; both spellings are reserved against
+dynamic registration and client ID metadata documents. No `openid` scope is needed.
+The token carries the selected organization in its signed `org` claim, then Sites
+calls `PUT /v1/service-connections/cbox_assets`
 on the ID API host. The caller must be a current active organization owner or
 administrator; a machine, support actor or environment management key cannot
 activate a connection. No organization id in a body or header selects the tenant.
 Repeated activation returns the existing connection for this organization,
 consumer and service. Sites stores that connection, never its backing credentials.
 
+Only API-host connection listing, creation and revocation accept this exact API
+audience. Issuer-audience tokens remain supported, including on legacy paths.
+Leasing, inspection and other scope-guarded endpoints retain their existing
+issuer-audience requirement. Do not add a shadow API row or an environment resource
+override for ID: the generated catalogue retains the other management scopes.
+
 Activation can run server-side during Sites' existing administrator onboarding or
 login. A scope alone does not suppress OAuth consent: Sites must be a registered,
 non-dynamic, platform-owned first-party client, and must not ask `prompt=consent`.
-The person token must target the ID issuer, not the Sites or Assets API. The
+The person token must target ID, not the Sites or Assets API. The
 existing `laravel-id-client` `ServiceConnections::connect()` implements this
 protocol and validates the returned organization, consumer, service and audience.
 

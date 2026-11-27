@@ -116,12 +116,13 @@ final class ManagementAudience
     }
 
     /**
-     * The current resources, each the template's twin under its own identifier — the
-     * same scopes, the same openness to self-registered clients.
+     * The current resources share the MCP catalogue. API-only scopes stay out of the
+     * implicit MCP target, so adding one cannot re-audience an existing login flow.
      *
+     * @param  list<string>  $apiScopes
      * @return list<ProtectedResource>
      */
-    public static function resources(ProtectedResource $template): array
+    public static function resources(ProtectedResource $template, array $apiScopes = []): array
     {
         $resources = [];
 
@@ -132,7 +133,7 @@ final class ManagementAudience
 
             $resources[] = new TransitionalProtectedResource(
                 identifier: $identifier,
-                scopes: $template->scopes,
+                scopes: $identifier === self::api() ? array_values(array_unique([...$template->scopes, ...$apiScopes])) : $template->scopes,
                 dynamicClients: $template->dynamicClients,
                 name: $identifier === self::api() ? 'Cbox ID API' : $template->name,
             );

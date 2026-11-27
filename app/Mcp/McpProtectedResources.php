@@ -72,7 +72,10 @@ final readonly class McpProtectedResources implements ProtectedResources
         // The management plane's other names (plan §2.5): the API host and the application
         // host's MCP server. Found when a client NAMES one, never offered by all(), so a
         // request that names no resource is not made ambiguous by three twins.
-        foreach (ManagementAudience::resources($this->mcp()) as $resource) {
+        // Person service-connection management is a controller, not an Action. Offer it
+        // only on the named root API resource; implicit issuer grants must stay unchanged.
+        $apiScopes = $this->servingPlatformRoot() ? ['id:service-connections:write'] : [];
+        foreach (ManagementAudience::resources($this->mcp(), $apiScopes) as $resource) {
             if ($resource->identifier === $identifier) {
                 return $resource;
             }

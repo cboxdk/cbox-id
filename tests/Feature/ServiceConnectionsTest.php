@@ -10,6 +10,7 @@ use App\Platform\Actions\ActionRunner;
 use App\Platform\Actions\Principal\ConsoleSessionPrincipal;
 use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Api\ApiHost;
+use App\Platform\Api\ManagementAudience;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use App\Providers\ServiceConnectionsServiceProvider;
@@ -17,6 +18,9 @@ use App\ServiceConnections\ConnectionEvents;
 use App\ServiceConnections\Contracts\ReadsConnectionEvents;
 use App\ServiceConnections\ServiceConnection;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
+use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
+use Cbox\Id\OAuthServer\Contracts\ClientIdMetadataDocuments;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
@@ -24,6 +28,7 @@ use Cbox\Id\OAuthServer\Contracts\TokenIssuer;
 use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Exceptions\InvalidAudience;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\Testing\InteractsWithOAuth;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Cbox\Id\OAuthServer\ValueObjects\IssuedToken;
 use Cbox\Id\OAuthServer\ValueObjects\NewClient;
@@ -31,8 +36,11 @@ use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
+
+uses(InteractsWithOAuth::class);
 
 beforeEach(function (): void {
     $this->organization = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-services'));
@@ -100,6 +108,109 @@ it('stops leasing if platform trust is removed', function (): void {
     config(['service-connections.consumers' => []]);
     $this->withToken('machine')->postJson('/api/v1/service-connections/'.$id.'/token')->assertForbidden();
 });
+
+it('offers person connection management on the explicit root API resource without changing implicit audiences', function (): void {
+    multiTenantDeployment((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+    platformRootEnvironment();
+    app(PlatformRoot::class)->run(function (): void {
+        $scopes = ['id:service-connections:write', 'service_connections.manage'];
+        $client = app(ClientRegistry::class)->register(new NewClient(name: 'Sites', scopes: $scopes))->client;
+        $resolver = app(AudienceResolver::class);
+        $mcp = app(ProtectedResources::class)->forMetadataPath('/.well-known/oauth-protected-resource/mcp');
+        foreach ($scopes as $scope) {
+            $resolved = $resolver->resolve($client, [$scope], ManagementAudience::api());
+            expect($resolved->scopes)->toBe([$scope])
+                ->and($resolved->resource)->toBe(ManagementAudience::api())
+                ->and($resolved->includesIssuer)->toBeFalse()
+                ->and($resolver->resolve($client, [$scope], null)->resource)->toBeNull();
+            expect(fn () => $resolver->resolve($client, [$scope], $mcp->identifier))->toThrow(InvalidAudience::class);
+        }
+        $resource = app(ProtectedResources::class)->find((string) ManagementAudience::api());
+        expect($resource->scopes)->toContain('id:service-connections:write', 'webhooks:read');
+        foreach (['service_connections.manage', 'service_connections.lease', 'id:service-connection-leases:write', 'service_connections.inspect', 'id:service-connections:read'] as $unoffered) {
+            expect($resource->scopes)->not->toContain($unoffered);
+        }
+    });
+    $metadata = $this->getJson('http://'.ApiHost::name().'/.well-known/oauth-protected-resource')->assertOk();
+    expect($metadata->json('scopes_supported'))->toContain('id:service-connections:write', 'webhooks:read');
+});
+
+it('admits API-audienced person connection management only on the API host and keeps live authorization', function (string $scope): void {
+    multiTenantDeployment((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+    platformRootEnvironment();
+    app()->instance(TokenIntrospector::class, $this->realIntrospector);
+    [$person, $organization, $client, $otherClient] = app(PlatformRoot::class)->run(function () use ($scope): array {
+        $person = app(Subjects::class)->create('sites-connect@example.test', 'Sites administrator');
+        $organization = app(Organizations::class)->create(new NewOrganization('Sites customer', 'sites-customer'));
+        app(Memberships::class)->add($organization->id, $person->id, MembershipRole::Admin);
+        $client = app(ClientRegistry::class)->register(new NewClient(name: 'Sites', scopes: [$scope]))->client;
+        $otherClient = app(ClientRegistry::class)->register(new NewClient(name: 'Other consumer', scopes: [$scope]))->client;
+
+        return [$person, $organization, $client, $otherClient];
+    });
+    config(['service-connections.consumers' => [$client->client_id]]);
+    $issue = fn (?string $resource, ?Client $consumer = null, ?string $org = null): string => app(PlatformRoot::class)->run(
+        fn (): string => app(TokenIssuer::class)->issueForUser($consumer ?? $client, $person->id, $org ?? $organization->id, [$scope], $resource)->token,
+    );
+    $token = $issue(ManagementAudience::api());
+    $claims = app(PlatformRoot::class)->run(fn () => $this->realIntrospector->introspect($token));
+    expect($claims->claims['aud'])->toBe(ManagementAudience::api())
+        ->and($claims->scopes)->toBe([$scope]);
+    $base = 'http://'.ApiHost::name().'/v1/service-connections';
+    $id = $this->withToken($token)->putJson($base.'/cbox_assets')->assertOk()
+        ->assertJsonPath('organization_id', 'org_'.$organization->id)->assertJsonMissingPath('client_secret')->json('id');
+    $this->withToken($token)->putJson($base.'/cbox_assets')->assertOk()->assertJsonPath('id', $id);
+    $this->withToken($token)->getJson($base)->assertOk()->assertJsonPath('data.0.id', $id);
+    $this->withToken($token)->postJson('/api/v1/service-connections/cbox_assets')->assertUnauthorized();
+    $this->withToken($token)->postJson($base.'/'.$id.'/lease')->assertUnauthorized();
+    $this->withToken($token)->postJson($base.'/'.$id.'/inspect')->assertUnauthorized();
+    $this->withToken($token)->postJson('http://'.ApiHost::name().'/v1/vault/secrets')->assertUnauthorized();
+
+    // Issuer-only tokens, including old clients omitting resource, keep working.
+    $this->withToken($issue(null))->postJson('/api/v1/service-connections/cbox_assets')->assertOk();
+    $issuer = app(PlatformRoot::class)->run(fn (): string => app(IssuerResolver::class)->issuer());
+    $this->withToken($issue($issuer))->putJson($base.'/cbox_assets')->assertOk()->assertJsonPath('id', $id);
+    $this->withToken($issue('https://api.cboxassets.com'))->putJson($base.'/cbox_assets')->assertUnauthorized();
+    $this->withToken($issue((string) ManagementAudience::api().'/'))->putJson($base.'/cbox_assets')->assertUnauthorized();
+    $this->withToken($issue(ManagementAudience::api(), $otherClient))->putJson($base.'/cbox_assets')->assertForbidden();
+    $this->withToken($issue(ManagementAudience::api(), org: 'org_not_mine'))->putJson($base.'/cbox_assets')->assertForbidden();
+    $machine = app(PlatformRoot::class)->run(fn (): string => app(TokenIssuer::class)->issueClientCredentials($client, [$scope], ManagementAudience::api())->token);
+    $this->withToken($machine)->putJson($base.'/cbox_assets')->assertForbidden();
+    $this->withToken($token)->deleteJson($base.'/'.$id)->assertOk();
+    app(PlatformRoot::class)->run(fn () => app(Memberships::class)->changeRole($organization->id, $person->id, MembershipRole::Member));
+    $this->withToken($token)->putJson($base.'/cbox_assets')->assertForbidden();
+})->with(['id:service-connections:write', 'service_connections.manage'])->group('security');
+
+it('never grants either person connection scope to DCR or metadata-document clients', function (string $registration): void {
+    multiTenantDeployment((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+    platformRootEnvironment();
+    $scopes = ['webhooks:read', 'id:service-connections:write', 'service_connections.manage'];
+    $document = [
+        'client_name' => 'Self-registered', 'redirect_uris' => ['http://127.0.0.1:33418/callback'],
+        'grant_types' => ['authorization_code', 'refresh_token'], 'token_endpoint_auth_method' => 'none',
+        'scope' => implode(' ', $scopes),
+    ];
+    if ($registration === 'dcr') {
+        $response = $this->postJson('/oauth/register', $document)->assertCreated();
+        $client = app(PlatformRoot::class)->run(fn () => Client::query()->where('client_id', $response->json('client_id'))->sole());
+    } else {
+        $url = 'https://agent.example/oauth/client.json';
+        $this->fakeClientMetadataDocuments()->serve($url, ['client_id' => $url, ...$document]);
+        $client = app(PlatformRoot::class)->run(fn () => app(ClientIdMetadataDocuments::class)->resolve($url));
+    }
+    expect($client->scopes)->toBe(['webhooks:read']);
+    app(PlatformRoot::class)->run(function () use ($client, $scopes): void {
+        // A stale self-registered client cannot bypass the reservation at token issuance.
+        $client->scopes = $scopes;
+        $person = app(Subjects::class)->create('self-registered@example.test', 'MCP user');
+        $issuer = app(TokenIssuer::class);
+        $issued = $issuer->issueForUser($client, $person->id, null, $scopes, ManagementAudience::api());
+        expect($this->realIntrospector->introspect($issued->token)->scopes)->toBe(['webhooks:read']);
+        foreach (array_slice($scopes, 1) as $scope) {
+            expect(fn () => $issuer->issueForUser($client, $person->id, null, [$scope], ManagementAudience::api()))->toThrow(InvalidAudience::class);
+        }
+    });
+})->with(['dcr', 'cimd'])->group('security');
 
 it('issues real organization-bound tokens and invalidates them on central revocation', function (): void {
     $id = $this->withToken('admin')->postJson('/api/v1/service-connections/cbox_billing')->assertOk()->json('id');

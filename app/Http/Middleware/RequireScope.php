@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Platform\Api\ApiHost;
+use App\Platform\Api\ManagementAudience;
 use App\Platform\Scopes\ScopeRegistry;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
@@ -50,9 +52,14 @@ final class RequireScope
             return $this->challenge('invalid_token', 'The access token is invalid or expired.', 401);
         }
 
-        // A token minted for a specific RFC 8707 resource must not be replayable
-        // against this first-party API: accept only tokens audienced for this issuer.
-        if (! $token->isAudience($this->issuers->issuer())) {
+        // Only person connection management on the API host also accepts its exact
+        // RFC 8707 resource. Lease/inspect, other endpoints and legacy paths stay issuer-only.
+        $connectionManagement = ApiHost::serves($request) && $request->routeIs(
+            'v1.get.service-connections', 'v1.put.service-connections.id', 'v1.delete.service-connections.id',
+        );
+        $api = ManagementAudience::api();
+        if (! $token->isAudience($this->issuers->issuer())
+            && ! ($connectionManagement && $api !== null && $token->isAudience($api))) {
             return $this->challenge('invalid_token', 'The access token was not issued for this API.', 401);
         }
 

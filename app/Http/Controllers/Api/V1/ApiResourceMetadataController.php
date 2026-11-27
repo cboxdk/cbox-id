@@ -6,8 +6,8 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Platform\Api\ApiUrls;
 use App\Platform\Api\ManagementAudience;
-use App\Platform\OAuth\RootDelegatedAccess;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
+use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Enums\ProtocolScope;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\JsonResponse;
@@ -23,11 +23,11 @@ use Illuminate\Http\JsonResponse;
  */
 final readonly class ApiResourceMetadataController
 {
-    public function __invoke(PlatformRoot $root, IssuerResolver $issuers, RootDelegatedAccess $access): JsonResponse
+    public function __invoke(PlatformRoot $root, IssuerResolver $issuers, ProtectedResources $resources): JsonResponse
     {
         $resource = ManagementAudience::api();
         $issuer = $root->run(static fn (): string => $issuers->issuer()) ?? $issuers->issuer();
-        $scopes = $access->resource()->scopes ?? [];
+        $scopes = $root->run(static fn (): array => $resource === null ? [] : ($resources->find($resource)->scopes ?? [])) ?? [];
 
         return new JsonResponse([
             'resource' => $resource,
