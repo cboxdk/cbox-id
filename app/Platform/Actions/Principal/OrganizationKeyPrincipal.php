@@ -11,7 +11,6 @@ use App\Platform\Actions\Approvals\StepUpPolicy;
 use App\Platform\Actions\OrganizationScopes;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\Scopes\ScopeRegistry;
-use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Platform\Models\OrganizationApiKey;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -72,9 +71,6 @@ final readonly class OrganizationKeyPrincipal implements Principal
 
         if (! OrganizationScopes::knows($action->scope) || ! ScopeRegistry::satisfiedBy($action->scope, $this->key->permits(...))) {
             throw new AuthorizationException("This key is missing the required scope: {$action->scope}.");
-        }
-        if (OrganizationScopes::admitted($action->scope)) {
-            app(ProductAdmission::class)->assertGranted($this->id(), $this->key->organization_id, acting: $action->danger->writes());
         }
     }
 

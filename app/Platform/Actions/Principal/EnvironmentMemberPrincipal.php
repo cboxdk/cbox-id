@@ -17,7 +17,6 @@ use App\Platform\EnvironmentOrigin;
 use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OAuth\ValueObjects\RootOrganization;
 use App\Platform\OAuth\ValueObjects\RootSignIn;
-use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
@@ -162,8 +161,6 @@ final readonly class EnvironmentMemberPrincipal implements SignedInPerson, Token
             || ! in_array($this->environment->id, $workspace->environmentIds, true)) {
             throw new AuthorizationException('You do not have permission to change this.');
         }
-
-        app(ProductAdmission::class)->assertGranted($this->signIn->subjectId, $workspace->id, acting: $action->danger->writes());
     }
 
     public function supportsIdempotency(): bool

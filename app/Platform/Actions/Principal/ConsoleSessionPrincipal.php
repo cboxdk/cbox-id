@@ -14,7 +14,6 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\Console\ConsoleStepUp;
 use App\Platform\CurrentUser;
 use App\Platform\Operators\OperatorGate;
-use App\Platform\ServiceAccess\ProductAdmission;
 use App\Platform\StepUpReason;
 use App\Platform\Sudo;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
@@ -201,13 +200,6 @@ final readonly class ConsoleSessionPrincipal implements ConfirmsFreshly, Princip
 
         if ($capabilities === null || $capability === false || ! OrganizationScopes::holds($capabilities, $capability)) {
             throw new AuthorizationException('You do not have permission to do this in this organization.');
-        }
-
-        // The product's admission, as the organization key and the root sign-in ask it for
-        // the same scopes: the console is one more door to the same actions, not a way
-        // round Billing's answer (minting a management key, claiming a custom domain).
-        if (OrganizationScopes::admitted($action->scope)) {
-            app(ProductAdmission::class)->assertGranted($this->scope->actorId(), $this->scope->requireOrganizationId(), acting: $action->danger->writes());
         }
     }
 }
