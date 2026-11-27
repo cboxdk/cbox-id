@@ -31,7 +31,7 @@ use Cbox\Id\Otp\Testing\FakeOtpChannel;
 use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia;
 
-function signedInFor(): string
+function signedInFor(array $amr = ['pwd']): string
 {
     $subject = app(Subjects::class)->create('dev@acme.test', 'Dev User', 'super-secret-1234');
     $org = app(Organizations::class)->create(new NewOrganization('Acme', 'acme-dev'));
@@ -39,7 +39,7 @@ function signedInFor(): string
     // The request session too, not only CurrentUser: this page is a set of REQUESTS now,
     // and one that arrives without a session is redirected to the door — where "nothing was
     // approved" is true for entirely the wrong reason.
-    $session = app(SessionManager::class)->start($subject->id, $org->id, ['pwd']);
+    $session = app(SessionManager::class)->start($subject->id, $org->id, $amr);
     session([PlatformAuth::SESSION_KEY => $session->id]);
     app(CurrentUser::class)->set($subject, $session, $org, MembershipRole::Owner);
 
@@ -56,8 +56,12 @@ function deviceClient(): Client
     ))->client;
 }
 
-it('shows the requesting app and scopes, then approves so the device can get a token', function () {
-    $userId = signedInFor();
+it('shows the requesting app and scopes, then preserves the approving session on the device grant', function (array $amr) {
+    $userId = signedInFor($amr);
+    $session = app(CurrentUser::class)->session();
+    $session->created_at = now()->subMinutes(7);
+    $session->save();
+    $authTime = $session->created_at->getTimestamp();
     $result = app(DeviceAuthorization::class)->request(deviceClient(), ['openid', 'email']);
 
     // Step 1: the code resolves to the app + scopes, shown before any approval.
@@ -70,8 +74,10 @@ it('shows the requesting app and scopes, then approves so the device can get a t
         // The HUMAN label, which is what the person actually reads before approving.
         ->and(collect($client['scopes'])->pluck('label'))->toContain('Your email address');
 
-    // Step 2: approve.
-    approveDevice()->assertRedirect(route('device'));
+    // Step 2: approve. Browser-supplied assurance must never replace the session's.
+    inertiaRequest(fn (): TestResponse => test()->from(route('device'))->post(route('device.approve'), [
+        'auth_time' => time(), 'amr' => ['mfa'], 'acr' => 'urn:cbox-id:aal2',
+    ]))->assertRedirect(route('device'));
 
     expect(flashed('deviceOutcome'))->toBe('approved');
 
@@ -82,8 +88,14 @@ it('shows the requesting app and scopes, then approves so the device can get a t
         $result->deviceCode,
     );
 
-    expect($grant->userId)->toBe($userId);
-});
+    expect($grant->userId)->toBe($userId)
+        ->and($grant->authTime)->toBe($authTime)
+        ->and($grant->amr)->toBe($amr);
+})->with([
+    'password only' => [['pwd']],
+    'MFA' => [['pwd', 'otp']],
+    'verified passkey' => [['passkey', 'mfa']],
+]);
 
 it('reports an invalid or unknown code without moving to consent', function () {
     signedInFor();
@@ -382,6 +394,9 @@ it('asks for an emailed code when Radar challenges the approval, then approves o
 
     expect(DeviceCode::query()->value('status'))->toBe(GrantPollStatus::Approved)
         ->and(flashed('deviceOutcome'))->toBe('approved');
+
+    $grant = app(DeviceAuthorization::class)->redeem(DeviceCode::query()->value('client_id'), $result->deviceCode);
+    expect($grant->amr)->toBe(['pwd']); // The Radar challenge did not authenticate a second factor.
 })->group('security');
 
 it('never takes an emailed code for a request it was not asked for', function () {

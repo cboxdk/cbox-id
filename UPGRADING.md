@@ -14,6 +14,19 @@ package's own breaking changes are in
 this file covers what an **operator of this deployment** has to do, and repeats the
 package changes that need action here rather than in a client.
 
+## Device authentication evidence (2026-11-27)
+
+The device approval correction requires `laravel-id` 2.9.1 and its migration
+`2026_11_27_000100_remember_device_grant_authentication` before the new application
+serves traffic. It adds nullable `auth_time` and `amr` columns to `device_codes`, with
+no backfill. Keep those columns if rolling application code back.
+
+New approvals carry the approving session's recorded authentication into access and
+ID tokens and preserve it through refresh. Existing contextless tokens and refresh
+families do not gain assurance: an AAL2-protected API requires a fresh device flow
+approved from a genuine MFA session. Neither clicking Approve nor completing a Radar
+email challenge counts as a second factor.
+
 ## 3.0.0 (unreleased): the workspace is the organization
 
 The Cbox customer was called a *workspace*; v3 calls it an **organization**, in the

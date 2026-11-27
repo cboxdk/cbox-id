@@ -9,9 +9,11 @@ use App\Platform\OAuth\ConsentScopes;
 use App\Platform\OAuth\DeviceUserCode;
 use App\Platform\Radar\Enums\RadarMethod;
 use App\Platform\RiskGuard;
+use Cbox\Id\OAuthServer\Contracts\AuthenticationAwareDeviceAuthorization;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\DeviceAuthorization;
 use Cbox\Id\OAuthServer\Models\Client;
+use Cbox\Id\OAuthServer\ValueObjects\AuthenticationEvent;
 use Cbox\Id\Otp\Contracts\OtpService;
 use Cbox\Id\Otp\Exceptions\OtpRateLimitExceeded;
 use Illuminate\Http\RedirectResponse;
@@ -267,7 +269,17 @@ final readonly class DeviceApprovalController extends PageController
          * of every authenticated request, so a suspended or deleted organization never
          * reaches this line. DeletedOrganizationEnforcementTest asks the door that answers.
          */
-        if (! $devices->approve($code, $me->id(), $me->organizationId())) {
+        $session = $me->session();
+        // Neither clicking Approve nor passing a Radar email challenge establishes MFA.
+        // Carry only the authentication recorded by the session's sign-in door.
+        $approved = $devices instanceof AuthenticationAwareDeviceAuthorization
+            ? $devices->approveAuthenticated($code, $me->id(), $me->organizationId(), new AuthenticationEvent(
+                $session?->created_at?->getTimestamp(),
+                $session !== null ? array_values($session->amr) : [],
+            ))
+            : $devices->approve($code, $me->id(), $me->organizationId());
+
+        if (! $approved) {
             // Expired between the consent screen and the click — send them back to the form.
             $this->forgetConsent($request);
 
