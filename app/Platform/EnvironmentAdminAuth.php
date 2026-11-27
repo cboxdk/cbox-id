@@ -7,7 +7,6 @@ namespace App\Platform;
 use App\Http\Middleware\ResolveEnvironmentFromPath;
 use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\NativeProduct\NativeProductAccess;
-use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Identity\Contracts\MfaVerification;
 use Cbox\Id\Identity\Contracts\SessionManager;
 use Cbox\Id\Identity\Contracts\Subjects;
@@ -448,8 +447,6 @@ final class EnvironmentAdminAuth
         if (! in_array($hostEnv, $reachable, true)) {
             return null;
         }
-
-        app(ProductAdmission::class)->assertWebGranted($subjectId, $membership->organization_id);
 
         return $membership;
     }

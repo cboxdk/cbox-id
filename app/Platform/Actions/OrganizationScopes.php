@@ -8,7 +8,6 @@ use App\Http\Middleware\AuthenticateOrganizationApi;
 use App\Platform\Actions\Principal\OrganizationKeyPrincipal;
 use App\Platform\OrganizationCapabilities;
 use App\Platform\Scopes\ScopeRegistry;
-use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Organization\Enums\MembershipRole;
 
 /**
@@ -81,14 +80,6 @@ final class OrganizationScopes
         ],
     ];
 
-    /**
-     * The scopes that also need the product's admission ({@see ProductAdmission}): reading the
-     * organization's own products and running them.
-     *
-     * @var list<string>
-     */
-    public const array ADMITTED = ['id:organization:read', 'id:projects:write', 'id:environments:write', 'id:environment-keys:write', 'id:organization-keys:write'];
-
     /** @return list<string> */
     public static function all(): array
     {
@@ -151,12 +142,6 @@ final class OrganizationScopes
         }
 
         return array_values(array_unique([...$current, ...$legacy]));
-    }
-
-    /** Whether $scope also needs the product's admission. */
-    public static function admitted(string $scope): bool
-    {
-        return in_array(self::resolve($scope), self::ADMITTED, true);
     }
 
     public static function label(string $scope): string

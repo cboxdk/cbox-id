@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\PointAtFirstRun;
+use App\Mail\InvitationMail;
 use App\Platform\Actions\ActionRefused;
 use App\Platform\Billing\Jobs\RefreshBillingSnapshot;
 use App\Platform\Billing\ProductBilling;
@@ -24,6 +25,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 
 beforeEach(function (): void {
     $this->withoutMiddleware(PointAtFirstRun::class);
@@ -36,14 +38,14 @@ function productSignupPolicy(bool $login = false): array
     return ['id' => 12, 'mode' => 'waitlist', 'login_required' => $login, 'country_collection' => 'required', 'countries' => ['DK' => 'Denmark'], 'questions' => [['key' => 'use', 'label' => 'Your plans', 'required' => true, 'type' => 'multiselect', 'options' => ['Build', 'Explore'], 'validation' => 'none', 'min_length' => 0, 'max_length' => 2000]]];
 }
 
-function productSignupPerson(bool $team = false): array
+function productSignupPerson(bool $team = false, MembershipRole $role = MembershipRole::Owner): array
 {
     $person = app(Subjects::class)->create('ada@example.test', 'Ada', 'a-strong-unbreached-passphrase');
     app(Subjects::class)->markEmailVerified($person->id, $person->email);
     $person = app(Subjects::class)->find($person->id);
     $organization = $team ? app(Organizations::class)->create(new NewOrganization('Ada team', 'ada-team')) : null;
     if ($organization !== null) {
-        app(Memberships::class)->add($organization->id, $person->id, MembershipRole::Owner);
+        app(Memberships::class)->add($organization->id, $person->id, $role);
     }
     $session = app(SessionManager::class)->start($person->id, $organization?->id, ['pwd']);
     session([PlatformAuth::SESSION_KEY => $session->id]);
@@ -102,7 +104,7 @@ it('names the refused organization at the gate and lands it on its own administr
     config(['service-access.identity_environment' => $root->id]);
     [, $team] = app(PlatformRoot::class)->run(fn (): array => productSignupPerson(true));
     Http::fake(['*/policy' => Http::response(['program' => productSignupPolicy()]), '*/check' => Http::response(['allowed' => false])]);
-    $this->get(route('orgs.show', ['org' => $team->slug]))->assertRedirect(route('orgs.settings.members'));
+    $this->get(route('orgs.show', ['org' => $team->slug]))->assertRedirect(route('orgs.projects'));
     nextRequest();
     $this->get('/start')->assertOk()->assertSee('The Ada team organization does not have')->assertSee('Administering Ada team');
 });
@@ -147,7 +149,7 @@ it('gates direct product creation through organization API keys before writing',
     Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/check') && $request['organization'] === $account['organization']->id && $request->hasHeader('Authorization', 'Bearer test-service-secret'));
 })->with(['waitlisted' => [200, 403], 'billing unavailable' => [503, 503]]);
 
-it('lets an admitted root team create its first project and revokes a read once the kept answer is refreshed', function (): void {
+it('lets an admitted root team create its first project and keeps administration open after admission is revoked', function (): void {
     multiTenantDeployment();
     $root = platformRootEnvironment();
     serveOnTestHost($root);
@@ -166,16 +168,33 @@ it('lets an admitted root team create its first project and revokes a read once 
     Http::assertSent(fn (Request $request): bool => $request['subject'] === $person->id && $request['organization'] === $team->id);
 
     $allowed = false;
+    (new RefreshBillingSnapshot(RefreshBillingSnapshot::ADMISSION, [$person->id, $team->id]))->handle(app(ProductAdmission::class), app(ProductBilling::class));
     nextRequest();
-    // Within the snapshot's lifetime the page renders from Billing's last answer.
     $this->get(route('orgs.projects.show', $project->id))->assertOk();
-    $this->travel(31)->seconds();
+    $this->get(route('orgs.projects'))->assertOk();
     nextRequest();
-    // Stale: still served, and the refresh job asks Billing again.
-    $this->get(route('orgs.projects.show', $project->id))->assertOk();
-    nextRequest();
-    $this->get(route('orgs.projects.show', $project->id))->assertForbidden();
+    $this->post(route('orgs.projects.store'), ['name' => 'Blocked second product'])->assertSessionHasErrors();
+    expect(Project::query()->where('organization_id', $team->id)->count())->toBe(1);
 });
+
+it('lets root organization owners and admins invite without product admission or tenants', function (MembershipRole $role, int $billingStatus): void {
+    Mail::fake();
+    multiTenantDeployment();
+    $root = platformRootEnvironment();
+    serveOnTestHost($root);
+    config(['service-access.identity_environment' => $root->id]);
+    [, $team] = app(PlatformRoot::class)->run(fn (): array => productSignupPerson(true, $role));
+    Http::fake(['*/check' => Http::response(['allowed' => false], $billingStatus)]);
+    nextRequest();
+
+    $this->get(route('orgs.settings.members'))->assertOk();
+    $this->from(route('orgs.settings.members'))->post(route('orgs.settings.members.invite'), [
+        'organization' => $team->id, 'email' => 'invited@example.test', 'roles' => ['viewer'],
+    ])->assertSessionHasNoErrors()->assertRedirect();
+    Mail::assertQueued(InvitationMail::class, fn (InvitationMail $mail): bool => $mail->hasTo('invited@example.test'));
+    Http::assertNotSent(fn (Request $request): bool => str_ends_with($request->url(), '/check'));
+    expect(Project::query()->where('organization_id', $team->id)->exists())->toBeFalse();
+})->with([MembershipRole::Owner, MembershipRole::Admin])->with([200, 503]);
 
 it('does not disable admission in production when the configuration flag is false', function (): void {
     $root = platformRootEnvironment();
@@ -228,7 +247,7 @@ it('renders a project page from the kept answers while Billing is down, without 
     expect($billing['checks'])->toBe($checks);
 });
 
-it('serves a stale answer at once and queues one refresh of it', function (): void {
+it('refreshes project features without checking admission when reading an existing project', function (): void {
     [$project, $team, $billing] = admittedTeamWithProject();
     $billing['up'] = false;
     centralBillingFixture()->takeDown();
@@ -240,7 +259,7 @@ it('serves a stale answer at once and queues one refresh of it', function (): vo
     $this->get(route('orgs.projects.show', $project->id))->assertOk();
 
     expect($billing['checks'])->toBe($checks);
-    Bus::assertDispatched(RefreshBillingSnapshot::class, fn (RefreshBillingSnapshot $job): bool => $job->kind === RefreshBillingSnapshot::ADMISSION && $job->parts[1] === $team->id);
+    Bus::assertNotDispatched(RefreshBillingSnapshot::class, fn (RefreshBillingSnapshot $job): bool => $job->kind === RefreshBillingSnapshot::ADMISSION);
     Bus::assertDispatched(RefreshBillingSnapshot::class, fn (RefreshBillingSnapshot $job): bool => $job->kind === RefreshBillingSnapshot::FEATURES && $job->parts === [$team->id]);
 });
 
@@ -257,7 +276,7 @@ it('asks Billing before a write when the kept answer is stale', function (): voi
         ->and(Project::query()->where('organization_id', $team->id)->where('name', 'Second product')->exists())->toBeFalse();
 });
 
-it('refreshes a kept answer in the background and keeps it when Billing is away', function (): void {
+it('keeps existing project access independent of a refreshed admission refusal', function (): void {
     [$project, $team, $billing] = admittedTeamWithProject();
     $person = app(CurrentUser::class)->id();
     $billing['up'] = false;
@@ -269,11 +288,11 @@ it('refreshes a kept answer in the background and keeps it when Billing is away'
     $billing['allowed'] = false;
     (new RefreshBillingSnapshot(RefreshBillingSnapshot::ADMISSION, [$person, $team->id]))->handle(app(ProductAdmission::class), app(ProductBilling::class));
     nextRequest();
-    $this->get(route('orgs.projects.show', $project->id))->assertForbidden();
+    $this->get(route('orgs.projects.show', $project->id))->assertOk();
 });
 
-it('asks Billing again at once when the kept answer is a refusal, so a fresh grant opens the page', function (): void {
-    [$project, $team, $billing] = admittedTeamWithProject();
+it('asks Billing again at once when a fresh grant opens the project creation page', function (): void {
+    [, $team, $billing] = admittedTeamWithProject();
     $person = app(CurrentUser::class)->id();
     $billing['allowed'] = false;
     (new RefreshBillingSnapshot(RefreshBillingSnapshot::ADMISSION, [$person, $team->id]))->handle(app(ProductAdmission::class), app(ProductBilling::class));
@@ -281,7 +300,7 @@ it('asks Billing again at once when the kept answer is a refusal, so a fresh gra
     Bus::fake([RefreshBillingSnapshot::class]);
     nextRequest();
 
-    $this->get(route('orgs.projects.show', $project->id))->assertOk();
+    $this->get(route('orgs.projects.create'))->assertOk();
 });
 
 it('renders the product signup page from the kept policy while Billing is down', function (): void {
