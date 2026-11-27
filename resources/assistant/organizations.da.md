@@ -3,7 +3,7 @@
 Læs denne først. To ting i Cbox ID er organisationer, og konsollen holder dem adskilt efter,
 hvor de står:
 
-- din **organisation** er din egen Cbox-konto: den ejer projekter, miljøer, et team og en
+- din **organisation** er din egen Cbox-konto: den ejer identitetsplatforme, miljøer, et team og en
   regning. Den er altid det første led i topbjælken;
 - en **kundeorganisation** er et team hos *dine* kunder inde i et af dine miljøer. Den hører
   til miljøet og står under **Organisationer**.
@@ -11,9 +11,7 @@ hvor de står:
 ## Kæden
 
 ```
-Organisation  →  Projekt  →  Miljø          →  Kundeorganisation  →  Subjekt
-(dig, Cbox-      (ét IdP-    (produktets        (et af DINE          (en person, der
- kontoen)         produkt)    produktion/test)   kunders teams)       logger ind)
+Organisation → Identitetsplatform → Miljø → Kundeorganisation → Subjekt
 ```
 
 Læst fra venstre mod højre er det én sætning: *du* ejer *produkter*, hvert produkt har
@@ -22,8 +20,8 @@ Læst fra venstre mod højre er det én sætning: *du* ejer *produkter*, hvert p
 | Lag | Hvad det er | Hvem det hører til |
 |---|---|---|
 | **Organisation** | Dig. Cbox' kunde, der betaler, og det team, dine kolleger bliver medlem af for at administrere dine produkter. | Cbox ID |
-| **Projekt** | Ét identitetsprodukt, du driver. Planen og antallet af miljøer hører til her, så to produkter faktureres hver for sig fra én organisation. | Din organisation |
-| **Miljø** | En fase af produktet: produktion, testmiljø. En skarp grænse med sine egne brugere, signeringsnøgler, udsteder, design og loginside. | Dit projekt |
+| **Identitetsplatform** | Login til ét af dine produkter: brugere, loginside, miljøer og abonnement. To produkter kan faktureres hver for sig fra én organisation. API'et beholder navnet `projects`. | Din organisation |
+| **Miljø** | En fase af produktet: produktion, testmiljø. En skarp grænse med sine egne brugere, signeringsnøgler, udsteder, design og loginside. | Din identitetsplatform |
 | **Kundeorganisation** | En af dine kunders virksomheder eller teams. Et træ i vilkårlig dybde, så en koncern kan rumme virksomheder og en virksomhed afdelinger. | Dit miljø |
 | **Subjekt** | En person, der logger ind i dit produkt. | Dit miljøs brugere |
 
@@ -44,8 +42,8 @@ rækken ligger, afgør, hvilken af dem det er:
 - I **dit eget miljø** er rækken **en kundeorganisation**: et af dine kunders teams. På dit
   miljøs egen vært findes kun den slags, så siderne skriver bare *organisation*.
 
-**Sådan kender du forskel: din organisation ejer projekter. En kundeorganisation gør ikke.**
-Har det, du ser på, projekter, miljøer og en regning, er det din organisation. Har det
+**Sådan kender du forskel: din organisation kan eje identitetsplatforme. En kundeorganisation gør ikke.**
+Har det, du ser på, identitetsplatforme, miljøer og en regning, er det din organisation. Har det
 medlemmer, roller og SSO-forbindelser og ligger inde i ét miljø, er det en af dine kunder.
 
 ## Hvilken konsol er du i
@@ -59,7 +57,7 @@ Menuen viser din organisation og intet andet:
 
 | Område | Sider |
 |---|---|
-| **Organisation** | Projekter, Team, API-nøgler, Miljøets domæner, Fakturering, Organisationsindstillinger |
+| **Organisation** | Oversigt, Identitetsplatforme (når organisationen ejer en), Team, API-nøgler, Miljøets domæner, Fakturering, Organisationsindstillinger |
 | **Team sign-in** | Single sign-on, Godkendelsespolitik: hvordan dit eget team logger ind i Cbox |
 | **Revisionslog** | Revisionslog |
 | **Konto** | Sikkerhed, Sessioner og aktivitet |
@@ -80,10 +78,15 @@ Siderne er **skjult i menuen, ikke omdirigeret.** Af tre grunde:
   ude.
 - **Siden siger, hvad den er.** Åbner du den via URL'en, viser den en besked over indholdet:
   siden administrerer din organisations egen post i Cbox, ikke dit produkt, med et link til
-  Projekter.
+  Identitetsplatforme.
 
-Organisationskonsollen har heller ingen Oversigt (`/dashboard`) og ingen Kom i gang-side
-(`/get-started`). Begge handlede om din organisations egen post, ikke dit produkt.
+Organisationskonsollens **Oversigt** er organisationens forside på `/orgs/{org}/overview`.
+Den har ingen miljøoversigt og ingen Kom i gang-side; de hører til dit produkts miljø.
+
+**Ny identitetsplatform** beder om produktnavnet og et abonnement, når installationen
+tilbyder dem. Det billigste er valgt på forhånd. Oprettelsen kræver en frisk bekræftelse
+af din identitet og opretter også produktionsmiljøet. Et betalt abonnement gennemgås med
+moms og bekræftes under **Fakturering**.
 
 En operatør og en installation med én kunde (hvor rodmiljøet *er* produktet) beholder alle
 sider der. Dine kunder får den smallere konsol nedenfor.
@@ -145,10 +148,13 @@ forskellige med vilje nu.
 
 ### En miljøkonsol
 
-På `/admin` på miljøets egen vært, som du når fra **Projekter** med **Åbn konsollen** eller fra
+På `/admin` på miljøets egen vært, som du når fra **Identitetsplatforme** med **Åbn konsollen** eller fra
 miljøvælgeren i topbjælken i enhver konsol. Menuen handler om dit produkt og bruger de ord,
 andre identitetsplatforme bruger om de samme ting. Intet i den handler om din
 Cbox-organisation, og alt det, dine kunders egen konsol udelader, er her.
+
+En besked over indholdet forklarer, at du administrerer de personer, der logger ind i dit
+produkt, ikke dit eget team. **Tilbage til …** åbner organisationens forside.
 
 | Område | Sider |
 |---|---|
@@ -182,20 +188,20 @@ Acme ▾  /  Checkout ▾  /  Produktion ▾ [PRODUKTION]  /  Alle organisatione
 
 - **Organisation ▾** viser de organisationer, du er medlem af. I organisationskonsollen
   skifter du til den, du vælger; i en miljøkonsol åbner den organisationskonsollen, hvor din
-  session er. En organisation uden projekter viser sit navn her uden noget efter.
-- **Projekt ▾** viser din organisations projekter. Vælger du et, åbnes det miljø dér, der
+  session er. En organisation uden identitetsplatforme viser sit navn her uden noget efter.
+- **Identitetsplatform ▾** viser din organisations identitetsplatforme. Vælger du en, åbnes det miljø dér, der
   svarer til det, du er i: produktion for produktion.
-- **Miljø ▾** viser de miljøer i projektet, du må administrere, hver med sin type. Vælger du
+- **Miljø ▾** viser de miljøer i identitetsplatformen, du må administrere, hver med sin type. Vælger du
   et, åbnes **den samme side** dér: Brugere i test bliver til Brugere i produktion. En side om
   én post (en bruger, en app) åbner i stedet listen, og en side, som det andet miljø ikke
   har, åbner dets Oversigt.
 - I organisationskonsollen er intet miljø valgt, så det andet led er **Miljøer ▾**: alle
-  miljøer, du må åbne, grupperet efter projekt.
+  miljøer, du må åbne, grupperet efter identitetsplatform.
 - **Alle organisationer ▾**, kun i en miljøkonsol, filtrerer alle sider til én af dine
   kundeorganisationer. Det er en søgning, fordi et miljø kan rumme tusinder.
 
 Kun det, du må åbne, vises. En Læser ser ingen miljøer, og et medlem med adgang til nogle
-miljøer ser dem. En anden organisations projekter vises først, når du skifter til den. Hver
+miljøer ser dem. En anden organisations identitetsplatforme vises først, når du skifter til den. Hver
 menu får et søgefelt, når den har mere end otte punkter.
 
 At skifte miljø går gennem den samme signerede overlevering som **Åbn konsollen**; siden, du
@@ -223,9 +229,11 @@ kunde er de samme sider et **Platform**-område i konsollens menu.
 
 ## Hvor du lander efter login
 
-Et medlem af en organisation lander på **Projekter**, der viser alle miljøer med **Åbn
-konsollen** ved siden af. Logger du ind på `cboxid.com`, åbnes et miljøs konsol aldrig af sig
-selv.
+En person med adgang til organisationens administration lander på **Organisation › Oversigt**.
+Her findes teamet, login, fakturering og aktivitet. Hvis du må oprette en identitetsplatform,
+kan du starte herfra; du behøver ikke en for at administrere dit eget team. Miljøerne ligger
+under **Identitetsplatforme** med **Åbn konsollen** ved siden af. Login på `cboxid.com` åbner
+ikke automatisk et miljøs konsol. Uden adgang til administration lander du på din egen konto.
 
 Den eneste undtagelse er et login, der startede i et miljøs konsol. Åbner du
 `acme.cboxauth.com/admin/users` uden at være logget ind, logger du ind på `cboxid.com` og

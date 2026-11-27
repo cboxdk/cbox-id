@@ -322,6 +322,7 @@ function writeCookie(name: string, value: string): void {
  */
 export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
     const { shell, tenantShell, auth, title, organizationHub, i18n } = usePage<SharedProps>().props;
+    const environmentFrame = shell?.environmentFrame;
 
     useDocumentLanguage(i18n?.locale ?? 'en');
 
@@ -468,6 +469,26 @@ export default function ConsoleLayout({ children: page }: ConsoleLayoutProps) {
                         <div className="cbx-page-tools">
                             <PageApiEquivalents />
                         </div>
+                        {/*
+                            Inside one of the organization's identity platforms the whole rail
+                            changes and "Users" are its product's customers; this says so
+                            before anybody acts on them, with the way back.
+                        */}
+                        {environmentFrame !== null && environmentFrame !== undefined && (
+                            <div className="cbx-environment-frame" role="note">
+                                <Icon name="layers" className="w-4 h-4 shrink-0" />
+                                <p className="min-w-0 flex-1">
+                                    {t('console.environment_frame_note', {
+                                        platform: environmentFrame.platform,
+                                    })}
+                                </p>
+                                <Link href={environmentFrame.backHref} className="font-medium">
+                                    {t('console.environment_frame_back', {
+                                        organization: environmentFrame.organization,
+                                    })}
+                                </Link>
+                            </div>
+                        )}
                         {children}
                     </div>
                 </CboxShell>

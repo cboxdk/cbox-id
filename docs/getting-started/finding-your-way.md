@@ -11,7 +11,7 @@ words other identity platforms use.
 
 **Which console am I in?** Every page says, in one line above it: *Environment:
 Production · Environment on acme.cboxauth.com*, *Organization: Acme*, or *Platform admin*. On the
-root host (`cboxid.com`) the console without `/admin` is your **organization**: projects,
+root host (`cboxid.com`) the console without `/admin` is your **organization**: identity platforms,
 team, keys, billing, settings and your team's own sign-in to Cbox ID. How people sign in to
 your apps is set in an **environment's** console. Opening Social login, Branding or Sign-in
 methods on the root host shows a link to that page in each of your environments. Platform
@@ -21,6 +21,11 @@ its first area, **Platform**
 ([Administering the platform's own environment](../operations/platform-environment.md)). If you have used WorkOS, Clerk or Auth0, most things
 are where you would look first. This page shows the map, then walks the common tasks
 click by click.
+
+After sign-in, organization administrators land on **Organization › Overview**, with
+their team and billing in reach. **Identity platforms** appears once the organization
+owns one. Inside a product's environment, a strip explains that you are managing its
+users, not your own team; **Back to …** returns to the organization.
 
 **Three ways to get anywhere:**
 

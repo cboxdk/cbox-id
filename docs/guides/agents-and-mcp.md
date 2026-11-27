@@ -245,7 +245,7 @@ To share the setup with your team without sharing the key, put it in the project
 ```
 
 A [organization key](keys.md#organization-keys) (`cbid_ws_…`) works the same way and sees the
-organization's tools: projects, environments, the team and keys. It is accepted on any host's
+organization's tools: identity platforms, environments, the team and keys. It is accepted on any host's
 `/mcp`, but never acts inside an environment.
 
 ## One connection for your whole organization
@@ -253,7 +253,7 @@ organization's tools: projects, environments, the team and keys. It is accepted 
 The platform root's `/mcp` is for the people who run an organization. Signed in there as
 yourself, one connection reaches:
 
-- **The organization**, as you, a member of its team: projects, environments, the team,
+- **The organization**, as you, a member of its team: identity platforms, environments, the team,
   keys and settings. Your role in the organization bounds it exactly as it bounds you in the
   organization console: a Developer manages environments but does not see the team, a Viewer
   reads but changes nothing.
@@ -339,7 +339,7 @@ claude mcp add --transport http cbox-organization https://<platform-root>/mcp \
 ```
 
 An organization key acts as the key, bounded by its role and scopes, and reaches the
-organization's own tools only: projects, environments, the team and keys. It does not act
+organization's own tools only: identity platforms, environments, the team and keys. It does not act
 inside an environment; mint that environment a key for that.
 
 An operator provisions the root's CLI client the same way as an environment's,

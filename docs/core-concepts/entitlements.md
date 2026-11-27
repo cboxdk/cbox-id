@@ -1,7 +1,7 @@
 ---
 title: Entitlements
 weight: 4
-description: Identity security on every plan, independent project admission, and application entitlements.
+description: Identity security on every plan, independent identity platform admission, and application entitlements.
 ---
 
 # Entitlements
@@ -55,14 +55,14 @@ have no subscription gate. Other absent application keys remain denied. Explicit
 operational denials still win; authorization and tenant isolation remain mandatory.
 The synthetic security grants are live checks, never additional token claims.
 
-Project provisioning is separate:
+Identity platform provisioning is separate:
 
 ```dotenv
 CBOX_ID_ENTITLEMENTS=inclusive
 CBOX_ID_REQUIRE_SUBSCRIPTION=true
 ```
 
-A project starts with zero environment allowance until a synchronized subscription
+An identity platform starts with zero environment allowance until a synchronized subscription
 (including a free one) grants it. This does not disable identity security. Leaving
 `CBOX_ID_REQUIRE_SUBSCRIPTION` unset preserves legacy admission based on `metered`;
 explicit true/false takes precedence. Billing's doctor checks follow this separate
@@ -75,7 +75,7 @@ enabled and its Billing program in waitlist mode. Inclusive does not mean open s
 
 ## Early-access pricing decision, 6 November 2026
 
-Free / Start / Grow are approved at 0 / 99 / 349 DKK per project/month, net of VAT.
+Free / Start / Grow are approved at 0 / 99 / 349 DKK per identity platform/month, net of VAT.
 All include identity security and production plus test environments. ID is an entry
 point to other Cbox products; additional consumption, not SSO or SCIM, motivates an upgrade.
 The canonical `cbox-billing/catalogs/cbox-id.json` keeps these three plans inactive

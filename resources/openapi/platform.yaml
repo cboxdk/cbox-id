@@ -701,7 +701,7 @@ paths:
     post:
       tags:
         - Organizations
-      summary: 'Create an organization with its owner, first project and first environment; the owner is emailed a link to set their password.'
+      summary: 'Create an organization with its owner, first identity platform and first environment; the owner is emailed a link to set their password.'
       description: 'Requires scope `operator:workspaces:write` on an access token delegated by an active platform operator. No management key is accepted. Danger: critical.'
       operationId: admin_organizations_create
       x-action: admin.organizations.create
@@ -738,7 +738,7 @@ paths:
                   maxLength: 120
                 environment_limit:
                   type: integer
-                  description: "The first project's environment allowance: 1, 2, 3, 5, 10 or 25."
+                  description: "The first identity platform's environment allowance: 1, 2, 3, 5, 10 or 25."
                   minimum: 1
                   maximum: 25
               required:

@@ -19,7 +19,7 @@ change reachable from the console, a REST API, an MCP server and the `cbox` CLI.
 through sign-in, the callback, a protected route and sign-out.
 
 Then read [Organizations & customers](core-concepts/organizations-and-customers.md):
-five minutes on how your organization, projects, environments and your customers'
+five minutes on how your organization, identity platforms, environments and your customers'
 organizations fit together saves an afternoon later.
 
 ## By what you are doing

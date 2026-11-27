@@ -27,7 +27,7 @@ use Cbox\Id\Platform\Contracts\Projects;
  */
 #[AsAction(
     name: 'projects.rename',
-    summary: 'Rename a project.',
+    summary: 'Rename an identity platform.',
     scope: 'id:projects:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
@@ -35,7 +35,7 @@ use Cbox\Id\Platform\Contracts\Projects;
     consoleRoutes: ['orgs.projects.rename'],
     consoleGate: ConsoleGate::ManageEnvironments,
     schema: 'Project',
-    tag: 'Projects',
+    tag: 'Identity platforms',
 )]
 final readonly class RenameProject implements Action
 {

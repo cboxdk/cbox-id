@@ -26,7 +26,7 @@ use Cbox\Id\Platform\Models\Project;
  */
 #[AsAction(
     name: 'environments.list',
-    summary: 'List every environment the organization owns, across its projects, with each one\'s issuer.',
+    summary: 'List every environment the organization owns, across its identity platforms, with each one\'s issuer.',
     scope: 'id:organization:read',
     danger: Danger::Read,
     plane: ActionPlane::Organization,

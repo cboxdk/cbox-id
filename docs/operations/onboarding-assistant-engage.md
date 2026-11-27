@@ -9,10 +9,10 @@
   environments on every call. It returns no credentials or customer profiles.
 - A curated onboarding guide is generated from maintained docs into the Assistant
   manifest. It explains Free/no-card start, scope, existing users, SSO, SCIM and detection.
-- `onboarding:sync` reconciles active project environments independently of page visits,
+- `onboarding:sync` reconciles active identity platform environments independently of page visits,
   records organization/company snapshots through `cboxdk/laravel-engage-client`, and never
   sends email. Tests and local defaults have collection disabled and no ingest credentials.
-- Events include project/environment identity, goal booleans and the platform-root
+- Events include identity platform/environment identifiers, goal booleans and the platform-root
   namespace. No email, password, person name or end-user identity is included.
 
 `first_sign_in` means a person token/session was observed. `go_live` is the existing
@@ -40,7 +40,7 @@ The API response must not be cached as the final send decision.
 
 ## Required Engage work before customer mail
 
-Engage now implements source/project/environment correlation for reentry, goals, exits
+Engage now correlates source, identity platform and environment for reentry, goals, exits
 and event waits. It checks persisted run state again at send time, including normally
 completed runs with queued messages, changed recipients and achieved goals. Its editor
 preserves correlation and eligibility settings.
@@ -78,7 +78,7 @@ this change. No production credentials have been created or modified.
 ## Free account setup
 
 Hosted rollout should keep `CBOX_ID_REQUIRE_SUBSCRIPTION=false`: product admission and
-organization verification remain enforced, but project/environment creation must not
+organization verification remain enforced, but identity platform/environment creation must not
 require checkout. The Free allowance is currently two environments; identity-security
 features use inclusive entitlements. Signals limits remain separately metered. Preserve
 explicit operational suspensions and feature denials. A paid upgrade requires an
@@ -90,10 +90,10 @@ signup-to-first-login path. Early-access invitation policy is separate from paym
 
 ## Live acceptance still required
 
-On the candidate revision, confirm signup/admission and a Free project without payment
+On the candidate revision, confirm signup/admission and a Free identity platform without payment
 details; synchronize the new Assistant manifest/knowledge; ask for the real onboarding
 status and follow its citation; verify a human reply. Observe the test organization's
-Engage event with the correct realm/project/environment. Publish only after the above
+Engage event with the correct realm, identity platform and environment. Publish only after the above
 Engage guards and a controlled authorized-recipient delivery test pass. Local feature
 tests do not establish live readiness and these additions do not implement the full
 clickable onboarding prototype.

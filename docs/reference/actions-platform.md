@@ -153,7 +153,7 @@ Suspend a platform operator, or reactivate one. Never yourself, and never the la
 
 ### <a id="admin.organizations.create"></a>admin.organizations.create
 
-Create an organization with its owner, first project and first environment; the owner is emailed a link to set their password.
+Create an organization with its owner, first identity platform and first environment; the owner is emailed a link to set their password.
 
 | | |
 |---|---|
@@ -168,7 +168,7 @@ Create an organization with its owner, first project and first environment; the 
 | `name` | string | yes | The organization's name — usually the company it belongs to. At least 2 characters. At most 120 characters. |
 | `owner_email` | string (email) | yes | The owner. An address that already has an account keeps it; the organization is added to it. At most 255 characters. |
 | `owner_name` | string | yes | At least 2 characters. At most 120 characters. |
-| `environment_limit` | integer | yes | The first project's environment allowance: 1, 2, 3, 5, 10 or 25. At least 1. At most 25. |
+| `environment_limit` | integer | yes | The first identity platform's environment allowance: 1, 2, 3, 5, 10 or 25. At least 1. At most 25. |
 
 ### <a id="admin.organizations.set_status"></a>admin.organizations.set_status
 

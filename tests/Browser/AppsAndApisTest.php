@@ -225,7 +225,7 @@ it('draws the copy dialog on an environment app', function (): void {
     visit(envConsole('/apps/').$client->id)
         ->assertSee('Download blueprint')
         ->click('button:has-text("Copy to another environment")')
-        ->assertSee('Registers this app again in another environment of this project')
+        ->assertSee('Registers this app again in another environment of this identity platform')
         ->assertNoJavaScriptErrors()
         ->screenshot(filename: 'c7-copy-dialog');
 })->group('a11y');

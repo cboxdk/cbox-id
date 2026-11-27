@@ -107,7 +107,7 @@ three layers beyond the mode gate — described in full under
    [`CBOX_ID_TURNSTILE_*`](../configuration/environment-variables.md#bot-protection-captcha)
    is configured.
 3. **Deferred environment provisioning.** A self-serve signup creates the organization, its
-   owner and its first project immediately, but the **environment** — the routable IdP
+   owner and its first identity platform immediately, but the **environment** — the routable IdP
    with its own signing key — is stood up only when the owner opens the verification
    link in their inbox. An unverified signup therefore costs nothing worth farming.
 

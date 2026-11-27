@@ -55,7 +55,7 @@ this tab.
 
 ## Organization keys
 
-An organization key calls the organization API: list projects and environments, create
+An organization key calls the organization API: list identity platforms and environments, create
 environments, list and invite your team. It carries a **built-in role** (Admin,
 Developer, Member or Viewer) and can do only what that role may do, without a session,
 a second factor or a person behind it. Owner is not offered.

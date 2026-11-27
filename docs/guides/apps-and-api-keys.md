@@ -162,7 +162,7 @@ Two buttons at the top of every tab, for whoever manages the app:
   redirect URIs, scopes, token settings and manifest URL. Never its client ID and never a
   secret. Commit it beside the app's code, or hand it to the management API.
 - **Copy to another environment** — in an environment console only. Registers the app again
-  in another environment of the same project that you administer, with a client ID and
+  in another environment of the same identity platform that you administer, with a client ID and
   secret of its own, shown once on this page. The dialog asks for the name and the redirect
   URIs there, because the other environment's addresses are almost never this one's.
   Scopes, sign-out URIs, token settings and the manifest URL are copied as they are.

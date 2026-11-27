@@ -46,7 +46,7 @@ use InvalidArgumentException;
  */
 #[AsAction(
     name: 'admin.organizations.create',
-    summary: 'Create an organization with its owner, first project and first environment; the owner is emailed a link to set their password.',
+    summary: 'Create an organization with its owner, first identity platform and first environment; the owner is emailed a link to set their password.',
     scope: 'operator:workspaces:write',
     danger: Danger::Critical,
     plane: ActionPlane::Platform,
@@ -75,7 +75,7 @@ final readonly class OnboardOrganization implements Action
             Field::string('name')->required()->min(2)->max(120)->describe('The organization\'s name — usually the company it belongs to.'),
             Field::string('owner_email')->required()->format('email')->max(255)->describe('The owner. An address that already has an account keeps it; the organization is added to it.'),
             Field::string('owner_name')->required()->min(2)->max(120),
-            Field::integer('environment_limit')->required()->min(1)->max(25)->describe('The first project\'s environment allowance: 1, 2, 3, 5, 10 or 25.'),
+            Field::integer('environment_limit')->required()->min(1)->max(25)->describe('The first identity platform\'s environment allowance: 1, 2, 3, 5, 10 or 25.'),
         ]);
     }
 

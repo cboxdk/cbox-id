@@ -68,6 +68,9 @@ function moduleConsoleRoutes(): array
         // them, which is the opposite of what "admits an admin" asserts below.
         'orgs.projects', 'orgs.settings.members', 'orgs.settings.api-keys.organization', 'orgs.settings.api-keys',
         'orgs.environment-domains', 'orgs.settings.billing', 'orgs.settings',
+        // The organization's Overview: a host page that sends anyone with nothing to read
+        // there on to their own landing rather than refusing them (OrganizationAltitudeTest).
+        'orgs.overview',
         // The People area's tenant directory — a host page like its Identity-platform
         // sibling above, and gated the same way (`canReadMembers()`), so this sweep's
         // membership-role question is not the one that governs it.

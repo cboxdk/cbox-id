@@ -16,8 +16,12 @@ use App\Http\Props\Shared\HelpProps;
 use App\Http\Requests\Console\RenameProjectRequest;
 use App\Http\Requests\Console\StoreEnvironmentRequest;
 use App\Http\Requests\Console\StoreProjectRequest;
+use App\Platform\Actions\ActionDefinition;
 use App\Platform\Actions\ActionRefused;
+use App\Platform\Actions\ActionResult;
+use App\Platform\Billing\PlanOffers;
 use App\Platform\Billing\ProductBilling;
+use App\Platform\Console\ConsoleStepUp;
 use App\Platform\Console\EnvironmentConsolePath;
 use App\Platform\CurrentUser;
 use App\Platform\Environments\EnvironmentErasure;
@@ -28,6 +32,7 @@ use App\Platform\NativeProduct\NativeEnvironmentAccess;
 use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\Organization\Contracts\Memberships;
+use Cbox\Id\Organization\Enums\EnvironmentType;
 use Cbox\Id\Organization\Models\Environment;
 use Cbox\Id\Platform\Contracts\OrganizationProjects;
 use Cbox\Id\Platform\Contracts\Projects;
@@ -37,6 +42,7 @@ use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 use Inertia\Response;
 
 /**
@@ -165,9 +171,24 @@ final readonly class ProjectController extends ConsoleController
         $this->assertMayManage($members);
         app(ProductAdmission::class)->assertWebGranted($this->scope->actorId(), $this->scope->organizationId() ?? '');
 
+        $plans = app(PlanOffers::class)->forOrganization($this->scope->organizationId() ?? '');
+
         return $this->page('console/projects/create', __('console.new_project_a41eb2bf'), [
-            'indexHref' => route('orgs.projects'),
+            // Back to where they came from: the list once there is one, the home before.
+            'indexHref' => $this->ownsAny() ? route('orgs.projects') : route('orgs.overview'),
+            'plans' => $plans,
+            // The cheapest plan is the default, so nobody pays without choosing to.
+            'defaultPlan' => $plans[0]['key'] ?? null,
+            'locale' => app()->getLocale(),
         ]);
+    }
+
+    /** Whether the organization owns any identity platform yet. */
+    private function ownsAny(): bool
+    {
+        $organization = $this->scope->organizationId();
+
+        return $organization !== null && app(OrganizationProjects::class)->forOrganization($organization)->isNotEmpty();
     }
 
     public function store(StoreProjectRequest $request, Memberships $members): RedirectResponse
@@ -181,6 +202,23 @@ final readonly class ProjectController extends ConsoleController
 
         $this->assertMayManage($members);
 
+        // The plan is one of those the form offered, or none where none were offered. Asked
+        // before anything is created, so a stale or forged key makes nothing.
+        $offers = app(PlanOffers::class)->forOrganization($this->scope->requireOrganizationId());
+        $plan = $request->plan();
+        $chosen = $plan === null ? null : array_find($offers, static fn (array $offer): bool => $offer['key'] === $plan);
+
+        if ($offers !== [] && $chosen === null) {
+            return back()->withInput()->withErrors(['plan' => __('console.choose_a_plan')]);
+        }
+
+        // Its production environment is a critical change and asks the person to confirm it
+        // is them. Asked FIRST, so a confirmation never interrupts between the platform and
+        // its environment and leaves a platform with none.
+        app(ConsoleStepUp::class)->demand(__('console.this_is_a_critical_change_action_7d3f19a2', [
+            'action' => ActionDefinition::of(CreateEnvironment::class)->summary,
+        ]));
+
         // The same action `POST /api/v1/workspace/projects` runs.
         $result = $this->act(CreateProject::class, ['name' => $request->name()], ['name' => 'name'], 'name');
 
@@ -191,8 +229,31 @@ final readonly class ProjectController extends ConsoleController
         /** @var Project $project */
         $project = $result->value;
 
-        return to_route('orgs.projects.show', $project->id)
-            ->with('status', __('console.project_created_add_its_first_environment_935fc40e'));
+        // Its production environment, so the platform is usable when the page opens. A
+        // refusal does not undo the create: the platform's page offers to add one, as it
+        // did before. Named after the platform, as a first environment always has been.
+        try {
+            $environment = $this->attempt(
+                CreateEnvironment::class,
+                ['name' => $project->name, 'type' => EnvironmentType::Production->value, 'project_id' => $project->id],
+            );
+        } catch (ValidationException) {
+            $environment = null;
+        }
+
+        // A paid plan is confirmed where every plan change is: the billing page's review,
+        // which prices it with tax and asks before money moves.
+        $review = $chosen !== null && $chosen['priceMinor'] > 0
+            ? app(PlanOffers::class)->reviewUrl($project->id, $chosen['key'])
+            : null;
+
+        if ($review !== null) {
+            return redirect()->to($review)->with('status', __('console.identity_platform_created_confirm_its_plan'));
+        }
+
+        return to_route('orgs.projects.show', $project->id)->with('status', $environment instanceof ActionResult
+            ? __('console.identity_platform_created')
+            : __('console.project_created_add_its_first_environment_935fc40e'));
     }
 
     /** One product's detail: its environments, its plan, and its settings. */

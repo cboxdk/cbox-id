@@ -739,6 +739,17 @@ class ConsoleScope
     }
 
     /**
+     * Whether the organization this console acts on owns an identity platform yet — the
+     * question the rail asks before it lists them.
+     */
+    public function organizationOwnsPlatforms(): bool
+    {
+        $organizationId = $this->organizationId();
+
+        return $organizationId !== null && $this->ownsProducts($organizationId);
+    }
+
+    /**
      * Whether an organization owns IdP products — which is what makes it a CUSTOMER rather
      * than a tenant's own end-user organization.
      *

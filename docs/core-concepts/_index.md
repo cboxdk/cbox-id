@@ -1,7 +1,7 @@
 ---
 title: Concepts
 weight: 20
-description: The model behind Cbox ID — organization, project, environment, customer organizations and users; the hosts and planes; keys versus delegated tokens; actions; approvals; and the two audit records.
+description: The model behind Cbox ID — organization, identity platform, environment, customer organizations and users; the hosts and planes; keys versus delegated tokens; actions; approvals; and the two audit records.
 ---
 
 # Concepts
@@ -10,7 +10,7 @@ Six pages that explain how Cbox ID is put together. Read the first one before an
 else; the rest in any order, when you need them.
 
 - [Organizations & customers](organizations-and-customers.md) — **start here.** Organization →
-  project → environment → customer organizations → users, your organization versus your customers'
+  identity platform → environment → customer organizations → users, your organization versus your customers'
   organizations, and which console you are in.
 - [Planes and hosts](planes-and-hosts.md) — the platform root versus an environment's own
   host, and the four planes of the management API (environment, organization, account,

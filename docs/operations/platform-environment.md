@@ -45,7 +45,7 @@ The deployment's own pages are the first area of the same console, **Platform**,
 
 | Page | Address | What it is for |
 |---|---|---|
-| Organizations | `/admin/organizations` | Every organization on the install. Open one to walk its projects and environments; **Suspend** and **Reactivate** are on its row and its page. |
+| Organizations | `/admin/organizations` | Every organization on the install. Open one to walk its identity platforms and environments; **Suspend** and **Reactivate** are on its row and its page. |
 | Environments | `/admin/environments` | Every environment and who owns it. Create one, point platform admin at it, and **Provision admin** to seed its first organization and owner. |
 | Organization tree | `/admin/environments/root/organizations` | The organizations of the environment platform admin is pointed at, as the reseller → customer → sub-unit tree. Re-parent, suspend, and open one to start a **support session** (impersonation) as one of its members. |
 | Operators | `/admin/operators` | Who runs the install. Add or suspend an operator. |
@@ -147,7 +147,7 @@ console open.
 
 Somebody who signs in fine but administers nothing in that environment sees **You don't
 administer this environment**. The page says their sign-in worked and offers
-**Switch account** and their projects.
+**Switch account** and their identity platforms.
 
 A **tenant's own** social providers are for the people who sign in to that tenant's apps,
 on the tenant's hosted pages. They are never offered for the tenant's `/admin`. Each Social
@@ -269,7 +269,7 @@ The person can open `https://<root>/admin`, and platform admin at
 
 ## The organization console on the root host
 
-`cboxid.com` without `/admin` is an organization's console: projects, team, keys, billing,
+`cboxid.com` without `/admin` is an organization's console: identity platforms, team, keys, billing,
 settings, the team's own sign-in to Cbox ID (**Team sign-in**) and its activity log.
 
 Pages that set something an environment owns are not pages there any more. These include

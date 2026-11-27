@@ -8,7 +8,7 @@ I den tidlige adgang kan det stadig kræve en invitation at blive optaget.
 
 ## Dit team og dine kunder er to forskellige ting
 
-Din **organisation** er det team, der administrerer Cbox ID. Et **projekt** er dit produkt,
+Din **organisation** er det team, der administrerer Cbox ID. En **identitetsplatform** leverer login til dit produkt,
 og dets **miljøer** holder identitetsdata og opsætning adskilt. En **kundeorganisation** er
 en kunde inde i det produkt. Inviter ikke dine kunder ind i din egen organisation for at
 give dem adgang til din app.
@@ -21,7 +21,12 @@ hvilken kunde. Skifter personen organisation, skal adgangen verificeres på ny.
 
 ## Få login til at virke først
 
-Åbn dit projekts miljø, og vælg **Kom i gang**. Vælg framework, opret en app, registrer
+Vælg **Opret en identitetsplatform** på organisationens **Oversigt**, hvis du har brug for
+login til dit eget produkt. Angiv produktnavnet og vælg et abonnement. Free kræver ingen
+betaling; et betalt abonnement gennemgås og bekræftes under Fakturering. Du behøver ikke
+en identitetsplatform for at administrere dit eget team.
+
+Åbn din identitetsplatforms miljø, og vælg **Kom i gang**. Vælg framework, opret en app, registrer
 dens præcise callback- og logout-adresser, og følg quickstarten. Hold klienthemmeligheden
 på serveren. Test login og logout med en konto, der ikke bruges i produktion, før du
 kobler rigtige brugere på.
@@ -88,7 +93,7 @@ dokumentation. Har du brug for et menneske, så fortsæt til den menneskelige su
 sat op. En status, der er ufuldstændig eller ikke kan hentes, må ikke vises som en færdig
 opsætning.
 
-Når e-mails om at komme i gang er slået til, skal de handle om det konkrete projekts næste
+Når e-mails om at komme i gang er slået til, skal de handle om den konkrete identitetsplatforms næste
 skridt og stoppe, når målet er nået, også hvis en kollega nåede det. Produkthjælp og tips
 er adskilt fra nødvendige mails om konto og sikkerhed og følger dine præferencer for
 kommunikation. Du opgraderer kun, når du selv vælger det.

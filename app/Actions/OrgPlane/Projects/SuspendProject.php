@@ -23,7 +23,7 @@ use Cbox\Id\Platform\Contracts\Projects;
  */
 #[AsAction(
     name: 'projects.suspend',
-    summary: 'Suspend a project: its environments stay live, but no new ones can be added until it is reactivated.',
+    summary: 'Suspend an identity platform: its environments stay live, but no new ones can be added until it is reactivated.',
     scope: 'id:projects:write',
     danger: Danger::Write,
     plane: ActionPlane::Organization,
@@ -31,7 +31,7 @@ use Cbox\Id\Platform\Contracts\Projects;
     consoleRoutes: ['orgs.projects.suspend'],
     consoleGate: ConsoleGate::ManageEnvironments,
     schema: 'Project',
-    tag: 'Projects',
+    tag: 'Identity platforms',
 )]
 final readonly class SuspendProject implements Action
 {

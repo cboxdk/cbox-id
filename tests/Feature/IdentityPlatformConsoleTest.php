@@ -462,23 +462,34 @@ it('suspends and reactivates a project', function (): void {
     expect(Project::query()->whereKey($project->id)->value('status')?->value)->toBe('active');
 });
 
-it('lets a member create a second project and drills into it empty', function (): void {
+it('lets a member create a second identity platform, with its production environment', function (): void {
     ['member' => $member, 'subjectId' => $memberSubjectId] = provisionAccount();
     signInAsMember($memberSubjectId);
+    confirmStepUp();
 
     $this->post(route('orgs.projects.store'), ['name' => 'Product Two'])
         ->assertSessionHasNoErrors();
 
     $project = Project::query()->where('name', 'Product Two')->firstOrFail();
 
-    // A brand-new project starts with no environments — the member adds them there.
+    // Created usable: its production environment comes with it, named after it.
     signInAsMember($memberSubjectId);
     $this->get(route('orgs.projects.show', $project->id))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->component('console/projects/show')
             ->where('project.name', 'Product Two')
-            ->where('environments', []));
+            ->has('environments', 1)
+            ->where('environments.0.name', 'Product Two'));
+});
+
+it('asks a stale session to confirm it is them before it creates anything', function (): void {
+    ['subjectId' => $memberSubjectId] = provisionAccount();
+    signInAsMember($memberSubjectId);
+
+    $this->post(route('orgs.projects.store'), ['name' => 'Product Two'])->assertRedirect();
+
+    expect(Project::query()->where('name', 'Product Two')->exists())->toBeFalse();
 });
 
 /**

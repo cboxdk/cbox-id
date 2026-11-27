@@ -47,7 +47,7 @@ use Cbox\Id\OAuthServer\ValueObjects\RegisteredClient;
  */
 #[AsAction(
     name: 'apps.copy',
-    summary: 'Copy an app into another environment of this project, with a new client id and secret there. A person on the environment console only; a key exports the blueprint instead.',
+    summary: 'Copy an app into another environment of this identity platform, with a new client id and secret there. A person on the environment console only; a key exports the blueprint instead.',
     scope: 'apps:write',
     danger: Danger::Critical,
     schema: 'App',
@@ -72,7 +72,7 @@ final readonly class CopyApp implements Action
     {
         return InputSchema::of([
             AppFields::id(),
-            Field::string('environment_id')->required()->max(64)->describe('The environment to copy into: another environment of this project.'),
+            Field::string('environment_id')->required()->max(64)->describe('The environment to copy into: another environment of this identity platform.'),
             Field::string('name')->required()->min(1)->max(190)->describe('What to call the copy there.'),
             AppFields::uris('redirect_uris')->describe('Its redirect URIs there — staging\'s callback is rarely production\'s. Left out, none.'),
         ]);

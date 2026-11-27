@@ -45,7 +45,7 @@ use Illuminate\Support\Facades\RateLimiter;
     rest: ['POST', '/projects/verification/resend'],
     consoleRoutes: ['orgs.projects.verification.resend'],
     consoleGate: ConsoleGate::OrganizationMember,
-    tag: 'Projects',
+    tag: 'Identity platforms',
     schema: 'VerificationResend',
 )]
 final readonly class ResendVerification implements Action

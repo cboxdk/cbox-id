@@ -104,7 +104,10 @@ it('names the refused organization at the gate and lands it on its own administr
     config(['service-access.identity_environment' => $root->id]);
     [, $team] = app(PlatformRoot::class)->run(fn (): array => productSignupPerson(true));
     Http::fake(['*/policy' => Http::response(['program' => productSignupPolicy()]), '*/check' => Http::response(['allowed' => false])]);
-    $this->get(route('orgs.show', ['org' => $team->slug]))->assertRedirect(route('orgs.projects'));
+    $this->get(route('orgs.show', ['org' => $team->slug]))->assertRedirect(route('orgs.overview'));
+    nextRequest();
+    // Its home does not offer the identity platforms it has not been admitted to.
+    expect($this->get(route('orgs.overview'))->assertOk()->inertiaProps('createPlatformHref'))->toBeNull();
     nextRequest();
     $this->get('/start')->assertOk()->assertSee('The Ada team organization does not have')->assertSee('Administering Ada team');
 });
@@ -161,6 +164,7 @@ it('lets an admitted root team create its first project and keeps administration
         return Http::response(['allowed' => $allowed]);
     }]);
 
+    confirmStepUp();
     $this->post(route('orgs.projects.store'), ['name' => 'First product'])->assertSessionHasNoErrors()->assertRedirect();
     $project = Project::query()->where('organization_id', $team->id)->where('name', 'First product')->first();
     expect($project)->not->toBeNull();
@@ -229,6 +233,7 @@ function admittedTeamWithProject(): array
 
         return Http::response(['allowed' => $billing['allowed']]);
     }]);
+    confirmStepUp();
     test()->post(route('orgs.projects.store'), ['name' => 'First product'])->assertSessionHasNoErrors()->assertRedirect();
     $project = Project::query()->where('organization_id', $team->id)->where('name', 'First product')->firstOrFail();
 

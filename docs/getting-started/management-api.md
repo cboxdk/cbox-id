@@ -326,10 +326,14 @@ the console runs — the same rules, refusals and activity-log entries.
 ## The organization API: stand an environment up
 
 Everything above runs inside one environment, with that environment's key on its host.
-**Above** your environments is your organization — its projects, environments, team and keys —
+**Above** your environments is your organization — its identity platforms, environments, team and keys —
 and the **organization API** at `/api/v1/workspace` runs it with an **organization key**
 (`cbid_ws_…`, Keys › Organization keys in the console). Its contract is served at
 `/api/v1/workspace/openapi.yaml`.
+
+The console calls the product's sign-in service an **identity platform**. The API keeps
+`projects`, `project_id` and the `id:projects:write` scope for compatibility; these refer
+to that same identity platform, not to a separate kind of resource.
 
 An organization key carries a **role** (admin, developer, member or viewer), which bounds it
 exactly as it bounds a person in the console, and optionally **scopes** that narrow it
@@ -340,8 +344,8 @@ lists each old name beside its new one.
 
 | Scope | Lets the key | Role must be able to |
 |---|---|---|
-| `id:organization:read` | read the organization, its projects and environments | — |
-| `id:projects:write` | create, rename, suspend, reactivate and delete projects (`DELETE /projects/{id}` takes a project with no environments) | manage environments |
+| `id:organization:read` | read the organization, its identity platforms and environments | — |
+| `id:projects:write` | create, rename, suspend, reactivate and delete identity platforms (`DELETE /projects/{id}` takes an identity platform with no environments) | manage environments |
 | `id:environments:write` | create environments, optionally with a first key, serve them on a custom domain (`/environments/{id}/domain`), and delete one with everything in it (`DELETE /environments/{id}` with its `name` in the body) | manage environments |
 | `id:members:read` | list members and pending invitations | read members |
 | `id:members:write` | invite, re-role, scope and remove members | manage members |
@@ -359,7 +363,7 @@ POST /api/v1/workspace/projects
 POST /api/v1/workspace/environments
 {
   "name": "Production",
-  "project_id": "<the project's id>",
+  "project_id": "<the identity platform's id>",
   "initial_key": { "name": "Bootstrap", "scopes": ["apps:write", "apis:write"] }
 }
 ```

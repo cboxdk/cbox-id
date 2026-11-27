@@ -72,7 +72,7 @@ The passes:
 | Environment plane | an environment key holding every scope | the same world in another environment |
 | Environment plane, confined | the customer organization console, a signed-in token and an Admin Portal session, each confined to one organization | another organization in the same environment |
 | Environment plane, over REST | an environment key, every read | another environment — checks the wire renders the API's `not_found` envelope |
-| Organization plane | an organization key | another organization's environments, projects, members, invitations and keys |
+| Organization plane | an organization key | another organization's environments, identity platforms, members, invitations and keys |
 | Account plane | a person's token | another person's sessions, passkeys, devices and app keys, and an organization they do not belong to |
 | Platform plane | an operator | an organization named under an environment it is not in |
 

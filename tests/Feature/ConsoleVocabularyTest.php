@@ -11,7 +11,7 @@ use Tests\Support\UiCopy;
  * ONE WORD PER THING, and the words that used to mean several things stay gone.
  *
  * The console called the customer's own Cbox account "Account", "Customer" and "Identity
- * platform"; called a team of THEIR customers an "organization", a "tenant" and a
+ * platform" (a word that now names one of its own products' sign-in, which was a "project"); called a team of THEIR customers an "organization", a "tenant" and a
  * "customer"; called the membership tier "Console access", "Organization access", "Org
  * access" and "Role"; and called app roles "Access roles", "Roles in your apps" and "App
  * roles". Architecture words — "plane", "tenant" — leaked into sentences. The fix was a
@@ -104,7 +104,9 @@ const RETIRED_WORDS = [
     '/(?<!-)\btenants?\b(?!-)/i' => 'organization',
     '/\bplanes?\b/i' => 'console or environment — "plane" is an architecture word',
     '/\bcustomers?\b/i' => 'organization',
-    '/\bIdentity platform\b/' => 'Organization',
+    // "Identity platform" named the Organization area once; since 2026-11-25 it is the
+    // word for what was a "project" (sign-in for one of the organization's own products).
+    '/\bprojects?\b(?![.\w])/i' => 'Identity platform',
     '/\bAdministrators\b/' => 'Team',
     '/\bAccount settings\b/' => 'Organization settings',
     '/\bApps (&|&amp;) API keys\b/' => 'Apps (keys have a page of their own)',

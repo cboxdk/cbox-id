@@ -53,7 +53,9 @@ describe('ContextSwitcher', () => {
         const nav = screen.getByRole('navigation', { name: 'Context' });
 
         expect(within(nav).getByRole('button', { name: /Workspace: Acme/ })).toBeInTheDocument();
-        expect(within(nav).getByRole('button', { name: /Project: Checkout/ })).toBeInTheDocument();
+        expect(
+            within(nav).getByRole('button', { name: /Identity platform: Checkout/ }),
+        ).toBeInTheDocument();
         expect(
             within(nav).getByRole('button', { name: /Environment: Production/ }),
         ).toBeInTheDocument();
@@ -85,7 +87,7 @@ describe('ContextSwitcher', () => {
         const onNavigate = vi.fn<(href: string) => void>();
         render(<ContextSwitcher context={environmentConsole()} onNavigate={onNavigate} />);
 
-        await userEvent.click(screen.getByRole('button', { name: /Project: Checkout/ }));
+        await userEvent.click(screen.getByRole('button', { name: /Identity platform: Checkout/ }));
         await userEvent.click(screen.getByRole('option', { name: /Billing/ }));
 
         // Billing lists Sandbox first; the counterpart of Production is still Production.
