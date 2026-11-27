@@ -12,14 +12,17 @@ use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Api\ApiHost;
 use App\Platform\Console\ConsoleScope;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
+use App\Providers\ServiceConnectionsServiceProvider;
 use App\ServiceConnections\ConnectionEvents;
 use App\ServiceConnections\Contracts\ReadsConnectionEvents;
 use App\ServiceConnections\ServiceConnection;
 use Cbox\Id\Identity\Contracts\Subjects;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\Contracts\TokenIssuer;
 use Cbox\Id\OAuthServer\Enums\ClientType;
+use Cbox\Id\OAuthServer\Exceptions\InvalidAudience;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Cbox\Id\OAuthServer\ValueObjects\IssuedToken;
@@ -111,6 +114,15 @@ it('issues real organization-bound tokens and invalidates them on central revoca
 });
 
 it('isolates Assets leases by organization and consumer and rotates a revoked connection without reviving old tokens', function (): void {
+    // Production declares this same audience for MCP. A lease must not need a second
+    // API registration, which would shadow that declaration and break MCP clients.
+    config(['cbox-id.oauth.protected_resources' => [[
+        'identifier' => 'https://api.cboxassets.com',
+        'scopes' => ['mcp:read', 'mcp:write'],
+        'dynamic_clients' => true,
+    ]]]);
+    (new ServiceConnectionsServiceProvider(app()))->boot();
+
     // Exercise the public API with real signed caller tokens, not the fixture introspector.
     app()->instance(TokenIntrospector::class, $this->realIntrospector);
     $issuer = app(TokenIssuer::class);
@@ -168,6 +180,40 @@ it('isolates Assets leases by organization and consumer and rotates a revoked co
         ->and($this->realIntrospector->introspect($lease)->active)->toBeFalse()
         ->and(ServiceConnection::query()->count())->toBe(2);
 });
+
+it('keeps Assets consumer scopes out of dynamic registrations and tokens while preserving MCP and existing reservations', function (): void {
+    config([
+        'cbox-id.oauth.dynamic_registration.mode' => 'mcp',
+        'cbox-id.oauth.reserved_scopes' => ['vault.lease', 'host:reserved'],
+        'cbox-id.oauth.protected_resources' => [
+            ['identifier' => 'https://api.cboxassets.com', 'scopes' => 'mcp:read mcp:write vault.lease host:reserved', 'dynamic_clients' => true],
+            ['identifier' => 'https://other.test/mcp', 'scopes' => ['other:read'], 'dynamic_clients' => true],
+        ],
+    ]);
+    (new ServiceConnectionsServiceProvider(app()))->boot();
+    $consumerScopes = ['assets:consumer:read', 'assets:consumer:write'];
+    $registered = $this->postJson('/oauth/register', [
+        'client_name' => 'Assets MCP client',
+        'redirect_uris' => ['http://127.0.0.1:33418/callback'],
+        'grant_types' => ['authorization_code', 'refresh_token'],
+        'token_endpoint_auth_method' => 'none',
+        'scope' => 'mcp:read mcp:write other:read assets:consumer:read assets:consumer:write vault.lease host:reserved',
+    ])->assertCreated()->assertJsonPath('scope', 'mcp:read mcp:write other:read');
+    $client = Client::query()->where('client_id', $registered->json('client_id'))->sole();
+    $person = app(Subjects::class)->create('assets-mcp@example.test', 'MCP user');
+    $issuer = app(TokenIssuer::class);
+
+    // Even a stale client carrying reserved scopes cannot put them in a signed token.
+    $client->scopes = [...$client->scopes, ...$consumerScopes, 'vault.lease', 'host:reserved'];
+    $issued = $issuer->issueForUser($client, $person->id, null, $client->scopes, 'https://api.cboxassets.com');
+    $token = $this->realIntrospector->introspect($issued->token);
+    expect($token->active)->toBeTrue()
+        ->and($token->claims['aud'])->toBe('https://api.cboxassets.com')
+        ->and($token->scopes)->toBe(['mcp:read', 'mcp:write']);
+    expect(fn () => $issuer->issueForUser($client, $person->id, null, $consumerScopes, 'https://api.cboxassets.com'))
+        ->toThrow(InvalidAudience::class);
+    expect(app(ProtectedResources::class)->find('https://other.test/mcp')?->scopes)->toBe(['other:read']);
+})->group('security');
 
 it('limits live grant inspection to its provider and consumer and reports central revocation', function (): void {
     $id = $this->withToken('admin')->postJson('/api/v1/service-connections/cbox_billing')->assertOk()->json('id');

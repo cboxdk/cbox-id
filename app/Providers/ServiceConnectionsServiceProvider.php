@@ -17,6 +17,25 @@ class ServiceConnectionsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Assets uses one audience for MCP and service leases. Accept the lease scopes
+        // there, but never let self-registered clients acquire them, even without a
+        // configured provider. Preserve the operator's resource and reserved scopes.
+        $assetsScopes = array_filter(config()->array('service-connections.services.cbox_assets.scopes'), is_string(...));
+        config(['cbox-id.oauth.reserved_scopes' => array_values(array_unique([
+            ...array_filter(config()->array('cbox-id.oauth.reserved_scopes', []), is_string(...)), ...$assetsScopes,
+        ]))]);
+        $resources = config()->array('cbox-id.oauth.protected_resources', []);
+        foreach ($resources as $key => $resource) {
+            if (! is_array($resource) || ($resource['identifier'] ?? null) !== config()->string('service-connections.services.cbox_assets.audience')) {
+                continue;
+            }
+            $scopes = $resource['scopes'] ?? [];
+            $scopes = is_string($scopes) ? explode(' ', $scopes) : $scopes;
+            $resource['scopes'] = array_values(array_unique([...(is_array($scopes) ? array_filter($scopes, is_string(...)) : []), ...$assetsScopes]));
+            $resources[$key] = $resource;
+        }
+        config(['cbox-id.oauth.protected_resources' => $resources]);
+
         // The registered service may introspect only its own API's tokens.
         $grants = config()->array('cbox-id.oauth.introspection.resource_servers', []);
         foreach (config()->array('service-connections.services') as $definition) {

@@ -45,6 +45,15 @@ Sites needs `id:service-connections:write` for the person flow and
 `id:service-connections:read` for provider inspection. The legacy scope names
 `service_connections.manage`, `.lease` and `.inspect` respectively remain accepted.
 
+If `CBOX_ID_PROTECTED_RESOURCES` declares the Assets audience for MCP, the host
+adds the two consumer scopes to that same declaration and reserves them against
+dynamic client registration. Existing MCP scopes, resource settings and reserved
+scopes remain unchanged. The reservation applies even before a provider client is
+configured. Do not register a second API row at this audience or register the
+consumer scopes under another API: registered APIs take precedence and would
+change the existing MCP or lease grants. This needs no engine upgrade or data
+migration; deploy the host change and rebuild its configuration cache normally.
+
 Sites obtains an ID-issuer-audience person token with the selected organization
 in its signed `org` claim, then calls `PUT /v1/service-connections/cbox_assets`
 on the ID API host. The caller must be a current active organization owner or
