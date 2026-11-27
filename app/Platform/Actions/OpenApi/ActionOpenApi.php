@@ -125,8 +125,8 @@ final readonly class ActionOpenApi
             $operation['parameters'] = $parameters;
         }
 
-        if ($action->plane === ActionPlane::Environment
-            || ($action->plane === ActionPlane::Organization && OrganizationScopes::admitted($action->scope))) {
+        // Admission belongs to provisioning, not to a scope shared with administration.
+        if (in_array($action->name, ['projects.create', 'environments.create'], true)) {
             $responses = is_array($operation['responses'] ?? null) ? $operation['responses'] : [];
             $operation['responses'] = self::withResponse($responses, 503, [
                 'description' => 'Product admission could not be verified. The request is refused; retry later.',

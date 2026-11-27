@@ -18,7 +18,6 @@ use App\Platform\OAuth\RootDelegatedAccess;
 use App\Platform\OAuth\ValueObjects\RootOrganization;
 use App\Platform\OAuth\ValueObjects\RootSignIn;
 use App\Platform\OrganizationCapabilities;
-use App\Platform\ServiceAccess\ProductAdmission;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
@@ -316,9 +315,6 @@ readonly class RootPersonPrincipal implements PersonPrincipal, SignedInPerson, T
         }
 
         $this->assertGranted(OrganizationScopes::knows($action->scope), $action->scope);
-        if (OrganizationScopes::admitted($action->scope)) {
-            app(ProductAdmission::class)->assertGranted($this->signIn->subjectId, $workspace->id, acting: $action->danger->writes());
-        }
     }
 
     /** @throws AuthorizationException */

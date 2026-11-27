@@ -10,6 +10,7 @@ use App\Platform\Actions\Approvals\ActionApprovalRequest;
 use App\Platform\Api\ApiHost;
 use App\Platform\Api\ManagementAudience;
 use App\Platform\AppMemberRoles;
+use App\Platform\CurrentUser;
 use App\Platform\EnvironmentOrigin;
 use App\Platform\GrantAccessRole;
 use App\Platform\NativeProduct\NativeProductAccess;
@@ -25,8 +26,10 @@ use Cbox\Id\Kernel\Audit\ValueObjects\AuditActor;
 use Cbox\Id\Kernel\Crypto\Contracts\TokenSigner;
 use Cbox\Id\Kernel\Crypto\Enums\SigningAlg;
 use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
+use Cbox\Id\OAuthServer\Contracts\AuthenticationAwareDeviceAuthorization;
 use Cbox\Id\OAuthServer\Contracts\BackchannelAuthentication;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
+use Cbox\Id\OAuthServer\Contracts\DeviceAuthorization;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
 use Cbox\Id\OAuthServer\Contracts\TokenIssuer;
 use Cbox\Id\OAuthServer\Enums\ClientType;
@@ -707,6 +710,84 @@ it('refuses legacy operator tokens that do not attest to strong authentication',
     $token = rootToken($operator->subject_id);
     $this->withToken($token)->postJson('/api/v1/platform/operators', [])->assertUnauthorized();
 });
+
+it('retains device authentication for operator access without upgrading weak or legacy grants', function (?array $amr, bool $allowed): void {
+    $operator = actAsOperator('device-operator@platform.test');
+    $client = rootCliClient();
+    $resource = ManagementAudience::api();
+    $started = $this->post('/oauth/device_authorization', [
+        'client_id' => $client->client_id,
+        'scope' => 'openid offline_access id:admin-service-connections:read id:admin-service-connections:write',
+    ])->assertOk();
+
+    if ($allowed) {
+        // Real hosted approval, from the operator's MFA session, not a minted fixture JWT.
+        $session = app(CurrentUser::class)->session();
+        $session->created_at = now()->subMinutes(7);
+        $session->save();
+        $authTime = $session->created_at->getTimestamp();
+        lookUpDeviceCode($started->json('user_code'))->assertRedirect(route('device'));
+        approveDevice()->assertRedirect(route('device'));
+    } else {
+        $authTime = $amr === null ? null : now()->subHour()->getTimestamp();
+        // Existing/contextless grants and other hosts' password-only approvals remain
+        // weak even though this operator now has a strong browser session.
+        app(PlatformRoot::class)->run(function () use ($started, $operator, $amr, $authTime): void {
+            $devices = app(DeviceAuthorization::class);
+            expect($devices)->toBeInstanceOf(AuthenticationAwareDeviceAuthorization::class);
+            expect($amr === null
+                ? $devices->approve($started->json('user_code'), $operator->subject_id, null)
+                : $devices->approveAuthenticated($started->json('user_code'), $operator->subject_id, null, new AuthenticationEvent($authTime, $amr)))->toBeTrue();
+        });
+    }
+
+    $poll = [
+        'grant_type' => 'urn:ietf:params:oauth:grant-type:device_code',
+        'device_code' => $started->json('device_code'),
+        'client_id' => $client->client_id,
+        'resource' => $resource,
+    ];
+    $tokens = $this->post('/oauth/token', $poll);
+    if ($amr === ['pwd']) {
+        // With evidence present, the issuer can reject a weak operator login even
+        // before RootDelegatedAccess sees a token. Do not relax that earlier gate.
+        $tokens->assertStatus(400)->assertJsonPath('error', 'invalid_grant')
+            ->assertJsonPath('error_description', 'invalid_grant: a second factor is required');
+
+        return;
+    }
+    $tokens->assertOk();
+    forgetSubjectSession();
+
+    for ($generation = 0; $generation < 2; $generation++) {
+        $token = $tokens->json('access_token');
+        $claims = app(PlatformRoot::class)->run(fn () => app(TokenSigner::class)->verify($token, [SigningAlg::RS256]));
+        expect($claims->get('auth_time'))->toBe($authTime)
+            ->and($claims->get('acr'))->toBe($allowed ? 'urn:cbox-id:aal2' : ($amr === null ? null : 'urn:cbox-id:aal1'));
+
+        if ($allowed) {
+            expect(mcpCall($token, 'whoami')['structuredContent']['operator'])->toBeTrue();
+        } else {
+            mcpRpc($token, 'tools/list')->assertUnauthorized();
+        }
+
+        if ($generation === 0) {
+            $this->travel(1)->minutes();
+            $tokens = $this->post('/oauth/token', [
+                'grant_type' => 'refresh_token',
+                'refresh_token' => $tokens->json('refresh_token'),
+                'client_id' => $client->client_id,
+                'resource' => $resource,
+            ])->assertOk();
+        }
+    }
+
+    $this->post('/oauth/token', $poll)->assertStatus(400)->assertJsonPath('error', 'invalid_grant');
+})->with([
+    'MFA approval' => [['pwd', 'otp'], true],
+    'password approval' => [['pwd'], false],
+    'legacy approval' => [null, false],
+])->group('security');
 
 // ── An app acting for the person, on its own roster ────────────────────────────
 

@@ -243,12 +243,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Governance
@@ -332,12 +326,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/access-reviews/{id}':
     get:
       tags:
@@ -410,12 +398,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/access-reviews/{id}/close':
     post:
       tags:
@@ -497,12 +479,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/access-reviews/{id}/items':
     get:
       tags:
@@ -594,12 +570,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/access-reviews/{id}/items/{item_id}':
     post:
       tags:
@@ -702,12 +672,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/action-approvals/{id}':
     get:
       tags:
@@ -825,12 +789,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/agent-requests/{request_id}/deny':
     post:
       tags:
@@ -887,12 +845,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/api-keys/{id}':
     delete:
       operationId: api_keys_revoke
@@ -943,12 +895,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'api_keys:write'
       x-scope-aliases: []
       x-danger: destructive
@@ -1009,12 +955,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-action: apis.list
       x-scope: 'apis:read'
       x-scope-aliases: []
@@ -1107,12 +1047,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-action: apis.create
       x-scope: 'apis:write'
       x-scope-aliases: []
@@ -1167,12 +1101,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-action: apis.get
       x-scope: 'apis:read'
       x-scope-aliases: []
@@ -1250,12 +1178,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-action: apis.update
       x-scope: 'apis:write'
       x-scope-aliases: []
@@ -1302,12 +1224,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-action: apis.delete
       x-scope: 'apis:write'
       x-scope-aliases: []
@@ -1401,12 +1317,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     delete:
       tags:
         - APIs
@@ -1471,12 +1381,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /app-catalog:
     get:
       tags:
@@ -1585,12 +1489,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope-aliases: []
   /app-catalog/for-user:
     get:
@@ -1788,12 +1686,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope-aliases: []
   '/app-catalog/{key}':
     delete:
@@ -1864,12 +1756,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     put:
       tags:
         - 'App catalog'
@@ -2053,12 +1939,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'App catalog'
@@ -2120,12 +2000,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /approvals:
     get:
       tags:
@@ -2333,12 +2207,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'apps:read'
       x-scope-aliases: []
       x-danger: read
@@ -2477,12 +2345,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'apps:write'
       x-scope-aliases: []
       x-danger: critical
@@ -2545,12 +2407,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Applications
@@ -2612,12 +2468,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - Applications
@@ -2710,12 +2560,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/apps/{id}/blueprint':
     get:
       tags:
@@ -2772,12 +2616,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'apps:read'
       x-scope-aliases: []
       x-danger: read
@@ -2873,12 +2711,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/apps/{id}/manifest':
     put:
       tags:
@@ -2961,12 +2793,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/apps/{id}/manifest/sync':
     post:
       tags:
@@ -3035,12 +2861,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/apps/{id}/scopes':
     put:
       tags:
@@ -3123,12 +2943,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/apps/{id}/secrets':
     get:
       tags:
@@ -3190,12 +3004,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'apps:read'
       x-scope-aliases: []
       x-danger: read
@@ -3280,12 +3088,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/apps/{id}/secrets/{secret_id}':
     delete:
       tags:
@@ -3353,12 +3155,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/apps/{id}/settings/api-key-prefix':
     put:
       tags:
@@ -3440,12 +3236,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/apps/{id}/settings/backchannel-logout':
     put:
       tags:
@@ -3531,12 +3321,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/apps/{id}/settings/client-credentials':
     put:
       tags:
@@ -3616,12 +3400,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/apps/{id}/settings/token-exchange':
     put:
       tags:
@@ -3701,12 +3479,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/apps/{id}/settings/token-lifetime':
     put:
       tags:
@@ -3787,12 +3559,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /audit-log:
     get:
       tags:
@@ -3898,12 +3664,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /audit-logs/events:
     post:
       tags:
@@ -4066,12 +3826,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'App audit logs'
@@ -4209,12 +3963,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /audit-logs/exports:
     post:
       tags:
@@ -4310,12 +4058,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/audit-logs/exports/{id}':
     get:
       tags:
@@ -4381,12 +4123,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /audit-logs/schemas:
     post:
       tags:
@@ -4486,12 +4222,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'App audit logs'
@@ -4565,12 +4295,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/audit-logs/schemas/{action}':
     delete:
       tags:
@@ -4629,12 +4353,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'App audit logs'
@@ -4697,12 +4415,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     put:
       tags:
         - 'App audit logs'
@@ -4803,12 +4515,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /audit-logs/settings:
     get:
       tags:
@@ -4864,12 +4570,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - 'App audit logs'
@@ -4943,12 +4643,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /audit-logs/verify:
     get:
       tags:
@@ -5031,12 +4725,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /authenticator/me:
     get:
       operationId: authenticatorIdentity
@@ -5133,12 +4821,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     put:
       tags:
         - Branding
@@ -5274,12 +4956,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /branding/whitelabel:
     get:
       tags:
@@ -5345,12 +5021,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     put:
       tags:
         - Branding
@@ -5471,12 +5141,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /devices:
     post:
       tags:
@@ -5722,12 +5386,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'Directory Sync'
@@ -5811,12 +5469,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /directories/connect:
     post:
       tags:
@@ -5923,12 +5575,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /directories/hris:
     post:
       tags:
@@ -6080,12 +5726,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/directories/{id}':
     delete:
       tags:
@@ -6158,12 +5798,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'Directory Sync'
@@ -6235,12 +5869,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - 'Directory Sync'
@@ -6327,12 +5955,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/directories/{id}/credentials':
     put:
       tags:
@@ -6462,12 +6084,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/directories/{id}/group-roles':
     post:
       tags:
@@ -6564,12 +6180,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/directories/{id}/groups':
     get:
       tags:
@@ -6661,12 +6271,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/directories/{id}/rotate':
     post:
       tags:
@@ -6748,12 +6352,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/directories/{id}/status':
     post:
       tags:
@@ -6840,12 +6438,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/directories/{id}/sync':
     post:
       tags:
@@ -6964,12 +6556,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/directories/{id}/sync-settings':
     patch:
       tags:
@@ -7121,12 +6707,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /domains:
     post:
       tags:
@@ -7199,12 +6779,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Domains
@@ -7259,12 +6833,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     delete:
       tags:
         - Domains
@@ -7314,12 +6882,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /domains/verify:
     post:
       tags:
@@ -7379,12 +6941,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /events:
     get:
       tags:
@@ -7480,12 +7036,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /feature-flags:
     post:
       tags:
@@ -7608,12 +7158,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'Feature flags'
@@ -7687,12 +7231,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /feature-flags/evaluate:
     get:
       tags:
@@ -7764,12 +7302,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/feature-flags/{id}':
     delete:
       tags:
@@ -7827,12 +7359,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'Feature flags'
@@ -7894,12 +7420,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - 'Feature flags'
@@ -8023,12 +7543,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /fga/check:
     get:
       tags:
@@ -8142,12 +7656,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /fga/check/batch:
     get:
       tags:
@@ -8225,12 +7733,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /fga/resources:
     get:
       tags:
@@ -8356,12 +7858,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /fga/schema:
     get:
       tags:
@@ -8417,12 +7913,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     put:
       tags:
         - 'Fine-grained authorization'
@@ -8494,12 +7984,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /fga/schema/validate:
     get:
       tags:
@@ -8563,12 +8047,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /fga/subjects:
     get:
       tags:
@@ -8686,12 +8164,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /fga/tuples:
     get:
       tags:
@@ -8815,12 +8287,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     post:
       tags:
         - 'Fine-grained authorization'
@@ -8934,12 +8400,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /fga/tuples/delete:
     post:
       tags:
@@ -9054,12 +8514,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /frontend-keys:
     post:
       tags:
@@ -9148,12 +8602,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'Publishable keys'
@@ -9227,12 +8675,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/frontend-keys/{id}':
     delete:
       tags:
@@ -9290,12 +8732,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/frontend-keys/{id}/origins':
     put:
       tags:
@@ -9379,12 +8815,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /hooks:
     post:
       tags:
@@ -9480,12 +8910,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Hooks
@@ -9561,12 +8985,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/hooks/{id}':
     delete:
       tags:
@@ -9626,12 +9044,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Hooks
@@ -9695,12 +9107,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - Hooks
@@ -9780,12 +9186,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /keys:
     post:
       tags:
@@ -9898,12 +9298,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'Secret keys'
@@ -9977,12 +9371,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/keys/{id}':
     delete:
       tags:
@@ -10040,12 +9428,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/keys/{id}/rotate':
     post:
       tags:
@@ -10124,12 +9506,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /legacy-login:
     get:
       tags:
@@ -10185,12 +9561,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /legacy-login/approve:
     post:
       tags:
@@ -10250,12 +9620,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /legacy-login/probe:
     post:
       tags:
@@ -10329,12 +9693,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /legacy-login/revoke:
     post:
       tags:
@@ -10394,12 +9752,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /log-streams:
     post:
       tags:
@@ -10613,12 +9965,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'Log streams'
@@ -10694,12 +10040,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/log-streams/{id}':
     delete:
       tags:
@@ -10759,12 +10099,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'Log streams'
@@ -10828,12 +10162,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - 'Log streams'
@@ -11045,12 +10373,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/log-streams/{id}/test':
     post:
       tags:
@@ -11119,12 +10441,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /oauth/api-keys/verify:
     servers:
       -
@@ -11357,12 +10673,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /organizations:
     get:
       operationId: organizations_list
@@ -11442,12 +10752,6 @@ paths:
           $ref: '#/components/responses/Forbidden'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'organizations:read'
       x-scope-aliases: []
       x-danger: read
@@ -11555,12 +10859,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'organizations:write'
       x-scope-aliases: []
       x-danger: write
@@ -11616,12 +10914,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'organizations:read'
       x-scope-aliases: []
       x-danger: read
@@ -11712,12 +11004,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'organizations:write'
       x-scope-aliases: []
       x-danger: write
@@ -11785,12 +11071,6 @@ paths:
           $ref: '#/components/responses/Conflict'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'organizations:write'
       x-scope-aliases: []
       x-danger: destructive
@@ -11863,12 +11143,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/organizations/{id}/suspend':
     post:
       tags:
@@ -11938,12 +11212,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/organizations/{id}/transfer-ownership':
     post:
       operationId: organizations_transfer_ownership
@@ -12024,12 +11292,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'organizations:write'
       x-scope-aliases: []
       x-danger: critical
@@ -12102,12 +11364,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'api_keys:read'
       x-scope-aliases: []
       x-danger: read
@@ -12169,12 +11425,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'organizations:read'
       x-scope-aliases: []
       x-danger: read
@@ -12259,12 +11509,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/organizations/{organization_id}/domains/{domain_id}':
     delete:
       tags:
@@ -12333,12 +11577,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/organizations/{organization_id}/domains/{domain_id}/capture':
     put:
       tags:
@@ -12428,12 +11666,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/organizations/{organization_id}/domains/{domain_id}/verify':
     post:
       tags:
@@ -12511,12 +11743,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/organizations/{organization_id}/invitations':
     get:
       operationId: invitations_list
@@ -12578,12 +11804,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'invitations:read'
       x-scope-aliases: []
       x-danger: read
@@ -12762,12 +11982,6 @@ paths:
           $ref: '#/components/responses/Conflict'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'invitations:write'
       x-scope-aliases: []
       x-danger: destructive
@@ -12841,12 +12055,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/organizations/{organization_id}/invitations/{invitation_id}/resend':
     post:
       operationId: invitations_resend
@@ -12982,12 +12190,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'members:read'
       x-scope-aliases: []
       x-danger: read
@@ -13099,12 +12301,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'members:write'
       x-scope-aliases: []
       x-danger: write
@@ -13183,12 +12379,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'members:write'
       x-scope-aliases: []
       x-danger: write
@@ -13244,12 +12434,6 @@ paths:
           $ref: '#/components/responses/Conflict'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'members:write'
       x-scope-aliases: []
       x-danger: destructive
@@ -13358,12 +12542,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/organizations/{organization_id}/members/{user_id}/roles':
     get:
       operationId: members_roles_list
@@ -13423,12 +12601,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'roles:read'
       x-scope-aliases: []
       x-danger: read
@@ -13509,12 +12681,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'roles:write'
       x-scope-aliases: []
       x-danger: write
@@ -13570,12 +12736,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'roles:write'
       x-scope-aliases: []
       x-danger: destructive
@@ -13640,12 +12800,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope-aliases: []
     post:
       tags:
@@ -13778,12 +12932,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/organizations/{organization_id}/portal-links/{id}':
     delete:
       tags:
@@ -13852,12 +13000,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/organizations/{organization_id}/standing-approvals':
     get:
       operationId: organizations_standing_approvals_list
@@ -13920,12 +13062,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope-aliases: []
     post:
       tags:
@@ -14029,12 +13165,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/organizations/{organization_id}/standing-approvals/{id}':
     delete:
       tags:
@@ -14118,12 +13248,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /permissions:
     post:
       tags:
@@ -14212,12 +13336,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Roles
@@ -14315,12 +13433,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/permissions/{id}':
     delete:
       tags:
@@ -14381,12 +13493,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - Roles
@@ -14470,12 +13576,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /pipes:
     post:
       tags:
@@ -14584,12 +13684,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Pipes
@@ -14663,12 +13757,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/pipes/{id}':
     delete:
       tags:
@@ -14726,12 +13814,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Pipes
@@ -14793,12 +13875,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - Pipes
@@ -14900,12 +13976,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/pipes/{id}/connections':
     get:
       tags:
@@ -14995,12 +14065,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/pipes/{id}/connections/{connection_id}':
     delete:
       tags:
@@ -15065,12 +14129,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/pipes/{id}/grants':
     post:
       tags:
@@ -15150,12 +14208,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/pipes/{id}/grants/{client_id}':
     delete:
       tags:
@@ -15221,12 +14273,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /provisioning-targets:
     post:
       tags:
@@ -15347,12 +14393,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'Outbound provisioning'
@@ -15436,12 +14476,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/provisioning-targets/{id}':
     delete:
       tags:
@@ -15514,12 +14548,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'Outbound provisioning'
@@ -15591,12 +14619,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/provisioning-targets/{id}/status':
     post:
       tags:
@@ -15683,12 +14705,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /radar/decisions:
     get:
       tags:
@@ -15850,12 +14866,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/radar/decisions/{id}':
     get:
       tags:
@@ -15919,12 +14929,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /radar/lists:
     post:
       tags:
@@ -16025,12 +15029,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Radar
@@ -16126,12 +15124,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/radar/lists/{id}':
     delete:
       tags:
@@ -16190,12 +15182,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /radar/mode:
     put:
       tags:
@@ -16270,12 +15256,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /radar/rules:
     post:
       tags:
@@ -16445,12 +15425,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Radar
@@ -16525,12 +15499,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /radar/rules/order:
     put:
       tags:
@@ -16597,12 +15565,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/radar/rules/{id}':
     delete:
       tags:
@@ -16661,12 +15623,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Radar
@@ -16729,12 +15685,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - Radar
@@ -16907,12 +15857,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /radar/settings:
     get:
       tags:
@@ -16968,12 +15912,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - Radar
@@ -17045,12 +15983,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /roles:
     get:
       operationId: roles_list
@@ -17118,12 +16050,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'roles:read'
       x-scope-aliases: []
       x-danger: read
@@ -17223,12 +16149,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/roles/{id}':
     delete:
       tags:
@@ -17289,12 +16209,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Roles
@@ -17365,12 +16279,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - Roles
@@ -17455,12 +16363,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/roles/{id}/definition/activate':
     post:
       tags:
@@ -17540,12 +16442,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/roles/{id}/permissions/{permission_id}':
     put:
       tags:
@@ -17623,12 +16519,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     delete:
       tags:
         - Roles
@@ -17705,12 +16595,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /saml-apps:
     post:
       tags:
@@ -17834,12 +16718,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'SAML apps'
@@ -17913,12 +16791,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/saml-apps/{id}':
     delete:
       tags:
@@ -17976,12 +16848,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'SAML apps'
@@ -18043,12 +16909,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - 'SAML apps'
@@ -18175,12 +17035,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /service-connections:
     get:
       operationId: listOrganizationServiceConnections
@@ -18560,12 +17414,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /sign-in/policy:
     get:
       tags:
@@ -18629,12 +17477,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - Sign-in
@@ -18772,12 +17614,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sign-in/policy/organizations/{organization_id}':
     delete:
       tags:
@@ -18838,12 +17674,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /sign-in/self-service-signup:
     put:
       tags:
@@ -18915,12 +17745,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /sign-in/sms:
     get:
       tags:
@@ -18976,12 +17800,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - Sign-in
@@ -19292,12 +18110,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /sign-in/social-providers:
     get:
       tags:
@@ -19390,12 +18202,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     post:
       tags:
         - Sign-in
@@ -19548,12 +18354,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sign-in/social-providers/inherited/{provider}':
     put:
       tags:
@@ -19640,12 +18440,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /sign-in/social-providers/offered:
     get:
       tags:
@@ -19709,12 +18503,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sign-in/social-providers/{id}':
     delete:
       tags:
@@ -19787,12 +18575,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - Sign-in
@@ -19936,12 +18718,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sign-in/social-providers/{id}/disable':
     post:
       tags:
@@ -20023,12 +18799,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sign-in/social-providers/{id}/enable':
     post:
       tags:
@@ -20110,12 +18880,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /sign-in/through:
     put:
       tags:
@@ -20188,12 +18952,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /signals/source:
     get:
       operationId: signals_source_list
@@ -20540,12 +19298,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Governance
@@ -20629,12 +19381,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sod-policies/{id}':
     delete:
       tags:
@@ -20707,12 +19453,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Governance
@@ -20784,12 +19524,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sod-policies/{id}/status':
     post:
       tags:
@@ -20876,12 +19610,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /sso/connections:
     post:
       tags:
@@ -21032,12 +19760,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'Enterprise SSO'
@@ -21121,12 +19843,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sso/connections/{id}':
     delete:
       tags:
@@ -21199,12 +19915,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'Enterprise SSO'
@@ -21276,12 +19986,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - 'Enterprise SSO'
@@ -21423,12 +20127,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sso/connections/{id}/activate':
     post:
       tags:
@@ -21510,12 +20208,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sso/connections/{id}/certificates':
     get:
       tags:
@@ -21590,12 +20282,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     post:
       tags:
         - 'Enterprise SSO'
@@ -21688,12 +20374,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sso/connections/{id}/certificates/activate':
     post:
       tags:
@@ -21781,12 +20461,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sso/connections/{id}/disable':
     post:
       tags:
@@ -21868,12 +20542,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sso/connections/{id}/require-sso':
     post:
       tags:
@@ -21955,12 +20623,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /sso/domains:
     post:
       tags:
@@ -22040,12 +20702,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'Enterprise SSO'
@@ -22129,12 +20785,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sso/domains/{id}':
     delete:
       tags:
@@ -22207,12 +20857,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sso/domains/{id}/capture':
     post:
       tags:
@@ -22299,12 +20943,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/sso/domains/{id}/verify':
     post:
       tags:
@@ -22386,12 +21024,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /sso/saml-metadata:
     post:
       tags:
@@ -22466,12 +21098,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /support-sessions:
     post:
       operationId: support_sessions_start
@@ -22597,12 +21223,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'support:write'
       x-scope-aliases: []
       x-danger: critical
@@ -22664,12 +21284,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /token-vault/secrets:
     post:
       tags:
@@ -22760,12 +21374,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'Token vault'
@@ -22849,12 +21457,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/token-vault/secrets/{id}':
     get:
       tags:
@@ -22927,12 +21529,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/token-vault/secrets/{id}/grants':
     post:
       tags:
@@ -23020,12 +21616,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/token-vault/secrets/{id}/grants/{client_id}':
     delete:
       tags:
@@ -23106,12 +21696,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/token-vault/secrets/{id}/revoke':
     post:
       tags:
@@ -23193,12 +21777,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/token-vault/secrets/{id}/rotate':
     post:
       tags:
@@ -23286,12 +21864,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/user-property-namespaces/{name}':
     put:
       tags:
@@ -23383,12 +21955,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - 'User properties'
@@ -23450,12 +22016,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /users:
     get:
       operationId: users_list
@@ -23543,12 +22103,6 @@ paths:
           $ref: '#/components/responses/Forbidden'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'users:read'
       x-scope-aliases: []
       x-danger: read
@@ -23632,12 +22186,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'users:write'
       x-scope-aliases: []
       x-danger: write
@@ -23691,12 +22239,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'users:read'
       x-scope-aliases: []
       x-danger: read
@@ -23755,12 +22297,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'users:write'
       x-scope-aliases: []
       x-danger: destructive
@@ -23847,12 +22383,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/users/{id}/environment-roles':
     get:
       operationId: users_environment_roles_list
@@ -23907,12 +22437,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'roles:read'
       x-scope-aliases: []
       x-danger: read
@@ -23972,12 +22496,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'roles:read'
       x-scope-aliases: []
       x-danger: read
@@ -24048,12 +22566,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'roles:write'
       x-scope-aliases: []
       x-danger: critical
@@ -24105,12 +22617,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'roles:write'
       x-scope-aliases: []
       x-danger: destructive
@@ -24180,12 +22686,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/users/{id}/mfa':
     delete:
       tags:
@@ -24244,12 +22744,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/users/{id}/mfa/sms':
     delete:
       tags:
@@ -24308,12 +22802,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/users/{id}/password':
     post:
       tags:
@@ -24417,12 +22905,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/users/{id}/password-reset':
     post:
       tags:
@@ -24481,12 +22963,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/users/{id}/reactivate':
     post:
       tags:
@@ -24554,12 +23030,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/users/{id}/sessions':
     get:
       operationId: users_sessions_list
@@ -24617,12 +23087,6 @@ paths:
           $ref: '#/components/responses/NotFound'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
       x-scope: 'users:read'
       x-scope-aliases: []
       x-danger: read
@@ -24683,12 +23147,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/users/{id}/sessions/{session_id}':
     delete:
       tags:
@@ -24755,12 +23213,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/users/{id}/verification':
     post:
       tags:
@@ -24819,12 +23271,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/users/{id}/verify':
     post:
       tags:
@@ -24892,12 +23338,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/vault/pipes/{provider}/token':
     post:
       tags:
@@ -25502,12 +23942,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Webhooks
@@ -25585,12 +24019,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/webhooks/{id}':
     delete:
       tags:
@@ -25652,12 +24080,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     get:
       tags:
         - Webhooks
@@ -25723,12 +24145,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     patch:
       tags:
         - Webhooks
@@ -25822,12 +24238,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/webhooks/{id}/pause':
     post:
       tags:
@@ -25898,12 +24308,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/webhooks/{id}/resume':
     post:
       tags:
@@ -25974,12 +24378,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/webhooks/{id}/rotate':
     post:
       tags:
@@ -26050,12 +24448,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   '/webhooks/{id}/signature-scheme':
     post:
       tags:
@@ -26141,12 +24533,6 @@ paths:
           $ref: '#/components/responses/UnprocessableEntity'
         429:
           $ref: '#/components/responses/TooManyRequests'
-        503:
-          description: 'Product admission could not be verified. The request is refused; retry later.'
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
 components:
   securitySchemes:
     ServiceConnectionEvents:

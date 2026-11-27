@@ -90,16 +90,6 @@ final readonly class ProjectController extends ConsoleController
 
         $organizationId = $this->scope->organizationId();
         $actorId = $this->scope->actorId();
-        if ($organizationId !== null) {
-            try {
-                app(ProductAdmission::class)->assertGranted($actorId, $organizationId);
-            } catch (ActionRefused $error) {
-                // Refused: /start is the gate, and it names this organization itself.
-                return $error->error === 'service_admission_required'
-                    ? to_route('product-signup.show')
-                    : to_route('product-signup.show')->withErrors(['registration' => $error->getMessage()]);
-            }
-        }
         $allAccess = $this->hasFullAccess($members);
         $accessible = $this->reachable($members);
 
@@ -501,7 +491,6 @@ final readonly class ProjectController extends ConsoleController
             : Project::query()->whereKey($projectId)->where('organization_id', $organizationId)->first();
 
         abort_if($model === null, 404);
-        app(ProductAdmission::class)->assertWebGranted($this->scope->actorId(), $model->organization_id);
 
         return $model;
     }

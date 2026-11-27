@@ -49,7 +49,7 @@ Pulled in automatically by `composer install`:
 | `cboxdk/laravel-assistant-client` | `^0.2.5` | Product support, the shell's Help panel, signed tools and curated documentation sync. |
 | `cboxdk/laravel-billing-client` | `^0.6.4` | Billing catalog, account and subscription management. |
 | `symfony/intl` | `^8.0` | Country validation and localized country names for invoice addresses. |
-| `cboxdk/laravel-id` | `^2.9` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
+| `cboxdk/laravel-id` | `^2.9.1` | The identity engine (crypto, tenancy, OAuth/OIDC, SCIM, SAML, audit). |
 | `cboxdk/laravel-signals-client` | `dev-sd/signals-managed-integration` | Public Signals assessment client (feature disabled until configured). |
 | `cboxdk/laravel-postal` | `^0.1.1` | Transactional mail delivery via Postal. |
 | `cboxdk/laravel-relay-client` | `^0.2.2` | All system mail, through Cbox Relay (`MAIL_MAILER=relay` with `RELAY_URL`, `RELAY_KEY` and optionally `RELAY_PROJECT`). Every mail is queued and retried through an outage. |
