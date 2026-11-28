@@ -47,6 +47,17 @@ it('normalises a stored list to the new names, and widens a published list with 
         ->and(ScopeRegistry::withLegacy(['id:organization:read']))->toContain('id:organization:read', 'workspace:read');
 });
 
+it('registers machine provisioning without widening person or operator grants', function (): void {
+    $scope = 'id:service-connection-provisions:write';
+    expect(ScopeRegistry::knows($scope))->toBeTrue()
+        ->and(ScopeRegistry::names())->toContain($scope)
+        ->and(ScopeRegistry::isLegacy($scope))->toBeFalse()
+        ->and(ScopeRegistry::withLegacy([$scope]))->toBe([$scope])
+        ->and(ScopeRegistry::satisfies([$scope], $scope))->toBeTrue()
+        ->and(ScopeRegistry::satisfies(['service_connections.manage', 'id:service-connections:write',
+            'operator:service-connections:write', 'id:admin-service-connections:write'], $scope))->toBeFalse();
+})->group('security');
+
 it('does not rename the OIDC scopes or the directory scopes laravel-id reserves', function (): void {
     foreach (['openid', 'profile', 'email', 'offline_access', 'directories:read'] as $scope) {
         expect(ScopeRegistry::canonical($scope))->toBe($scope)

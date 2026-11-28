@@ -19,6 +19,13 @@ class ServiceConnectionController
         return $this->response($this->present($this->connections->connect($this->caller($request), $id)));
     }
 
+    public function provision(Request $request, string $id): JsonResponse
+    {
+        $request->validate(['organization_id' => ['required', 'string', 'ulid']]);
+
+        return $this->response($this->present($this->connections->provision($this->caller($request), $request->string('organization_id')->toString(), $id)));
+    }
+
     public function index(Request $request): JsonResponse
     {
         return $this->response(['data' => array_map($this->present(...), $this->connections->listing($this->caller($request)))]);

@@ -5,27 +5,84 @@ declare(strict_types=1);
 namespace App\ServiceConnections;
 
 use App\Platform\OAuth\PlatformRealmClients;
+use App\ServiceConnections\Contracts\ChecksConnectionEligibility;
 use App\ServiceConnections\Contracts\Connections;
 use Cbox\Id\Kernel\Audit\Contracts\AuditLog;
 use Cbox\Id\Kernel\Audit\Enums\ActorType;
 use Cbox\Id\Kernel\Audit\ValueObjects\AuditEvent;
+use Cbox\Id\Kernel\Tenancy\Contracts\EnvironmentContext;
 use Cbox\Id\Kernel\Tenancy\Contracts\TenantContext;
 use Cbox\Id\Kernel\Tenancy\GenericTenant;
 use Cbox\Id\OAuthServer\Contracts\ServiceAccounts;
 use Cbox\Id\OAuthServer\Contracts\TokenIssuer;
+use Cbox\Id\OAuthServer\Enums\ClientType;
 use Cbox\Id\OAuthServer\Models\Client;
 use Cbox\Id\OAuthServer\ValueObjects\Introspection;
 use Cbox\Id\OAuthServer\ValueObjects\IssuedToken;
+use Cbox\Id\Organization\Enums\EnvironmentStatus;
 use Cbox\Id\Organization\Enums\MembershipStatus;
 use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\Models\Membership;
 use Cbox\Id\Organization\Models\Organization;
+use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Support\Facades\DB;
 
 /** Organization grants, never a person's refresh token or a shared cross-tenant key. */
 class OrganizationConnections implements Connections
 {
     public function __construct(private readonly ServiceAccounts $accounts, private readonly TokenIssuer $issuer, private readonly AuditLog $audit) {}
+
+    public function provision(Introspection $caller, string $organization, string $service): ServiceConnection
+    {
+        abort_unless($caller->isMachine() && $caller->clientId !== null
+            && $caller->hasScope('id:service-connection-provisions:write')
+            && $caller->clientId === config('service-connections.sites_consumer_client_id') && $service === 'cbox_assets', 403);
+        $root = app(PlatformRoot::class)->model();
+        abort_unless($root !== null && $root->status === EnvironmentStatus::Active
+            && app(EnvironmentContext::class)->current()?->environmentKey() === $root->id, 403);
+        $this->consumer($caller);
+        $definition = config('service-connections.services.cbox_assets');
+        $scopes = ['assets:consumer:read', 'assets:consumer:write'];
+        abort_unless(is_array($definition) && ($definition['audience'] ?? null) === 'https://api.cboxassets.com'
+            && ($definition['scopes'] ?? null) === $scopes && is_string($definition['client_id'] ?? null), 503);
+        foreach ([$caller->clientId, $definition['client_id']] as $clientId) {
+            $client = Client::query()->where('client_id', $clientId)->first();
+            abort_unless($client !== null && $client->type === ClientType::Confidential && $client->organization_id === null
+                && ! $client->isDynamicallyRegistered() && in_array('client_credentials', $client->grant_types, true), 403);
+        }
+
+        return DB::transaction(function () use ($caller, $organization, $service, $scopes, $definition): ServiceConnection {
+            $org = Organization::query()->whereKey($organization)->lockForUpdate()->first();
+            abort_unless($org !== null && $org->status === OrganizationStatus::Active, 403);
+            // Serialize with connect even when no connection exists. Lock an existing
+            // connection too, so revoke cannot race a successful reuse response.
+            $connection = ServiceConnection::query()->where('organization_id', $organization)
+                ->where('consumer_client_id', $caller->clientId)->where('service', $service)->lockForUpdate()->first();
+            if ($connection !== null) {
+                $backing = Client::query()->where('client_id', $connection->service_client_id)->first();
+                abort_unless($connection->revoked_at === null && $connection->audience === $definition['audience']
+                    && $connection->scopes === $scopes && $backing !== null && $backing->organization_id === $organization
+                    && $backing->type === ClientType::Confidential && $backing->scopes === $scopes
+                    && in_array('client_credentials', $backing->grant_types, true), 409, 'The existing connection cannot be provisioned.');
+            }
+            // Billing owns admission. No person membership, enrollment or purchase is inferred.
+            abort_unless(app(ChecksConnectionEligibility::class)->allows($organization, $caller->clientId), 403, 'The organization is not admitted to both services.');
+            if ($connection !== null) {
+                return $connection;
+            }
+            $registered = PlatformRealmClients::forServiceConnection(
+                fn () => $this->accounts->create($organization, 'Service connection: '.$service, $scopes),
+            );
+            $connection = ServiceConnection::query()->create([
+                'organization_id' => $organization, 'consumer_client_id' => $caller->clientId, 'service' => $service,
+                'service_client_id' => $registered->client->client_id, 'audience' => $definition['audience'],
+                'scopes' => $scopes, 'created_by' => $caller->clientId,
+            ]);
+            $this->record('service_connection.created', $caller, $connection);
+
+            return $connection;
+        });
+    }
 
     public function connect(Introspection $caller, string $service): ServiceConnection
     {

@@ -143,6 +143,55 @@ paths:
           description: The request is invalid.
         '429':
           description: Rate limit exceeded.
+  /service-connections/{id}/provision:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      description: Fixed service catalog key; only cbox_assets is supported.
+      schema:
+        type: string
+        enum: [cbox_assets]
+    post:
+      operationId: provisionServiceConnection
+      summary: Provision the first-party Sites-to-Assets organization connection
+      description: Requires the configured Sites confidential machine client in the active
+        platform root. Both services must admit the organization according to Billing.
+        Reuses a matching active connection; never revives a revoked connection. No person
+        authorization, enrollment, subscription or purchase is performed.
+      security:
+      - AppAccessToken: []
+      x-required-scope: id:service-connection-provisions:write
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [organization_id]
+              properties:
+                organization_id:
+                  type: string
+                  description: Cbox ID organization identifier; bare ULID or org_ public id on /v1.
+      responses:
+        '200':
+          description: Created or reused connection. Responses must not be cached.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceConnection'
+        '401':
+          description: Missing or invalid machine token or issuer audience.
+        '403':
+          description: Caller, scope, realm or organization eligibility denied.
+        '409':
+          description: Existing connection is revoked or conflicts with the fixed grant.
+        '422':
+          description: Invalid organization identifier.
+        '429':
+          description: Rate limit exceeded.
+        '503':
+          description: Registration or authoritative eligibility is unavailable or misconfigured.
   /service-connections/{id}/token:
     parameters:
     - name: id

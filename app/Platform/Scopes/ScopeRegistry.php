@@ -297,7 +297,9 @@ final class ScopeRegistry
             return self::$legacy;
         }
 
-        $map = [];
+        // New capabilities have no retired spelling: never alias person management
+        // or operator migration grants to machine provisioning.
+        $map = ['id:service-connection-provisions:write' => []];
         foreach (self::RENAMED as $old => $new) {
             foreach ($new as $name) {
                 $map[$name][] = $old;

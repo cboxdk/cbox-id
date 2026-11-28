@@ -71,15 +71,13 @@ jobs:
       # its own image.
       - name: semgrep scan
         run: |
-          docker run --rm -u "$(id -u):$(id -g)" -v "$PWD:/src" -w /src \
+          docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/src" -w /src \
             semgrep/semgrep semgrep scan \
               --config=p/php --config=p/security-audit --config=p/secrets \
               --sarif --output=semgrep.sarif
-        continue-on-error: true
-      # Findings are triaged in the Security tab rather than failing the build. Guard
-      # on the file existing so a scan that produced nothing cannot fail the upload.
+          test -s semgrep.sarif
+      # Findings remain advisory (no --error); scanner failures must fail the job.
       - name: upload SARIF
-        if: hashFiles('semgrep.sarif') != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: semgrep.sarif

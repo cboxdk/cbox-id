@@ -15,9 +15,11 @@ use App\Platform\Console\ConsoleScope;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use App\Providers\ServiceConnectionsServiceProvider;
 use App\ServiceConnections\ConnectionEvents;
+use App\ServiceConnections\Contracts\Connections;
 use App\ServiceConnections\Contracts\ReadsConnectionEvents;
 use App\ServiceConnections\ServiceConnection;
 use Cbox\Id\Identity\Contracts\Subjects;
+use Cbox\Id\Kernel\Audit\Models\AuditEntry;
 use Cbox\Id\Kernel\Tenancy\Contracts\IssuerResolver;
 use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
 use Cbox\Id\OAuthServer\Contracts\ClientIdMetadataDocuments;
@@ -35,9 +37,12 @@ use Cbox\Id\OAuthServer\ValueObjects\NewClient;
 use Cbox\Id\Organization\Contracts\Memberships;
 use Cbox\Id\Organization\Contracts\Organizations;
 use Cbox\Id\Organization\Enums\MembershipRole;
+use Cbox\Id\Organization\Enums\OrganizationStatus;
 use Cbox\Id\Organization\ValueObjects\NewOrganization;
 use Cbox\Id\Platform\PlatformRoot;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 uses(InteractsWithOAuth::class);
@@ -82,6 +87,141 @@ it('creates one organization grant, with no customer credentials, and reuses rep
     expect(ServiceConnection::query()->count())->toBe(1);
     $grant = ServiceConnection::query()->sole();
     expect(Client::query()->where('client_id', $grant->service_client_id)->sole()->organization_id)->toBe($this->organization->id);
+});
+
+describe('automatic Sites connections', function (): void {
+    beforeEach(function (): void {
+        multiTenantDeployment((string) parse_url((string) config('app.url'), PHP_URL_HOST));
+        platformRootEnvironment();
+        app()->instance(TokenIntrospector::class, $this->realIntrospector);
+        [$this->sites, $this->assets, $this->autoOrg] = app(PlatformRoot::class)->run(function (): array {
+            $sites = app(ClientRegistry::class)->register(new NewClient(name: 'Sites', type: ClientType::Confidential,
+                grantTypes: ['client_credentials'], scopes: ['id:service-connection-provisions:write', 'service_connections.lease']))->client;
+            $assets = app(ClientRegistry::class)->register(new NewClient(name: 'Assets', type: ClientType::Confidential,
+                grantTypes: ['client_credentials'], scopes: ['service_connections.inspect']))->client;
+
+            return [$sites, $assets, app(Organizations::class)->create(new NewOrganization('Automatic', 'automatic'))];
+        });
+        config(['service-connections.sites_consumer_client_id' => $this->sites->client_id,
+            'service-connections.consumers' => [$this->sites->client_id],
+            'service-connections.services.cbox_assets.client_id' => $this->assets->client_id,
+            'service-access.billing_url' => 'https://billing.example.test',
+            'service-connections.admission_tokens' => ['cbox-sites' => 'sites-check', 'cbox-assets' => 'assets-check']]);
+        $this->autoToken = app(PlatformRoot::class)->run(fn () => app(TokenIssuer::class)->issueClientCredentials($this->sites, ['id:service-connection-provisions:write'])->token);
+        $this->autoUrl = 'http://'.ApiHost::name().'/v1/service-connections/cbox_assets/provision';
+        $this->admission = fn (string $key): array => ['allowed' => true, 'reason' => 'granted', 'program' => ['key' => $key, 'kind' => 'service', 'scope' => 'organization']];
+        Http::preventStrayRequests();
+        $this->billingResponse = fn ($request) => Http::response(
+            ($this->admission)(str_contains($request->url(), '/cbox-sites/') ? 'cbox-sites' : 'cbox-assets'),
+        );
+        Http::fake(fn ($request) => ($this->billingResponse)($request));
+    });
+
+    it('provisions without a person, reuses the grant, and leases the unchanged Assets identity', function (): void {
+        $id = $this->withToken($this->autoToken)->postJson($this->autoUrl, ['organization_id' => 'org_'.$this->autoOrg->id])
+            ->assertOk()->assertJsonPath('organization_id', 'org_'.$this->autoOrg->id)->assertJsonMissingPath('client_secret')->json('id');
+        $this->withToken($this->autoToken)->postJson($this->autoUrl, ['organization_id' => $this->autoOrg->id])->assertOk()->assertJsonPath('id', $id);
+        app(PlatformRoot::class)->run(function (): void {
+            expect(ServiceConnection::query()->count())->toBe(1);
+            $connection = ServiceConnection::query()->sole();
+            expect($connection->created_by)->toBe($this->sites->client_id);
+            $entry = AuditEntry::query()->where('action', 'service_connection.created')->sole();
+            expect($entry->actor_id)->toBe($this->sites->client_id);
+        });
+        $leaseCaller = app(PlatformRoot::class)->run(fn () => app(TokenIssuer::class)->issueClientCredentials($this->sites, ['service_connections.lease'])->token);
+        $lease = $this->withToken($leaseCaller)->postJson('http://'.ApiHost::name().'/v1/service-connections/'.$id.'/lease')->assertOk();
+        $claims = app(PlatformRoot::class)->run(fn () => $this->realIntrospector->introspect($lease->json('access_token')));
+        expect($claims->isMachine())->toBeTrue()->and($claims->claims['org'])->toBe($this->autoOrg->id)
+            ->and($claims->claims['aud'])->toBe('https://api.cboxassets.com')->and($claims->scopes)->toBe(['assets:consumer:read', 'assets:consumer:write']);
+        Http::assertSent(fn ($request) => $request->url() === 'https://billing.example.test/api/v1/access/services/cbox-sites/check'
+            && $request->hasHeader('Authorization', 'Bearer sites-check') && $request->data() === ['subject' => $this->sites->client_id, 'organization' => $this->autoOrg->id]);
+        Http::assertSent(fn ($request) => str_contains($request->url(), '/cbox-assets/check') && $request->hasHeader('Authorization', 'Bearer assets-check'));
+    });
+
+    it('does not revive revoked connections or replace conflicting grants', function (string $conflict): void {
+        $this->withToken($this->autoToken)->postJson($this->autoUrl, ['organization_id' => $this->autoOrg->id])->assertOk();
+        app(PlatformRoot::class)->run(function () use ($conflict): void {
+            $connection = ServiceConnection::query()->sole();
+            if ($conflict === 'missing-client') {
+                Client::query()->where('client_id', $connection->service_client_id)->delete();
+            } else {
+                $connection->update($conflict === 'revoked' ? ['revoked_at' => now()] : ['audience' => 'https://other.example']);
+            }
+        });
+        $this->withToken($this->autoToken)->postJson($this->autoUrl, ['organization_id' => $this->autoOrg->id])->assertConflict();
+        expect(app(PlatformRoot::class)->run(fn () => ServiceConnection::query()->count()))->toBe(1);
+    })->with(['revoked', 'audience', 'missing-client']);
+
+    it('denies a different caller, missing scope, person token and inactive organization', function (string $case): void {
+        $token = app(PlatformRoot::class)->run(function () use ($case): string {
+            $issuer = app(TokenIssuer::class);
+            if ($case === 'person') {
+                $person = app(Subjects::class)->create('automatic@example.test', 'Person');
+
+                return $issuer->issueForUser($this->sites, $person->id, $this->autoOrg->id, ['id:service-connection-provisions:write'])->token;
+            }
+            if ($case === 'other-client') {
+                $other = app(ClientRegistry::class)->register(new NewClient(name: 'Other', type: ClientType::Confidential,
+                    grantTypes: ['client_credentials'], scopes: ['id:service-connection-provisions:write']))->client;
+
+                return $issuer->issueClientCredentials($other, ['id:service-connection-provisions:write'])->token;
+            }
+            if ($case === 'inactive') {
+                $this->autoOrg->update(['status' => OrganizationStatus::Suspended]);
+            }
+
+            return $case === 'scope' ? $issuer->issueClientCredentials($this->sites, ['service_connections.lease'])->token : $this->autoToken;
+        });
+        $this->withToken($token)->postJson($this->autoUrl, ['organization_id' => $this->autoOrg->id])->assertForbidden();
+        Http::assertNothingSent();
+        expect(app(PlatformRoot::class)->run(fn () => ServiceConnection::query()->count()))->toBe(0);
+    })->with(['person', 'other-client', 'scope', 'inactive']);
+
+    it('refuses a non-root environment even with the trusted machine principal', function (): void {
+        $caller = Introspection::active($this->sites->client_id, $this->sites->client_id, ['id:service-connection-provisions:write'], []);
+        try {
+            app(Connections::class)->provision($caller, $this->autoOrg->id, 'cbox_assets');
+            $this->fail('The root client must not provision in the current customer environment.');
+        } catch (HttpException $error) {
+            expect($error->getStatusCode())->toBe(403);
+        }
+        Http::assertNothingSent();
+    });
+
+    it('refuses misconfiguration before creating a grant', function (string $key, mixed $value): void {
+        config([$key => $value]);
+        $this->withToken($this->autoToken)->postJson($this->autoUrl, ['organization_id' => $this->autoOrg->id])->assertServiceUnavailable();
+        expect(app(PlatformRoot::class)->run(fn () => ServiceConnection::query()->count()))->toBe(0);
+    })->with([
+        ['service-access.billing_url', 'http://billing.example.test'],
+        ['service-access.billing_url', 'https://user:secret@billing.example.test'],
+        ['service-connections.admission_tokens.cbox-assets', null],
+        ['service-connections.services.cbox_assets.scopes', ['assets:admin']],
+    ]);
+
+    it('fails closed for denied, mismatched or unavailable Billing answers', function (string $case, int $status): void {
+        $this->billingResponse = function ($request) use ($case) {
+            $key = str_contains($request->url(), '/cbox-sites/') ? 'cbox-sites' : 'cbox-assets';
+            $body = ($this->admission)($key);
+            if ($key === 'cbox-assets') {
+                match ($case) {
+                    'denied' => $body['allowed'] = false,
+                    'open' => $body['reason'] = 'open',
+                    'wrong-product' => $body['program']['key'] = 'cbox-sites',
+                    'person-policy' => $body['program']['scope'] = 'subject',
+                    'malformed' => $body['allowed'] = 'true',
+                    default => null,
+                };
+                if ($case === 'timeout') {
+                    throw new ConnectionException('test timeout');
+                }
+            }
+
+            return Http::response($body, $key === 'cbox-assets' && $case === 'unavailable' ? 503 : 200);
+        };
+        $this->withToken($this->autoToken)->postJson($this->autoUrl, ['organization_id' => $this->autoOrg->id])->assertStatus($status);
+        expect(app(PlatformRoot::class)->run(fn () => ServiceConnection::query()->count()))->toBe(0);
+    })->with([['denied', 403], ['open', 403], ['wrong-product', 503], ['person-policy', 503], ['malformed', 503], ['unavailable', 503], ['timeout', 503]]);
 });
 
 it('requires a human administrator, the right scope and the right audience', function (): void {
@@ -181,10 +321,10 @@ it('admits API-audienced person connection management only on the API host and k
     $this->withToken($token)->putJson($base.'/cbox_assets')->assertForbidden();
 })->with(['id:service-connections:write', 'service_connections.manage'])->group('security');
 
-it('never grants either person connection scope to DCR or metadata-document clients', function (string $registration): void {
+it('never grants person or machine provisioning scopes to DCR or metadata-document clients', function (string $registration): void {
     multiTenantDeployment((string) parse_url((string) config('app.url'), PHP_URL_HOST));
     platformRootEnvironment();
-    $scopes = ['webhooks:read', 'id:service-connections:write', 'service_connections.manage'];
+    $scopes = ['webhooks:read', 'id:service-connections:write', 'service_connections.manage', 'id:service-connection-provisions:write'];
     $document = [
         'client_name' => 'Self-registered', 'redirect_uris' => ['http://127.0.0.1:33418/callback'],
         'grant_types' => ['authorization_code', 'refresh_token'], 'token_endpoint_auth_method' => 'none',

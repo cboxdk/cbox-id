@@ -40,10 +40,13 @@ The operator registers Sites' confidential OAuth client in
 `CBOX_SERVICE_CONNECTION_CLIENTS` and sets `CBOX_ASSETS_SERVICE_CLIENT_ID` to the
 Assets provider's confidential client. `CBOX_ASSETS_CONNECTION_RESOURCE` defaults
 to the audience above. These are ID configuration, not customer-supplied values.
-Sites needs `id:service-connections:write` for the person flow and
-`id:service-connection-leases:write` for its machine flow. Assets needs
+Set `CBOX_SITES_SERVICE_CLIENT_ID` to that same Sites client. Sites needs
+`id:service-connection-provisions:write` for automatic provisioning and
+`id:service-connection-leases:write` for leasing. Assets needs
 `id:service-connections:read` for provider inspection. The legacy scope names
-`service_connections.manage`, `.lease` and `.inspect` respectively remain accepted.
+`service_connections.lease` and `service_connections.inspect` remain accepted for
+those operations. `service_connections.manage` still authorizes person management,
+never machine provisioning.
 
 If `CBOX_ID_PROTECTED_RESOURCES` declares the Assets audience for MCP, the host
 adds the two consumer scopes to that same declaration and reserves them against
@@ -54,35 +57,45 @@ consumer scopes under another API: registered APIs take precedence and would
 change the existing MCP or lease grants. This needs no engine upgrade or data
 migration; deploy the host change and rebuild its configuration cache normally.
 
-Sites requests `resource=https://api.cboxid.com` and only
-`scope=id:service-connections:write` in its person authorization-code/PKCE flow.
-The root's API resource advertises that scope; both spellings are reserved against
-dynamic registration and client ID metadata documents. No `openid` scope is needed.
-The token carries the selected organization in its signed `org` claim, then Sites
-calls `PUT /v1/service-connections/cbox_assets`
-on the ID API host. The caller must be a current active organization owner or
-administrator; a machine, support actor or environment management key cannot
-activate a connection. No organization id in a body or header selects the tenant.
-Repeated activation returns the existing connection for this organization,
-consumer and service. Sites stores that connection, never its backing credentials.
+Sites calls `POST /v1/service-connections/cbox_assets/provision` with
+`{"organization_id":"org_<ULID>"}` (a bare ULID also works). Its client-credentials
+token uses the issuer audience and the separate provisioning scope. No person
+token, membership inference, MFA or consent is required. The SDK capability is
+`ProvisionsServiceConnections::provision($organization, 'cbox_assets', $audience)`;
+it requires `CBOX_ID_API_URL`. The scope is reserved against dynamic registration
+and client metadata documents, and is not advertised on the person API resource.
 
-Only API-host connection listing, creation and revocation accept this exact API
-audience. Issuer-audience tokens remain supported, including on legacy paths.
-Leasing, inspection and other scope-guarded endpoints retain their existing
-issuer-audience requirement. Do not add a shadow API row or an environment resource
-override for ID: the generated catalogue retains the other management scopes.
+Only the configured, non-dynamic, platform-owned confidential Sites client can
+provision, only in the active platform root, and only to the configured confidential
+Assets provider with the fixed audience and two scopes. ID requires the organization
+to be active and admitted to **both** Sites and Assets. It checks Billing using two
+production-environment/product-bound operator credentials with only `access:check`:
 
-Activation can run server-side during Sites' existing administrator onboarding or
-login. A scope alone does not suppress OAuth consent: Sites must be a registered,
-non-dynamic, platform-owned first-party client, and must not ask `prompt=consent`.
-The person token must target ID, not the Sites or Assets API. The
-existing `laravel-id-client` `ServiceConnections::connect()` implements this
-protocol and validates the returned organization, consumer, service and audience.
+- `CBOX_SITES_CONNECTION_ADMISSION_TOKEN`, bound to `cbox-sites`.
+- `CBOX_ASSETS_CONNECTION_ADMISSION_TOKEN`, bound to `cbox-assets`.
+- `CBOX_WAITLISTS_BILLING_URL`, the trusted HTTPS Billing origin, without a path.
 
-Existing organizations without an administrator session use the temporary
-operator-approved migration below. Until a connection exists, they stay on the
-existing Sites backend. Normal `OrganizationConnections::administrator()` rules
-remain unchanged; neither impersonation nor a global machine self-grant is used.
+These credentials only read policy/check; do not use broader `access:enroll`,
+`access:read` or admission credentials. Billing must deploy `access:check` support
+before activation. ID sends the verified Sites client id as `subject` and the bare
+organization id as `organization` to each `/api/v1/access/services/{key}/check`.
+Only an organization-scoped service policy for the exact key and `allowed: true`
+with reason `granted` or `subscription` passes. `open` is not admission. ID performs
+no enrollment, grant creation in Billing, subscription or purchase. Billing may keep
+positive decisions for 60 seconds with feature-epoch invalidation; ID adds no cache.
+
+Repeated provisioning returns the same matching active connection. Revoked,
+missing-backing-client or conflicting grants return 409; provisioning never revives
+them. Denied caller/organization returns 403; unavailable or malformed eligibility
+returns 503. Requests fail closed, without a person-connect or storage fallback.
+Sites stores the connection id, never its backing credentials. Existing grants are
+retained and leased; new-site creation and explicit backfill use the same operation.
+
+The ordinary person-managed `ServiceConnections::connect()` and revocation paths
+retain their administrator checks. Their explicit API audience support is unchanged;
+provisioning, leasing and inspection retain issuer-audience tokens. Do not add a
+shadow API registration or change global approval policy. The temporary operator
+migration below describes the earlier migration mechanism, not automatic activation.
 
 ### Leasing and provider inspection
 
