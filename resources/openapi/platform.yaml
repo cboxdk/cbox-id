@@ -697,6 +697,123 @@ paths:
       x-scope: 'operator:service-connections:write'
       x-scope-aliases: []
       x-danger: critical
+  /platform/sites-assets-transitions:
+    post:
+      operationId: admin_service_connections_sites_assets_transition
+      tags:
+        - 'Service connections'
+      summary: 'Atomically replace the backing client of the exact approved Sites grant'
+      parameters:
+        -
+          $ref: '#/components/parameters/IdempotencyKey'
+        -
+          $ref: '#/components/parameters/CboxApproval'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - plan
+              properties:
+                plan:
+                  $ref: '#/components/schemas/SitesAssetsTransitionPlan'
+      responses:
+        200:
+          $ref: '#/components/responses/SitesAssetsTransitionResult'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          description: 'Plan or expected-old state changed, approval was refused, or the connection already transitioned. Recover a committed outcome by plan_digest.'
+        422:
+          $ref: '#/components/responses/UnprocessableEntity'
+        500:
+          description: 'Persistence failed. Recover by plan_digest before considering another attempt; a committed outcome must never rotate again.'
+        503:
+          description: 'The transition manifest or active platform registration is absent, invalid or expired.'
+      x-action: admin.service_connections.sites_assets.transition
+      x-scope: 'operator:service-connections:write'
+      x-scope-aliases: []
+      x-danger: critical
+  /platform/sites-assets-transitions/plan:
+    get:
+      operationId: admin_service_connections_sites_assets_transition_plan
+      tags:
+        - 'Service connections'
+      summary: 'Preview the exact expected-old grant and manifest-bound replacement'
+      parameters:
+        -
+          $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          description: 'No mutation. Keep the whole plan and its digest for approval and outcome recovery.'
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - plan
+                    properties:
+                      plan:
+                        $ref: '#/components/schemas/SitesAssetsTransitionPlan'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        409:
+          description: 'The expected-old grant conflicts or this connection already transitioned.'
+        503:
+          description: 'The transition manifest or active platform registration is absent, invalid or expired.'
+      x-action: admin.service_connections.sites_assets.transition_plan
+      x-scope: 'operator:service-connections:read'
+      x-scope-aliases: []
+      x-danger: read
+  '/platform/sites-assets-transitions/{id}':
+    get:
+      operationId: admin_service_connections_sites_assets_transition_receipt
+      tags:
+        - 'Service connections'
+      summary: 'Recover a historical transition outcome by its approved plan digest'
+      parameters:
+        -
+          name: id
+          in: path
+          required: true
+          description: 'SHA-256 plan_digest'
+          schema:
+            type: string
+            maxLength: 64
+        -
+          $ref: '#/components/parameters/CboxApproval'
+      responses:
+        200:
+          $ref: '#/components/responses/SitesAssetsTransitionResult'
+        202:
+          $ref: '#/components/responses/ApprovalRequired'
+        401:
+          $ref: '#/components/responses/Unauthorized'
+        403:
+          $ref: '#/components/responses/Forbidden'
+        404:
+          description: 'No committed transition receipt with that digest in the platform realm.'
+        503:
+          description: 'The platform realm is unavailable.'
+      x-action: admin.service_connections.sites_assets.transition_receipt
+      x-scope: 'operator:service-connections:read'
+      x-scope-aliases: []
+      x-danger: read
   /platform/workspaces:
     post:
       tags:
@@ -857,6 +974,74 @@ components:
         type: string
         maxLength: 255
   responses:
+    SitesAssetsTransitionResult:
+      description: 'Immutable historical result, not current permission to reopen Sites. Contains no bearer or client secret.'
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: object
+                required:
+                  - grant
+                  - receipt
+                properties:
+                  grant:
+                    type: object
+                    additionalProperties: false
+                    required:
+                      - id
+                      - organization_id
+                      - consumer_client_id
+                      - service
+                      - audience
+                      - scopes
+                    properties:
+                      id:
+                        type: string
+                      organization_id:
+                        type: string
+                      consumer_client_id:
+                        type: string
+                      service:
+                        type: string
+                        const: cbox_assets
+                      audience:
+                        type: string
+                        const: 'https://api.cboxassets.com'
+                      scopes:
+                        type: array
+                        items:
+                          type: string
+                        minItems: 4
+                        maxItems: 4
+                  receipt:
+                    allOf:
+                      -
+                        $ref: '#/components/schemas/SitesAssetsTransitionPlan'
+                      -
+                        type: object
+                        required:
+                          - new_service_client_id
+                          - approval_id
+                          - audit_entry_id
+                          - operator_id
+                          - transitioned_at
+                        properties:
+                          new_service_client_id:
+                            type: string
+                          approval_id:
+                            type: string
+                          audit_entry_id:
+                            type: string
+                          operator_id:
+                            type: string
+                          transitioned_at:
+                            type: string
+                            format: date-time
     ApprovalRequired:
       description: "Held for a person's approval. Poll `approval.poll_url`, then repeat the same request with `Cbox-Approval`."
       content:
@@ -940,6 +1125,65 @@ components:
           schema:
             $ref: '#/components/schemas/Error'
   schemas:
+    SitesAssetsTransitionPlan:
+      type: object
+      required:
+        - environment_id
+        - organization_id
+        - connection_id
+        - consumer_client_id
+        - provider_client_id
+        - old_service_client_id
+        - old_service_account_id
+        - manifest_digest
+        - expires_at
+        - service
+        - audience
+        - old_scopes
+        - new_scopes
+        - plan_digest
+      properties:
+        environment_id:
+          type: string
+        organization_id:
+          type: string
+        connection_id:
+          type: string
+        consumer_client_id:
+          type: string
+        provider_client_id:
+          type: string
+        old_service_client_id:
+          type: string
+        old_service_account_id:
+          type: string
+        manifest_digest:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        plan_digest:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+        expires_at:
+          type: string
+          format: date-time
+        service:
+          type: string
+          const: cbox_assets
+        audience:
+          type: string
+          const: 'https://api.cboxassets.com'
+        old_scopes:
+          type: array
+          items:
+            type: string
+          minItems: 2
+          maxItems: 2
+        new_scopes:
+          type: array
+          items:
+            type: string
+          minItems: 4
+          maxItems: 4
     SitesAssetsMigrationPlan:
       type: object
       additionalProperties: false

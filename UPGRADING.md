@@ -14,6 +14,37 @@ package's own breaking changes are in
 this file covers what an **operator of this deployment** has to do, and repeats the
 package changes that need action here rather than in a client.
 
+## Sites ordinary Assets grants (2026-11-28)
+
+New `cbox_assets` grants use exactly `organization:read`, `assets:read`,
+`assets:write` and `assets:webhooks:write`. Once this release runs, every grant Sites
+provisions has these four scopes, so Sites must not provision new grants until
+coordinated Sites/Assets acceptance, including the ordinary Sites installers;
+deploying the matching Assets API alone is insufficient. The unset transition
+manifest prevents rotation, not creation of these new ordinary grants.
+The existing pilot connection
+`01m8edwdd7qdyvqatq86jp7wpf` keeps its two legacy scopes for lease and inspection;
+automatic provisioning refuses to upgrade it.
+
+Run additive migration `2026_11_28_150000_create_service_connection_transitions`
+before serving the new code. It creates an empty receipt table and does not change
+existing clients, grants or tokens. Keep `CBOX_SITES_ASSETS_TRANSITION` unset during
+the initial deployment. No engine or SDK release is needed for this transition;
+Sites continues to store the same six-field grant.
+
+Production rotation is a separate operator-approved operation, only after the
+whole-Sites maintenance gate and drain, verified byte-copy manifest, matching Sites
+installers and joint acceptance are ready. Preserve an unexpired old bearer for
+the protected GET/HEAD/Range revocation checks. Configure the expiring exact plan,
+approve it once, and retain its `plan_digest` and idempotency key. If the outcome is
+unknown, read its durable receipt rather than rotating again.
+
+Before any rotation, rolling back the application leaves existing pilot grants
+untouched; keep the additive table. Once ordinary grants have been created or the
+pilot has rotated, the old catalog cannot lease them. Keep Sites closed on failure
+and recover forward; do not revive old accounts or revert scope data. Retain all
+receipts. See [the transition and recovery contract](docs/integrations/service-event-connections.md#native-transition-and-durable-recovery).
+
 ## Device authentication evidence (2026-11-27)
 
 The device approval correction requires `laravel-id` 2.9.1 and its migration
