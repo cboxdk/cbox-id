@@ -14,6 +14,8 @@ interface Connections
 
     public function connect(Introspection $caller, string $service): ServiceConnection;
 
+    public function provision(Introspection $caller, string $organization, string $service): ServiceConnection;
+
     public function revoke(Introspection $caller, string $id): void;
 
     public function lease(Introspection $caller, string $id): IssuedToken;

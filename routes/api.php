@@ -185,6 +185,7 @@ Route::middleware([ResolveEnvironment::class, 'throttle:api-vault'])
 Route::middleware([ResolveEnvironment::class, 'throttle:api-vault'])->prefix('v1/service-connections')->group(function (): void {
     Route::get('/', [ServiceConnectionController::class, 'index'])->middleware('scope:service_connections.manage');
     Route::post('/{id}', [ServiceConnectionController::class, 'store'])->middleware('scope:service_connections.manage');
+    Route::post('/{id}/provision', [ServiceConnectionController::class, 'provision'])->middleware('scope:id:service-connection-provisions:write');
     Route::delete('/{id}', [ServiceConnectionController::class, 'destroy'])->middleware('scope:service_connections.manage');
     Route::post('/{id}/status', [ServiceConnectionController::class, 'inspect'])->middleware('scope:service_connections.lease');
     Route::post('/{id}/inspect', [ServiceConnectionController::class, 'inspect'])->middleware('scope:service_connections.inspect');

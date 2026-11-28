@@ -5,9 +5,14 @@ declare(strict_types=1);
 return [
     // Platform registration, never customer-supplied credentials or destinations.
     'consumers' => array_values(array_filter(array_map(trim(...), explode(',', (string) env('CBOX_SERVICE_CONNECTION_CLIENTS', ''))))),
-    // Temporary, operator-approved migration inventory. Missing/invalid JSON disables it.
     'sites_consumer_client_id' => env('CBOX_SITES_SERVICE_CLIENT_ID'),
+    // Temporary, operator-approved migration inventory. Missing/invalid JSON disables it.
     'sites_assets_migration' => json_decode((string) env('CBOX_SITES_ASSETS_MIGRATION', ''), true),
+    // Separate product-bound read credentials. Missing credentials fail automatic provisioning closed.
+    'admission_tokens' => [
+        'cbox-sites' => env('CBOX_SITES_CONNECTION_ADMISSION_TOKEN'),
+        'cbox-assets' => env('CBOX_ASSETS_CONNECTION_ADMISSION_TOKEN'),
+    ],
     'services' => [
         'cbox_billing_events' => ['client_id' => env('CBOX_BILLING_SERVICE_CLIENT_ID'), 'audience' => env('CBOX_BILLING_CONNECTION_RESOURCE', 'https://app.cboxbilling.com/api/v1/service-connections'), 'scopes' => ['billing:financial-events:read']],
         'cbox_id_events' => ['client_id' => env('CBOX_ID_SERVICE_CLIENT_ID'), 'audience' => env('CBOX_ID_CONNECTION_RESOURCE'), 'scopes' => ['signals:events:read']],
