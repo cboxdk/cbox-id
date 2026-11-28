@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\ServiceConnections\BillingConnectionEligibility;
 use App\ServiceConnections\ConnectionEvents;
+use App\ServiceConnections\Contracts\ChecksConnectionEligibility;
 use App\ServiceConnections\Contracts\Connections;
 use App\ServiceConnections\Contracts\ReadsConnectionEvents;
 use App\ServiceConnections\OrganizationConnections;
@@ -13,7 +15,8 @@ use Illuminate\Support\ServiceProvider;
 class ServiceConnectionsServiceProvider extends ServiceProvider
 {
     /** @var array<class-string, class-string> */
-    public array $bindings = [Connections::class => OrganizationConnections::class, ReadsConnectionEvents::class => ConnectionEvents::class];
+    public array $bindings = [Connections::class => OrganizationConnections::class, ReadsConnectionEvents::class => ConnectionEvents::class,
+        ChecksConnectionEligibility::class => BillingConnectionEligibility::class];
 
     public function boot(): void
     {
@@ -25,6 +28,7 @@ class ServiceConnectionsServiceProvider extends ServiceProvider
         config(['cbox-id.oauth.reserved_scopes' => array_values(array_unique([
             ...array_filter(config()->array('cbox-id.oauth.reserved_scopes', []), is_string(...)), ...$assetsScopes,
             'id:service-connections:write', 'service_connections.manage',
+            'id:service-connection-provisions:write',
         ]))]);
         $resources = config()->array('cbox-id.oauth.protected_resources', []);
         foreach ($resources as $key => $resource) {
