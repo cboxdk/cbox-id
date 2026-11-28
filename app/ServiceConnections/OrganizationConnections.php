@@ -42,7 +42,7 @@ class OrganizationConnections implements Connections
             && app(EnvironmentContext::class)->current()?->environmentKey() === $root->id, 403);
         $this->consumer($caller);
         $definition = config('service-connections.services.cbox_assets');
-        $scopes = ['assets:consumer:read', 'assets:consumer:write'];
+        $scopes = ['organization:read', 'assets:read', 'assets:write', 'assets:webhooks:write'];
         abort_unless(is_array($definition) && ($definition['audience'] ?? null) === 'https://api.cboxassets.com'
             && ($definition['scopes'] ?? null) === $scopes && is_string($definition['client_id'] ?? null), 503);
         foreach ([$caller->clientId, $definition['client_id']] as $clientId) {
@@ -147,9 +147,8 @@ class OrganizationConnections implements Connections
         return DB::transaction(function () use ($caller, $id): IssuedToken {
             $connection = ServiceConnection::query()->whereKey($id)->where('consumer_client_id', $caller->clientId)->whereNull('revoked_at')->lockForUpdate()->firstOrFail();
             abort_unless(Organization::query()->whereKey($connection->organization_id)->where('status', OrganizationStatus::Active)->exists(), 403);
-            // Removing or changing a catalog entry immediately stops old grants.
-            $definition = config('service-connections.services.'.$connection->service);
-            abort_unless(is_array($definition) && ($definition['audience'] ?? null) === $connection->audience && ($definition['scopes'] ?? null) === $connection->scopes, 403);
+            // Only explicitly retained legacy grants survive a catalog scope change.
+            abort_unless($this->matchesCatalog($connection), 403);
             $client = Client::query()->where('client_id', $connection->service_client_id)->firstOrFail();
             $issued = $this->issuer->issueClientCredentials($client, $connection->scopes, $connection->audience);
             abort_unless($issued->audience === $connection->audience
@@ -171,7 +170,7 @@ class OrganizationConnections implements Connections
         $definition = config('service-connections.services.'.$connection->service);
         abort_unless(is_array($definition) && (($definition['client_id'] ?? null) === $caller->clientId || $connection->consumer_client_id === $caller->clientId), 403);
         if ($connection->revoked_at !== null || ! in_array($connection->consumer_client_id, config()->array('service-connections.consumers'), true)
-            || ($definition['audience'] ?? null) !== $connection->audience || ($definition['scopes'] ?? null) !== $connection->scopes
+            || ! $this->matchesCatalog($connection)
             || ! Client::query()->where('client_id', $connection->service_client_id)->exists()
             || ! Client::query()->where('client_id', $connection->consumer_client_id)->exists()
             || ! Organization::query()->whereKey($connection->organization_id)->where('status', OrganizationStatus::Active)->exists()) {
@@ -179,6 +178,18 @@ class OrganizationConnections implements Connections
         }
 
         return $connection;
+    }
+
+    private function matchesCatalog(ServiceConnection $connection): bool
+    {
+        $definition = config('service-connections.services.'.$connection->service);
+        if (! is_array($definition) || ($definition['audience'] ?? null) !== $connection->audience) {
+            return false;
+        }
+        $legacy = $definition['legacy_connections'] ?? [];
+
+        return ($definition['scopes'] ?? null) === $connection->scopes
+            || (is_array($legacy) && ($legacy[$connection->id] ?? null) === $connection->scopes);
     }
 
     private function consumer(Introspection $caller): void

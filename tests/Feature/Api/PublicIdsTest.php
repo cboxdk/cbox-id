@@ -301,6 +301,7 @@ const PUBLIC_IDS_BARE_OBJECTS = [
     'saml_metadata_import', 'scope', 'secret', 'service', 'service_connection', 'sign_in',
     'sign_in_method', 'signals_source',
     'sites_assets_migration', // A computed plan/batch result, not a stored record with its own id.
+    'sites_assets_transition', // Keyed by its approved plan's SHA-256 digest, not a ULID.
     'social', 'social_connection', 'standing_approval', 'sync_setting',
     'user_property_namespace', 'vault_secret_grant', 'whitelabel',
 ];

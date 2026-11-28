@@ -8,6 +8,8 @@ return [
     'sites_consumer_client_id' => env('CBOX_SITES_SERVICE_CLIENT_ID'),
     // Temporary, operator-approved migration inventory. Missing/invalid JSON disables it.
     'sites_assets_migration' => json_decode((string) env('CBOX_SITES_ASSETS_MIGRATION', ''), true),
+    // Separately attested, one-time replacement of the existing pilot's backing client.
+    'sites_assets_transition' => json_decode((string) env('CBOX_SITES_ASSETS_TRANSITION', ''), true),
     // Separate product-bound read credentials. Missing credentials fail automatic provisioning closed.
     'admission_tokens' => [
         'cbox-sites' => env('CBOX_SITES_CONNECTION_ADMISSION_TOKEN'),
@@ -19,7 +21,13 @@ return [
         'cbox_billing' => ['client_id' => env('CBOX_BILLING_SERVICE_CLIENT_ID'), 'audience' => env('CBOX_BILLING_CONNECTION_RESOURCE', 'https://app.cboxbilling.com/api/v1/service-connections'), 'scopes' => ['billing:engage:sync']],
         // A merchant's own Cbox Verify, connected from Cbox Commerce's checkout (cbox-commerce ADR-0012).
         'cbox_verify' => ['client_id' => env('CBOX_VERIFY_SERVICE_CLIENT_ID'), 'audience' => env('CBOX_VERIFY_CONNECTION_RESOURCE', 'https://api.cboxverify.com'), 'scopes' => ['verify:organization:read', 'verify:policies:read', 'verify:sessions:write']],
-        'cbox_assets' => ['client_id' => env('CBOX_ASSETS_SERVICE_CLIENT_ID'), 'audience' => env('CBOX_ASSETS_CONNECTION_RESOURCE', 'https://api.cboxassets.com'), 'scopes' => ['assets:consumer:read', 'assets:consumer:write']],
+        'cbox_assets' => [
+            'client_id' => env('CBOX_ASSETS_SERVICE_CLIENT_ID'),
+            'audience' => env('CBOX_ASSETS_CONNECTION_RESOURCE', 'https://api.cboxassets.com'),
+            'scopes' => ['organization:read', 'assets:read', 'assets:write', 'assets:webhooks:write'],
+            // Lease/inspect only; remove after Sites verifies and cuts over its three live sites.
+            'legacy_connections' => ['01m8edwdd7qdyvqatq86jp7wpf' => ['assets:consumer:read', 'assets:consumer:write']],
+        ],
         'cbox_telemetry' => ['client_id' => env('CBOX_TELEMETRY_SERVICE_CLIENT_ID'), 'audience' => env('CBOX_TELEMETRY_CONNECTION_RESOURCE', 'https://app.cboxtelemetry.com/api/v1/service-connections'), 'scopes' => ['telemetry:engage:sync']],
     ],
 ];

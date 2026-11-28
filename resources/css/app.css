@@ -3298,8 +3298,15 @@
     --border-radius: var(--radius-md);
     font-family: var(--font-sans);
 }
-[data-sonner-toast] {
+[data-sonner-toaster] [data-sonner-toast] {
     box-shadow: var(--shadow-lg);
+    /* Move the notification, but keep its text at full contrast while visible.
+       Sonner's opacity fade blends readable tokens into the page background. */
+    transition-property: transform, height, box-shadow;
+}
+[data-sonner-toaster] [data-sonner-toast] > * {
+    /* A message promoted from the collapsed stack must not fade its text in. */
+    transition: none;
 }
 /* An error is worth a longer read than a confirmation. Sonner takes the duration
    per toast, but the class is also the hook for anything that has to differ

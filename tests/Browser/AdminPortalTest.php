@@ -55,11 +55,38 @@ it('walks domain verification in the portal, accessibly, on a desktop and on a p
     $domain = VerifiedDomain::query()->where('organization_id', $org)->sole();
     $dns->publish(app(DomainVerification::class)->challengeHost('acme.com'), $domain->verification_token);
 
+    // Check the entrance frames too: axe alone can miss the low-contrast fade.
+    $page->script(<<<'JS'
+        window.toastContrast = { done: false, visible: 0, translucent: 0 };
+        const observer = new MutationObserver(() => {
+            const toast = [...document.querySelectorAll('[data-sonner-toast]')]
+                .find(element => element.textContent.includes('Domain verified.'));
+            if (!toast) return;
+            observer.disconnect();
+            const until = performance.now() + 600;
+            const sample = () => {
+                const opacity = [toast, ...toast.querySelectorAll('[data-content]')]
+                    .reduce((value, element) => value * Number(getComputedStyle(element).opacity), 1);
+                if (opacity > 0) {
+                    window.toastContrast.visible++;
+                    if (opacity < 1) window.toastContrast.translucent++;
+                }
+                if (performance.now() < until) requestAnimationFrame(sample);
+                else window.toastContrast.done = true;
+            };
+            requestAnimationFrame(sample);
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+        JS);
+
     // The record's value is on the page to copy, in full.
     $page->assertSee($domain->verification_token)
         ->click('button[aria-label="Check DNS for acme.com"]')
         ->assertSee('Domain verified.')
         ->assertDontSee('Waiting for DNS')
+        ->assertScript('window.toastContrast.done', true)
+        ->assertScript('window.toastContrast.visible > 0', true)
+        ->assertScript('window.toastContrast.translucent', 0)
         ->assertNoAccessibilityIssues();
 
     expect($domain->refresh()->isVerified())->toBeTrue();
