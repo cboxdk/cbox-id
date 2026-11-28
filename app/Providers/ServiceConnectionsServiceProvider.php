@@ -20,13 +20,13 @@ class ServiceConnectionsServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Assets uses one audience for MCP and service leases. Accept the lease scopes
-        // there, but never let self-registered clients acquire them, even without a
-        // configured provider. Person connection management is also first-party only,
-        // under both scope spellings. Preserve the operator's resource and reserved scopes.
-        $assetsScopes = array_filter(config()->array('service-connections.services.cbox_assets.scopes'), is_string(...));
+        // Assets uses one audience for MCP and service leases. Keep legacy lease scopes
+        // available during migration, but reserved against self-registration. Ordinary
+        // API scopes are not globally reserved: webhooks:write also belongs to ID.
+        $legacyAssetsScopes = ['assets:consumer:read', 'assets:consumer:write'];
+        $assetsScopes = [...array_filter(config()->array('service-connections.services.cbox_assets.scopes'), is_string(...)), ...$legacyAssetsScopes];
         config(['cbox-id.oauth.reserved_scopes' => array_values(array_unique([
-            ...array_filter(config()->array('cbox-id.oauth.reserved_scopes', []), is_string(...)), ...$assetsScopes,
+            ...array_filter(config()->array('cbox-id.oauth.reserved_scopes', []), is_string(...)), ...$legacyAssetsScopes,
             'id:service-connections:write', 'service_connections.manage',
             'id:service-connection-provisions:write',
         ]))]);

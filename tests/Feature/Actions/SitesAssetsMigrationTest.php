@@ -41,6 +41,8 @@ beforeEach(function (): void {
             'service-connections.consumers' => [$consumer->client_id],
             'service-connections.sites_consumer_client_id' => $consumer->client_id,
             'service-connections.services.cbox_assets.client_id' => $provider->client_id,
+            // This obsolete operator flow remains pinned to the former consumer grant.
+            'service-connections.services.cbox_assets.scopes' => ['assets:consumer:read', 'assets:consumer:write'],
             'service-connections.sites_assets_migration' => [
                 'environment_id' => $this->root->model()->id, 'consumer_client_id' => $consumer->client_id,
                 'organization_ids' => $orgs, 'evidence' => 'isolated-test-inventory',
@@ -55,6 +57,16 @@ beforeEach(function (): void {
         )->token;
     });
     $this->base = 'http://'.ApiHost::name().'/v1/admin/sites-assets-migrations/';
+});
+
+it('disables the obsolete operator migration with the ordinary Assets catalog', function (): void {
+    $plan = $this->withToken($this->token)->getJson($this->base.'plan')->assertOk()->json('plan');
+    $catalog = require base_path('config/service-connections.php');
+    config(['service-connections.services.cbox_assets.scopes' => $catalog['services']['cbox_assets']['scopes']]);
+    $this->getJson($this->base.'plan')->assertServiceUnavailable();
+    $this->postJson($this->base.'provision', ['plan' => $plan])->assertServiceUnavailable();
+    expect($this->root->run(fn () => ServiceConnection::query()->count()))->toBe(0)
+        ->and(ActionApprovalRequest::query()->count())->toBe(0);
 });
 
 it('shows every grant and provisions it only once after real operator approval', function (): void {

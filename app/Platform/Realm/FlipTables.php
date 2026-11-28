@@ -58,7 +58,7 @@ final class FlipTables
     public const HISTORY = [
         'audit_logs', 'audit_checkpoints', 'app_audit_events', 'app_audit_event_targets', 'app_audit_chains', 'app_audit_exports',
         'events', 'id_analytics_events', 'webhook_deliveries', 'stream_deliveries', 'provisioning_operations',
-        'failed_jobs', 'risk_decisions', 'risk_plus_events', 'postal_messages', 'postal_message_events',
+        'failed_jobs', 'risk_decisions', 'risk_plus_events', 'postal_messages', 'postal_message_events', 'service_connection_transitions',
     ];
 
     /** Not searched for retired ids: no ids, or emptied by the flip. */
@@ -236,6 +236,7 @@ final class FlipTables
             // ── Audit ───────────────────────────────────────────────────────────────
             'audit_logs' => self::archive('Hash-chained per environment and scope: an entry\'s hash covers its environment id, organization id and sequence, so the old root\'s trail cannot join the realm\'s chain. Verified, archived verbatim, removed. The realm\'s chains are untouched.'),
             'audit_checkpoints' => self::archive('Signed checkpoints over the old root\'s chains: archived with them.'),
+            'service_connection_transitions' => self::archive('Immutable operator receipts bind the original environment and identities: archived verbatim, never re-keyed into a different approved plan.'),
             'app_audit_chains' => self::archive('Customer-app audit chains of the old root: archived, not re-chained.'),
             'app_audit_events' => self::archive('As app_audit_chains.'),
             'app_audit_event_targets' => self::archive('As app_audit_chains.'),

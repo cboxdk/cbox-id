@@ -124,12 +124,14 @@ final class ErasedTables
             $tables[$table] = ['decision' => self::KEEP, 'reason' => 'The platform\'s tamper-evident trail: append-only, kept in place, and still verified by `audit-chain:verify`.'];
         }
 
+        $tables['service_connection_transitions'] = ['decision' => self::KEEP, 'reason' => 'Immutable operator transition receipts: historical evidence, retained without rewriting the approved identities.'];
+
         return $tables;
     }
 
     /** @return list<string> */
     public static function kept(): array
     {
-        return self::TRAIL;
+        return [...self::TRAIL, 'service_connection_transitions'];
     }
 }

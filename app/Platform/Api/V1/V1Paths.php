@@ -172,6 +172,7 @@ final class V1Paths
         '/platform/environments' => '/admin/environments',
         '/platform/operators' => '/admin/operators',
         '/platform/sites-assets-migrations' => '/admin/sites-assets-migrations',
+        '/platform/sites-assets-transitions' => '/admin/sites-assets-transitions',
         '/me/two-factor/apps' => '/me/totp-factors',
         '/sso/connections' => '/sso-connections',
         '/sso/domains' => '/organization-domains',

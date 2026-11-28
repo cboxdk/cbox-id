@@ -130,6 +130,10 @@ it('refuses to execute without the id of the environment being retired', functio
 
 it('flips: dry run, execute, verify', function (): void {
     $fixture = RealmFlipFixture::build();
+    $receipt = ['id' => hash('sha256', 'archived-transition'), 'environment_id' => $fixture['root'],
+        'connection_id' => str_repeat('0', 26),
+        'payload' => json_encode(['receipt' => ['environment_id' => $fixture['root'], 'organization_id' => $fixture['rootOrganization']]], JSON_THROW_ON_ERROR)];
+    DB::table('service_connection_transitions')->insert($receipt);
 
     [$code, $output] = realmFlip();
     expect($code)->toBe(0, $output);
@@ -207,6 +211,10 @@ it('flips: dry run, execute, verify', function (): void {
     $archived = json_decode((string) DB::table('realm_flip_archive')->where('source_table', 'audit_logs')->orderBy('id')->value('payload'), true);
     expect($archived)->toHaveKeys(['hash', 'prev_hash', 'sequence', 'environment_id'])
         ->and($archived['environment_id'])->toBe($fixture['root']);
+
+    $archivedReceipt = json_decode((string) DB::table('realm_flip_archive')->where('source_table', 'service_connection_transitions')->sole()->payload, true);
+    expect($archivedReceipt)->toEqual($receipt)
+        ->and(DB::table('service_connection_transitions')->count())->toBe(0);
 
     app(EnvironmentContext::class)->runAs(GenericEnvironment::of($fixture['realm']), function () use ($fixture): void {
         expect(app(AuditLog::class)->verifyChain()->valid)->toBeTrue()
