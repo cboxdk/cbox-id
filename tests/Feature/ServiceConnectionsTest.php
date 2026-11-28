@@ -12,6 +12,7 @@ use App\Platform\Actions\Principal\DelegatedTokenPrincipal;
 use App\Platform\Api\ApiHost;
 use App\Platform\Api\ManagementAudience;
 use App\Platform\Console\ConsoleScope;
+use App\Platform\OAuth\PlatformRealmClients;
 use App\Platform\OAuth\ValueObjects\OrganizationChoice;
 use App\Providers\ServiceConnectionsServiceProvider;
 use App\ServiceConnections\ConnectionEvents;
@@ -25,6 +26,7 @@ use Cbox\Id\OAuthServer\Contracts\AudienceResolver;
 use Cbox\Id\OAuthServer\Contracts\ClientIdMetadataDocuments;
 use Cbox\Id\OAuthServer\Contracts\ClientRegistry;
 use Cbox\Id\OAuthServer\Contracts\ProtectedResources;
+use Cbox\Id\OAuthServer\Contracts\ServiceAccounts;
 use Cbox\Id\OAuthServer\Contracts\TokenIntrospector;
 use Cbox\Id\OAuthServer\Contracts\TokenIssuer;
 use Cbox\Id\OAuthServer\Enums\ClientType;
@@ -132,10 +134,63 @@ describe('automatic Sites connections', function (): void {
         $lease = $this->withToken($leaseCaller)->postJson('http://'.ApiHost::name().'/v1/service-connections/'.$id.'/lease')->assertOk();
         $claims = app(PlatformRoot::class)->run(fn () => $this->realIntrospector->introspect($lease->json('access_token')));
         expect($claims->isMachine())->toBeTrue()->and($claims->claims['org'])->toBe($this->autoOrg->id)
-            ->and($claims->claims['aud'])->toBe('https://api.cboxassets.com')->and($claims->scopes)->toBe(['assets:consumer:read', 'assets:consumer:write']);
+            ->and($claims->claims['aud'])->toBe('https://api.cboxassets.com')->and($claims->scopes)->toBe(['organization:read', 'assets:read', 'assets:write', 'assets:webhooks:write']);
         Http::assertSent(fn ($request) => $request->url() === 'https://billing.example.test/api/v1/access/services/cbox-sites/check'
             && $request->hasHeader('Authorization', 'Bearer sites-check') && $request->data() === ['subject' => $this->sites->client_id, 'organization' => $this->autoOrg->id]);
         Http::assertSent(fn ($request) => str_contains($request->url(), '/cbox-assets/check') && $request->hasHeader('Authorization', 'Bearer assets-check'));
+    });
+
+    it('keeps the live pilot lease unchanged and refuses an implicit scope upgrade', function (): void {
+        // Seed the previous production grant, including its original backing scope ceiling.
+        $connection = app(PlatformRoot::class)->run(function (): ServiceConnection {
+            $backing = PlatformRealmClients::forServiceConnection(
+                fn () => app(ServiceAccounts::class)->create($this->autoOrg->id, 'Existing pilot', ['assets:consumer:read', 'assets:consumer:write']),
+            );
+
+            return ServiceConnection::query()->create([
+                'id' => '01m8edwdd7qdyvqatq86jp7wpf', 'organization_id' => $this->autoOrg->id,
+                'consumer_client_id' => $this->sites->client_id, 'service' => 'cbox_assets',
+                'service_client_id' => $backing->client->client_id, 'audience' => 'https://api.cboxassets.com',
+                'scopes' => ['assets:consumer:read', 'assets:consumer:write'], 'created_by' => 'original-operator',
+            ]);
+        });
+        $snapshot = app(PlatformRoot::class)->run(fn () => $connection->fresh()->getRawOriginal());
+        config(['cbox-id.oauth.protected_resources' => [[
+            'identifier' => 'https://api.cboxassets.com', 'scopes' => ['mcp:read', 'mcp:write'], 'dynamic_clients' => true,
+        ]]]);
+        (new ServiceConnectionsServiceProvider(app()))->boot();
+        $base = 'http://'.ApiHost::name().'/v1/service-connections/'.$connection->id;
+        $leaseCaller = app(PlatformRoot::class)->run(fn () => app(TokenIssuer::class)->issueClientCredentials($this->sites, ['service_connections.lease'])->token);
+        $provider = app(PlatformRoot::class)->run(fn () => app(TokenIssuer::class)->issueClientCredentials($this->assets, ['service_connections.inspect'])->token);
+        $lease = $this->withToken($leaseCaller)->postJson($base.'/lease')->assertOk()->json('access_token');
+        $claims = app(PlatformRoot::class)->run(fn () => $this->realIntrospector->introspect($lease));
+        expect($claims->active)->toBeTrue()->and($claims->clientId)->toBe($connection->service_client_id)
+            ->and($claims->claims['org'])->toBe($this->autoOrg->id)
+            ->and($claims->claims['aud'])->toBe('https://api.cboxassets.com')
+            ->and($claims->scopes)->toBe(['assets:consumer:read', 'assets:consumer:write']);
+        $this->withToken($provider)->postJson($base.'/inspect')->assertOk()->assertJsonPath('active', true)
+            ->assertJsonPath('scopes', ['assets:consumer:read', 'assets:consumer:write'])
+            ->assertJsonPath('service_client_id', $connection->service_client_id);
+        $this->withToken($this->autoToken)->postJson($this->autoUrl, ['organization_id' => $this->autoOrg->id])->assertConflict();
+        expect(app(PlatformRoot::class)->run(fn () => $connection->fresh()->getRawOriginal()))->toBe($snapshot);
+
+        // The exception neither follows a changed audience nor survives removal or revocation.
+        config(['service-connections.services.cbox_assets.audience' => 'https://other.example']);
+        $this->withToken($leaseCaller)->postJson($base.'/lease')->assertForbidden();
+        $this->withToken($provider)->postJson($base.'/inspect')->assertOk()->assertJsonPath('active', false);
+        config(['service-connections.services.cbox_assets.audience' => 'https://api.cboxassets.com',
+            'service-connections.services.cbox_assets.legacy_connections' => ['01m8edwdd7qdyvqatq86jp7wpz' => ['assets:consumer:read', 'assets:consumer:write']]]);
+        $this->withToken($leaseCaller)->postJson($base.'/lease')->assertForbidden();
+        $this->withToken($provider)->postJson($base.'/inspect')->assertOk()->assertJsonPath('active', false);
+        config(['service-connections.services.cbox_assets.legacy_connections' => [$connection->id => ['assets:consumer:read', 'assets:consumer:write']]]);
+        app(PlatformRoot::class)->run(fn () => $connection->update(['scopes' => ['assets:consumer:read', 'assets:consumer:write', 'organization:admin']]));
+        $this->withToken($leaseCaller)->postJson($base.'/lease')->assertForbidden();
+        $this->withToken($provider)->postJson($base.'/inspect')->assertOk()->assertJsonPath('active', false);
+        app(PlatformRoot::class)->run(fn () => $connection->update(['scopes' => ['assets:consumer:read', 'assets:consumer:write']]));
+        app(PlatformRoot::class)->run(fn () => $connection->update(['revoked_at' => now()]));
+        $this->withToken($leaseCaller)->postJson($base.'/lease')->assertNotFound();
+        $this->withToken($provider)->postJson($base.'/inspect')->assertOk()->assertJsonPath('active', false);
+        $this->withToken($this->autoToken)->postJson($this->autoUrl, ['organization_id' => $this->autoOrg->id])->assertConflict();
     });
 
     it('does not revive revoked connections or replace conflicting grants', function (string $conflict): void {
@@ -404,7 +459,7 @@ it('isolates Assets leases by organization and consumer and rotates a revoked co
     expect($token->active)->toBeTrue()
         ->and($token->claims['org'])->toBe($this->organization->id)
         ->and($token->claims['aud'])->toBe('https://api.cboxassets.com')
-        ->and($token->scopes)->toBe(['assets:consumer:read', 'assets:consumer:write'])
+        ->and($token->scopes)->toBe(['organization:read', 'assets:read', 'assets:write', 'assets:webhooks:write'])
         ->and($token->subject)->toBe($token->clientId)
         ->and($token->clientId)->not->toBe($this->consumer)
         ->and($otherToken->claims['org'])->toBe($otherOrg->id)
@@ -438,7 +493,7 @@ it('keeps Assets consumer scopes out of dynamic registrations and tokens while p
         'cbox-id.oauth.reserved_scopes' => ['vault.lease', 'host:reserved'],
         'cbox-id.oauth.protected_resources' => [
             ['identifier' => 'https://api.cboxassets.com', 'scopes' => 'mcp:read mcp:write vault.lease host:reserved', 'dynamic_clients' => true],
-            ['identifier' => 'https://other.test/mcp', 'scopes' => ['other:read'], 'dynamic_clients' => true],
+            ['identifier' => 'https://other.test/mcp', 'scopes' => ['other:read', 'webhooks:write'], 'dynamic_clients' => true],
         ],
     ]);
     (new ServiceConnectionsServiceProvider(app()))->boot();
@@ -448,11 +503,13 @@ it('keeps Assets consumer scopes out of dynamic registrations and tokens while p
         'redirect_uris' => ['http://127.0.0.1:33418/callback'],
         'grant_types' => ['authorization_code', 'refresh_token'],
         'token_endpoint_auth_method' => 'none',
-        'scope' => 'mcp:read mcp:write other:read assets:consumer:read assets:consumer:write vault.lease host:reserved',
-    ])->assertCreated()->assertJsonPath('scope', 'mcp:read mcp:write other:read');
+        'scope' => 'mcp:read mcp:write other:read webhooks:write assets:consumer:read assets:consumer:write vault.lease host:reserved',
+    ])->assertCreated()->assertJsonPath('scope', 'mcp:read mcp:write other:read webhooks:write');
     $client = Client::query()->where('client_id', $registered->json('client_id'))->sole();
     $person = app(Subjects::class)->create('assets-mcp@example.test', 'MCP user');
     $issuer = app(TokenIssuer::class);
+    $otherToken = $issuer->issueForUser($client, $person->id, null, ['webhooks:write'], 'https://other.test/mcp');
+    expect($this->realIntrospector->introspect($otherToken->token)->scopes)->toBe(['webhooks:write']);
 
     // Even a stale client carrying reserved scopes cannot put them in a signed token.
     $client->scopes = [...$client->scopes, ...$consumerScopes, 'vault.lease', 'host:reserved'];
@@ -463,7 +520,7 @@ it('keeps Assets consumer scopes out of dynamic registrations and tokens while p
         ->and($token->scopes)->toBe(['mcp:read', 'mcp:write']);
     expect(fn () => $issuer->issueForUser($client, $person->id, null, $consumerScopes, 'https://api.cboxassets.com'))
         ->toThrow(InvalidAudience::class);
-    expect(app(ProtectedResources::class)->find('https://other.test/mcp')?->scopes)->toBe(['other:read']);
+    expect(app(ProtectedResources::class)->find('https://other.test/mcp')?->scopes)->toBe(['other:read', 'webhooks:write']);
 })->group('security');
 
 it('limits live grant inspection to its provider and consumer and reports central revocation', function (): void {

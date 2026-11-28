@@ -150,6 +150,8 @@ final class CrossTenantSweep
             'organizations:organization_id' => 'organization',
             'operators:operator_id' => 'operator',
             'workspaces:workspace_id' => 'workspace',
+            // A SHA-256 plan digest: recovery evidence for one root-realm connection.
+            'sites-assets-transitions:id' => 'sites_assets_transition',
         ],
     ];
 

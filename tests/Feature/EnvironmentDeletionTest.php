@@ -209,6 +209,10 @@ it('removes every row of the environment, in every table, and nothing of another
         new AuditEvent(action: 'user.created', actorType: ActorType::System, actorId: 'fixture', targetType: 'user', targetId: 'usr_1'),
     ));
 
+    $receipt = ['id' => hash('sha256', 'retained-transition'), 'environment_id' => $staging->id,
+        'connection_id' => (string) Str::ulid(), 'payload' => json_encode(['receipt' => ['environment_id' => $staging->id]], JSON_THROW_ON_ERROR)];
+    DB::table('service_connection_transitions')->insert($receipt);
+
     $before = rowsOf($staging->id);
     $others = rowsOf($kept->id);
 
@@ -219,6 +223,7 @@ it('removes every row of the environment, in every table, and nothing of another
     $removed = app(EnvironmentErasure::class)->erase($staging);
 
     $after = rowsOf($staging->id);
+    expect((array) DB::table('service_connection_transitions')->where('id', $receipt['id'])->sole())->toBe($receipt);
 
     foreach (ErasedTables::all() as $table => $entry) {
         if ($entry['decision'] === ErasedTables::ERASE) {
